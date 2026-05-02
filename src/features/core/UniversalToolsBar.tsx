@@ -1,138 +1,289 @@
-
-import React from 'react';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import React, { useMemo } from 'react';
+import { useAtom, useAtomValue } from 'jotai/react';
 import { 
     activeViewAtom, 
     isInventorySelectionModeAtom,
     selectedInventoryIdsAtom,
-    isPackingCrateWizardOpenAtom,
-    isPaymentWizardOpenAtom,
-    isPackingPrintWizardOpenAtom,
-    isPackingNFCWizardOpenAtom,
     logisticsSubTabAtom,
-    isUploadWizardOpenAtom
+    isInventoryViewSliderOpenAtom,
+    inventoryViewSliderAtom,
+    isInventoryFiltersPanelOpenAtom,
+    inventoryStatusFilterAtom,
+    inventoryAtom,
+    inventoryVendorFilterAtom,
+    inventoryCategoryFilterAtom,
+    inventoryMaterialFilterAtom,
+    inventorySortKeyAtom,
+    inventorySortOrderAtom,
+    isInventoryVendorFilterOpenAtom,
+    isInventoryCategoryFilterOpenAtom,
+    isInventoryMaterialFilterOpenAtom,
+    isInventorySearchOpenAtom,
+    inventorySearchTermAtom
 } from '../../lib/atoms';
 import { 
-    Tag, Package, CreditCard, Printer, Nfc, Plus, 
-    FileText, Download, CheckSquare, Square, X,
-    Layers, Truck, Share2, Clipboard
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown
 } from 'lucide-react';
-import { PaymentWizard } from '../finance/PaymentWizard';
+import { vendors } from '../../lib/consts';
 
 export const UniversalToolsBar: React.FC = () => {
     const activeView = useAtomValue(activeViewAtom);
-    const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
-    const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    const [selectedIds] = useAtom(selectedInventoryIdsAtom);
     const logisticsSubTab = useAtomValue(logisticsSubTabAtom);
     
-    const setIsPrintWizardOpen = useSetAtom(isPackingPrintWizardOpenAtom);
-    const setIsNFCWizardOpen = useSetAtom(isPackingNFCWizardOpenAtom);
-    const setIsPackingCrateWizardOpen = useSetAtom(isPackingCrateWizardOpenAtom);
-    const setIsPaymentWizardOpen = useSetAtom(isPaymentWizardOpenAtom);
-    const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
+    // View/Filter/Search States
+    const [isViewSliderOpen, setIsViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
+    const [viewSlider, setViewSlider] = useAtom(inventoryViewSliderAtom);
+    const [isFiltersOpen, setIsFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
+    const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
+    const [searchTerm, setSearchTerm] = useAtom(inventorySearchTermAtom);
+    const [statusFilter] = useAtom(inventoryStatusFilterAtom);
+    
+    // Inventory Atoms
+    const inventoryItems = useAtomValue(inventoryAtom);
+    const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom);
+    const [categoryFilter, setCategoryFilter] = useAtom(inventoryCategoryFilterAtom);
+    const [materialFilter, setMaterialFilter] = useAtom(inventoryMaterialFilterAtom);
+    const [sortKey, setSortKey] = useAtom(inventorySortKeyAtom);
+    const [sortOrder, setSortOrder] = useAtom(inventorySortOrderAtom);
+    
+    const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
+    const [isCategoryOpen, setIsCategoryOpen] = useAtom(isInventoryCategoryFilterOpenAtom);
+    const [isMaterialOpen, setIsMaterialOpen] = useAtom(isInventoryMaterialFilterOpenAtom);
+
+    // Derived active filter lists
+    const activeVendors = useMemo(() => Array.from(new Set(inventoryItems.map(i => i.data.itemId?.split('-')[0] || i.data.vendor_id || i.data.vendorId).filter(Boolean))).sort(), [inventoryItems]);
+    
+    const activeCategories = useMemo(() => {
+        const cats = new Set<string>();
+        inventoryItems.forEach(i => {
+            const d = i.data as any;
+            const s = (d.shape || '').trim();
+            const desc = (d.shortDescription || d.short_description || '').trim();
+            const words = Array.from(new Set(`${s} ${desc}`.toUpperCase().split(/\s+/).filter(Boolean)));
+            const full = words.join(' ');
+            if (full) cats.add(full);
+        });
+        return Array.from(cats).sort();
+    }, [inventoryItems]);
+
+    const activeMaterials = useMemo(() => {
+        const mats = new Set<string>();
+        inventoryItems.forEach(i => {
+            const d = i.data as any;
+            const c = (d.color || '').trim();
+            const m = (d.material || '').trim();
+            const words = Array.from(new Set(`${c} ${m}`.toUpperCase().split(/\s+/).filter(Boolean)));
+            const full = words.join(' ');
+            if (full) mats.add(full);
+        });
+        return Array.from(mats).sort();
+    }, [inventoryItems]);
 
     if (!activeView) return null;
 
-    // Inventory specific tools
     const isInventory = activeView === 'inventory';
-    const hasSelection = selectedIds.length > 0;
-
-    const handleClearSelection = () => {
-        setSelectedIds([]);
-    };
-
-    const handleToggleSelectionMode = () => {
-        setIsSelectionMode(!isSelectionMode);
-        if (isSelectionMode) handleClearSelection();
-    };
 
     return (
-        <div className="w-full bg-black/5 border-b border-white/5 px-8 py-4 flex items-center justify-between z-[400] animate-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center gap-8">
-                {/* Module Context Label - Minimalist */}
-                <div className="flex items-center gap-3">
-                    <Layers size={14} className="text-(--main-color) opacity-80" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">
-                        {activeView === 'inventory' ? 'Inventory' : 
-                         activeView === 'logistics' ? `Logistics • ${logisticsSubTab.toUpperCase()}` : 
-                         activeView.toUpperCase()}
-                    </span>
-                </div>
-
-                {/* Shared Selection Toggle - Borderless */}
-                {isInventory && (
-                    <button 
-                        onClick={handleToggleSelectionMode}
-                        className={`flex items-center gap-3 transition-all ${isSelectionMode ? 'text-(--main-color)' : 'text-white/40 hover:text-white'}`}
-                    >
-                        {isSelectionMode ? <CheckSquare size={18} strokeWidth={2.5} /> : <Square size={18} strokeWidth={2.5} />}
-                        <span className="text-[11px] font-black uppercase tracking-widest">Selection Mode</span>
-                    </button>
-                )}
-            </div>
-
-            <div className="flex items-center gap-8">
-                {/* Selection Specific Actions - Containerless & High Contrast */}
-                {hasSelection && (
-                    <div className="flex items-center gap-8 animate-in zoom-in-95 duration-300">
-                        <div className="h-4 w-px bg-white/10" />
-                        
-                        <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">
-                            {selectedIds.length} ITEMS
-                        </span>
-
-                        <button 
-                            onClick={() => setIsPrintWizardOpen(true)}
-                            className="flex items-center gap-2.5 text-white hover:text-(--main-color) transition-all group"
-                        >
-                            <Printer size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                            <span className="text-[11px] font-black uppercase tracking-widest">Labels</span>
-                        </button>
-
-                        <button 
-                            onClick={() => setIsNFCWizardOpen(true)}
-                            className="flex items-center gap-2.5 text-white hover:text-(--main-color) transition-all group"
-                        >
-                            <Nfc size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                            <span className="text-[11px] font-black uppercase tracking-widest">NFC</span>
-                        </button>
-
-                        <button 
-                            onClick={() => setIsPackingCrateWizardOpen(true)}
-                            className="flex items-center gap-2.5 text-white hover:text-(--main-color) transition-all group"
-                        >
-                            <Package size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                            <span className="text-[11px] font-black uppercase tracking-widest">Pack</span>
-                        </button>
-
-                        <button 
-                            onClick={() => setIsPaymentWizardOpen(true)}
-                            className="flex items-center gap-2.5 text-white hover:text-(--main-color) transition-all group"
-                        >
-                            <CreditCard size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                            <span className="text-[11px] font-black uppercase tracking-widest">Pay</span>
-                        </button>
-
-                        <button 
-                            onClick={handleClearSelection}
-                            className="text-white/20 hover:text-red-500 transition-all flex items-center gap-2"
-                            title="Clear Selection"
-                        >
-                            <X size={18} strokeWidth={2.5} />
-                            <span className="text-[11px] font-black uppercase tracking-widest">Clear</span>
-                        </button>
+        <div className={`w-full bg-black/40 backdrop-blur-3xl border-b border-white/5 px-8 py-4 items-center justify-between z-[400] relative transition-all duration-500 ${isInventory && !isViewSliderOpen && !isFiltersOpen && !isSearchOpen ? 'hidden' : 'flex'}`}>
+            
+            <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500 py-1">
+                {/* INVENTORY: SEARCH PANEL */}
+                {isInventory && isSearchOpen && (
+                    <div className="flex items-center gap-6 w-full animate-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-6 flex-1 max-w-5xl group transition-all">
+                            <Search size={32} strokeWidth={4} className="text-(--main-color) drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.7)]" />
+                            <input 
+                                autoFocus
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="SEARCH INVENTORY..."
+                                className="bg-transparent border-none text-white text-4xl font-black placeholder:text-white/20 outline-none w-full tracking-tighter"
+                            />
+                            {searchTerm && (
+                                <button onClick={() => setSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2">
+                                    <X size={32} strokeWidth={4} />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
 
-                {/* Default Actions - High Contrast */}
-                {!hasSelection && isInventory && (
-                    <button 
-                        onClick={() => setIsUploadWizardOpen(true)}
-                        className="flex items-center gap-3 text-(--main-color) hover:text-white transition-all group scale-110"
-                    >
-                        <Plus size={20} strokeWidth={3.5} className="group-hover:rotate-90 transition-transform duration-500" />
-                        <span className="text-[12px] font-black uppercase tracking-widest">Add Entry</span>
-                    </button>
+                {/* INVENTORY: FILTERS PANEL */}
+                {isInventory && isFiltersOpen && !isSearchOpen && (
+                    <div className="flex flex-col w-full animate-in fade-in duration-300 gap-6">
+                        {/* FILTER LAUNCHERS - SLIM GLASSMORPHIC */}
+                        <div className="flex items-center gap-8 pb-3 border-b border-white/5">
+                            <button 
+                                onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
+                                className={`flex items-center gap-2 transition-all hover:scale-110 ${isVendorFilterOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_white]' : 'text-white/40'}`}
+                            >
+                                <Tag size={16} strokeWidth={3} />
+                                <span className="text-[12px] font-black uppercase tracking-widest">VENDOR</span>
+                            </button>
+                            <button 
+                                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                                className={`flex items-center gap-2 transition-all hover:scale-110 ${isCategoryOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_white]' : 'text-white/40'}`}
+                            >
+                                <Layers size={16} strokeWidth={3} />
+                                <span className="text-[12px] font-black uppercase tracking-widest">TYPE</span>
+                            </button>
+                            <button 
+                                onClick={() => setIsMaterialOpen(!isMaterialOpen)}
+                                className={`flex items-center gap-2 transition-all hover:scale-110 ${isMaterialOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_white]' : 'text-white/40'}`}
+                            >
+                                <Box size={16} strokeWidth={3} />
+                                <span className="text-[12px] font-black uppercase tracking-widest">MATERIAL</span>
+                            </button>
+                        </div>
+
+                        {/* VENDOR ROW */}
+                        {isVendorFilterOpen && (
+                            <div className="flex items-center gap-8 w-full animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center gap-3 text-[12px] font-black uppercase tracking-widest text-white/50 shrink-0 w-32">
+                                    <Tag size={16} strokeWidth={3} className="text-(--main-color)" /> VENDOR
+                                </div>
+                                <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-1">
+                                    <button 
+                                        onClick={() => setVendorFilter(['All'])} 
+                                        className={`text-[18px] font-black uppercase px-4 py-2 transition-all shrink-0 ${vendorFilter.includes('All') ? 'text-white drop-shadow-[0_0_12px_white]' : 'text-white/20 hover:text-white/60'}`}
+                                    >
+                                        ALL
+                                    </button>
+                                    {activeVendors.map(v => {
+                                        const vendorColor = (vendors as any)[v]?.color || '#ffffff';
+                                        const isActive = vendorFilter.includes(v);
+                                        
+                                        const handleToggle = () => {
+                                            if (vendorFilter.includes('All')) {
+                                                setVendorFilter([v]);
+                                            } else if (isActive) {
+                                                const next = vendorFilter.filter(item => item !== v);
+                                                setVendorFilter(next.length === 0 ? ['All'] : next);
+                                            } else {
+                                                setVendorFilter([...vendorFilter, v]);
+                                            }
+                                        };
+
+                                        return (
+                                            <button 
+                                                key={v} 
+                                                onClick={handleToggle}
+                                                className={`text-[18px] font-black uppercase px-4 py-2 transition-all hover:scale-110 flex items-center gap-3 shrink-0`}
+                                                style={{ 
+                                                    color: isActive ? vendorColor : '#444444',
+                                                    textShadow: isActive ? `0 0 15px ${vendorColor}` : 'none'
+                                                }}
+                                            >
+                                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: isActive ? vendorColor : '#333333' }} />
+                                                {v}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TYPE ROW */}
+                        {isCategoryOpen && (
+                            <div className="flex items-center gap-8 w-full animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center gap-3 text-[12px] font-black uppercase tracking-widest text-white/50 shrink-0 w-32">
+                                    <Layers size={16} strokeWidth={3} className="text-(--main-color)" /> TYPE
+                                </div>
+                                <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-1">
+                                    <button 
+                                        onClick={() => setCategoryFilter('All')} 
+                                        className={`text-[16px] font-black uppercase px-4 py-2 transition-all shrink-0 ${categoryFilter === 'All' ? 'text-white drop-shadow-[0_0_12px_white]' : 'text-white/20 hover:text-white/60'}`}
+                                    >
+                                        ALL
+                                    </button>
+                                    {activeCategories.map(d => {
+                                        const isActive = categoryFilter === d;
+                                        return (
+                                            <button 
+                                                key={d} 
+                                                onClick={() => setCategoryFilter(isActive ? 'All' : d)}
+                                                className={`text-[16px] font-black uppercase px-4 py-2 transition-all hover:scale-110 shrink-0 ${isActive ? 'text-white drop-shadow-[0_0_12px_white]' : 'text-white/20 hover:text-white/60'}`}
+                                            >
+                                                {d}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MATERIAL ROW */}
+                        {isMaterialOpen && (
+                            <div className="flex items-center gap-8 w-full animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center gap-3 text-[12px] font-black uppercase tracking-widest text-white/50 shrink-0 w-32">
+                                    <Box size={16} strokeWidth={3} className="text-(--main-color)" /> MATERIAL
+                                </div>
+                                <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-1">
+                                    <button 
+                                        onClick={() => setMaterialFilter('All')} 
+                                        className={`text-[16px] font-black uppercase px-4 py-2 transition-all shrink-0 ${materialFilter === 'All' ? 'text-white drop-shadow-[0_0_12px_white]' : 'text-white/20 hover:text-white/60'}`}
+                                    >
+                                        ALL
+                                    </button>
+                                    {activeMaterials.map(d => {
+                                        const isActive = materialFilter === d;
+                                        return (
+                                            <button 
+                                                key={d} 
+                                                onClick={() => setMaterialFilter(isActive ? 'All' : d)}
+                                                className={`text-[16px] font-black uppercase px-4 py-2 transition-all hover:scale-110 shrink-0 ${isActive ? 'text-white drop-shadow-[0_0_12px_white]' : 'text-white/20 hover:text-white/60'}`}
+                                            >
+                                                {d}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* VIEW SLIDER */}
+                {isInventory && isViewSliderOpen && !isSearchOpen && !isFiltersOpen && (
+                    <div className="flex flex-col gap-6 w-full animate-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-8 w-full">
+                            <div className="flex items-center gap-3 text-white shrink-0 w-32">
+                                <SlidersHorizontal size={18} strokeWidth={3} className="text-(--main-color)" />
+                                <span className="text-[12px] font-black uppercase tracking-widest">ZOOM</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="100" 
+                                value={viewSlider} 
+                                onChange={(e) => setViewSlider(parseInt(e.target.value))}
+                                className="flex-1 h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-(--main-color)"
+                            />
+                            <span className="text-2xl font-black text-white w-16 text-right font-mono">{viewSlider}%</span>
+                        </div>
+
+                        <div className="flex items-center gap-8 w-full">
+                            <div className="flex items-center gap-3 text-white shrink-0 w-32">
+                                <ArrowUpDown size={18} strokeWidth={3} className="text-(--main-color)" />
+                                <span className="text-[12px] font-black uppercase tracking-widest">SORT</span>
+                            </div>
+                            <div className="flex items-center gap-6 overflow-x-auto no-scrollbar">
+                                {[{ key: 'Date', label: 'DATE' }, { key: 'Status', label: 'STATUS' }, { key: 'Vendor', label: 'VENDOR' }, { key: 'Number', label: '#' }].map((o) => (
+                                    <button key={o.key}
+                                        onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
+                                        className={`text-[16px] font-black uppercase tracking-widest transition-all flex items-center gap-3 hover:scale-110 ${sortKey === o.key ? 'text-white drop-shadow-[0_0_12px_white]' : 'text-white/20 hover:text-white'}`}>
+                                        {o.label}
+                                        {sortKey === o.key && (
+                                            <div className="flex flex-col -space-y-1 text-(--main-color)">
+                                                <ChevronRight size={10} strokeWidth={4} className={`-rotate-90 ${sortOrder === 'asc' ? 'opacity-100' : 'opacity-20'}`} />
+                                                <ChevronRight size={10} strokeWidth={4} className={`rotate-90 ${sortOrder === 'desc' ? 'opacity-100' : 'opacity-20'}`} />
+                                            </div>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

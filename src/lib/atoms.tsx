@@ -9,6 +9,7 @@ import { colors } from './consts';
 
 import {
   BoundingBox2DType,
+// Atom Registry Reload
   BoundingBoxMaskType,
   CameraView,
   Crate,
@@ -171,6 +172,8 @@ export const inventoryMaterialFilterAtom = atomWithStorage<string>('inventoryMat
 export const isInventoryMaterialFilterOpenAtom = atom<boolean>(false);
 export const isInventorySortMenuOpenAtom = atom<boolean>(false);
 export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list' | 'gallery'>('inventoryViewMode', 'list', sessionJSONStorage);
+export const inventoryViewSliderAtom = atomWithStorage<number>('inventoryViewSlider', 0, sessionJSONStorage);
+export const isInventoryViewSliderOpenAtom = atom<boolean>(false);
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
 export const logisticsSubTabAtom = atomWithStorage<'crates' | 'packing' | 'shipping'>('logisticsSubTab', 'crates', sessionJSONStorage);
 export const financeSubTabAtom = atomWithStorage<'payments' | 'tracking' | 'expenses'>('financeSubTab', 'payments', sessionJSONStorage);
@@ -242,6 +245,7 @@ export const is3DWorkspaceDetailsOpenAtom = atom(false);
 
 export const inventoryAtom = atom<InventoryItem[]>([]);
 export const inventorySearchTermAtom = atom('');
+export const isInventorySearchOpenAtom = atom(false);
 export const inventoryActiveFilterAtom = atom('All');
 export const filteredInventoryCountAtom = atom(0);
 export const filteredInventoryTotalQtyAtom = atom(0);
@@ -342,7 +346,7 @@ export const notificationsAtom = atom<Notification[]>([]);
 
 // Top-bar deployable panel states
 export const isInventoryVendorFilterOpenAtom = atomWithStorage<boolean>('invVendorFilter', false, sessionJSONStorage);
-export const inventoryVendorFilterAtom = atomWithStorage<string>('inventoryVendorFilter', 'All', sessionJSONStorage);
+export const inventoryVendorFilterAtom = atomWithStorage<string[]>('inventoryVendorFilter', ['All'], sessionJSONStorage);
 export const isInventoryFiltersPanelOpenAtom = atomWithStorage<boolean>('invFiltersPanel', false, sessionJSONStorage);
 export const isInventoryStatusFilterOpenAtom = atomWithStorage<boolean>('invStatusFilter', false, sessionJSONStorage);
 export const isPaymentsSearchOpenAtom = atom<boolean>(false);
@@ -429,7 +433,7 @@ export const packingSelectedIdsAtom = atomWithStorage<Set<string>>('packingSelec
   getItem: (key, initialValue) => {
     const saved = localStorage.getItem(key);
     try {
-      return saved ? new Set(JSON.parse(saved)) : initialValue;
+      return saved ? new Set(JSON.parse(saved) as string[]) : initialValue;
     } catch {
       return initialValue;
     }

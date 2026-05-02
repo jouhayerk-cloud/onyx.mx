@@ -1,5 +1,5 @@
-// Force HMR refresh for navigation modernization
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+// Navigation Modernization - Atomic Sync Force
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -54,6 +54,11 @@ import {
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
     isInventoryFiltersPanelOpenAtom,
+    isInventoryViewSliderOpenAtom,
+    isInventorySelectionModeAtom,
+    selectedInventoryIdsAtom,
+    inventoryViewSliderAtom,
+    isInventorySearchOpenAtom,
     isInventorySortMenuOpenAtom,
     financeSearchTermAtom,
     paymentVendorFilterAtom,
@@ -107,7 +112,7 @@ import {
     Globe, Languages, Cpu, Clock, ArrowRight, Lock, Unlock, Printer,
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
-    Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save
+    Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -325,54 +330,73 @@ const InventoryStats: React.FC = () => {
 const InventoryBar: React.FC = () => {
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
     const [isFiltersOpen, setIsFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
-    const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isViewSliderOpen, setIsViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
+    const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
+    const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
+    const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
+    const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
 
-    const cycleView = () => setViewMode(v => v === 'list' ? 'grid' : v === 'grid' ? 'gallery' : 'list');
-    const ViewIcon = viewMode === 'list' ? LayoutList : viewMode === 'grid' ? LayoutGrid : Layout;
-    const viewLabel = viewMode === 'list' ? 'LIST' : viewMode === 'grid' ? 'GRID' : 'GALLERY';
+    const handleToggleSelectionMode = () => {
+        setIsSelectionMode(!isSelectionMode);
+        if (isSelectionMode) setSelectedIds([]);
+    };
 
     return (
-        <div className="flex items-center gap-2 w-full min-w-max">
-            <div className={`flex items-center gap-1 shrink-0 ${isSearchOpen ? '' : 'sm:gap-2'}`}>
-                <DeployableSearch 
-                    value={search} 
-                    onChange={setSearch} 
-                    isOpen={isSearchOpen} 
-                    setIsOpen={setIsSearchOpen} 
-                    accentColor="var(--color-inventory)"
-                    placeholder="EM+GREEN+CYL  SU+WHITE..."
-                />
+        <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
+                <button 
+                    onClick={() => { setIsViewSliderOpen(!isViewSliderOpen); setIsFiltersOpen(false); setIsSearchOpen(false); }}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isViewSliderOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="View"
+                >
+                    <SlidersHorizontal size={22} strokeWidth={2} />
+                </button>
+                <button 
+                    onClick={() => { setIsFiltersOpen(!isFiltersOpen); setIsViewSliderOpen(false); setIsSearchOpen(false); }}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Filter"
+                >
+                    <Filter size={22} strokeWidth={2} />
+                </button>
+                <button 
+                    onClick={() => { setIsSearchOpen(!isSearchOpen); setIsFiltersOpen(false); setIsViewSliderOpen(false); }}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Search"
+                >
+                    <Search size={22} strokeWidth={2} />
+                </button>
+                <button 
+                    onClick={handleToggleSelectionMode}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSelectionMode ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Select"
+                >
+                    <SquareCheckBig size={22} strokeWidth={2} />
+                </button>
+                
+                <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
 
-                {!isSearchOpen && (
-                    <div className="flex items-center gap-0.5 shrink-0 animate-in fade-in duration-300">
-                        <StudioAction 
-                            icon={ViewIcon}
-                            label={viewLabel}
-                            active={true}
-                            onClick={cycleView}
-                            color="var(--color-inventory)"
-                        />
-                    </div>
-                )}
+                <button 
+                    onClick={() => setIsUploadWizardOpen(true)}
+                    className="flex items-center justify-center transition-all duration-300 text-(--main-color) hover:text-white hover:scale-110 group"
+                    title="Add Entry"
+                >
+                    <Plus size={24} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]" />
+                </button>
             </div>
             
-            {!isSearchOpen && (
-                <>
-                    <div className="flex-1 min-w-[20px]" />
-                    <InventoryStats />
-                    <div className="flex items-center gap-2 pr-6">
-                        <div className="w-px h-8 bg-white/10 mx-2" />
-                        <button 
-                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                            className={`flex items-center justify-center w-12 h-12 transition-all cursor-pointer rounded-2xl ${isFiltersOpen ? 'bg-(--color-inventory) text-black shadow-[0_0_20px_rgba(var(--color-inventory-rgb),0.3)]' : 'bg-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}
-                            title="Filters"
-                        >
-                            <Filter size={24} />
-                        </button>
-                    </div>
-                </>
-            )}
+            <div className="flex items-center gap-4 shrink-0 justify-end flex-1">
+                <InventoryStats />
+                <div className="w-px h-6 bg-white/10 mx-1 shrink-0" />
+                <button
+                    onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
+                    className="flex items-center gap-3 transition-all group py-2 px-4 rounded-xl hover:bg-white/5"
+                    title="Cycle payment status filter"
+                >
+                    <div className={`w-3.5 h-3.5 rounded-full border border-white/20 transition-all duration-500 shadow-lg ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-green-500/50' : 'bg-blue-400 shadow-blue-400/50'}`} />
+                    <span className="text-[10px] font-black tracking-[0.2em] text-white/40 uppercase group-hover:text-white group-hover:tracking-[0.25em] transition-all whitespace-nowrap">{statusFilter === 'Paid' ? 'PAID / PREPAID' : statusFilter}</span>
+                </button>
+            </div>
         </div>
     );
 };
@@ -783,6 +807,9 @@ export function MainHeader() {
     const [isExporting, setIsExporting] = useState(false);
     const logout = useLogout();
     const user = useAtomValue(userAtom);
+    const isSearchOpen = useAtomValue(isInventorySearchOpenAtom);
+    const isFiltersOpen = useAtomValue(isInventoryFiltersPanelOpenAtom);
+    const isViewSliderOpen = useAtomValue(isInventoryViewSliderOpenAtom);
 
     // Statuses that are store/catalog items — excluded from the export
     const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
@@ -1794,9 +1821,12 @@ export function MainHeader() {
     const openSettingsPortal = useSetAtom(isStudioSettingsOpenAtom);
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
+    const isInventory = activeView === 'inventory';
+    const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
+
     return (
         <>
-            <div className="main-header h-20 sm:h-24 max-h-20 sm:max-h-24 flex items-center pl-6 pr-0 shrink-0 transition-all flex-nowrap w-full sticky top-0 z-[500] border-b border-white/5 bg-black/20 backdrop-blur-[50px] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.4)]">
+            <div className={`main-header h-20 sm:h-24 max-h-20 sm:max-h-24 flex items-center pl-6 pr-6 shrink-0 transition-all flex-nowrap w-full bg-black/40 backdrop-blur-3xl overflow-x-auto no-scrollbar shadow-none ${isToolsBarOpen ? 'border-b-0' : 'border-b border-white/5'}`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -1863,7 +1893,7 @@ export function MainHeader() {
 
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
                     <div
-                        className="hidden md:flex flex-col items-end border-l border-white/5 pl-6 cursor-pointer"
+                        className="flex flex-col items-end border-l border-white/5 pl-6 cursor-pointer shrink-0"
                         onClick={() => openSettingsPortal(true)}
                     >
                         <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-(--main-color) opacity-40 leading-none mb-1.5">WELCOME</span>
