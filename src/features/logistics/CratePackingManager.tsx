@@ -3,7 +3,8 @@ import { useAtomValue, useAtom, useSetAtom } from 'jotai';
 import { 
     inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, 
     inventoryArtifactConfigAtom, isDummyModeAtom, isPackingFiltersOpenAtom,
-    packingVendorFilterAtom, packingSortKeyAtom, packingSortOrderAtom
+    packingVendorFilterAtom, packingSortKeyAtom, packingSortOrderAtom,
+    crateSeparatorsAtom, crateItemPositionsAtom
 } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -231,7 +232,16 @@ const ActiveCrateHUD: React.FC<{
     crates: CrateRecord[];
     selectedItemsWithPos: { item: InventoryItem; position: any }[];
     onUpdatePosition: (id: string, pos: any) => void;
-}> = ({ crate, selectedItemIds, selectedQtys, allInventory, nestedUnits, exchangeRate, onClear, onPack, onUnpack, onUnnest, onDelete, isSaving, itemCount, crates, selectedItemsWithPos, onUpdatePosition }) => {
+    separators: any[];
+    onAddSeparator: () => void;
+    onRemoveSeparator: (id: string) => void;
+    onUpdateSeparator: (id: string, y: number) => void;
+}> = ({ 
+    crate, selectedItemIds, selectedQtys, allInventory, nestedUnits, 
+    exchangeRate, onClear, onPack, onUnpack, onUnnest, onDelete, 
+    isSaving, itemCount, crates, selectedItemsWithPos, onUpdatePosition,
+    separators, onAddSeparator, onRemoveSeparator, onUpdateSeparator
+}) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
@@ -417,72 +427,34 @@ const ActiveCrateHUD: React.FC<{
                 </div>
             </div>
 
-            {/* TRANSFORM CONTROLS HUD (Floating below main HUD) */}
-            {selectedItemsWithPos.length > 0 && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 px-6 py-3 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl flex items-center gap-8 shadow-2xl animate-in slide-in-from-top-4 duration-500">
-                    <div className="flex flex-col">
-                        <span className="text-[8px] font-black text-(--main-color) uppercase tracking-widest">Active Transforms</span>
-                        <span className="text-[10px] font-black text-white uppercase tracking-tighter">{selectedItemsWithPos.length} Selected</span>
-                    </div>
-
+                    {/* Separator Controls */}
                     <div className="h-8 w-px bg-white/10" />
-
-                    <div className="flex items-center gap-2">
-                        <button 
-                            onClick={() => {
-                                selectedItemsWithPos.forEach(({ item, position }) => {
-                                    onUpdatePosition(String(item.row), { ...position, rotation: (position.rotation + 90) % 360 });
-                                });
-                            }}
-                            className="p-3 bg-white/5 hover:bg-(--main-color) hover:text-black border border-white/10 rounded-xl transition-all group"
-                            title="Rotate 90°"
-                        >
-                            <ArrowUpDown size={18} className="rotate-90 group-active:rotate-180 transition-transform" />
-                        </button>
-                        <button 
-                            onClick={() => {
-                                selectedItemsWithPos.forEach(({ item, position }) => {
-                                    onUpdatePosition(String(item.row), { ...position, isFlipped: !position.isFlipped });
-                                });
-                            }}
-                            className="p-3 bg-white/5 hover:bg-(--main-color) hover:text-black border border-white/10 rounded-xl transition-all group"
-                            title="Flip Upside Down"
-                        >
-                            <ArrowUpDown size={18} className="group-active:scale-y-[-1] transition-transform" />
-                        </button>
-                    </div>
-
-                    <div className="h-8 w-px bg-white/10" />
-
-                    {/* Quick Move Sliders for Fine-Tuning */}
-                    <div className="flex items-center gap-6">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">X-AXIS</span>
-                            <input 
-                                type="range" 
-                                min="0" max={crate.width_cm || 60} 
-                                className="w-24 accent-(--main-color)" 
-                                onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    selectedItemsWithPos.forEach(({ item, position }) => {
-                                        onUpdatePosition(String(item.row), { ...position, x: val });
-                                    });
-                                }}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Y-AXIS</span>
-                            <input 
-                                type="range" 
-                                min="0" max={crate.length_cm || 60} 
-                                className="w-24 accent-(--main-color)" 
-                                onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    selectedItemsWithPos.forEach(({ item, position }) => {
-                                        onUpdatePosition(String(item.row), { ...position, y: val });
-                                    });
-                                }}
-                            />
+                    <div className="flex flex-col gap-1 min-w-[120px]">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Active Separators</span>
+                        <div className="flex flex-wrap gap-2">
+                            {separators.map(sep => (
+                                <div key={sep.id} className="group/sep relative">
+                                    <input 
+                                        type="number"
+                                        value={sep.y}
+                                        onChange={(e) => onUpdateSeparator(sep.id, parseInt(e.target.value))}
+                                        className="w-10 bg-white/10 border border-white/5 px-1 py-0.5 text-[10px] font-mono text-white rounded"
+                                    />
+                                    <button 
+                                        onClick={() => onRemoveSeparator(sep.id)}
+                                        className="absolute -top-2 -right-2 bg-rose-500 text-white p-0.5 rounded-full opacity-0 group-hover/sep:opacity-100 transition-opacity"
+                                    >
+                                        <X size={8} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button 
+                                onClick={onAddSeparator}
+                                className="p-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded flex items-center justify-center text-white/40 hover:text-white"
+                                title="Add Separator"
+                            >
+                                <Plus size={12} />
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -708,6 +680,37 @@ export const CratePackingManager: React.FC = () => {
 
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const [selectedCrateId, setSelectedCrateId] = useState<string | null>(null);
+    // --- ATOMS ---
+    const [allSeparators, setAllSeparators] = useAtom(crateSeparatorsAtom);
+    const [allItemPositions, setAllItemPositions] = useAtom(crateItemPositionsAtom);
+
+    const separators = useMemo(() => (selectedCrateId ? allSeparators[selectedCrateId] : []) || [], [allSeparators, selectedCrateId]);
+    const setSeparators = useCallback((val: any) => {
+        if (!selectedCrateId) return;
+        setAllSeparators(prev => ({ ...prev, [selectedCrateId]: typeof val === 'function' ? val(prev[selectedCrateId] || []) : val }));
+    }, [selectedCrateId, setAllSeparators]);
+
+    const itemPositions = useMemo(() => (selectedCrateId ? allItemPositions[selectedCrateId] : {}) || {}, [allItemPositions, selectedCrateId]);
+    const setItemPositions = useCallback((val: any) => {
+        if (!selectedCrateId) return;
+        setAllItemPositions(prev => ({ ...prev, [selectedCrateId]: typeof val === 'function' ? val(prev[selectedCrateId] || {}) : val }));
+    }, [selectedCrateId, setAllItemPositions]);
+
+    const handleAddSeparator = () => {
+        if (!selectedCrate) return;
+        const newSep = { id: Math.random().toString(36).slice(2, 9), y: 40, label: `SHELF ${separators.length + 1}` };
+        setSeparators([...separators, newSep]);
+        toast.success(`Separator added at 40cm`);
+    };
+
+    const handleRemoveSeparator = (id: string) => {
+        setSeparators(separators.filter(s => s.id !== id));
+    };
+
+    const handleUpdateSeparator = (id: string, y: number) => {
+        setSeparators(separators.map(s => s.id === id ? { ...s, y } : s));
+    };
+
     const [vendorFilter, setVendorFilter] = useAtom(packingVendorFilterAtom);
     const [sortBy, setSortKey] = useAtom(packingSortKeyAtom);
     const [sortOrder, setSortOrder] = useAtom(packingSortOrderAtom);
@@ -718,9 +721,6 @@ export const CratePackingManager: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
     const [nestingUnit, setNestingUnit] = useState<CrateRecord | null>(null);
-
-    // 3D Positioning State
-    const [itemPositions, setItemPositions] = useState<Record<string, { x: number, y: number, z: number, rotation: number, isFlipped: boolean }>>({});
 
     const handleSelectCrate = useCallback((id: string | null) => {
         setSelectedCrateId(id);
@@ -1444,6 +1444,10 @@ export const CratePackingManager: React.FC = () => {
                                         crates={crates}
                                         selectedItemsWithPos={itemsWithPositions.filter(i => selectedItemIds.has(String(i.item.row)))}
                                         onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
+                                        separators={separators}
+                                        onAddSeparator={handleAddSeparator}
+                                        onRemoveSeparator={handleRemoveSeparator}
+                                        onUpdateSeparator={handleUpdateSeparator}
                                     />
                                     
                                     <CratePackingWorkspace 
@@ -1451,7 +1455,9 @@ export const CratePackingManager: React.FC = () => {
                                         length={selectedCrate.length_cm || 60}
                                         height={selectedCrate.height_cm || 60}
                                         items={itemsWithPositions}
+                                        separators={separators}
                                         onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
+                                        activeItemId={null}
                                     />
 
                                     {/* Workspace Tooltip */}

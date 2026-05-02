@@ -99,7 +99,7 @@ import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { saveAs } from 'file-saver';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
-import { SyncStatusBadge } from '../../components/SyncStatusBadge';
+
 
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
@@ -1895,15 +1895,15 @@ export function MainHeader() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
+                <div className="flex items-center gap-1 sm:gap-4 shrink-0 pl-2 sm:pl-4 ml-auto h-full">
                     <div
-                        className="flex flex-col items-end border-l border-white/5 pl-6 cursor-pointer shrink-0"
+                        className="flex flex-col items-end border-l border-white/5 pl-4 sm:pl-6 cursor-pointer shrink-0 transition-all active:scale-95"
                         onClick={() => openSettingsPortal(true)}
                     >
-                        <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-(--main-color) opacity-40 leading-none mb-1.5">WELCOME</span>
-                        <div className="flex items-center gap-2.5">
-                            <SyncStatusBadge />
-                            <span className="text-[18px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
+                        <span className="hidden sm:inline-block text-[7px] font-bold uppercase tracking-[0.3em] text-(--main-color) opacity-40 leading-none mb-1">WELCOME</span>
+                        <div className="flex items-center gap-2">
+                            
+                            <span className="hidden sm:inline-block text-[14px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
                                 {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
                                     ? user.name.split(' ')[0]
                                     : user?.email?.split('@')[0] || 'User'}
@@ -1911,26 +1911,24 @@ export function MainHeader() {
                         </div>
                     </div>
 
-                    {activeView === 'store' && (
-                        <div className="flex items-center gap-1 mx-2 relative">
-                            <button
-                                onClick={() => setIsBagOpen(!isBagOpen)}
-                                className="w-16 h-16 flex items-center justify-center text-(--main-color) transition-all relative group/bag"
-                            >
-                                <ShoppingBag size={36} strokeWidth={1.5} className="group-hover/bag:scale-110 transition-transform drop-shadow-[0_0_8px_var(--main-color)]" />
-                                {bagCount > 0 && (
-                                    <span className="absolute top-1 right-1 w-6 h-6 bg-(--main-color) text-black text-[12px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_var(--main-color)] animate-in zoom-in duration-300">
-                                        {bagCount}
-                                    </span>
-                                )}
-                            </button>
-                        </div>
-                    )}
-
+                {activeView === 'store' && (
+                    <div className="flex items-center gap-1 mx-2 relative">
+                        <button
+                            onClick={() => setIsBagOpen(!isBagOpen)}
+                            className="w-16 h-16 flex items-center justify-center text-(--main-color) transition-all relative group/bag"
+                        >
+                            <ShoppingBag size={36} strokeWidth={1.5} className="group-hover/bag:scale-110 transition-transform drop-shadow-[0_0_8px_var(--main-color)]" />
+                            {bagCount > 0 && (
+                                <span className="absolute top-1 right-1 w-6 h-6 bg-(--main-color) text-black text-[12px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_var(--main-color)] animate-in zoom-in duration-300">
+                                    {bagCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                )}
                 </div>
             </div>
             <ShoppingBagDrawer isOpen={isBagOpen} onClose={() => setIsBagOpen(false)} />
         </>
     );
 }
-

@@ -460,6 +460,24 @@ export const packingSelectedIdsAtom = atomWithStorage<Set<string>>('packingSelec
     localStorage.removeItem(key);
   },
 });
+
+export interface CrateSeparator {
+    id: string;
+    y: number; // height in cm
+    label?: string;
+}
+
+export interface PackingItemPosition {
+    x: number;
+    y: number;
+    z: number;
+    rotation: number;
+    isFlipped: boolean;
+}
+
+export const crateSeparatorsAtom = atomWithStorage<Record<string, CrateSeparator[]>>('crateSeparators', {});
+export const crateItemPositionsAtom = atomWithStorage<Record<string, Record<string, PackingItemPosition>>>('crateItemPositions', {});
+
 export const isPackingPrintWizardOpenAtom = atom<boolean>(false);
 export const packingExportPDFTriggerAtom = atom<number>(0);
 export const packingExportXLSXTriggerAtom = atom<number>(0);
