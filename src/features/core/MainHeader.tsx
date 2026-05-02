@@ -344,46 +344,7 @@ const InventoryBar: React.FC = () => {
 
     return (
         <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
-                <button 
-                    onClick={() => { setIsViewSliderOpen(!isViewSliderOpen); setIsFiltersOpen(false); setIsSearchOpen(false); }}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isViewSliderOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="View"
-                >
-                    <SlidersHorizontal size={22} strokeWidth={2} />
-                </button>
-                <button 
-                    onClick={() => { setIsFiltersOpen(!isFiltersOpen); setIsViewSliderOpen(false); setIsSearchOpen(false); }}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Filter"
-                >
-                    <Filter size={22} strokeWidth={2} />
-                </button>
-                <button 
-                    onClick={() => { setIsSearchOpen(!isSearchOpen); setIsFiltersOpen(false); setIsViewSliderOpen(false); }}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Search"
-                >
-                    <Search size={22} strokeWidth={2} />
-                </button>
-                <button 
-                    onClick={handleToggleSelectionMode}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSelectionMode ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Select"
-                >
-                    <SquareCheckBig size={22} strokeWidth={2} />
-                </button>
-                
-                <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
-
-                <button 
-                    onClick={() => setIsUploadWizardOpen(true)}
-                    className="flex items-center justify-center transition-all duration-300 text-(--main-color) hover:text-white hover:scale-110 group"
-                    title="Add Entry"
-                >
-                    <Plus size={24} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]" />
-                </button>
-            </div>
+            <div className="flex-1" />
             
             <div className="flex items-center gap-4 shrink-0 justify-end flex-1">
                 <InventoryStats />
