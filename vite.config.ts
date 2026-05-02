@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { readFileSync } from 'fs';
+import { VitePWA } from 'vite-plugin-pwa';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
@@ -21,7 +22,56 @@ export default defineConfig(({ mode }) => {
     plugins: [
         react(), 
         tailwindcss(), 
-        mode === 'development' ? basicSsl() : null
+        mode === 'development' ? basicSsl() : null,
+        VitePWA({
+            registerType: 'autoUpdate',
+            injectRegister: 'auto',
+            workbox: {
+                // Cache all compiled assets permanently
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+                // Large chunks (Three.js, PDF libs) — still cache
+                maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8MB
+                runtimeCaching: [
+                    {
+                        // Supabase API — network-first, fallback to cache
+                        urlPattern: /supabase\.co\/rest\//,
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'supabase-api',
+                            networkTimeoutSeconds: 5,
+                            expiration: { maxEntries: 500, maxAgeSeconds: 7 * 24 * 60 * 60 },
+                        },
+                    },
+                    {
+                        // Google Drive images — cache-first
+                        urlPattern: /drive\.google\.com/,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'media-cache',
+                            expiration: { maxEntries: 300, maxAgeSeconds: 30 * 24 * 60 * 60 },
+                        },
+                    },
+                ],
+                // SPA fallback
+                navigateFallback: '/index.html',
+                navigateFallbackAllowlist: [/^(?!\/__).*/],
+            },
+            manifest: {
+                name: 'Onyx — Inventory & Logistics',
+                short_name: 'Onyx',
+                description: 'Warehouse inventory management, crate packing, and logistics for Jouhayerk',
+                theme_color: '#0a0a0a',
+                background_color: '#0a0a0a',
+                display: 'standalone',
+                orientation: 'any',
+                start_url: '/',
+                icons: [
+                    { src: '/OnyxLogo.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+                    { src: '/OnyxMini.svg', sizes: 'any', type: 'image/svg+xml' },
+                ],
+                categories: ['business', 'productivity', 'utilities'],
+            },
+        }),
     ].filter(Boolean),
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
@@ -62,4 +112,4 @@ export default defineConfig(({ mode }) => {
       }
     }
   };
-});
+});

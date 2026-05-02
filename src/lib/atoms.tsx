@@ -36,6 +36,21 @@ export const exchangeRateAtom = atomWithStorage<number>('exchangeRate', 17.0);
 export type CurrencyMode = 'MXN' | 'USD';
 export const currencyModeAtom = atomWithStorage<CurrencyMode>('currencyMode', 'MXN');
 
+// ── Offline / Sync State ─────────────────────────────────────────────────────
+export type SyncStatus = 'idle' | 'syncing' | 'error' | 'pending';
+export interface SyncProgress {
+    phase: 'push' | 'pull';
+    done: number;
+    total: number;
+    label: string;
+}
+export const isOfflineModeAtom = atomWithStorage<boolean>('offlineMode', false);
+export const syncStatusAtom = atom<SyncStatus>('idle');
+export const syncQueueCountAtom = atom<number>(0);
+export const lastSyncedAtAtom = atomWithStorage<string | null>('lastSyncedAt', null);
+export const syncProgressAtom = atom<SyncProgress | null>(null);
+// ────────────────────────────────────────────────────────────────────────────
+
 export const workflowStepAtom = atom<
   | 'idle'
   | 'processing'

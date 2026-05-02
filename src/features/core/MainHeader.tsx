@@ -99,6 +99,7 @@ import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { saveAs } from 'file-saver';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
+import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
@@ -1895,6 +1896,9 @@ export function MainHeader() {
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
+                    {/* Sync Status Badge */}
+                    <SyncStatusBadge />
+
                     <div
                         className="flex flex-col items-end border-l border-white/5 pl-6 cursor-pointer shrink-0"
                         onClick={() => openSettingsPortal(true)}

@@ -14,6 +14,8 @@ import SentTruckViewer from '../logistics/SentTruckViewer';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { PullToRefresh } from '../../components/ui/PullToRefresh';
 import { sentTruckIdAtom } from '../../lib/atoms';
+import { useSyncEngine } from '../../lib/syncEngine';
+import { SyncProgressBar } from '../../components/SyncProgressBar';
 
 export default function App() {
   const [user, setUser] = useAtom(userAtom);
@@ -24,6 +26,9 @@ export default function App() {
   const [tagId, setTagId] = useAtom(tagIdAtom);
   const [sentTruckId, setSentTruckId] = useAtom(sentTruckIdAtom);
   const [view, setView] = useAtom(universalViewAtom);
+
+  // Initialize sync engine — handles online/offline transitions and change queue
+  useSyncEngine();
 
   /**
    * UNIVERSAL ID DETECTION
@@ -211,6 +216,7 @@ export default function App() {
   return (
     <>
       <PullToRefresh />
+      <SyncProgressBar />
       {view === 'tag' && tagId ? (
          <TagView tagId={tagId} onBack={() => { setView('viewer'); setTagId(null); }} />
       ) : view === 'truck' && sentTruckId ? (
