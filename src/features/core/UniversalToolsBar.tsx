@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { 
     activeViewAtom, 
     isInventorySelectionModeAtom,
