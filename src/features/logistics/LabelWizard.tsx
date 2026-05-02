@@ -155,20 +155,20 @@ export const NFCWizard: React.FC = () => {
                 onClick={() => setIsOpen(false)} 
             />
             
-            <div className="relative w-full h-full flex flex-col lg:flex-row pointer-events-none overflow-y-auto lg:overflow-hidden no-scrollbar">
+            <div className="relative w-full h-full flex flex-col lg:flex-row pointer-events-none overflow-y-auto lg:overflow-hidden no-scrollbar bg-black/40">
                 
-                {/* Floating LARGE Close Button */}
+                {/* Floating Close Button - Repositioned for Mobile Reachability */}
                 <button 
                     onClick={() => setIsOpen(false)} 
-                    className="fixed top-8 right-8 z-[20002] flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-2xl rounded-full border border-white/20 text-white/40 hover:text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] group"
+                    className="fixed top-4 right-4 md:top-8 md:right-8 z-[20002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/10 backdrop-blur-2xl rounded-full border border-white/20 text-white/40 hover:text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] group"
                 >
-                    <X size={40} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                    <X size={28} className="md:w-[40px] md:h-[40px] group-hover:rotate-90 transition-transform duration-500" strokeWidth={1} />
                 </button>
 
-                {/* Left Panel: Primary Artifact Visual (Expanded + Multi-Image Grid) */}
-                <div className="w-full lg:w-[50%] min-h-[50vh] lg:h-full flex items-center justify-center p-6 md:p-12 lg:p-16 relative group pointer-events-auto overflow-hidden">
+                {/* Left Panel: Primary Artifact Visual (Adaptive Height) */}
+                <div className="w-full lg:w-[50%] h-[40vh] md:h-[50vh] lg:h-full flex items-center justify-center p-4 md:p-12 lg:p-16 relative group pointer-events-auto overflow-hidden bg-black/20 lg:bg-transparent">
                     {mediaUrls.length > 1 ? (
-                        <div className={`grid gap-4 w-full h-full max-h-[85%] ${mediaUrls.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
+                        <div className={`grid gap-2 md:gap-4 w-full h-full max-h-[85%] ${mediaUrls.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
                             {mediaUrls.slice(0, 4).map((url, i) => (
                                 <div key={i} className="relative overflow-hidden rounded-sm bg-white/[0.02] border border-white/5 shadow-2xl transition-all duration-700 hover:scale-[1.02]">
                                     <img 
@@ -182,28 +182,28 @@ export const NFCWizard: React.FC = () => {
                     ) : (
                         <img 
                             src={getCleanImageUrl(mediaUrls[0])} 
-                            className="max-w-[95%] max-h-[95%] object-contain drop-shadow-[0_0_150px_rgba(255,255,255,0.05)] transition-all duration-1000 group-hover:scale-105" 
+                            className="max-w-[90%] max-h-[90%] object-contain drop-shadow-[0_0_100px_rgba(255,255,255,0.05)] transition-all duration-1000 group-hover:scale-105" 
                         />
                     )}
-                    <div className="absolute bottom-6 right-8 opacity-20 pointer-events-none flex items-center gap-4">
-                        <Layers size={14} className="text-white" />
-                        <span className="text-xl font-black text-white tracking-tighter tabular-nums">{currentIndex + 1} / {selectedItems.length}</span>
+                    <div className="absolute bottom-4 right-6 md:bottom-6 md:right-8 opacity-40 pointer-events-none flex items-center gap-3">
+                        <Layers size={12} className="text-white" />
+                        <span className="text-lg md:text-xl font-black text-white tracking-tighter tabular-nums">{currentIndex + 1} / {selectedItems.length}</span>
                     </div>
                 </div>
 
-                {/* Right Panel: Rebalanced Tactical HUB */}
-                <div className="w-full lg:w-[50%] h-auto lg:h-full flex flex-col p-6 md:p-10 lg:p-12 pt-24 bg-white/[0.01] backdrop-blur-3xl lg:border-l border-white/5 pointer-events-auto relative">
+                {/* Right Panel: Adaptive Tactical HUB */}
+                <div className="w-full lg:w-[50%] min-h-[60vh] lg:h-full flex flex-col p-6 md:p-10 lg:p-12 pt-12 md:pt-24 bg-black/40 backdrop-blur-3xl lg:border-l border-white/5 pointer-events-auto relative">
                     
                     {/* Top Protocol Header */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-8 mb-10">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-6 md:gap-8 mb-8 md:mb-10">
                         <div className="flex flex-col gap-3 flex-1 w-full">
                             <div className="flex items-center gap-3 mb-1 opacity-20">
                                 <Terminal size={12} className="text-(--main-color)" />
-                                <span className="text-[9px] md:text-[10px] font-black text-white uppercase tracking-[1em]">SYSTEM_PROTOCOL</span>
+                                <span className="text-[8px] md:text-[10px] font-black text-white uppercase tracking-[1em]">ENCODE_PROTOCOL</span>
                             </div>
 
-                            <div className="flex flex-col gap-2 w-full">
-                                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter leading-none" style={{ color: vendorColor }}>
+                            <div className="flex flex-col gap-3 w-full">
+                                <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter leading-none break-all" style={{ color: vendorColor }}>
                                     {currentItem?.codes.bookBarcode}
                                 </h1>
                                 <div className="flex flex-wrap gap-2 mb-2">
@@ -212,66 +212,66 @@ export const NFCWizard: React.FC = () => {
                                         { label: 'ACQ', value: currentItem?.codes.bookAqCode },
                                         { label: 'BOOK', value: cleanBookV }
                                     ].map((t, i) => (
-                                        <div key={i} className="flex items-center gap-3 bg-white/[0.04] px-3 py-2 rounded-sm border border-white/10">
-                                            <span className="text-[8px] md:text-[10px] font-black text-white/40 uppercase tracking-widest">{t.label}</span>
-                                            <span className="text-[14px] md:text-[18px] font-black text-white uppercase tracking-tighter">{t.value}</span>
+                                        <div key={i} className="flex items-center gap-2 md:gap-3 bg-white/[0.04] px-2 md:px-3 py-1.5 md:py-2 rounded-sm border border-white/10">
+                                            <span className="text-[7px] md:text-[9px] font-black text-white/40 uppercase tracking-widest">{t.label}</span>
+                                            <span className="text-[12px] md:text-[18px] font-black text-white uppercase tracking-tighter">{t.value}</span>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="bg-white p-0.5 rounded-sm shadow-2xl w-[35%] h-7 flex items-center justify-center overflow-hidden border-b border-black/10 transition-all hover:scale-[1.01]">
+                                <div className="bg-white p-0.5 rounded-sm shadow-2xl w-[60%] md:w-[35%] h-6 md:h-7 flex items-center justify-center overflow-hidden border-b border-black/10 transition-all hover:scale-[1.01]">
                                     <img src={barcodeUrl} className="w-full h-full object-fill mix-blend-multiply" alt="Barcode" />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Rebalanced QR Protocol */}
-                        <div className="flex flex-row sm:flex-col gap-4 items-center sm:items-end shrink-0 mt-2 sm:mt-16">
-                            <div className="bg-white p-2 rounded-sm shadow-2xl w-24 h-24 md:w-32 md:h-32 flex items-center justify-center overflow-hidden transition-all hover:scale-105">
+                        {/* QR Protocol - Adaptive Size */}
+                        <div className="flex shrink-0 mt-2 sm:mt-12 lg:mt-16 self-end sm:self-start">
+                            <div className="bg-white p-2 rounded-sm shadow-2xl w-24 h-24 md:w-32 md:h-32 flex items-center justify-center overflow-hidden transition-all hover:scale-105 border-4 border-white">
                                 <img src={qrUrl} className="max-w-full max-h-full object-contain" alt="QR" />
                             </div>
                         </div>
                     </div>
 
-                    {/* Specification Matrix */}
-                    <div className="grid grid-cols-2 gap-y-8 gap-x-12 mb-10 border-t border-white/5 pt-10">
+                    {/* Specification Matrix - Responsive Grid */}
+                    <div className="grid grid-cols-2 gap-y-6 md:gap-y-8 gap-x-8 md:gap-x-12 mb-8 md:mb-10 border-t border-white/5 pt-8 md:pt-10">
                         <div className="flex flex-col">
-                            <span className="text-[8px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CORE_SPEC</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CORE_SPEC</span>
                             <div className="flex flex-col">
-                                <span className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.color || 'CLR_NULL'}</span>
-                                <span className="text-sm md:text-base font-bold text-white/40 uppercase tracking-widest leading-none mt-0.5">{currentItem?.normData.material || 'MAT_NULL'}</span>
+                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.color || 'CLR_NULL'}</span>
+                                <span className="text-[10px] md:text-base font-bold text-white/40 uppercase tracking-widest leading-none mt-0.5">{currentItem?.normData.material || 'MAT_NULL'}</span>
                             </div>
                         </div>
 
                         <div className="flex flex-col">
-                            <span className="text-[8px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">DESCRIPTOR</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">DESCRIPTOR</span>
                             <div className="flex flex-col">
-                                <span className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.shape || 'SHAPE_NULL'}</span>
-                                <span className="text-xs md:text-base font-medium text-white/30 uppercase tracking-tight truncate">{currentItem?.normData.shortDescription || '---'}</span>
+                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.shape || 'SHAPE_NULL'}</span>
+                                <span className="text-[10px] md:text-base font-medium text-white/30 uppercase tracking-tight truncate">{currentItem?.normData.shortDescription || '---'}</span>
                             </div>
                         </div>
 
                         <div className="flex flex-col col-span-2 group">
-                            <span className="text-[8px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">GEOMETRY_PROTO</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">GEOMETRY_PROTO</span>
                             <div className="flex items-center justify-between">
-                                <div className="flex items-baseline gap-3 md:gap-5">
-                                    <span className="text-3xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-(--main-color) transition-colors">{currentItem?.normData.dims || '0×0×0'}</span>
-                                    <span className="text-lg md:text-2xl font-black text-(--main-color) uppercase tracking-tighter opacity-30">CM</span>
+                                <div className="flex items-baseline gap-2 md:gap-5">
+                                    <span className="text-2xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-(--main-color) transition-colors">{currentItem?.normData.dims || '0×0×0'}</span>
+                                    <span className="text-sm md:text-2xl font-black text-(--main-color) uppercase tracking-tighter opacity-30">CM</span>
                                 </div>
-                                <div className="flex flex-col items-end border-l border-white/10 pl-6">
+                                <div className="flex flex-col items-end border-l border-white/10 pl-4 md:pl-6">
                                     <span className="text-[7px] md:text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">WEIGHT</span>
-                                    <span className="text-2xl md:text-3xl lg:text-4xl font-black text-white tabular-nums tracking-tighter">{currentItem?.normData.weightKg || 0}KG</span>
+                                    <span className="text-xl md:text-4xl font-black text-white tabular-nums tracking-tighter">{currentItem?.normData.weightKg || 0}KG</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Action Zone: Large Ergonomic Trigger */}
-                    <div className="mt-auto pt-8 flex flex-col sm:flex-row items-center gap-4 lg:gap-6">
+                    <div className="mt-auto pt-8 flex flex-col sm:flex-row items-center gap-4 lg:gap-6 pb-6 lg:pb-0">
                         <div className="flex gap-2 w-full sm:w-auto">
-                            <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} disabled={currentIndex === 0} className="flex-1 sm:h-20 sm:w-16 h-14 flex items-center justify-center bg-white/[0.03] hover:bg-white/10 transition-all disabled:opacity-0 border border-white/5">
+                            <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} disabled={currentIndex === 0} className="flex-1 sm:h-20 sm:w-16 h-14 flex items-center justify-center bg-white/[0.03] hover:bg-white/10 transition-all disabled:opacity-0 border border-white/5 rounded-sm">
                                 <ChevronLeft size={24} className="text-white/20" />
                             </button>
-                            <button onClick={() => setCurrentIndex(p => Math.min(selectedItems.length - 1, p + 1))} disabled={currentIndex === selectedItems.length - 1} className="flex-1 sm:h-20 sm:w-16 h-14 flex items-center justify-center bg-white/[0.03] hover:bg-white/10 transition-all disabled:opacity-0 border border-white/5">
+                            <button onClick={() => setCurrentIndex(p => Math.min(selectedItems.length - 1, p + 1))} disabled={currentIndex === selectedItems.length - 1} className="flex-1 sm:h-20 sm:w-16 h-14 flex items-center justify-center bg-white/[0.03] hover:bg-white/10 transition-all disabled:opacity-0 border border-white/5 rounded-sm">
                                 <ChevronRight size={24} className="text-white/20" />
                             </button>
                         </div>
@@ -285,16 +285,16 @@ export const NFCWizard: React.FC = () => {
                         >
                             {!isSupported && status !== 'success' && status !== 'writing' ? (
                                 <>
-                                    <ZapOff size={44} className="text-white/20 mb-1" />
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[1em]">NO_HARDWARE</span>
+                                    <ZapOff size={32} className="md:w-[44px] md:h-[44px] text-white/20 mb-1" />
+                                    <span className="text-[8px] md:text-[10px] font-black text-white/40 uppercase tracking-[1em]">NO_HARDWARE</span>
                                 </>
                             ) : status === 'success' ? (
-                                <><CheckCircle size={36} className="text-black" /><span className="text-[10px] font-black text-black uppercase tracking-[1em]">LOCKED</span></>
+                                <><CheckCircle size={32} className="md:w-[36px] md:h-[36px] text-black" /><span className="text-[10px] font-black text-black uppercase tracking-[1em]">LOCKED</span></>
                             ) : (
                                 <>
-                                    <Nfc size={44} className={`transition-all duration-700 ${isWriting ? 'animate-pulse scale-110 text-white' : 'text-(--main-color) group-hover:scale-110'}`} />
+                                    <Nfc size={32} className={`md:w-[44px] md:h-[44px] transition-all duration-700 ${isWriting ? 'animate-pulse scale-110 text-white' : 'text-(--main-color) group-hover:scale-110'}`} />
                                     <span className={`text-[8px] md:text-[10px] font-black uppercase tracking-[1.5em] mt-2 ${isWriting ? 'text-white' : 'text-(--main-color) opacity-60'}`}>
-                                        {isWriting ? 'INITIALIZING...' : 'ENCODE_NFC'}
+                                        {isWriting ? 'ENCODING...' : 'WRITE_TAG'}
                                     </span>
                                 </>
                             )}
