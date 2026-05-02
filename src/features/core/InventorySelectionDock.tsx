@@ -11,7 +11,7 @@ export const InventorySelectionDock: React.FC = () => {
     if (selectedIds.length === 0) return null;
 
     return (
-        <div className="sticky bottom-0 left-0 right-0 z-[1000] animate-in slide-in-from-bottom duration-500 mt-auto pointer-events-none">
+        <div className="fixed bottom-0 left-[var(--sidebar-width,0px)] right-0 z-[1000] animate-in slide-in-from-bottom duration-500 pointer-events-none">
             <div className="bg-black/10 backdrop-blur-3xl border-t border-white/5 px-10 py-6 flex items-center justify-between shadow-[0_-20px_80px_rgba(0,0,0,0.4)] pointer-events-auto">
                 <div className="flex items-center gap-6 group transition-all">
                     <div className="flex flex-col">

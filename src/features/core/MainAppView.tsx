@@ -306,14 +306,17 @@ export function MainAppView() {
         });
     };
 
+    const sidebarWidth = sidebarState === 'expanded' ? '240px' : sidebarState === 'compact' ? '80px' : '0px';
+
     return (
         <>
-
-
             <DataSyncProvider />
             <HeroBackground />
 
-            <div className={`app-container sidebar-${sidebarState}`}>
+            <div 
+                className={`app-container sidebar-${sidebarState}`}
+                style={{ '--sidebar-width': sidebarWidth } as React.CSSProperties}
+            >
                 <div className="sidebar border-none bg-transparent">
                     <div className={`sidebar-header mb-12! border-none bg-transparent flex flex-col items-center ${sidebarState === 'expanded' ? 'pt-10' : 'pt-10 px-4'}`}>
                         <div
