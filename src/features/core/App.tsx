@@ -264,9 +264,9 @@ export default function App() {
         </>
       )}
       <Toaster
-        position="top-center"
+        position="bottom-right"
         toastOptions={{
-          duration: 3500,
+          duration: 5000,
           className: 'toast-liquid-glass'
         }}
       />

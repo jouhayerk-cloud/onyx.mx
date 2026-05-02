@@ -65,6 +65,7 @@ import { LabelWizard, NFCWizard } from '../logistics/LabelWizard';
 import { PackWizard } from '../logistics/PackWizard';
 import { PaymentWizard } from '../finance/PaymentWizard';
 import { InventorySelectionDock } from './InventorySelectionDock';
+import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 
 
 declare const __APP_VERSION__: string;
@@ -432,11 +433,17 @@ export function MainAppView() {
                         {sidebarState === 'expanded' && (
                             <>
                                 <OnyxMiniLogo className={`w-8 h-8 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
+                                <div className="mt-4">
+                                    <SyncStatusBadge />
+                                </div>
                             </>
                         )}
                         {sidebarState === 'compact' && (
                             <>
                                 <OnyxMiniLogo className={`w-7 h-7 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
+                                <div className="mt-3 scale-75 origin-center">
+                                    <SyncStatusBadge />
+                                </div>
                             </>
                         )}
                     </div>
