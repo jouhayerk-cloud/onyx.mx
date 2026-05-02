@@ -15,7 +15,7 @@ import {
 import { 
     X, Printer, Nfc, FileSpreadsheet, FileText, Download, 
     CheckCircle2, ChevronRight, ChevronLeft, Zap, Info, Package,
-    ShieldAlert, CheckCircle
+    ShieldAlert, CheckCircle, Edit3, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
@@ -321,9 +321,11 @@ export const LabelWizard: React.FC = () => {
     }, [inventory, selectedIds, exchangeRate, workbookPrefix]);
 
     useEffect(() => {
-        setProgress({ xlsx: -1, pdf: -1 });
-        setUrls({ xlsx: '', pdf: '' });
-    }, [selectedIds.length]);
+        if (isOpen) {
+            setProgress({ xlsx: -1, pdf: -1 });
+            setUrls({ xlsx: '', pdf: '' });
+        }
+    }, [isOpen, selectedIds.length]);
 
     const handleGenerateXLSX = async () => {
         setProgress(p => ({ ...p, xlsx: 10 }));
@@ -406,92 +408,158 @@ export const LabelWizard: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
-            <div className="w-full max-w-lg glass-panel p-10 rounded-[3rem] border border-white/10 shadow-2xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-start mb-10">
-                    <div>
-                        <h3 className="text-2xl font-black text-white tracking-tighter uppercase">Label Wizard</h3>
-                        <p className="text-[10px] text-white/40 uppercase font-bold tracking-widest mt-1">Batch generation for {selectedItems.length} items</p>
+        <div className="fixed inset-0 z-[20000] flex justify-end pointer-events-none animate-in fade-in duration-500 overflow-hidden">
+            <div className="relative w-full max-w-[1400px] flex flex-col bg-black/60 backdrop-blur-[120px] pointer-events-auto shadow-[-80px_0_150px_rgba(0,0,0,0.8)] border-l border-white/5">
+                {/* Header HUD */}
+                <div className="flex justify-between items-center px-6 sm:px-8 py-4 sm:py-6 border-b border-white/5 shrink-0 bg-white/[0.02] backdrop-blur-3xl">
+                    <div className="flex items-center gap-4 sm:gap-6">
+                        <Printer size={24} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
+                        <div className="flex flex-col">
+                            <h3 className="text-sm sm:text-xl font-black text-white tracking-[0.2em] sm:tracking-[0.3em] uppercase leading-none">LABEL ENGINE</h3>
+                            <span className="text-[7px] sm:text-[8px] font-black text-white/20 tracking-[0.5em] uppercase mt-1">Matrix Document Generation</span>
+                        </div>
                     </div>
-                    <button onClick={() => setIsOpen(false)} className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all"><X size={24} /></button>
+
+                    <div className="flex items-center gap-4 sm:gap-10">
+                        <div className="hidden sm:flex items-center gap-4 px-6 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-md">
+                            <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em]">PRNT_SVC_01</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
+                            <span className="text-[10px] font-mono text-white/40 tracking-widest ml-4">{selectedItems.length} ARTIFACTS</span>
+                        </div>
+                        
+                        <button onClick={() => setIsOpen(false)} className="sm:hidden w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40">
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="space-y-8">
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Batch Identifier</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white focus:outline-none focus:border-(--main-color)/50 transition-all font-mono font-bold"
-                        />
-                    </div>
+                {/* Desktop Close Button */}
+                <div className="hidden sm:block absolute top-8 right-8 z-[20050]">
+                    <button onClick={() => setIsOpen(false)} className="flex items-center justify-center group cursor-pointer">
+                        <X size={64} strokeWidth={1} className="text-white/20 group-hover:text-white group-hover:rotate-90 transition-all duration-500 drop-shadow-xl" />
+                    </button>
+                </div>
 
-                    <div className="grid grid-cols-1 gap-4">
-                        {/* XLSX Option */}
-                        <div className="p-6 rounded-3xl bg-white/5 border border-white/10 flex items-center gap-6 group hover:bg-white/10 transition-all">
-                            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shadow-inner">
-                                <FileSpreadsheet size={28} />
-                            </div>
-                            <div className="flex-1">
-                                <h4 className="text-sm font-black text-white uppercase tracking-tight">Excel Spreadsheet</h4>
-                                <p className="text-[10px] text-white/30 uppercase font-bold tracking-tighter">Master packing list data</p>
-                                {progress.xlsx >= 0 && progress.xlsx < 100 && (
-                                    <div className="mt-3 h-1 bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress.xlsx}%` }} />
-                                    </div>
-                                )}
-                            </div>
-                            {progress.xlsx === 100 ? (
-                                <CheckCircle2 className="text-emerald-400" size={24} />
-                            ) : (
-                                <button 
-                                    onClick={handleGenerateXLSX}
-                                    disabled={progress.xlsx >= 0}
-                                    className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
-                                >
-                                    {progress.xlsx >= 0 ? 'Building...' : 'Generate'}
-                                </button>
-                            )}
+                <div className="flex-1 flex overflow-y-auto custom-scrollbar">
+                    <div className="flex-1 flex flex-col relative bg-white/[0.01]">
+                        <div className="absolute top-4 sm:top-8 left-4 sm:left-8 flex flex-col gap-1 sm:gap-2">
+                            <span className="text-[6px] sm:text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">SYSTEM_PROCESS_V1</span>
+                            <div className="h-px w-12 sm:w-24 bg-(--main-color)/30" />
                         </div>
 
-                        {/* PDF Option */}
-                        <div className="p-6 rounded-3xl bg-white/5 border border-white/10 flex items-center gap-6 group hover:bg-white/10 transition-all">
-                            <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-400 shadow-inner">
-                                <FileText size={28} />
-                            </div>
-                            <div className="flex-1">
-                                <h4 className="text-sm font-black text-white uppercase tracking-tight">PDF Manifest</h4>
-                                <p className="text-[10px] text-white/30 uppercase font-bold tracking-tighter">Visual catalog with labels</p>
-                                {progress.pdf >= 0 && progress.pdf < 100 && (
-                                    <div className="mt-3 h-1 bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${progress.pdf}%` }} />
+                        <div className="flex-1 flex flex-col items-center p-4 sm:p-20 gap-8 sm:gap-16">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-24 items-center w-full max-w-7xl animate-in fade-in zoom-in duration-700">
+                                
+                                {/* Left: Visual Batch Preview */}
+                                <div className="flex flex-col gap-8 w-full max-w-[500px] mx-auto lg:max-w-none order-2 lg:order-1">
+                                    <div className="aspect-square flex items-center justify-center relative group bg-black/20 border border-white/5 backdrop-blur-3xl overflow-hidden shadow-2xl rounded-sm">
+                                        {selectedItems[0] ? (
+                                            <img 
+                                                src={getCleanImageUrl(selectedItems[0].normData.generatedPngUrl || selectedItems[0].normData.mediaUrls?.split(',')[0])} 
+                                                className="max-h-[80%] max-w-[80%] object-contain drop-shadow-[0_0_120px_rgba(255,255,255,0.1)] transition-all duration-1000 group-hover:scale-110" 
+                                            />
+                                        ) : (
+                                            <Printer size={120} className="text-white/5" />
+                                        )}
+                                        <div className="absolute inset-0 bg-linear-to-tr from-black/40 via-transparent to-white/5 pointer-events-none" />
+                                        
+                                        {/* Overlay Grid Info */}
+                                        <div className="absolute bottom-6 left-6 flex flex-col gap-1">
+                                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.3em]">PRIMARY_REFERENCE</span>
+                                            <span className="text-xl font-black text-white uppercase">{selectedItems[0]?.codes.bookBarcode || 'PENDING'}</span>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                            {progress.pdf === 100 ? (
-                                <button 
-                                    onClick={() => {
-                                        const a = document.createElement('a'); a.href = urls.pdf; a.download = `${name}.pdf`; a.click();
-                                    }}
-                                    className="p-3 rounded-full bg-red-500 text-white hover:scale-110 transition-all"
-                                >
-                                    <Download size={20} />
-                                </button>
-                            ) : (
-                                <button 
-                                    onClick={handleGeneratePDF}
-                                    disabled={progress.pdf >= 0}
-                                    className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
-                                >
-                                    {progress.pdf >= 0 ? 'Rendering...' : 'Generate'}
-                                </button>
-                            )}
-                        </div>
-                    </div>
 
-                    <div className="pt-4 border-t border-white/5 text-center">
-                        <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Onyx Intelligence Logistics Engine</p>
+                                    {/* Batch Metrics Grid */}
+                                    <div className="grid grid-cols-3 gap-4 sm:gap-6 p-6 sm:p-8 bg-white/[0.02] border border-white/5 backdrop-blur-3xl rounded-sm">
+                                        {[
+                                            { label: 'BATCH_SIZE', value: selectedItems.length },
+                                            { label: 'UNIT_TYPE', value: 'LABELS' },
+                                            { label: 'WORKBOOK', value: `VV${selectedItems[0]?.normData.workbook || '---'}` }
+                                        ].map((m, i) => (
+                                            <div key={i} className="flex flex-col gap-1">
+                                                <span className="text-[6px] sm:text-[8px] font-black text-white/20 uppercase tracking-[0.2em] sm:tracking-[0.4em]">{m.label}</span>
+                                                <span className="text-[10px] sm:text-base font-black text-white uppercase tracking-tight truncate leading-tight">{m.value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Right: Tactical Controls */}
+                                <div className="flex flex-col gap-8 sm:gap-12 order-1 lg:order-2">
+                                    <div className="space-y-4">
+                                        <span className="text-[8px] sm:text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] ml-1">DEPLOYMENT_PARAMETERS</span>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={name}
+                                                onChange={e => setName(e.target.value)}
+                                                className="w-full bg-white/5 border-b-2 border-white/10 px-0 py-4 text-xl sm:text-3xl font-black text-white focus:outline-none focus:border-(--main-color) transition-all placeholder:text-white/10 tracking-tighter"
+                                                placeholder="BATCH_NAME_01"
+                                            />
+                                            <div className="absolute bottom-0 right-0 py-4">
+                                                <Edit3 size={20} className="text-white/20" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-6">
+                                        {/* XLSX Tactical Button */}
+                                        <button 
+                                            onClick={handleGenerateXLSX}
+                                            disabled={progress.xlsx >= 0}
+                                            className="group relative w-full h-20 sm:h-24 overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-95 disabled:opacity-30 rounded-xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] cursor-pointer">
+                                            <div className="absolute inset-0 bg-emerald-500/5 backdrop-blur-3xl group-hover:bg-emerald-500/10 transition-colors" />
+                                            {progress.xlsx > 0 && progress.xlsx < 100 && (
+                                                <div className="absolute inset-0 bg-emerald-500/20 transition-all" style={{ width: `${progress.xlsx}%` }} />
+                                            )}
+                                            {progress.xlsx === 100 && <div className="absolute inset-0 bg-emerald-500/10" />}
+                                            
+                                            <span className="relative z-10 text-sm sm:text-lg font-black uppercase tracking-[0.4em] flex items-center justify-center gap-4 text-white">
+                                                {progress.xlsx === 100 ? 'SPREADSHEET_READY' : progress.xlsx > 0 ? 'COMPILING_DATA...' : 'GENERATE_XLSX'}
+                                                <FileSpreadsheet size={24} className="text-emerald-400" />
+                                            </span>
+                                        </button>
+
+                                        {/* PDF Tactical Button */}
+                                        <div className="flex flex-col gap-4">
+                                            <button 
+                                                onClick={progress.pdf === 100 ? () => {
+                                                    const a = document.createElement('a'); a.href = urls.pdf; a.download = `${name}.pdf`; a.click();
+                                                } : handleGeneratePDF}
+                                                disabled={progress.pdf > 0 && progress.pdf < 100}
+                                                className="group relative w-full h-20 sm:h-24 overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-95 disabled:opacity-30 rounded-xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] cursor-pointer">
+                                                <div className="absolute inset-0 bg-red-500/5 backdrop-blur-3xl group-hover:bg-red-500/10 transition-colors" />
+                                                {progress.pdf > 0 && progress.pdf < 100 && (
+                                                    <div className="absolute inset-0 bg-red-500/20 transition-all" style={{ width: `${progress.pdf}%` }} />
+                                                )}
+                                                {progress.pdf === 100 && <div className="absolute inset-0 bg-red-500/10" />}
+                                                
+                                                <span className="relative z-10 text-sm sm:text-lg font-black uppercase tracking-[0.4em] flex items-center justify-center gap-4 text-white">
+                                                    {progress.pdf === 100 ? 'DOWNLOAD_MANIFEST' : progress.pdf > 0 ? 'RENDERING_VISUALS...' : 'GENERATE_PDF'}
+                                                    {progress.pdf === 100 ? <Download size={24} className="text-red-400" /> : <FileText size={24} className="text-red-400" />}
+                                                </span>
+                                            </button>
+                                            
+                                            <div className="flex items-center gap-4 px-4">
+                                                <label className="flex items-center gap-3 cursor-pointer group">
+                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${includeImages ? 'bg-(--main-color) border-(--main-color)' : 'border-white/20 group-hover:border-white/40'}`}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="hidden" 
+                                                            checked={includeImages} 
+                                                            onChange={e => setIncludeImages(e.target.checked)} 
+                                                        />
+                                                        {includeImages && <Check size={14} className="text-black" />}
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Include Visual Assets</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
