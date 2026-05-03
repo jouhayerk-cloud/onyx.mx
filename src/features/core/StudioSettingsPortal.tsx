@@ -252,12 +252,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                     </div>
 
                                     {/* ── ROW 2: System Node ── */}
-                                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 pt-12`}>
-                                        <div className="space-y-12">
-                                            {/* Left intentionally empty to balance the System Node */}
-                                        </div>
-
-                                        {/* System Node Telemetry */}
+                                    <div className="pt-12">
                                         <div className="space-y-12 hidden md:block">
                                             <div className="flex items-center gap-4 pb-6">
                                                 <Terminal size={14} className="text-blue-500" />
