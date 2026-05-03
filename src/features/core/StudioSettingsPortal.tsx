@@ -255,26 +255,11 @@ export const StudioSettingsPortal: React.FC = () => {
                                                 <div className="group cursor-pointer" onClick={() => setPerf(!performanceMode)}>
                                                     <div className="flex items-center justify-between mb-3">
                                                         <div className="flex items-center gap-3">
-                                                            <Zap size={14} className={performanceMode ? 'text-yellow-500' : 'text-white/20'} />
-                                                            <h4 className={`text-sm font-black uppercase tracking-[0.2em] group-hover:text-yellow-500 transition-colors duration-150 hidden sm:inline ${L ? 'text-black' : 'text-white'}`}>Performance</h4>
+                                                            <Zap size={18} className={performanceMode ? 'text-yellow-500' : 'text-white/20'} />
                                                         </div>
                                                         <div className={`text-[12px] md:text-[14px] font-black px-3 py-1 rounded-xl transition-all duration-150 ${performanceMode ? 'bg-yellow-500 text-black' : L ? 'bg-black/10 text-black' : 'bg-white/10 text-white'}`}>
                                                             {performanceMode ? 'MAX' : 'STD'}
                                                         </div>
-                                                    </div>
-                                                    <p className={`text-[11px] font-bold uppercase tracking-[0.2em] leading-relaxed ${L ? 'text-black' : 'text-white'}`}>
-                                                        Optimization of rendering cycles and animation frequency.
-                                                    </p>
-                                                </div>
-
-                                                <div className="space-y-6">
-                                                    <div className="flex items-center justify-between">
-                                                        <h4 className={`text-[12px] font-black uppercase tracking-[0.2em] ${L ? 'text-black' : 'text-white'}`}>Density</h4>
-                                                        <span className="text-[12px] font-black text-blue-500 uppercase tracking-widest">MAX</span>
-                                                    </div>
-                                                    <div className={`h-[1px] w-full relative ${L ? 'bg-black/10' : 'bg-white/10'}`}>
-                                                        <div className={`absolute inset-y-0 left-0 w-full ${L ? 'bg-black/50' : 'bg-white/50'}`} />
-                                                        <div className={`absolute right-0 -top-1.5 w-3 h-3 rounded-full ${L ? 'bg-black shadow-black/30' : 'bg-white shadow-white/30'} shadow-[0_0_12px]`} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -286,11 +271,12 @@ export const StudioSettingsPortal: React.FC = () => {
                                                 <Terminal size={14} className="text-blue-500" />
                                                 <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>System Node</h3>
                                             </div>
-                                            <div className="space-y-12 hidden md:block opacity-40">
-                                                <div className="flex flex-col gap-4">
-                                                    <div className="h-3 w-2/3 bg-current rounded-full" />
-                                                    <div className="h-3 w-1/2 bg-current rounded-full" />
-                                                    <div className="h-3 w-3/4 bg-current rounded-full" />
+                                            <div className="space-y-8 hidden md:block opacity-20">
+                                                <div className="flex flex-col gap-6">
+                                                    <div className="h-4 w-full bg-current rounded-full animate-pulse" />
+                                                    <div className="h-4 w-2/3 bg-current rounded-full animate-pulse delay-75" />
+                                                    <div className="h-4 w-3/4 bg-current rounded-full animate-pulse delay-150" />
+                                                    <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>No Data Loaded</span>
                                                 </div>
                                             </div>
                                         </div>
