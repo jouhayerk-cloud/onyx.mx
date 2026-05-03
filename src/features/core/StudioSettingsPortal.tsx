@@ -128,9 +128,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                     {/* ── NEURAL IDENTITY PANEL (NEW TOP POSITION) ── */}
                                     <div className={`p-4 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 animate-in slide-in-from-top-4 duration-700`}>
                                         <div className="flex items-center gap-6 md:gap-8 w-full md:w-auto">
-                                            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-[22px] flex items-center justify-center transition-all ${L ? 'bg-black/5 text-black' : 'bg-white/5 text-white'}`}>
-                                                <Shield size={24} strokeWidth={2} className="text-purple-500" />
-                                            </div>
+                                            <Shield size={32} strokeWidth={2} className="text-purple-500" />
                                             <div className="flex flex-col">
                                                 <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] mb-1 ${L ? 'text-black' : 'text-white'}`}>Operator</span>
                                                 <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4">
