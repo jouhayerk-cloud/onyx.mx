@@ -133,7 +133,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                 <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] mb-1 ${L ? 'text-black' : 'text-white'}`}>Operator</span>
                                                 <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4">
                                                     <span className={`text-xl md:text-2xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || 'ROOT'}</span>
-                                                    <span className="text-[10px] md:text-[11px] font-black text-blue-500 uppercase tracking-[0.3em] opacity-60">{user?.email}</span>
+                                                    <span className="text-[10px] md:text-[11px] font-black text-blue-500 lowercase tracking-[0.2em] opacity-60">{user?.email?.toLowerCase()}</span>
                                                 </div>
                                             </div>
                                         </div>
