@@ -126,9 +126,9 @@ export const StudioSettingsPortal: React.FC = () => {
                                 <div className="space-y-12 md:space-y-24 pb-20">
 
                                     {/* ── NEURAL IDENTITY PANEL (NEW TOP POSITION) ── */}
-                                    <div className={`p-4 md:p-8 rounded-[32px] border flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 animate-in slide-in-from-top-4 duration-700 ${L ? 'bg-black/[0.03] border-black/5' : 'bg-white/[0.03] border-white/5'}`}>
+                                    <div className={`p-4 md:p-8 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 animate-in slide-in-from-top-4 duration-700 ${L ? 'bg-black/[0.03]' : 'bg-white/[0.03]'}`}>
                                         <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto">
-                                            <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center border transition-all ${L ? 'bg-black/5 border-black/10 text-black/40' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                                            <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all ${L ? 'bg-black/5 text-black/40' : 'bg-white/5 text-white/40'}`}>
                                                 <Shield size={24} strokeWidth={1.5} className="text-purple-500" />
                                             </div>
                                             <div className="flex flex-col">
@@ -163,7 +163,7 @@ export const StudioSettingsPortal: React.FC = () => {
 
                                         {/* Theme selector */}
                                         <div className="xl:col-span-4">
-                                            <div className={`flex items-center gap-3 border-b pb-4 mb-8 ${L ? 'border-black/10' : 'border-white/10'}`}>
+                                            <div className="flex items-center gap-3 pb-4 mb-8">
                                                 <Palette size={14} className="text-blue-500" />
                                                 <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>Themes</h3>
                                             </div>
@@ -178,7 +178,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                             onClick={() => setTheme(th.name)}
                                                             className={`group relative aspect-square transition-all duration-150 cursor-pointer ${isSel ? 'opacity-100' : 'opacity-20 hover:opacity-100 grayscale hover:grayscale-0'}`}
                                                         >
-                                                            {isSel && <div className="absolute -inset-3 border border-blue-500/30 rounded-2xl animate-pulse" />}
+                                                            {isSel && <div className="absolute -inset-3 rounded-2xl bg-blue-500/5 animate-pulse" />}
                                                             <div
                                                                 className={`w-full h-full rounded-2xl bg-cover bg-center transition-all duration-150 ${isSel ? 'scale-100 rotate-0' : 'scale-90 -rotate-2 group-hover:rotate-0 group-hover:scale-100'}`}
                                                                 style={{ backgroundImage: `url(${th.swatch})` }}
@@ -189,7 +189,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                 </span>
                                                                 <div className="flex gap-1">
                                                                     {colors?.accents.map((c, i) => (
-                                                                        <div key={i} className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: c }} />
+                                                                        <div key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
                                                                     ))}
                                                                 </div>
                                                             </div>
@@ -201,7 +201,7 @@ export const StudioSettingsPortal: React.FC = () => {
 
                                         {/* Color tokens */}
                                         <div className="xl:col-span-8 space-y-8">
-                                            <div className={`flex items-center gap-3 border-b pb-4 ${L ? 'border-black/10' : 'border-white/10'}`}>
+                                            <div className="flex items-center gap-3 pb-4">
                                                 <Palette size={14} className="text-cyan-500" />
                                                 <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>Colors</h3>
                                             </div>
@@ -227,7 +227,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                         </span>
                                                         {/* Swatch */}
                                                         <div
-                                                            className={`w-full aspect-square rounded-lg border transition-all duration-150 group-hover:scale-105 group-hover:border-blue-400/50 ${L ? 'border-black/10' : 'border-white/10'}`}
+                                                            className={`w-full aspect-square rounded-lg transition-all duration-150 group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.2)]`}
                                                             style={{ backgroundColor: `var(${token.key})` }}
                                                         />
                                                         {/* Label below */}
@@ -241,11 +241,11 @@ export const StudioSettingsPortal: React.FC = () => {
                                     </div>
 
                                     {/* ── ROW 2: Performance + Additional ── */}
-                                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 pt-12 border-t ${L ? 'border-black/5' : 'border-white/5'}`}>
+                                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 pt-12 ${L ? 'opacity-100' : 'opacity-100'}`}>
 
                                         {/* Performance */}
                                         <div className="space-y-10">
-                                            <div className={`flex items-center gap-4 border-b pb-6 ${L ? 'border-black/10' : 'border-white/10'}`}>
+                                            <div className="flex items-center gap-4 pb-6">
                                                 <Zap size={14} className="text-yellow-500" />
                                                 <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>
                                                     <span className="hidden sm:inline">System </span>Performance
@@ -258,7 +258,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                             <Zap size={14} className={performanceMode ? 'text-yellow-500' : 'text-white/20'} />
                                                             <h4 className={`text-sm font-black uppercase tracking-[0.2em] group-hover:text-yellow-500 transition-colors duration-150 ${L ? 'text-black' : 'text-white'}`}>Performance</h4>
                                                         </div>
-                                                        <div className={`text-[9px] font-black px-2 py-0.5 rounded border transition-all duration-150 ${performanceMode ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-500' : L ? 'bg-black/5 border-black/10 text-black/40' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                                                        <div className={`text-[9px] font-black px-2 py-0.5 rounded transition-all duration-150 ${performanceMode ? 'bg-yellow-500/20 text-yellow-500' : L ? 'bg-black/5 text-black/40' : 'bg-white/5 text-white/40'}`}>
                                                             {performanceMode ? 'MAX' : 'STD'}
                                                         </div>
                                                     </div>
@@ -282,11 +282,11 @@ export const StudioSettingsPortal: React.FC = () => {
 
                                         {/* Additional Stats / Placeholder */}
                                         <div className="space-y-12 hidden md:block">
-                                            <div className={`flex items-center gap-4 border-b pb-6 ${L ? 'border-black/10' : 'border-white/10'}`}>
+                                            <div className="flex items-center gap-4 pb-6">
                                                 <Terminal size={14} className="text-blue-500" />
                                                 <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>System Node</h3>
                                             </div>
-                                            <div className={`p-8 rounded-[32px] border ${L ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
+                                            <div className={`p-8 rounded-[32px] ${L ? 'bg-black/5' : 'bg-white/5'}`}>
                                                 <div className="flex flex-col gap-4 opacity-30">
                                                     <div className="h-2 w-2/3 bg-current rounded-full" />
                                                     <div className="h-2 w-1/2 bg-current rounded-full" />
@@ -309,7 +309,7 @@ export const StudioSettingsPortal: React.FC = () => {
                     </div>
 
                     {/* ── STATUS BAR ─────────────────────────────────────── */}
-                    <div className={`mt-auto px-6 py-4 md:px-12 md:pb-12 md:pt-8 flex flex-col md:flex-row items-center justify-between gap-6 border-t animate-in slide-in-from-bottom-8 duration-700 shrink-0 ${L ? 'border-black/10' : 'border-white/10'}`}>
+                    <div className={`mt-auto px-6 py-4 md:px-12 md:pb-12 md:pt-8 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-8 duration-700 shrink-0`}>
                         <div className="flex items-center justify-between w-full md:w-auto md:gap-16">
                             <div className="flex flex-col gap-1">
                                 <span className={`text-[7px] font-black uppercase tracking-[0.5em] ${L ? 'text-black/50' : 'text-white/50'}`}>Neural Latency</span>
