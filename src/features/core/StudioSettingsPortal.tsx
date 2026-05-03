@@ -251,33 +251,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* ── ROW 2: System Node ── */}
-                                    <div className="pt-12">
-                                        <div className="space-y-12 hidden md:block">
-                                            <div className="flex items-center gap-4 pb-6">
-                                                <Terminal size={14} className="text-blue-500" />
-                                                <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>System Node</h3>
-                                            </div>
-                                            <div className="space-y-6">
-                                                <div className="flex flex-col gap-6">
-                                                    {[
-                                                        { label: 'NODE IP', value: '192.168.1.104' },
-                                                        { label: 'UPTIME',  value: '72:14:05' },
-                                                        { label: 'THREAD',  value: 'CORE-AX4' }
-                                                    ].map((d, i) => (
-                                                        <div key={i} className="flex items-center justify-between group">
-                                                            <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${L ? 'text-black/40' : 'text-white/40'}`}>{d.label}</span>
-                                                            <span className={`text-[12px] font-black uppercase tracking-widest ${L ? 'text-black' : 'text-white'}`}>{d.value}</span>
-                                                        </div>
-                                                    ))}
-                                                    <div className={`h-[2px] w-full ${L ? 'bg-black/5' : 'bg-white/5'} relative overflow-hidden`}>
-                                                        <div className="absolute inset-y-0 left-0 w-1/3 bg-blue-500 animate-[loading_2s_infinite]" />
-                                                    </div>
-                                                    <span className={`text-[9px] font-black text-blue-500 uppercase tracking-[0.5em] animate-pulse`}>Telemetry Active</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+
                                 </div>
                             ) : (
                                 <div className="max-w-4xl mx-auto py-12 animate-in slide-in-from-bottom-12 duration-700 select-text">
