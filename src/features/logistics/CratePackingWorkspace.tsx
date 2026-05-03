@@ -41,7 +41,7 @@ export const CratePackingWorkspace: React.FC<CratePackingWorkspaceProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const sceneRef = useRef<{
         scene: THREE.Scene;
-        camera: THREE.PerspectiveCamera;
+        camera: THREE.OrthographicCamera;
         renderer: THREE.WebGLRenderer;
         controls: OrbitControls;
         itemsMap: Map<string, THREE.Mesh>;
@@ -63,8 +63,13 @@ export const CratePackingWorkspace: React.FC<CratePackingWorkspaceProps> = ({
         const scene = new THREE.Scene();
         scene.background = null;
 
-        const camera = new THREE.PerspectiveCamera(45, w / h, 1, 5000);
-        camera.position.set(width * 1.5, height * 1.5, -length * 1.2); // Frontal-ish view
+        const aspect = w / h;
+        const d = Math.max(width, height, length) * 1.2;
+        const camera = new THREE.OrthographicCamera(
+            -d * aspect, d * aspect, d, -d, 1, 10000
+        );
+        camera.position.set(width * 2, height * 2, -length * 2); 
+        camera.lookAt(width/2, height/2, length/2);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(w, h);
@@ -165,8 +170,12 @@ export const CratePackingWorkspace: React.FC<CratePackingWorkspaceProps> = ({
         const handleResize = () => {
             if (!containerRef.current) return;
             const w = containerRef.current.clientWidth;
-            const h = containerRef.current.clientHeight;
-            camera.aspect = w / h;
+            const aspect = w / h;
+            const d = Math.max(width, height, length) * 1.2;
+            camera.left = -d * aspect;
+            camera.right = d * aspect;
+            camera.top = d;
+            camera.bottom = -d;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
         };

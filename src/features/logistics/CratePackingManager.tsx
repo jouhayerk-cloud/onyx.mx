@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAtomValue, useAtom, useSetAtom } from 'jotai';
 import { 
     inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, 
     inventoryArtifactConfigAtom, isDummyModeAtom, isPackingFiltersOpenAtom,
     packingVendorFilterAtom, packingSortKeyAtom, packingSortOrderAtom,
-    crateSeparatorsAtom, crateItemPositionsAtom
+    crateSeparatorsAtom, crateItemPositionsAtom,
+    isCratePackingManagerOpenAtom, packingManagerTargetCrateIdAtom,
+    selectedInventoryIdsAtom
 } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -21,6 +24,7 @@ import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { NFCTagCard } from '../../components/LabelVisuals';
 import { CratePackingWorkspace } from './CratePackingWorkspace';
+import { InventoryArtifactInner } from '../inventory/InventoryArtifact';
 
 // ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
 // Backward compat: entries without ":qty" default to full quantity
@@ -676,6 +680,10 @@ export const CratePackingManager: React.FC = () => {
     const isDummyMode = useAtomValue(isDummyModeAtom);
     const [isFiltersOpen, setIsFiltersOpen] = useAtom(isPackingFiltersOpenAtom);
 
+    const [isOpen, setIsOpen] = useAtom(isCratePackingManagerOpenAtom);
+    const [targetCrateId, setTargetCrateId] = useAtom(packingManagerTargetCrateIdAtom);
+    const [globalSelectedIds, setGlobalSelectedIds] = useAtom(selectedInventoryIdsAtom);
+
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const [selectedCrateId, setSelectedCrateId] = useState<string | null>(null);
     // --- ATOMS ---
@@ -742,6 +750,21 @@ export const CratePackingManager: React.FC = () => {
             setSelectedQtys({});
         }
     }, [crates]);
+
+    // Handle initial target from simple wizard
+    useEffect(() => {
+        if (isOpen && targetCrateId && crates.length > 0) {
+            handleSelectCrate(targetCrateId);
+            setTargetCrateId(null);
+        }
+    }, [isOpen, targetCrateId, crates, handleSelectCrate, setTargetCrateId]);
+
+    // Sync local selectedItemIds with global selectedInventoryIdsAtom
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedItemIds(new Set(globalSelectedIds.map(String)));
+        }
+    }, [globalSelectedIds, isOpen]);
 
     // Subscribe to RxDB crates
     useEffect(() => {
@@ -1212,15 +1235,38 @@ export const CratePackingManager: React.FC = () => {
             };
         }).filter(entry => entry.item);
     }, [selectedItemIds, allInventory, itemPositions]);
+    if (!isOpen) return null;
 
-    return (
-        <div className="flex-1 flex flex-col relative m-0 p-0 overflow-hidden bg-black select-none">
+    return createPortal(
+        <div className="fixed inset-0 z-[600] flex flex-col bg-black/60 backdrop-blur-xl select-none animate-in fade-in duration-500">
+            {/* Header / Top Panel with Close Button */}
+            <div className="absolute top-8 left-8 right-8 z-[700] flex items-center justify-between pointer-events-none">
+                <div className="flex items-center gap-6 pointer-events-auto">
+                    <button 
+                        onClick={() => setIsOpen(false)}
+                        className="w-14 h-14 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition-all active:scale-90 shadow-2xl"
+                        title="Close Workspace"
+                    >
+                        <X size={24} />
+                    </button>
+                    <div className="flex flex-col">
+                        <h2 className="text-xl font-black text-white uppercase tracking-[0.4em] italic drop-shadow-lg">Advanced Packing</h2>
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mt-1">3D Spatial Manifest Workspace</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3 pointer-events-auto">
+                    {/* Additional header controls can go here */}
+                </div>
+            </div>
+
+            <div className="flex-1 flex flex-col relative m-0 p-0 overflow-hidden bg-transparent">
             {/* ─── Top Panel: HUD (Sticky when active) ─── */}
             {/* HUD is now rendered inside the workspace area for better focus */}
 
             {/* ─── Unit Picker (Full screen if no crate selected) ─── */}
             {!selectedCrate && (
-                <div className="flex-1 flex flex-col bg-white/[0.01] backdrop-blur-3xl min-h-0 border-x border-white/5 relative overflow-hidden">
+                <div className="flex-1 flex flex-col bg-white/[0.01] backdrop-blur-3xl min-h-0 border-x border-white/5 relative overflow-y-auto custom-scrollbar">
                     {/* Background Decorative Element */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-(--main-color)/5 blur-[120px] rounded-full -translate-y-1/2 pointer-events-none" />
                     <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full translate-x-1/4 translate-y-1/4 pointer-events-none" />
@@ -1285,7 +1331,7 @@ export const CratePackingManager: React.FC = () => {
                                             <div key={c.id} className="relative group/unit">
                                                 <button
                                                     onClick={() => handleSelectCrate(c.id)}
-                                                    className={`w-full flex flex-col gap-6 transition-all cursor-pointer relative p-8 border-2 ${isSelected ? 'bg-black border-(--main-color) shadow-[0_0_60px_rgba(249,115,22,0.2)] scale-[1.05] z-10' : 'bg-black border-white/5 hover:border-white/20'}`}
+                                                    className={`w-full flex flex-col gap-6 transition-all cursor-pointer relative p-8 border ${isSelected ? 'bg-white/10 backdrop-blur-2xl border-(--main-color) shadow-[0_0_60px_rgba(249,115,22,0.3)] scale-[1.05] z-10' : 'bg-white/[0.03] backdrop-blur-xl border-white/5 hover:border-white/20'}`}
                                                 >
                                                     <div className="flex items-center justify-between w-full">
                                                         <span className={`text-[14px] font-mono font-black leading-none tracking-[0.2em] ${isSelected ? 'text-(--main-color)' : 'text-white/40'}`}>
@@ -1397,11 +1443,11 @@ export const CratePackingManager: React.FC = () => {
                                         </button>
                                     );
                                 })}
-                            </div>
-                        </div>
                     </div>
                 </div>
-                        {!selectedCrate ? (
+            </div>
+        </div>
+            {!selectedCrate ? (
                             <div className="flex flex-col items-center justify-center py-32 text-center opacity-40 gap-10">
                                 <div className="p-12 bg-white/[0.02] rounded-full border border-white/5 relative">
                                     <div className="absolute inset-0 bg-(--main-color)/5 blur-3xl rounded-full" />
@@ -1418,119 +1464,76 @@ export const CratePackingManager: React.FC = () => {
                             </div>
                         ) : (
                             <div className="flex flex-col w-full h-full">
-                                {/* 3D WORKSPACE VIEW */}
-                                <div className="w-full flex-1 min-h-[400px] flex flex-col items-center justify-center relative p-12">
-                                    <div className="absolute top-12 left-12 flex flex-col gap-2">
-                                        <h2 className="text-2xl font-black text-white/80 uppercase tracking-tighter italic leading-none">Logistics <span className="text-(--main-color)">Digital Twin</span></h2>
-                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] font-mono">Live 1:1 Volumetric Simulation</p>
-                                    </div>
-                                    
-                                    <ActiveCrateHUD
-                                        crate={selectedCrate}
-                                        selectedItemIds={selectedItemIds}
-                                        selectedQtys={selectedQtys}
-                                        allInventory={allInventory}
-                                        nestedUnits={nestedUnits}
-                                        exchangeRate={exchangeRate}
-                                        onClear={() => handleSelectCrate(null)}
-                                        onPack={handlePackItems}
-                                        onUnpack={handleUnpackAll}
-                                        onUnnest={handleUnnestUnit}
-                                        onDelete={handleDeleteCrate}
-                                        isSaving={isSaving}
-                                        itemCount={filteredInventory.length}
-                                        crates={crates}
-                                        selectedItemsWithPos={itemsWithPositions.filter(i => selectedItemIds.has(String(i.item.row)))}
-                                        onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
-                                        separators={separators}
-                                        onAddSeparator={handleAddSeparator}
-                                        onRemoveSeparator={handleRemoveSeparator}
-                                        onUpdateSeparator={handleUpdateSeparator}
-                                    />
-                                    
-                                    <CratePackingWorkspace 
-                                        width={selectedCrate.width_cm || 60}
-                                        length={selectedCrate.length_cm || 60}
-                                        height={selectedCrate.height_cm || 60}
-                                        items={itemsWithPositions}
-                                        separators={separators}
-                                        onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
-                                        activeItemId={null}
-                                    />
+                                <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+                                    {/* 3D WORKSPACE VIEW - LEFT PANEL */}
+                                    <div className="flex-1 min-h-[400px] lg:min-h-0 flex flex-col items-center justify-center relative p-6 md:p-12 overflow-hidden">
+                                        
+                                        
+                                        <ActiveCrateHUD
+                                            crate={selectedCrate}
+                                            selectedItemIds={selectedItemIds}
+                                            selectedQtys={selectedQtys}
+                                            allInventory={allInventory}
+                                            nestedUnits={nestedUnits}
+                                            exchangeRate={exchangeRate}
+                                            onClear={() => handleSelectCrate(null)}
+                                            onPack={handlePackItems}
+                                            onUnpack={handleUnpackAll}
+                                            onUnnest={handleUnnestUnit}
+                                            onDelete={handleDeleteCrate}
+                                            isSaving={isSaving}
+                                            itemCount={filteredInventory.length}
+                                            crates={crates}
+                                            selectedItemsWithPos={itemsWithPositions.filter(i => selectedItemIds.has(String(i.item.row)))}
+                                            onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
+                                            separators={separators}
+                                            onAddSeparator={handleAddSeparator}
+                                            onRemoveSeparator={handleRemoveSeparator}
+                                            onUpdateSeparator={handleUpdateSeparator}
+                                        />
+                                        
+                                        <CratePackingWorkspace 
+                                            width={selectedCrate.width_cm || 60}
+                                            length={selectedCrate.length_cm || 60}
+                                            height={selectedCrate.height_cm || 60}
+                                            items={itemsWithPositions}
+                                            separators={separators}
+                                            onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
+                                            activeItemId={null}
+                                        />
 
-                                    {/* Workspace Tooltip */}
-                                    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center gap-6 shadow-2xl">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                            <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Interactive Grid</span>
-                                        </div>
-                                        <div className="h-4 w-px bg-white/10" />
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">ISO View: <span className="text-white">Active</span></span>
+                                        {/* Workspace Tooltip */}
+                                        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center gap-6 shadow-2xl">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                                <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Interactive Grid</span>
+                                            </div>
+                                            <div className="h-4 w-px bg-white/10" />
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">ISO View: <span className="text-white">Active</span></span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* INVENTORY LISTING */}
-                                {filteredInventory.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 gap-4">
-                                        <ListFilter size={48} className="text-white/10" strokeWidth={0.5} />
-                                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">No items match current filters</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-4 w-full border-t border-white/5 bg-white/[0.01]">
-                                <div className="flex items-center justify-end mb-8 px-6 pt-8">
-                                    <button
-                                        onClick={() => {
-                                            const newIds = new Set<string>();
-                                            const newQtys: Record<string, number> = {};
-                                            filteredInventory.forEach(i => {
-                                                const iid = String(i.row);
-                                                const norm = normalizeInventoryData(i.data);
+                                    {/* INVENTORY SIDEBAR - RIGHT PANEL */}
+                                    <div className="w-full lg:w-[480px] h-[400px] lg:h-full flex flex-col bg-black/20 border-t lg:border-t-0 lg:border-l border-white/5 animate-in slide-in-from-right lg:slide-in-from-right slide-in-from-bottom duration-700">
+                                        <InventoryArtifactInner 
+                                            ids={filteredInventory.map(i => String(i.row))}
+                                            onClose={() => {}}
+                                            viewMode="embedded"
+                                            title="Crate Inventory"
+                                            onItemClick={(item) => {
+                                                const iid = String(item.row);
+                                                const norm = normalizeInventoryData(item.data);
                                                 const totalQty = Number(norm.quantity || 1);
-                                                const packed = getTotalPackedForItem(iid, crates);
-                                                const rem = Math.max(0, totalQty - packed);
-                                                if (rem > 0) { newIds.add(iid); newQtys[iid] = rem; }
-                                            });
-                                            setSelectedItemIds(newIds);
-                                            setSelectedQtys(newQtys);
-                                        }}
-                                        className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 hover:text-white transition-colors cursor-pointer"
-                                    >
-                                        Select All
-                                    </button>
+                                                const totalPacked = getTotalPackedForItem(iid, crates);
+                                                const inCurrentCrate = currentCratePackedMap.get(iid) || 0;
+                                                const avail = Math.max(0, totalQty - (totalPacked - inCurrentCrate));
+                                                toggleItem(iid, avail);
+                                            }}
+                                        />
+                                    </div>
                                 </div>
-
-                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-48 px-6">
-                                    {filteredInventory.map(item => {
-                                        const iid = String(item.row);
-                                        const inCurrentCrate = (() => { const q = currentCratePackedMap.get(iid); return q === -1 ? 1 : (q ?? 0); })();
-                                        const totalPacked = getTotalPackedForItem(iid, crates);
-                                        const isSelected = selectedItemIds.has(iid);
-                                        return (
-                                            <PackingInventoryCard
-                                                key={item.row}
-                                                item={item as InventoryItem}
-                                                isSelected={isSelected}
-                                                packedQtyInCurrentCrate={inCurrentCrate}
-                                                totalPackedQty={totalPacked}
-                                                selectedQty={selectedQtys[iid] ?? 1}
-                                                onToggle={() => {
-                                                    const norm = normalizeInventoryData(item.data);
-                                                    const totalQty = Number(norm.quantity || 1);
-                                                    const avail = Math.max(0, totalQty - (totalPacked - inCurrentCrate));
-                                                    toggleItem(iid, avail);
-                                                }}
-                                                onQtyChange={qty => setSelectedQtys(q => ({ ...q, [iid]: qty }))}
-                                                isExpanded={expandedIds.has(iid)}
-                                                onToggleExpand={() => toggleExpand(iid)}
-                                                exchangeRate={exchangeRate}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
 
             </div>
         )}
@@ -1612,5 +1615,7 @@ export const CratePackingManager: React.FC = () => {
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--main-color, #F97316); }
             `}</style>
         </div>
+    </div>,
+    document.body
     );
 };

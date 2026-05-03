@@ -400,7 +400,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
     };
 
     return (
-        <div className="group relative transition-all duration-500 w-full flex flex-col py-6 px-6 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-3xl mb-4 hover:border-(--main-color)/40">
+        <div className="group relative transition-all duration-500 w-full flex flex-col py-6 px-6 bg-white/[0.03] border border-white/10 backdrop-blur-xl rounded-3xl mb-4 hover:border-(--main-color)/40">
 
             {/* Main Row */}
             <div className="p-4 flex flex-col xl:flex-row items-stretch xl:items-center gap-4 xl:gap-6 relative">
