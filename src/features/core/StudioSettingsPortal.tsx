@@ -259,18 +259,28 @@ export const StudioSettingsPortal: React.FC = () => {
                                             {/* Left intentionally empty to balance the System Node */}
                                         </div>
 
-                                        {/* Additional Stats / Placeholder */}
+                                        {/* System Node Telemetry */}
                                         <div className="space-y-12 hidden md:block">
                                             <div className="flex items-center gap-4 pb-6">
                                                 <Terminal size={14} className="text-blue-500" />
                                                 <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>System Node</h3>
                                             </div>
-                                            <div className="space-y-8 hidden md:block opacity-20">
+                                            <div className="space-y-6">
                                                 <div className="flex flex-col gap-6">
-                                                    <div className="h-4 w-full bg-current rounded-full animate-pulse" />
-                                                    <div className="h-4 w-2/3 bg-current rounded-full animate-pulse delay-75" />
-                                                    <div className="h-4 w-3/4 bg-current rounded-full animate-pulse delay-150" />
-                                                    <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>No Data Loaded</span>
+                                                    {[
+                                                        { label: 'NODE IP', value: '192.168.1.104' },
+                                                        { label: 'UPTIME',  value: '72:14:05' },
+                                                        { label: 'THREAD',  value: 'CORE-AX4' }
+                                                    ].map((d, i) => (
+                                                        <div key={i} className="flex items-center justify-between group">
+                                                            <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${L ? 'text-black/40' : 'text-white/40'}`}>{d.label}</span>
+                                                            <span className={`text-[12px] font-black uppercase tracking-widest ${L ? 'text-black' : 'text-white'}`}>{d.value}</span>
+                                                        </div>
+                                                    ))}
+                                                    <div className={`h-[2px] w-full ${L ? 'bg-black/5' : 'bg-white/5'} relative overflow-hidden`}>
+                                                        <div className="absolute inset-y-0 left-0 w-1/3 bg-blue-500 animate-[loading_2s_infinite]" />
+                                                    </div>
+                                                    <span className={`text-[9px] font-black text-blue-500 uppercase tracking-[0.5em] animate-pulse`}>Telemetry Active</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -332,6 +342,10 @@ export const StudioSettingsPortal: React.FC = () => {
                     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.25); }
                     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.45); }
+                    @keyframes loading {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(300%); }
+                    }
                 `}} />
             </div>
         </>,
