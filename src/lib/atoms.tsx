@@ -191,7 +191,15 @@ export const inventoryViewSliderAtom = atomWithStorage<number>('inventoryViewSli
 export const isInventoryViewSliderOpenAtom = atom<boolean>(false);
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
 export const logisticsSubTabAtom = atomWithStorage<'crates' | 'packing' | 'shipping'>('logisticsSubTab', 'crates', sessionJSONStorage);
-export const financeSubTabAtom = atomWithStorage<'payments' | 'tracking' | 'expenses'>('financeSubTab', 'payments', sessionJSONStorage);
+export const financeSubTabAtom = atomWithStorage<'overview' | 'payments' | 'tracking' | 'expenses'>('financeSubTab', 'overview', sessionJSONStorage);
+export const isFinanceScrolledAtom = atom(false);
+export const financeTotalsAtom = atom({ 
+    queueLength: 0, 
+    queueMxn: 0, 
+    upcomingLength: 0, 
+    upcomingMxn: 0,
+    pendingGroups: [] as any[]
+});
 export const isDashboardOpenAtom = atom(false);
 export const isCatalogViewOpenAtom = atom(false);
 export const catalogMarketViewModeAtom = atomWithStorage<'catalog' | 'market'>('catalogMarketViewMode', 'catalog', sessionJSONStorage);
@@ -249,6 +257,11 @@ export const isPaymentCategoryFilterOpenAtom = atom<boolean>(false);
 export const paymentFilterBarModeAtom = atom<'left' | 'right' | 'off'>('right');
 export type PaymentStatusFilter = 'All' | 'Paid' | 'Requested';
 export const paymentStatusFilterAtom = atom<PaymentStatusFilter>('All');
+export const isPaymentFiltersOpenAtom = atom<boolean>(false);
+export const isPaymentActionPanelOpenAtom = atom<boolean>(false);
+export const isPaymentQueueOpenAtom = atomWithStorage('isPaymentQueueOpen', true, sessionJSONStorage);
+export const isPaymentUpcomingOpenAtom = atomWithStorage('isPaymentUpcomingOpen', true, sessionJSONStorage);
+export const isPaymentPendingBarOpenAtom = atomWithStorage('isPaymentPendingBarOpen', true, sessionJSONStorage);
 
 
 export const dashboardExpDataAtom = atom<Record<string, any[]>>({});

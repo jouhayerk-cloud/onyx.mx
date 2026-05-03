@@ -23,6 +23,15 @@ import { pendingCardIcon } from './paymentsIcons.svg';
 import { PaymentDestination } from '../../lib/Types';
 
 // ── Shared Sub-components ──────────────────────────────────────────
+const getContrastColor = (hexcolor: string) => {
+    if (!hexcolor) return '#FFFFFF';
+    const r = parseInt(hexcolor.substring(1, 3), 16);
+    const g = parseInt(hexcolor.substring(3, 5), 16);
+    const b = parseInt(hexcolor.substring(5, 7), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 128) ? '#000000' : '#FFFFFF';
+};
+
 const SectionHeader = ({ icon: Icon, title, badge, color = 'var(--main-color)', right, preTitleContent }: {
     icon: React.FC<any>; title: string; badge?: string; color?: string; right?: React.ReactNode; 
     preTitleContent?: React.ReactNode;
@@ -508,6 +517,21 @@ export function AdminDashboard() {
         backgroundColor: 'transparent'
     }), [attributeStats]);
 
+    const vendorValuePieOption = useMemo<EChartsOption>(() => ({
+        tooltip: { 
+            trigger: 'item', 
+            formatter: (p: any) => `${p.name}: ${currencyMode === 'MXN' ? fmtMXN(p.value * currentExchangeRate) : fmtUSD(p.value)} (${p.percent}%)` 
+        },
+        series: [{
+            name: 'Acq Value', type: 'pie', radius: ['45%', '72%'], center: ['35%', '50%'],
+            data: vendorSummaries.map(v => ({ name: v.vendorId, value: v.totalAcqUsd })),
+            label: { show: false },
+            itemStyle: { borderRadius: 6, borderColor: 'rgba(0,0,0,0.4)', borderWidth: 1 }
+        }],
+        color: vendorSummaries.map(v => v.color),
+        backgroundColor: 'transparent',
+    }), [vendorSummaries, currencyMode, currentExchangeRate]);
+
     const categoriesOption = useMemo<EChartsOption>(() => ({
         tooltip: { trigger: 'axis' },
         xAxis: { type: 'category', data: attributeStats.topSD.slice(0, 8).map(([label]) => label.split(' - ')[0]), axisLabel: { rotate: 45, color: 'var(--text-color-secondary)', fontSize: 8 } },
@@ -799,6 +823,107 @@ export function AdminDashboard() {
                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-(--text-color)">Category Distribution</h3>
                             </div>
                             <EChart option={categoriesOption} style={{ height: '320px' }} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── GLOBAL DISTRIBUTION ANALYSIS (Moved from Overview) ─────────────────────────────────── */}
+                <div className="space-y-12 pt-12 border-t border-white/10">
+                    <SectionHeader 
+                        icon={TrendingUp} 
+                        title="Global Distribution Analysis" 
+                        badge="Network Intelligence" 
+                        right={
+                            <div className="hidden sm:flex gap-4">
+                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">Acq. Balance: {showFinancials ? '$' + globalTotals.totalAcqValueUsd.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}</span>
+                            </div>
+                        }
+                    />
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                        {/* Acquisitions Concentration (Value) */}
+                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-white/5 pb-10">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-6">Acquisitions Concentration (Value)</span>
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
+                                <div className="w-full sm:w-1/2 h-56">
+                                    <EChart option={vendorValuePieOption} style={{ height: '100%' }} />
+                                </div>
+                                <div className="w-full sm:w-1/2 space-y-4 px-4 overflow-y-auto max-h-[220px] custom-scrollbar">
+                                    {vendorSummaries.slice(0, 8).map(v => (
+                                        <div key={v.vendorId} 
+                                            onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: v.vendorId, title: `${v.vendorId} Payments` })}
+                                            className="flex flex-col border-b border-white/5 pb-2 group cursor-pointer hover:bg-white/5 px-2 -mx-2 rounded-md transition-all"
+                                        >
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
+                                                    <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest group-hover:text-(--text-color)/60">{v.vendorId}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[12px] font-mono font-black text-(--text-color)/80">
+                                                        {currencyMode === 'MXN' ? fmtMXN(v.totalAcqUsd * currentExchangeRate) : fmtUSD(v.totalAcqUsd)}
+                                                    </span>
+                                                    <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                        {currencyMode}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full group-hover:brightness-125 transition-all" style={{ width: `${(v.totalAcqUsd / (globalTotals.totalAcqValueUsd || 1) * 100)}%`, backgroundColor: v.color }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Units Share by Vendor */}
+                        <div className="flex flex-col col-span-1 lg:col-span-2">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-4 ">Units Share by Vendor</span>
+                            <div className="flex flex-col gap-4">
+                                <div className="h-3 w-full rounded-2xl overflow-hidden flex shadow-2xl bg-white/5 border border-white/5">
+                                    {vendorSummaries.map((v, idx) => {
+                                        const share = (v.itemCount / (globalTotals.totalItems || 1)) * 100;
+                                        return (
+                                            <div key={v.vendorId} 
+                                                onClick={() => setArtifactConfig({ 
+                                                    isOpen: true, 
+                                                    itemIds: items.filter(i => {
+                                                        const norm = normalizeInventoryData(i.data);
+                                                        return (norm.vendorId || norm.vendor_id || '') === v.vendorId;
+                                                    }).map(i => i.data.id),
+                                                    title: `Items for ${v.vendorId}`
+                                                })}
+                                                style={{ width: `${share}%`, backgroundColor: v.color }} 
+                                                className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
+                                            >
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-(--sidebar-bg)/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-white/10 shadow-2xl text-(--text-color)">
+                                                    {v.vendorId}: {v.itemCount} units ({share.toFixed(1)}%)
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+                                    {vendorSummaries.map(v => (
+                                        <div key={v.vendorId} 
+                                            onClick={() => setArtifactConfig({ 
+                                                isOpen: true, 
+                                                itemIds: items.filter(i => {
+                                                    const norm = normalizeInventoryData(i.data);
+                                                    return (norm.vendorId || norm.vendor_id || '') === v.vendorId;
+                                                }).map(i => i.data.id),
+                                                title: `Items for ${v.vendorId}`
+                                            })}
+                                            className="flex items-center gap-2 group cursor-pointer hover:bg-white/5 p-1 rounded transition-all"
+                                        >
+                                            <div className="w-2 h-2 rounded-sm group-hover:scale-125 transition-all shadow-lg shadow-black/40" style={{ backgroundColor: v.color }} />
+                                            <span className="text-[10px] font-black text-(--text-color) opacity-30 group-hover:opacity-100 uppercase tracking-widest truncate">{v.vendorId}</span>
+                                            <span className="text-[10px] font-mono font-black text-(--text-color) opacity-60 ml-auto group-hover:opacity-100">{v.itemCount}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

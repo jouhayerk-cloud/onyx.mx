@@ -88,7 +88,11 @@ import {
     truckShowReadyWizardAtom,
     truckShowPanelsAtom,
     packingSelectedIdsAtom,
-    isStudioSettingsOpenAtom
+    isStudioSettingsOpenAtom,
+    isPaymentsSearchOpenAtom,
+    isPaymentFiltersOpenAtom,
+    isPaymentActionPanelOpenAtom,
+    isPaymentWizardOpenAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
@@ -391,15 +395,6 @@ const InventoryBar: React.FC = () => {
             
             <div className="flex items-center gap-4 shrink-0 justify-end flex-1">
                 <InventoryStats />
-                <div className="w-px h-6 bg-white/10 mx-1 shrink-0" />
-                <button
-                    onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
-                    className="flex items-center gap-3 transition-all group py-2 px-4 rounded-xl hover:bg-white/5"
-                    title="Cycle payment status filter"
-                >
-                    <div className={`w-3.5 h-3.5 rounded-full border border-white/20 transition-all duration-500 shadow-lg ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-green-500/50' : 'bg-blue-400 shadow-blue-400/50'}`} />
-                    <span className="text-[10px] font-black tracking-[0.2em] text-white/40 uppercase group-hover:text-white group-hover:tracking-[0.25em] transition-all whitespace-nowrap">{statusFilter === 'Paid' ? 'PAID / PREPAID' : statusFilter}</span>
-                </button>
             </div>
         </div>
     );
@@ -470,14 +465,12 @@ const StoreBar: React.FC = () => {
 };
 
 const FinanceBar: React.FC = () => {
-    const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const [search, setSearch] = useAtom(financeSearchTermAtom);
-    const [filterMode, setFilterMode] = useAtom(paymentFilterBarModeAtom);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useAtom(isPaymentsSearchOpenAtom);
+    const [isFiltersOpen, setIsFiltersOpen] = useAtom(isPaymentFiltersOpenAtom);
+    const [isActionOpen, setIsActionOpen] = useAtom(isPaymentActionPanelOpenAtom);
     const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
     const toggleCurrency = () => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN');
-
-    const modeLabel: Record<string, string> = { extended: 'FULL', minimal: 'MIN', collapsed: 'OFF' };
 
     return (
         <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
@@ -492,38 +485,33 @@ const FinanceBar: React.FC = () => {
 
             {!isSearchOpen && (
                 <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
-                    <StudioAction 
-                        icon={DollarSign}
-                        label={currencyMode}
-                        active={true}
+
+                    <button 
+                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                        title="Filter Payments"
+                    >
+                        <Filter size={22} strokeWidth={2} />
+                    </button>
+                    <button 
+                        onClick={() => setIsActionOpen(!isActionOpen)}
+                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isActionOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                        title="Settings & Logic"
+                    >
+                        <SlidersHorizontal size={22} strokeWidth={2} />
+                    </button>
+
+                    <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+
+                    <button 
                         onClick={toggleCurrency}
-                        color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
-                    />
+                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 text-white/50 hover:text-white`}
+                        title={`Switch to ${currencyMode === 'MXN' ? 'USD' : 'MXN'}`}
+                    >
+                        <DollarSign size={22} strokeWidth={2} className={currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'} />
+                    </button>
 
-                    <div className="w-px h-5 bg-(--text-color)/5 mx-1" />
 
-                    <StudioAction 
-                        icon={Filter}
-                        label="FILTER"
-                        active={filterMode !== 'off'}
-                        onClick={() => setFilterMode(filterMode === 'off' ? 'left' : 'off')}
-                        color="var(--color-finance)"
-                    />
-
-                    <div className="w-px h-5 bg-(--text-color)/5 mx-1" />
-
-                    <StudioAction 
-                        icon={LayoutList}
-                        label={modeLabel[overviewMode]}
-                        active={overviewMode !== 'collapsed'}
-                        onClick={() => {
-                            const next: Record<string, 'extended' | 'minimal' | 'collapsed'> = {
-                                'extended': 'minimal', 'minimal': 'collapsed', 'collapsed': 'extended'
-                            };
-                            setOverviewMode((next[overviewMode] || 'extended') as any);
-                        }}
-                        color="var(--color-finance)"
-                    />
                 </div>
             )}
         </div>
@@ -1830,7 +1818,7 @@ export function MainHeader() {
 
     return (
         <>
-            <div className={`main-header h-20 sm:h-24 max-h-20 sm:max-h-24 flex items-center pl-6 pr-6 shrink-0 transition-all flex-nowrap w-full bg-black/40 backdrop-blur-3xl overflow-x-auto no-scrollbar shadow-none ${isToolsBarOpen ? 'border-b-0' : 'border-b border-white/5'}`}>
+            <div className={`main-header h-20 sm:h-24 max-h-20 sm:max-h-24 flex items-center pl-6 pr-6 shrink-0 transition-all flex-nowrap w-full overflow-x-auto no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
