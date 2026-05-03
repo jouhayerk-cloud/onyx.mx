@@ -155,7 +155,7 @@ export const NFCWizard: React.FC = () => {
                 onClick={() => setIsOpen(false)} 
             />
             
-            <div className="relative w-full h-full flex flex-col lg:flex-row pointer-events-none overflow-y-auto lg:overflow-hidden no-scrollbar bg-black/40">
+            <div className="relative w-full h-full flex flex-col lg:flex-row pointer-events-auto overflow-y-auto bg-black/40">
                 
                 {/* Floating Close Button - Repositioned for Mobile Reachability */}
                 <button 
@@ -166,7 +166,7 @@ export const NFCWizard: React.FC = () => {
                 </button>
 
                 {/* Left Panel: Primary Artifact Visual (Adaptive Height) */}
-                <div className="w-full lg:w-[50%] h-[40vh] md:h-[50vh] lg:h-full flex items-center justify-center p-4 md:p-12 lg:p-16 relative group pointer-events-auto overflow-hidden bg-black/20 lg:bg-transparent">
+                <div className="w-full lg:w-[50%] h-[40vh] md:h-[50vh] lg:h-full flex items-center justify-center p-4 md:p-12 lg:p-16 relative group overflow-hidden bg-black/20 lg:bg-transparent">
                     {mediaUrls.length > 1 ? (
                         <div className={`grid gap-2 md:gap-4 w-full h-full max-h-[85%] ${mediaUrls.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
                             {mediaUrls.slice(0, 4).map((url, i) => (
@@ -192,7 +192,7 @@ export const NFCWizard: React.FC = () => {
                 </div>
 
                 {/* Right Panel: Adaptive Tactical HUB */}
-                <div className="w-full lg:w-[50%] min-h-[60vh] lg:h-full flex flex-col p-6 md:p-10 lg:p-12 pt-12 md:pt-24 bg-black/40 backdrop-blur-3xl lg:border-l border-white/5 pointer-events-auto relative">
+                <div className="w-full lg:w-[50%] min-h-[60vh] lg:h-full flex flex-col p-6 md:p-10 lg:p-12 pt-12 md:pt-24 pb-32 md:pb-10 lg:pb-12 bg-black/40 backdrop-blur-3xl lg:border-l border-white/5 relative">
                     
                     {/* Top Protocol Header */}
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-6 md:gap-8 mb-8 md:mb-10">
