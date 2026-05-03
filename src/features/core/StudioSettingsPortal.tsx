@@ -252,7 +252,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                     </div>
 
                                     {/* ── ROW 2: System Node ── */}
-                                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 pt-12`}>
+                                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 pt-12`}>
                                         <div className="space-y-12">
                                             {/* Left intentionally empty to balance the System Node */}
                                         </div>
