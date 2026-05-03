@@ -126,34 +126,34 @@ export const StudioSettingsPortal: React.FC = () => {
                                 <div className="space-y-12 md:space-y-24 pb-20">
 
                                     {/* ── NEURAL IDENTITY PANEL (NEW TOP POSITION) ── */}
-                                    <div className={`p-4 md:p-8 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 animate-in slide-in-from-top-4 duration-700 ${L ? 'bg-black/[0.03]' : 'bg-white/[0.03]'}`}>
-                                        <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto">
-                                            <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all ${L ? 'bg-black/5 text-black/40' : 'bg-white/5 text-white/40'}`}>
-                                                <Shield size={24} strokeWidth={1.5} className="text-purple-500" />
+                                    <div className={`p-4 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 md:gap-16 animate-in slide-in-from-top-4 duration-700`}>
+                                        <div className="flex items-center gap-6 md:gap-10 w-full md:w-auto">
+                                            <div className={`w-14 h-14 md:w-20 md:h-20 rounded-[28px] flex items-center justify-center transition-all ${L ? 'bg-black/5 text-black' : 'bg-white/5 text-white'}`}>
+                                                <Shield size={32} strokeWidth={2} className="text-purple-500" />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className={`text-[7px] md:text-[8px] font-black uppercase tracking-[0.5em] mb-1 ${L ? 'text-black/40' : 'text-white/40'}`}>Authorized Operator</span>
-                                                <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4">
-                                                    <span className={`text-lg md:text-2xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || 'ROOT'}</span>
-                                                    <span className="text-[9px] md:text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] opacity-60">{user?.email}</span>
+                                                <span className={`text-[10px] md:text-[12px] font-black uppercase tracking-[0.6em] mb-2 ${L ? 'text-black' : 'text-white'}`}>Authorized Operator</span>
+                                                <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
+                                                    <span className={`text-3xl md:text-5xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || 'ROOT'}</span>
+                                                    <span className="text-[11px] md:text-[13px] font-black text-blue-500 uppercase tracking-[0.3em]">{user?.email}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-center gap-6 md:gap-10 w-full md:w-auto justify-end border-t md:border-t-0 pt-4 md:pt-0 border-white/5">
+                                        <div className="flex items-center gap-8 md:gap-14 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
                                             <button 
                                                 onClick={isOffline ? goOnline : goOffline} 
-                                                className={`flex items-center gap-3 transition-all duration-150 group ${isOffline ? 'text-green-500' : 'text-amber-500/60 hover:text-amber-500'}`}
+                                                className={`flex items-center gap-4 transition-all duration-150 group ${isOffline ? 'text-green-500' : 'text-amber-500 hover:text-amber-400'}`}
                                             >
-                                                {isOffline ? <Wifi size={14} /> : <WifiOff size={14} />}
-                                                <span className="text-[9px] font-black uppercase tracking-[0.4em]">
-                                                    {isOffline ? 'ESTABLISH LINK' : 'FORCE OFFLINE'}
+                                                {isOffline ? <Wifi size={18} /> : <WifiOff size={18} />}
+                                                <span className="text-[11px] font-black uppercase tracking-[0.5em]">
+                                                    {isOffline ? 'ONLINE' : 'OFFLINE'}
                                                 </span>
                                             </button>
 
-                                            <button onClick={logout} className="flex items-center gap-3 text-red-500/60 hover:text-red-500 transition-all duration-150 group">
-                                                <LogOut size={14} className="group-hover:-translate-x-1 transition-transform duration-150" />
-                                                <span className="text-[9px] font-black uppercase tracking-[0.4em]">TERMINATE</span>
+                                            <button onClick={logout} className="flex items-center gap-4 text-red-500 hover:text-red-400 transition-all duration-150 group">
+                                                <LogOut size={18} className="group-hover:-translate-x-1 transition-transform duration-150" />
+                                                <span className="text-[11px] font-black uppercase tracking-[0.5em]">TERMINATE</span>
                                             </button>
                                         </div>
                                     </div>
@@ -184,7 +184,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                 style={{ backgroundImage: `url(${th.swatch})` }}
                                                             />
                                                             <div className="absolute inset-x-0 -bottom-8 flex flex-col items-center gap-1.5 transition-all duration-150">
-                                                                <span className={`text-[8px] font-black uppercase tracking-[0.6em] transition-colors duration-150 ${isSel ? (L ? 'text-black' : 'text-white') : (L ? 'text-black/20 group-hover:text-black' : 'text-white/20 group-hover:text-white')}`}>
+                                                                <span className={`text-[12px] md:text-[14px] font-black uppercase tracking-[0.6em] transition-colors duration-150 ${isSel ? (L ? 'text-black' : 'text-white') : (L ? 'text-black/30 group-hover:text-black' : 'text-white/30 group-hover:text-white')}`}>
                                                                     {th.name}
                                                                 </span>
                                                                 <div className="flex gap-1">
@@ -230,10 +230,10 @@ export const StudioSettingsPortal: React.FC = () => {
                                                             className={`w-full aspect-square rounded-lg transition-all duration-150 group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.2)]`}
                                                             style={{ backgroundColor: `var(${token.key})` }}
                                                         />
-                                                        {/* Label below */}
-                                                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] truncate mt-1.5 transition-colors duration-150 ${L ? 'text-black/60 group-hover:text-black' : 'text-white/60 group-hover:text-white'}`}>
-                                                            {token.label}
-                                                        </span>
+                                                         {/* Label below */}
+                                                         <span className={`text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] truncate mt-2 transition-colors duration-150 ${L ? 'text-black' : 'text-white'}`}>
+                                                             {token.label}
+                                                         </span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -256,21 +256,21 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     <div className="flex items-center justify-between mb-3">
                                                         <div className="flex items-center gap-3">
                                                             <Zap size={14} className={performanceMode ? 'text-yellow-500' : 'text-white/20'} />
-                                                            <h4 className={`text-sm font-black uppercase tracking-[0.2em] group-hover:text-yellow-500 transition-colors duration-150 ${L ? 'text-black' : 'text-white'}`}>Performance</h4>
+                                                            <h4 className={`text-sm font-black uppercase tracking-[0.2em] group-hover:text-yellow-500 transition-colors duration-150 hidden sm:inline ${L ? 'text-black' : 'text-white'}`}>Performance</h4>
                                                         </div>
-                                                        <div className={`text-[9px] font-black px-2 py-0.5 rounded transition-all duration-150 ${performanceMode ? 'bg-yellow-500/20 text-yellow-500' : L ? 'bg-black/5 text-black/40' : 'bg-white/5 text-white/40'}`}>
+                                                        <div className={`text-[12px] md:text-[14px] font-black px-3 py-1 rounded-xl transition-all duration-150 ${performanceMode ? 'bg-yellow-500 text-black' : L ? 'bg-black/10 text-black' : 'bg-white/10 text-white'}`}>
                                                             {performanceMode ? 'MAX' : 'STD'}
                                                         </div>
                                                     </div>
-                                                    <p className={`text-[10px] uppercase tracking-[0.3em] leading-relaxed opacity-60 ${L ? 'text-black' : 'text-white'}`}>
+                                                    <p className={`text-[11px] font-bold uppercase tracking-[0.2em] leading-relaxed ${L ? 'text-black' : 'text-white'}`}>
                                                         Optimization of rendering cycles and animation frequency.
                                                     </p>
                                                 </div>
 
                                                 <div className="space-y-6">
                                                     <div className="flex items-center justify-between">
-                                                        <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] ${L ? 'text-black/60' : 'text-white/60'}`}>Interface Density</h4>
-                                                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Maximum</span>
+                                                        <h4 className={`text-[12px] font-black uppercase tracking-[0.2em] ${L ? 'text-black' : 'text-white'}`}>Density</h4>
+                                                        <span className="text-[12px] font-black text-blue-500 uppercase tracking-widest">MAX</span>
                                                     </div>
                                                     <div className={`h-[1px] w-full relative ${L ? 'bg-black/10' : 'bg-white/10'}`}>
                                                         <div className={`absolute inset-y-0 left-0 w-full ${L ? 'bg-black/50' : 'bg-white/50'}`} />
@@ -286,11 +286,11 @@ export const StudioSettingsPortal: React.FC = () => {
                                                 <Terminal size={14} className="text-blue-500" />
                                                 <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>System Node</h3>
                                             </div>
-                                            <div className={`p-8 rounded-[32px] ${L ? 'bg-black/5' : 'bg-white/5'}`}>
-                                                <div className="flex flex-col gap-4 opacity-30">
-                                                    <div className="h-2 w-2/3 bg-current rounded-full" />
-                                                    <div className="h-2 w-1/2 bg-current rounded-full" />
-                                                    <div className="h-2 w-3/4 bg-current rounded-full" />
+                                            <div className="space-y-12 hidden md:block opacity-40">
+                                                <div className="flex flex-col gap-4">
+                                                    <div className="h-3 w-2/3 bg-current rounded-full" />
+                                                    <div className="h-3 w-1/2 bg-current rounded-full" />
+                                                    <div className="h-3 w-3/4 bg-current rounded-full" />
                                                 </div>
                                             </div>
                                         </div>
@@ -309,39 +309,39 @@ export const StudioSettingsPortal: React.FC = () => {
                     </div>
 
                     {/* ── STATUS BAR ─────────────────────────────────────── */}
-                    <div className={`mt-auto px-6 py-4 md:px-12 md:pb-12 md:pt-8 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-8 duration-700 shrink-0`}>
-                        <div className="flex items-center justify-between w-full md:w-auto md:gap-16">
-                            <div className="flex flex-col gap-1">
-                                <span className={`text-[7px] font-black uppercase tracking-[0.5em] ${L ? 'text-black/50' : 'text-white/50'}`}>Neural Latency</span>
-                                <div className="flex items-center gap-2 md:gap-3">
-                                    <span className={`text-base md:text-xl font-black tracking-tighter ${L ? 'text-black' : 'text-white'}`}>14MS</span>
-                                    <div className="flex gap-0.5">
-                                        {[1,2,3,4,5].map(i => <div key={i} className={`w-0.5 h-2 md:h-3 ${i < 4 ? 'bg-blue-500' : L ? 'bg-black/20' : 'bg-white/20'}`} />)}
+                    <div className={`mt-auto px-6 py-6 md:px-12 md:pb-16 md:pt-12 flex flex-col md:flex-row items-center justify-between gap-10 md:gap-20 animate-in slide-in-from-bottom-8 duration-700 shrink-0`}>
+                        <div className="flex items-center justify-between w-full md:w-auto md:gap-24">
+                            <div className="flex flex-col gap-2">
+                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>Latency</span>
+                                <div className="flex items-center gap-4">
+                                    <span className={`text-3xl md:text-5xl font-black tracking-tighter ${L ? 'text-black' : 'text-white'}`}>14MS</span>
+                                    <div className="flex gap-1">
+                                        {[1,2,3,4,5].map(i => <div key={i} className={`w-1 h-4 md:h-6 ${i < 4 ? 'bg-blue-500' : L ? 'bg-black/20' : 'bg-white/20'}`} />)}
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-1">
-                                <span className={`text-[7px] font-black uppercase tracking-[0.5em] ${L ? 'text-black/50' : 'text-white/50'}`}>Memory Load</span>
-                                <div className="flex items-center gap-2 md:gap-3">
-                                    <span className={`text-base md:text-xl font-black tracking-tighter ${L ? 'text-black' : 'text-white'}`}>1.2GB</span>
-                                    <div className={`w-8 md:w-12 h-1 rounded-full overflow-hidden ${L ? 'bg-black/15' : 'bg-white/15'}`}>
+                            <div className="flex flex-col gap-2">
+                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>Memory</span>
+                                <div className="flex items-center gap-4">
+                                    <span className={`text-3xl md:text-5xl font-black tracking-tighter ${L ? 'text-black' : 'text-white'}`}>1.2GB</span>
+                                    <div className={`w-12 md:w-20 h-2 rounded-full overflow-hidden ${L ? 'bg-black/15' : 'bg-white/15'}`}>
                                         <div className="w-2/3 h-full bg-purple-500" />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between w-full md:w-auto md:gap-16 text-right">
-                            <div className="flex flex-col gap-1">
-                                <span className={`text-[7px] font-black uppercase tracking-[0.5em] ${L ? 'text-black/50' : 'text-white/50'}`}>Workspace Sync</span>
-                                <div className="flex items-center gap-2 md:gap-3 justify-end">
-                                    <span className="text-sm md:text-xl font-black text-green-600 tracking-tighter uppercase italic">Active</span>
-                                    <Activity size={12} className="text-green-600 animate-pulse md:w-[14px] md:h-[14px]" />
+                        <div className="flex items-center justify-between w-full md:w-auto md:gap-24 text-right">
+                            <div className="flex flex-col gap-2">
+                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>Sync</span>
+                                <div className="flex items-center gap-4 justify-end">
+                                    <span className="text-3xl md:text-5xl font-black text-green-500 tracking-tighter uppercase">ACTIVE</span>
+                                    <Activity size={24} className="text-green-500 animate-pulse" />
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-1">
-                                <span className={`text-[7px] font-black uppercase tracking-[0.5em] ${L ? 'text-black/50' : 'text-white/50'}`}>Regional Hub</span>
-                                <span className={`text-sm md:text-xl font-black tracking-tighter uppercase ${L ? 'text-black' : 'text-white'}`}>MX-North</span>
+                            <div className="flex flex-col gap-2">
+                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>Regional Hub</span>
+                                <span className={`text-3xl md:text-5xl font-black tracking-tighter uppercase ${L ? 'text-black' : 'text-white'}`}>MX-NORTH</span>
                             </div>
                         </div>
                     </div>
