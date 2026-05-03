@@ -48,6 +48,11 @@ import {
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
+const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
+
 // ── Components ───────────────────────────────────────────────────────────────
 
 const ActiveRequestGridItem: React.FC<{
@@ -55,10 +60,13 @@ const ActiveRequestGridItem: React.FC<{
     amount: number;
     color: string;
     type: string;
+    currencyMode: string;
+    exRate: number;
     onClick: () => void;
-}> = ({ label, amount, color, type, onClick }) => {
+}> = ({ label, amount, color, type, currencyMode, exRate, onClick }) => {
     const isMerch = type?.toLowerCase().includes('acq') || type?.toLowerCase().includes('prod');
     const Icon = isMerch ? ShoppingCart : Package;
+    const finalAmount = currencyMode === 'MXN' ? amount : amount / exRate;
 
     return (
         <div 
@@ -72,7 +80,9 @@ const ActiveRequestGridItem: React.FC<{
             </div>
             
             <div className="flex flex-col">
-                <span className="text-[32px] font-black text-white leading-none tracking-tighter">${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                <span className="text-[28px] font-black text-white leading-none tracking-tighter">
+                    {currencyMode === 'MXN' ? fmtMXN(amount) : fmtUSD(finalAmount)}
+                </span>
                 <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mt-2 truncate">{type || 'General'}</span>
             </div>
 
@@ -87,27 +97,36 @@ const UpcomingGridItem: React.FC<{
     amount: number;
     color: string;
     type: string;
+    currencyMode: string;
+    exRate: number;
     onClick: () => void;
-}> = ({ label, amount, color, type, onClick }) => (
-    <div 
-        onClick={onClick}
-        className="flex flex-col justify-center p-4 h-20 cursor-pointer transition-all hover:brightness-125 active:scale-95 shadow-lg group relative overflow-hidden backdrop-blur-md border border-white/10"
-        style={{ backgroundColor: `${color}30` }}
-    >
-        <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[24px] font-black text-white leading-none tracking-tighter">${Math.round(amount/1000)}k</span>
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{label}</span>
+}> = ({ label, amount, color, type, currencyMode, exRate, onClick }) => {
+    const finalAmount = currencyMode === 'MXN' ? amount : amount / exRate;
+    return (
+        <div 
+            onClick={onClick}
+            className="flex flex-col justify-center p-4 h-20 cursor-pointer transition-all hover:brightness-125 active:scale-95 shadow-lg group relative overflow-hidden backdrop-blur-md border border-white/10"
+            style={{ backgroundColor: `${color}15` }}
+        >
+            <div className="flex items-center justify-between gap-2">
+                <span className="text-[18px] font-black text-white leading-none tracking-tighter">
+                    {currencyMode === 'MXN' ? fmtMXN(amount) : fmtUSD(finalAmount)}
+                </span>
+                <div className="px-2.5 py-1 rounded-md shadow-sm shrink-0" style={{ backgroundColor: color }}>
+                    <span className="text-[12px] font-black text-black uppercase tracking-tighter">{label}</span>
+                </div>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{type}</span>
+            </div>
+            
+            {/* Selection indicator overlay */}
+            <div className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ChevronRight size={10} className="text-white/40" />
+            </div>
         </div>
-        <div className="flex items-center justify-between mt-2">
-            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{type}</span>
-        </div>
-        
-        {/* Selection indicator overlay */}
-        <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <ChevronRight size={14} className="text-black/40" />
-        </div>
-    </div>
-);
+    );
+};
 
 const SectionHeader: React.FC<{
     icon: any;
@@ -117,33 +136,40 @@ const SectionHeader: React.FC<{
     isOpen: boolean;
     onToggle: () => void;
     minimal?: boolean;
-}> = ({ icon: Icon, title, count, amount, isOpen, onToggle, minimal }) => (
-    <div className={`flex items-center justify-between transition-all group cursor-pointer ${minimal ? 'px-4 py-3' : 'px-4 py-4 hover:bg-white/5 rounded-2xl'}`} onClick={onToggle}>
-        <div className="flex items-center gap-6">
-            {/* Free floating icon (no container) */}
-            <div className={`transition-all duration-500 ${isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.8)]' : 'text-white/20'}`}>
-                <Icon size={minimal ? 20 : 28} strokeWidth={3} />
+    currencyMode?: string;
+    exRate?: number;
+}> = ({ icon: Icon, title, count, amount, isOpen, onToggle, minimal, currencyMode = 'MXN', exRate = 1 }) => {
+    const finalAmount = currencyMode === 'MXN' ? amount : (amount || 0) / exRate;
+    return (
+        <div className={`flex items-center justify-between transition-all group cursor-pointer ${minimal ? 'px-4 py-3' : 'px-4 py-4 hover:bg-white/5 rounded-2xl'}`} onClick={onToggle}>
+            <div className="flex items-center gap-6">
+                {/* Free floating icon (no container) */}
+                <div className={`transition-all duration-500 ${isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.8)]' : 'text-white/20'}`}>
+                    <Icon size={minimal ? 20 : 28} strokeWidth={3} />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                    <span className={`${minimal ? 'text-[11px]' : 'text-[16px]'} font-black text-white uppercase tracking-[0.3em]`}>{title}</span>
+                    {!minimal && (
+                        <div className="flex items-center gap-4">
+                            {count !== undefined && <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{count} UNITS</span>}
+                            {amount !== undefined && (
+                                <>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em]">
+                                        {currencyMode === 'MXN' ? fmtMXN(amount) : fmtUSD(finalAmount)} {currencyMode}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
-            <div className="flex flex-col gap-0.5">
-                <span className={`${minimal ? 'text-[11px]' : 'text-[16px]'} font-black text-white uppercase tracking-[0.3em]`}>{title}</span>
-                {!minimal && (
-                    <div className="flex items-center gap-4">
-                        {count !== undefined && <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{count} UNITS</span>}
-                        {amount !== undefined && (
-                            <>
-                                <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                                <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em]">${amount.toLocaleString('en-US')} MXN</span>
-                            </>
-                        )}
-                    </div>
-                )}
+            <div className={`transition-all duration-500 ${isOpen ? 'rotate-180 text-white' : 'text-white/10'}`}>
+                <ChevronDown size={minimal ? 20 : 28} strokeWidth={4} />
             </div>
         </div>
-        <div className={`transition-all duration-500 ${isOpen ? 'rotate-180 text-white' : 'text-white/10'}`}>
-            <ChevronDown size={minimal ? 20 : 28} strokeWidth={4} />
-        </div>
-    </div>
-);
+    );
+};
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
@@ -366,11 +392,13 @@ export const UniversalToolsBar: React.FC = () => {
                         <div className="w-full border-t border-white/5 px-8 py-4 animate-in slide-in-from-top-4 duration-500 overflow-hidden">
                             <SectionHeader 
                                 icon={Heartbeat} 
-                                title="Active Request Queue" 
+                                title="Requested" 
                                 count={activeQueueRecords.length}
                                 amount={activeQueueTotal}
                                 isOpen={isFinQueueOpen}
                                 onToggle={() => setIsFinQueueOpen(!isFinQueueOpen)}
+                                currencyMode={currencyMode}
+                                exRate={exRate}
                             />
                             {isFinQueueOpen && (
                                 <div className={`grid gap-1 overflow-hidden transition-all duration-500 ${activeQueueRecords.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
@@ -389,6 +417,8 @@ export const UniversalToolsBar: React.FC = () => {
                                                     amount={r.amount}
                                                     color={color}
                                                     type={r.subcategory}
+                                                    currencyMode={currencyMode}
+                                                    exRate={exRate}
                                                     onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: [r.id], title: `Detail: ${v}` })}
                                                 />
                                             );
@@ -426,6 +456,8 @@ export const UniversalToolsBar: React.FC = () => {
                                                     amount={remaining}
                                                     color={color}
                                                     type={g.type}
+                                                    currencyMode={currencyMode}
+                                                    exRate={exRate}
                                                     onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: g.vendorId, title: `Liquidation: ${g.vendorId}` })}
                                                 />
                                             );
