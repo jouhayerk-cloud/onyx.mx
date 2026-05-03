@@ -1225,8 +1225,8 @@ export const UnifiedInventoryView = () => {
             if (sA === null && sB !== null) return -1; if (sA !== null && sB === null) return 1;
             let comp = 0;
             if (sortKey === 'Date') {
-                const dA = new Date(a.data.updated_at || a.data.timestamp || 0).getTime();
-                const dB = new Date(b.data.updated_at || b.data.timestamp || 0).getTime();
+                const dA = new Date(a.data.timestamp || a.data.updated_at || 0).getTime();
+                const dB = new Date(b.data.timestamp || b.data.updated_at || 0).getTime();
                 comp = dB - dA;
             }
             else if (sortKey === 'Vendor') {
@@ -1417,7 +1417,6 @@ export const UnifiedInventoryView = () => {
                         })
                     )}
                 </div>
-            </div>
             </div>
 
             {mode === 'edit' && editData && (
