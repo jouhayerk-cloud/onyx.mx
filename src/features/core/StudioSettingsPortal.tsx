@@ -123,7 +123,7 @@ export const StudioSettingsPortal: React.FC = () => {
                         {/* Scrollable panel */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 select-none">
                             {viewMode === 'settings' ? (
-                                <div className="space-y-12 md:space-y-24 pb-20">
+                                <div className="space-y-8 md:space-y-16 pb-20">
 
                                     {/* ── NEURAL IDENTITY PANEL (NEW TOP POSITION) ── */}
                                     <div className={`p-4 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 animate-in slide-in-from-top-4 duration-700`}>
