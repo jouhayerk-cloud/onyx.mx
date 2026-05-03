@@ -29,6 +29,8 @@ import { vendors } from '../../lib/consts';
 import { NFCTagCard } from '../../components/LabelVisuals';
 
 /* ─── NFC Tags HUD Component ─── */
+import { ScannerCenter } from '../../components/ScannerCenter';
+
 export const NFCWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isPackingNFCWizardOpenAtom);
     const invIds = useAtomValue(selectedInventoryIdsAtom);
@@ -41,6 +43,8 @@ export const NFCWizard: React.FC = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isWriting, setIsWriting] = useState(false);
     const [status, setStatus] = useState<'idle' | 'writing' | 'success' | 'error'>('idle');
+    const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
+    const [verifiedTags, setVerifiedTags] = useState<Set<string>>(new Set());
 
     const logisticsSubTab = useAtomValue(logisticsSubTabAtom);
 
@@ -48,6 +52,7 @@ export const NFCWizard: React.FC = () => {
         if (isOpen) {
             setCurrentIndex(0);
             setStatus('idle');
+            setVerifiedTags(new Set());
         }
     }, [isOpen]);
 
@@ -75,6 +80,7 @@ export const NFCWizard: React.FC = () => {
 
     const currentItem = selectedItems[currentIndex];
     const isSupported = typeof window !== 'undefined' && 'NDEFReader' in window;
+    const isVerified = currentItem && verifiedTags.has(currentItem.codes.bookBarcode);
 
     const mediaUrls = currentItem?.normData.mediaUrls?.split(',').filter(Boolean) || [];
 
@@ -151,13 +157,13 @@ export const NFCWizard: React.FC = () => {
     return (
         <div className="fixed inset-0 z-[20000] flex flex-col pointer-events-none animate-in fade-in duration-500 overflow-hidden">
             <div 
-                className="absolute inset-0 backdrop-blur-[120px] bg-black/35 pointer-events-auto" 
+                className="absolute inset-0 backdrop-blur-xl bg-black/60 pointer-events-auto" 
                 onClick={() => setIsOpen(false)} 
             />
             
-            <div className="relative w-full h-full flex flex-col lg:flex-row pointer-events-auto overflow-y-auto bg-black/40">
+            <div className="relative w-full h-full flex flex-col lg:flex-row pointer-events-auto overflow-y-auto bg-black/40 backdrop-blur-2xl">
                 
-                {/* Floating Close Button - Repositioned for Mobile Reachability */}
+                {/* Floating Close Button */}
                 <button 
                     onClick={() => setIsOpen(false)} 
                     className="fixed top-4 right-4 md:top-8 md:right-8 z-[20002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/10 backdrop-blur-2xl rounded-full border border-white/20 text-white/40 hover:text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] group"
@@ -165,7 +171,7 @@ export const NFCWizard: React.FC = () => {
                     <X size={28} className="md:w-[40px] md:h-[40px] group-hover:rotate-90 transition-transform duration-500" strokeWidth={1} />
                 </button>
 
-                {/* Left Panel: Primary Artifact Visual (Adaptive Height) */}
+                {/* Left Panel: Primary Artifact Visual */}
                 <div className="w-full lg:w-[50%] h-[40vh] md:h-[50vh] lg:h-full flex items-center justify-center p-4 md:p-12 lg:p-16 relative group overflow-hidden bg-black/20 lg:bg-transparent">
                     {mediaUrls.length > 1 ? (
                         <div className={`grid gap-2 md:gap-4 w-full h-full max-h-[85%] ${mediaUrls.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
@@ -225,14 +231,37 @@ export const NFCWizard: React.FC = () => {
                         </div>
 
                         {/* QR Protocol - Adaptive Size */}
-                        <div className="flex shrink-0 mt-2 sm:mt-12 lg:mt-16 self-end sm:self-start">
-                            <div className="bg-white p-2 rounded-sm shadow-2xl w-24 h-24 md:w-32 md:h-32 flex items-center justify-center overflow-hidden transition-all hover:scale-105 border-4 border-white">
-                                <img src={qrUrl} className="max-w-full max-h-full object-contain" alt="QR" />
+                        <div className="flex flex-col items-center gap-4 shrink-0 mt-2 sm:mt-12 lg:mt-16 self-end sm:self-start">
+                            <div className="relative group/qr">
+                                <div className="bg-white p-2 rounded-sm shadow-2xl w-24 h-24 md:w-32 md:h-32 flex items-center justify-center overflow-hidden transition-all group-hover/qr:scale-105 border-4 border-white relative">
+                                    <img src={qrUrl} className="max-w-full max-h-full object-contain" alt="QR" />
+                                    {isVerified && (
+                                        <div className="absolute inset-0 bg-emerald-500/20 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-500">
+                                            <ShieldCheck size={48} className="text-emerald-500 drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* Verify Button Overlay */}
+                                <button 
+                                    onClick={() => setIsQRScannerOpen(true)}
+                                    className={`absolute -bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full border backdrop-blur-xl transition-all flex items-center gap-2 shadow-2xl whitespace-nowrap group-hover/qr:scale-110 ${
+                                        isVerified 
+                                            ? 'bg-emerald-500 border-emerald-400 text-black font-black' 
+                                            : 'bg-black/60 border-white/20 text-white/60 hover:text-white hover:border-white/40'
+                                    }`}
+                                >
+                                    {isVerified ? (
+                                        <><ShieldCheck size={14} /> <span className="text-[10px] uppercase tracking-widest">Verified</span></>
+                                    ) : (
+                                        <><QrCode size={14} /> <span className="text-[10px] uppercase tracking-widest">Verify QR</span></>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Specification Matrix - Responsive Grid */}
+                    {/* Specification Matrix */}
                     <div className="grid grid-cols-2 gap-y-6 md:gap-y-8 gap-x-8 md:gap-x-12 mb-8 md:mb-10 border-t border-white/5 pt-8 md:pt-10">
                         <div className="flex flex-col">
                             <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CORE_SPEC</span>
@@ -265,7 +294,7 @@ export const NFCWizard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Action Zone: Large Ergonomic Trigger */}
+                    {/* Action Zone */}
                     <div className="mt-auto pt-8 flex flex-col sm:flex-row items-center gap-4 lg:gap-6 pb-6 lg:pb-0">
                         <div className="flex gap-2 w-full sm:w-auto">
                             <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} disabled={currentIndex === 0} className="flex-1 sm:h-20 sm:w-16 h-14 flex items-center justify-center bg-white/[0.03] hover:bg-white/10 transition-all disabled:opacity-0 border border-white/5 rounded-sm">
@@ -302,6 +331,23 @@ export const NFCWizard: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* QR Verification Overlay */}
+            {isQRScannerOpen && (
+                <ScannerCenter 
+                    initialMode="qr"
+                    onVerify={(id) => {
+                        return id === currentItem?.codes.bookBarcode;
+                    }}
+                    onComplete={(ids) => {
+                        setVerifiedTags(prev => new Set([...prev, ...ids]));
+                        setTimeout(() => setIsQRScannerOpen(false), 800);
+                    }}
+                    onClose={() => setIsQRScannerOpen(false)}
+                    title="Verify Artifact"
+                    subtitle={`Authenticating ${currentItem?.codes.bookBarcode}`}
+                />
+            )}
         </div>
     );
 };
@@ -458,9 +504,9 @@ export const LabelWizard: React.FC = () => {
 
     return (
         <div className="fixed inset-0 z-[20000] flex flex-col pointer-events-none animate-in fade-in duration-500 overflow-hidden">
-            <div className="absolute inset-0 backdrop-blur-[100px] bg-black/55 pointer-events-auto" onClick={() => setIsOpen(false)} />
+            <div className="absolute inset-0 backdrop-blur-xl bg-black/60 pointer-events-auto" onClick={() => setIsOpen(false)} />
             
-            <div className="relative w-full h-full flex flex-col pointer-events-auto p-8 md:p-12 lg:p-16 overflow-y-auto no-scrollbar max-w-7xl mx-auto">
+            <div className="relative w-full h-full flex flex-col pointer-events-auto p-8 md:p-12 lg:p-16 overflow-y-auto no-scrollbar max-w-7xl mx-auto bg-black/40 backdrop-blur-2xl border border-white/5 shadow-2xl">
                 
                 {/* Floating LARGE Close Button */}
                 <button 

@@ -6,6 +6,7 @@ import { atom } from 'jotai';
 import { atomWithStorage, createJSONStorage } from 'jotai/utils';
 const sessionJSONStorage = createJSONStorage<any>(() => sessionStorage);
 import { colors } from './consts';
+export { inventoryStatusSetsAtom } from './inventoryStatusAtom';
 
 import {
   BoundingBox2DType,
@@ -403,7 +404,7 @@ export type InventoryArtifactConfig = {
   isOpen: boolean;
   itemIds: (string | number)[];
   title?: string;
-  viewMode?: 'modal' | 'sidebar';
+  viewMode?: 'modal' | 'sidebar' | 'embedded';
   displayMode?: 'list' | 'grid' | 'gallery';
 };
 export const inventoryArtifactConfigAtom = atom<InventoryArtifactConfig>({
@@ -498,6 +499,8 @@ export const packingExportJSONTriggerAtom = atom<number>(0);
 export const isPackingFiltersOpenAtom = atom<boolean>(false);
 export const isPackingNFCWizardOpenAtom = atom<boolean>(false);
 export const isPackingCrateWizardOpenAtom = atom<boolean>(false);
+export const isCratePackingManagerOpenAtom = atom<boolean>(false);
+export const packingManagerTargetCrateIdAtom = atom<string | null>(null);
 export const isPaymentWizardOpenAtom = atom<boolean>(false);
 
 // Trucking Module Atoms

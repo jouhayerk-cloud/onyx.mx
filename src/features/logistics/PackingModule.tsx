@@ -1059,7 +1059,7 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
     return (
         <div
             onClick={onToggle}
-            className={`group relative flex flex-col rounded-3xl overflow-hidden cursor-pointer border transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/40 shadow-2xl shadow-(--main-color)/20 scale-[1.02]' : 'bg-white/[0.03] border-white/10 hover:border-(--main-color)/40'}`}
+            className={`group relative flex flex-col rounded-3xl overflow-hidden cursor-pointer border transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/40 shadow-2xl shadow-(--main-color)/20 scale-[1.02]' : 'bg-white/[0.03] border-white/10 hover:border-(--main-color)/40 backdrop-blur-xl'}`}
         >
             {/* Image Section */}
             <div className="aspect-[5/4] relative overflow-hidden bg-black/40">

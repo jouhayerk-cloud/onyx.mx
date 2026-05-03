@@ -27,8 +27,9 @@ interface InventoryArtifactProps {
     ids: (string | number)[];
     onClose: () => void;
     initialView?: 'list' | 'grid' | 'gallery';
-    viewMode?: 'modal' | 'sidebar';
+    viewMode?: 'modal' | 'sidebar' | 'embedded';
     title?: string;
+    onItemClick?: (item: any) => void;
 }
 
 import { inventoryArtifactConfigAtom } from '../../lib/atoms';
@@ -108,7 +109,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, onClose, initialView, viewMode: propViewMode, title: propTitle }) => {
+export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, onClose, initialView, viewMode: propViewMode, title: propTitle, onItemClick }) => {
     const [config, setConfig] = useAtom(inventoryArtifactConfigAtom);
     const viewMode = propViewMode || config.viewMode || 'modal';
     const isSidebar = viewMode === 'sidebar';
@@ -128,6 +129,16 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     const [viewerIdx, setViewerIdx] = useState(0);
     const [viewerUrls, setViewerUrls] = useState<string[]>([]);
     const currencyMode = 'MXN'; // Default to MXN for artifacts
+
+    const handleItemAction = (item: any, urls: string[], idx: number) => {
+        if (onItemClick) {
+            onItemClick(item);
+        } else if (urls.length > 0) {
+            setViewerUrls(urls);
+            setViewerIdx(idx);
+            setShowViewer(true);
+        }
+    };
 
     // Standardize IDs
     const targetIds = useMemo(() => ids.map(id => String(id)), [ids]);
@@ -209,59 +220,46 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
 
     if (filteredItems.length === 0) return null;
 
-    const containerClasses = isSidebar 
-        ? "fixed top-0 right-0 h-full w-full sm:w-[560px] z-[9999] animate-in slide-in-from-right duration-700 flex flex-col"
-        : "fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300";
+    const isEmbeddedArtifact = viewMode === 'embedded';
+    
+    const containerClasses = isEmbeddedArtifact
+        ? "relative w-full h-full flex flex-col overflow-hidden"
+        : isSidebar 
+            ? "fixed top-0 right-0 h-full w-full sm:w-[560px] z-[9999] animate-in slide-in-from-right duration-700 flex flex-col"
+            : "fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300";
 
-    return createPortal(
-        <div className={containerClasses}>
-            {!isSidebar && <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl" onClick={onClose} />}
-            {!isSidebar && (
-                <button 
-                    onClick={onClose}
-                    className="absolute top-10 right-10 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all z-[10000] shadow-2xl backdrop-blur-xl group"
-                >
-                    <X size={40} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
-                </button>
-            )}
-            
-            {showViewer && (
-                <FullscreenImageViewer 
-                    src={viewerUrls[viewerIdx]} 
-                    mediaUrls={viewerUrls} 
-                    initialIdx={viewerIdx} 
-                    onClose={() => setShowViewer(false)} 
-                />
-            )}
-
-            <div className={`relative w-full h-full ${!isSidebar ? 'max-w-7xl h-[90vh] rounded-[40px] bg-[#0a0a0a]/95 border border-white/10 shadow-2xl' : 'bg-transparent backdrop-blur-3xl'} flex flex-col overflow-visible transition-all duration-500`}>
-                {isSidebar && (
-                    <>
-                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-l from-emerald-500/[0.05] to-transparent" />
-                        {/* Floating Close Button */}
+    const artifactContent = (
+        <div className={`relative w-full h-full ${(!isSidebar && !isEmbeddedArtifact) ? 'max-w-7xl h-[90vh] rounded-[40px] bg-[#0a0a0a]/95 border border-white/10 shadow-2xl' : 'bg-transparent backdrop-blur-3xl'} flex flex-col overflow-hidden transition-all duration-500`}>
+            {(isSidebar || isEmbeddedArtifact) && (
+                <>
+                    <div className={`absolute inset-0 pointer-events-none bg-gradient-to-l ${isEmbeddedArtifact ? 'from-orange-500/[0.05]' : 'from-emerald-500/[0.05]'} to-transparent`} />
+                    {/* Floating Close Button - Only for sidebar */}
+                    {isSidebar && (
                         <button 
                             onClick={onClose}
                             className="absolute top-10 -left-20 w-16 h-16 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-emerald-500/40 hover:text-emerald-400 transition-all shadow-[0_0_40px_rgba(0,0,0,0.5)] active:scale-90 group"
                         >
                             <X size={32} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
                         </button>
-                    </>
-                )}
-                
-                {/* Modern Header */}
-                <div className={`px-8 py-10 flex items-center justify-between shrink-0 ${isSidebar ? 'px-10 bg-transparent' : 'bg-white/2 border-b border-white/5'}`}>
-                    <div className="flex items-center gap-6">
-                        <div className={`w-14 h-14 rounded-[2rem] bg-white/5 flex items-center justify-center border border-white/10 ${isSidebar ? 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.15)]' : ''}`}>
-                            <Package size={isSidebar ? 28 : 24} className={isSidebar ? "text-emerald-400" : "text-white/40"} />
-                        </div>
-                        <div className="flex flex-col">
-                            <h2 className={`${isSidebar ? 'text-2xl tracking-tight' : 'text-xl'} font-black text-white uppercase leading-none`}>{propTitle || "Inventory Artifact"}</h2>
-                            <p className={`font-black uppercase tracking-[0.4em] mt-2 ${isSidebar ? 'text-[10px] text-emerald-500/60' : 'text-[9px] text-white/20'}`}>{filteredItems.length} Items Indexed</p>
-                        </div>
+                    )}
+                </>
+            )}
+            
+            {/* Modern Header */}
+            <div className={`px-8 py-10 flex items-center justify-between shrink-0 ${(isSidebar || isEmbeddedArtifact) ? 'px-10 bg-transparent' : 'bg-white/2 border-b border-white/5'}`}>
+                <div className="flex items-center gap-6">
+                    <div className={`w-14 h-14 rounded-[2rem] bg-white/5 flex items-center justify-center border border-white/10 ${(isSidebar || isEmbeddedArtifact) ? `${isEmbeddedArtifact ? 'bg-orange-500/10 border-orange-500/20 shadow-[0_0_30px_rgba(249,115,22,0.15)]' : 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.15)]'}` : ''}`}>
+                        <Package size={(isSidebar || isEmbeddedArtifact) ? 28 : 24} className={(isSidebar || isEmbeddedArtifact) ? (isEmbeddedArtifact ? "text-orange-400" : "text-emerald-400") : "text-white/40"} />
                     </div>
+                    <div className="flex flex-col">
+                        <h2 className={`${(isSidebar || isEmbeddedArtifact) ? 'text-2xl tracking-tight' : 'text-xl'} font-black text-white uppercase leading-none`}>{propTitle || "Inventory Artifact"}</h2>
+                        <p className={`font-black uppercase tracking-[0.4em] mt-2 ${(isSidebar || isEmbeddedArtifact) ? `text-[10px] ${isEmbeddedArtifact ? 'text-orange-500/60' : 'text-emerald-500/60'}` : 'text-[9px] text-white/20'}`}>{filteredItems.length} Items Indexed</p>
+                    </div>
+                </div>
 
-                    <div className="flex items-center gap-2 sm:gap-4">
-                        {/* Detach / Attach Toggle */}
+                <div className="flex items-center gap-2 sm:gap-4">
+                    {/* Detach / Attach Toggle */}
+                    {!isEmbeddedArtifact && (
                         <button 
                             onClick={() => setConfig(prev => ({ ...prev, viewMode: isSidebar ? 'modal' : 'sidebar' }))}
                             className={`p-3 rounded-2xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all border border-white/5 ${isSidebar ? 'bg-black/20 backdrop-blur-xl' : ''}`}
@@ -269,23 +267,24 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                         >
                             {isSidebar ? <ExternalLink size={20} /> : <Minimize2 size={16} />}
                         </button>
+                    )}
 
-                        {!isSidebar && (
-                            <>
-                                <div className="w-px h-6 bg-white/5 mx-1 hidden sm:block" />
-                                <div className="flex items-center gap-1 bg-black/40 rounded-xl p-1 border border-white/5 scale-90 sm:scale-100">
-                                    <button onClick={() => setDisplayMode('list')} className={`p-2 rounded-lg transition-all ${displayMode === 'list' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><LayoutList size={16} /></button>
-                                    <button onClick={() => setDisplayMode('grid')} className={`p-2 rounded-lg transition-all ${displayMode === 'grid' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><LayoutGrid size={16} /></button>
-                                    <button onClick={() => setDisplayMode('gallery')} className={`p-2 rounded-lg transition-all ${displayMode === 'gallery' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><Layout size={16} /></button>
-                                </div>
-                                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">&times;</button>
-                            </>
-                        )}
-                    </div>
+                    {(!isSidebar && !isEmbeddedArtifact) && (
+                        <>
+                            <div className="w-px h-6 bg-white/5 mx-1 hidden sm:block" />
+                            <div className="flex items-center gap-1 bg-black/40 rounded-xl p-1 border border-white/5 scale-90 sm:scale-100">
+                                <button onClick={() => setDisplayMode('list')} className={`p-2 rounded-lg transition-all ${displayMode === 'list' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><LayoutList size={16} /></button>
+                                <button onClick={() => setDisplayMode('grid')} className={`p-2 rounded-lg transition-all ${displayMode === 'grid' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><LayoutGrid size={16} /></button>
+                                <button onClick={() => setDisplayMode('gallery')} className={`p-2 rounded-lg transition-all ${displayMode === 'gallery' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><Layout size={16} /></button>
+                            </div>
+                            <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">&times;</button>
+                        </>
+                    )}
                 </div>
+            </div>
 
-                {/* Content Area */}
-                <div className={`flex-1 overflow-y-auto custom-scrollbar ${isSidebar ? 'px-10 py-4' : 'px-8 py-8'}`}>
+            {/* Content Area */}
+            <div className={`flex-1 overflow-y-auto custom-scrollbar ${(isSidebar || isEmbeddedArtifact) ? 'px-10 py-4' : 'px-8 py-8'}`}>
                     
                     {(() => {
                         const getStatusLabel = (s: string) => {
@@ -312,7 +311,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const displayUrlsArr = [mediaUrlsArr[0] || norm.generatedPngUrl, ...mediaUrlsArr.slice(1)].filter(Boolean).slice(0, 60);
 
                                         return (
-                                            <div key={item.row} onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}
+                                            <div key={item.row} onClick={() => handleItemAction(item, displayUrlsArr, 0)}
                                                 className={`flex items-center group transition-all cursor-pointer ${isSidebar ? 'py-3 hover:translate-x-2' : 'px-6 py-4 rounded-3xl bg-white/2 border border-white/5 hover:border-white/10 hover:scale-[1.01]'}`}>
                                                 <div className={`relative shrink-0 overflow-hidden ${isSidebar ? 'w-14 h-14 rounded-2xl bg-black/40 mr-5' : 'w-12 h-12 rounded-xl bg-black/40 mr-6'}`}>
                                                     <img src={getCleanImageUrl(mediaUrlsArr[0] || norm.generatedPngUrl)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
@@ -350,7 +349,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const displayUrlsArr = [mediaUrlsArr[0] || norm.generatedPngUrl, ...mediaUrlsArr.slice(1)].filter(Boolean).slice(0, 60);
 
                                         return (
-                                            <div key={item.row} onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}
+                                            <div key={item.row} onClick={() => handleItemAction(item, displayUrlsArr, 0)}
                                                 className="flex flex-col rounded-[32px] overflow-hidden bg-white/2 border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
                                                 <div className="aspect-square relative flex items-center justify-center bg-black/20 p-6">
                                                     <img src={getCleanImageUrl(mediaUrlsArr[0] || norm.generatedPngUrl)} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
@@ -398,7 +397,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                                 <img 
                                                                     src={getCleanImageUrl(url)} 
                                                                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
-                                                                    onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(i); setShowViewer(true); }}
+                                                                    onClick={() => handleItemAction(item, displayUrlsArr, i)}
                                                                 />
                                                                 {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none"><Video size={24} className="text-white/60" /></div>}
                                                             </div>
@@ -452,7 +451,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                     if (total === 1) {
                                                         return (
                                                             <div className="relative w-full bg-black/20 overflow-hidden cursor-pointer"
-                                                                onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}>
+                                                                onClick={() => handleItemAction(item, displayUrlsArr, 0)}>
                                                                 <img src={getCleanImageUrl(visibleUrls[0])} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 group-hover:scale-105" />
                                                                 {isVideoFile(visibleUrls[0]) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={32} className="text-white/60" /></div>}
                                                                 <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
@@ -477,7 +476,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                             <div className={`grid gap-px bg-black/20 ${total === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                                                                 {visibleUrls.map((url, i) => (
                                                                     <div key={i} className="relative overflow-hidden cursor-pointer bg-black/10"
-                                                                        onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(i); setShowViewer(true); }}>
+                                                                        onClick={() => handleItemAction(item, displayUrlsArr, i)}>
                                                                         <img src={getCleanImageUrl(url)} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 group-hover:scale-110" />
                                                                         {i === 0 && (
                                                                             <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
@@ -507,7 +506,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                         <div className={`grid gap-px bg-black/20 ${gridCols}`}>
                                                             {visibleUrls.map((url, i) => (
                                                                 <div key={i} className={`relative overflow-hidden aspect-square cursor-pointer`}
-                                                                    onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(i); setShowViewer(true); }}>
+                                                                    onClick={() => handleItemAction(item, displayUrlsArr, i)}>
                                                                     <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
                                                                     {i === 0 && (
                                                                         <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
@@ -595,15 +594,15 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                 </div>
 
                 {/* Footer Totals */}
-                <div className={`px-10 py-12 bg-transparent flex items-center justify-between shrink-0 ${isSidebar ? 'px-10' : 'bg-white/1 border-t border-white/5'}`}>
-                    <div className={`flex items-center gap-16 ${isSidebar ? 'grid grid-cols-2 gap-8 w-full' : ''}`}>
-                        {!isSidebar && (
+                <div className={`px-10 py-12 bg-transparent flex items-center justify-between shrink-0 ${(isSidebar || isEmbeddedArtifact) ? 'px-10' : 'bg-white/1 border-t border-white/5'}`}>
+                    <div className={`flex items-center gap-16 ${(isSidebar || isEmbeddedArtifact) ? 'grid grid-cols-2 gap-8 w-full' : ''}`}>
+                        {(!isSidebar && !isEmbeddedArtifact) && (
                             <div className="flex flex-col border-l border-white/10 pl-16">
                                 <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Asset Inventory Value</span>
                                 <span className="text-2xl font-mono font-black text-white/90">${Math.ceil(aggregateFinancials.listValue).toLocaleString()}</span>
                             </div>
                         )}
-                        {!isSidebar && (
+                        {(!isSidebar && !isEmbeddedArtifact) && (
                             <>
                                 <div className="flex flex-col border-l border-white/10 pl-16">
                                     <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Net Paid To Date</span>
@@ -615,18 +614,54 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                 </div>
                             </>
                         )}
-                        {isSidebar && (
+                        {(isSidebar || isEmbeddedArtifact) && (
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1.5 opacity-40">Artifact Contents</span>
                                 <span className="text-xl font-black text-white/90 uppercase tracking-tighter">Inventory Ledger</span>
                             </div>
                         )}
                     </div>
-                    {!isSidebar && (
+                    {(!isSidebar && !isEmbeddedArtifact) && (
                         <button onClick={onClose} className="h-14 px-10 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black uppercase tracking-[0.3em] text-white hover:bg-white/10 transition-all">Dismiss Artifact</button>
                     )}
                 </div>
+
+                {/* Selection indicators for embedded mode */}
+                {isEmbeddedArtifact && (
+                    <div className="absolute bottom-4 right-10 flex items-center gap-4 animate-in slide-in-from-bottom duration-500">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                            <span className="text-[9px] font-black text-white/60 uppercase tracking-widest">Active Link</span>
+                        </div>
+                    </div>
+                )}
             </div>
+    );
+
+    if (isEmbeddedArtifact) return <div className={containerClasses}>{artifactContent}</div>;
+
+    return createPortal(
+        <div className={containerClasses}>
+            {!isSidebar && <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl" onClick={onClose} />}
+            {!isSidebar && (
+                <button 
+                    onClick={onClose}
+                    className="absolute top-10 right-10 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all z-[10000] shadow-2xl backdrop-blur-xl group"
+                >
+                    <X size={40} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                </button>
+            )}
+            
+            {showViewer && (
+                <FullscreenImageViewer 
+                    src={viewerUrls[viewerIdx]} 
+                    mediaUrls={viewerUrls} 
+                    initialIdx={viewerIdx} 
+                    onClose={() => setShowViewer(false)} 
+                />
+            )}
+
+            {artifactContent}
         </div>,
         document.body
     );

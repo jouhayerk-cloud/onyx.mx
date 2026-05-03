@@ -43,7 +43,8 @@ import {
     isPackingPrintWizardOpenAtom,
     isPackingNFCWizardOpenAtom,
     isPackingCrateWizardOpenAtom,
-    isPaymentWizardOpenAtom
+    isPaymentWizardOpenAtom,
+    inventoryStatusSetsAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass } from '../../lib/utils';
@@ -1049,82 +1050,7 @@ export const UnifiedInventoryView = () => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
-    const { partialPayIds, fullPayIds, requestedAcqIds } = useMemo(() => {
-        const pIds = new Set<string>();
-        const fIds = new Set<string>();
-        const rAcqIds = new Set<string>();
-
-        // paidMap: confirmed money movement (status: paid | partial) — for PAID/GREEN threshold
-        const paidMap = new Map<string, number>();
-        // requestedMap: financial activity for Prod/Packing items to show RED
-        const requestedMap = new Map<string, number>();
-
-        financeDocs.forEach((d: any) => {
-            const status = String(d.status || '').toLowerCase();
-            const subcategory = String(d.subcategory || '').toLowerCase();
-            const amount = Number(d.amount || 0);
-            if (amount <= 0) return;
-
-            const rel = d.related_ids || d.related_inventory_ids || '';
-            let relArray: string[] = [];
-            if (Array.isArray(rel)) relArray = rel.map((id: any) => String(id));
-            else if (typeof rel === 'string') relArray = rel.split(',').map((s: string) => s.trim()).filter(Boolean);
-            if (relArray.length === 0) return;
-
-            if (status === 'paid' || status === 'partial') {
-                relArray.forEach(id => paidMap.set(id, (paidMap.get(id) || 0) + amount));
-                relArray.forEach(id => requestedMap.set(id, (requestedMap.get(id) || 0) + amount));
-            }
-            // Prod/Packing requested → RED (partial in-motion)
-            if (status === 'requested' && (subcategory === 'prod' || subcategory === 'packing')) {
-                relArray.forEach(id => requestedMap.set(id, (requestedMap.get(id) || 0) + amount));
-            }
-            // Acq requested → YELLOW (requested, not yet paid)
-            if (status === 'requested' && subcategory === 'acq') {
-                relArray.forEach(id => rAcqIds.add(id));
-            }
-        });
-
-        items.forEach((item: any) => {
-            const id = String(item.data?.id || item.row);
-            const totalPaid = paidMap.get(id) || 0;
-            const totalRequested = requestedMap.get(id) || 0;
-            
-            const norm = normalizeInventoryData(item.data);
-            const price = parseFloat(String(norm.price || 0));
-            const qty = parseInt(String(norm.quantity || 1));
-            const totalCost = price * qty;
-            
-            const payReqStr = String(norm.payReq || '').toLowerCase();
-            const statusStr = String(norm.status || '').toLowerCase();
-
-            // Skip financial flagging for Book 825 or Prepaid (Always GREEN)
-            if (norm.workbook === 'v825' || norm.workbook === '825' || payReqStr === 'prepaid') {
-                fIds.add(id);
-                return;
-            }
-
-            // Handle full payment
-            if (totalCost > 0 && totalPaid >= totalCost) {
-                fIds.add(id);
-                return;
-            }
-
-            // Identify Partial / In-motion (RED)
-            // Should be RED if:
-            // 1. We have financial docs (Paid or Requested) and it's not fully paid.
-            // 2. OR it has a pay_req flag and it's NOT a Requested Acquisition (which is YELLOW)
-            const hasActivity = totalRequested > 0 || (payReqStr && payReqStr !== 'false');
-            if (hasActivity) {
-                const isRequestedAcq = statusStr === 'acquisition' && totalPaid === 0 && (totalRequested > 0 || payReqStr === 'requested');
-                if (!isRequestedAcq) {
-                    pIds.add(id);
-                }
-            }
-        });
-
-        return { partialPayIds: pIds, fullPayIds: fIds, requestedAcqIds: rAcqIds };
-    }, [financeDocs, items]);
+    const { partialPayIds, fullPayIds, requestedAcqIds } = useAtomValue(inventoryStatusSetsAtom);
 
     useEffect(() => { if (mode === 'edit' && itemData) { setEditData({ ...normalizeInventoryData(itemData), vendorId: String(itemData.itemId || '').split('-')[0] }); setNewFiles([]); } }, [mode, itemData]);
 

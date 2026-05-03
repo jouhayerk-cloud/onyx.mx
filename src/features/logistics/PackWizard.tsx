@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { 
     isPackingCrateWizardOpenAtom,
     selectedInventoryIdsAtom,
     inventoryAtom,
     exchangeRateAtom,
+    isCratePackingManagerOpenAtom,
+    packingManagerTargetCrateIdAtom,
 } from '../../lib/atoms';
-import { X, ChevronRight, Search, Info, Loader2, PackagePlus, ArrowLeft, Layers, Weight, Maximize2, Zap, LayoutGrid } from 'lucide-react';
+import { X, ChevronRight, Search, Info, Loader2, PackagePlus, ArrowLeft, Layers, Weight, Maximize2, Zap, LayoutGrid, Rotate3d } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { normalizeInventoryData, getCleanImageUrl, calculateCodesAndPrices, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
@@ -87,6 +89,8 @@ export const PackWizard: React.FC = () => {
     const selectedIds = useAtomValue(selectedInventoryIdsAtom);
     const inventory = useAtomValue(inventoryAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
+    const setIsManagerOpen = useSetAtom(isCratePackingManagerOpenAtom);
+    const setManagerTargetCrateId = useSetAtom(packingManagerTargetCrateIdAtom);
 
     const [step, setStep] = useState<WizardStep>('SELECT_CRATE');
     const [crates, setCrates] = useState<CrateRecord[]>([]);
@@ -181,8 +185,8 @@ export const PackWizard: React.FC = () => {
 
     return (
         <div className="fixed inset-0 z-[20000] flex flex-col pointer-events-none animate-in fade-in duration-500 overflow-hidden">
-            <div className="absolute inset-0 backdrop-blur-[120px] bg-black/40 pointer-events-auto" onClick={() => setIsOpen(false)} />
-            <div className="relative w-full h-full flex flex-col pointer-events-auto overflow-hidden">
+            <div className="absolute inset-0 backdrop-blur-xl bg-black/60 pointer-events-auto" onClick={() => setIsOpen(false)} />
+            <div className="relative w-full h-full flex flex-col pointer-events-auto overflow-hidden bg-black/40 backdrop-blur-2xl">
 
             {/* Background branding */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-[0.015]">
@@ -483,6 +487,22 @@ export const PackWizard: React.FC = () => {
                         </button>
                     )}
                 </div>
+
+                {/* Advanced Mode Trigger */}
+                {step === 'REVIEW_PACK' && (
+                    <button 
+                        onClick={() => {
+                            setManagerTargetCrateId(selectedCrate!.id);
+                            setIsManagerOpen(true);
+                            setIsOpen(false);
+                            toast.success('Entering 3D Workspace', { icon: '📦' });
+                        }}
+                        className="hidden lg:flex items-center gap-3 px-8 h-14 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-[0.4em] text-white/60 hover:text-white hover:bg-white/5 transition-all active:scale-95"
+                    >
+                        <Rotate3d size={18} className="text-blue-400" />
+                        3D Workspace
+                    </button>
+                )}
             </div>
             </div>
         </div>
