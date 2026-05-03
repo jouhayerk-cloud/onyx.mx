@@ -136,29 +136,42 @@ export const ItemsPayWizard: React.FC = () => {
     };
 
     return (
-        <div className="fixed inset-0 z-10000 flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-300">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-2xl" onClick={handleClose} />
+        <div className="absolute inset-0 z-[1000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
+            <div className="absolute inset-0 backdrop-blur-xl bg-black/40 pointer-events-auto" onClick={handleClose} />
             
-            <div className="relative w-full max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="relative w-full h-full flex flex-col pointer-events-auto overflow-y-auto bg-black/10 backdrop-blur-3xl">
                 
-                {/* HEADER */}
-                <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_20px_rgba(var(--main-color-rgb),0.3)]">
-                            <CreditCard size={28} strokeWidth={2.5} />
+                {/* Floating Close Button - Studio Standard */}
+                <button 
+                    onClick={handleClose} 
+                    className="fixed top-6 right-6 md:top-10 md:right-10 z-[20002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/5 backdrop-blur-3xl rounded-full border border-white/10 text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_80px_rgba(0,0,0,0.8)] group active:scale-95"
+                >
+                    <X size={32} className="md:w-[48px] md:h-[48px] group-hover:rotate-90 transition-transform duration-700" strokeWidth={1} />
+                </button>
+
+                <div className="flex-1 flex flex-col p-8 md:p-12 lg:p-16 max-w-7xl mx-auto w-full">
+                    
+                    {/* Header - Studio Style */}
+                    <div className="flex justify-between items-start mb-16 shrink-0">
+                        <div className="flex flex-col gap-5">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)]">
+                                    <CreditCard size={24} strokeWidth={2.5} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <h2 className="text-3xl font-black text-white tracking-[0.3em] uppercase leading-none">PAY</h2>
+                                    <span className="text-[10px] font-black text-white/20 tracking-[1em] uppercase mt-3">BULK_DISBURSEMENT_PROTOCOL</span>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-2xl font-black uppercase tracking-tight text-white leading-none">ItemsPay Wizard</h2>
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mt-2">Bulk Disbursement & Status Audit</p>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[1em] mb-2">ARTIFACT_COUNT</span>
+                            <span className="text-6xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter">{selectedIds.length}</span>
                         </div>
                     </div>
-                    <button onClick={handleClose} className="w-12 h-12 rounded-full flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all">
-                        <X size={24} />
-                    </button>
-                </div>
 
-                {/* CONTENT */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-10">
+                    {/* CONTENT */}
+                    <div className="flex-1 space-y-16">
                     
                     {/* STATUS SUMMARY CARDS */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -253,27 +266,26 @@ export const ItemsPayWizard: React.FC = () => {
                             </div>
                         )}
                     </div>
-                </div>
+                    </div>
 
-                {/* FOOTER */}
-                <div className="px-8 py-6 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
-                    <div className="flex items-center gap-8">
+                    {/* FOOTER - Minimalist Studio Style */}
+                    <div className="mt-auto pt-16 flex justify-between items-end border-t border-white/5">
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Total Selected Value</span>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-mono font-black text-white">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">Total Selected Value</span>
+                            <div className="flex items-baseline gap-3">
+                                <span className="text-4xl font-mono font-black text-white leading-none">
                                     ${Object.values(groupTotals).reduce((a, b) => a + b, 0).toLocaleString()}
                                 </span>
-                                <span className="text-xs font-black text-white/20">USD</span>
+                                <span className="text-sm font-black text-white/20">USD</span>
                             </div>
                         </div>
+                        <button 
+                            onClick={handleClose}
+                            className="px-12 py-5 rounded-2xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-[11px] font-black uppercase tracking-[0.5em] active:scale-95"
+                        >
+                            Terminate Wizard
+                        </button>
                     </div>
-                    <button 
-                        onClick={handleClose}
-                        className="px-8 py-4 rounded-2xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-[11px] font-black uppercase tracking-[0.4em]"
-                    >
-                        Close Wizard
-                    </button>
                 </div>
             </div>
         </div>
