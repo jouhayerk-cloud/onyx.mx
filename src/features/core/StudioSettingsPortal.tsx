@@ -126,34 +126,35 @@ export const StudioSettingsPortal: React.FC = () => {
                                 <div className="space-y-12 md:space-y-24 pb-20">
 
                                     {/* ── NEURAL IDENTITY PANEL (NEW TOP POSITION) ── */}
-                                    <div className={`p-4 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 md:gap-16 animate-in slide-in-from-top-4 duration-700`}>
-                                        <div className="flex items-center gap-6 md:gap-10 w-full md:w-auto">
-                                            <div className={`w-14 h-14 md:w-20 md:h-20 rounded-[28px] flex items-center justify-center transition-all ${L ? 'bg-black/5 text-black' : 'bg-white/5 text-white'}`}>
-                                                <Shield size={32} strokeWidth={2} className="text-purple-500" />
+                                    <div className={`p-4 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 animate-in slide-in-from-top-4 duration-700`}>
+                                        <div className="flex items-center gap-6 md:gap-8 w-full md:w-auto">
+                                            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-[22px] flex items-center justify-center transition-all ${L ? 'bg-black/5 text-black' : 'bg-white/5 text-white'}`}>
+                                                <Shield size={24} strokeWidth={2} className="text-purple-500" />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className={`text-[10px] md:text-[12px] font-black uppercase tracking-[0.6em] mb-2 ${L ? 'text-black' : 'text-white'}`}>Authorized Operator</span>
-                                                <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
-                                                    <span className={`text-3xl md:text-5xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || 'ROOT'}</span>
-                                                    <span className="text-[11px] md:text-[13px] font-black text-blue-500 uppercase tracking-[0.3em]">{user?.email}</span>
+                                                <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] mb-1 ${L ? 'text-black' : 'text-white'}`}>Operator</span>
+                                                <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4">
+                                                    <span className={`text-xl md:text-2xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || 'ROOT'}</span>
+                                                    <span className="text-[10px] md:text-[11px] font-black text-blue-500 uppercase tracking-[0.3em] opacity-60">{user?.email}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-center gap-8 md:gap-14 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
+                                        <div className="flex items-center gap-6 md:gap-8 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
                                             <button 
                                                 onClick={isOffline ? goOnline : goOffline} 
-                                                className={`flex items-center gap-4 transition-all duration-150 group ${isOffline ? 'text-green-500' : 'text-amber-500 hover:text-amber-400'}`}
+                                                className={`p-3 rounded-xl transition-all duration-150 ${isOffline ? 'text-green-500 hover:bg-green-500/10' : 'text-amber-500 hover:bg-amber-500/10'}`}
+                                                title={isOffline ? 'GO ONLINE' : 'GO OFFLINE'}
                                             >
-                                                {isOffline ? <Wifi size={18} /> : <WifiOff size={18} />}
-                                                <span className="text-[11px] font-black uppercase tracking-[0.5em]">
-                                                    {isOffline ? 'ONLINE' : 'OFFLINE'}
-                                                </span>
+                                                {isOffline ? <Wifi size={20} /> : <WifiOff size={20} />}
                                             </button>
 
-                                            <button onClick={logout} className="flex items-center gap-4 text-red-500 hover:text-red-400 transition-all duration-150 group">
-                                                <LogOut size={18} className="group-hover:-translate-x-1 transition-transform duration-150" />
-                                                <span className="text-[11px] font-black uppercase tracking-[0.5em]">TERMINATE</span>
+                                            <button 
+                                                onClick={logout} 
+                                                className="p-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-all duration-150"
+                                                title="TERMINATE SESSION"
+                                            >
+                                                <LogOut size={20} />
                                             </button>
                                         </div>
                                     </div>
