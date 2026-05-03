@@ -184,37 +184,38 @@ export const PackWizard: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[20000] flex flex-col pointer-events-none animate-in fade-in duration-500 overflow-hidden">
-            <div className="absolute inset-0 backdrop-blur-xl bg-black/60 pointer-events-auto" onClick={() => setIsOpen(false)} />
-            <div className="relative w-full h-full flex flex-col pointer-events-auto overflow-hidden bg-black/40 backdrop-blur-2xl">
+        <div className="absolute inset-0 z-[1000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
+            <div className="absolute inset-0 backdrop-blur-xl bg-black/40 pointer-events-auto" onClick={() => setIsOpen(false)} />
+            <div className="relative w-full h-full flex flex-col pointer-events-auto overflow-hidden bg-black/10 backdrop-blur-3xl">
 
-            {/* Background branding */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-[0.015]">
-                <OnyxMiniLogo className="w-[900px] h-[900px]" />
-            </div>
+                {/* Floating Close Button - Studio Standard */}
+                <button 
+                    onClick={() => setIsOpen(false)} 
+                    className="fixed top-6 right-6 md:top-10 md:right-10 z-[20002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/5 backdrop-blur-3xl rounded-full border border-white/10 text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_80px_rgba(0,0,0,0.8)] group active:scale-95"
+                >
+                    <X size={32} className="md:w-[48px] md:h-[48px] group-hover:rotate-90 transition-transform duration-700" strokeWidth={1} />
+                </button>
 
-            {/* Floating close */}
-            <button
-                onClick={() => setIsOpen(false)}
-                className="fixed top-4 right-4 md:top-8 md:right-8 z-[20002] w-14 h-14 md:w-20 md:h-20 rounded-full bg-white/10 backdrop-blur-3xl border border-white/20 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 hover:scale-110 transition-all active:scale-90 group pointer-events-auto"
-            >
-                <X size={36} className="group-hover:rotate-90 transition-transform duration-500" strokeWidth={1} />
-            </button>
-
-            {/* Header */}
-            <div className="flex items-center gap-5 px-8 md:px-16 pt-8 pb-4 shrink-0 relative z-10">
-                <div className="w-14 h-14 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)]">
-                    {step === 'SELECT_CRATE' ? <LayoutGrid size={28} /> : <PackagePlus size={28} />}
+            {/* Header - Studio Style */}
+            <div className="flex justify-between items-start px-8 md:px-16 pt-12 md:pt-16 mb-8 md:mb-12 shrink-0 relative z-10">
+                <div className="flex flex-col gap-5">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)]">
+                            {step === 'SELECT_CRATE' ? <LayoutGrid size={24} strokeWidth={2.5} /> : <PackagePlus size={24} strokeWidth={2.5} />}
+                        </div>
+                        <div className="flex flex-col">
+                            <h2 className="text-3xl font-black text-white tracking-[0.3em] uppercase leading-none">PACK</h2>
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.5em] mt-3 flex items-center gap-3">
+                                <span className={step === 'SELECT_CRATE' ? 'text-(--main-color)' : ''}>01 Container</span>
+                                <ChevronRight size={10} strokeWidth={3} />
+                                <span className={step === 'REVIEW_PACK' ? 'text-(--main-color)' : ''}>02 Manifest</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">PackWizard</h2>
-                    <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] mt-1 flex items-center gap-3">
-                        <span className={step === 'SELECT_CRATE' ? 'text-(--main-color)' : 'text-white/20'}>01 Container</span>
-                        <ChevronRight size={10} />
-                        <span className={step === 'REVIEW_PACK' ? 'text-(--main-color)' : 'text-white/20'}>02 Manifest</span>
-                        <span className="ml-2 opacity-40">·</span>
-                        <span className="opacity-40">{selectedIds.length} UNITS STAGED</span>
-                    </p>
+                <div className="flex flex-col items-end">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[1em] mb-2">STAGED_UNITS</span>
+                    <span className="text-6xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter">{selectedIds.length}</span>
                 </div>
             </div>
 
@@ -451,7 +452,7 @@ export const PackWizard: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="fixed bottom-0 left-0 right-0 z-20 px-8 md:px-16 py-6 flex items-center justify-between bg-gradient-to-t from-black/60 to-transparent">
+            <div className="absolute bottom-0 left-0 right-0 z-20 px-8 md:px-16 py-6 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent pointer-events-auto">
                 <div className="flex items-center gap-6">
                     {step === 'REVIEW_PACK' && (
                         <button onClick={() => setStep('SELECT_CRATE')} className="flex items-center gap-2 text-[10px] font-black text-white/30 uppercase tracking-[0.3em] hover:text-white transition-all group">

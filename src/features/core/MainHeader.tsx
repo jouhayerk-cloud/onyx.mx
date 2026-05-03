@@ -1793,7 +1793,7 @@ export function MainHeader() {
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveAs(new Blob([buffer]), `Onyx-mx_Book-326_${dateStr}.xlsx`);
-            toast.success('Manifest Exported Successfully');
+            toast.success('WorkBook Ready', { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
             toast.error('Manifest Export Failed');
@@ -1883,7 +1883,21 @@ export function MainHeader() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1 sm:gap-4 shrink-0 pl-2 sm:pl-4 ml-auto h-full">
+                <div className="flex items-center gap-1 sm:gap-6 shrink-0 pl-2 sm:pl-4 ml-auto h-full">
+                    {/* Full Color XLSX Download Button */}
+                    <button
+                        onClick={handleMasterExportXLSX}
+                        disabled={isExporting}
+                        className={`flex items-center gap-3 px-4 sm:px-6 h-12 rounded-xl transition-all active:scale-95 shadow-xl hover:shadow-(--main-color)/20 group/xlsx ${
+                            isExporting ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
+                        title="Download Full Workbook XLSX"
+                    >
+                        <FileSpreadsheet size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
+                        <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Workbook</span>
+                    </button>
+
                     <div
                         className="flex flex-col items-end border-l border-white/5 pl-4 sm:pl-6 cursor-pointer shrink-0 transition-all active:scale-95"
                         onClick={() => openSettingsPortal(true)}
