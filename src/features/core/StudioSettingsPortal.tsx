@@ -140,7 +140,19 @@ export const StudioSettingsPortal: React.FC = () => {
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-center gap-6 md:gap-8 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
+                                        <div className="flex items-center gap-4 md:gap-8 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
+                                            {/* Performance Toggle */}
+                                            <button 
+                                                onClick={() => setPerf(!performanceMode)} 
+                                                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-150 ${performanceMode ? 'text-yellow-500 hover:bg-yellow-500/10' : 'text-white/20 hover:bg-white/10'}`}
+                                                title={performanceMode ? 'MAX PERFORMANCE' : 'STANDARD PERFORMANCE'}
+                                            >
+                                                <Zap size={20} />
+                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded transition-all duration-150 ${performanceMode ? 'bg-yellow-500 text-black' : L ? 'bg-black/10 text-black' : 'bg-white/10 text-white'}`}>
+                                                    {performanceMode ? 'MAX' : 'STD'}
+                                                </span>
+                                            </button>
+
                                             <button 
                                                 onClick={isOffline ? goOnline : goOffline} 
                                                 className={`p-3 rounded-xl transition-all duration-150 ${isOffline ? 'text-green-500 hover:bg-green-500/10' : 'text-amber-500 hover:bg-amber-500/10'}`}
@@ -241,29 +253,10 @@ export const StudioSettingsPortal: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* ── ROW 2: Performance + Additional ── */}
-                                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 pt-12 ${L ? 'opacity-100' : 'opacity-100'}`}>
-
-                                        {/* Performance */}
-                                        <div className="space-y-10">
-                                            <div className="flex items-center gap-4 pb-6">
-                                                <Zap size={14} className="text-yellow-500" />
-                                                <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>
-                                                    <span className="hidden sm:inline">System </span>Performance
-                                                </h3>
-                                            </div>
-                                            <div className="space-y-10">
-                                                <div className="group cursor-pointer" onClick={() => setPerf(!performanceMode)}>
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <div className="flex items-center gap-3">
-                                                            <Zap size={18} className={performanceMode ? 'text-yellow-500' : 'text-white/20'} />
-                                                        </div>
-                                                        <div className={`text-[12px] md:text-[14px] font-black px-3 py-1 rounded-xl transition-all duration-150 ${performanceMode ? 'bg-yellow-500 text-black' : L ? 'bg-black/10 text-black' : 'bg-white/10 text-white'}`}>
-                                                            {performanceMode ? 'MAX' : 'STD'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                    {/* ── ROW 2: System Node ── */}
+                                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 pt-12`}>
+                                        <div className="space-y-12">
+                                            {/* Left intentionally empty to balance the System Node */}
                                         </div>
 
                                         {/* Additional Stats / Placeholder */}
