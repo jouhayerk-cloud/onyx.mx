@@ -24,7 +24,8 @@ import {
     paymentsArtifactConfigAtom,
     universalViewAtom,
     tagIdAtom,
-    isStudioSettingsOpenAtom
+    isStudioSettingsOpenAtom,
+    isFinanceScrolledAtom
 } from '../../lib/atoms';
 import React, { useEffect, useState } from 'react';
 import {
@@ -59,7 +60,7 @@ import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { PaymentsArtifact } from '../finance/PaymentsArtifact';
 import { ViewerView } from '../viewer/ViewerView';
 import { ThreeDAppView } from '../threed/ThreeDView';
-import { PaymentsFilterBar } from '../finance/PaymentsFilterBar';
+
 import { UniversalToolsBar } from './UniversalToolsBar';
 import { LabelWizard, NFCWizard } from '../logistics/LabelWizard';
 import { PackWizard } from '../logistics/PackWizard';
@@ -178,6 +179,7 @@ export function MainAppView() {
     
     const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
+    const setIsFinanceScrolled = useSetAtom(isFinanceScrolledAtom);
 
     // Deep Link Effect
     useEffect(() => {
@@ -279,7 +281,6 @@ export function MainAppView() {
         switch (activeView as string) {
             case 'control': return <ControlView />;
             case 'dashboard': return <AdminDashboard />;
-            case 'overview': return <ClientOverview />;
             case 'upload': return <UploadView />;
             case 'inventory': return <InventoryView />;
             case 'logistics': return <LogisticsView />;
@@ -344,23 +345,21 @@ export function MainAppView() {
                                 label="Admin"
                                 icon="shield"
                                 subItems={[
-                                    { id: 'control', label: 'Control Center', icon: 'shield', action: () => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'control' }
+                                    { id: 'control', label: 'Control Center', icon: 'shield', action: () => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'control' },
+                                    { id: 'dashboard', label: 'Dashboard', icon: 'bar-chart-3', action: () => { setActiveView('dashboard'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'dashboard' }
                                 ]}
                             />
                         )}
 
                         {/* ── FINANCES ── */}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting') && (
-                            <NavItemWithSubmenu 
-                                viewId="finances"
-                                label="Finances"
-                                icon="badge-dollar-sign"
-                                subItems={[
-                                    ...(user?.role !== 'ClientAccounting' ? [{ id: 'dashboard', label: 'Dashboard', icon: 'bar-chart-3', action: () => { setActiveView('dashboard'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'dashboard' }] : []),
-                                    { id: 'overview', label: 'Overview', icon: 'layout-dashboard', action: () => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'overview' },
-                                    { id: 'finance', label: 'Payments', icon: 'credit-card', action: () => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'finance' }
-                                ]}
-                            />
+                            <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <BadgeDollarSign size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Finances</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Finances</span>
+                            </li>
                         )}
                         {/* ── INVENTORY ── */}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
@@ -448,12 +447,21 @@ export function MainAppView() {
                         )}
                     </div>
                 </div>
-                <div className="app-content flex-1 min-h-0 overflow-y-auto scroll-smooth p-0 m-0 relative">
-                    <div className="sticky top-0 z-[500] w-full flex flex-col shadow-2xl">
+                <div 
+                    className="app-content flex-1 min-h-0 overflow-y-auto scroll-smooth p-0 m-0 relative"
+                    onScroll={(e) => {
+                        const scrollTop = (e.currentTarget as HTMLDivElement).scrollTop;
+                        if (activeView === 'finance') {
+                            if (scrollTop > 100) setIsFinanceScrolled(true);
+                            else setIsFinanceScrolled(false);
+                        }
+                    }}
+                >
+                    <div className="sticky top-0 z-[500] w-full flex flex-col bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl">
                         <MainHeader />
                         <UniversalToolsBar />
                     </div>
-                    {activeView === 'finance' && <PaymentsFilterBar />}
+
                     <main className="flex-1 flex flex-col min-h-0 p-0 m-0">
                         {pageContent}
                     </main>

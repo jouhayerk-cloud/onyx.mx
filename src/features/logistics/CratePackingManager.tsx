@@ -456,9 +456,7 @@ const ActiveCrateHUD: React.FC<{
                                 <Plus size={12} />
                             </button>
                         </div>
-                    </div>
                 </div>
-            )}
         </div>
     );
 };
@@ -1535,6 +1533,8 @@ export const CratePackingManager: React.FC = () => {
                         )}
 
             </div>
+        )}
+    </div>
 
             {/* FAB - Fixed to bottom of the entire view */}
             {selectedCrate && selectedItemIds.size > 0 && (

@@ -4,7 +4,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom, financeTotalsAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -13,7 +13,7 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers, Minimize2
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
@@ -1141,50 +1141,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [statusFilter, setStatusFilter] = useAtom(paymentStatusFilterAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
-
-    const toggleRow = (id: string) => {
-        setExpandedRows(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    };
-
-    useEffect(() => {
-        if (liveExchangeRate) return;
-        fetch('https://open.er-api.com/v6/latest/USD')
-            .then(r => r.json())
-            .then(d => { if (d?.rates?.MXN) setLiveExchangeRate(d.rates.MXN); })
-            .catch(() => { });
-    }, [liveExchangeRate, setLiveExchangeRate]);
-
-    // Auto-refresh payments list when finance or inventory data changes in the local RxDB.
-    // This fires after any save (AddPayment, EditPayment, inventory update) without requiring a manual reload.
-    useEffect(() => {
-        if (!db) return;
-        let timer: ReturnType<typeof setTimeout>;
-        const triggerRefresh = () => {
-            clearTimeout(timer);
-            timer = setTimeout(() => {
-                setPaymentsVersion(v => v + 1);
-                onRefresh();
-            }, 300);
-        };
-
-        const finSub = db.finance.find().$.subscribe(triggerRefresh);
-        const invSub = db.inventory.find().$.subscribe(triggerRefresh);
-
-        return () => {
-            clearTimeout(timer);
-            finSub.unsubscribe();
-            invSub.unsubscribe();
-        };
-    }, [db, onRefresh, setPaymentsVersion]);
+    const setFinanceTotals = useSetAtom(financeTotalsAtom);
 
     const pendingGroups = useMemo<VendorGroup[]>(() => {
-
-
         const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'production', 'new', 'scheduled', 'ready'];
 
         const pendingItems = inventory.filter(i => {
@@ -1265,6 +1224,57 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
         return groupList.filter(g => (g.total - g.paidTotal) > 0.5);
     }, [inventory, docs, logisticsData]);
+
+    useEffect(() => {
+        const queueItems = docs.filter(r => r.status === 'Requested');
+        setFinanceTotals({
+            queueLength: queueItems.length,
+            queueMxn: queueItems.reduce((s, r) => s + (r.amount || 0) + (r.commission || 0), 0),
+            upcomingLength: pendingGroups.length,
+            upcomingMxn: pendingGroups.reduce((s, g) => s + (g.total - g.paidTotal), 0),
+            pendingGroups
+        });
+    }, [docs, pendingGroups, setFinanceTotals]);
+
+    const toggleRow = (id: string) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        if (liveExchangeRate) return;
+        fetch('https://open.er-api.com/v6/latest/USD')
+            .then(r => r.json())
+            .then(d => { if (d?.rates?.MXN) setLiveExchangeRate(d.rates.MXN); })
+            .catch(() => { });
+    }, [liveExchangeRate, setLiveExchangeRate]);
+
+    // Auto-refresh payments list when finance or inventory data changes in the local RxDB.
+    // This fires after any save (AddPayment, EditPayment, inventory update) without requiring a manual reload.
+    useEffect(() => {
+        if (!db) return;
+        let timer: ReturnType<typeof setTimeout>;
+        const triggerRefresh = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                setPaymentsVersion(v => v + 1);
+                onRefresh();
+            }, 300);
+        };
+
+        const finSub = db.finance.find().$.subscribe(triggerRefresh);
+        const invSub = db.inventory.find().$.subscribe(triggerRefresh);
+
+        return () => {
+            clearTimeout(timer);
+            finSub.unsubscribe();
+            invSub.unsubscribe();
+        };
+    }, [db, onRefresh, setPaymentsVersion]);
 
     const vendorTotals = useMemo(() => {
         const totals: Record<string, number> = {};
@@ -1564,166 +1574,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 onConfirm={handleRequestPayment}
             />
 
-            {/* ── STICKY GLASSMORPHIC HEADER ── */}
-            <div className="sticky top-[79px] sm:top-[95px] z-[95] flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
-                    {/* General Overview & Stats Grids */}
-                    {overviewMode !== 'collapsed' && (
-                        <div className={`flex flex-col shrink-0 border-b border-white/5 ${overviewMode === 'extended' ? 'p-3 px-6' : 'p-1.5 px-4'} transition-all duration-300 relative`}>
-                            
-                            {/* Compact Mode Vendor Bubbles */}
-                            {overviewMode !== 'extended' && pendingGroups.length > 0 && (
-                                <div className="flex items-center gap-2 mb-2 px-1 animate-in fade-in slide-in-from-left-2 duration-500">
-                                    {pendingGroups.map(group => {
-                                        const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
-                                        const paidPerc = Math.round((group.paidTotal / group.total) * 100);
-                                        return (
-                                            <button key={group.vendorId} 
-                                                onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` })}
-                                                className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all hover:scale-125 cursor-pointer ring-0 hover:ring-2 ring-(--text-color)/20"
-                                                title={`${group.vendorId}: ${paidPerc}% Paid (${fmtMXN(group.total - group.paidTotal)} pending)`}
-                                                style={{ 
-                                                    background: `conic-gradient(${color} 0% ${paidPerc}%, var(--border-color) ${paidPerc}% 100%)`,
-                                                    padding: '1.5px'
-                                                }}>
-                                                <div className="w-full h-full rounded-full bg-black/80 flex items-center justify-center text-[7px] font-black backdrop-blur-sm shadow-[0_0_10px_rgba(255,255,255,0.05)]"
-                                                    style={{ color }}>
-                                                    {group.vendorId[0]}
-                                                </div>
-                                                {/* Minimal pulse indicator if 0% paid */}
-                                                {paidPerc === 0 && (
-                                                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-(--text-color)/20 animate-pulse border border-(--text-color)/10" style={{ backgroundColor: color }} />
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                    <div className="w-px h-3 bg-white/10 mx-1" />
-                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Ongoing Liquidations</span>
-                                </div>
-                            )}
-                            {/* Primary Grid: Rates & Summary Totals */}
-                            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${overviewMode === 'extended' ? 'gap-3' : 'gap-1.5'} mb-1`}>
-                                {/* Exchange Rates Card */}
-                                <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3 px-4' : 'p-2 px-3'} rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all`}>
-                                    <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                        <TrendingUp size={14} className="text-[#6BCEBB]" />
-                                    </div>
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">FX Rates</span>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-bold text-white/10 uppercase mb-0.5">Wbk</span>
-                                            <span className={`font-mono font-black text-[#FACC15] ${overviewMode === 'extended' ? 'text-[14px]' : 'text-[11px]'}`}>{exchangeRate.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex flex-col border-l border-white/5 pl-3">
-                                            <span className="text-[8px] font-bold text-white/10 uppercase mb-0.5">Live</span>
-                                            <span className={`font-mono font-black text-[#6BCEBB] ${overviewMode === 'extended' ? 'text-[14px]' : 'text-[11px]'}`}>{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                {/* Paid Total Card */}
-                                <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3 px-4' : 'p-2 px-3'} rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all`}>
-                                    <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                        <CheckCircle size={14} className="text-[#6BCEBB]" />
-                                    </div>
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Paid</span>
-                                    <div className="flex items-center gap-2 leading-tight">
-                                        <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-[22px]' : 'text-[16px]'}`}>
-                                            {currencyMode === 'MXN' ? fmtMXN(statusTotals.Paid || 0) : fmtUSD((statusTotals.Paid || 0) / rate)}
-                                        </span>
-                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded bg-white/5 text-white/40 border border-white/5`}>
-                                            {currencyMode}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Pending Total Card */}
-                                <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3 px-4' : 'p-2 px-3'} rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all`}>
-                                    <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                        <Clock size={14} className="text-[#FACC15]" />
-                                    </div>
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Pending</span>
-                                    <div className="flex items-center gap-2 leading-tight">
-                                        <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-[22px]' : 'text-[16px]'}`}>
-                                            {currencyMode === 'MXN' ? fmtMXN(statusTotals.Requested + statusTotals.Pending || 0) : fmtUSD((statusTotals.Requested + statusTotals.Pending || 0) / rate)}
-                                        </span>
-                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded bg-white/5 text-white/40 border border-white/5`}>
-                                            {currencyMode}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Summary View / Currency Toggle Card */}
-                                <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3 px-4' : 'p-2 px-3'} rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all`}>
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Perspective</span>
-                                    <div className="flex items-center justify-between gap-2 h-full">
-                                        <div className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-white/5">
-                                            <button onClick={() => setCurrencyMode('MXN')} className={`px-2 py-1 rounded-lg text-[9px] font-black transition-all ${currencyMode === 'MXN' ? 'bg-white text-black' : 'text-white/30 hover:text-white'}`}>MXN</button>
-                                            <button onClick={() => setCurrencyMode('USD')} className={`px-2 py-1 rounded-lg text-[9px] font-black transition-all ${currencyMode === 'USD' ? 'bg-white text-black' : 'text-white/30 hover:text-white'}`}>USD</button>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <button onClick={() => setOverviewMode(p => p === 'extended' ? 'compact' : 'extended')} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white hover:bg-white/10 transition-all">
-                                                {overviewMode === 'extended' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                                            </button>
-                                            <button onClick={() => setOverviewMode('collapsed')} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Extended Mode: Individual Vendor Progress Bars */}
-                            {overviewMode === 'extended' && pendingGroups.length > 0 && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-2 pt-3 border-t border-white/5 animate-in slide-in-from-top duration-500">
-                                    {pendingGroups.map(group => {
-                                        const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
-                                        const paidPerc = Math.round((group.paidTotal / group.total) * 100);
-                                        return (
-                                            <div key={group.vendorId} className="flex flex-col gap-2 p-2 rounded-xl bg-white/[0.02] border border-white/5 group/v">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-5 h-5 rounded-lg flex items-center justify-center text-[8px] font-black text-black" style={{ backgroundColor: color }}>{group.vendorId[0]}</div>
-                                                        <span className="text-[9px] font-black text-white/60 uppercase tracking-widest">{group.vendorId}</span>
-                                                    </div>
-                                                    {paidPerc > 0 ? <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter">{paidPerc}% PAID</span> : <div />}
-                                                </div>
-                                                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                                    <div className="h-full transition-all duration-1000 ease-out" style={{ width: `${paidPerc}%`, backgroundColor: color, boxShadow: `0 0 10px ${color}40` }} />
-                                                </div>
-                                                <div className="flex items-center justify-between mt-1">
-                                                    {paidPerc > 0 ? <span className="text-[9px] font-black text-white/30 uppercase">{paidPerc}% Paid</span> : <div />}
-                                                    <div className="flex items-center gap-3">
-                                                        <button 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const ids = group.items.map(i => i.row || (i.data as any).id).filter(Boolean);
-                                                                setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${group.vendorId}` });
-                                                            }}
-                                                            className="flex items-center gap-1.5 text-[9px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-widest"
-                                                        >
-                                                            <LayoutGrid size={11} /> Items
-                                                        </button>
-                                                        <button 
-                                                            onClick={(e) => {
-                                                                  e.stopPropagation();
-                                                                  setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` });
-                                                              }}
-                                                            className="flex items-center gap-1.5 text-[9px] font-black text-sky-400/60 hover:text-sky-400 transition-colors uppercase tracking-widest border-l border-white/10 pl-3"
-                                                        >
-                                                            <Receipt size={11} /> Ledger
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* ── Toggleable Filter Bar LIFTED TO MainAppView ── */}
-                </div>
 
                 <div className="pt-0 p-2 space-y-1 pb-32">
                     {filtered.length === 0 ? (

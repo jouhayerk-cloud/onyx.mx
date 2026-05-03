@@ -889,9 +889,10 @@ export const UnifiedInventoryView = () => {
     const [isLoading, setIsLoading] = useState(true); const [expandedCards, setExpandedCards] = useState<Record<string, number>>({});
     const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); 
     const viewSlider = useAtomValue(inventoryViewSliderAtom);
-    const viewMode = viewSlider < 50 ? 'list' : viewSlider < 100 ? 'grid' : 'gallery';
-    const listScale = viewSlider < 50 ? 1 + (viewSlider / 49) * 0.5 : 1;
-    const gridScale = viewSlider >= 50 && viewSlider < 100 ? 1 + ((viewSlider - 50) / 49) * 0.5 : 1;
+    const viewMode = viewSlider <= 2 ? 'list' : viewSlider <= 4 ? 'grid' : 'gallery';
+    const listScale = viewMode === 'list' ? (viewSlider === 1 ? 1 : 1.3) : 1;
+    const gridScale = viewMode === 'grid' ? (viewSlider === 3 ? 1 : 1.6) : 1;
+    const galleryScale = viewMode === 'gallery' ? (viewSlider === 5 ? 1 : 1.8) : 1;
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom); const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
     const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
@@ -1223,13 +1224,34 @@ export const UnifiedInventoryView = () => {
             const sA = getStatusClass(a.data, partialPayIds); const sB = getStatusClass(b.data, partialPayIds);
             if (sA === null && sB !== null) return -1; if (sA !== null && sB === null) return 1;
             let comp = 0;
-            if (sortKey === 'Date') comp = (new Date(b.data.timestamp || b.data.updated_at || 0).getTime()) - (new Date(a.data.timestamp || a.data.updated_at || 0).getTime());
-            else if (sortKey === 'Vendor') comp = (a.data.itemId||'').localeCompare(b.data.itemId||'');
-            else if (sortKey === 'Status') comp = ((sB==='RED'?6:sB==='YELLOW'?5:sB==='GREEN'?4:sB==='BLUE'?3:sB==='PURPLE'?2:1)-(sA==='RED'?6:sA==='YELLOW'?5:sA==='GREEN'?4:sA==='BLUE'?3:sA==='PURPLE'?2:1));
+            if (sortKey === 'Date') {
+                const dA = new Date(a.data.updated_at || a.data.timestamp || 0).getTime();
+                const dB = new Date(b.data.updated_at || b.data.timestamp || 0).getTime();
+                comp = dB - dA;
+            }
+            else if (sortKey === 'Vendor') {
+                const vA = String(a.data.itemId || a.data.item_id || '');
+                const vB = String(b.data.itemId || b.data.item_id || '');
+                comp = vA.localeCompare(vB);
+            }
+            else if (sortKey === 'Status') {
+                const getVal = (s: string | null) => s === 'RED' ? 6 : s === 'YELLOW' ? 5 : s === 'GREEN' ? 4 : s === 'BLUE' ? 3 : s === 'PURPLE' ? 2 : 1;
+                comp = getVal(sB) - getVal(sA);
+            }
             else if (sortKey === 'Number') {
                 const nA = parseInt(a.data.itemNumber || a.data.item_number || '0', 10);
                 const nB = parseInt(b.data.itemNumber || b.data.item_number || '0', 10);
                 comp = nA - nB;
+            }
+            else if (sortKey === 'Value') {
+                const vA = (parseFloat(a.data.price_mxn || a.data.price || 0)) * (parseInt(a.data.quantity || 1));
+                const vB = (parseFloat(b.data.price_mxn || b.data.price || 0)) * (parseInt(b.data.quantity || 1));
+                comp = vB - vA;
+            }
+            else if (sortKey === 'Qty') {
+                const qA = parseInt(a.data.quantity || 1);
+                const qB = parseInt(b.data.quantity || 1);
+                comp = qB - qA;
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
@@ -1345,23 +1367,22 @@ export const UnifiedInventoryView = () => {
             {/* ── INFO PANEL ── */}
             <div className="flex-1 relative">
                 {/* ── MAIN INVENTORY CONTENT ── */}
-                <div className="px-1 sm:px-6 pt-0 pb-32">
-                    <div 
-                        className={
-                            viewMode === 'grid' 
-                                ? "grid gap-8 pb-32" 
-                                : viewMode === 'gallery' 
-                                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 pb-32 auto-rows-max" 
-                                    : "flex flex-col gap-4 pb-32 max-w-[1600px] mx-auto w-full"
-                        }
-                        style={
-                            viewMode === 'grid' 
-                                ? { gridTemplateColumns: `repeat(auto-fill, minmax(${200 * gridScale}px, 1fr))` } 
-                                : viewMode === 'list' 
-                                    ? { zoom: listScale } as React.CSSProperties
-                                    : undefined
-                        }
-                    >
+                <div 
+                    className={`transition-all duration-700 ease-in-out ${
+                        viewMode === 'grid' 
+                            ? "grid gap-8 pb-32" 
+                            : viewMode === 'gallery' 
+                                ? "grid gap-10 pb-32 auto-rows-max" 
+                                : "flex flex-col gap-4 pb-32 max-w-[1600px] mx-auto w-full"
+                    }`}
+                    style={
+                        viewMode === 'grid' 
+                            ? { gridTemplateColumns: `repeat(auto-fill, minmax(${200 * gridScale}px, 1fr))` } 
+                            : viewMode === 'list' 
+                                ? { zoom: listScale, transition: 'zoom 0.5s ease-in-out' } as React.CSSProperties
+                                : { gridTemplateColumns: `repeat(auto-fill, minmax(${300 * galleryScale}px, 1fr))` }
+                    }
+                >
 
                     {isLoading && items.length === 0 ? (
                         <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div>

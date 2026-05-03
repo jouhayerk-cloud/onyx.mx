@@ -3,7 +3,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
     financeSubTabAtom, paymentCategoryFilterAtom, liveExchangeRateAtom, inventoryAtom, storeInventoryAtom, logisticsDataAtom,
-    inventoryArtifactConfigAtom, currencyModeAtom, paymentsArtifactConfigAtom
+    inventoryArtifactConfigAtom, currencyModeAtom, paymentsArtifactConfigAtom, financeTotalsAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -95,7 +95,7 @@ const VendorDot = ({ vendorId, color, size = 'w-5 h-5', textSize = 'text-[8px]' 
 );
 
 
-export const ClientOverview: React.FC = () => {
+export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded }) => {
     const db = useDatabase();
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
@@ -110,6 +110,7 @@ export const ClientOverview: React.FC = () => {
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
+    const setFinanceTotals = useSetAtom(financeTotalsAtom);
 
     const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
     const [isPaymentsCollapsed, setIsPaymentsCollapsed] = useState(false);
@@ -415,6 +416,15 @@ export const ClientOverview: React.FC = () => {
         };
     }, [vendorSummaries, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items, financeData]);
 
+    useEffect(() => {
+        setFinanceTotals({
+            queueLength: requisitions.length,
+            queueMxn: activeDestReqNetMXN,
+            upcomingLength: comingPaymentsByVendor.length,
+            upcomingMxn: comingPaymentsByVendor.reduce((sum, g) => sum + g.total, 0)
+        });
+    }, [requisitions.length, activeDestReqNetMXN, comingPaymentsByVendor, setFinanceTotals]);
+
     const attributeStats = useMemo(() => {
         const colorMatMap: Record<string, number> = {};
         const shapeDescMap: Record<string, number> = {};
@@ -529,8 +539,8 @@ export const ClientOverview: React.FC = () => {
     );
 
     return (
-        <div className="flex-1 overflow-hidden relative flex flex-col h-full bg-(--app-bg)">
-            <div className="grow min-h-0 overflow-y-auto custom-scrollbar px-4 py-4 space-y-4 pb-24">
+        <div className={`flex-1 relative flex flex-col h-full ${isEmbedded ? '' : 'bg-(--app-bg) overflow-hidden'}`}>
+            <div className={`grow min-h-0 custom-scrollbar space-y-4 ${isEmbedded ? 'p-2' : 'overflow-y-auto px-4 py-4 pb-24'}`}>
                 <div className="max-w-[1700px] mx-auto space-y-4">
                     
 
@@ -747,122 +757,9 @@ export const ClientOverview: React.FC = () => {
                             )}
                         </div>
                     </div>
-
-                    <div className={`p-8 rounded-xl border border-(--border-color) transition-all duration-300 ${isAnalysisCollapsed ? 'bg-(--text-color)/2' : 'bg-(--sidebar-bg) shadow-2xl'}`}>
-                        <div className="flex items-center justify-between mb-8">
-                            <SectionHeader 
-                                icon={TrendingUp} title="Global Distribution Analysis" color="#6BCEBB" 
-                                onToggle={() => setIsAnalysisCollapsed(!isAnalysisCollapsed)} isCollapsed={isAnalysisCollapsed}
-                                compactSummary={
-                                    <div className="flex flex-wrap gap-4 items-center">
-                                        <span className="text-[12px] font-black text-(--main-color)">{globalTotals.totalItems} <span className="opacity-30 text-[8px] uppercase whitespace-nowrap">Units Total</span></span>
-                                        <div className="h-3 w-px bg-(--text-color)/10" />
-                                        <CurrencyTag type="USD" amount={globalTotals.totalAcqValueUsd} className="scale-90 origin-left" />
-                                        <CurrencyTag type="MXN" amount={globalTotals.totalAcqValueUsd * currentExchangeRate} className="opacity-40 scale-90 origin-left" />
-                                    </div>
-                                }
-                            />
-                            {!isAnalysisCollapsed && (
-                                <div className="hidden sm:flex gap-4">
-                                    <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">Acq. Balance: {fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {!isAnalysisCollapsed && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
-
-                        {/* Acquisitions Concentration (Value) - Pie Chart - TOP */}
-                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-(--text-color)/5 pb-10 mb-6">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-6">Acquisitions Concentration (Value)</span>
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
-                                <div className="w-full sm:w-1/2 h-56">
-                                    <EChart option={pieChartOption} style={{ height: '100%' }} />
-                                </div>
-                                <div className="w-full sm:w-1/2 space-y-4 px-4 overflow-y-auto max-h-[220px] custom-scrollbar">
-                                    {vendorSummaries.slice(0, 8).map(v => (
-                                        <div key={v.vendorId} 
-                                            onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: v.vendorId, title: `${v.vendorId} Payments` })}
-                                            className="flex flex-col border-b border-(--text-color)/2 pb-2 group cursor-pointer hover:bg-(--text-color)/5 px-2 -mx-2 rounded-md transition-all"
-                                        >
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
-                                                    <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest group-hover:text-(--text-color)/60">{v.vendorId}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[12px] font-mono font-black text-(--text-color)/80">
-                                                        {currencyMode === 'MXN' ? fmtMXN(v.totalAcqUsd * currentExchangeRate) : fmtUSD(v.totalAcqUsd)}
-                                                    </span>
-                                                    <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                                        {currencyMode}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="h-1 w-full bg-(--text-color)/5 rounded-full overflow-hidden">
-                                                <div className="h-full group-hover:brightness-125 transition-all" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Units by Vendor - Horizontal Segmented Bar - SECOND */}
-                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-(--text-color)/5 pb-10 mb-6">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-4 ">Units Share by Vendor</span>
-                            <div className="flex flex-col gap-4">
-                                <div className="h-3 w-full rounded-2xl overflow-hidden flex shadow-2xl bg-(--text-color)/5 border border-(--text-color)/5">
-                                    {vendorSummaries.map((v, idx) => {
-                                        const share = (v.itemCount / globalTotals.totalItems) * 100;
-                                        return (
-                                            <div key={v.vendorId} 
-                                                onClick={() => setArtifactConfig({ 
-                                                    isOpen: true, 
-                                                    itemIds: items.filter(i => {
-                                                        const norm = normalizeInventoryData(i.data);
-                                                        return (norm.vendorId || norm.vendor_id || '') === v.vendorId;
-                                                    }).map(i => i.data.id),
-                                                    title: `Items for ${v.vendorId}`
-                                                })}
-                                                style={{ width: `${share}%`, backgroundColor: v.color }} 
-                                                className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
-                                            >
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-(--sidebar-bg)/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-(--text-color)/10 shadow-2xl text-(--text-color)">
-                                                    {v.vendorId}: {v.itemCount} units ({share.toFixed(1)}%)
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-                                    {vendorSummaries.map(v => (
-                                        <div key={v.vendorId} 
-                                            onClick={() => setArtifactConfig({ 
-                                                isOpen: true, 
-                                                itemIds: items.filter(i => {
-                                                    const norm = normalizeInventoryData(i.data);
-                                                    return (norm.vendorId || norm.vendor_id || '') === v.vendorId;
-                                                }).map(i => i.data.id),
-                                                title: `Items for ${v.vendorId}`
-                                            })}
-                                            className="flex items-center gap-2 group cursor-pointer hover:bg-(--text-color)/5 p-1 rounded transition-all"
-                                        >
-                                            <div className="w-2 h-2 rounded-sm group-hover:scale-125 transition-all shadow-lg shadow-black/40" style={{ backgroundColor: v.color }} />
-                                            <span className="text-[10px] font-black text-(--text-color) opacity-30 group-hover:opacity-100 uppercase tracking-widest truncate">{v.vendorId}</span>
-                                            <span className="text-[10px] font-mono font-black text-(--text-color) opacity-60 ml-auto group-hover:opacity-100">{v.itemCount}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                )}
+                </div>
             </div>
         </div>
-    </div>
-</div>
     );
 };
 export default ClientOverview;
