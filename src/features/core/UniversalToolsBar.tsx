@@ -22,6 +22,7 @@ import {
     isInventoryMaterialFilterOpenAtom,
     isInventorySearchOpenAtom,
     inventorySearchTermAtom,
+    InventoryVersionAtom,
     isUploadWizardOpenAtom,
     isPaymentsSearchOpenAtom,
     financeSearchTermAtom,
@@ -40,10 +41,15 @@ import {
     financeDataAtom,
     paymentsArtifactConfigAtom,
     exchangeRateAtom,
-    liveExchangeRateAtom
+    liveExchangeRateAtom,
+    truckShowSaveDraftAtom,
+    truckShowOpenDraftAtom,
+    truckShowExportModalAtom,
+    truckShowReadyWizardAtom,
+    truckIsBusyAtom
 } from '../../lib/atoms';
 import { 
-    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -188,6 +194,7 @@ export const UniversalToolsBar: React.FC = () => {
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
     const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
+    const setInvVersion = useSetAtom(InventoryVersionAtom);
     
     // Finance States
     const [isFinSearchOpen, setIsFinSearchOpen] = useAtom(isPaymentsSearchOpenAtom);
@@ -211,6 +218,13 @@ export const UniversalToolsBar: React.FC = () => {
     const fixedEx = useAtomValue(exchangeRateAtom);
     const exRate = liveEx || fixedEx;
 
+    // Trucking States
+    const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
+    const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
+    const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
+    const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
+    const truckBusy = useAtomValue(truckIsBusyAtom);
+
     // Derived Finance Data
     const activeQueueRecords = useMemo(() => 
         financeDocs.filter(r => r.status === 'Requested'), 
@@ -233,8 +247,9 @@ export const UniversalToolsBar: React.FC = () => {
 
     const isInventory = activeView === 'inventory';
     const isFinance = activeView === 'finance';
+    const isTrucking = activeView === 'trucking';
 
-    if (!isInventory && !isFinance) return null;
+    if (!isInventory && !isFinance && !isTrucking) return null;
 
     return (
         <div className="flex flex-col w-full z-50">
@@ -476,12 +491,13 @@ export const UniversalToolsBar: React.FC = () => {
                 <div className="flex flex-col w-full min-h-0 border-t border-white/5">
                     
                     {/* STATUS FILTERS BAR */}
-                    <div className="w-full px-6 py-3 flex items-center gap-5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-500">
+                    <div className="w-full px-6 py-3 flex items-center justify-between overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center gap-5 shrink-0">
                             {[
                                 { id: 'All', icon: LayoutGrid, color: '#FFFFFF' },
                                 { id: 'New', icon: Plus, color: '#38bdf8' },
                                 { id: 'Production', icon: Hammer, color: '#6366f1' },
+                                { id: 'Available', icon: ShoppingBag, color: '#10b981' },
                                 { id: 'Acquired', icon: Tag, color: '#10b981' },
                                 { id: 'Partial', icon: FlaskConical, color: '#a855f7' },
                                 { id: 'Requested', icon: Activity, color: '#f59e0b' },
@@ -498,6 +514,20 @@ export const UniversalToolsBar: React.FC = () => {
                                     </button>
                                 );
                             })}
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={() => {
+                                    setInvVersion(v => v + 1);
+                                    toast.success('Syncing with Supabase...', { icon: '🔄', style: { background: '#000', color: '#fff', fontSize: '10px', fontWeight: 'bold' } });
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all text-[9px] font-black uppercase tracking-widest"
+                                title="Force Sync Inventory"
+                            >
+                                <Heartbeat size={14} className="animate-pulse" />
+                                SYNC REGISTRY
+                            </button>
                         </div>
                     </div>
 
@@ -526,6 +556,61 @@ export const UniversalToolsBar: React.FC = () => {
                             })}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* ── TRUCKING TOOLS (ACTION BUTTONS) ─────────────────────────────────────────────────── */}
+            {isTrucking && (
+                <div className="flex items-center justify-center gap-6 px-8 py-4 border-t border-white/5 bg-black/20 backdrop-blur-md animate-in slide-in-from-bottom duration-500">
+                    {/* Drafts */}
+                    <button 
+                        onClick={() => setShowOpenDraft(true)}
+                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-white transition-all group"
+                        title="Load Truck Drafts"
+                    >
+                        <Archive size={22} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Drafts</span>
+                    </button>
+
+                    <div className="w-px h-8 bg-white/5" />
+
+                    {/* Save */}
+                    <button 
+                        onClick={() => setShowSaveDraft(true)}
+                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-white transition-all group"
+                        title="Save Current Setup"
+                    >
+                        <Plus size={22} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Save</span>
+                    </button>
+
+                    <div className="w-px h-8 bg-white/5" />
+
+                    {/* Exportation */}
+                    <button 
+                        onClick={() => setShowExportModal(true)}
+                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-amber-400 transition-all group"
+                        title="Exportation Wizard"
+                    >
+                        <SlidersHorizontal size={22} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Export</span>
+                    </button>
+
+                    <div className="w-px h-8 bg-white/5 mx-2" />
+
+                    {/* READY TRUCK (Primary Action) */}
+                    <button 
+                        disabled={truckBusy}
+                        onClick={() => setShowReadyWizard(true)}
+                        className={`flex items-center gap-3 px-8 py-3 rounded-full transition-all font-black text-[13px] tracking-[0.2em] uppercase shadow-2xl ${truckBusy ? 'bg-white/5 text-white/20' : 'bg-white text-black hover:scale-105 active:scale-95'}`}
+                    >
+                        {truckBusy ? (
+                            <Activity size={18} className="animate-pulse" />
+                        ) : (
+                            <Truck size={18} strokeWidth={3} />
+                        )}
+                        <span>{truckBusy ? 'Processing...' : 'Ready Truck'}</span>
+                    </button>
                 </div>
             )}
         </div>

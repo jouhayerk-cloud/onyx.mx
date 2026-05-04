@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { CratesInventoryView } from './CratesInventoryView';
 import { WarehouseView } from './WarehouseView';
 import { TruckingModule } from './TruckingModule';
+import { PackingModule } from './PackingModule';
 
 export const LogisticsView: React.FC = () => {
     const [activeTab, setActiveTab] = useAtom(logisticsSubTabAtom);
@@ -32,6 +33,8 @@ export const LogisticsView: React.FC = () => {
             <div className="flex-1">
                 {activeTab === 'shipping' || activeTab === 'deployed' ? (
                     <TruckingModule docs={docs} onRefresh={refresh} />
+                ) : activeTab === 'packing' ? (
+                    <PackingModule />
                 ) : (
                     <WarehouseView />
                 )}
