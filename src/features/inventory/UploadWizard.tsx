@@ -39,6 +39,7 @@ interface WizardMedia {
     file: File | null;
     preview: string | null;
     type: 'image' | 'video';
+    originalUrl?: string;
 }
 
 interface WizardState {
@@ -213,15 +214,56 @@ export const UploadWizard: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && itemData && Object.keys(itemData).length > 0) {
+            // Load existing item data for editing
+            const mediaList: WizardMedia[] = [];
+            const rawUrls = itemData.mediaUrls || itemData.media_urls || '';
+            const urls = (typeof rawUrls === 'string' ? rawUrls : '').split(',').filter(Boolean);
+            
+            urls.forEach(url => {
+                mediaList.push({
+                    file: null,
+                    preview: getCleanImageUrl(url),
+                    type: isVideoFile(url) ? 'video' : 'image',
+                    originalUrl: url
+                });
+            });
+
+            setState({
+                status: (itemData.status as EntryStatus) || 'Acquisition',
+                vendorId: itemData.vendorId || itemData.vendor_id || '',
+                itemNumber: String(itemData.itemNumber || itemData.item_number || ''),
+                quantity: String(itemData.quantity || '1'),
+                mediaList,
+                mediaType: 'Product',
+                shape: itemData.shape || '',
+                material: itemData.material || '',
+                color: itemData.color || '',
+                type: itemData.shortDescription || itemData.short_description || '',
+                weightKg: String(itemData.weightKg || itemData.weight_kg || ''),
+                widthCm: String(itemData.widthCm || itemData.width_cm || ''),
+                heightCm: String(itemData.heightCm || itemData.height_cm || ''),
+                lengthCm: String(itemData.lengthCm || itemData.length_cm || ''),
+                price: String(itemData.price || itemData.price_mxn || ''),
+                notes: itemData.description || '',
+                existingCount: 0,
+                existingNumbers: [],
+                payReq: itemData.payReq || 'paid'
+            });
+        } else if (isOpen) {
+            // Reset to initial state for new entry
             setState(prev => ({
-                ...prev,
-                status: 'Acquisition',
-                payReq: 'paid',
+                ...INITIAL_STATE,
                 vendorId: user?.role === 'Vendor' ? (user.name || '') : prev.vendorId,
             }));
         }
-    }, [isOpen, user]);
+    }, [isOpen, itemData, user]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setItemData({});
+        }
+    }, [isOpen, setItemData]);
 
     useEffect(() => {
         if (!db || !isOpen) return;
@@ -251,7 +293,8 @@ export const UploadWizard: React.FC = () => {
     }, [db, isOpen]);
 
     useEffect(() => {
-        if (!db || !state.vendorId || !isOpen) return;
+        // Only fetch next number if it's a NEW entry (no itemData.id)
+        if (!db || !state.vendorId || !isOpen || itemData?.id) return;
         const fetchNextNum = async () => {
             const selector: any = { 
                 item_id: { $regex: `^${state.vendorId}-` },
@@ -271,7 +314,7 @@ export const UploadWizard: React.FC = () => {
             setState(prev => ({ ...prev, itemNumber: String(maxNum + 1), existingNumbers }));
         };
         fetchNextNum();
-    }, [db, state.vendorId, itemData.workbook, isOpen]);
+    }, [db, state.vendorId, itemData.workbook, isOpen, itemData?.id]);
 
     const set = useCallback((k: keyof WizardState, v: any) => setState(prev => ({ ...prev, [k]: v })), []);
     
@@ -331,14 +374,16 @@ export const UploadWizard: React.FC = () => {
 
     const doSave = async (): Promise<boolean> => {
         if (!state.vendorId || !state.itemNumber) { toast.error('Missing Vendor or Index'); return false; }
-        if (state.existingNumbers.includes(state.itemNumber)) {
+        
+        // Only warn about duplicates for NEW entries
+        if (!itemData?.id && state.existingNumbers.includes(state.itemNumber)) {
             const proceed = window.confirm(`WARNING: Index ${state.itemNumber} already exists for Vendor ${state.vendorId}. Continue?`);
             if (!proceed) return false;
         }
         
         setSaving(true);
         setSavingProgress(10);
-        const tid = toast.loading('Syncing Registry...');
+        const tid = toast.loading(itemData?.id ? 'Updating Registry...' : 'Syncing Registry...');
         try {
             if (isDummyMode) {
                 for (let i = 20; i <= 100; i += 20) {
@@ -355,6 +400,8 @@ export const UploadWizard: React.FC = () => {
                     if (m.file) {
                         const res = await handleFileUpload(m.file, user);
                         if (res) uploadedUrls.push(`${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`);
+                    } else if (m.originalUrl) {
+                        uploadedUrls.push(m.originalUrl);
                     }
                     setSavingProgress(Math.round(10 + ((i + 1) / state.mediaList.length) * 70));
                 }
@@ -362,7 +409,7 @@ export const UploadWizard: React.FC = () => {
             const calculated = calculateCodesAndPrices(
                 { 
                     price: parseFloat(state.price) || 0, 
-                    itemId: `${state.vendorId}-${state.itemNumber.padStart(3, '0')}`, 
+                    itemId: `${state.vendorId}-${String(state.itemNumber).padStart(3, '0')}`, 
                     workbook: itemData.workbook || 'v326', 
                     itemNumber: state.itemNumber || '1',
                     vendorId: state.vendorId
@@ -373,7 +420,7 @@ export const UploadWizard: React.FC = () => {
 
             const payload = {
                 id: itemData.id || crypto.randomUUID(),
-                item_id: `${state.vendorId}-${state.itemNumber.padStart(3, '0')}`,
+                item_id: `${state.vendorId}-${String(state.itemNumber).padStart(3, '0')}`,
                 book_barcode: calculated.bookBarcode,
                 book_aq_code: calculated.bookAqCode,
                 status: state.status || 'Production',
@@ -398,10 +445,10 @@ export const UploadWizard: React.FC = () => {
             };
             setSavingProgress(95);
 
-            // 1. Persist to Supabase with strict error handling
-            const { data: sbData, error: sbError } = await supabase.from('inventory').insert(payload).select().single();
+            // 1. Persist to Supabase with strict error handling (UPSERT)
+            const { data: sbData, error: sbError } = await supabase.from('inventory').upsert(payload).select().single();
             if (sbError) {
-                console.error('[UploadWizard] Supabase Insert Error:', sbError);
+                console.error('[UploadWizard] Supabase Persistence Error:', sbError);
                 throw new Error(`Database Error: ${sbError.message}`);
             }
 
@@ -417,8 +464,8 @@ export const UploadWizard: React.FC = () => {
             // 3. Force UI refresh
             setInventoryVersion(v => v + 1);
 
-            toast.success('Artifact Created!', { id: tid });
-            toast.success('Registry Updated', { id: tid });
+            toast.success(itemData?.id ? 'Artifact Updated!' : 'Artifact Created!', { id: tid });
+            if (!itemData?.id) setItemData({}); // Clear atom only for new entries to prevent accidental loops
             return true;
         } catch (err: any) {
             toast.error(err.message || 'Upload Failed', { id: tid });
@@ -486,7 +533,9 @@ export const UploadWizard: React.FC = () => {
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
                                     <div className="flex items-center gap-4">
                                         <div className="w-2 h-2 rounded-full bg-(--main-color) animate-pulse" />
-                                        <h1 className="text-[20px] font-black uppercase tracking-[0.6em] text-white/40 leading-none">Add Entry</h1>
+                                        <h1 className="text-[20px] font-black uppercase tracking-[0.6em] text-white/40 leading-none">
+                                            {itemData?.id ? 'Edit Entry' : 'Add Entry'}
+                                        </h1>
                                     </div>
                                     
                                     <div className="flex items-center gap-10 shrink-0">
@@ -514,7 +563,7 @@ export const UploadWizard: React.FC = () => {
                                     <div className="flex flex-col items-end">
                                         <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Preview Artifact</span>
                                         <span className={`text-2xl font-black tracking-tighter uppercase tabular-nums transition-colors duration-200 ${isDuplicate ? 'text-red-500' : 'text-white'}`}>
-                                            {state.vendorId || '???'}-{state.itemNumber.padStart(3, '0')}
+                                            {state.vendorId || '???'}-{String(state.itemNumber).padStart(3, '0')}
                                         </span>
                                     </div>
                                     <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
