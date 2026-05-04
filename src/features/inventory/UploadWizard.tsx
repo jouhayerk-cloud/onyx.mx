@@ -336,8 +336,24 @@ export const UploadWizard: React.FC = () => {
                     setSavingProgress(Math.round(10 + ((i + 1) / state.mediaList.length) * 70));
                 }
             }
+            const calculated = calculateCodesAndPrices(
+                { 
+                    price: parseFloat(state.price) || 0, 
+                    itemId: `${state.vendorId}-${state.itemNumber.padStart(3, '0')}`, 
+                    workbook: itemData.workbook || 'v326', 
+                    itemNumber: state.itemNumber || '1',
+                    vendorId: state.vendorId
+                },
+                exchangeRate,
+                'v326'
+            );
+
             const payload = {
                 id: itemData.id || crypto.randomUUID(),
+                vendor_id: state.vendorId,
+                item_id: `${state.vendorId}-${state.itemNumber.padStart(3, '0')}`,
+                book_barcode: calculated.bookBarcode,
+                book_aq_code: calculated.bookAqCode,
                 status: state.status || 'Production',
                 shape: state.shape || '',
                 material: state.material || '',
@@ -357,6 +373,7 @@ export const UploadWizard: React.FC = () => {
                 created_by: user?.name || user?.email,
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
+                is_hidden: false
             };
             setSavingProgress(95);
 
