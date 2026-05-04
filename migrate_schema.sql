@@ -16,4 +16,6 @@ ALTER TABLE inventory
   ADD COLUMN IF NOT EXISTS book_retail           NUMERIC,
   ADD COLUMN IF NOT EXISTS book_barcode          TEXT,
   ADD COLUMN IF NOT EXISTS book_aq_code          TEXT,
-  ADD COLUMN IF NOT EXISTS book_land_code        TEXT;
+  ADD COLUMN IF NOT EXISTS book_land_code        TEXT,
+  ADD COLUMN IF NOT EXISTS vendor_id             TEXT,
+  ADD COLUMN IF NOT EXISTS is_hidden             BOOLEAN DEFAULT FALSE;
