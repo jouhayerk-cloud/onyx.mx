@@ -44,7 +44,9 @@ import {
     isPackingNFCWizardOpenAtom,
     isPackingCrateWizardOpenAtom,
     isPaymentWizardOpenAtom,
-    inventoryStatusSetsAtom
+    inventoryStatusSetsAtom,
+    isUploadWizardOpenAtom,
+    uploadItemDataAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass } from '../../lib/utils';
@@ -897,7 +899,7 @@ export const UnifiedInventoryView = () => {
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom); const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
     const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
-    const [mode, setMode] = useAtom(detailsPanelModeAtom); const [isSaving, setIsSaving] = useState(false); const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
+    const [mode, setMode] = useAtom(detailsPanelModeAtom); const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom); const searchTerm = useAtomValue(inventorySearchTermAtom);
     const [sortOrder, setSortOrder] = useAtom(inventorySortOrderAtom); const [sortKey, setSortKey] = useAtom(inventorySortKeyAtom);
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom); const [categoryFilter, setCategoryFilter] = useAtom(inventoryCategoryFilterAtom);
@@ -908,7 +910,8 @@ export const UnifiedInventoryView = () => {
     const setFilteredTotalQty = useSetAtom(filteredInventoryTotalQtyAtom);
     const setFilteredTotalValue = useSetAtom(filteredInventoryTotalValueAtom);
     const setFilteredIds = useSetAtom(filteredInventoryIdsAtom);
-    const [editData, setEditData] = useState<any>(null); const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
+    const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
+    const setUploadItemData = useSetAtom(uploadItemDataAtom);
     const [savingProgress, setSavingProgress] = useState(0);
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
@@ -1052,39 +1055,11 @@ export const UnifiedInventoryView = () => {
 
     const { partialPayIds, fullPayIds, requestedAcqIds } = useAtomValue(inventoryStatusSetsAtom);
 
-    useEffect(() => { if (mode === 'edit' && itemData) { setEditData({ ...normalizeInventoryData(itemData), vendorId: String(itemData.itemId || '').split('-')[0] }); setNewFiles([]); } }, [mode, itemData]);
-
-    const handleEditChange = (e: any) => { const { name, value } = e.target; setEditData((prev: any) => ({ ...prev, [name]: value })); };
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []); const uploaded: UploadedFile[] = [];
-        for (const file of files) { const type = file.type.startsWith('video/') ? 'video' : 'image'; const localUrl = await readFileAsDataURL(file, type); uploaded.push({ type, localUrl, originalFile: file, tag: 'Item' }); }
-        setNewFiles(prev => [...prev, ...uploaded]);
-    };
-
     const handleEditItem = async (rowId: string, currentData: any) => {
-        setSelectedItemRow(rowId);
-        setSelectedItemData(currentData); // Fallback immediately
-        setMode('edit');
-        setIsLoading(true);
-        try {
-            const { data, error } = await supabase.from('inventory').select('*').eq('id', rowId).single();
-            if (data && !error) {
-                const norm = normalizeInventoryData(data);
-                setSelectedItemData(norm);
-                // Also update editData immediately to sync with the now-open form
-                setEditData({ ...norm, vendorId: String(norm.itemId || '').split('-')[0] });
-            }
-        } catch (err) {
-            console.error('Fetch error:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleDeleteExistingMedia = (url: string) => {
-        const urls = (editData.mediaUrls || '').split(',').map((u:string) => u.trim()).filter(Boolean);
-        const filtered = urls.filter((u:string) => u !== url).join(',');
-        setEditData((p: any) => ({ ...p, mediaUrls: filtered }));
+        const item = items.find(i => (i.row ?? i.data?.id) === rowId);
+        const dataToLoad = item ? { ...item.data, id: rowId } : { ...currentData, id: rowId };
+        setUploadItemData(dataToLoad);
+        setIsUploadWizardOpen(true);
     };
 
     const filteredItems = useMemo(() => {
@@ -1183,62 +1158,7 @@ export const UnifiedInventoryView = () => {
         });
     }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter, materialFilter]);
 
-    const handleSaveEdit = async (e: React.FormEvent) => {
-        e.preventDefault(); if (!itemRow || !editData) return; 
-        setIsSaving(true); setSavingProgress(10);
-        const tid = toast.loading('Syncing Artifact...');
-        try {
-            let uploaded: string[] = []; 
-            if (newFiles.length > 0) { 
-                for (let i = 0; i < newFiles.length; i++) { 
-                    const f = newFiles[i];
-                    if (f.originalFile) { 
-                        const r = await handleFileUpload(f.originalFile, user); 
-                        if (r) uploaded.push(r.thumbnailUrl); 
-                    } 
-                    setSavingProgress(Math.round(10 + ((i + 1) / newFiles.length) * 70));
-                } 
-            } else {
-                setSavingProgress(80);
-            }
-            
-            const news = [editData.mediaUrls || '', ...uploaded].filter(Boolean).join(',');
-            const payload: any = {
-                item_id: editData.itemId,
-                item_number: editData.itemNumber || '1',
-                status: editData.status,
-                shape: editData.shape,
-                material: editData.material,
-                color: editData.color,
-                short_description: editData.shortDescription || editData.short_description || '',
-                quantity: parseInt(String(editData.quantity || 1)) || 1,
-                price_mxn: parseFloat(String(editData.price || 0)) || 0,
-                weight_kg: editData.weightKg ? parseFloat(String(editData.weightKg)) : null,
-                width_cm: editData.widthCm ? parseFloat(String(editData.widthCm)) : null,
-                height_cm: editData.heightCm ? parseFloat(String(editData.heightCm)) : null,
-                length_cm: editData.lengthCm ? parseFloat(String(editData.lengthCm)) : null,
-                media_urls: news,
-                updated_at: new Date().toISOString()
-            };
-            
-            setSavingProgress(90);
-            const { error } = await supabase.from((itemData as any)?.source==='production'?'production':'inventory').update(payload).eq('id', itemRow);
-            if (error) throw error; 
-            
-            setSavingProgress(100);
-            toast.success('Sync Complete', { id: tid }); 
-            setInventoryVersion(v => v + 1); 
-            setMode('view');
-        } catch (err: any) { 
-            toast.error(err.message, { id: tid }); 
-            setIsSaving(false);
-        } finally { 
-            setTimeout(() => {
-                setIsSaving(false);
-                setSavingProgress(0);
-            }, 800);
-        }
-    };
+
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);
@@ -1344,185 +1264,6 @@ export const UnifiedInventoryView = () => {
                     )}
                 </div>
             </div>
-
-            {mode === 'edit' && editData && (
-                <div className="fixed inset-0 z-100 flex flex-col p-4 sm:p-8 items-center justify-center animate-in fade-in zoom-in duration-500 overflow-hidden">
-                    {bgMediaUrls.length > 0 && <img key={bgIdx} src={bgMediaUrls[bgIdx]} className="glass-bg-img" />}
-                    <div className="glass-scrim" />
-                    <div className="max-w-[820px] w-full flex flex-col max-h-[92dvh] overflow-hidden relative rounded-[48px] p-8 sm:p-12" style={{ zIndex: 2, background: 'color-mix(in srgb, #0a0a0a 90%, transparent)', backdropFilter: 'blur(40px)', border: '1px solid white/10', boxShadow: '0 50px 150px rgba(0,0,0,0.8)' }}>
-                        
-                        {/* Header Section */}
-                        <div className="flex justify-between items-center mb-12 shrink-0">
-                            <div className="flex items-center gap-5">
-                                <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10"><FileText size={28} className="text-white/40" /></div>
-                                <div className="flex flex-col">
-                                    <h2 className="text-3xl font-black text-white leading-none tracking-tighter uppercase">MANUAL ENTRY FORM</h2>
-                                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] mt-2 ml-0.5">Inventory Management Suite</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setMode('view')} className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all text-2xl font-light">&times;</button>
-                        </div>
-
-                        <form onSubmit={handleSaveEdit} className="overflow-y-auto grow custom-scrollbar space-y-12 pr-4 -mr-4">
-                            
-                            {/* Entry Status Section */}
-                            <div className="space-y-5">
-                                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">ENTRY STATUS</h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {['Production', 'Acquisition'].map(s => (
-                                        <button key={s} type="button" onClick={() => setEditData((p:any) => ({ ...p, status: s }))}
-                                            className={`h-16 rounded-2xl border transition-all flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest ${editData.status === s ? 'bg-white/10 border-(--main-color) text-(--main-color) shadow-[0_0_20px_rgba(var(--main-color-rgb),0.1)]' : 'bg-white/5 border-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}>
-                                            {s === 'Production' && <Pencil size={16} />}
-                                            {s === 'Acquisition' && <Tag size={16} />}
-                                            {s}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Vendor Selection Section */}
-                            <div className="space-y-5">
-                                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">VENDOR SELECTION</h3>
-                                <div className="flex flex-wrap gap-4 p-8 rounded-[32px] bg-white/[0.02] border border-white/5">
-                                    {activeVendors.map(v => {
-                                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                                        const isActive = editData.vendorId === v;
-                                        return (
-                                            <button key={v} type="button" onClick={() => setEditData((p:any) => ({ ...p, vendorId: v }))}
-                                                className={`w-12 h-12 rounded-full border-2 transition-all flex items-center justify-center text-[10px] font-black uppercase tracking-tight ${isActive ? 'scale-110 shadow-lg' : 'opacity-40 grayscale hover:grayscale-0 hover:opacity-100 hover:scale-105'}`}
-                                                style={{ borderColor: isActive ? color : 'transparent', backgroundColor: color, color: '#000' }}>
-                                                {v}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Identity Fields Section */}
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-10">
-                                <div className="flex flex-col gap-2.5"><label className={lbl}>NUM</label><input disabled className={inpNum + " opacity-50 cursor-not-allowed"} value={editData.itemNumber || '--'} /></div>
-                                <div className="flex flex-col gap-2.5"><label className={lbl}>ITEM QUANTITY</label><input type="text" name="quantity" value={editData.quantity} placeholder="1" onChange={(e) => setEditData((p:any) => ({ ...p, quantity: e.target.value.replace(/[^0-9]/g, '') }))} className={inp + " text-2xl font-black"} /></div>
-                                
-                                {/* Media Section */}
-                                <div className="space-y-5 col-span-2">
-                                    <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">MEDIA ATTACHMENTS</h3>
-                                    
-                                    {/* Saved Gallery */}
-                                    {editData.mediaUrls && (
-                                        <div className="flex flex-wrap gap-4 mb-6">
-                                            {editData.mediaUrls.split(',').filter(Boolean).map((url: string, i: number) => (
-                                                <div key={`existing-${i}`} className="w-24 h-24 rounded-2xl overflow-hidden border border-white/20 relative group bg-white/5">
-                                                    {isVideoFile(url) ? (
-                                                        <div className="w-full h-full flex items-center justify-center bg-black/40"><Video size={20} className="text-white/40" /></div>
-                                                    ) : (
-                                                        <img src={getCleanImageUrl(url)} className="w-full h-full object-cover" />
-                                                    )}
-                                                    <button type="button" onClick={() => handleDeleteExistingMedia(url)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-xs shadow-lg hover:bg-red-600">
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <div className="relative group">
-                                        <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                        <div className="h-48 rounded-[32px] border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-4 group-hover:bg-white/[0.05] group-hover:border-white/20 transition-all">
-                                            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10"><Upload size={24} className="text-white/20 group-hover:text-white transition-all" /></div>
-                                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] group-hover:text-white transition-all">ATTACH NEW MEDIA (IMAGES / VIDEO)</p>
-                                        </div>
-                                    </div>
-                                    {newFiles.length > 0 && (
-                                        <div className="flex flex-wrap gap-4 pt-4 border-t border-white/5">
-                                            {newFiles.map((f, i) => (
-                                                <div key={`new-${i}`} className="w-24 h-24 rounded-2xl overflow-hidden border border-(--main-color)/30 relative group shadow-lg shadow-(--main-color)/5">
-                                                    <img src={f.localUrl} className="w-full h-full object-cover" />
-                                                    <button type="button" onClick={() => setNewFiles(p => p.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-xs">&times;</button>
-                                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-(--main-color)/50" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Detail Fields Section (DESC) */}
-                            <div className="space-y-8">
-                                <div className="grid grid-cols-2 gap-8">
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>COLOR</label><input name="color" value={editData.color} onChange={handleEditChange} className={inp} placeholder="Identify pigment..." /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>MAT</label><input name="material" value={editData.material} onChange={handleEditChange} className={inp} placeholder="Identify mineral..." /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>SHAPE</label><input name="shape" value={editData.shape} onChange={handleEditChange} className={inp} placeholder="Identify geometry..." /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>TYPE</label><input name="shortDescription" value={editData.shortDescription} onChange={handleEditChange} className={inp} placeholder="Identify class..." /></div>
-                                </div>
-                            </div>
-
-                            {/* Logistics Section */}
-                            <div className="pt-8 border-t border-white/5 space-y-8">
-                                <div className="grid grid-cols-4 gap-6">
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>WEIGHT (KG)</label><input type="number" step="0.01" name="weightKg" value={editData.weightKg} onChange={handleEditChange} className={inpNum} /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>W (CM)</label><input type="number" name="widthCm" value={editData.widthCm} onChange={handleEditChange} className={inpNum} /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>H (CM)</label><input type="number" name="heightCm" value={editData.heightCm} onChange={handleEditChange} className={inpNum} /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>D (CM)</label><input type="number" name="lengthCm" value={editData.lengthCm} onChange={handleEditChange} className={inpNum} /></div>
-                                </div>
-                            </div>
-
-                            {/* Financial Assets Section */}
-                            <div className="pt-8 border-t border-white/5 lg:flex items-center gap-12 space-y-8 lg:space-y-0">
-                                <div className="grow space-y-2">
-                                    <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em]">FINANCIAL INTEGRITY</h3>
-                                    <p className="text-[10px] text-white/10 font-medium leading-relaxed max-w-sm">Artifact values are stored in MXN and calculated against active exchange rates for global parity.</p>
-                                </div>
-                                <div className="w-full lg:w-72 flex flex-col gap-2.5">
-                                    <label className={lbl}>ACQ PRICE (MXN)</label>
-                                    <input type="number" name="price" value={editData.price} onChange={handleEditChange} className={inp + " text-2xl font-black text-green-400 font-mono"} />
-                                </div>
-                            </div>
-
-                            <div className="pt-16 flex gap-6 pb-4">
-                                <button type="button" onClick={() => setMode('view')} className="h-20 px-10 rounded-3xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.4em] uppercase text-white/30 hover:text-white hover:bg-white/10 transition-all">ABORT SYNC</button>
-                                <button type="submit" disabled={isSaving} className="flex-1 h-20 rounded-3xl bg-(--main-color) text-black text-[13px] font-black tracking-[0.5em] uppercase shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
-                                    {isSaving ? 'SYNCING ARTIFACT...' : 'COMMIT CHANGES â†’'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {isSaving && (
-                <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
-                    <div className="w-[320px] p-10 rounded-[40px] bg-white/3 border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-linear-to-b from-(--main-color)/5 to-transparent opacity-50" />
-                        
-                        <div className="relative">
-                            <div className="w-20 h-20 rounded-3xl bg-(--main-color)/10 flex items-center justify-center border border-(--main-color)/20 animate-pulse">
-                                <CloudUpload size={40} className="text-(--main-color)" />
-                            </div>
-                            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#0a0a0a] transition-all duration-500" style={{ transform: savingProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
-                                <Check size={14} className="text-white font-bold" />
-                            </div>
-                        </div>
-
-                        <div className="w-full space-y-4 relative">
-                            <div className="flex justify-between items-end">
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Synchronization</span>
-                                <span className="text-sm font-mono font-black text-(--main-color)">{savingProgress}%</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                <div 
-                                    className="h-full bg-linear-to-r from-(--main-color)/50 to-(--main-color) transition-all duration-500 ease-out"
-                                    style={{ width: `${savingProgress}%` }}
-                                />
-                            </div>
-                        </div>
-
-                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
-                            {savingProgress < 80 ? 'Uploading Media...' : savingProgress < 100 ? 'Updating Registry...' : 'Artifact Synced'}
-                        </p>
-                    </div>
-                </div>
-            )}
-
         </div>
     );
 };
