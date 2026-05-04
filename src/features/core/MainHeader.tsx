@@ -1,12 +1,13 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 // Navigation Modernization - Atomic Sync Force
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
     activeViewAtom,
     inventoryAtom,
     inventoryActiveFilterAtom,
     inventorySearchTermAtom,
+    TOP_BAR_SEARCH_ATOM,
     inventoryStatusFilterAtom,
     showFinancialsAtom,
     dashboardStatusFilterAtom,
@@ -69,7 +70,6 @@ import {
     PaymentCategory,
     paymentFilterBarModeAtom,
     processActiveTabAtom,
-    TOP_BAR_SEARCH_ATOM,
     packingViewModeAtom,
     packingVendorFilterAtom,
     packingLabelSizeAtom,
@@ -92,7 +92,8 @@ import {
     isPaymentsSearchOpenAtom,
     isPaymentFiltersOpenAtom,
     isPaymentActionPanelOpenAtom,
-    isPaymentWizardOpenAtom
+    isPaymentWizardOpenAtom,
+    isCrateCreationModalOpenAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
@@ -117,7 +118,8 @@ import {
     Globe, Languages, Cpu, Clock, ArrowRight, Lock, Unlock, Printer,
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
-    Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig
+    Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
+    PackagePlus, Boxes, PackageOpen
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -161,10 +163,14 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'credit-card': CreditCard,
     'bank': Landmark,
     'wallet': Wallet,
-    'truck': Truck,
     'package': Package,
+    'boxes': Boxes,
+    'package-open': PackageOpen,
+    'package-plus': PackagePlus,
+    'truck': Truck,
     'map-pin': MapPin,
     'download': Download,
+    'package-open': PackageOpen
 };
 
 
@@ -176,13 +182,14 @@ const SubTabPills: React.FC<{
 }> = ({ tabs, active, onSelect, accentColor = 'var(--main-color)' }) => (
     <div className="flex items-center gap-0.5">
         {tabs.map(t => {
-            const TabIcon = t.icon ? iconToLucide[t.icon.replace('#', '')] : null;
+            const TabIcon = t.icon ? iconToLucide[t.icon] : null;
             return (
                 <button key={t.id} onClick={() => onSelect(t.id)}
-                    className={`flex flex-col items-center justify-center p-2 transition-all active:scale-90 group/pill select-none
+                    className={`flex flex-col items-center justify-center p-2 transition-all active:scale-90 group/pill select-none h-16 w-16
                         ${active === t.id ? 'text-(--text-color)' : 'text-(--text-color)/30 hover:text-(--text-color)'}`}
                     style={active === t.id ? { color: accentColor } : {}}>
-                    {TabIcon && <TabIcon size={28} strokeWidth={1.5} />}
+                    {TabIcon && <TabIcon size={32} strokeWidth={1.5} />}
+                    {(!TabIcon && t.label) && <span className="text-[10px] font-black">{t.label}</span>}
                 </button>
             );
         })}
@@ -520,6 +527,7 @@ const FinanceBar: React.FC = () => {
 
 
 const LogisticsBar: React.FC = () => {
+    const [activeView] = useAtom(activeViewAtom);
     const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
     const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -533,24 +541,43 @@ const LogisticsBar: React.FC = () => {
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
     const setShowReadyWizard = useSetAtom(truckShowReadyWizardAtom);
 
-    const tabs = [
-        { id: 'crates', label: 'CRATES', icon: 'package' },
-        { id: 'packing', label: 'PACK', icon: 'download' },
+    const setIsCrateModalOpen = useSetAtom(isCrateCreationModalOpenAtom);
+    const [isWarehouseSearchOpen, setIsWarehouseSearchOpen] = useState(false);
+
+    useEffect(() => {
+        if (activeView === 'warehouse' && (subTab === 'crates' || !['empty', 'packed', 'packing'].includes(subTab))) {
+            setSubTab('empty');
+        }
+    }, [activeView, subTab, setSubTab]);
+
+    const tabs = activeView === 'warehouse' ? [
+        { id: 'empty', label: 'Empty', icon: 'package' },
+        { id: 'packed', label: 'Packed', icon: 'boxes' },
+        { id: 'packing', label: 'Packing', icon: 'package-open' },
+    ] : activeView === 'trucking' ? [
+        { id: 'shipping', label: 'PLAN', icon: 'map-pin' },
+        { id: 'deployed', label: 'DPLYD', icon: 'zap' },
+    ] : [
+        { id: 'empty', label: 'Empty', icon: 'package' },
+        { id: 'packed', label: 'Packed', icon: 'boxes' },
+        { id: 'packing', label: 'Packing', icon: 'package-open' },
         { id: 'shipping', label: 'TRK', icon: 'truck' },
     ];
 
     return (
         <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
-            <DeployableSearch 
-                value={search} 
-                onChange={setSearch} 
-                isOpen={isSearchOpen} 
-                setIsOpen={setIsSearchOpen} 
-                accentColor="var(--color-logistics)"
-                placeholder="FIND CRATES..."
-            />
+            {(activeView !== 'warehouse' && activeView !== 'trucking') && (
+                <DeployableSearch 
+                    value={search} 
+                    onChange={setSearch} 
+                    isOpen={isSearchOpen} 
+                    setIsOpen={setIsSearchOpen} 
+                    accentColor="var(--color-logistics)"
+                    placeholder="FIND CRATES..."
+                />
+            )}
 
-            {!isSearchOpen && (
+            {(!isSearchOpen || activeView === 'warehouse' || activeView === 'trucking') && (
                 <div className="flex items-center gap-4 animate-in fade-in duration-300">
                     <SubTabPills
                         tabs={tabs}
@@ -558,6 +585,41 @@ const LogisticsBar: React.FC = () => {
                         onSelect={(id) => { setSubTab(id as any); if (id !== 'packing') setSearch(''); }}
                         accentColor="var(--color-logistics)"
                     />
+
+                    {activeView === 'warehouse' && (
+                        <>
+                            <div className="w-px h-6 bg-white/5 mx-1" />
+                            <button 
+                                onClick={() => setIsCrateModalOpen(true)}
+                                className="flex flex-col items-center justify-center w-16 h-16 text-(--main-color) hover:text-white transition-all cursor-pointer hover:bg-white/5 rounded-2xl group/action"
+                                title="Initialize Storage Protocol"
+                            >
+                                <PackagePlus size={24} strokeWidth={2} className="group-hover/action:scale-110 transition-transform mb-1" />
+                                <span className="text-[8px] font-black uppercase tracking-widest leading-none">New Unit</span>
+                            </button>
+                            <button 
+                                onClick={() => setIsWarehouseSearchOpen(!isWarehouseSearchOpen)}
+                                className={`flex flex-col items-center justify-center w-16 h-16 transition-all cursor-pointer hover:bg-white/5 rounded-2xl group/search ${isWarehouseSearchOpen || search ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
+                                title="Search Units"
+                            >
+                                <Search size={22} strokeWidth={2} className="group-hover/search:scale-110 transition-transform mb-1" />
+                                <span className="text-[8px] font-black uppercase tracking-widest leading-none">Search</span>
+                            </button>
+
+                            {isWarehouseSearchOpen && (
+                                <div className="animate-in slide-in-from-left duration-300">
+                                    <DeployableSearch 
+                                        value={search} 
+                                        onChange={setSearch} 
+                                        isOpen={true} 
+                                        setIsOpen={setIsWarehouseSearchOpen} 
+                                        accentColor="var(--color-logistics)"
+                                        placeholder="FIND UNITS..."
+                                    />
+                                </div>
+                            )}
+                        </>
+                    )}
 
                     {subTab === 'packing' && (
                         <>
@@ -572,7 +634,7 @@ const LogisticsBar: React.FC = () => {
                         </>
                     )}
 
-                    {subTab === 'shipping' && (
+                    {subTab === 'shipping' && activeView !== 'trucking' && (
                         <>
                             <div className="w-px h-6 bg-white/5 mx-1" />
                             {/* Visibility toggle */}
@@ -1841,7 +1903,7 @@ export function MainHeader() {
                         {activeView === 'inventory' && <InventoryBar />}
                         {activeView === 'store' && <StoreBar />}
                         {activeView === 'finance' && <FinanceBar />}
-                        {activeView === 'logistics' && <LogisticsBar />}
+                        {(activeView === 'logistics' || activeView === 'warehouse' || activeView === 'trucking') && <LogisticsBar />}
                         {activeView === 'packing' && <PackingBar />}
                         {activeView === 'upload' && <UploadBar />}
                         {activeView === 'process' && <ProcessBar />}

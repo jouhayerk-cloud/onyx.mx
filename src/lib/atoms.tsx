@@ -177,7 +177,7 @@ export const batchActionItemsDataAtom = atom<InventoryItem[]>([]);
 export const isMarketMultiSelectModeAtom = atom(false);
 export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
-export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer'>('activeView', 'inventory', sessionJSONStorage);
+export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer'>('activeView', 'inventory', sessionJSONStorage);
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'Production' | 'Acquired' | 'New'>('inventoryStatusFilter', 'All', sessionJSONStorage);
 export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Number' | 'Shape+Type' | 'Color+Material'>('inventorySortKey', 'Date', sessionJSONStorage);
@@ -191,7 +191,8 @@ export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list' | 'gallery'
 export const inventoryViewSliderAtom = atomWithStorage<number>('inventoryViewSlider', 0, sessionJSONStorage);
 export const isInventoryViewSliderOpenAtom = atom<boolean>(false);
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
-export const logisticsSubTabAtom = atomWithStorage<'crates' | 'packing' | 'shipping'>('logisticsSubTab', 'crates', sessionJSONStorage);
+export const logisticsSubTabAtom = atomWithStorage<'empty' | 'packed' | 'boxes' | 'packing' | 'shipping' | 'deployed' | 'crates'>('logisticsSubTab', 'empty', sessionJSONStorage);
+export const isCrateCreationModalOpenAtom = atom<boolean>(false);
 export const financeSubTabAtom = atomWithStorage<'overview' | 'payments' | 'tracking' | 'expenses'>('financeSubTab', 'overview', sessionJSONStorage);
 export const isFinanceScrolledAtom = atom(false);
 export const financeTotalsAtom = atom({ 
@@ -274,6 +275,7 @@ export const is3DWorkspaceDetailsOpenAtom = atom(false);
 
 export const inventoryAtom = atom<InventoryItem[]>([]);
 export const inventorySearchTermAtom = atom('');
+export const TOP_BAR_SEARCH_ATOM = atom('');
 export const isInventorySearchOpenAtom = atom(false);
 export const inventoryActiveFilterAtom = atom('All');
 export const filteredInventoryCountAtom = atom(0);
@@ -386,7 +388,6 @@ export const isPaymentsDetailOpenAtom = atomWithStorage<boolean>('paymentsDetail
 export const paymentsSearchTermAtom = atom<string>('');
 export const isStoreBagOpenAtom = atom<boolean>(false);
 export const controlPanelAtom = atomWithStorage<'users' | 'db' | 'store'>('controlPanel', 'users', sessionJSONStorage);
-export const TOP_BAR_SEARCH_ATOM = atom<string>('');
 
 // Process Module Atoms
 export const processActiveTabAtom = atom<'workspace' | 'vault' | 'batch'>('workspace');

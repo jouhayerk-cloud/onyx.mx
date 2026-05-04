@@ -334,35 +334,50 @@ export const UploadWizard: React.FC = () => {
                     setSavingProgress(Math.round(10 + ((i + 1) / state.mediaList.length) * 70));
                 }
             }
-            const finalItemId = `${state.vendorId}-${state.itemNumber.padStart(3, '0')}`;
-            const payload: any = {
-                id: crypto.randomUUID(),
-                item_id: finalItemId,
-                vendor_id: state.vendorId,
-                item_number: parseInt(state.itemNumber),
-                status: state.status,
+            const payload = {
+                id: itemData.id || crypto.randomUUID(),
+                status: state.status || 'Production',
+                shape: state.shape || '',
+                material: state.material || '',
+                color: state.color || '',
+                short_description: state.type || '',
                 quantity: parseInt(state.quantity) || 1,
-                shape: state.shape,
-                material: state.material,
-                color: state.color,
-                short_description: state.type,
+                price_mxn: parseFloat(state.price) || 0,
                 weight_kg: parseFloat(state.weightKg) || null,
                 width_cm: parseFloat(state.widthCm) || null,
                 height_cm: parseFloat(state.heightCm) || null,
                 length_cm: parseFloat(state.lengthCm) || null,
-                price_mxn: parseFloat(state.price) || null,
+                item_number: parseInt(state.itemNumber) || 1,
+                media_urls: uploadedUrls.join(','),
+                workbook: itemData.workbook || 'v326',
                 description: state.notes,
                 pay_req: state.payReq || null,
-                media_urls: uploadedUrls.join(','),
                 created_by: user?.name || user?.email,
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                workbook: itemData.workbook || 'v326',
             };
             setSavingProgress(95);
-            await supabase.from('inventory').insert(payload);
-            if (db) await db.inventory.insert(payload);
-            setSavingProgress(100);
+
+            // 1. Persist to Supabase with strict error handling
+            const { data: sbData, error: sbError } = await supabase.from('inventory').insert(payload).select().single();
+            if (sbError) {
+                console.error('[UploadWizard] Supabase Insert Error:', sbError);
+                throw new Error(`Database Error: ${sbError.message}`);
+            }
+
+            // 2. Local RxDB Upsert (Optional)
+            if (db) {
+                try {
+                    await db.inventory.upsert(payload);
+                } catch (rxError) {
+                    console.warn('[UploadWizard] RxDB sync skipped:', rxError);
+                }
+            }
+
+            // 3. Force UI refresh
+            setVersion(v => v + 1);
+
+            toast.success('Artifact Created!', { id: tid });
             toast.success('Registry Updated', { id: tid });
             return true;
         } catch (err: any) {
@@ -396,10 +411,10 @@ export const UploadWizard: React.FC = () => {
 
     return (
         <div 
-            className="fixed inset-0 z-[6000] flex items-center justify-center p-0 md:p-8 animate-in fade-in duration-300 overflow-hidden"
+            className="absolute inset-0 z-100 flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-500 overflow-hidden"
             onClick={handleGlobalClick}
         >
-            <div className="absolute inset-0 bg-black/10 backdrop-blur-[200px]" onClick={() => setIsOpen(false)} />
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={() => setIsOpen(false)} />
             
             <div 
                 className="relative w-full h-full md:w-[98vw] md:h-[98vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 bg-black/10 border-none rounded-none md:rounded-[60px] shadow-2xl backdrop-blur-3xl"

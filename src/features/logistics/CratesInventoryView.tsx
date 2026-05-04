@@ -5,7 +5,7 @@ import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileT
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
-import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom } from '../../lib/atoms';
+import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom } from '../../lib/atoms';
 import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices, getCrateDisplayName } from '../../lib/utils';
 import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
 import { ExportWizard } from '../../components/ExportWizard';
@@ -1023,16 +1023,16 @@ const CrateEditPanel: React.FC<{
 export const CratesInventoryView: React.FC = () => {
     const db = useDatabase();
     const [, setCratesVersion] = useAtom(cratesVersionAtom);
-    const [, setSubTab] = useAtom(logisticsSubTabAtom);
-    const [activeTab, setActiveTab] = useState<'empty' | 'packed' | 'boxes' | 'deployed'>('empty');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
+    const [searchQuery] = useAtom(TOP_BAR_SEARCH_ATOM);
+    const [isModalOpen, setIsModalOpen] = useAtom(isCrateCreationModalOpenAtom);
     const [editingCrate, setEditingCrate] = useState<CrateRecord | null>(null);
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const [nestingUnit, setNestingUnit] = useState<CrateRecord | null>(null);
     const [isSavingNest, setIsSavingNest] = useState(false);
     const allInventory = useAtomValue(inventoryAtom);
     const isDummyMode = useAtomValue(isDummyModeAtom);
+    const activeTab = useMemo(() => (subTab === 'packed' || subTab === 'boxes' || subTab === 'deployed') ? subTab : 'empty', [subTab]);
 
     useEffect(() => {
         if (!db) return;
@@ -1290,9 +1290,6 @@ export const CratesInventoryView: React.FC = () => {
             <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-6 border-b border-white/10 bg-black/40 backdrop-blur-3xl sticky top-20 sm:top-24 z-[60] w-full gap-4 lg:gap-8">
                 <div className="flex items-center gap-4 sm:gap-8 shrink-0">
                     <div className="shrink-0">
-                        <h2 className="text-lg font-black uppercase tracking-tight text-(--text-color)">
-                            Shipping <span className="text-(--main-color) italic">Crates</span>
-                        </h2>
                         <div className="flex items-center gap-5 mt-1">
                             {[
                                 { label: 'Empty', value: summary.empty, dot: 'bg-emerald-400', color: 'text-emerald-400' },
@@ -1308,52 +1305,6 @@ export const CratesInventoryView: React.FC = () => {
                             ))}
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-1 p-1 bg-white/5 border border-white/8 shrink-0">
-                        {[
-                            ['empty',    'Empty Inventory'],
-                            ['packed',   'Packed Crates'],
-                            ['boxes',    'Packed Boxes'],
-                            ['deployed', 'Deployed'],
-                        ].map(([val, label]) => (
-                            <button
-                                key={val}
-                                onClick={() => setActiveTab(val as any)}
-                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap relative ${
-                                    activeTab === val
-                                        ? val === 'deployed' ? 'bg-blue-500 text-white' : 'bg-white text-black'
-                                        : 'text-white/40 hover:text-white'
-                                }`}
-                            >
-                                {label}
-                                {val === 'deployed' && summary.deployed > 0 && activeTab !== 'deployed' && (
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] font-black flex items-center justify-center">
-                                        {summary.deployed}
-                                    </span>
-                                )}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0 ml-auto">
-                    <div className="relative shrink-0">
-                        <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25" />
-                        <input
-                            type="text"
-                            placeholder="SEARCH UNITS…"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="bg-white/5 border border-white/8 pl-9 pr-4 py-2.5 text-[10px] font-mono text-white uppercase tracking-widest outline-none focus:border-(--main-color)/50 focus:bg-white/8 transition w-40 sm:w-52"
-                        />
-                    </div>
-
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-(--main-color)/20 cursor-pointer shrink-0 whitespace-nowrap"
-                    >
-                        <Plus size={14} strokeWidth={3} /> New Unit
-                    </button>
                 </div>
             </div>
 
@@ -1421,14 +1372,14 @@ export const CratesInventoryView: React.FC = () => {
                                     No {activeTab} units
                                 </h3>
                                 <p className="text-[10px] font-black text-white/25 uppercase tracking-[0.3em] font-mono max-w-xs">
-                                    {activeTab === 'empty'
+                                    {(subTab === 'empty' || subTab === 'crates')
                                         ? 'No empty units available. Create new storage to begin packing.'
-                                        : activeTab === 'deployed'
+                                        : subTab === 'deployed'
                                         ? 'No deployed crates found. Crates appear here after Ready Truck is executed.'
                                         : 'No packed units yet. Select items in the packing flow.'}
                                 </p>
                             </div>
-                            {activeTab === 'empty' && (
+                            {(subTab === 'empty' || subTab === 'crates') && (
                                 <button
                                     onClick={() => setIsModalOpen(true)}
                                     className="group flex items-center gap-2.5 px-6 py-3 border border-white/8 bg-white/3 hover:border-(--main-color)/40 hover:bg-(--main-color)/5 transition-all cursor-pointer"

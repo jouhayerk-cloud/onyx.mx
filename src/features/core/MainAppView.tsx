@@ -284,6 +284,8 @@ export function MainAppView() {
             case 'dashboard': return <AdminDashboard />;
             case 'upload': return <UploadView />;
             case 'inventory': return <InventoryView />;
+            case 'warehouse':
+            case 'trucking':
             case 'logistics': return <LogisticsView />;
             case 'packing': return <PackingModule />;
             case 'finance': return <FinanceView />;
@@ -373,30 +375,36 @@ export function MainAppView() {
                             </li>
                         )}
 
-                        {/* ── WAREHOUSE ── */}
+                        {/* ── STORE ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer') && (
+                            <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <ShoppingBag size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Store</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Store</span>
+                            </li>
+                        )}
+
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
-                            <NavItemWithSubmenu 
-                                viewId="warehouse"
-                                label="Warehouse"
-                                icon="package"
-                                subItems={[
-                                    { id: 'warehouse_empty', label: 'Empty Crates', icon: 'box', action: () => { setActiveView('logistics'); setLogisticsSubTab('empty'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'logistics' && logisticsSubTab === 'empty' },
-                                    { id: 'warehouse_packed', label: 'Packed Crates', icon: 'cuboid', action: () => { setActiveView('logistics'); setLogisticsSubTab('packed'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'logistics' && (logisticsSubTab === 'packed' || logisticsSubTab === 'packing') }
-                                ]}
-                            />
+                            <li className={`sidebar-list-item ${activeView === 'warehouse' ? 'active' : ''}`} onClick={() => { setActiveView('warehouse'); setLogisticsSubTab('empty'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Package size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Warehouse</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Warehouse</span>
+                            </li>
                         )}
 
                         {/* ── TRUCKING ── */}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
-                            <NavItemWithSubmenu 
-                                viewId="trucking"
-                                label="Trucking"
-                                icon="truck"
-                                subItems={[
-                                    { id: 'trucking_plan', label: 'Plan Truck', icon: 'map-pin', action: () => { setActiveView('logistics'); setLogisticsSubTab('shipping'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'logistics' && logisticsSubTab === 'shipping' },
-                                    { id: 'trucking_deployed', label: 'Deployed', icon: 'zap', action: () => { setActiveView('logistics'); setLogisticsSubTab('deployed'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'logistics' && logisticsSubTab === 'deployed' }
-                                ]}
-                            />
+                            <li className={`sidebar-list-item ${activeView === 'trucking' ? 'active' : ''}`} onClick={() => { setActiveView('trucking'); setLogisticsSubTab('shipping'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Truck size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Trucking</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Trucking</span>
+                            </li>
                         )}
 
                         {/* ── LABS ── */}
