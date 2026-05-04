@@ -10,7 +10,8 @@ import {
     isDummyModeAtom, 
     sidebarStateAtom, 
     uploadItemDataAtom,
-    workbookVersionAtom
+    workbookVersionAtom,
+    InventoryVersionAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -170,6 +171,7 @@ export const UploadWizard: React.FC = () => {
     const user = useAtomValue(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
+    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
     
     const [saving, setSaving] = useState(false);
     const [savingProgress, setSavingProgress] = useState(0);
@@ -375,7 +377,7 @@ export const UploadWizard: React.FC = () => {
             }
 
             // 3. Force UI refresh
-            setVersion(v => v + 1);
+            setInventoryVersion(v => v + 1);
 
             toast.success('Artifact Created!', { id: tid });
             toast.success('Registry Updated', { id: tid });
@@ -417,7 +419,7 @@ export const UploadWizard: React.FC = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={() => setIsOpen(false)} />
             
             <div 
-                className="relative w-full h-full md:w-[98vw] md:h-[98vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 bg-black/10 border-none rounded-none md:rounded-[60px] shadow-2xl backdrop-blur-3xl"
+                className="relative w-full h-full flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 bg-black/10 border-none rounded-none md:rounded-[40px] shadow-2xl backdrop-blur-3xl"
                 onClick={(e) => e.stopPropagation()}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}

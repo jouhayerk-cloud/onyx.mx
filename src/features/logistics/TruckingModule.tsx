@@ -12,13 +12,15 @@ import { generatePackingListHtml } from './generatePackingListHtml';
 import { generatePackingListXlsx } from '../../lib/xlsxUtils';
 import { useDatabase } from '../../lib/hooks';
 import { 
+    activeViewAtom,
     inventoryAtom, cratesVersionAtom, truckReadyTriggerAtom, 
     truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom,
     truckShowSaveDraftAtom, truckShowOpenDraftAtom,
     truckShowExportModalAtom, truckShowReadyWizardAtom,
     truckTopBarStateAtom, exchangeRateAtom, isDummyModeAtom,
     sentTruckIdAtom, universalViewAtom, truckShowPanelsAtom,
-    inventoryArtifactConfigAtom
+    inventoryArtifactConfigAtom,
+    logisticsSubTabAtom
 } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
@@ -30,15 +32,16 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import gsap from 'gsap';
 
-const TRUCK_L_CM = 1615;
-const TRUCK_W_CM = 244;
-const BASE_SCALE = 1.5; // px/cm — canvas is 2422 × 366 px at zoom=1
+export const TRUCK_L_CM = 1615;
+export const TRUCK_W_CM = 244;
+export const TRUCK_H_CM = 279;
+export const BASE_SCALE = 1.5; // px/cm — canvas is 2422 × 366 px at zoom=1
 
 // getCrateDisplayName moved to utils.tsx
 
 
 
-function getTruckCrateNumbering(truckCrates: any[], positions: Record<string, any>) {
+export function getTruckCrateNumbering(truckCrates: any[], positions: Record<string, any>) {
     const sorted = [...truckCrates].sort((a, b) => {
         const pa = positions[a.id];
         const pb = positions[b.id];
@@ -56,7 +59,7 @@ function getTruckCrateNumbering(truckCrates: any[], positions: Record<string, an
 }
 
 // ─── Weight: sum item.weight_kg × qty from inventory_ids ─────────────────────
-function computeCrateWeight(crate: any, allInventory: any[], allCrates: any[], visited = new Set<string>()): number {
+export function computeCrateWeight(crate: any, allInventory: any[], allCrates: any[], visited = new Set<string>()): number {
     if (!crate || visited.has(crate.id)) return 0;
     visited.add(crate.id);
 
@@ -145,7 +148,7 @@ const CmGrid: React.FC<{ isVertical?: boolean }> = ({ isVertical }) => {
 
 // ─── Dock Card ────────────────────────────────────────────────────────────────
 // ─── Isometric Wireframe Icon ────────────────────────────────────────────────────
-const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string; size?: number; solid?: boolean }> = ({ w, l, h, color, size = 44, solid = false }) => {
+export const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string; size?: number; solid?: boolean }> = ({ w, l, h, color, size = 44, solid = false }) => {
     const maxDim = Math.max(w, l, h, 1);
     const W = w / maxDim; const L = l / maxDim; const H = h / maxDim;
     const S = 13; const ox = 24; const oy = 30;
@@ -181,7 +184,7 @@ const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string;
 };
 
 // ─── Compact Data-Dense Card components ─────────────────────────────────────
-const CompactDockCard: React.FC<{ 
+export const CompactDockCard: React.FC<{ 
     crate: any; allCrates: any[]; allInventory: any[]; 
     onLoad: () => void; onNest?: () => void; isCompact: boolean
 }> = ({ crate, allCrates, allInventory, onLoad, onNest, isCompact }) => {
@@ -239,7 +242,7 @@ const CompactDockCard: React.FC<{
     );
 };
 
-const CompactItemCard: React.FC<{ 
+export const CompactItemCard: React.FC<{ 
     item: any; 
     onLoad: () => void 
 }> = ({ item, onLoad }) => {
@@ -379,7 +382,7 @@ const MiniIsoView: React.FC<{
     );
 };
 
-const DeployedTrailerCard: React.FC<{ 
+export const DeployedTrailerCard: React.FC<{ 
     shipment: any; 
     onRecall: () => void;
     onDelete: () => void;
@@ -614,6 +617,8 @@ const TruckCrate: React.FC<{
             <div
                 onMouseDown={handleMouseDown}
                 onTouchStart={handleTouchStart}
+                onMouseUp={e => e.stopPropagation()}
+                onClick={e => e.stopPropagation()}
                 className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative group touch-none"
                 style={{
                     backgroundColor: primaryColor,
@@ -757,7 +762,6 @@ const IsoView: React.FC<{
 };
 
 // ─── Side View (interactive 2-D lateral view) ────────────────────────────────
-const TRUCK_H_CM = 279;
 const SideView: React.FC<{
     truckCrates: any[];
     positions: Record<string, {x:number;y:number;r:number;z?:number}>;
@@ -1086,7 +1090,6 @@ function generateSideViewThumbnail(
 ): string {
     const W = 2400;
     const scale = W / TRUCK_L_CM;
-    const TRUCK_H_CM = 279;
     const H = Math.round(TRUCK_H_CM * scale);
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
@@ -1406,7 +1409,6 @@ function generateMasterThumbnail(
     // ── 3. SIDE VIEW (Bottom Right) ──
     const drawSide = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
         const padding = 60;
-        const TRUCK_H_CM = 279;
         const availW = rect.w - padding * 2;
         const scale = availW / TRUCK_L_CM;
         const availH = TRUCK_H_CM * scale;
@@ -3215,6 +3217,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const setCratesVersion = useSetAtom(cratesVersionAtom);
     const setSentTruckId = useSetAtom(sentTruckIdAtom);
     const setView = useSetAtom(universalViewAtom);
+    const setLogisticsSubTab = useSetAtom(logisticsSubTabAtom);
     const [isSaving, setIsSaving] = useAtom(truckIsBusyAtom);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number; z?: number }>>({});
@@ -3876,7 +3879,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     manifest_id: manifestId,
                     metadata: f,
                     payload: shipmentPayload,
-                    timestamp: ts,
+                    timestamp: dispatchTs,
                     updated_at: new Date().toISOString()
                 });
                 if (shipError) {
@@ -4069,7 +4072,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         <div className="absolute inset-0 flex flex-col overflow-hidden bg-transparent select-none">
             {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
             {showPanels && (
-            <div className="absolute top-0 left-0 right-0 z-[40] p-6 mt-16 pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 z-[40] p-6 pointer-events-none">
                 <div 
                     className={`pointer-events-auto flex flex-col backdrop-blur-3xl bg-black/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 hover:bg-black/10 ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
                     onWheel={e => e.stopPropagation()}
@@ -4137,6 +4140,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         />
                                     ))
                                 )}
+                                <div className="w-px h-8 bg-white/10 mx-2" />
+                                <button 
+                                    onClick={() => setLogisticsSubTab('deployed')}
+                                    className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2 shrink-0 group"
+                                >
+                                    <Maximize2 size={14} className="group-hover:scale-110 transition-transform" />
+                                    Expand Fleet
+                                </button>
                             </>
                         )}
                     </div>
@@ -4320,9 +4331,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 className="flex-1 overflow-auto custom-scrollbar relative bg-white/[0.02] backdrop-blur-3xl"
                 style={{ touchAction: 'none' }}
                 onMouseDown={handleMouseDown}
-                onClick={() => {
-                    setSelectedId(null);
-                    setInventoryArtifactConfig(prev => ({ ...prev, isOpen: false }));
+                onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                        setSelectedId(null);
+                        setInventoryArtifactConfig(prev => ({ ...prev, isOpen: false }));
+                    }
                 }}
             >
                 <div className="relative">
@@ -4368,7 +4381,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         </div>
                     </div>
                 ) : (
-                <div className="min-w-full min-h-full flex flex-col items-center justify-center p-[1500px] lg:p-[2500px]">
+                <div 
+                    className="min-w-full min-h-full flex flex-col items-center justify-center p-[1500px] lg:p-[2500px]"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setSelectedId(null);
+                        }
+                    }}
+                >
                     <div 
                         id="trailer-main-map"
                         className="flex flex-col items-center animate-in fade-in zoom-in duration-1000" 
@@ -4416,7 +4436,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     width: (isMobile ? TRUCK_W_CM : TRUCK_L_CM) * BASE_SCALE, 
                                     height: (isMobile ? TRUCK_L_CM : TRUCK_W_CM) * BASE_SCALE 
                                 }}
-                                onClick={e => e.stopPropagation()}
+                                onClick={(e) => {
+                                    if (e.target === e.currentTarget) {
+                                        setSelectedId(null);
+                                    }
+                                }}
                             >
                                 <CmGrid isVertical={isMobile} />
                                 {isMobile ? (
@@ -4539,7 +4563,6 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             )}
 
             {/* ── FIXED BOTTOM CONTROL BAR (Glassmorphic) ── */}
-            {showPanels && (
             <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
                 <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <button
@@ -4633,7 +4656,6 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     </button>
                 </div>
             </div>
-            )}
         </div>
     );
 };

@@ -31,7 +31,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers, ShoppingBag,
-    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d
+    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d, History
 } from 'lucide-react';
 
 
@@ -60,6 +60,7 @@ import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { PaymentsArtifact } from '../finance/PaymentsArtifact';
 import { ViewerView } from '../viewer/ViewerView';
 import { ThreeDAppView } from '../threed/ThreeDView';
+import { DeployedView } from '../logistics/DeployedView';
 
 import { UniversalToolsBar } from './UniversalToolsBar';
 import { LabelWizard, NFCWizard } from '../logistics/LabelWizard';
@@ -257,7 +258,7 @@ export function MainAppView() {
     useEffect(() => {
         const clientRoles: UserRole[] = ['ClientBoss', 'ClientAccounting', 'ClientViewer'];
         if (clientRoles.includes(user?.role as UserRole)) {
-            const alwaysDummy = ['upload', 'logistics', 'packing', 'process'];
+            const alwaysDummy = ['upload', 'process'];
             const isViewerInventory = user?.role === 'ClientViewer' && activeView === 'inventory';
             setIsDummyMode(alwaysDummy.includes(activeView as string) || isViewerInventory);
         } else {
@@ -287,6 +288,7 @@ export function MainAppView() {
             case 'warehouse':
             case 'trucking':
             case 'logistics': return <LogisticsView />;
+            case 'deployed': return <DeployedView />;
             case 'packing': return <PackingModule />;
             case 'finance': return <FinanceView />;
             case 'store': return <StoreView />;
@@ -376,7 +378,7 @@ export function MainAppView() {
                         )}
 
                         {/* ── STORE ── */}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer') && (
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
                             <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <ShoppingBag size={20} strokeWidth={1.75} />
