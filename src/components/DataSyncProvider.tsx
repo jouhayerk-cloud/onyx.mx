@@ -189,8 +189,8 @@ export const DataSyncProvider: React.FC = () => {
             try {
                 // Fetch latest from BOTH tables
                 const [invRes, prodRes] = await Promise.all([
-                    supabase.from('inventory').select('*').eq('is_hidden', false),
-                    supabase.from('production').select('*').eq('is_hidden', false)
+                    supabase.from('inventory').select('*').or('is_hidden.is.null,is_hidden.eq.false'),
+                    supabase.from('production').select('*').or('is_hidden.is.null,is_hidden.eq.false')
                 ]);
 
                 if (invRes.data) {
