@@ -24,8 +24,6 @@ const columns = [
     { name: 'book_barcode', sql: `ALTER TABLE inventory ADD COLUMN IF NOT EXISTS book_barcode TEXT;` },
     { name: 'book_aq_code', sql: `ALTER TABLE inventory ADD COLUMN IF NOT EXISTS book_aq_code TEXT;` },
     { name: 'book_land_code', sql: `ALTER TABLE inventory ADD COLUMN IF NOT EXISTS book_land_code TEXT;` },
-    { name: 'vendor_id', sql: `ALTER TABLE inventory ADD COLUMN IF NOT EXISTS vendor_id TEXT;` },
-    { name: 'is_hidden', sql: `ALTER TABLE inventory ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;` },
 ];
 
 async function migrate() {

@@ -875,7 +875,7 @@ export const normalizeInventoryData = (data: any): any => {
   return {
     ...d,
     itemId: d.item_id ?? d.itemId,
-    vendorId: d.vendor_id || d.vendorId,
+    vendorId: d.vendor_id || d.vendorId || (String(d.item_id || d.itemId || '').includes('-') ? String(d.item_id || d.itemId || '').split('-')[0] : ''),
     itemNumber: d.item_number ?? d.itemNumber,
     shape: d.shape,
     material: d.material,
