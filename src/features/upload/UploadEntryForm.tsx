@@ -286,8 +286,6 @@ export function UploadEntryForm() {
                 media_urls: uploadedUrls.join(','),
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                vendor_id: itemData.vendorId,
-                is_hidden: false,
                 book_barcode: calculated.bookBarcode,
                 book_aq_code: calculated.bookAqCode,
                 book_landed: isNaN(Number(calculated.bookLanded)) ? null : Number(calculated.bookLanded),

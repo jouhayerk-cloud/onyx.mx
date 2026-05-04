@@ -350,7 +350,6 @@ export const UploadWizard: React.FC = () => {
 
             const payload = {
                 id: itemData.id || crypto.randomUUID(),
-                vendor_id: state.vendorId,
                 item_id: `${state.vendorId}-${state.itemNumber.padStart(3, '0')}`,
                 book_barcode: calculated.bookBarcode,
                 book_aq_code: calculated.bookAqCode,
@@ -373,7 +372,6 @@ export const UploadWizard: React.FC = () => {
                 created_by: user?.name || user?.email,
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                is_hidden: false
             };
             setSavingProgress(95);
 
