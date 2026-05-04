@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { 
     activeViewAtom, 
@@ -17,11 +17,6 @@ import {
     inventoryMaterialFilterAtom,
     inventorySortKeyAtom,
     inventorySortOrderAtom,
-    isInventoryVendorFilterOpenAtom,
-    isInventoryCategoryFilterOpenAtom,
-    isInventoryMaterialFilterOpenAtom,
-    isInventorySearchOpenAtom,
-    inventorySearchTermAtom,
     InventoryVersionAtom,
     isUploadWizardOpenAtom,
     isPaymentsSearchOpenAtom,
@@ -46,13 +41,30 @@ import {
     truckShowOpenDraftAtom,
     truckShowExportModalAtom,
     truckShowReadyWizardAtom,
-    truckIsBusyAtom
+    truckIsBusyAtom,
+    truckShowPanelsAtom,
+    truckTopBarStateAtom,
+    truckingDockCratesAtom,
+    truckingTotalWeightAtom,
+    truckingFloorPctAtom,
+    truckingRecalledShipmentAtom,
+    truckingAllCratesAtom,
+    truckingPositionsAtom,
+    logisticsDocsAtom,
+    isInventorySearchOpenAtom,
+    inventorySearchTermAtom,
+    truckDockIsCompactAtom,
+    truckStatsIsCompactAtom,
+    truckingReadyFieldsAtom
 } from '../../lib/atoms';
 import { 
-    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { CompactDockCard, DeployedTrailerCard } from '../logistics/TruckingModule';
+import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -149,7 +161,6 @@ const SectionHeader: React.FC<{
     return (
         <div className={`flex items-center justify-between transition-all group cursor-pointer ${minimal ? 'px-4 py-3' : 'px-4 py-4 hover:bg-white/5 rounded-2xl'}`} onClick={onToggle}>
             <div className="flex items-center gap-6">
-                {/* Free floating icon (no container) */}
                 <div className={`transition-all duration-500 ${isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.8)]' : 'text-white/20'}`}>
                     <Icon size={minimal ? 20 : 28} strokeWidth={3} />
                 </div>
@@ -181,7 +192,6 @@ const SectionHeader: React.FC<{
 
 export const UniversalToolsBar: React.FC = () => {
     const activeView = useAtomValue(activeViewAtom);
-    const [selectedIds] = useAtom(selectedInventoryIdsAtom);
     const logisticsSubTab = useAtomValue(logisticsSubTabAtom);
     
     // Inventory States
@@ -192,8 +202,6 @@ export const UniversalToolsBar: React.FC = () => {
     const [isInvSearchOpen, setIsInvSearchOpen] = useAtom(isInventorySearchOpenAtom);
     const [invSearchTerm, setInvSearchTerm] = useAtom(inventorySearchTermAtom);
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
-    const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
-    const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
     const setInvVersion = useSetAtom(InventoryVersionAtom);
     
     // Finance States
@@ -203,14 +211,10 @@ export const UniversalToolsBar: React.FC = () => {
     const [isFinActionOpen, setIsFinActionOpen] = useAtom(isPaymentActionPanelOpenAtom);
     const [isFinQueueOpen, setIsFinQueueOpen] = useAtom(isPaymentQueueOpenAtom);
     const [isFinUpcomingOpen, setIsFinUpcomingOpen] = useAtom(isPaymentUpcomingOpenAtom);
-    const [isFinPendingBarOpen, setIsFinPendingBarOpen] = useAtom(isPaymentPendingBarOpenAtom);
     
-    const [finStatusFilter, setFinStatusFilter] = useAtom(paymentStatusFilterAtom);
     const [finCategoryFilter, setFinCategoryFilter] = useAtom(paymentCategoryFilterAtom);
     const [finDestFilter, setFinDestFilter] = useAtom(paymentDestinationFilterAtom);
-    const [finOverviewMode, setFinOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
-    const isFinanceScrolled = useAtomValue(isFinanceScrolledAtom);
     const financeTotals = useAtomValue(financeTotalsAtom);
     const financeDocs = useAtomValue(financeDataAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
@@ -224,8 +228,56 @@ export const UniversalToolsBar: React.FC = () => {
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
     const truckBusy = useAtomValue(truckIsBusyAtom);
+    const showPanels = useAtomValue(truckShowPanelsAtom);
+    const topBarState = useAtomValue(truckTopBarStateAtom);
+    const [positions, setPositions] = useAtom(truckingPositionsAtom);
+    const [recalledShipment, setRecalledShipment] = useAtom(truckingRecalledShipmentAtom);
+    const dockCrates = useAtomValue(truckingDockCratesAtom);
+    const allCrates = useAtomValue(truckingAllCratesAtom);
+    const allInventory = useAtomValue(inventoryAtom);
+    const totalWeight = useAtomValue(truckingTotalWeightAtom);
+    const floorPct = useAtomValue(truckingFloorPctAtom);
+    const [isDockCompact, setIsDockCompact] = useAtom(truckDockIsCompactAtom);
+    const [isStatsCompact, setIsStatsCompact] = useAtom(truckStatsIsCompactAtom);
+    const readyFields = useAtomValue(truckingReadyFieldsAtom);
+    const [recentShipments, setRecentShipments] = useState<any[]>([]);
 
-    // Derived Finance Data
+    useEffect(() => {
+        if (activeView === 'trucking' && topBarState === 'trailers') {
+            const fetchRecent = async () => {
+                try {
+                    const { data, error } = await supabase.from('shipments')
+                        .select('*')
+                        .order('timestamp', { ascending: false })
+                        .limit(10);
+                    if (!error) setRecentShipments(data || []);
+                } catch (err) { console.error('Recent shipments fetch error:', err); }
+            };
+            fetchRecent();
+        }
+    }, [activeView, topBarState]);
+
+    const handleRecall = (shipment: any) => {
+        setRecalledShipment(shipment);
+        toast.success(`Recalling manifest ${shipment.manifest_id}`);
+    };
+
+    const handleDeleteShipment = async (id: string) => {
+        if (!confirm('Delete this shipment record permanently?')) return;
+        try {
+            const { error } = await supabase.from('shipments').delete().eq('id', id);
+            if (error) throw error;
+            setRecentShipments(s => s.filter(x => x.id !== id));
+            toast.success('Shipment deleted');
+        } catch (e) { toast.error('Failed to delete shipment'); }
+    };
+
+    // Inventory Atoms for Filtering
+    const [invVendorFilter, setInvVendorFilter] = useAtom(inventoryVendorFilterAtom);
+    const [invSortKey, setInvSortKey] = useAtom(inventorySortKeyAtom);
+    const [invSortOrder, setInvSortOrder] = useAtom(inventorySortOrderAtom);
+    const activeVendors = useAtomValue(activeVendorsAtom);
+
     const activeQueueRecords = useMemo(() => 
         financeDocs.filter(r => r.status === 'Requested'), 
     [financeDocs]);
@@ -233,15 +285,6 @@ export const UniversalToolsBar: React.FC = () => {
     const activeQueueTotal = useMemo(() => 
         activeQueueRecords.reduce((s, r) => s + (r.amount || 0) + (r.commission || 0), 0),
     [activeQueueRecords]);
-
-    // Inventory Atoms for Filtering
-    const inventoryItems = useAtomValue(inventoryAtom);
-    const [invVendorFilter, setInvVendorFilter] = useAtom(inventoryVendorFilterAtom);
-    const [invCategoryFilter, setInvCategoryFilter] = useAtom(inventoryCategoryFilterAtom);
-    const [invMaterialFilter, setInvMaterialFilter] = useAtom(inventoryMaterialFilterAtom);
-    const [invSortKey, setInvSortKey] = useAtom(inventorySortKeyAtom);
-    const [invSortOrder, setInvSortOrder] = useAtom(inventorySortOrderAtom);
-    const activeVendors = useAtomValue(activeVendorsAtom);
     
     if (!activeView) return null;
 
@@ -250,6 +293,7 @@ export const UniversalToolsBar: React.FC = () => {
     const isTrucking = activeView === 'trucking';
 
     if (!isInventory && !isFinance && !isTrucking) return null;
+
 
     return (
         <div className="flex flex-col w-full z-50">
@@ -265,57 +309,58 @@ export const UniversalToolsBar: React.FC = () => {
                             </div>
                         )}
                         {isInventory && isInvViewSliderOpen && (
-                            <div className="flex items-center gap-10 animate-in slide-in-from-top-4 duration-500">
-                                {/* UNIFIED VIEW SLIDER */}
-                                <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-2 text-zinc-500 shrink-0 w-8 h-8 justify-center relative overflow-hidden">
-                                        <div className="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out" style={{ 
-                                            opacity: invMode === 'list' ? 1 : 0,
-                                            transform: `scale(${invMode === 'list' ? 1 : 0.5}) rotate(${invMode === 'list' ? 0 : -90}deg)`
-                                        }}>
-                                            <LayoutList size={20} strokeWidth={3} className="text-white" />
+                            <div className="flex items-center justify-between w-full animate-in slide-in-from-top-4 duration-500 py-2">
+                                <div className="flex items-center gap-8 w-1/2">
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <div className="relative w-12 h-12 flex items-center justify-center bg-white/5 rounded-xl border border-white/10 overflow-hidden group/view">
+                                            <div className="transition-all duration-300 ease-out flex items-center justify-center"
+                                                 style={{ 
+                                                     transform: `scale(${1 + (invSlider / 100) * 0.8})`,
+                                                     color: invSlider > 66 ? 'var(--main-color)' : 'white'
+                                                 }}>
+                                                {invSlider <= 33 ? <LayoutList size={20} strokeWidth={2.5} /> : 
+                                                 invSlider <= 66 ? <LayoutGrid size={20} strokeWidth={2.5} /> : 
+                                                 <Layout size={20} strokeWidth={2.5} />}
+                                            </div>
+                                            <div className="absolute inset-0 opacity-20 transition-all duration-500"
+                                                 style={{ 
+                                                     background: `radial-gradient(circle, var(--main-color) 0%, transparent 70%)`,
+                                                     opacity: (invSlider / 100) * 0.3
+                                                 }} />
                                         </div>
-                                        <div className="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out" style={{ 
-                                            opacity: invMode === 'grid' ? 1 : 0,
-                                            transform: `scale(${invMode === 'grid' ? 1 : 0.5})`
-                                        }}>
-                                            <LayoutGrid size={20} strokeWidth={3} className="text-white" />
-                                        </div>
-                                        <div className="absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out" style={{ 
-                                            opacity: invMode === 'gallery' ? 1 : 0,
-                                            transform: `scale(${invMode === 'gallery' ? 1 : 0.5}) rotate(${invMode === 'gallery' ? 0 : 90}deg)`
-                                        }}>
-                                            <Layout size={20} strokeWidth={3} className="text-white" />
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] leading-none mb-1">Density</span>
+                                            <span className="text-[14px] font-black text-white uppercase tracking-tighter">
+                                                {invSlider <= 33 ? 'Compact' : invSlider <= 66 ? 'Standard' : 'Spacious'}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className="relative flex items-center group">
+                                    <div className="flex-1 relative flex items-center group px-4">
+                                        <div className="absolute left-4 right-4 h-1.5 bg-white/5 rounded-full" />
+                                        <div className="absolute left-4 h-1.5 bg-white/20 rounded-full transition-all duration-300" 
+                                             style={{ width: `calc(${(invSlider / 100) * 100}% - 8px)` }} />
                                         <input 
-                                            type="range" 
-                                            min="1" 
-                                            max="6" 
-                                            step="1" 
-                                            value={invSlider} 
+                                            type="range" min="1" max="100" step="1" value={invSlider} 
                                             onChange={(e) => {
                                                 const val = parseInt(e.target.value);
                                                 setInvSlider(val);
-                                                if (val <= 2) setInvMode('list');
-                                                else if (val <= 4) setInvMode('grid');
+                                                if (val <= 33) setInvMode('list');
+                                                else if (val <= 66) setInvMode('grid');
                                                 else setInvMode('gallery');
                                             }}
-                                            className="w-48 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-white transition-all hover:bg-white/20"
+                                            className="w-full h-8 bg-transparent appearance-none cursor-pointer relative z-10 
+                                                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 
+                                                       [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(255,255,255,0.5)]
+                                                       [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-black [&::-webkit-slider-thumb]:transition-transform"
                                         />
                                     </div>
                                 </div>
-
-                                <div className="w-px h-6 bg-white/10 shrink-0" />
-
-                                {/* SORTING CONTROLS */}
-                                <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-2 text-zinc-500 uppercase font-black text-[10px] tracking-widest shrink-0">
-                                        <ArrowUpDown size={16} />
+                                <div className="flex items-center gap-6 shrink-0">
+                                    <div className="flex items-center gap-2 text-white/20 uppercase font-black text-[9px] tracking-[0.2em] shrink-0">
+                                        <ArrowUpDown size={14} />
                                         <span>SORT BY</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/5">
                                         {[
                                             { key: 'Date', label: 'DATE' },
                                             { key: 'Vendor', label: 'VENDOR' },
@@ -324,18 +369,12 @@ export const UniversalToolsBar: React.FC = () => {
                                             { key: 'Value', label: 'VALUE' },
                                             { key: 'Qty', label: 'QTY' }
                                         ].map(sort => (
-                                            <button 
-                                                key={sort.key} 
-                                                onClick={() => {
-                                                    if (invSortKey === sort.key) setInvSortOrder(invSortOrder === 'asc' ? 'desc' : 'asc');
-                                                    else { setInvSortKey(sort.key as any); setInvSortOrder('desc'); }
-                                                }}
-                                                className={`px-4 py-2 rounded-full flex items-center gap-2 transition-all font-black text-[10px] tracking-wider ${invSortKey === sort.key ? 'bg-white text-black' : 'text-zinc-600 hover:text-white hover:bg-white/5'}`}
-                                            >
+                                            <button key={sort.key} onClick={() => {
+                                                if (invSortKey === sort.key) setInvSortOrder(invSortOrder === 'asc' ? 'desc' : 'asc');
+                                                else { setInvSortKey(sort.key as any); setInvSortOrder('desc'); }
+                                            }} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all font-black text-[9px] tracking-wider ${invSortKey === sort.key ? 'bg-white text-black shadow-lg' : 'text-white/20 hover:text-white hover:bg-white/5'}`}>
                                                 {sort.label}
-                                                {invSortKey === sort.key && (
-                                                    invSortOrder === 'asc' ? <ArrowUp size={12} strokeWidth={4} /> : <ArrowDown size={12} strokeWidth={4} />
-                                                )}
+                                                {invSortKey === sort.key && (invSortOrder === 'asc' ? <ArrowUp size={10} strokeWidth={4} /> : <ArrowDown size={10} strokeWidth={4} />)}
                                             </button>
                                         ))}
                                     </div>
@@ -353,15 +392,11 @@ export const UniversalToolsBar: React.FC = () => {
                 </div>
             )}
 
-            {/* ── FINANCE TOOLS (CONTINUOUS PANEL STYLE) ─────────────────────────────────────── */}
+            {/* ── FINANCE TOOLS ─────────────────────────────────────────────────────────── */}
             {isFinance && (
                 <div className="flex flex-col w-full min-h-0 border-t border-white/5">
-                    
-                    {/* BAR 2: FILTERS (ACCOUNTS/CATEGORIES) */}
                     {isFinFiltersOpen && (
-                        <div className={`w-full px-8 py-3 animate-in slide-in-from-top-4 duration-500 flex items-center justify-between gap-8 overflow-x-auto no-scrollbar`}>
-                            
-                            {/* LEFT: PAYMENT TYPES */}
+                        <div className="w-full px-8 py-3 animate-in slide-in-from-top-4 duration-500 flex items-center justify-between gap-8 overflow-x-auto no-scrollbar">
                             <div className="flex items-center gap-4 shrink-0">
                                 {[
                                     { id: 'All', icon: LayoutGrid, color: '#888' },
@@ -377,23 +412,17 @@ export const UniversalToolsBar: React.FC = () => {
                                     const Icon = s.icon;
                                     const isActive = finCategoryFilter === s.id;
                                     return (
-                                        <button key={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
-                                            className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`}>
-                                            <Icon size={20} strokeWidth={isActive ? 4 : 3} style={{ color: isActive ? 'var(--main-color)' : s.color }} className={isActive ? 'drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]' : ''} />
+                                        <button key={s.id} onClick={() => setFinCategoryFilter(s.id as any)} className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`}>
+                                            <Icon size={20} strokeWidth={isActive ? 4 : 3} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
                                             <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${isActive ? 'text-white' : 'text-zinc-500'}`}>{s.id}</span>
                                         </button>
                                     );
                                 })}
                             </div>
-
-                            {/* DIVIDER */}
                             <div className="w-px h-6 bg-white/5 shrink-0" />
-
-                            {/* RIGHT: DESTINATION ACCOUNTS */}
                             <div className="flex items-center gap-5 shrink-0">
                                 {Object.entries(destinationsConfig).map(([key, cfg]) => (
-                                    <button key={key} onClick={() => setFinDestFilter(finDestFilter === key ? 'All' : key as any)}
-                                        className={`flex flex-col items-center gap-1 transition-all shrink-0 ${finDestFilter === key ? 'scale-110 grayscale-0 brightness-100' : 'grayscale brightness-50 hover:grayscale-0 hover:brightness-100'}`}>
+                                    <button key={key} onClick={() => setFinDestFilter(finDestFilter === key ? 'All' : key as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${finDestFilter === key ? 'scale-110 grayscale-0 brightness-100' : 'grayscale brightness-50 hover:grayscale-0 hover:brightness-100'}`}>
                                         <img src={cfg.icon} alt={cfg.name} className="w-9 h-4.5 object-contain" />
                                         <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${finDestFilter === key ? 'text-white' : 'text-zinc-500'}`}>{cfg.name.split(' ')[0]}</span>
                                     </button>
@@ -401,96 +430,26 @@ export const UniversalToolsBar: React.FC = () => {
                             </div>
                         </div>
                     )}
-
-                    {/* BAR 3: ACTIVE REQUEST QUEUE */}
                     {isFinActionOpen && (
                         <div className="w-full border-t border-white/5 px-8 py-4 animate-in slide-in-from-top-4 duration-500 overflow-hidden">
-                            <SectionHeader 
-                                icon={Heartbeat} 
-                                title="Requested" 
-                                count={activeQueueRecords.length}
-                                amount={activeQueueTotal}
-                                isOpen={isFinQueueOpen}
-                                onToggle={() => setIsFinQueueOpen(!isFinQueueOpen)}
-                                currencyMode={currencyMode}
-                                exRate={exRate}
-                            />
+                            <SectionHeader icon={Heartbeat} title="Requested" count={activeQueueRecords.length} amount={activeQueueTotal} isOpen={isFinQueueOpen} onToggle={() => setIsFinQueueOpen(!isFinQueueOpen)} currencyMode={currencyMode} exRate={exRate} />
                             {isFinQueueOpen && (
                                 <div className={`grid gap-1 overflow-hidden transition-all duration-500 ${activeQueueRecords.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
-                                    {activeQueueRecords.length === 0 ? (
-                                        <div className="py-6 text-center border border-white/5 rounded-2xl">
-                                            <span className="text-[11px] font-black uppercase tracking-[0.6em]">QUEUE EMPTY</span>
-                                        </div>
-                                    ) : (
-                                        activeQueueRecords.map(r => {
-                                            const v = r.vendor_id || 'Unknown';
-                                            const color = vendors[v as keyof typeof vendors]?.color || '#888';
-                                            return (
-                                                <ActiveRequestGridItem 
-                                                    key={r.id}
-                                                    label={r.description || v}
-                                                    amount={r.amount}
-                                                    color={color}
-                                                    type={r.subcategory}
-                                                    currencyMode={currencyMode}
-                                                    exRate={exRate}
-                                                    onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: [r.id], title: `Detail: ${v}` })}
-                                                />
-                                            );
-                                        })
-                                    )}
+                                    {activeQueueRecords.length === 0 ? <div className="py-6 text-center border border-white/5 rounded-2xl"><span className="text-[11px] font-black uppercase tracking-[0.6em]">QUEUE EMPTY</span></div> : activeQueueRecords.map(r => {
+                                        const v = r.vendor_id || 'Unknown';
+                                        const color = vendors[v as keyof typeof vendors]?.color || '#888';
+                                        return <ActiveRequestGridItem key={r.id} label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMode} exRate={exRate} onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: [r.id], title: `Detail: ${v}` })} />;
+                                    })}
                                 </div>
                             )}
                         </div>
                     )}
-
-                    {/* BAR 4: UPCOMING PAYMENTS */}
-                    {isFinActionOpen && (
-                        <div className="w-full border-t border-white/5 px-8 py-4 animate-in slide-in-from-top-4 duration-700 overflow-hidden">
-                            <SectionHeader 
-                                icon={Wallet} 
-                                title="Upcoming Payments" 
-                                isOpen={isFinUpcomingOpen}
-                                onToggle={() => setIsFinUpcomingOpen(!isFinUpcomingOpen)}
-                                minimal
-                            />
-                            {isFinUpcomingOpen && (
-                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1 overflow-hidden">
-                                    {financeTotals.pendingGroups.length === 0 ? (
-                                        <div className="col-span-full py-6 text-center opacity-10 border border-white/5 rounded-xl">
-                                            <span className="text-[11px] font-black uppercase tracking-[0.6em]">NO UPCOMING ITEMS</span>
-                                        </div>
-                                    ) : (
-                                        financeTotals.pendingGroups.map(g => {
-                                            const color = vendors[g.vendorId as keyof typeof vendors]?.color || '#888';
-                                            const remaining = g.total - g.paidTotal;
-                                            return (
-                                                <UpcomingGridItem 
-                                                    key={`${g.vendorId}-${g.type}`}
-                                                    label={g.vendorId}
-                                                    amount={remaining}
-                                                    color={color}
-                                                    type={g.type}
-                                                    currencyMode={currencyMode}
-                                                    exRate={exRate}
-                                                    onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: g.vendorId, title: `Liquidation: ${g.vendorId}` })}
-                                                />
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
                 </div>
             )}
 
-            {/* ── INVENTORY TOOLS (INDEPENDENT CONTROL BARS) ─────────────────────────────────────────── */}
+            {/* ── INVENTORY TOOLS ─────────────────────────────────────────────────────────── */}
             {isInventory && isInvFiltersOpen && (
                 <div className="flex flex-col w-full min-h-0 border-t border-white/5">
-                    
-                    {/* STATUS FILTERS BAR */}
                     <div className="w-full px-6 py-3 flex items-center justify-between overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center gap-5 shrink-0">
                             {[
@@ -506,50 +465,25 @@ export const UniversalToolsBar: React.FC = () => {
                                 const Icon = s.icon;
                                 const isActive = invStatusFilter === s.id;
                                 return (
-                                    <button key={s.id} onClick={() => setInvStatusFilter(s.id as any)}
-                                        className={`flex flex-col items-center gap-1 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`}
-                                        style={{ color: isActive ? s.color : undefined }}>
+                                    <button key={s.id} onClick={() => setInvStatusFilter(s.id as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`} style={{ color: isActive ? s.color : undefined }}>
                                         <Icon size={18} strokeWidth={isActive ? 4 : 3} className={isActive ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : ''} />
                                         <span className={`text-[8px] font-black uppercase tracking-wider ${isActive ? 'text-white' : 'text-zinc-500'}`}>{s.id}</span>
                                     </button>
                                 );
                             })}
                         </div>
-
-                        <div className="flex items-center gap-4">
-                            <button 
-                                onClick={() => {
-                                    setInvVersion(v => v + 1);
-                                    toast.success('Syncing with Supabase...', { icon: '🔄', style: { background: '#000', color: '#fff', fontSize: '10px', fontWeight: 'bold' } });
-                                }}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all text-[9px] font-black uppercase tracking-widest"
-                                title="Force Sync Inventory"
-                            >
-                                <Heartbeat size={14} className="animate-pulse" />
-                                SYNC REGISTRY
-                            </button>
-                        </div>
+                        <button onClick={() => { setInvVersion(v => v + 1); toast.success('Syncing...'); }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white text-[9px] font-black uppercase tracking-widest"><Heartbeat size={14} /> SYNC REGISTRY</button>
                     </div>
-
-                    {/* VENDOR FILTERS BAR (COMPACT VERTICAL STACK) */}
                     <div className="w-full border-t border-white/5 px-6 py-3 flex items-center gap-6 overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-700">
-                        <button onClick={() => setInvVendorFilter(['All'])} 
-                            className={`text-[10px] font-black uppercase transition-all shrink-0 ${invVendorFilter.includes('All') ? 'text-white' : 'text-zinc-600 hover:text-white'}`}>
-                            ALL<br/>VENDORS
-                        </button>
+                        <button onClick={() => setInvVendorFilter(['All'])} className={`text-[10px] font-black uppercase transition-all shrink-0 ${invVendorFilter.includes('All') ? 'text-white' : 'text-zinc-600 hover:text-white'}`}>ALL<br/>VENDORS</button>
                         <div className="w-px h-6 bg-white/10 shrink-0" />
                         <div className="flex items-center gap-6 shrink-0 py-1">
                             {activeVendors.map(v => {
                                 const vendorColor = (vendors as any)[v]?.color || '#ffffff';
-                                const isExplicitlyActive = invVendorFilter.includes(v);
-                                const isAllActive = invVendorFilter.includes('All');
-                                const isActive = isExplicitlyActive || isAllActive;
-                                
+                                const isActive = invVendorFilter.includes(v) || invVendorFilter.includes('All');
                                 return (
-                                    <button key={v} onClick={() => setInvVendorFilter(isExplicitlyActive ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])} 
-                                        className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110 brightness-125' : 'grayscale brightness-50 hover:grayscale-0 hover:brightness-100'}`}
-                                        style={{ color: isActive ? vendorColor : '#52525b' }}>
-                                        <div className="w-3 h-3 rounded-full shrink-0 shadow-[0_0_15px_-5px_rgba(255,255,255,0.3)]" style={{ backgroundColor: vendorColor }} />
+                                    <button key={v} onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])} className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'grayscale brightness-50 hover:grayscale-0'}`} style={{ color: isActive ? vendorColor : '#52525b' }}>
+                                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: vendorColor }} />
                                         <span className="text-[10px] font-black uppercase tracking-tight">{v}</span>
                                     </button>
                                 );
@@ -559,58 +493,230 @@ export const UniversalToolsBar: React.FC = () => {
                 </div>
             )}
 
-            {/* ── TRUCKING TOOLS (ACTION BUTTONS) ─────────────────────────────────────────────────── */}
-            {isTrucking && (
-                <div className="flex items-center justify-center gap-6 px-8 py-4 border-t border-white/5 bg-black/20 backdrop-blur-md animate-in slide-in-from-bottom duration-500">
-                    {/* Drafts */}
-                    <button 
-                        onClick={() => setShowOpenDraft(true)}
-                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-white transition-all group"
-                        title="Load Truck Drafts"
-                    >
-                        <Archive size={22} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Drafts</span>
-                    </button>
+            {/* ── TRUCKING TOOLS ─────────────────────────────────────────────────── */}
+            {isTrucking && showPanels && (
+                <div className="flex flex-col w-full border-t border-white/5 bg-black/40 backdrop-blur-xl animate-in slide-in-from-bottom duration-500">
+                    
+                    {/* 1. SHIPPING ACTION BAR (Always visible in trucking) */}
+                    {!recalledShipment && (
+                        <div className="flex items-center justify-between px-8 py-3 bg-white/[0.03] border-b border-white/5">
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2 pr-4 border-r border-white/10 shrink-0">
+                                    <Hammer size={16} className="text-(--main-color)" />
+                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em]">Actions</span>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <button onClick={() => setShowOpenDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group">
+                                        <Archive size={16} className="group-hover:scale-110 transition-transform" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">Drafts</span>
+                                    </button>
+                                    <button onClick={() => setShowSaveDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group">
+                                        <Save size={16} className="group-hover:scale-110 transition-transform" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">Save</span>
+                                    </button>
+                                    <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 text-white/30 hover:text-(--main-color) transition-all group">
+                                        <SlidersHorizontal size={16} className="group-hover:scale-110 transition-transform" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">Export</span>
+                                    </button>
+                                </div>
+                            </div>
 
-                    <div className="w-px h-8 bg-white/5" />
+                            <button 
+                                disabled={truckBusy} 
+                                onClick={() => setShowReadyWizard(true)} 
+                                className={`flex items-center gap-3 px-6 py-2 rounded-xl transition-all font-black text-[11px] tracking-widest uppercase shadow-xl
+                                    ${truckBusy ? 'bg-white/5 text-white/20' : 'bg-(--main-color) text-black hover:scale-105 active:scale-95'}`}
+                            >
+                                {truckBusy ? <Activity size={16} className="animate-spin" /> : <Truck size={16} strokeWidth={3} />}
+                                <span>{truckBusy ? 'Processing...' : 'Ready Truck'}</span>
+                            </button>
+                        </div>
+                    )}
 
-                    {/* Save */}
-                    <button 
-                        onClick={() => setShowSaveDraft(true)}
-                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-white transition-all group"
-                        title="Save Current Setup"
-                    >
-                        <Plus size={22} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Save</span>
-                    </button>
+                    {/* 2. DOCK BAR (Crates / History) */}
+                    <div className={`flex flex-col w-full border-b border-white/5 transition-all duration-500 overflow-hidden ${isDockCompact ? 'h-14' : 'h-40'}`}>
+                        {topBarState === 'crates' ? (
+                            <div className="flex flex-col h-full">
+                                <div className="flex items-center justify-between px-6 py-3 shrink-0">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2 pr-4 border-r border-white/10 shrink-0">
+                                            <LayoutGrid size={16} className="text-(--main-color)" />
+                                        </div>
+                                        {dockCrates.length > 0 && (
+                                            <span className="text-[9px] font-black text-(--main-color) px-2 py-0.5 rounded-full bg-(--main-color)/10 uppercase tracking-tighter">
+                                                {dockCrates.length} Units Available
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button 
+                                        onClick={() => setIsDockCompact(!isDockCompact)}
+                                        className="p-2 text-white/20 hover:text-white transition-all bg-white/5 rounded-lg"
+                                        title={isDockCompact ? 'Expand Dock' : 'Collapse Dock'}
+                                    >
+                                        {isDockCompact ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                                    </button>
+                                </div>
+                                {!isDockCompact && (
+                                    <div className="flex-1 px-8 pb-6 overflow-x-auto no-scrollbar flex items-center gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                                        <div className="flex flex-col justify-center pr-8 border-r border-white/5 h-16 shrink-0">
+                                            <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-1">Dock Load</span>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-black text-white tracking-tighter">{dockCrates.length}</span>
+                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Units</span>
+                                            </div>
+                                        </div>
 
-                    <div className="w-px h-8 bg-white/5" />
-
-                    {/* Exportation */}
-                    <button 
-                        onClick={() => setShowExportModal(true)}
-                        className="flex flex-col items-center gap-1.5 text-white/30 hover:text-amber-400 transition-all group"
-                        title="Exportation Wizard"
-                    >
-                        <SlidersHorizontal size={22} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Export</span>
-                    </button>
-
-                    <div className="w-px h-8 bg-white/5 mx-2" />
-
-                    {/* READY TRUCK (Primary Action) */}
-                    <button 
-                        disabled={truckBusy}
-                        onClick={() => setShowReadyWizard(true)}
-                        className={`flex items-center gap-3 px-8 py-3 rounded-full transition-all font-black text-[13px] tracking-[0.2em] uppercase shadow-2xl ${truckBusy ? 'bg-white/5 text-white/20' : 'bg-white text-black hover:scale-105 active:scale-95'}`}
-                    >
-                        {truckBusy ? (
-                            <Activity size={18} className="animate-pulse" />
-                        ) : (
-                            <Truck size={18} strokeWidth={3} />
+                                        {dockCrates.length === 0 ? (
+                                            <div className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/5 opacity-40 italic">
+                                                <Package size={20} className="text-white/20" />
+                                                <span className="text-[12px] font-bold text-white/40 uppercase tracking-widest whitespace-nowrap">No units currently staged at dock</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-6 pr-4">
+                                                {dockCrates.map(crate => (
+                                                    <div key={crate.id} className="shrink-0 transition-all hover:scale-105 active:scale-95 duration-500">
+                                                        <CompactDockCard crate={crate} allCrates={allCrates} allInventory={allInventory} isCompact={false} onLoad={() => setPositions(p => ({ ...p, [crate.id]: { x: 0, y: 0, r: 0, z: 0 } }))} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : topBarState === 'trailers' && (
+                            <div className="flex flex-col h-full">
+                                <div className="flex items-center justify-between px-6 py-3 shrink-0">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2 pr-4 border-r border-white/10 shrink-0">
+                                            <History size={16} className="text-white/20" />
+                                            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Deployment Registry</span>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => setIsDockCompact(!isDockCompact)}
+                                        className="p-2 text-white/20 hover:text-white transition-all bg-white/5 rounded-lg"
+                                        title={isDockCompact ? 'Expand History' : 'Collapse History'}
+                                    >
+                                        {isDockCompact ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                                    </button>
+                                </div>
+                                {!isDockCompact && (
+                                    <div className="flex-1 px-6 pb-6 overflow-x-auto no-scrollbar flex items-center gap-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                                        {recentShipments.length === 0 ? (
+                                            <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 border border-white/5 opacity-40">
+                                                <Truck size={14} className="text-white/20" />
+                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">No recent deployments</span>
+                                            </div>
+                                        ) : (
+                                            recentShipments.map(s => (
+                                                <DeployedTrailerCard key={s.id} shipment={s} allCrates={allCrates} allInventory={allInventory} onRecall={() => handleRecall(s)} onDelete={() => handleDeleteShipment(s.id)} />
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         )}
-                        <span>{truckBusy ? 'Processing...' : 'Ready Truck'}</span>
-                    </button>
+                    </div>
+
+                    {/* 3. STATS BAR (HUD / Trailer Details) */}
+                    <div className={`flex items-center justify-between px-8 transition-all duration-700 ease-in-out overflow-hidden bg-white/[0.02] ${isStatsCompact ? 'h-20 py-4' : 'h-36 py-6'}`}>
+                        <div className="flex items-center gap-12 h-full">
+                            {/* Weight Section */}
+                            <div className="flex flex-col justify-center">
+                                <span className={`font-black uppercase tracking-[0.4em] transition-all duration-500 ${isStatsCompact ? 'text-[8px] text-white/20 mb-1' : 'text-[10px] text-(--main-color) mb-2'}`}>Payload Weight</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className={`font-black text-white transition-all duration-500 ${isStatsCompact ? 'text-2xl' : 'text-6xl tracking-tighter'}`}>
+                                        {totalWeight.toLocaleString()}
+                                    </span>
+                                    <span className={`font-black text-white/20 tracking-widest uppercase transition-all ${isStatsCompact ? 'text-[10px]' : 'text-[14px]'}`}>KG</span>
+                                </div>
+                            </div>
+
+                            <div className={`w-px transition-all duration-500 bg-white/10 ${isStatsCompact ? 'h-8' : 'h-20'}`} />
+
+                            {/* Floor Usage Section */}
+                            <div className="flex flex-col justify-center">
+                                <span className={`font-black uppercase tracking-[0.4em] transition-all duration-500 ${isStatsCompact ? 'text-[8px] text-white/20 mb-1' : 'text-[10px] text-white/30 mb-2'}`}>Floor Capacity</span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className={`font-black transition-all duration-500 ${isStatsCompact ? 'text-2xl' : 'text-6xl tracking-tighter'} ${floorPct > 95 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                        {floorPct}
+                                    </span>
+                                    <span className={`font-black transition-all duration-500 ${isStatsCompact ? 'text-[12px] opacity-40' : 'text-2xl opacity-20'} ${floorPct > 95 ? 'text-rose-500' : 'text-white'}`}>%</span>
+                                </div>
+                            </div>
+
+                            {!isStatsCompact && (
+                                <>
+                                    <div className="w-px h-20 bg-white/10 animate-in fade-in duration-1000" />
+                                    
+                                    {/* Volume / Status Section */}
+                                    <div className="flex flex-col justify-center animate-in slide-in-from-left-4 duration-700">
+                                        <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] mb-2">Volumetric Flow</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-4xl font-black text-white/80 tracking-tighter uppercase">Optimal</span>
+                                            <div className="flex gap-1">
+                                                {[1,2,3,4,5].map(i => <div key={i} className={`w-2 h-8 rounded-full ${i <= 4 ? 'bg-emerald-500/40' : 'bg-white/5'}`} />)}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="w-px h-20 bg-white/5 animate-in fade-in duration-1000" />
+
+                                    {/* Detailed Metadata Grid */}
+                                    <div className="hidden 2xl:grid grid-cols-2 gap-x-12 gap-y-3 animate-in slide-in-from-left-8 duration-1000">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-white/10 uppercase tracking-widest mb-0.5">Manifest ID</span>
+                                            <span className="text-[14px] font-black text-white/60 tracking-wider">#{recalledShipment?.manifest_id || readyFields?.manifestId || '---'}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-white/10 uppercase tracking-widest mb-0.5">Carrier</span>
+                                            <span className="text-[14px] font-black text-white/60 tracking-wider uppercase">{recalledShipment?.carrier || readyFields?.carrier || 'ONYX LOGISTICS'}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-white/10 uppercase tracking-widest mb-0.5">Seal Number</span>
+                                            <span className="text-[14px] font-black text-white/60 tracking-wider">#{recalledShipment?.seal_number || readyFields?.sealNumber || '---'}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-white/10 uppercase tracking-widest mb-0.5">Trailer Plates</span>
+                                            <span className="text-[14px] font-black text-white/60 tracking-wider">{recalledShipment?.trailer_plates || readyFields?.trailerPlates || '---'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="w-px h-20 bg-white/5 animate-in fade-in duration-1000 hidden 2xl:block" />
+
+                                    {/* Personnel */}
+                                    <div className="flex flex-col justify-center animate-in slide-in-from-left-12 duration-1000">
+                                        <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] mb-2">Personnel</span>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                                                <Users size={16} className="text-white/40" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[12px] font-black text-white/80 uppercase">{recalledShipment?.driver_name || readyFields?.driverName || 'UNASSIGNED'}</span>
+                                                <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Master Driver</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-6">
+                            {recalledShipment && (
+                                <button onClick={() => setRecalledShipment(null)} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20 transition-all text-[11px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95">
+                                    <X size={16} strokeWidth={3} /> Close Registry
+                                </button>
+                            )}
+                            <button 
+                                onClick={() => setIsStatsCompact(!isStatsCompact)}
+                                className={`p-4 transition-all rounded-2xl flex items-center justify-center hover:scale-110 active:scale-90
+                                    ${isStatsCompact ? 'bg-white/5 text-white/20 hover:text-white' : 'bg-(--main-color) text-black shadow-[0_0_20px_rgba(var(--main-color-rgb),0.3)]'}`}
+                                title={isStatsCompact ? 'Expand Details' : 'Compact Details'}
+                            >
+                                {isStatsCompact ? <Maximize2 size={20} /> : <Minimize2 size={20} />}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

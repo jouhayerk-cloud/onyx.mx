@@ -178,6 +178,7 @@ export const isMarketMultiSelectModeAtom = atom(false);
 export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
 export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer'>('activeView', 'inventory', sessionJSONStorage);
+export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'Production' | 'Acquired' | 'New'>('inventoryStatusFilter', 'All', sessionJSONStorage);
 export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Number' | 'Shape+Type' | 'Color+Material'>('inventorySortKey', 'Date', sessionJSONStorage);
@@ -190,7 +191,6 @@ export const isInventorySortMenuOpenAtom = atom<boolean>(false);
 export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list' | 'gallery'>('inventoryViewMode', 'list', sessionJSONStorage);
 export const inventoryViewSliderAtom = atomWithStorage<number>('inventoryViewSlider', 0, sessionJSONStorage);
 export const isInventoryViewSliderOpenAtom = atom<boolean>(false);
-export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
 export const logisticsSubTabAtom = atomWithStorage<'empty' | 'packed' | 'boxes' | 'packing' | 'shipping' | 'deployed' | 'crates'>('logisticsSubTab', 'empty', sessionJSONStorage);
 export const isCrateCreationModalOpenAtom = atom<boolean>(false);
 export const financeSubTabAtom = atomWithStorage<'overview' | 'payments' | 'tracking' | 'expenses'>('financeSubTab', 'overview', sessionJSONStorage);
@@ -514,4 +514,88 @@ export const truckShowOpenDraftAtom = atom<boolean>(false);   // open Load Draft
 export const truckShowExportModalAtom = atom<boolean>(false); // open Exportation wizard
 export const truckShowReadyWizardAtom = atom<boolean>(false);   // open Ready Truck wizard
 export const truckTopBarStateAtom = atom<'crates' | 'trailers'>('crates'); // toggle between loading and history
-export const truckShowPanelsAtom = atom<boolean>(true); // SHOW or HIDE all controls panels
+export const truckShowPanelsAtom = atomWithStorage('truck_show_panels', true); // SHOW or HIDE all controls panels
+export const truckDockIsCompactAtom = atomWithStorage('truck_dock_is_compact', false);
+export const truckStatsIsCompactAtom = atomWithStorage('truck_stats_is_compact', false);
+
+export const logisticsDocsAtom = atom<any[]>([]);
+export const truckingPositionsAtom = atomWithStorage<Record<string, any>>('truckingPositions', {});
+export const truckingSelectedIdAtom = atom<string | null>(null);
+export const truckingReadyFieldsAtom = atomWithStorage<any>('truckingReadyFields', {
+    manifestId: '',
+    tractorNumber: '',
+    trailerNumber: '',
+    sealNumber: '',
+    driverName: '',
+    truckPlates: '',
+    trailerPlates: '',
+    carrier: '',
+    senders: ['ONYX CORE'],
+    packingItems: [],
+    destination: '326',
+    notes: ''
+});
+export const truckingRecalledShipmentAtom = atom<any>(null);
+export const truckingZoomAtom = atom<number>(1);
+
+// Derived Trucking Stats
+export const truckingAllCratesAtom = atom((get) => {
+    const docs = get(logisticsDocsAtom);
+    const recalled = get(truckingRecalledShipmentAtom);
+    const live = docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status));
+    
+    if (recalled) {
+        const payload = typeof recalled.payload === 'string' ? JSON.parse(recalled.payload) : recalled.payload;
+        const recalledCrates = (payload?.crates || []).filter((rc: any) => !live.some(l => l.id === rc.id));
+        const virtual = recalledCrates.map((rc: any) => ({
+            id: rc.id,
+            type: rc.h > 40 ? 'crate' : 'pallet',
+            status: 'In Transit',
+            width_cm: rc.w,
+            length_cm: rc.l,
+            height_cm: rc.h,
+            inventory_ids: (rc.items || []).map((i: any) => `${i.itemId}:${i.qty}`).join(','),
+            description: `RECALLED: ${rc.label || rc.id}`,
+            isVirtual: true
+        }));
+        return [...live, ...virtual];
+    }
+    return live;
+});
+
+export const truckingDockCratesAtom = atom((get) => {
+    const all = get(truckingAllCratesAtom);
+    const pos = get(truckingPositionsAtom);
+    return all.filter(c => !pos[c.id] && !c.parent_id && c.status !== 'In Transit');
+});
+
+export const truckingTruckCratesAtom = atom((get) => {
+    const all = get(truckingAllCratesAtom);
+    const pos = get(truckingPositionsAtom);
+    return all.filter(c => !!pos[c.id]);
+});
+
+export const truckingTotalWeightAtom = atom((get) => {
+    const truckCrates = get(truckingTruckCratesAtom);
+    const allInventory = get(inventoryAtom);
+    const allCrates = get(truckingAllCratesAtom);
+    // We need to import computeCrateWeight or move it to a shared place. 
+    // Since it's in TruckingModule, we might have a circular dependency if we import it here.
+    // For now, let's just use a simplified version or assume it's passed.
+    // Actually, let's move computeCrateWeight to utils.tsx or a new shared file.
+    return truckCrates.reduce((s, c) => s + (c.weight_kg || 0), 0); 
+});
+
+export const TRUCK_L_CM = 1615;
+export const TRUCK_W_CM = 244;
+
+export const truckingFloorPctAtom = atom((get) => {
+    const truckCrates = get(truckingTruckCratesAtom);
+    const pos = get(truckingPositionsAtom);
+    const totalArea = truckCrates.reduce((s, c) => {
+        const p = pos[c.id];
+        if (!p) return s;
+        return s + (c.width_cm * c.length_cm);
+    }, 0);
+    return Math.min(100, Math.round((totalArea / (TRUCK_L_CM * TRUCK_W_CM)) * 100));
+});

@@ -890,10 +890,10 @@ export const UnifiedInventoryView = () => {
     const [isLoading, setIsLoading] = useState(true); const [expandedCards, setExpandedCards] = useState<Record<string, number>>({});
     const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); 
     const viewSlider = useAtomValue(inventoryViewSliderAtom);
-    const viewMode = viewSlider <= 2 ? 'list' : viewSlider <= 4 ? 'grid' : 'gallery';
-    const listScale = viewMode === 'list' ? (viewSlider === 1 ? 1 : 1.3) : 1;
-    const gridScale = viewMode === 'grid' ? (viewSlider === 3 ? 1 : 1.6) : 1;
-    const galleryScale = viewMode === 'gallery' ? (viewSlider === 5 ? 1 : 1.8) : 1;
+    const viewMode = viewSlider <= 33 ? 'list' : viewSlider <= 66 ? 'grid' : 'gallery';
+    const listScale = viewMode === 'list' ? 0.85 + (viewSlider / 33) * 0.3 : 1;
+    const gridScale = viewMode === 'grid' ? 0.85 + ((viewSlider - 34) / 32) * 0.6 : 1;
+    const galleryScale = viewMode === 'gallery' ? 0.9 + ((viewSlider - 67) / 33) * 0.9 : 1;
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom); const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
     const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
@@ -1305,7 +1305,7 @@ export const UnifiedInventoryView = () => {
                         viewMode === 'grid' 
                             ? { gridTemplateColumns: `repeat(auto-fill, minmax(${200 * gridScale}px, 1fr))` } 
                             : viewMode === 'list' 
-                                ? { zoom: listScale, transition: 'zoom 0.5s ease-in-out' } as React.CSSProperties
+                                ? { zoom: listScale } as React.CSSProperties
                                 : { gridTemplateColumns: `repeat(auto-fill, minmax(${300 * galleryScale}px, 1fr))` }
                     }
                 >

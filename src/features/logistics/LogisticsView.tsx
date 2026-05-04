@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { logisticsSubTabAtom, userAtom, isDummyModeAtom } from '../../lib/atoms';
+import { logisticsSubTabAtom, userAtom, isDummyModeAtom, logisticsDocsAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -9,9 +9,11 @@ import { CratesInventoryView } from './CratesInventoryView';
 import { WarehouseView } from './WarehouseView';
 import { TruckingModule } from './TruckingModule';
 import { PackingModule } from './PackingModule';
+import { DeployedView } from './DeployedView';
 
 export const LogisticsView: React.FC = () => {
     const [activeTab, setActiveTab] = useAtom(logisticsSubTabAtom);
+    const setLogisticsDocs = useSetAtom(logisticsDocsAtom);
     const db = useDatabase();
     const [docs, setDocs] = useState<any[]>([]);
     const [ver, setVer] = useState(0);
@@ -22,17 +24,23 @@ export const LogisticsView: React.FC = () => {
         let timer: any;
         const sub = db.logistics.find().$.subscribe(d => {
             clearTimeout(timer);
-            timer = setTimeout(() => setDocs(d.map(x => x.toJSON())), 200);
+            timer = setTimeout(() => {
+                const data = d.map(x => x.toJSON());
+                setDocs(data);
+                setLogisticsDocs(data);
+            }, 200);
         });
         return () => { sub.unsubscribe(); clearTimeout(timer); };
-    }, [db, ver]);
+    }, [db, ver, setLogisticsDocs]);
 
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col h-full flex-1 min-h-0">
             {/* ── Content ── */}
             <div className="flex-1">
-                {activeTab === 'shipping' || activeTab === 'deployed' ? (
+                {activeTab === 'shipping' ? (
                     <TruckingModule docs={docs} onRefresh={refresh} />
+                ) : activeTab === 'deployed' ? (
+                    <DeployedView />
                 ) : activeTab === 'packing' ? (
                     <PackingModule />
                 ) : (

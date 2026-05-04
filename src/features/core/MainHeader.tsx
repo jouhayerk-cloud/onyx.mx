@@ -119,7 +119,7 @@ import {
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
-    PackagePlus, Boxes, PackageOpen
+    PackagePlus, Boxes, PackageOpen, History
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -170,7 +170,8 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'truck': Truck,
     'map-pin': MapPin,
     'download': Download,
-    'package-open': PackageOpen
+    'package-open': PackageOpen,
+    'history': History
 };
 
 
@@ -360,27 +361,7 @@ const InventoryBar: React.FC = () => {
     return (
         <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
             <div className="flex items-center gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
-                <button 
-                    onClick={() => { setIsViewSliderOpen(!isViewSliderOpen); setIsFiltersOpen(false); setIsSearchOpen(false); }}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isViewSliderOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="View"
-                >
-                    <ViewIcon size={22} strokeWidth={2.5} className={isViewSliderOpen ? 'animate-pulse' : ''} />
-                </button>
-                <button 
-                    onClick={() => { setIsFiltersOpen(!isFiltersOpen); setIsViewSliderOpen(false); setIsSearchOpen(false); }}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Filter"
-                >
-                    <Filter size={22} strokeWidth={2} />
-                </button>
-                <button 
-                    onClick={() => { setIsSearchOpen(!isSearchOpen); setIsFiltersOpen(false); setIsViewSliderOpen(false); }}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Search"
-                >
-                    <Search size={22} strokeWidth={2} />
-                </button>
+                {/* 1. SELECT */}
                 <button 
                     onClick={handleToggleSelectionMode}
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSelectionMode ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
@@ -388,15 +369,43 @@ const InventoryBar: React.FC = () => {
                 >
                     <SquareCheckBig size={22} strokeWidth={2} />
                 </button>
+
+                {/* 2. VIEW */}
+                <button 
+                    onClick={() => setIsViewSliderOpen(!isViewSliderOpen)}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isViewSliderOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="View"
+                >
+                    <ViewIcon size={22} strokeWidth={2.5} className={isViewSliderOpen ? 'animate-pulse' : ''} />
+                </button>
+
+                {/* 3. FILTER */}
+                <button 
+                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Filter"
+                >
+                    <Filter size={22} strokeWidth={2} />
+                </button>
+
+                {/* 4. SEARCH */}
+                <button 
+                    onClick={() => setIsSearchOpen(!isSearchOpen)}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Search"
+                >
+                    <Search size={22} strokeWidth={2} />
+                </button>
                 
                 <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
 
+                {/* 5. ADD (Larger) */}
                 <button 
                     onClick={() => setIsUploadWizardOpen(true)}
                     className="flex items-center justify-center transition-all duration-300 text-(--main-color) hover:text-white hover:scale-110 group"
                     title="Add Entry"
                 >
-                    <Plus size={24} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]" />
+                    <Plus size={32} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.8)]" />
                 </button>
             </div>
             
@@ -555,8 +564,8 @@ const LogisticsBar: React.FC = () => {
         { id: 'packed', label: 'Packed', icon: 'boxes' },
         { id: 'packing', label: 'Packing', icon: 'package-open' },
     ] : activeView === 'trucking' ? [
-        { id: 'shipping', label: 'PLAN', icon: 'map-pin' },
-        { id: 'deployed', label: 'DPLYD', icon: 'zap' },
+        { id: 'shipping', label: 'PLAN', icon: 'truck' },
+        { id: 'deployed', label: 'DPLYD', icon: 'history' },
     ] : [
         { id: 'empty', label: 'Empty', icon: 'package' },
         { id: 'packed', label: 'Packed', icon: 'boxes' },
@@ -565,7 +574,7 @@ const LogisticsBar: React.FC = () => {
     ];
 
     return (
-        <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
+        <div className="relative flex flex-1 items-center gap-1 sm:gap-4 ml-1">
             {(activeView !== 'warehouse' && activeView !== 'trucking') && (
                 <DeployableSearch 
                     value={search} 
@@ -634,56 +643,15 @@ const LogisticsBar: React.FC = () => {
                         </>
                     )}
 
-                    {subTab === 'shipping' && activeView !== 'trucking' && (
+                    {(subTab === 'shipping' || subTab === 'TRK' || subTab === 'deployed') && (
                         <>
                             <div className="w-px h-6 bg-white/5 mx-1" />
-                            {/* Visibility toggle */}
                             <button
                                 onClick={() => setShowPanels(s => !s)}
                                 title={showPanels ? 'Hide all panels' : 'Show all panels'}
-                                className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                                className={`flex items-center justify-center w-12 h-12 transition-all cursor-pointer rounded-2xl hover:bg-white/5 ${showPanels ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
                             >
-                                {showPanels ? <PanelTopClose size={16} /> : <PanelTop size={16} />}
-                            </button>
-                            {/* Drafts */}
-                            <button
-                                onClick={() => setShowOpenDraft(true)}
-                                title="Open saved drafts"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:border-white/25 transition-all cursor-pointer"
-                                style={{ background: 'rgba(255,255,255,0.04)' }}
-                            >
-                                <FolderOpen size={13} />Drafts
-                            </button>
-                            {/* Save Draft */}
-                            <button
-                                onClick={() => setShowSaveDraft(true)}
-                                title="Save current load as draft"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/25 transition-all cursor-pointer"
-                                style={{ background: 'rgba(255,255,255,0.04)' }}
-                            >
-                                <Save size={13} />Save
-                            </button>
-                            {/* Exportation */}
-                            <button
-                                onClick={() => setShowExportModal(true)}
-                                title="Export consolidated manifesto and packed crates"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/25 transition-all cursor-pointer"
-                                style={{ background: 'rgba(255,255,255,0.04)' }}
-                            >
-                                <Download size={13} />Exportation
-                            </button>
-                            {/* Ready Truck */}
-                            <button
-                                onClick={() => setShowReadyWizard(true)}
-                                disabled={truckBusy}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-40"
-                                style={{ background: 'var(--main-color)', color: '#000' }}
-                                title="Ready Truck — sync manifest + export PDF &amp; CSV"
-                            >
-                                {truckBusy
-                                    ? <span className="w-3 h-3 border border-black/40 border-t-transparent rounded-full animate-spin" />
-                                    : <Truck size={13} />}
-                                <span>Ready Truck</span>
+                                {showPanels ? <PanelTopClose size={24} /> : <PanelTop size={24} />}
                             </button>
                         </>
                     )}
@@ -697,7 +665,6 @@ const PackingBar: React.FC = () => {
     const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     
-    // Packing specific state
     const [viewMode, setViewMode] = useAtom(packingViewModeAtom);
     const [isPrintOpen, setIsPrintOpen] = useAtom(isPackingPrintWizardOpenAtom);
     const [isFiltersOpen, setIsFiltersOpen] = useAtom(isPackingFiltersOpenAtom);
@@ -738,30 +705,35 @@ const PackingBar: React.FC = () => {
             )}
 
             {!isSearchOpen && (
-                <>
-                        {/* Export Actions */}
+                <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
+                    <StudioAction 
+                        icon={ViewIcon}
+                        label={viewMode.toUpperCase()}
+                        active={true}
+                        onClick={cycleView}
+                        title="Toggle View Mode"
+                    />
+                    <button 
+                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                        className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
+                        title="Configuration"
+                    >
+                        <ListFilter size={28} />
+                    </button>
 
+                    <div className="w-px h-5 bg-white/10 mx-2" />
 
-                        {/* View & Config Actions */}
-                        <div className="flex items-center gap-0.5">
-                            <StudioAction 
-                                icon={ViewIcon}
-                                label={viewMode.toUpperCase()}
-                                active={true}
-                                onClick={cycleView}
-                                title="Toggle View Mode"
-                            />
-                                <button 
-                                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                                    className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
-                                    title="Configuration"
-                                >
-                                    <ListFilter size={28} />
-                                </button>
-                            </div>
-                    </>
-                )}
-            </div>
+                    <StudioAction icon={Printer} label="PRINT" onClick={() => setIsPrintOpen(true)} title="Generate High-Fidelity Labels" />
+                    <StudioAction icon={QrCode} label="NFC" onClick={() => setIsNFCWizardOpen(true)} title="Hardware Sync Handshake" />
+                    
+                    <div className="w-px h-5 bg-white/10 mx-2" />
+                    
+                    <StudioAction icon={FileText} label="PDF" onClick={() => setExportPDF(true)} title="Export PDF Catalog" />
+                    <StudioAction icon={Table} label="XLSX" onClick={() => setExportXLSX(true)} title="Export Spreadsheet" />
+                    <StudioAction icon={Database} label="JSON" onClick={() => setExportJSON(true)} title="Developer Data Dump" />
+                </div>
+            )}
+        </div>
     );
 };
 
