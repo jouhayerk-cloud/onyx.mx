@@ -64,7 +64,7 @@ interface WizardState {
 }
 
 const INITIAL_STATE: WizardState = {
-    status: 'Available',
+    status: 'Acquisition',
     vendorId: '',
     itemNumber: '',
     quantity: '1',
@@ -108,8 +108,26 @@ const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, field
     }, []);
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => onSet(field, e.target.value), [field, onSet]);
 
+    const isCollapsed = !isFocused && value && value !== '0' && value !== '';
+    const sizeClasses = className.includes('compact') ? 'text-2xl md:text-3xl' : 'text-4xl md:text-5xl';
+    const containerHeight = className.includes('compact') ? 'h-10 md:h-12' : 'h-14 md:h-16';
+
+    if (isCollapsed) {
+        const isIndex = label.includes('Index');
+        return (
+            <div 
+                onClick={() => setIsFocused(true)}
+                className={`group flex items-center gap-2 px-3 py-1 rounded-md bg-white/[0.03] hover:bg-white/[0.08] transition-all cursor-pointer animate-in fade-in zoom-in-95 duration-300 ${isIndex ? 'scale-90 origin-left' : ''} ${className}`}
+            >
+                {Icon && <Icon size={isIndex ? 8 : 10} className="text-(--main-color) opacity-50" strokeWidth={3} />}
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20">{label}</span>
+                <span className={`${isIndex ? 'text-xs' : 'text-sm'} font-black uppercase tracking-tight text-white/80 group-hover:text-white transition-colors`}>{value}</span>
+            </div>
+        );
+    }
+
     return (
-        <div className={`group relative flex flex-col py-2 border-b transition-colors duration-200 ease-out ${warning ? 'border-red-500' : 'border-white/10 hover:border-white/40'} ${className}`}>
+        <div className={`group relative flex flex-col py-2 border-b transition-all duration-300 ease-out ${warning ? 'border-red-500' : 'border-white/10 hover:border-white/40'} ${className}`}>
             <div className="flex justify-between items-start mb-1 select-none">
                 <div className="flex items-center gap-3">
                     {Icon && <Icon size={12} className={warning ? 'text-red-500' : (value || isFocused ? 'text-(--main-color)' : 'text-white/40')} strokeWidth={3} />}
@@ -122,15 +140,16 @@ const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, field
                 )}
             </div>
             
-            <div className="relative overflow-hidden h-14 md:h-16 flex items-center">
+            <div className={`relative overflow-hidden ${containerHeight} flex items-center`}>
                 {!value && !isFocused && (
-                    <span className="absolute inset-0 flex items-center text-4xl md:text-5xl font-black uppercase tracking-tighter text-white/15 select-none pointer-events-none italic animate-in fade-in duration-300">
+                    <span className={`absolute inset-0 flex items-center ${sizeClasses} font-black uppercase tracking-tighter text-white/15 select-none pointer-events-none italic animate-in fade-in duration-300`}>
                         {activeGhostTag}
                     </span>
                 )}
                 
                 <input 
                     ref={inputRef}
+                    autoFocus={isFocused}
                     type={type}
                     value={value}
                     onFocus={handleFocus}
@@ -139,26 +158,30 @@ const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, field
                     onClick={(e) => e.stopPropagation()} 
                     placeholder={!activeGhostTag && !isFocused ? "NONE" : ""}
                     className={`
-                        bg-transparent border-none outline-none w-full text-4xl md:text-5xl font-black uppercase tracking-tighter transition-all duration-200 relative z-10
+                        bg-transparent border-none outline-none w-full ${sizeClasses} font-black uppercase tracking-tighter transition-all duration-200 relative z-10
                         ${warning ? 'text-red-500' : (value || isFocused ? 'text-white' : 'text-transparent')}
                     `}
                 />
             </div>
 
-            {isFocused && filtered.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4 animate-in fade-in slide-in-from-top-2 duration-200 bg-black/90 p-4 rounded-2xl backdrop-blur-3xl border border-white/10 z-50 shadow-2xl">
-                    {filtered.map((tag: string) => (
-                        <button key={tag} onClick={() => onSet(field, tag)}
-                            className={`
-                                text-[10px] font-black tracking-[0.2em] uppercase transition-all px-3 py-1.5 rounded-lg border
-                                ${value === tag 
-                                    ? 'bg-white text-black border-white scale-105' 
-                                    : 'bg-white/5 text-white/60 border-white/10 hover:border-white hover:bg-white hover:text-black active:scale-95'
-                                }
-                            `}>
-                            {tag}
-                        </button>
-                    ))}
+            {isFocused && (
+                <div className="absolute top-full left-0 right-0 z-[100] mt-2 flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-200 bg-black/90 p-4 rounded-2xl backdrop-blur-3xl border border-white/10 shadow-2xl">
+                    {filtered.length > 0 ? (
+                        filtered.map((tag: string) => (
+                            <button key={tag} onClick={() => { onSet(field, tag); setIsFocused(false); }}
+                                className={`
+                                    text-[10px] font-black tracking-[0.2em] uppercase transition-all px-3 py-1.5 rounded-lg border
+                                    ${value === tag 
+                                        ? 'bg-white text-black border-white scale-105' 
+                                        : 'bg-white/5 text-white/60 border-white/10 hover:border-white hover:bg-white hover:text-black active:scale-95'
+                                    }
+                                `}>
+                                {tag}
+                            </button>
+                        ))
+                    ) : (
+                        <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em] p-2">No Suggestions Found</span>
+                    )}
                 </div>
             )}
         </div>
@@ -179,6 +202,7 @@ export const UploadWizard: React.FC = () => {
     const [state, setState] = useState<WizardState>(INITIAL_STATE);
     const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
     const [globalSuggestionIndex, setGlobalSuggestionIndex] = useState(0);
+    const [isStatusExpanded, setIsStatusExpanded] = useState(false);
 
     // PULL TO REFRESH STATE
     const [pullDistance, setPullDistance] = useState(0);
@@ -190,15 +214,14 @@ export const UploadWizard: React.FC = () => {
 
     useEffect(() => {
         if (isOpen) {
-            const isV825 = itemData.workbook === 'v825';
             setState(prev => ({
                 ...prev,
-                status: isV825 ? 'Acquisition' : 'Available',
-                payReq: isV825 ? 'paid' : '',
+                status: 'Acquisition',
+                payReq: 'paid',
                 vendorId: user?.role === 'Vendor' ? (user.name || '') : prev.vendorId,
             }));
         }
-    }, [isOpen, itemData.workbook, user]);
+    }, [isOpen, user]);
 
     useEffect(() => {
         if (!db || !isOpen) return;
@@ -428,8 +451,8 @@ export const UploadWizard: React.FC = () => {
 
     return (
         <div 
-            className="absolute inset-0 z-100 flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-500 overflow-hidden"
-            onClick={handleGlobalClick}
+            className="absolute inset-0 z-[400] flex justify-center items-start pt-[128px] animate-in fade-in duration-500 overflow-hidden"
+            onClick={() => setIsOpen(false)}
         >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={() => setIsOpen(false)} />
             
@@ -450,177 +473,234 @@ export const UploadWizard: React.FC = () => {
                     <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white mt-4">Pull to Shuffle Suggestions</span>
                 </div>
                 
-                <div className="flex items-center justify-between px-10 py-10 md:px-24 md:py-16 shrink-0 z-20">
-                    <div className="flex items-center gap-10">
-                        <div className="flex flex-col">
-                            <div className="flex items-center gap-12 mb-2">
-                                <div className="flex items-center gap-4">
-                                    <Plus size={18} className="text-(--main-color)" strokeWidth={4} />
-                                    <h1 className="text-xl md:text-2xl font-black uppercase tracking-[0.4em] text-white leading-none">Add Entry</h1>
+                <div 
+                    ref={scrollContainerRef}
+                    className="flex-1 overflow-y-auto no-scrollbar px-6 md:px-12 pb-48 pt-6 md:pt-10 animate-in slide-in-from-bottom-4 duration-300"
+                    onClick={() => setGlobalSuggestionIndex(prev => prev + 1)}
+                >
+                    <div className="max-w-[1200px] mx-auto space-y-8 md:space-y-12" onClick={(e) => e.stopPropagation()}>
+                        
+                        {/* Unified Protocol Header */}
+                        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 pb-10 border-b border-white/5">
+                            <div className="flex flex-col gap-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-2 h-2 rounded-full bg-(--main-color) animate-pulse" />
+                                        <h1 className="text-[20px] font-black uppercase tracking-[0.6em] text-white/40 leading-none">Add Entry</h1>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-10 shrink-0">
+                                        {['v326', 'v825'].map(v => (
+                                            <button key={v} onClick={(e) => { e.stopPropagation(); setItemData(prev => ({ ...prev, workbook: v as any })); }}
+                                                className={`text-3xl font-black uppercase tracking-tighter transition-all relative group whitespace-nowrap ${itemData.workbook === v ? 'text-(--main-color)' : 'text-white/20 hover:text-white/40'}`}>
+                                                BOOK {v.slice(1)}
+                                                {itemData.workbook === v && (
+                                                    <div className="absolute -bottom-2 left-0 right-0 h-1 bg-(--main-color) rounded-full animate-in zoom-in duration-300 shadow-[0_0_20px_rgba(var(--main-color-rgb),0.6)]" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                
-                                <div className="flex gap-10">
-                                    {['v326', 'v825'].map(v => (
-                                        <button key={v} onClick={(e) => { e.stopPropagation(); setItemData(prev => ({ ...prev, workbook: v as any })); }}
-                                            className={`text-3xl md:text-4xl font-black uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 ${itemData.workbook === v ? 'text-(--main-color)' : 'text-white/20 hover:text-white/60'}`}>
-                                            {v}
-                                        </button>
-                                    ))}
+                                <div className="flex items-center gap-3 whitespace-nowrap opacity-50">
+                                    <span className="text-[8px] font-black uppercase tracking-[0.8em] text-white/40">Onyx Intelligence Engine</span>
+                                    <button onClick={(e) => { e.stopPropagation(); triggerRefresh(); }} className={`p-1 rounded-full hover:bg-white/5 text-white/10 hover:text-(--main-color) transition-all duration-500 ${isRefreshing ? 'animate-spin text-(--main-color)' : ''}`}>
+                                        <RefreshCw size={8} />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <span className="text-[10px] font-black uppercase tracking-[0.8em] text-white">Onyx Intelligence Engine</span>
-                                <button onClick={(e) => { e.stopPropagation(); triggerRefresh(); }} className={`p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-(--main-color) transition-all duration-500 ${isRefreshing ? 'animate-spin text-(--main-color)' : ''}`}>
-                                    <RefreshCw size={14} />
+
+                            <div className="flex items-center gap-6 self-end lg:self-auto">
+                                <div className="flex items-center gap-6 px-6 py-3 bg-white/[0.03] rounded-3xl border border-white/10 backdrop-blur-xl">
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Preview Artifact</span>
+                                        <span className={`text-2xl font-black tracking-tighter uppercase tabular-nums transition-colors duration-200 ${isDuplicate ? 'text-red-500' : 'text-white'}`}>
+                                            {state.vendorId || '???'}-{state.itemNumber.padStart(3, '0')}
+                                        </span>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
+                                        <FileText size={24} />
+                                    </div>
+                                </div>
+                                <button onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">
+                                    <X size={32} strokeWidth={2} />
                                 </button>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-16">
-                        <div className="hidden md:flex flex-col text-right">
-                            <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.5em] mb-1">Preview Artifact:</span>
-                            <span className={`text-3xl font-black tracking-tighter uppercase tabular-nums transition-colors duration-200 ${isDuplicate ? 'text-red-500' : 'text-white'}`}>
-                                {state.vendorId || '???'}-{state.itemNumber.padStart(3, '0')}
-                            </span>
-                        </div>
-                        <button onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} className="p-4 rounded-full text-white/40 hover:text-white hover:scale-110 transition-all hover:rotate-90 duration-200">
-                            <X size={40} strokeWidth={2} />
-                        </button>
-                    </div>
-                </div>
 
-                <div 
-                    ref={scrollContainerRef}
-                    className="flex-1 overflow-y-auto no-scrollbar px-10 md:px-24 pb-48 animate-in slide-in-from-bottom-4 duration-300"
-                    onClick={() => setGlobalSuggestionIndex(prev => prev + 1)}
-                >
-                    <div className="max-w-[1600px] mx-auto space-y-8 md:space-y-12" onClick={(e) => e.stopPropagation()}>
-                        
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em]">Status Selector</label>
-                            <div className="grid grid-cols-3 gap-4">
-                                {[
-                                    { id: 'Available', icon: LayoutGrid },
-                                    { id: 'Production', icon: Zap },
-                                    { id: 'Acquisition', icon: Database }
-                                ].map(s => (
-                                    <button key={s.id} onClick={() => set('status', s.id as any)}
-                                        className={`py-4 px-8 rounded-xl transition-all duration-200 flex items-center justify-center gap-4 ${state.status === s.id ? 'bg-white text-black shadow-2xl scale-105' : 'bg-black/20 border border-white/5 text-white/40 hover:bg-white/5 hover:text-white backdrop-blur-xl'}`}>
-                                        <s.icon size={18} strokeWidth={3} className={state.status === s.id ? 'text-black' : 'text-(--main-color)'} />
-                                        <span className="text-[11px] font-black uppercase tracking-[0.4em]">{s.id}</span>
+                        {/* Core Metadata Stack - Status, Vendor, Index */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+                            {/* Status Selection - Dynamic Panel */}
+                            <div className="lg:col-span-4 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Protocol Status</label>
+                                {!isStatusExpanded && state.status ? (
+                                    <button 
+                                        onClick={() => setIsStatusExpanded(true)}
+                                        className="w-full flex items-center justify-between p-5 rounded-3xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-(--main-color) transition-all group animate-in zoom-in-95 duration-300"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-(--main-color)">
+                                                {state.status === 'Available' ? <LayoutGrid size={24} /> : state.status === 'Production' ? <Zap size={24} /> : <Database size={24} />}
+                                            </div>
+                                            <div className="flex flex-col items-start">
+                                                <span className="text-xl font-black uppercase tracking-tight text-white">{state.status}</span>
+                                            </div>
+                                        </div>
+                                        <ChevronDown size={20} className="text-white/20 group-hover:text-white transition-colors" />
                                     </button>
-                                ))}
+                                ) : (
+                                    <div className="grid grid-cols-3 gap-2 animate-in slide-in-from-top-2 duration-300">
+                                        {[
+                                            { id: 'Available', icon: LayoutGrid },
+                                            { id: 'Production', icon: Zap },
+                                            { id: 'Acquisition', icon: Database }
+                                        ].map(s => (
+                                            <button key={s.id} onClick={() => { set('status', s.id as any); setIsStatusExpanded(false); }}
+                                                className={`flex flex-col items-center p-4 rounded-2xl transition-all duration-200 gap-3 ${state.status === s.id ? 'bg-white text-black shadow-2xl scale-102' : 'bg-black/20 border border-white/5 text-white/40 hover:bg-white/5 hover:text-white backdrop-blur-xl'}`}>
+                                                <s.icon size={20} strokeWidth={3} className={state.status === s.id ? 'text-black' : 'text-(--main-color)'} />
+                                                <span className="text-[9px] font-black uppercase tracking-widest">{s.id}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-10 gap-2 md:gap-4 items-start">
-                            <div className="md:col-span-9 space-y-4">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em]">Vendors</label>
-                                <div className="grid grid-rows-2 grid-flow-col gap-3 overflow-x-auto no-scrollbar pb-4 h-40">
-                                    {Object.entries(vendors)
-                                        .filter(([id]) => !['R', 'M', 'W', 'C', 'ON', 'SIMONA', 'JUAN'].includes(id))
-                                        .map(([id, cfg]) => (
+                            {/* Vendors Panel */}
+                            <div className="lg:col-span-5 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Active Vendor</label>
+                                {state.vendorId ? (
+                                    <button 
+                                        onClick={() => set('vendorId', '')}
+                                        className="h-20 w-full px-8 rounded-3xl flex items-center justify-between text-2xl font-black shadow-xl border border-white/20 animate-in zoom-in-95 duration-300 group relative overflow-hidden"
+                                        style={{ backgroundColor: (vendors as any)[state.vendorId]?.color, color: getTextColorForBg((vendors as any)[state.vendorId]?.color) }}
+                                    >
+                                        <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors" />
+                                        <span>{state.vendorId}</span>
+                                        <RefreshCw size={24} className="opacity-40 group-hover:opacity-100 group-hover:rotate-180 transition-all duration-500" />
+                                    </button>
+                                ) : (
+                                    <div className="flex gap-2 overflow-x-auto no-scrollbar py-2 animate-in slide-in-from-right-4 duration-500">
+                                        {Object.entries(vendors).map(([id, v]: [string, any]) => (
                                             <button key={id} onClick={() => set('vendorId', id)}
-                                                className={`h-16 px-8 rounded-xl flex items-center justify-center text-xl font-black transition-all shrink-0 border-4 ${state.vendorId === id ? 'scale-110 shadow-2xl border-white' : 'border-transparent grayscale opacity-100 hover:grayscale-0'}`}
-                                                style={{ backgroundColor: cfg.color, color: getTextColorForBg(cfg.color) }}>
+                                                className="shrink-0 h-20 px-8 rounded-3xl flex items-center justify-center text-lg font-black transition-all hover:scale-105 active:scale-95 shadow-lg border border-white/10 hover:border-white/40"
+                                                style={{ backgroundColor: v.color, color: getTextColorForBg(v.color) }}>
                                                 {id}
                                             </button>
                                         ))}
-                                </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="md:col-span-1 self-end">
-                                <SmartInput label="Index" field="itemNumber" value={state.itemNumber} icon={Hash} type="number" warning={isDuplicate} className="border-b-0" onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            </div>
-                        </div>
 
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em]">Evidence Hub</label>
-                            <div className="flex flex-col gap-4">
-                                <div onClick={() => fileInputRef.current?.click()} className="w-full h-32 rounded-3xl border-2 border-dashed border-white/20 hover:border-(--main-color) hover:bg-(--main-color)/10 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer group shadow-2xl">
-                                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
-                                    <Upload size={32} strokeWidth={4} className="text-white/40 group-hover:text-(--main-color) transition-all duration-200" />
-                                    <span className="text-[10px] font-black text-white/40 group-hover:text-(--main-color) uppercase tracking-[0.8em]">Attach Evidence</span>
-                                </div>
-                                <div className="flex flex-wrap gap-4">
-                                    {state.mediaList.map((m, i) => (
-                                        <div key={i} className="w-24 h-24 rounded-2xl overflow-hidden relative group/media border border-white/10 bg-black shadow-2xl">
-                                            {m.type === 'video' ? (
-                                                <div className="w-full h-full flex items-center justify-center"><Video size={20} className="text-white" /></div>
-                                            ) : (
-                                                <img src={m.preview || ''} className="w-full h-full object-cover opacity-100 transition-all duration-200" />
-                                            )}
-                                            <button onClick={(e) => { e.stopPropagation(); removeMedia(i); }} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-all scale-75 group-hover/media:scale-100 shadow-2xl">
-                                                <X size={12} strokeWidth={4} />
-                                            </button>
-                                        </div>
-                                    ))}
+                            {/* Index Selection - LARGE */}
+                            <div className="lg:col-span-3 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Index # Protocol</label>
+                                <div className="h-20 flex items-center bg-white/[0.03] border border-white/10 rounded-3xl px-6 hover:border-(--main-color) transition-all">
+                                    <SmartInput label="Index #" field="itemNumber" value={state.itemNumber} icon={Hash} type="number" warning={isDuplicate} className="border-b-0 py-0 w-full" onSet={set} suggestionIndex={globalSuggestionIndex} />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
-                            <SmartInput label="Shape" field="shape" value={state.shape} icon={Box} fieldSuggestions={suggestions.shape} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="Type" field="type" value={state.type} icon={Database} fieldSuggestions={suggestions.type} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
-                            <SmartInput label="Color" field="color" value={state.color} icon={Info} fieldSuggestions={suggestions.color} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="Material" field="material" value={state.material} icon={Sparkles} fieldSuggestions={suggestions.material} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
-                            <SmartInput label="Quantity" field="quantity" value={state.quantity} icon={Hash} type="number" onSet={set} fieldSuggestions={suggestions.quantity} suggestionIndex={globalSuggestionIndex} />
-                            <div className="space-y-4">
-                                <SmartInput label="ACQ MXN" field="price" value={state.price} icon={Hash} type="number" fieldSuggestions={suggestions.price} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                                {state.price && exchangeRate && (
-                                    <div className="flex justify-between items-baseline animate-in slide-in-from-right-4 duration-200">
-                                        <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">USD Protocol</span>
-                                        <span className="text-3xl font-black text-(--main-color) tracking-tighter tabular-nums">{formatCurrency(parseFloat(state.price) / exchangeRate, 'USD')}</span>
+                        {/* Evidence Hub - Collapsible */}
+                        <div className="space-y-3">
+                            <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Evidence</label>
+                            <div className="flex flex-col gap-3">
+                                {state.mediaList.length === 0 ? (
+                                    <div onClick={() => fileInputRef.current?.click()} className="w-full h-24 rounded-2xl border-2 border-dashed border-white/10 hover:border-(--main-color) hover:bg-(--main-color)/5 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer group">
+                                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
+                                        <Upload size={20} strokeWidth={4} className="text-white/20 group-hover:text-(--main-color) transition-all" />
+                                        <span className="text-[8px] font-black text-white/20 group-hover:text-(--main-color) uppercase tracking-[0.5em]">Capture Evidence</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-wrap gap-3 p-3 bg-black/20 rounded-2xl border border-white/5 animate-in fade-in duration-300">
+                                        <button onClick={() => fileInputRef.current?.click()} className="w-20 h-20 rounded-xl border-2 border-dashed border-white/10 flex items-center justify-center hover:border-(--main-color) hover:text-(--main-color) transition-all">
+                                            <Plus size={20} />
+                                        </button>
+                                        {state.mediaList.map((m, i) => (
+                                            <div key={i} className="w-20 h-20 rounded-xl overflow-hidden relative group/media border border-white/10 bg-black">
+                                                {m.type === 'video' ? (
+                                                    <div className="w-full h-full flex items-center justify-center"><Video size={16} className="text-white" /></div>
+                                                ) : (
+                                                    <img src={m.preview || ''} className="w-full h-full object-cover" />
+                                                )}
+                                                <button onClick={(e) => { e.stopPropagation(); removeMedia(i); }} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-all scale-75 group-hover/media:scale-100">
+                                                    <X size={10} strokeWidth={4} />
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                            <SmartInput label="Width (CM)" field="widthCm" value={state.widthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.widthCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="Height (CM)" field="heightCm" value={state.heightCm} icon={Ruler} type="number" fieldSuggestions={suggestions.heightCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="Depth (CM)" field="lengthCm" value={state.lengthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.lengthCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="Mass (KG)" field="weightKg" value={state.weightKg} icon={Dna} type="number" fieldSuggestions={suggestions.weightKg} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                            <SmartInput label="Shape" field="shape" value={state.shape} icon={Box} fieldSuggestions={suggestions.shape} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label="Type" field="type" value={state.type} icon={Database} fieldSuggestions={suggestions.type} onSet={set} suggestionIndex={globalSuggestionIndex} />
                         </div>
 
-                        <div className="py-2 border-b border-white/10 hover:border-white/40 transition-all duration-200">
-                            <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em] block mb-1">Notes</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                            <SmartInput label="Color" field="color" value={state.color} icon={Info} fieldSuggestions={suggestions.color} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label="Material" field="material" value={state.material} icon={Sparkles} fieldSuggestions={suggestions.material} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                            <SmartInput label="Qty" field="quantity" value={state.quantity} icon={Hash} type="number" onSet={set} fieldSuggestions={suggestions.quantity} suggestionIndex={globalSuggestionIndex} />
+                            <div className="flex flex-col gap-2">
+                                <SmartInput label="ACQ MXN" field="price" value={state.price} icon={Hash} type="number" fieldSuggestions={suggestions.price} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                                {state.price && exchangeRate && (
+                                    <div className="flex justify-between items-center px-4 py-2 bg-(--main-color)/5 rounded-xl border border-(--main-color)/10 animate-in slide-in-from-right-4 duration-200">
+                                        <span className="text-[8px] font-black text-(--main-color) uppercase tracking-[0.3em]">USD Protocol</span>
+                                        <span className="text-xl font-black text-white tracking-tighter tabular-nums">{formatCurrency(parseFloat(state.price) / exchangeRate, 'USD')}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <SmartInput label="W (CM)" field="widthCm" value={state.widthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.widthCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label="H (CM)" field="heightCm" value={state.heightCm} icon={Ruler} type="number" fieldSuggestions={suggestions.heightCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label="D (CM)" field="lengthCm" value={state.lengthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.lengthCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label="KG" field="weightKg" value={state.weightKg} icon={Dna} type="number" fieldSuggestions={suggestions.weightKg} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                        </div>
+
+                        <div className="py-2 border-b border-white/5 hover:border-white/20 transition-all duration-200">
+                            <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] block mb-1">Detailed Specifications</label>
                             <input 
                                 type="text"
                                 value={state.notes} 
                                 onChange={e => set('notes', e.target.value)}
                                 onClick={(e) => e.stopPropagation()} 
-                                placeholder="TECHNICAL SPECIFICATIONS..."
-                                className="bg-transparent border-none text-xl font-black text-white outline-none placeholder:text-white/20 uppercase w-full transition-all tracking-widest" 
+                                placeholder="ENTER TECHNICAL DETAILS..."
+                                className="bg-transparent border-none text-base font-black text-white outline-none placeholder:text-white/10 uppercase w-full transition-all tracking-widest" 
                             />
                         </div>
                     </div>
                 </div>
 
-                <div className="px-10 py-10 md:px-24 md:py-12 mt-auto bg-black/10 flex flex-col md:flex-row items-center justify-end gap-12 shrink-0 border-t border-white/10 backdrop-blur-3xl" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex gap-10 w-full md:w-auto">
-                        <button onClick={() => setIsOpen(false)} className="px-10 py-4 text-white/40 hover:text-white hover:underline text-[11px] font-black uppercase tracking-[0.5em] transition-all">
-                            Discard
-                        </button>
-                        <button 
-                            onClick={doSave} 
-                            disabled={saving} 
-                            className="flex items-center justify-center transition-all active:scale-90"
-                            title="Save"
-                        >
-                            {saving ? (
-                                <RefreshCw size={48} strokeWidth={3} className="text-(--main-color) animate-spin" />
-                            ) : (
-                                <Save size={64} strokeWidth={2} className="text-(--main-color) hover:scale-110 transition-all drop-shadow-[0_0_20px_rgba(var(--main-color-rgb),0.3)]" />
-                            )}
-                        </button>
-                    </div>
+                {/* FLOATING ACTION BUTTONS */}
+                <div className="absolute bottom-10 left-0 right-0 px-10 md:px-24 flex justify-between items-center pointer-events-none z-[100]">
+                    <button 
+                        onClick={() => setIsOpen(false)} 
+                        className="pointer-events-auto w-16 h-16 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 hover:scale-110 active:scale-90 transition-all group shadow-2xl"
+                    >
+                        <Trash2 size={24} className="group-hover:rotate-12 transition-transform" />
+                    </button>
+
+                    <button 
+                        onClick={doSave} 
+                        disabled={saving} 
+                        className={`
+                            pointer-events-auto w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-2xl
+                            ${saving 
+                                ? 'bg-black/60 backdrop-blur-3xl border border-white/20' 
+                                : 'bg-(--main-color)/20 backdrop-blur-3xl border border-(--main-color)/40 hover:bg-(--main-color) hover:scale-110 active:scale-95 group'
+                            }
+                        `}
+                    >
+                        {saving ? (
+                            <RefreshCw size={32} strokeWidth={3} className="text-(--main-color) animate-spin" />
+                        ) : (
+                            <Save size={40} strokeWidth={2} className="text-(--main-color) group-hover:text-black transition-colors" />
+                        )}
+                    </button>
                 </div>
             </div>
 
