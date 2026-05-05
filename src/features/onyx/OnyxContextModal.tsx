@@ -1,7 +1,9 @@
 
 import React from 'react';
 import { ONYX_CONTEXT } from './onyxBusinessRules';
-import { Database, Info, Tag, CreditCard, ShieldCheck, X } from 'lucide-react';
+import { Database, Info, Tag, CreditCard, ShieldCheck, X, RefreshCw } from 'lucide-react';
+import { useAtom } from 'jotai';
+import { onyxApiKeyAtom } from '../../lib/atoms';
 
 interface OnyxContextModalProps {
     isOpen: boolean;
@@ -9,7 +11,15 @@ interface OnyxContextModalProps {
 }
 
 export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onClose }) => {
+    const [, setUserApiKey] = useAtom(onyxApiKeyAtom);
+
     if (!isOpen) return null;
+
+    const resetNeuralKey = () => {
+        localStorage.removeItem('ONYX_GEMINI_KEY');
+        setUserApiKey('');
+        onClose(); // Close modal after reset to refresh state
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
@@ -104,14 +114,23 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-white/5 flex items-center justify-between bg-black">
+                <div className="p-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between bg-black gap-4">
                     <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em]">Active Model: GEMINI-1.5-PRO-ONYX-V1</p>
-                    <button 
-                        onClick={onClose}
-                        className="px-6 py-2 bg-(--main-color) text-black text-xs font-black uppercase tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(var(--main-color-rgb),0.3)]"
-                    >
-                        Sync Intelligence
-                    </button>
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <button 
+                            onClick={resetNeuralKey}
+                            className="flex-1 md:flex-none px-6 py-2 bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-full border border-red-500/20 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                        >
+                            <RefreshCw size={14} />
+                            Reset Neural Core
+                        </button>
+                        <button 
+                            onClick={onClose}
+                            className="flex-1 md:flex-none px-8 py-2 bg-(--main-color) text-black text-xs font-black uppercase tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(var(--main-color-rgb),0.3)]"
+                        >
+                            Sync Intelligence
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

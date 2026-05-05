@@ -32,7 +32,7 @@ export const onyxQueries = {
         limit?: number 
     }) => {
         const invCols = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
-        const prodCols = '*, item_id, book_barcode, quantity, status';
+        const prodCols = '*, tag_id, quantity, status';
         
         // Fetch from Inventory
         let invQ = supabase.from('inventory').select(invCols, { count: 'exact' });
@@ -87,6 +87,13 @@ export const onyxQueries = {
                     ] : [])
                 ].join(',');
                 invQ = invQ.or(wordFilter);
+
+                const prodWordFilter = [
+                    `description.ilike.%${word}%`,
+                    `tag_id.ilike.%${word}%`,
+                    ...(stem !== word ? [`description.ilike.%${stem}%`] : [])
+                ].join(',');
+                prodQ = prodQ.or(prodWordFilter);
             });
         }
         
@@ -95,9 +102,12 @@ export const onyxQueries = {
             if (params.vendor.length <= 3) {
                 const prefix = `${params.vendor}%`;
                 invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+                prodQ = prodQ.or(`tag_id.ilike.${prefix}`);
             } else {
                 // If it's a long string (like "Tehuacan"), treat it as a general keyword search
-                invQ = invQ.or(`description.ilike.%${params.vendor}%,color.ilike.%${params.vendor}%,material.ilike.%${params.vendor}%`);
+                const f = `description.ilike.%${params.vendor}%,color.ilike.%${params.vendor}%,material.ilike.%${params.vendor}%`;
+                invQ = invQ.or(f);
+                prodQ = prodQ.or(`description.ilike.%${params.vendor}%`);
             }
         }
 
