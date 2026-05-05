@@ -498,7 +498,7 @@ export function OnyxChatControls(props: {
     };
 
     return (
-        <div className="w-full flex items-center gap-8 p-4 md:p-6 bg-transparent backdrop-blur-3xl overflow-x-auto no-scrollbar scroll-smooth animate-in slide-in-from-bottom duration-700 select-none">
+        <div className="w-full flex items-center gap-3 md:gap-8 p-3 md:p-6 bg-transparent backdrop-blur-3xl overflow-x-auto no-scrollbar scroll-smooth animate-in slide-in-from-bottom duration-700 select-none">
             {/* Minimal Language Toggle - High Contrast */}
             <button 
                 type="button"
@@ -515,14 +515,20 @@ export function OnyxChatControls(props: {
             <form 
                 onSubmit={handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="flex-1 flex items-center gap-6 min-w-[200px]"
+                className="flex-1 flex items-center gap-3 md:gap-6 min-w-0"
             >
                 <input 
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Neural Query..."
-                    className="flex-1 bg-white/10 p-3 px-6 rounded-full text-[16px] font-bold tracking-wide text-white outline-none transition-all placeholder:text-white/20 uppercase border border-white/20 focus:border-(--main-color) focus:bg-white/20"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            sendMessage();
+                        }
+                    }}
+                    placeholder="NEURAL QUERY..."
+                    className="flex-1 bg-transparent py-3 px-2 rounded-none text-[15px] md:text-[16px] font-bold tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/10 uppercase border-b border-white/10 focus:border-(--main-color) focus:shadow-[0_1px_15px_-5px_var(--main-color)]"
                 />
 
                 {/* Minimal Send Button - High Prominence */}
@@ -536,7 +542,7 @@ export function OnyxChatControls(props: {
             </form>
 
             {/* Action Buttons Panel */}
-            <div className="flex items-center gap-8 relative shrink-0">
+            <div className="flex items-center gap-4 md:gap-8 relative shrink-0">
                 {/* Stop Voice Response */}
                 <button 
                     type="button"
