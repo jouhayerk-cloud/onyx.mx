@@ -185,9 +185,22 @@ export const onyxQueries = {
             
             if (query) {
                 const clean = query.trim();
-                const filter = `description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%`;
-                invQ = invQ.or(filter);
-                prodQ = prodQ.or(filter);
+                const words = clean.split(/\s+/).filter(w => w.length >= 2);
+                words.forEach(word => {
+                    const stem = (word.toLowerCase().endsWith('s') && word.length > 3) ? word.slice(0, -1) : word;
+                    const f = [
+                        `description.ilike.%${word}%`,
+                        `short_description.ilike.%${word}%`,
+                        `material.ilike.%${word}%`,
+                        `shape.ilike.%${word}%`,
+                        `color.ilike.%${word}%`,
+                        `book_barcode.ilike.%${word}%`,
+                        `item_id.ilike.%${word}%`,
+                        ...(stem !== word ? [`description.ilike.%${stem}%`, `short_description.ilike.%${stem}%`, `shape.ilike.%${stem}%`] : [])
+                    ].join(',');
+                    invQ = invQ.or(f);
+                    prodQ = prodQ.or(f);
+                });
             }
 
             const [invRes, prodRes] = await Promise.all([invQ, prodQ]);
