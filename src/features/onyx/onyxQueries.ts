@@ -19,6 +19,9 @@ export const onyxQueries = {
         vendor?: string, 
         status?: string, 
         shape?: string,
+        color?: string,
+        material?: string,
+        type?: string,
         limit?: number 
     }) => {
         const columns = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
@@ -53,6 +56,10 @@ export const onyxQueries = {
             });
         }
         if (params.shape) orFilters.push(`shape.ilike.%${params.shape}%`);
+        if (params.color) orFilters.push(`color.ilike.%${params.color}%`);
+        if (params.material) orFilters.push(`material.ilike.%${params.material}%`);
+        if (params.type) orFilters.push(`type.ilike.%${params.type}%`);
+        
         const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
 
         // Fetch from Inventory
