@@ -63,7 +63,8 @@ export function useOnyx(props: {
 
     // Mobile TTS Unlock: Must be called on user gesture
     const unlockTTS = () => {
-        const utt = new SpeechSynthesisUtterance('');
+        window.speechSynthesis.cancel(); // Clear any stuck utterances
+        const utt = new SpeechSynthesisUtterance(' ');
         utt.volume = 0;
         window.speechSynthesis.speak(utt);
     };
@@ -288,19 +289,25 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         }
     }, [requestSend]);
 
-    const discoverModels = async () => {
-        const key = getApiKey();
-        if (!key || key.length < 10) return;
-        try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-            if (res.ok) {
-                const data = await res.json();
-                setAvailableModels(data.models?.map((m: any) => m.name.replace('models/', '')) || []);
-            }
-        } catch (e) {}
-    };
+    useEffect(() => {
+        const discoverModels = async () => {
+            const key = getApiKey();
+            if (!key || key.length < 10) return;
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setAvailableModels(data.models?.map((m: any) => m.name.replace('models/', '')) || []);
+                }
+            } catch (e) {}
+        };
+        discoverModels();
 
-    useEffect(() => { discoverModels(); }, [userApiKey]);
+        // Ensure voices are loaded for mobile
+        const loadVoices = () => window.speechSynthesis.getVoices();
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+    }, [userApiKey]);
 
     const resetNeuralKey = () => {
         localStorage.removeItem('ONYX_GEMINI_KEY');
