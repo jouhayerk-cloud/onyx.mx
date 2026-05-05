@@ -40,25 +40,22 @@ export const onyxQueries = {
         if (params.shape) orFilters.push(`shape.ilike.%${params.shape}%`);
         const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
 
+        // Fetch from Inventory
         let invQ = supabase.from('inventory').select(columns, { count: 'exact' });
-        let prodQ = supabase.from('production').select(columns, { count: 'exact' });
-
-        if (params.status) {
-            invQ = invQ.eq('status', params.status);
-            prodQ = prodQ.eq('status', params.status);
-        }
-
-        let filterParts = [];
-        if (orFilterString) filterParts.push(`(${orFilterString})`);
+        if (params.status) invQ = invQ.eq('status', params.status);
+        if (orFilterString) invQ = invQ.or(orFilterString);
         if (params.vendor) {
             const prefix = `${params.vendor}%`;
-            filterParts.push(`(item_id.ilike.${prefix},book_barcode.ilike.${prefix})`);
+            invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
         }
 
-        if (filterParts.length > 0) {
-            const combined = filterParts.join(',');
-            invQ = invQ.and(combined);
-            prodQ = prodQ.and(combined);
+        // Fetch from Production
+        let prodQ = supabase.from('production').select(columns, { count: 'exact' });
+        if (params.status) prodQ = prodQ.eq('status', params.status);
+        if (orFilterString) prodQ = prodQ.or(orFilterString);
+        if (params.vendor) {
+            const prefix = `${params.vendor}%`;
+            prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
         }
 
         const [invRes, prodRes] = await Promise.all([
@@ -102,20 +99,17 @@ export const onyxQueries = {
             let invQ = supabase.from('inventory').select(columns);
             let prodQ = supabase.from('production').select(columns);
 
-            let filterParts = [];
             if (vendor) {
                 const prefix = `${vendor}%`;
-                filterParts.push(`(item_id.ilike.${prefix},book_barcode.ilike.${prefix})`);
+                invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+                prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
             }
+            
             if (query) {
                 const clean = query.trim();
-                filterParts.push(`(description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%)`);
-            }
-
-            if (filterParts.length > 0) {
-                const combinedFilter = filterParts.join(',');
-                invQ = invQ.and(combinedFilter);
-                prodQ = prodQ.and(combinedFilter);
+                const filter = `description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%`;
+                invQ = invQ.or(filter);
+                prodQ = prodQ.or(filter);
             }
 
             const [invRes, prodRes] = await Promise.all([invQ, prodQ]);
@@ -183,5 +177,51 @@ export const onyxQueries = {
             };
         }
         return null;
+    },
+
+    /**
+     * Search logistics (crates, pallets, boxes, shipments, manifests)
+     */
+    searchLogistics: async (params: { query?: string, limit?: number }) => {
+        const crateColumns = 'id, type, status, length_cm, width_cm, height_cm, weight_kg, inventory_ids, contents_summary, description, parent_id, updated_at';
+        const shipmentColumns = 'manifest_id, timestamp, status, metadata, payload';
+        
+        let crateQ = supabase.from('logistics').select(crateColumns);
+        if (params.query) {
+            crateQ = crateQ.or(`id.ilike.%${params.query}%,description.ilike.%${params.query}%,contents_summary.ilike.%${params.query}%,type.ilike.%${params.query}%,status.ilike.%${params.query}%`);
+        }
+
+        let shipQ = supabase.from('shipments').select(shipmentColumns);
+        if (params.query) {
+            shipQ = shipQ.or(`manifest_id.ilike.%${params.query}%,status.ilike.%${params.query}%`);
+        }
+
+        const [crateRes, shipRes] = await Promise.all([
+            crateQ.limit(params.limit || 20),
+            shipQ.limit(params.limit || 20)
+        ]);
+
+        return {
+            crates: crateRes.data || [],
+            shipments: shipRes.data || []
+        };
+    },
+
+    /**
+     * Search finance (expenses, payments, vendor commissions)
+     */
+    searchFinance: async (params: { query?: string, limit?: number }) => {
+        const financeColumns = 'id, amount, commission, destination, status, date, type, category, description, related_ids, pay_date';
+        
+        let finQ = supabase.from('finance').select(financeColumns);
+        if (params.query) {
+            finQ = finQ.or(`description.ilike.%${params.query}%,destination.ilike.%${params.query}%,category.ilike.%${params.query}%,status.ilike.%${params.query}%,type.ilike.%${params.query}%`);
+        }
+
+        const { data, error } = await finQ.limit(params.limit || 50);
+        return {
+            expenses: data || [],
+            error: error?.message
+        };
     }
 };

@@ -65,17 +65,29 @@ export const onyxToolDefinitions = [
             properties: {}
         }
     },
+        },
+        required: ["item_ids"]
+    },
     {
-        name: "deploy_inventory_artifact",
-        description: "Deploys a UI 'Artifact' to display specific items in a rich grid/gallery view.",
+        name: "search_logistics",
+        description: "Search for crates, pallets, manifests, and truck loads. Returns dimensions, statuses, and manifest summaries. Use this to find where items are packed or to track shipments.",
         parameters: {
             type: "object",
             properties: {
-                item_ids: { type: "array", items: { type: "string" } },
-                title: { type: "string" },
-                viewMode: { type: "string", enum: ["modal", "sidebar", "embedded"] }
-            },
-            required: ["item_ids"]
+                query: { type: "string", description: "Crate ID, Manifest ID, or keyword (e.g. 'In Transit', 'Packed')" },
+                limit: { type: "number", default: 20 }
+            }
+        }
+    },
+    {
+        name: "search_finance",
+        description: "Search for payments, expenses, and vendor commissions. Returns amounts, statuses, and destinations. Use this for financial audits or payment status checks.",
+        parameters: {
+            type: "object",
+            properties: {
+                query: { type: "string", description: "Expense description, destination, status, or category" },
+                limit: { type: "number", default: 20 }
+            }
         }
     }
 ];
@@ -220,5 +232,19 @@ export const onyxToolHandlers = {
     },
     deploy_inventory_artifact: async ({ item_ids, title, viewMode }: any) => {
         return { action: "DEPLOY_INVENTORY", ids: item_ids, title, viewMode };
+    },
+    search_logistics: async (args: any) => {
+        try {
+            return await onyxQueries.searchLogistics(args);
+        } catch (err: any) {
+            return { error: err.message };
+        }
+    },
+    search_finance: async (args: any) => {
+        try {
+            return await onyxQueries.searchFinance(args);
+        } catch (err: any) {
+            return { error: err.message };
+        }
     }
 };
