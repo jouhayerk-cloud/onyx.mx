@@ -21,7 +21,8 @@ export const ONYX_CONTEXT = {
             },
             rules: [
                 "Always call the item's identifier 'Tag ID'. Never call it 'item id' or 'system id'.",
-                "The 'tag_id' is the unique code printed on the physical asset's tag.",
+                "The 'Tag ID' must always be in the barcode format (e.g., DH3261HFNN). NEVER use the dash-style (e.g., DH-51XC2WKX).",
+                "The 'tag_id' field in tool outputs is the primary source of truth for physical tags.",
                 "Warehouse and Inventory statuses are the primary sources of truth for physical stock.",
                 "To search for a vendor, use the vendor prefix on the Tag ID (e.g. DH for Delfino Hernandez)."
             ]
