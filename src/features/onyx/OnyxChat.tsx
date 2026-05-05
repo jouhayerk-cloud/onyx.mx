@@ -315,17 +315,17 @@ export function OnyxChatControls(props: {
     const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
 
     return (
-        <div className="w-full flex items-center justify-between gap-3 p-3 md:p-4 bg-white/5 backdrop-blur-2xl border-t border-white/5 animate-in slide-in-from-bottom duration-700">
+        <div className="w-full flex items-center justify-between gap-3 p-3 md:p-4 bg-white/[0.01] backdrop-blur-3xl animate-in slide-in-from-bottom duration-700">
             {/* Minimal Language Toggle */}
             <button 
                 onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[8px] font-black text-white/40 hover:text-white hover:border-white/20 transition-all shrink-0"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-[8px] font-black text-white/40 hover:text-white transition-all shrink-0"
             >
                 {appLanguage.toUpperCase()}
             </button>
 
-            {/* Small Compact Input Form */}
+            {/* Frameless Compact Input Form */}
             <form 
                 onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
                 onPointerDown={(e) => e.stopPropagation()}
@@ -342,7 +342,7 @@ export function OnyxChatControls(props: {
                         }
                     }}
                     placeholder={appLanguage === 'es' ? "Neural Query..." : "Neural Query..."}
-                    className="w-full bg-transparent border-b border-white/5 p-2 px-3 text-[12px] font-black tracking-[0.1em] text-white outline-none focus:border-(--main-color)/40 transition-all placeholder:text-white/5 uppercase"
+                    className="w-full bg-transparent p-2 px-3 text-[12px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase"
                 />
             </form>
 
@@ -355,7 +355,7 @@ export function OnyxChatControls(props: {
                             e.stopPropagation();
                             setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
                         }}
-                        className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'border-(--main-color)/40 bg-(--main-color)/10' : 'border-white/10 bg-white/5'}`}
+                        className={`flex items-center justify-center w-8 h-8 rounded-full border border-white/5 transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'bg-(--main-color)/10' : 'bg-white/5'}`}
                         style={{ touchAction: 'none' }}
                         title="Toggle Manifest"
                     >
@@ -369,7 +369,7 @@ export function OnyxChatControls(props: {
                         e.stopPropagation();
                         if (input.trim()) sendMessage();
                     }}
-                    className={`flex items-center justify-center w-8 h-8 rounded-full border border-white/10 bg-white/5 transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
+                    className={`flex items-center justify-center w-8 h-8 rounded-full border border-white/5 bg-white/5 transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
                     style={{ touchAction: 'none' }}
                 >
                     <Send size={12} strokeWidth={2} className="text-white/40 group-hover/send:text-white transition-colors" />
@@ -382,7 +382,7 @@ export function OnyxChatControls(props: {
                         onPointerUp={(e) => { e.stopPropagation(); setIsListening(false); }}
                         onPointerLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
                         onPointerCancel={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        className={`relative flex items-center justify-center w-10 h-10 rounded-full border border-white/10 bg-white/5 transition-all duration-300 group/mic ${isListening ? 'scale-110 border-red-500/40 bg-red-500/10' : 'hover:scale-105'}`}
+                        className={`relative flex items-center justify-center w-10 h-10 rounded-full border border-white/5 bg-white/5 transition-all duration-300 group/mic ${isListening ? 'scale-110 border-red-500/20 bg-red-500/10' : 'hover:scale-105'}`}
                         style={{ touchAction: 'none' }}
                     >
                         <div className={`transition-all duration-700 relative z-10 ${
@@ -392,7 +392,7 @@ export function OnyxChatControls(props: {
                         </div>
                         {isListening && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-full h-full rounded-full border border-red-500/40 animate-ping" />
+                                <div className="w-full h-full rounded-full border border-red-500/20 animate-ping" />
                             </div>
                         )}
                     </button>
