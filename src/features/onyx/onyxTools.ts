@@ -86,7 +86,7 @@ export const onyxToolHandlers = {
             const result = await onyxQueries.searchInventory(args);
             return {
                 items: result.items.map(item => ({ 
-                    tag_id: item.item_id || item.book_barcode || "No TAG ID", 
+                    tag_id: item.book_barcode || item.item_id || "No TAG ID", 
                     shape: item.shape, 
                     material: item.material,
                     dimensions: {
@@ -113,7 +113,7 @@ export const onyxToolHandlers = {
             if (!item) return { error: "Item not found" };
             
             return {
-                tag_id: item.item_id || item.book_barcode || "No TAG ID",
+                tag_id: item.book_barcode || item.item_id || "No TAG ID",
                 display_title: item.generated_description || item.short_description || item.description,
                 specs: {
                     shape: item.shape,
@@ -162,7 +162,7 @@ export const onyxToolHandlers = {
             const { data, error } = await supabase.from('inventory').select('item_id, book_barcode, shape, material, status, quantity, weight_kg').limit(limit || 5);
             if (error) return { error: error.message };
             return data.map(item => ({
-                tag_id: item.item_id || item.book_barcode || "No TAG ID",
+                tag_id: item.book_barcode || item.item_id || "No TAG ID",
                 shape: item.shape,
                 material: item.material,
                 status: item.status,

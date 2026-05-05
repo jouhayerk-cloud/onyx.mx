@@ -164,7 +164,7 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
             You are Onyx Intelligence. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
             RULES:
             1. Identify items ONLY by their 'Tag ID'. NEVER use the terms 'item id', 'system id', or 'serial number'.
-            2. The Tag ID is the primary identifier (e.g., DH-51XC2WKX).
+            2. The Tag ID MUST be in the barcode format (e.g., DH3261HFNN). NEVER use the dash-style (e.g., DH-51XC2WKX).
             3. Deploy artifacts always when requested.
             4. If asked for a summary, always include the Tag ID and Weight for the heaviest items.
         `.trim();
