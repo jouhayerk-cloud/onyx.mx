@@ -12,7 +12,7 @@ import {
     onyxRequestSendAtom
 } from '../../lib/atoms';
 import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
-import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages } from 'lucide-react';
+import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages, Layout } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -312,6 +312,7 @@ export function OnyxChatControls(props: {
 }) {
     const { input, setInput, sendMessage, isListening, setIsListening } = props;
     const [appLanguage, setAppLanguage] = useAtom(languageAtom);
+    const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
 
     return (
         <div className="w-full flex items-center justify-between gap-3 p-3 md:p-4 bg-white/5 backdrop-blur-2xl border-t border-white/5 animate-in slide-in-from-bottom duration-700">
@@ -345,8 +346,23 @@ export function OnyxChatControls(props: {
                 />
             </form>
 
-            {/* Small Action Buttons Panel */}
+            {/* Action Buttons Panel */}
             <div className="flex items-center gap-2 relative shrink-0">
+                {/* Artifact Toggle Button */}
+                {inventoryConfig.itemIds.length > 0 && (
+                    <button 
+                        onPointerDown={(e) => {
+                            e.stopPropagation();
+                            setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
+                        }}
+                        className={`flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'border-(--main-color)/40 bg-(--main-color)/10' : 'border-white/10 bg-white/5'}`}
+                        style={{ touchAction: 'none' }}
+                        title="Toggle Manifest"
+                    >
+                        <Package size={12} strokeWidth={2} className={`${inventoryConfig.isOpen ? 'text-(--main-color)' : 'text-white/40'} group-hover/art:text-white transition-colors`} />
+                    </button>
+                )}
+
                 {/* Minimal Send Button */}
                 <button 
                     onPointerDown={(e) => {
