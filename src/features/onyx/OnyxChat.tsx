@@ -11,10 +11,6 @@ import {
     onyxIsListeningAtom,
     onyxRequestSendAtom
 } from '../../lib/atoms';
-import { supabase } from '../../lib/supabase';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { vendors } from '../../lib/consts';
-import { getOnyxSystemGrounding } from './onyxBusinessRules';
 import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
 import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages, Layout, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -53,6 +49,8 @@ export function useOnyx(props: {
     useEffect(() => { inputRef.current = input; }, [input]);
     useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
 
+    const streamRef = useRef<MediaStream | null>(null);
+
     const getApiKey = () => {
         const key = userApiKey || localStorage.getItem('ONYX_GEMINI_KEY') || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
         return String(key).trim().replace(/['"]/g, '');
@@ -60,29 +58,26 @@ export function useOnyx(props: {
 
     const getBestVoice = (lang: 'en' | 'es') => {
         const voices = window.speechSynthesis.getVoices();
+        if (!voices.length) return null;
         const targetLocale = lang === 'es' ? 'es-' : 'en-';
         const matches = voices.filter(v => v.lang.startsWith(targetLocale));
         return matches.find(v => v.name.includes('Natural')) || matches.find(v => v.name.includes('Google')) || matches[0] || null;
     };
 
-    // Mobile TTS Unlock: Must be called on user gesture
-    const unlockTTS = () => {
-        window.speechSynthesis.cancel(); // Clear any stuck utterances
-        const utt = new SpeechSynthesisUtterance(' ');
-        utt.volume = 0;
-        window.speechSynthesis.speak(utt);
-    };
+    useEffect(() => {
+        const handleVoices = () => {
+            // Just trigger a re-render or voice check if needed
+            getBestVoice(appLanguage);
+        };
+        window.speechSynthesis.addEventListener('voiceschanged', handleVoices);
+        return () => window.speechSynthesis.removeEventListener('voiceschanged', handleVoices);
+    }, [appLanguage]);
 
-    const discoverModels = async () => {
-        const key = getApiKey();
-        if (!key || key.length < 10) return;
-        try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-            if (res.ok) {
-                const data = await res.json();
-                setAvailableModels(data.models?.map((m: any) => m.name.replace('models/', '')) || []);
-            }
-        } catch (e) {}
+    // Mobile TTS Unlock: Aggressive version for iOS/Safari
+    const unlockTTS = () => {
+        const utt = new SpeechSynthesisUtterance(' ');
+        utt.volume = 0.01; // Tiny volume to count as speech
+        window.speechSynthesis.speak(utt);
     };
 
     const checkForVendor = (text: string) => {
@@ -99,23 +94,19 @@ export function useOnyx(props: {
         }
     };
 
-    const callGeminiStreaming = async (apiKey: string, modelName: string, contents: any[]) => {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ 
-            model: modelName,
-            systemInstruction: { parts: [{ text: getOnyxSystemGrounding() }] },
-            tools: [{ functionDeclarations: onyxToolDefinitions as any }]
-        });
-        
-        const history = contents.slice(0, -1).map(m => ({
-            role: m.role,
-            parts: m.parts
-        }));
-        
-        const chat = model.startChat({ history });
-        const lastMsg = contents[contents.length - 1].parts[0].text;
-        
-        return await chat.sendMessageStream(lastMsg);
+    const callGemini = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const sys = `You are Onyx Intelligence, a sentient warehouse asset discovery engine. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
+CRITICAL IDENTIFIER RULE: You MUST ONLY use the 'book_barcode' (Tag ID) for asset identification in dialogue (e.g., DH3261HFNN). However, when deploying artifacts via 'deploy_inventory_artifact', you MUST use the database 'id' field if available to ensure reliable manifest resolution. 
+Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
+        const payload: any = { contents, system_instruction: { parts: [{ text: sys }] } };
+        if (tools) payload.tools = [{ function_declarations: tools }];
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error?.message || `HTTP ${res.status}`);
+        }
+        return await res.json();
     };
 
     const sendMessage = async (overrideInput?: string) => {
@@ -132,12 +123,6 @@ export function useOnyx(props: {
         setIsTyping(true);
         onProcessingChange(true);
         checkForVendor(finalInput);
-        
-        // Auto-Language Detection for TTS engine
-        const isSpanish = /([aeiouáéíóú]s|el|la|los|las|de|un|una|para|con|por|que|si|no)\b/i.test(finalInput);
-        if (isSpanish && appLanguage !== 'es') setAppLanguage('es');
-        else if (!isSpanish && appLanguage !== 'en' && /\b(the|is|are|a|an|for|with|by|that|if|no)\b/i.test(finalInput)) setAppLanguage('en');
-
         try {
             let contents = messages.filter(m => m.content?.trim()).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
             contents.push({ role: 'user', parts: [{ text: finalInput }] });
@@ -145,83 +130,63 @@ export function useOnyx(props: {
             const modelsToTry = [...availableModels.filter(m => m.includes('flash')), "gemini-1.5-flash", "gemini-1.5-flash-latest"];
             const uniqueModels = Array.from(new Set(modelsToTry));
             
-            let result = null;
-            let lastErr = "";
+            let resp = null;
+            let used = "";
+            let lastAttemptError = "";
+            
             for (const m of uniqueModels) {
-                try {
-                    result = await callGeminiStreaming(apiKey, m, contents);
-                    if (result) break;
+                try { 
+                    resp = await callGemini(apiKey, m, contents, onyxToolDefinitions); 
+                    used = m; 
+                    break; 
                 } catch (e: any) {
-                    lastErr = e.message;
-                    console.error(`Neural Link [${m}] fallback:`, e.message);
+                    lastAttemptError = e.message;
+                    console.error(`Neural Link [${m}] failed:`, e.message);
                 }
             }
-
-            if (!result) throw new Error(lastErr || "Neural link failed to initialize. Verify network and API key.");
-
-            let fullText = "";
-            let currentSentence = "";
-            let toolCalls: any[] = [];
             
-            // Add a placeholder message for streaming
-            setMessages(prev => [...prev, { role: 'model', content: '' }]);
-
-            for await (const chunk of result.stream) {
-                const chunkText = chunk.text();
-                if (chunkText) {
-                    fullText += chunkText;
-                    currentSentence += chunkText;
-                    
-                    setMessages(prev => {
-                        const next = [...prev];
-                        next[next.length - 1].content = fullText;
-                        return next;
-                    });
-
-                    // Partial Speaking
-                    if (/[.!?]\s$/.test(currentSentence) || currentSentence.length > 100) {
-                        const utt = new SpeechSynthesisUtterance(currentSentence.trim());
+            if (!resp) {
+                const isInvalidKey = lastAttemptError.toLowerCase().includes('key') || lastAttemptError.includes('404') || lastAttemptError.includes('API_KEY_INVALID');
+                throw new Error(isInvalidKey ? "Neural Link Denied. Verify API credentials in settings." : (lastAttemptError || "Neural core unreachable."));
+            }
+            
+            let iter = 0;
+            while (iter < 5) {
+                const parts = resp.candidates?.[0]?.content?.parts || [];
+                const calls = parts.filter((p: any) => p.functionCall);
+                const text = parts.find((p: any) => p.text)?.text;
+                if (calls.length === 0) {
+                    if (text) {
+                        setMessages(prev => [...prev, { role: 'model', content: text }]);
+                        const utt = new SpeechSynthesisUtterance(text);
                         utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
                         utt.voice = getBestVoice(appLanguage);
+                        utt.onstart = () => { (utt as any)._p = setInterval(() => onVolumeChange?.(0.3 + Math.random() * 0.4), 50); };
+                        utt.onend = () => { clearInterval((utt as any)._p); onVolumeChange?.(0); };
                         window.speechSynthesis.speak(utt);
-                        currentSentence = "";
                     }
+                    break;
                 }
-
-                const calls = chunk.functionCalls();
-                if (calls) toolCalls.push(...calls);
-            }
-
-            // Speak remaining
-            if (currentSentence.trim()) {
-                const utt = new SpeechSynthesisUtterance(currentSentence.trim());
-                utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
-                utt.voice = getBestVoice(appLanguage);
-                window.speechSynthesis.speak(utt);
-            }
-
-            // Handle Tool Calls
-            if (toolCalls.length > 0) {
+                contents.push(resp.candidates[0].content);
                 const resps = [];
-                for (const c of toolCalls) {
-                    const res = await (onyxToolHandlers as any)[c.name]?.(c.args);
-                    resps.push({ functionResponse: { name: c.name, response: { content: res } } });
-                    
-                    // Specific Deploys
-                    if (res?.action === 'DEPLOY_INVENTORY') setInventoryConfig({ isOpen: true, itemIds: res.ids, title: res.title, viewMode: 'modal' });
+                for (const c of calls) {
+                    const res = await (onyxToolHandlers as any)[c.functionCall.name]?.(c.functionCall.args);
+                    resps.push({ functionResponse: { name: c.functionCall.name, response: { content: res } } });
                 }
-                
-                // For now, we stop after tool execution to avoid complex recursive streaming
-                // The AI can be prompted to follow up if needed.
+                contents.push({ role: 'function', parts: resps });
+                for (const r of resps) {
+                    const d = r.functionResponse.response.content;
+                    if (d?.action === 'DEPLOY_INVENTORY') setInventoryConfig({ isOpen: true, itemIds: d.ids, title: d.title, viewMode: 'modal' });
+                    else if (d?.action === 'DEPLOY_PAYMENTS') setPaymentsConfig({ isOpen: true, vendor: d.vendor, destination: d.destination, title: d.title });
+                    else if (d?.action === 'DEPLOY_CRATES') setTruckId(d.truck_id);
+                }
+                resp = await callGemini(apiKey, used, contents, onyxToolDefinitions);
+                iter++;
             }
-
         } catch (e: any) {
             setLastError(e.message);
             setMessages(prev => [...prev, { role: 'model', content: `Neural Link Interrupted: ${e.message}` }]);
-        } finally {
-            setIsTyping(false);
-            onProcessingChange(false);
-        }
+        } finally { setIsTyping(false); onProcessingChange(false); }
     };
 
     const handleFormSubmit = (e: React.FormEvent) => {
@@ -291,12 +256,14 @@ export function useOnyx(props: {
     useEffect(() => {
         if (isListening && onVolumeChange) {
             const startAudio = async () => {
-                // Delay visualizer slightly on mobile to allow SpeechRecognition priority
-                await new Promise(r => setTimeout(r, 300));
+                // EXCLUSIVE MIC ACCESS FOR MOBILE: 
+                // We delay and check if recognition is already holding the mic.
+                await new Promise(r => setTimeout(r, 500));
                 if (!isListeningRef.current) return;
                 
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    streamRef.current = stream;
                     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
                     const ctx = new AudioCtx();
                     const source = ctx.createMediaStreamSource(stream);
@@ -324,6 +291,10 @@ export function useOnyx(props: {
             if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
                 audioContextRef.current.close().catch(() => {});
             }
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(t => t.stop());
+                streamRef.current = null;
+            }
             if (onVolumeChange) onVolumeChange(0);
         };
     }, [isListening]);
@@ -335,14 +306,19 @@ export function useOnyx(props: {
         }
     }, [requestSend]);
 
-    useEffect(() => {
-        discoverModels();
+    const discoverModels = async () => {
+        const key = getApiKey();
+        if (!key || key.length < 10) return;
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+            if (res.ok) {
+                const data = await res.json();
+                setAvailableModels(data.models?.map((m: any) => m.name.replace('models/', '')) || []);
+            }
+        } catch (e) {}
+    };
 
-        // Ensure voices are loaded for mobile
-        const loadVoices = () => window.speechSynthesis.getVoices();
-        loadVoices();
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-    }, [userApiKey]);
+    useEffect(() => { discoverModels(); }, [userApiKey]);
 
     const resetNeuralKey = () => {
         localStorage.removeItem('ONYX_GEMINI_KEY');
@@ -357,8 +333,7 @@ export function useOnyx(props: {
         isTyping, setIsTyping,
         isListening, setIsListening,
         sendMessage, lastError,
-        resetNeuralKey,
-        handleFormSubmit
+        resetNeuralKey
     };
 }
 
@@ -412,22 +387,28 @@ export function OnyxChatControls(props: {
     isListening: boolean;
     setIsListening: (v: boolean) => void;
     resetNeuralKey?: () => void;
-    handleFormSubmit?: (e: React.FormEvent) => void;
 }) {
-    const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey, handleFormSubmit } = props;
+    const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey } = props;
     const [appLanguage, setAppLanguage] = useAtom(languageAtom);
     const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
 
     return (
         <div className="w-full flex items-center justify-between gap-3 p-3 md:p-4 bg-transparent backdrop-blur-3xl animate-in slide-in-from-bottom duration-700">
-            {/* Minimal Language Detection Indicator */}
-            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-[8px] font-black text-white/40 shrink-0">
-                AUTO
-            </div>
+            {/* Minimal Language Toggle */}
+            <button 
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-[8px] font-black text-white/40 hover:text-white transition-all shrink-0"
+            >
+                {appLanguage.toUpperCase()}
+            </button>
 
             {/* Frameless Compact Input Form */}
             <form 
-                onSubmit={handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
+                onSubmit={(props as any).handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
                 onPointerDown={(e) => e.stopPropagation()}
                 className="flex-1 relative flex items-center"
             >
