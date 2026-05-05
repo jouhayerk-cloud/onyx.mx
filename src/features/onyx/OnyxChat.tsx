@@ -75,6 +75,7 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
             recognitionRef.current.continuous = false;
             recognitionRef.current.interimResults = true;
             recognitionRef.current.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
+            
             recognitionRef.current.onresult = (event: any) => {
                 let interimTranscript = '';
                 const results = Array.from(event.results);
@@ -82,22 +83,46 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
                     if (!event.results[i].isFinal) interimTranscript += event.results[i][0].transcript;
                 }
                 const fullTranscript = results.map((r: any) => r[0].transcript).join('');
+                
+                // Update input state
                 setInput(fullTranscript);
                 checkForVendor(fullTranscript);
                 if (onTranscriptChange) onTranscriptChange(interimTranscript || fullTranscript);
             };
-            recognitionRef.current.onend = () => setIsListening(false);
-            recognitionRef.current.onerror = () => setIsListening(false);
+
+            recognitionRef.current.onend = () => {
+                setIsListening(false);
+                // Auto-send if we have a transcript and just finished listening
+                if (inputRef.current.trim()) {
+                    sendMessage(inputRef.current);
+                }
+            };
+
+            recognitionRef.current.onerror = (e: any) => {
+                console.error("Speech Error:", e.error);
+                setIsListening(false);
+            };
         }
     }, [appLanguage]);
+
+    // Track input in a ref to use inside onend without re-running effect
+    const inputRef = useRef('');
+    useEffect(() => { inputRef.current = input; }, [input]);
 
     // External Trigger Sync (Orb click etc)
     useEffect(() => {
         if (!recognitionRef.current) return;
         if (isListening) {
-            try { recognitionRef.current.start(); } catch (e) {}
+            try { 
+                recognitionRef.current.start(); 
+            } catch (e) {
+                // If already started, ignore
+            }
         } else {
-            try { recognitionRef.current.stop(); } catch (e) {}
+            try { 
+                // abort() is more aggressive than stop() and helps on mobile
+                recognitionRef.current.abort(); 
+            } catch (e) {}
         }
     }, [isListening]);
 
