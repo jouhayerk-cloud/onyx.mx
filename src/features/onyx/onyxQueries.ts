@@ -81,8 +81,11 @@ export const onyxQueries = {
 
         let prodSumQ = supabase.from('production').select('quantity');
         if (params.status) prodSumQ = prodSumQ.eq('status', params.status);
-        if (orFilterString) prodSumQ = prodSumQ.or(orFilterString);
-        if (params.vendor) prodSumQ = prodSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
+        if (params.query) {
+             const clean = params.query.trim();
+             prodSumQ = prodSumQ.or(`description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,tag_id.ilike.%${clean}%`);
+        }
+        if (params.vendor) prodSumQ = prodSumQ.ilike('tag_id', `${params.vendor}%`);
 
         const [invSum, prodSum] = await Promise.all([invSumQ, prodSumQ]);
         const totalQty = (invSum.data?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0) +
@@ -98,22 +101,24 @@ export const onyxQueries = {
     getAggregatedSummary: async (group_by: string, vendor?: string, query?: string) => {
         try {
             const dbField = group_by === 'vendor_id' ? 'item_id' : group_by;
-            const columns = `quantity, ${dbField}, status`;
+            const invCols = `quantity, ${dbField}, status`;
+            const prodCols = `quantity, ${group_by === 'vendor_id' ? 'tag_id' : group_by}, status`;
             
-            let invQ = supabase.from('inventory').select(columns);
-            let prodQ = supabase.from('production').select(columns);
+            let invQ = supabase.from('inventory').select(invCols);
+            let prodQ = supabase.from('production').select(prodCols);
 
             if (vendor) {
                 const prefix = `${vendor}%`;
                 invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
-                prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+                prodQ = prodQ.ilike('tag_id', prefix);
             }
             
             if (query) {
                 const clean = query.trim();
-                const filter = `description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%`;
-                invQ = invQ.or(filter);
-                prodQ = prodQ.or(filter);
+                const invFilter = `description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%`;
+                const prodFilter = `description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,tag_id.ilike.%${clean}%`;
+                invQ = invQ.or(invFilter);
+                prodQ = prodQ.or(prodFilter);
             }
 
             const [invRes, prodRes] = await Promise.all([invQ, prodQ]);
@@ -123,7 +128,7 @@ export const onyxQueries = {
             data.forEach((item: any) => {
                 let key = 'Unknown';
                 if (group_by === 'vendor_id') {
-                    const idString = (item.item_id || item.book_barcode || '').toString().toUpperCase().trim();
+                    const idString = (item.item_id || item.tag_id || item.book_barcode || '').toString().toUpperCase().trim();
                     const match = VENDOR_KEYS.find(k => idString.startsWith(k.toUpperCase()));
                     key = match || idString.substring(0, 2) || 'Unknown';
                 } else {
@@ -147,14 +152,14 @@ export const onyxQueries = {
     getDatabaseContext: async () => {
         const [invRes, prodRes] = await Promise.all([
             supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color'),
-            supabase.from('production').select('shape, material, item_id, book_barcode, status, color')
+            supabase.from('production').select('shape, material, tag_id, status, color')
         ]);
         
         const data = [...(invRes.data || []), ...(prodRes.data || [])];
 
         return {
             vendors: Array.from(new Set(data.map(i => {
-                const idString = (i.item_id || i.book_barcode || '').toString().toUpperCase().trim();
+                const idString = (i.item_id || i.tag_id || i.book_barcode || '').toString().toUpperCase().trim();
                 const match = VENDOR_KEYS.find(k => idString.startsWith(k.toUpperCase()));
                 return match || idString.substring(0, 2);
             }).filter(Boolean))),
