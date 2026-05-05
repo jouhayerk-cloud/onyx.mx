@@ -27,6 +27,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
     const [status, setStatus] = useState('');
     const [transcription, setTranscription] = useState('');
     const [error, setError] = useState('');
+    const [audioActivity, setAudioActivity] = useState(0);
 
     const clientRef = useRef<GoogleGenAI | null>(null);
     const sessionRef = useRef<any>(null);
@@ -156,11 +157,18 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
             sourceNodeRef.current = inputAudioContextRef.current.createMediaStreamSource(mediaStreamRef.current);
             sourceNodeRef.current.connect(inputNodeRef.current!);
 
-            const bufferSize = 256;
+            const bufferSize = 2048;
             processorNodeRef.current = inputAudioContextRef.current.createScriptProcessor(bufferSize, 1, 1);
             processorNodeRef.current.onaudioprocess = (e) => {
-                if (!sessionRef.current) return;
+                if (!sessionRef.current || !isRecording) return;
                 const pcmData = e.inputBuffer.getChannelData(0);
+                
+                // Calculate activity for UI feedback
+                let sum = 0;
+                for(let i = 0; i < pcmData.length; i++) sum += pcmData[i] * pcmData[i];
+                const rms = Math.sqrt(sum / pcmData.length);
+                setAudioActivity(rms);
+
                 sessionRef.current.sendRealtimeInput({ media: createBlob(pcmData) });
             };
 
@@ -174,6 +182,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
 
     const stopRecording = () => {
         setIsRecording(false);
+        setAudioActivity(0);
         setStatus('Neural Interface Idle');
         
         processorNodeRef.current?.disconnect();
@@ -219,7 +228,12 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                     >
                         {/* Visual Orb */}
                         <div className={`w-full h-full transition-all duration-1000 ${isRecording ? 'opacity-100 scale-105' : 'opacity-70 scale-100 group-hover/orb:opacity-90'}`}>
-                            <BotOrbVisuals inputNode={inputNodeRef.current} outputNode={outputNodeRef.current} isProcessing={status.includes('Processing')} />
+                            <BotOrbVisuals 
+                                inputNode={inputNodeRef.current} 
+                                outputNode={outputNodeRef.current} 
+                                volumeOverride={isRecording ? audioActivity * 2 : 0}
+                                isProcessing={status.includes('Processing')} 
+                            />
                         </div>
 
                         {/* Transcription/Status Overlay */}
