@@ -12,9 +12,41 @@ import {
     isBotOrbOpenAtom
 } from '../../lib/atoms';
 import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
-import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages, Layout, RefreshCw, X, ChevronRight, Database, ShieldAlert } from 'lucide-react';
+import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages, Layout, RefreshCw, X, ChevronRight, Database, ShieldAlert, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { BotOrb } from './BotOrb';
+
+const VENDOR_COLORS: Record<string, string> = {
+    'emmanuel': '#00AEEF', 'gerardo': '#F7941D', 'jose': '#6BCEBB', 'carlos': '#85C1E9',
+    'angel': '#FFED00', 'susana': '#B19CD9', 'tellez': '#FFCB05', 'delfino': '#8DC63F',
+    'maria': '#F9A17A', 'fountain': '#F36F21', 'eduardo': '#636466', 'alejandro': '#800020',
+    'bernardo': '#603913', 'roberto': '#00A591', 'gift': '#D11C7E', 'cantera': '#A01E5D'
+};
+
+const ColorizedText = ({ text }: { text: string }) => {
+    // Matches Tag IDs (DH... etc) and Vendor names
+    const tagRegex = /\b(?=[A-Z\d]*\d)(?=[A-Z\d]*[A-Z])[A-Z\d]{8,12}\b/g;
+    const vendors = Object.keys(VENDOR_COLORS).join('|');
+    const vendorRegex = new RegExp(`\\b(${vendors})\\b`, 'gi');
+    
+    const parts = text.split(new RegExp(`(${tagRegex.source}|${vendorRegex.source})`, 'gi'));
+    
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (!part) return null;
+                const lowerPart = part.toLowerCase();
+                if (VENDOR_COLORS[lowerPart]) {
+                    return <span key={i} style={{ color: VENDOR_COLORS[lowerPart] }} className="font-black drop-shadow-[0_0_8px_currentColor]">{part}</span>;
+                }
+                if (part.match(tagRegex)) {
+                    return <span key={i} className="text-(--main-color) font-black underline decoration-dashed decoration-1 underline-offset-4 drop-shadow-[0_0_8px_var(--main-color)]">{part}</span>;
+                }
+                return part;
+            })}
+        </>
+    );
+};
 
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -84,13 +116,7 @@ export function useOnyx(props: {
     const checkForVendor = (text: string) => {
         if (!onVendorDetect) return;
         const lower = text.toLowerCase();
-        const vendorMap: Record<string, string> = {
-            'emmanuel': '#00AEEF', 'gerardo': '#F7941D', 'jose': '#6BCEBB', 'carlos': '#85C1E9',
-            'angel': '#FFED00', 'susana': '#B19CD9', 'tellez': '#FFCB05', 'delfino': '#8DC63F',
-            'maria': '#F9A17A', 'fountain': '#F36F21', 'eduardo': '#636466', 'alejandro': '#800020',
-            'bernardo': '#603913', 'roberto': '#00A591', 'gift': '#D11C7E', 'cantera': '#A01E5D'
-        };
-        for (const [name, color] of Object.entries(vendorMap)) {
+        for (const [name, color] of Object.entries(VENDOR_COLORS)) {
             if (lower.includes(name)) { onVendorDetect(color); break; }
         }
     };
@@ -98,7 +124,11 @@ export function useOnyx(props: {
     const callGemini = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const sys = `You are Onyx Intelligence, a sentient warehouse asset discovery engine. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
-CRITICAL IDENTIFIER RULE: You MUST ONLY use the 'book_barcode' (Tag ID) for asset identification in dialogue (e.g., DH3261HFNN). However, when deploying artifacts via 'deploy_inventory_artifact', you MUST use the database 'id' field if available to ensure reliable manifest resolution. 
+DOMAIN CONTEXT: Terms like 'Talan' (e.g., Green Talan) and 'Tehuacan' are common COLORS in the inventory database. If a user asks about these terms without specifying "color", treat them as color search parameters in your tool calls.
+CRITICAL IDENTIFIER RULE: DO NOT read out 'book_barcode' (Tag IDs like DH3261HFNN) in your conversational text.
+Instead, give a short, helpful verbal summary of what you found (e.g., "I've found two items from Gerardo, deploying the manifest for you now.") along with the artifact deployment.
+Use Tag IDs ONLY in tool calls. 
+When deploying artifacts via 'deploy_inventory_artifact', you MUST use the database 'id' field if available to ensure reliable manifest resolution. 
 Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         const payload: any = { contents, system_instruction: { parts: [{ text: sys }] } };
         if (tools) payload.tools = [{ function_declarations: tools }];
@@ -161,18 +191,22 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 const parts = resp.candidates?.[0]?.content?.parts || [];
                 const calls = parts.filter((p: any) => p.functionCall);
                 const text = parts.find((p: any) => p.text)?.text;
-                if (calls.length === 0) {
-                    if (text) {
-                        setMessages(prev => [...prev, { role: 'model', content: text }]);
-                        const utt = new SpeechSynthesisUtterance(text);
+
+                if (text) {
+                    setMessages(prev => [...prev, { role: 'model', content: text }]);
+                    // Filter out Tag IDs from vocalization (alphanumeric 8-12 chars)
+                    const vocalText = text.replace(/\b(?=[A-Z\d]*\d)(?=[A-Z\d]*[A-Z])[A-Z\d]{8,12}\b/g, '').replace(/\s+/g, ' ').trim();
+                    if (vocalText) {
+                        const utt = new SpeechSynthesisUtterance(vocalText);
                         utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
                         utt.voice = getBestVoice(appLanguage);
                         utt.onstart = () => { (utt as any)._p = setInterval(() => onVolumeChange?.(0.3 + Math.random() * 0.4), 50); };
                         utt.onend = () => { clearInterval((utt as any)._p); onVolumeChange?.(0); };
                         window.speechSynthesis.speak(utt);
                     }
-                    break;
                 }
+
+                if (calls.length === 0) break;
                 contents.push(resp.candidates[0].content);
                 const resps = [];
                 for (const c of calls) {
@@ -333,13 +367,18 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         setTimeout(() => discoverModels(), 500);
     };
 
+    const stopVoice = () => {
+        window.speechSynthesis.cancel();
+        if (onVolumeChange) onVolumeChange(0);
+    };
+
     return {
         input, setInput,
         messages, setMessages,
         isTyping, setIsTyping,
         isListening, setIsListening,
         sendMessage, lastError,
-        resetNeuralKey
+        resetNeuralKey, stopVoice
     };
 }
 
@@ -366,7 +405,12 @@ export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyp
                             m.role === 'user' ? 'bg-white/[0.02] border border-white/5 text-white/70' : 'bg-(--main-color)/5 border border-(--main-color)/20 text-white shadow-2xl'
                         } backdrop-blur-3xl inline-block max-w-[90%]`}>
                             <div className="text-[13px] md:text-sm leading-relaxed tracking-tight prose prose-invert max-w-none text-right">
-                                <ReactMarkdown>{m.content}</ReactMarkdown>
+                                <ReactMarkdown components={{
+                                    p: ({ children }) => {
+                                        if (typeof children === 'string') return <p><ColorizedText text={children} /></p>;
+                                        return <p>{children}</p>;
+                                    }
+                                }}>{m.content}</ReactMarkdown>
                             </div>
                         </div>
                     </div>
@@ -393,12 +437,12 @@ export function OnyxChatControls(props: {
     isListening: boolean;
     setIsListening: (v: boolean) => void;
     resetNeuralKey?: () => void;
+    stopVoice?: () => void;
     handleFormSubmit?: (e: any) => void;
 }) {
-    const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey, handleFormSubmit } = props;
+    const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey, stopVoice, handleFormSubmit } = props;
     const [appLanguage, setAppLanguage] = useAtom(languageAtom);
     const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
-    const [isBotOpen, setIsBotOpen] = useAtom(isBotOrbOpenAtom);
 
     const unlockTTS = () => {
         const synth = window.speechSynthesis;
@@ -408,20 +452,7 @@ export function OnyxChatControls(props: {
     };
 
     return (
-        <div className="w-full flex items-center justify-between gap-6 p-4 md:p-6 bg-transparent backdrop-blur-3xl animate-in slide-in-from-bottom duration-700">
-            {/* Bot Icon Button - High Contrast */}
-            <button 
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setIsBotOpen(true);
-                }}
-                className={`flex items-center justify-center transition-all duration-300 shrink-0 ${isBotOpen ? 'text-(--main-color) drop-shadow-[0_0_15px_var(--main-color)] scale-110' : 'text-white hover:text-(--main-color) hover:scale-110'}`}
-                title="Deploy Bot Orb"
-            >
-                <Brain size={28} strokeWidth={2} />
-            </button>
-
+        <div className="w-full flex items-center gap-8 p-4 md:p-6 bg-transparent backdrop-blur-3xl overflow-x-auto no-scrollbar scroll-smooth animate-in slide-in-from-bottom duration-700 select-none">
             {/* Minimal Language Toggle - High Contrast */}
             <button 
                 type="button"
@@ -429,7 +460,7 @@ export function OnyxChatControls(props: {
                     e.stopPropagation();
                     setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
                 }}
-                className="flex items-center justify-center text-[12px] font-black tracking-widest text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110"
+                className="flex items-center justify-center text-[13px] font-black tracking-widest text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110"
             >
                 {appLanguage.toUpperCase()}
             </button>
@@ -438,7 +469,7 @@ export function OnyxChatControls(props: {
             <form 
                 onSubmit={handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="flex-1 flex items-center gap-6"
+                className="flex-1 flex items-center gap-6 min-w-[200px]"
             >
                 <input 
                     type="text"
@@ -459,7 +490,7 @@ export function OnyxChatControls(props: {
             </form>
 
             {/* Action Buttons Panel */}
-            <div className="flex items-center gap-6 relative shrink-0">
+            <div className="flex items-center gap-8 relative shrink-0">
                 {/* Reset Credentials Button */}
                 <button 
                     type="button"
@@ -470,7 +501,20 @@ export function OnyxChatControls(props: {
                     className="flex items-center justify-center text-white hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110"
                     title="Reset Neural Key"
                 >
-                    <RefreshCw size={20} strokeWidth={2} />
+                    <RefreshCw size={24} strokeWidth={2} />
+                </button>
+
+                {/* Stop Voice Response */}
+                <button 
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        stopVoice?.();
+                    }}
+                    className="flex items-center justify-center text-red-500 hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110"
+                    title="Stop Neural Response"
+                >
+                    <Square size={28} strokeWidth={2} fill="currentColor" />
                 </button>
 
                 {/* Artifact Toggle Button */}
@@ -484,7 +528,7 @@ export function OnyxChatControls(props: {
                         className={`flex items-center justify-center transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white hover:text-(--main-color)'} hover:scale-110`}
                         title="Toggle Manifest"
                     >
-                        <Package size={24} strokeWidth={2} />
+                        <Package size={28} strokeWidth={2} />
                     </button>
                 )}
 
@@ -530,7 +574,7 @@ export function OnyxChatControls(props: {
 export function OnyxChat(props: OnyxChatProps) {
     const onyx = useOnyx(props);
     return (
-        <div className="flex flex-col h-full w-full overflow-hidden relative">
+        <div className="flex flex-col h-full w-full bg-black overflow-hidden select-none touch-none">
             {onyx.lastError && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 backdrop-blur-xl">
                     <p className="text-[10px] font-black uppercase tracking-widest text-red-500/80">{onyx.lastError}</p>
@@ -544,6 +588,7 @@ export function OnyxChat(props: OnyxChatProps) {
                 isListening={onyx.isListening} 
                 setIsListening={onyx.setIsListening} 
                 resetNeuralKey={onyx.resetNeuralKey}
+                stopVoice={onyx.stopVoice}
                 handleFormSubmit={onyx.handleFormSubmit}
             />
         </div>
