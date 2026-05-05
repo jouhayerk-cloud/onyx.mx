@@ -195,9 +195,13 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                 </div>
             </div>
 
-            {/* MAIN CONTENT - TRUE BORDERLESS GRID */}
+            {/* MAIN CONTENT - DYNAMIC LAYOUT ENGINE */}
             <div className={`flex-1 overflow-y-auto no-scrollbar pointer-events-auto transition-all duration-700 ${isSidebar ? 'pt-32 px-8' : 'pt-40 px-12 md:px-32'}`}>
-                <div className={`grid gap-10 md:gap-16 ${isSidebar ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+                <div className={`grid transition-all duration-700 ${
+                    displayMode === 'list' ? 'grid-cols-1 gap-6' : 
+                    displayMode === 'grid' ? (isSidebar ? 'grid-cols-1 gap-8' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 md:gap-16') :
+                    'grid-cols-1 gap-16 md:gap-32 max-w-5xl mx-auto'
+                }`}>
                     {allResolvedItems.map((item: any) => {
                         const norm = normalizeInventoryData(item.data);
                         const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
@@ -208,17 +212,23 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
 
                         return (
                             <div key={item.row} onClick={() => handleItemAction(item, displayUrlsArr, 0)}
-                                className="group relative flex flex-col transition-all duration-1000 cursor-pointer min-h-[340px]">
-                                <div className="aspect-[4/3] relative flex items-center justify-center bg-black/5 overflow-hidden rounded-[32px] transition-all duration-700 group-hover:bg-black/20">
+                                className={`group relative flex transition-all duration-1000 cursor-pointer ${
+                                    displayMode === 'list' ? 'flex-row items-center gap-8 min-h-[140px] border-b border-white/5 pb-6' : 
+                                    displayMode === 'gallery' ? 'flex-col gap-10 pb-24 border-b border-white/5' : 'flex-col min-h-[340px]'
+                                }`}>
+                                <div className={`relative flex items-center justify-center bg-black/5 overflow-hidden rounded-[32px] transition-all duration-700 group-hover:bg-black/20 shrink-0 ${
+                                    displayMode === 'list' ? 'w-32 h-32' : 
+                                    displayMode === 'gallery' ? 'aspect-video w-full' : 'aspect-[4/3] w-full'
+                                }`}>
                                     {mainImageUrl ? (
                                         <img src={getCleanImageUrl(mainImageUrl)} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-1000 opacity-60 group-hover:opacity-100" />
                                     ) : (
                                         <Package size={32} className="text-white/[0.03]" />
                                     )}
-                                    <div className="absolute top-6 right-8 text-lg font-black text-white/60 group-hover:text-white transition-colors tabular-nums">${Math.ceil(norm.price || 0).toLocaleString()}</div>
+                                    <div className={`absolute top-6 right-8 font-black text-white/60 group-hover:text-white transition-colors tabular-nums ${displayMode === 'gallery' ? 'text-3xl' : 'text-lg'}`}>${Math.ceil(norm.price || 0).toLocaleString()}</div>
                                     <div className="absolute top-6 left-8 flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
-                                        <span className="text-[7px] font-black uppercase tracking-widest text-white/20 group-hover:text-white/40">{getStatusLabel(payStatus || '')}</span>
+                                        <div className={`rounded-full ${displayMode === 'gallery' ? 'w-3 h-3' : 'w-1.5 h-1.5'}`} style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
+                                        <span className={`${displayMode === 'gallery' ? 'text-xs' : 'text-[7px]'} font-black uppercase tracking-widest text-white/20 group-hover:text-white/40`}>{getStatusLabel(payStatus || '')}</span>
                                     </div>
                                 </div>
                                 <div className="p-6 flex flex-col gap-5">

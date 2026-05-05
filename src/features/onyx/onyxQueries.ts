@@ -36,7 +36,13 @@ export const onyxQueries = {
         
         // Fetch from Inventory
         let invQ = supabase.from('inventory').select(invCols, { count: 'exact' });
-        if (params.status) invQ = invQ.eq('status', params.status);
+        if (params.status) {
+            if (Array.isArray(params.status)) {
+                invQ = invQ.in('status', params.status);
+            } else {
+                invQ = invQ.eq('status', params.status);
+            }
+        }
         
         // Apply global shape/color/material if provided
         if (params.shape) invQ = invQ.ilike('shape', `%${params.shape}%`);
