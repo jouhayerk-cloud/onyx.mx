@@ -26,10 +26,19 @@ export function OnyxOrbView() {
             onMouseLeave={() => setIsListening(false)}
             onTouchStart={(e) => {
                 // If touching a button or input, don't trigger mic
-                if ((e.target as HTMLElement).closest('button, input')) return;
+                if ((e.target as HTMLElement).closest('button, input, form')) return;
+                e.preventDefault();
                 setIsListening(true);
             }}
-            onTouchEnd={() => setIsListening(false)}
+            onTouchEnd={(e) => {
+                if ((e.target as HTMLElement).closest('button, input, form')) return;
+                e.preventDefault();
+                setIsListening(false);
+            }}
+            onTouchCancel={(e) => {
+                e.preventDefault();
+                setIsListening(false);
+            }}
         >
             {/* Full Panel Visualizer Background */}
             <div className="absolute inset-0 z-0">
