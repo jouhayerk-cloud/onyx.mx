@@ -243,27 +243,11 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
 
             {/* BORDERLESS FREE FLOATING BOTTOM DETAILS */}
             <div className={`absolute bottom-12 left-12 right-12 z-50 flex items-center justify-between pointer-events-auto transition-all duration-1000 ${isSidebar ? 'flex-col gap-8 items-start bottom-8 px-4' : ''}`}>
-                <div className={`flex items-center gap-16 md:gap-24 transition-all duration-1000 ${isSidebar ? 'w-full grid grid-cols-2 gap-4' : ''}`}>
+                <div className="flex items-center gap-16 md:gap-24 transition-all duration-1000">
                     <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 mb-1">
-                            <TrendingUp size={12} className="text-white/10" />
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Inventory Value</span>
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black text-white/90 tabular-nums">${Math.ceil(aggregateFinancials.listValue).toLocaleString()}</span>
+                        <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em] mb-1">Session ID</span>
+                        <span className="text-xl font-black text-white/20 tabular-nums">#{targetIds[0]?.slice(-4).toUpperCase() || 'NULL'}</span>
                     </div>
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Shield size={12} className="text-emerald-500/20" />
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Paid To Date</span>
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black text-emerald-400 tabular-nums">${Math.ceil(aggregateFinancials.netPaid).toLocaleString()}</span>
-                    </div>
-                    {!isSidebar && (
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em] mb-1">Grand Sum</span>
-                            <span className="text-2xl md:text-3xl font-black text-emerald-400/20 tabular-nums">${Math.ceil(aggregateFinancials.total).toLocaleString()}</span>
-                        </div>
-                    )}
                 </div>
 
                 <button onClick={onClose} className="text-[10px] font-black uppercase tracking-[0.6em] text-white/10 hover:text-white transition-all">Dismiss Artifact</button>

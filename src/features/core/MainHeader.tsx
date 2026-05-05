@@ -170,7 +170,6 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'truck': Truck,
     'map-pin': MapPin,
     'download': Download,
-    'package-open': PackageOpen,
     'history': History
 };
 

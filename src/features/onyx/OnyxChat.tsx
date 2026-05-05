@@ -452,7 +452,7 @@ export function OnyxChatControls(props: {
                         className={`flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-full border border-white/5 transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'bg-(--main-color)/10' : 'bg-white/5'}`}
                         title="Toggle Manifest"
                     >
-                        <Package size={14} className="md:w-3 md:h-3" strokeWidth={2} className={`${inventoryConfig.isOpen ? 'text-(--main-color)' : 'text-white/40'} group-hover/art:text-white transition-colors`} />
+                        <Package size={14} strokeWidth={2} className={`md:w-3 md:h-3 ${inventoryConfig.isOpen ? 'text-(--main-color)' : 'text-white/40'} group-hover/art:text-white transition-colors`} />
                     </button>
                 )}
 
@@ -461,7 +461,7 @@ export function OnyxChatControls(props: {
                     type="submit"
                     className={`flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-full border border-white/5 bg-white/5 transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
                 >
-                    <Send size={14} className="md:w-3 md:h-3" strokeWidth={2} className="text-white/40 group-hover/send:text-white transition-colors" />
+                    <Send size={14} strokeWidth={2} className="md:w-3 md:h-3 text-white/40 group-hover/send:text-white transition-colors" />
                 </button>
 
                 {/* Minimal Talk Button */}
