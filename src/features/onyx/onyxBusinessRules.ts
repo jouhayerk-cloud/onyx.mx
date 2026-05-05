@@ -9,9 +9,9 @@ export const ONYX_CONTEXT = {
     tables: {
         inventory: {
             description: "Physical items stored in the warehouse.",
-            primary_identifiers: ["book_barcode (Tag ID)", "item_id"],
+            primary_identifiers: ["tag_id (Primary Tag ID)"],
             virtual_columns: {
-                vendor_id: "Derived from the first two characters of 'item_id' (e.g. 'EM' from 'EM-1234')."
+                vendor_id: "Derived from the first two characters of 'tag_id' (e.g. 'EM' from 'EM-1234')."
             },
             key_columns: {
                 status: "Current state: 'Warehouse' (In Stock), 'Inventory' (Historical Stock), 'Available' (Listed for sale), 'Sold' (Not in stock).",
@@ -20,10 +20,10 @@ export const ONYX_CONTEXT = {
                 vendor_id: "The 2-letter source code (e.g. EM, GE, JM)."
             },
             rules: [
-                "Always prioritize book_barcode when referring to an item's unique identity.",
+                "Always call the item's identifier 'Tag ID'. Never call it 'item id' or 'system id'.",
+                "The 'tag_id' is the unique code printed on the physical asset's tag.",
                 "Warehouse and Inventory statuses are the primary sources of truth for physical stock.",
-                "Available status usually means the item is listed elsewhere and may not be in the physical warehouse.",
-                "To search for a vendor, use a prefix match on 'item_id' (e.g. item_id ilike EM%)."
+                "To search for a vendor, use the vendor prefix on the Tag ID (e.g. DH for Delfino Hernandez)."
             ]
         },
         expenses: {
@@ -65,7 +65,7 @@ export const getOnyxSystemGrounding = () => {
 
     return `
     WAREHOUSE CONTEXT:
-    - Tag IDs: Always use 'book_barcode'.
+    - IDENTIFIERS: Always call the identifier 'Tag ID'. Never 'item id'.
     - Physical Stock: Statuses 'Warehouse' and 'Inventory'.
     - Financials: 'expenses' table tracks vendor payments. 
     - UI Colors: RED=Partial, YELLOW=Requested, GREEN=Paid, BLUE=New.
