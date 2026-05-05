@@ -21,7 +21,8 @@ export const onyxQueries = {
         shape?: string,
         limit?: number 
     }) => {
-        const columns = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
+        const invColumns = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
+        const prodColumns = '*, tag_id, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
         
         // Define filters
         let orFilters = [];
@@ -41,7 +42,7 @@ export const onyxQueries = {
         const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
 
         // Fetch from Inventory
-        let invQ = supabase.from('inventory').select(columns, { count: 'exact' });
+        let invQ = supabase.from('inventory').select(invColumns, { count: 'exact' });
         if (params.status) invQ = invQ.eq('status', params.status);
         if (orFilterString) invQ = invQ.or(orFilterString);
         if (params.vendor) {
@@ -50,12 +51,15 @@ export const onyxQueries = {
         }
 
         // Fetch from Production
-        let prodQ = supabase.from('production').select(columns, { count: 'exact' });
+        let prodQ = supabase.from('production').select(prodColumns, { count: 'exact' });
         if (params.status) prodQ = prodQ.eq('status', params.status);
-        if (orFilterString) prodQ = prodQ.or(orFilterString);
+        // Special orFilter for production since columns differ
+        if (params.query) {
+             const clean = params.query.trim();
+             prodQ = prodQ.or(`description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,tag_id.ilike.%${clean}%`);
+        }
         if (params.vendor) {
-            const prefix = `${params.vendor}%`;
-            prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+            prodQ = prodQ.ilike('tag_id', `${params.vendor}%`);
         }
 
         const [invRes, prodRes] = await Promise.all([
@@ -65,7 +69,7 @@ export const onyxQueries = {
 
         const combinedData = [
             ...(invRes.data || []).map(i => ({ ...i, source: 'inventory', vendor_id: i.item_id?.substring(0, 2) })),
-            ...(prodRes.data || []).map(i => ({ ...i, source: 'production', vendor_id: i.item_id?.substring(0, 2) }))
+            ...(prodRes.data || []).map(i => ({ ...i, source: 'production', item_id: i.tag_id, vendor_id: i.tag_id?.substring(0, 2) }))
         ];
 
         // Fetch sum separately (Inventory only for now as per business rules, or both?)
@@ -165,7 +169,7 @@ export const onyxQueries = {
     getItemByAnyId: async (id: string) => {
         const [invRes, prodRes] = await Promise.all([
             supabase.from('inventory').select('*').or(`id.eq.${id},item_id.eq.${id},book_barcode.eq.${id}`).maybeSingle(),
-            supabase.from('production').select('*').or(`id.eq.${id},item_id.eq.${id},book_barcode.eq.${id}`).maybeSingle()
+            supabase.from('production').select('*').or(`id.eq.${id},tag_id.eq.${id}`).maybeSingle()
         ]);
         
         const data = invRes.data || prodRes.data;
@@ -173,7 +177,8 @@ export const onyxQueries = {
             return { 
                 ...data, 
                 source: invRes.data ? 'inventory' : 'production',
-                vendor_id: data.item_id?.substring(0, 2) 
+                item_id: invRes.data ? data.item_id : data.tag_id,
+                vendor_id: (invRes.data ? data.item_id : data.tag_id)?.substring(0, 2) 
             };
         }
         return null;
