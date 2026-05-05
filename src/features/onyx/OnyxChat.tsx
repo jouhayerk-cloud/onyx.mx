@@ -170,6 +170,15 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         } finally { setIsTyping(false); onProcessingChange(false); }
     };
 
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Resume AudioContext on user gesture for mobile
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume().catch(() => {});
+        }
+        sendMessage();
+    };
+
     useEffect(() => {
         if (SpeechRecognition) {
             recognitionRef.current = new SpeechRecognition();
@@ -191,13 +200,13 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
             recognitionRef.current.onend = () => {
                 const currentText = inputRef.current.trim();
-                if (currentText && !isListeningRef.current) {
+                // Check if we were listening - if so, restart for continuous mobile feel
+                if (isListeningRef.current) {
+                    try { recognitionRef.current.start(); } catch (e) {}
+                } else if (currentText) {
                     sendMessage(currentText);
                     setInput('');
                     if (onTranscriptChange) onTranscriptChange('');
-                }
-                if (isListeningRef.current) {
-                    try { recognitionRef.current.start(); } catch (e) {}
                 }
             };
 
@@ -351,8 +360,11 @@ export function OnyxChatControls(props: {
         <div className="w-full flex items-center justify-between gap-3 p-3 md:p-4 bg-transparent backdrop-blur-3xl animate-in slide-in-from-bottom duration-700">
             {/* Minimal Language Toggle */}
             <button 
-                onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
-                onPointerDown={(e) => e.stopPropagation()}
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
+                }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-[8px] font-black text-white/40 hover:text-white transition-all shrink-0"
             >
                 {appLanguage.toUpperCase()}
@@ -360,7 +372,7 @@ export function OnyxChatControls(props: {
 
             {/* Frameless Compact Input Form */}
             <form 
-                onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+                onSubmit={(props as any).handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
                 onPointerDown={(e) => e.stopPropagation()}
                 className="flex-1 relative flex items-center"
             >
@@ -370,8 +382,7 @@ export function OnyxChatControls(props: {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                            e.preventDefault();
-                            sendMessage();
+                            // Let the form handle the submit for mobile Go button
                         }
                     }}
                     placeholder={appLanguage === 'es' ? "Neural Query..." : "Neural Query..."}
@@ -381,10 +392,13 @@ export function OnyxChatControls(props: {
 
             {/* Action Buttons Panel */}
             <div className="flex items-center gap-2 relative shrink-0">
-                {/* Reset Credentials Button (Only if failure likely) */}
+                {/* Reset Credentials Button */}
                 <button 
-                    onClick={resetNeuralKey}
-                    onPointerDown={(e) => e.stopPropagation()}
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        resetNeuralKey?.();
+                    }}
                     className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-white/10 hover:text-white/40 transition-all shrink-0"
                     title="Reset Neural Key"
                 >
@@ -394,12 +408,12 @@ export function OnyxChatControls(props: {
                 {/* Artifact Toggle Button */}
                 {inventoryConfig.itemIds.length > 0 && (
                     <button 
-                        onPointerDown={(e) => {
+                        type="button"
+                        onClick={(e) => {
                             e.stopPropagation();
                             setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
                         }}
                         className={`flex items-center justify-center w-8 h-8 rounded-full border border-white/5 transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'bg-(--main-color)/10' : 'bg-white/5'}`}
-                        style={{ touchAction: 'none' }}
                         title="Toggle Manifest"
                     >
                         <Package size={12} strokeWidth={2} className={`${inventoryConfig.isOpen ? 'text-(--main-color)' : 'text-white/40'} group-hover/art:text-white transition-colors`} />
@@ -408,12 +422,11 @@ export function OnyxChatControls(props: {
 
                 {/* Minimal Send Button */}
                 <button 
-                    onPointerDown={(e) => {
-                        e.stopPropagation();
-                        if (input.trim()) sendMessage();
+                    type="submit"
+                    onClick={(e) => {
+                        // Let form handle submit
                     }}
                     className={`flex items-center justify-center w-8 h-8 rounded-full border border-white/5 bg-white/5 transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
-                    style={{ touchAction: 'none' }}
                 >
                     <Send size={12} strokeWidth={2} className="text-white/40 group-hover/send:text-white transition-colors" />
                 </button>
@@ -421,10 +434,14 @@ export function OnyxChatControls(props: {
                 {/* Minimal Talk Button */}
                 <div className="relative">
                     <button 
+                        type="button"
                         onPointerDown={(e) => { e.stopPropagation(); setIsListening(true); }}
                         onPointerUp={(e) => { e.stopPropagation(); setIsListening(false); }}
                         onPointerLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
                         onPointerCancel={(e) => { e.stopPropagation(); setIsListening(false); }}
+                        // Add touch support for mobile
+                        onTouchStart={(e) => { e.stopPropagation(); setIsListening(true); }}
+                        onTouchEnd={(e) => { e.stopPropagation(); setIsListening(false); }}
                         className={`relative flex items-center justify-center w-10 h-10 rounded-full border border-white/5 bg-white/5 transition-all duration-300 group/mic ${isListening ? 'scale-110 border-red-500/20 bg-red-500/10' : 'hover:scale-105'}`}
                         style={{ touchAction: 'none' }}
                     >
@@ -463,6 +480,7 @@ export function OnyxChat(props: OnyxChatProps) {
                 isListening={onyx.isListening} 
                 setIsListening={onyx.setIsListening} 
                 resetNeuralKey={onyx.resetNeuralKey}
+                handleFormSubmit={onyx.handleFormSubmit}
             />
         </div>
     );
