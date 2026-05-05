@@ -52,7 +52,7 @@ export const onyxToolDefinitions = [
         parameters: {
             type: "object",
             properties: {
-                group_by: { type: "string", enum: ["vendor_id", "shape", "status", "material"] },
+                group_by: { type: "string", enum: ["vendor_id", "shape", "status", "material", "color"] },
                 query: { type: "string", description: "Optional filter keyword" },
                 vendor: { type: "string", description: "Optional Vendor ID filter" }
             },
