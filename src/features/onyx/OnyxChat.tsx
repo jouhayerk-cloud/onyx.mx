@@ -14,7 +14,6 @@ import {
 import { supabase } from '../../lib/supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { vendors } from '../../lib/consts';
-import { getApiKey } from './OnyxOrbView';
 import { getOnyxSystemGrounding } from './onyxBusinessRules';
 import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
 import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages, Layout, RefreshCw } from 'lucide-react';
@@ -354,7 +353,8 @@ export function useOnyx(props: {
         isTyping, setIsTyping,
         isListening, setIsListening,
         sendMessage, lastError,
-        resetNeuralKey
+        resetNeuralKey,
+        handleFormSubmit
     };
 }
 
@@ -408,8 +408,9 @@ export function OnyxChatControls(props: {
     isListening: boolean;
     setIsListening: (v: boolean) => void;
     resetNeuralKey?: () => void;
+    handleFormSubmit?: (e: React.FormEvent) => void;
 }) {
-    const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey } = props;
+    const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey, handleFormSubmit } = props;
     const [appLanguage, setAppLanguage] = useAtom(languageAtom);
     const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
 
@@ -422,7 +423,7 @@ export function OnyxChatControls(props: {
 
             {/* Frameless Compact Input Form */}
             <form 
-                onSubmit={(props as any).handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
+                onSubmit={handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
                 onPointerDown={(e) => e.stopPropagation()}
                 className="flex-1 relative flex items-center"
             >
