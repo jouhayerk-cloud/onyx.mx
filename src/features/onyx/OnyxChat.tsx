@@ -76,6 +76,7 @@ export function useOnyx(props: {
     const analyzerRef = useRef<AnalyserNode | null>(null);
     const dataArrayRef = useRef<Uint8Array | null>(null);
     const animationFrameRef = useRef<number | null>(null);
+    const ttsIntervalRef = useRef<any>(null);
     const inputRef = useRef('');
     const isListeningRef = useRef(false);
 
@@ -125,6 +126,9 @@ export function useOnyx(props: {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const sys = `You are Onyx Intelligence, a sentient warehouse asset discovery engine. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
 DOMAIN CONTEXT: Terms like 'Talan' (e.g., Green Talan) and 'Tehuacan' are common COLORS in the inventory database. If a user asks about these terms without specifying "color", treat them as color search parameters in your tool calls.
+OPERATIONAL STATUSES: The database uses 'Production', 'Acquisition', 'Available', and 'Requested' for the inventory pipeline. Use these for operational discovery.
+FINANCIAL STATUSES: 'PAID' items are typically those in Workbook 825 (v825) or with a pay_date. 'UNPAID' items are often those with status 'Requested' or 'Acquisition'. 
+CRITICAL: Never tell the user 'PAID' or 'GREEN' are unrecognized. Instead, search using Workbook 825 or operational filters to find the relevant assets.
 CRITICAL IDENTIFIER RULE: DO NOT read out 'book_barcode' (Tag IDs like DH3261HFNN) in your conversational text.
 Instead, give a short, helpful verbal summary of what you found (e.g., "I've found two items from Gerardo, deploying the manifest for you now.") along with the artifact deployment.
 Use Tag IDs ONLY in tool calls. 
@@ -197,11 +201,36 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                     // Filter out Tag IDs from vocalization (alphanumeric 8-12 chars)
                     const vocalText = text.replace(/\b(?=[A-Z\d]*\d)(?=[A-Z\d]*[A-Z])[A-Z\d]{8,12}\b/g, '').replace(/\s+/g, ' ').trim();
                     if (vocalText) {
+                        if (ttsIntervalRef.current) clearInterval(ttsIntervalRef.current);
                         const utt = new SpeechSynthesisUtterance(vocalText);
                         utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
                         utt.voice = getBestVoice(appLanguage);
-                        utt.onstart = () => { (utt as any)._p = setInterval(() => onVolumeChange?.(0.3 + Math.random() * 0.4), 50); };
-                        utt.onend = () => { clearInterval((utt as any)._p); onVolumeChange?.(0); };
+                        utt.onstart = () => { 
+                            const interval = setInterval(() => onVolumeChange?.(0.3 + Math.random() * 0.4), 50);
+                            ttsIntervalRef.current = interval;
+                            // Force stop recognition when AI starts speaking
+                            if (recognitionRef.current) {
+                                try { recognitionRef.current.stop(); } catch (e) {}
+                            }
+                        };
+                        utt.onend = () => { 
+                            clearInterval(ttsIntervalRef.current); 
+                            ttsIntervalRef.current = null;
+                            onVolumeChange?.(0); 
+                            // Resume recognition if user is still holding the talk button
+                            if (isListeningRef.current && recognitionRef.current) {
+                                try { recognitionRef.current.start(); } catch (e) {}
+                            }
+                        };
+                        utt.onerror = () => {
+                            clearInterval(ttsIntervalRef.current);
+                            ttsIntervalRef.current = null;
+                            onVolumeChange?.(0);
+                            // Resume recognition if user is still holding the talk button
+                            if (isListeningRef.current && recognitionRef.current) {
+                                try { recognitionRef.current.start(); } catch (e) {}
+                            }
+                        };
                         window.speechSynthesis.speak(utt);
                     }
                 }
@@ -257,6 +286,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 }
                 
                 if (current) {
+                    // Safety check: Don't process if AI is currently speaking
+                    if (window.speechSynthesis.speaking) return;
+
                     const final = current.trim();
                     setInput(final);
                     checkForVendor(final);
@@ -286,6 +318,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     useEffect(() => {
         if (!recognitionRef.current) return;
         if (isListening) {
+            // Don't start recognition if AI is currently speaking
+            if (window.speechSynthesis.speaking) return;
+            
             setInput('');
             try { recognitionRef.current.start(); } catch (e) {}
         } else {
@@ -369,6 +404,10 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
     const stopVoice = () => {
         window.speechSynthesis.cancel();
+        if (ttsIntervalRef.current) {
+            clearInterval(ttsIntervalRef.current);
+            ttsIntervalRef.current = null;
+        }
         if (onVolumeChange) onVolumeChange(0);
     };
 

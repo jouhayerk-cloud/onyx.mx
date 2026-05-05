@@ -115,6 +115,12 @@ export const onyxToolDefinitions = [
 export const onyxToolHandlers = {
     search_inventory: async (args: any) => {
         try {
+            if (args.status?.toUpperCase() === 'PAID') {
+                delete args.status;
+                args.workbook = '825'; // Primary indicator of paid items
+            } else if (args.status?.toUpperCase() === 'UNPAID') {
+                args.status = 'Requested'; // Common status for items awaiting payment
+            }
             const result = await onyxQueries.searchInventory(args);
             
             // Core Barcode Generation Logic (Mirroring calculateCodesAndPrices in utils.tsx)
