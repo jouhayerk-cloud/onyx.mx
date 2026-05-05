@@ -96,9 +96,7 @@ export function OnyxOrbView() {
 
             {/* MINIMALIST COMPACT TACTICAL CONTROL BAR (Translucent Glassmorphic) */}
             <div className="h-auto z-40 relative">
-                {/* Visual anchor for the bottom bar blend */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent pointer-events-none h-20 -top-20" />
-                
+                {/* No Visual anchor gradients or shadows as requested */}
                 <OnyxChatControls 
                     input={onyx.input}
                     setInput={onyx.setInput}
