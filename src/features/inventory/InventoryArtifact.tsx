@@ -229,30 +229,42 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     const [isHydrating, setIsHydrating] = useState(false);
 
     useEffect(() => {
-        if (config.isOpen && filteredItems.length < targetIds.length && !isHydrating) {
-            const missingIds = targetIds.filter(id => !filteredItems.some(fi => 
-                String(fi.row) === id || 
-                String(fi.data?.id) === id || 
-                String(fi.data?.item_id).toUpperCase() === id.toUpperCase() || 
-                String(fi.data?.book_barcode).toUpperCase() === id.toUpperCase()
-            ));
+        if (!config.isOpen || isHydrating) return;
 
-            if (missingIds.length > 0) {
-                setIsHydrating(true);
-                import('../../lib/supabase').then(async ({ supabase }) => {
+        const resolvedIds = new Set([
+            ...filteredItems.map(fi => String(fi.row)),
+            ...filteredItems.map(fi => String(fi.data?.id)),
+            ...filteredItems.map(fi => String(fi.data?.item_id).toUpperCase()),
+            ...filteredItems.map(fi => String(fi.data?.book_barcode).toUpperCase()),
+            ...fetchedItems.map(fi => String(fi.row)),
+            ...fetchedItems.map(fi => String(fi.data?.id)),
+            ...fetchedItems.map(fi => String(fi.data?.item_id).toUpperCase()),
+            ...fetchedItems.map(fi => String(fi.data?.book_barcode).toUpperCase())
+        ]);
+
+        const missingIds = targetIds.filter(id => !resolvedIds.has(String(id).toUpperCase()) && !resolvedIds.has(String(id)));
+
+        if (missingIds.length > 0) {
+            setIsHydrating(true);
+            import('../../lib/supabase').then(async ({ supabase }) => {
+                try {
                     const { data, error } = await supabase
                         .from('inventory')
                         .select('*')
                         .or(`item_id.in.(${missingIds.map(id => `"${id}"`).join(',')}),book_barcode.in.(${missingIds.map(id => `"${id}"`).join(',')})`);
                     
-                    if (data) {
-                        setFetchedItems(prev => [...prev, ...data.map(d => ({ row: d.id, data: d }))]);
+                    if (data && data.length > 0) {
+                        setFetchedItems(prev => {
+                            const newItems = data.map(d => ({ row: d.id, data: d }));
+                            return [...prev, ...newItems];
+                        });
                     }
+                } finally {
                     setIsHydrating(false);
-                });
-            }
+                }
+            });
         }
-    }, [config.isOpen, targetIds, filteredItems, isHydrating]);
+    }, [config.isOpen, targetIds, filteredItems, fetchedItems, isHydrating]);
 
     const allResolvedItems = useMemo(() => {
         const combined = [...filteredItems, ...fetchedItems];
@@ -267,16 +279,6 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     }, [filteredItems, fetchedItems]);
 
     if (!config.isOpen) return null;
-    if (allResolvedItems.length === 0 && isHydrating) {
-        return (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-xl">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 rounded-full border-t-2 border-emerald-500 animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Manifesting Data...</span>
-                </div>
-            </div>
-        );
-    }
     if (allResolvedItems.length === 0) return null;
 
     const isEmbeddedArtifact = viewMode === 'embedded';
