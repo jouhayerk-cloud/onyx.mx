@@ -161,7 +161,7 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
     const callGemini = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const sys = `You are Onyx Intelligence, a sentient warehouse asset discovery engine. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
-CRITICAL IDENTIFIER RULE: Always use the 'book_barcode' (Tag ID) for asset identification (e.g., DH3261HFNN). Never use internal system UUIDs or 'item_id' (e.g., DH-51XC2WKX) in your responses. 
+CRITICAL IDENTIFIER RULE: You MUST ONLY use the 'book_barcode' (Tag ID) for asset identification (e.g., DH3261HFNN). These are often dynamically generated from tools. NEVER mention internal system UUIDs or 'item_id' (e.g., DH-51XC2WKX) in your dialogue. 
 Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         const payload: any = { contents, system_instruction: { parts: [{ text: sys }] } };
         if (tools) payload.tools = [{ function_declarations: tools }];

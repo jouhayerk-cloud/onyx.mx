@@ -84,22 +84,49 @@ export const onyxToolHandlers = {
     search_inventory: async (args: any) => {
         try {
             const result = await onyxQueries.searchInventory(args);
+            
+            // Core Barcode Generation Logic (Mirroring calculateCodesAndPrices in utils.tsx)
+            const numberToCypher = (num: number) => {
+                const key = 'DMOXHELFAN';
+                return String(Math.floor(num)).split('').map(d => key[parseInt(d, 10)] || '').join('');
+            };
+            const onyxRound = (n: number) => (n - Math.floor(n) >= 0.4) ? Math.floor(n) + 1 : Math.floor(n);
+
             return {
-                items: result.items.map(item => ({ 
-                    tag_id: item.book_barcode || item.item_id || "No TAG ID", 
-                    shape: item.shape, 
-                    material: item.material,
-                    dimensions: {
-                        h: item.height_cm,
-                        w: item.width_cm,
-                        l: item.length_cm,
-                        weight: item.weight_kg
-                    },
-                    color: item.color,
-                    description: item.generated_description || item.description, 
-                    quantity: item.quantity,
-                    status: item.status
-                })),
+                items: result.items.map(item => {
+                    let barcode = item.book_barcode;
+                    if (!barcode || barcode.includes('-')) {
+                        try {
+                            const exchangeRate = 17.0; // Standard fallback
+                            const costMxn = item.price_mxn || 0;
+                            const costUsd = costMxn / exchangeRate;
+                            const landedCost = onyxRound(costUsd * 1.4);
+                            const vendorPrefix = (item.item_id || '').split('-')[0] || '??';
+                            const bookStr = (item.workbook || '326').toString().replace(/v/gi, '');
+                            const itemNum = parseInt(item.item_number || '1', 10);
+                            const cypher = numberToCypher(landedCost);
+                            barcode = `${vendorPrefix}${bookStr}${itemNum}${cypher}`;
+                        } catch (e) {
+                            barcode = item.item_id || "No TAG ID";
+                        }
+                    }
+
+                    return { 
+                        tag_id: barcode, 
+                        shape: item.shape, 
+                        material: item.material,
+                        dimensions: {
+                            h: item.height_cm,
+                            w: item.width_cm,
+                            l: item.length_cm,
+                            weight: item.weight_kg
+                        },
+                        color: item.color,
+                        description: item.generated_description || item.description, 
+                        quantity: item.quantity,
+                        status: item.status
+                    };
+                }),
                 total_records: result.total_records,
                 total_quantity: result.total_quantity
             };
@@ -112,8 +139,32 @@ export const onyxToolHandlers = {
             const item = await onyxQueries.getItemByAnyId(id);
             if (!item) return { error: "Item not found" };
             
+            // Core Barcode Generation Logic (Mirroring calculateCodesAndPrices in utils.tsx)
+            const numberToCypher = (num: number) => {
+                const key = 'DMOXHELFAN';
+                return String(Math.floor(num)).split('').map(d => key[parseInt(d, 10)] || '').join('');
+            };
+            const onyxRound = (n: number) => (n - Math.floor(n) >= 0.4) ? Math.floor(n) + 1 : Math.floor(n);
+
+            let barcode = item.book_barcode;
+            if (!barcode || barcode.includes('-')) {
+                try {
+                    const exchangeRate = 17.0; 
+                    const costMxn = item.price_mxn || 0;
+                    const costUsd = costMxn / exchangeRate;
+                    const landedCost = onyxRound(costUsd * 1.4);
+                    const vendorPrefix = (item.item_id || '').split('-')[0] || '??';
+                    const bookStr = (item.workbook || '326').toString().replace(/v/gi, '');
+                    const itemNum = parseInt(item.item_number || '1', 10);
+                    const cypher = numberToCypher(landedCost);
+                    barcode = `${vendorPrefix}${bookStr}${itemNum}${cypher}`;
+                } catch (e) {
+                    barcode = item.item_id || "No TAG ID";
+                }
+            }
+
             return {
-                tag_id: item.book_barcode || item.item_id || "No TAG ID",
+                tag_id: barcode,
                 display_title: item.generated_description || item.short_description || item.description,
                 specs: {
                     shape: item.shape,
