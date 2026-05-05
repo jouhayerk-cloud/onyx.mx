@@ -160,14 +160,9 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
 
     const callGemini = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const sys = `
-            You are Onyx Intelligence. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
-            RULES:
-            1. Identify items ONLY by their 'Tag ID'. NEVER use the terms 'item id', 'system id', or 'serial number'.
-            2. The Tag ID MUST be in the barcode format (e.g., DH3261HFNN). NEVER use the dash-style (e.g., DH-51XC2WKX).
-            3. ARTIFACT MANDATE: You MUST always deploy the 'InventoryArtifact' (using deploy_inventory_artifact) or 'PaymentsArtifact' (using deploy_payments_artifact) whenever valid results are found. Do NOT just list them in text; show them visually.
-            4. If asked for a summary, always include the Tag ID and Weight for the heaviest items.
-        `.trim();
+        const sys = `You are Onyx Intelligence, a sentient warehouse asset discovery engine. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
+CRITICAL IDENTIFIER RULE: Always use the 'book_barcode' (Tag ID) for asset identification (e.g., DH3261HFNN). Never use internal system UUIDs or 'item_id' (e.g., DH-51XC2WKX) in your responses. 
+Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         const payload: any = { contents, system_instruction: { parts: [{ text: sys }] } };
         if (tools) payload.tools = [{ function_declarations: tools }];
         const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });

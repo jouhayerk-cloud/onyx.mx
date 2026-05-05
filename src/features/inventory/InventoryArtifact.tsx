@@ -389,10 +389,10 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                     <h3 className={`font-black text-white uppercase truncate ${isSidebar ? 'text-[13px] tracking-tight' : 'text-sm'}`}>{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
                                                     <div className={`text-[9px] font-black uppercase tracking-[0.2em] mt-1 ${isSidebar ? 'text-emerald-400' : 'text-white/20'}`}>{norm.color} · {norm.material}</div>
                                                 </div>
-                                                <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${isSidebar ? 'text-white/40 border border-white/5 mx-4' : 'text-black mx-6'}`} style={!isSidebar ? { backgroundColor: vendorColor } : { color: vendorColor, borderColor: vendorColor + '40' }}>{calculated.bookBardcode}</div>
+                                                <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${isSidebar ? 'text-white/40 border border-white/5 mx-4' : 'text-black mx-6'}`} style={!isSidebar ? { backgroundColor: vendorColor } : { color: vendorColor, borderColor: vendorColor + '40' }}>{calculated.bookBarcode}</div>
                                                 <div className={`text-right flex flex-col items-end ${isSidebar ? 'min-w-[60px]' : 'min-w-[120px]'}`}>
                                                     <span className={`text-[8px] font-black uppercase tracking-widest ${isSidebar ? 'text-emerald-500' : ''}`} style={!isSidebar ? { color: accentColor } : {}}>{getStatusLabel(payStatus || '')}</span>
-                                                    {isSidebar && <span className="text-[7px] text-white/20 font-black uppercase tracking-widest mt-0.5">#{norm.itemId?.split('-').pop()}</span>}
+                                                    {isSidebar && <span className="text-[7px] text-white/20 font-black uppercase tracking-widest mt-0.5">#{calculated.bookBarcode.slice(-4)}</span>}
                                                     {!isSidebar && <span className="text-[10px] font-mono font-black text-white/80 mt-1">${Math.ceil(norm.price || 0).toLocaleString()}</span>}
                                                 </div>
                                             </div>
@@ -477,9 +477,9 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                         <div className="flex justify-between items-start">
                                                             <div className="flex flex-col gap-1.5">
                                                                 <div className="px-2 py-0.5 bg-black/60 backdrop-blur-md border border-white/10 text-[8px] font-black uppercase tracking-[0.2em] inline-block" style={{ color: accentColor }}>{getStatusLabel(payStatus || '')}</div>
-                                                                <div className="px-2 py-0.5 bg-black/60 backdrop-blur-md border border-white/10 text-[8px] font-black uppercase tracking-[0.2em] inline-block" style={{ color: vendorColor }}>{calculated.bookBardcode}</div>
+                                                                <div className="px-2 py-0.5 bg-black/60 backdrop-blur-md border border-white/10 text-[8px] font-black uppercase tracking-[0.2em] inline-block" style={{ color: vendorColor }}>{calculated.bookBarcode}</div>
                                                             </div>
-                                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest bg-black/40 px-1.5 py-0.5">#{norm.itemId?.split('-').pop()}</span>
+                                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest bg-black/40 px-1.5 py-0.5">#{calculated.bookBarcode.slice(-4)}</span>
                                                         </div>
 
                                                         <div className="flex flex-col">
@@ -619,7 +619,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                            </div>
                                                            <div className="flex flex-col border-l border-white/10 pl-6">
                                                                 <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Tag</span>
-                                                                <span className="text-xs font-black text-white/60">{norm.itemId}</span>
+                                                                <span className="text-xs font-black text-white/60">{calculated.bookBarcode}</span>
                                                            </div>
                                                            {(norm.weight_kg || norm.weightKg) && (
                                                                 <div className="flex flex-col border-l border-white/10 pl-6">

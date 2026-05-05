@@ -1,6 +1,5 @@
 
 import { onyxQueries } from './onyxQueries';
-import { supabase } from '../../lib/supabase';
 
 export const onyxToolDefinitions = [
     {
@@ -160,16 +159,9 @@ export const onyxToolHandlers = {
     },
     get_item_samples: async ({ limit }: any) => {
         try {
-            const { data, error } = await supabase.from('inventory').select('item_id, book_barcode, shape, material, status, quantity, weight_kg').limit(limit || 5);
+            const { data, error } = await supabase.from('inventory').select('*').limit(limit || 5);
             if (error) return { error: error.message };
-            return data.map(item => ({
-                tag_id: item.book_barcode || item.item_id || "No TAG ID",
-                shape: item.shape,
-                material: item.material,
-                status: item.status,
-                quantity: item.quantity,
-                weight_kg: item.weight_kg
-            }));
+            return data;
         } catch (err: any) {
             return { error: err.message };
         }
