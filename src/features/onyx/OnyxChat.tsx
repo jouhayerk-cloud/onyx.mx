@@ -61,6 +61,13 @@ export function useOnyx(props: {
         return matches.find(v => v.name.includes('Natural')) || matches.find(v => v.name.includes('Google')) || matches[0] || null;
     };
 
+    // Mobile TTS Unlock: Must be called on user gesture
+    const unlockTTS = () => {
+        const utt = new SpeechSynthesisUtterance('');
+        utt.volume = 0;
+        window.speechSynthesis.speak(utt);
+    };
+
     const checkForVendor = (text: string) => {
         if (!onVendorDetect) return;
         const lower = text.toLowerCase();
@@ -172,6 +179,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        unlockTTS(); // Unlock TTS on mobile gesture
         // Resume AudioContext on user gesture for mobile
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
             audioContextRef.current.resume().catch(() => {});
@@ -187,15 +195,21 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             recognitionRef.current.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
             
             recognitionRef.current.onresult = (event: any) => {
-                let fullTranscript = '';
-                for (let i = 0; i < event.results.length; ++i) {
-                    fullTranscript += event.results[i][0].transcript;
+                let current = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        current += event.results[i][0].transcript;
+                    } else {
+                        current += event.results[i][0].transcript;
+                    }
                 }
-                if (fullTranscript) {
-                    setInput(fullTranscript);
-                    checkForVendor(fullTranscript);
+                
+                if (current) {
+                    const final = current.trim();
+                    setInput(final);
+                    checkForVendor(final);
+                    if (onTranscriptChange) onTranscriptChange(final);
                 }
-                if (onTranscriptChange) onTranscriptChange(fullTranscript);
             };
 
             recognitionRef.current.onend = () => {
@@ -230,6 +244,10 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     useEffect(() => {
         if (isListening && onVolumeChange) {
             const startAudio = async () => {
+                // Delay visualizer slightly on mobile to allow SpeechRecognition priority
+                await new Promise(r => setTimeout(r, 300));
+                if (!isListeningRef.current) return;
+                
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -435,12 +453,20 @@ export function OnyxChatControls(props: {
                 <div className="relative">
                     <button 
                         type="button"
-                        onPointerDown={(e) => { e.stopPropagation(); setIsListening(true); }}
+                        onPointerDown={(e) => { 
+                            e.stopPropagation(); 
+                            unlockTTS(); 
+                            setIsListening(true); 
+                        }}
                         onPointerUp={(e) => { e.stopPropagation(); setIsListening(false); }}
                         onPointerLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
                         onPointerCancel={(e) => { e.stopPropagation(); setIsListening(false); }}
                         // Add touch support for mobile
-                        onTouchStart={(e) => { e.stopPropagation(); setIsListening(true); }}
+                        onTouchStart={(e) => { 
+                            e.stopPropagation(); 
+                            unlockTTS(); 
+                            setIsListening(true); 
+                        }}
                         onTouchEnd={(e) => { e.stopPropagation(); setIsListening(false); }}
                         className={`relative flex items-center justify-center w-10 h-10 rounded-full border border-white/5 bg-white/5 transition-all duration-300 group/mic ${isListening ? 'scale-110 border-red-500/20 bg-red-500/10' : 'hover:scale-105'}`}
                         style={{ touchAction: 'none' }}
