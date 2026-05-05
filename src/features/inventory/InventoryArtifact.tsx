@@ -295,13 +295,14 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
             {(isSidebar || isEmbeddedArtifact) && (
                 <>
                     <div className={`absolute inset-0 pointer-events-none bg-gradient-to-l ${isEmbeddedArtifact ? 'from-orange-500/[0.05]' : 'from-emerald-500/[0.05]'} to-transparent`} />
-                    {/* Floating Close Button - Only for sidebar */}
+                    {/* Floating Close Button - Only for sidebar - SUPER LARGE */}
                     {isSidebar && (
                         <button 
                             onClick={onClose}
-                            className="absolute top-10 -left-20 w-16 h-16 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-emerald-500/40 hover:text-emerald-400 transition-all shadow-[0_0_40px_rgba(0,0,0,0.5)] active:scale-90 group"
+                            className="absolute top-10 -left-12 w-24 h-24 rounded-full bg-black/60 backdrop-blur-3xl border border-white/10 flex flex-col items-center justify-center text-white/40 hover:text-white hover:border-emerald-500/40 hover:text-emerald-400 transition-all shadow-[0_0_80px_rgba(0,0,0,0.8)] active:scale-95 group z-[1000]"
                         >
-                            <X size={32} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                            <X size={48} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                            <span className="text-[7px] font-black uppercase tracking-widest mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Close</span>
                         </button>
                     )}
                 </>
@@ -331,6 +332,11 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                         </button>
                     )}
 
+                    {isSidebar && (
+                        <button onClick={onClose} className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5 active:scale-90 ml-2">
+                            <X size={24} strokeWidth={1.5} />
+                        </button>
+                    )}
                     {(!isSidebar && !isEmbeddedArtifact) && (
                         <>
                             <div className="w-px h-6 bg-white/5 mx-1 hidden sm:block" />
