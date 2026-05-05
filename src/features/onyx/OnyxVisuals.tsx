@@ -7,7 +7,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 
 /**
  * Onyx Premium Visualizer
- * Optimized with useRef for smooth state-aware animation loops.
+ * Optimized with ResizeObserver to ensure full-viewport coverage even when sidebars resize.
  */
 
 const BACKDROP_VS = `
@@ -26,24 +26,16 @@ uniform vec3 colorTo;
 uniform vec3 colorMid;
 
 void main() {
-    // Hyper-Spectral Multi-Color Horizon
     vec3 c1 = colorFrom;
     vec3 c2 = colorMid;
     vec3 c3 = colorTo;
-    
-    // Create a fourth spectral stop from the mix
     vec3 c4 = mix(c1, c3, 0.5) * 1.5;
-    
     float noise = fract(sin(dot(vUv, vec2(12.9898 + time * 0.05, 78.233))) * 43758.5453);
-    
     float m1 = sin(vUv.x * 2.0 + time * 0.1) * 0.5 + 0.5;
     float m2 = cos(vUv.y * 2.0 - time * 0.15) * 0.5 + 0.5;
-    
     vec3 base = mix(c1, c2, m1);
     vec3 accent = mix(c3, c4, m2);
-    
     vec3 finalColor = mix(base, accent, length(vUv - 0.5) * 2.0);
-    
     gl_FragColor = vec4(finalColor + 0.015 * noise, 1.0);
 }
 `;
@@ -57,14 +49,10 @@ uniform float intensity;
 void main() {
     vNormal = normalize(normalMatrix * normal);
     vec3 pos = position;
-    
-    // Complex Neural Animation (Multi-frequency)
     float d1 = sin(pos.x * 3.0 + time * 2.0) * cos(pos.y * 3.0 + time * 2.0);
     float d2 = sin(pos.z * 5.0 - time * 3.0) * 0.5;
     float displacement = (d1 + d2) * 0.1 * intensity;
-    
     pos += normal * displacement;
-    
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
     vViewPosition = -mvPosition.xyz;
     gl_Position = projectionMatrix * mvPosition;
@@ -93,28 +81,18 @@ vec3 hueShift(vec3 color, float hue) {
 void main() {
     vec3 normal = normalize(vNormal);
     vec3 viewDir = normalize(vViewPosition);
-    
-    // Multi-color Spectral Iridescence with Hue Shift
     float fresnel = pow(1.0 - dot(normal, viewDir), 2.5);
-    
-    // Animate hue over time for "Color Changing" effect
     float hue = time * 0.3;
     vec3 color1 = hueShift(c1, hue);
     vec3 color2 = hueShift(c3, hue + 2.0);
     vec3 color3 = hueShift(c5, -hue * 0.5);
-    
     vec3 color = mix(mix(color1, color2, sin(time * 0.5) * 0.5 + 0.5), 
                      mix(color3, accentColor, cos(time * 0.7) * 0.5 + 0.5), 
                      fresnel);
-                     
-    // Translucent Onyx Core
     vec3 core = vec3(0.01, 0.02, 0.05); 
     vec3 finalColor = mix(core, color, fresnel * 0.9);
-    
-    // Enhanced Glow & High-Fidelity Translucency
-    float glow = pow(fresnel, 3.0) * 2.0; // Increased glow
+    float glow = pow(fresnel, 3.0) * 2.0;
     float alpha = clamp(0.15 + fresnel * 0.75, 0.0, 1.0);
-    
     gl_FragColor = vec4(finalColor + color * glow, alpha);
 }
 `;
@@ -122,15 +100,13 @@ void main() {
 interface OnyxVisualsProps {
     isProcessing?: boolean;
     tint?: string;
-    volume?: number; // 0 to 1
+    volume?: number; 
     onStart?: () => void;
     onEnd?: () => void;
 }
 
 export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, tint, volume = 0, onStart, onEnd }) => {
     const mountRef = useRef<HTMLDivElement>(null);
-    
-    // Refs for animation loop stability
     const procRef = useRef(isProcessing);
     const tintRef = useRef(tint);
     const volumeRef = useRef(volume);
@@ -153,25 +129,22 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
         renderer.setClearColor(0x000000, 0);
         mount.appendChild(renderer.domElement);
 
-        // Environment Setup (Synthetic PMREM)
         const pmremGenerator = new THREE.PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
         const envScene = new THREE.Scene();
         const envLight = new THREE.PointLight(0xffffff, 100);
         envLight.position.set(5, 5, 5);
         envScene.add(envLight);
-        const envMap = pmremGenerator.fromScene(envScene).texture;
 
-        // Backdrop
         const backdropGeo = new THREE.IcosahedronGeometry(10, 2);
         const backdropMat = new THREE.ShaderMaterial({
             vertexShader: BACKDROP_VS,
             fragmentShader: BACKDROP_FS,
             uniforms: {
                 time: { value: 0 },
-                colorFrom: { value: new THREE.Color('#0A1A2F') }, // Deep Navy
-                colorMid: { value: new THREE.Color('#0D2A4A') },  // Mid Slate
-                colorTo: { value: new THREE.Color('#00AEEF') }    // Active Cyan
+                colorFrom: { value: new THREE.Color('#0A1A2F') },
+                colorMid: { value: new THREE.Color('#0D2A4A') },
+                colorTo: { value: new THREE.Color('#00AEEF') }
             },
             side: THREE.BackSide
         });
@@ -203,7 +176,7 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
         const renderPass = new RenderPass(scene, camera);
         const bloomPass = new UnrealBloomPass(
             new THREE.Vector2(mount.clientWidth, mount.clientHeight),
-            2.5, 0.5, 0.7 // Intense Glow
+            2.5, 0.5, 0.7
         );
 
         const composer = new EffectComposer(renderer);
@@ -217,7 +190,6 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             frameId = requestAnimationFrame(animate);
             time += 0.015;
 
-            // Neural Theme Ingestion (Pulling all 6 core spectral tokens)
             const root = getComputedStyle(document.documentElement);
             const c1 = new THREE.Color(root.getPropertyValue('--c1').trim() || '#000000');
             const c2 = new THREE.Color(root.getPropertyValue('--c2').trim() || '#0A1A2F');
@@ -226,12 +198,10 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             const c5 = new THREE.Color(root.getPropertyValue('--c5').trim() || '#0D2A4A');
             const c6 = new THREE.Color(root.getPropertyValue('--c6').trim() || '#000000');
 
-            // Backdrop Multi-Color Injection
             backdropMat.uniforms.colorFrom.value.lerp(c1, 0.08);
             backdropMat.uniforms.colorMid.value.lerp(c2, 0.08);
             backdropMat.uniforms.colorTo.value.lerp(c3, 0.08);
             
-            // Sphere Multi-Color Theme Locking
             material.uniforms.c1.value.lerp(c1, 0.05);
             material.uniforms.c2.value.lerp(c2, 0.05);
             material.uniforms.c3.value.lerp(c3, 0.05);
@@ -239,7 +209,6 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             material.uniforms.c5.value.lerp(c5, 0.05);
             material.uniforms.c6.value.lerp(c6, 0.05);
             
-            // Use latest values from refs
             const currentTint = tintRef.current || getComputedStyle(document.documentElement).getPropertyValue('--main-color') || '#00AEEF';
             const targetColor = new THREE.Color(currentTint);
             const secondaryColor = new THREE.Color(targetColor).offsetHSL(0.15, 0, 0); 
@@ -250,7 +219,6 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             material.uniforms.time.value = time;
             backdropMat.uniforms.time.value = time;
             
-            // Base intensity + Volume-driven reactivity
             const baseIntensity = procRef.current ? 0.35 : 0.1;
             material.uniforms.intensity.value = baseIntensity + (volumeRef.current * 0.8);
 
@@ -261,17 +229,24 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
         };
         animate();
 
-        const handleResize = () => {
-            camera.aspect = mount.clientWidth / mount.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(mount.clientWidth, mount.clientHeight);
-            composer.setSize(mount.clientWidth, mount.clientHeight);
-        };
-        window.addEventListener('resize', handleResize);
+        // FIX: Use ResizeObserver instead of window resize for sidebar awareness
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+                if (width === 0 || height === 0) return;
+                
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+                composer.setSize(width, height);
+                bloomPass.setSize(width, height);
+            }
+        });
+        resizeObserver.observe(mount);
 
         return () => {
             cancelAnimationFrame(frameId);
-            window.removeEventListener('resize', handleResize);
+            resizeObserver.disconnect();
             if (mount.contains(renderer.domElement)) {
                 mount.removeChild(renderer.domElement);
             }
@@ -287,15 +262,7 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             onMouseDown={onStart}
             onMouseUp={onEnd}
             onMouseLeave={onEnd}
-            onTouchStart={(e) => {
-                e.preventDefault();
-                onStart?.();
-            }}
-            onTouchEnd={(e) => {
-                e.preventDefault();
-                onEnd?.();
-            }}
-            className="w-full h-full cursor-pointer transition-opacity duration-1000"
+            className="w-full h-full cursor-pointer transition-opacity duration-1000 overflow-hidden"
             style={{ touchAction: 'none' }}
         />
     );
