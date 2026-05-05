@@ -102,9 +102,6 @@ export const onyxQueries = {
             let invQ = supabase.from('inventory').select(columns);
             let prodQ = supabase.from('production').select(columns);
 
-            let invQ = supabase.from('inventory').select(columns);
-            let prodQ = supabase.from('production').select(columns);
-
             let filterParts = [];
             if (vendor) {
                 const prefix = `${vendor}%`;
