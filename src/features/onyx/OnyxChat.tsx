@@ -8,7 +8,8 @@ import {
     paymentsArtifactConfigAtom, 
     sentTruckIdAtom,
     languageAtom,
-    onyxIsListeningAtom
+    onyxIsListeningAtom,
+    onyxRequestSendAtom
 } from '../../lib/atoms';
 import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
 import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages } from 'lucide-react';
@@ -142,6 +143,13 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
     const toggleListening = () => {
         setIsListening(prev => !prev);
     };
+
+    const [requestSend] = useAtom(onyxRequestSendAtom);
+    useEffect(() => {
+        if (requestSend > 0 && input.trim() && !isTyping) {
+            sendMessage();
+        }
+    }, [requestSend]);
 
     useEffect(() => {
         const discover = async () => {

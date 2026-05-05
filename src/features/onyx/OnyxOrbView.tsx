@@ -6,11 +6,12 @@ import { OnyxContextModal } from './OnyxContextModal';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { ShieldCheck } from 'lucide-react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { inventoryArtifactConfigAtom, onyxIsListeningAtom } from '../../lib/atoms';
+import { inventoryArtifactConfigAtom, onyxIsListeningAtom, onyxRequestSendAtom } from '../../lib/atoms';
 
 export function OnyxOrbView() {
     const artifactConfig = useAtomValue(inventoryArtifactConfigAtom);
     const setIsListening = useSetAtom(onyxIsListeningAtom);
+    const setRequestSend = useSetAtom(onyxRequestSendAtom);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isContextOpen, setIsContextOpen] = useState(false);
     const [transcript, setTranscript] = useState('');
@@ -58,8 +59,16 @@ export function OnyxOrbView() {
             <div className={`absolute inset-0 z-10 flex flex-col pointer-events-none transition-all duration-700 ${artifactConfig.isOpen ? 'blur-2xl opacity-20 scale-95' : 'opacity-100 scale-100'}`}>
                 {/* Floating Transcript - Sentient Mode */}
                 {transcript && (
-                    <div className="absolute inset-x-0 top-[20%] flex items-center justify-center p-12 md:p-32 z-10 pointer-events-none">
-                        <h2 className="text-4xl md:text-7xl font-black text-white/20 text-center uppercase tracking-[-0.08em] leading-[0.8] transition-all duration-300 drop-shadow-2xl">
+                    <div className="absolute inset-x-0 top-[20%] flex items-center justify-center p-12 md:p-32 z-10">
+                        <h2 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setRequestSend(p => p + 1);
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            className="text-xl md:text-3xl font-black text-white/40 hover:text-(--main-color) cursor-pointer text-center uppercase tracking-widest leading-tight transition-all duration-300 drop-shadow-2xl pointer-events-auto"
+                        >
                             {transcript}
                         </h2>
                     </div>

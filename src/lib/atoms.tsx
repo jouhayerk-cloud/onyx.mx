@@ -602,3 +602,5 @@ export const truckingFloorPctAtom = atom((get) => {
     }, 0);
     return Math.min(100, Math.round((totalArea / (TRUCK_L_CM * TRUCK_W_CM)) * 100));
 });
+
+export const onyxRequestSendAtom = atom(0);
