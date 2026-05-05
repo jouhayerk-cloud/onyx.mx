@@ -40,22 +40,25 @@ export const onyxQueries = {
         if (params.shape) orFilters.push(`shape.ilike.%${params.shape}%`);
         const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
 
-        // Fetch from Inventory
         let invQ = supabase.from('inventory').select(columns, { count: 'exact' });
-        if (params.status) invQ = invQ.eq('status', params.status);
-        if (orFilterString) invQ = invQ.or(orFilterString);
-        if (params.vendor) {
-            const prefix = `${params.vendor}%`;
-            invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+        let prodQ = supabase.from('production').select(columns, { count: 'exact' });
+
+        if (params.status) {
+            invQ = invQ.eq('status', params.status);
+            prodQ = prodQ.eq('status', params.status);
         }
 
-        // Fetch from Production
-        let prodQ = supabase.from('production').select(columns, { count: 'exact' });
-        if (params.status) prodQ = prodQ.eq('status', params.status);
-        if (orFilterString) prodQ = prodQ.or(orFilterString);
+        let filterParts = [];
+        if (orFilterString) filterParts.push(`(${orFilterString})`);
         if (params.vendor) {
             const prefix = `${params.vendor}%`;
-            prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+            filterParts.push(`(item_id.ilike.${prefix},book_barcode.ilike.${prefix})`);
+        }
+
+        if (filterParts.length > 0) {
+            const combined = filterParts.join(',');
+            invQ = invQ.and(combined);
+            prodQ = prodQ.and(combined);
         }
 
         const [invRes, prodRes] = await Promise.all([
@@ -99,17 +102,23 @@ export const onyxQueries = {
             let invQ = supabase.from('inventory').select(columns);
             let prodQ = supabase.from('production').select(columns);
 
+            let invQ = supabase.from('inventory').select(columns);
+            let prodQ = supabase.from('production').select(columns);
+
+            let filterParts = [];
             if (vendor) {
                 const prefix = `${vendor}%`;
-                invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
-                prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+                filterParts.push(`(item_id.ilike.${prefix},book_barcode.ilike.${prefix})`);
             }
-            
             if (query) {
                 const clean = query.trim();
-                const filter = `description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%`;
-                invQ = invQ.or(filter);
-                prodQ = prodQ.or(filter);
+                filterParts.push(`(description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%)`);
+            }
+
+            if (filterParts.length > 0) {
+                const combinedFilter = filterParts.join(',');
+                invQ = invQ.and(combinedFilter);
+                prodQ = prodQ.and(combinedFilter);
             }
 
             const [invRes, prodRes] = await Promise.all([invQ, prodQ]);
