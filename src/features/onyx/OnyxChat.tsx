@@ -347,7 +347,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder={appLanguage === 'es' ? "Pregunta..." : "Query..."}
-                                className="w-full bg-transparent border-b border-white/5 p-2 px-0 text-xs font-black tracking-[0.4em] text-white outline-none focus:border-white/20 transition-all placeholder:text-white/5 uppercase"
+                                className="w-full bg-transparent border-b border-white/5 p-2 px-0 text-sm md:text-xs font-black tracking-[0.2em] md:tracking-[0.4em] text-white outline-none focus:border-white/20 transition-all placeholder:text-white/10 uppercase"
                             />
                         </form>
                     </div>
@@ -365,11 +365,12 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
                         {/* SEND BUTTON - Floating */}
                         <button 
-                            onClick={() => sendMessage()}
                             onMouseDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
+                            onClick={() => sendMessage()}
                             className={`flex items-center justify-center w-14 h-14 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
                         >
+                            <div className="absolute inset-[-10px] rounded-full pointer-events-auto" /> {/* Expanded Hit Area */}
                             <Send size={18} strokeWidth={1.5} className="text-white/20 group-hover/send:text-white transition-colors" />
                         </button>
 
@@ -379,17 +380,20 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             onMouseUp={(e) => { e.stopPropagation(); setIsListening(false); }}
                             onMouseLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
                             onTouchStart={(e) => {
-                                e.preventDefault();
                                 e.stopPropagation();
                                 setIsListening(true);
                             }}
                             onTouchEnd={(e) => {
-                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsListening(false);
+                            }}
+                            onTouchCancel={(e) => {
                                 e.stopPropagation();
                                 setIsListening(false);
                             }}
                             className={`relative flex items-center justify-center w-24 h-24 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-1000 group/mic ${isListening ? 'scale-110 border-red-500/20' : 'hover:scale-105'}`}
                         >
+                            <div className="absolute inset-[-15px] rounded-full pointer-events-auto" /> {/* Expanded Hit Area */}
                             <div className={`transition-all duration-700 relative z-10 ${
                                 isListening 
                                     ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.4)]' 
