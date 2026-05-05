@@ -25,7 +25,8 @@ export function OnyxOrbView() {
                     isProcessing={isProcessing} 
                     tint={currentVendorColor} 
                     volume={volume} 
-                    onClick={() => setIsListening(prev => !prev)}
+                    onStart={() => setIsListening(true)}
+                    onEnd={() => setIsListening(false)}
                 />
             </div>
 
