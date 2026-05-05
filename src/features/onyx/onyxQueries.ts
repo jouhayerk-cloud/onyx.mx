@@ -41,6 +41,10 @@ export const onyxQueries = {
             
             // Search each word as an OR group, but ANDed together
             words.forEach(word => {
+                const stem = (word.toLowerCase().endsWith('s') && word.length > 3) 
+                    ? word.slice(0, -1) 
+                    : word;
+                
                 const wordFilter = [
                     `description.ilike.%${word}%`,
                     `short_description.ilike.%${word}%`,
@@ -48,7 +52,13 @@ export const onyxQueries = {
                     `shape.ilike.%${word}%`,
                     `color.ilike.%${word}%`,
                     `book_barcode.ilike.%${word}%`,
-                    `item_id.ilike.%${word}%`
+                    `item_id.ilike.%${word}%`,
+                    // Also search the stem if it's different
+                    ...(stem !== word ? [
+                        `description.ilike.%${stem}%`,
+                        `short_description.ilike.%${stem}%`,
+                        `shape.ilike.%${stem}%`
+                    ] : [])
                 ].join(',');
                 invQ = invQ.or(wordFilter);
             });
@@ -76,6 +86,7 @@ export const onyxQueries = {
             const clean = params.query.trim();
             const words = clean.split(/\s+/).filter(w => w.length >= 2);
             words.forEach(word => {
+                const stem = (word.toLowerCase().endsWith('s') && word.length > 3) ? word.slice(0, -1) : word;
                 const wordFilter = [
                     `description.ilike.%${word}%`,
                     `short_description.ilike.%${word}%`,
@@ -83,7 +94,12 @@ export const onyxQueries = {
                     `shape.ilike.%${word}%`,
                     `color.ilike.%${word}%`,
                     `book_barcode.ilike.%${word}%`,
-                    `item_id.ilike.%${word}%`
+                    `item_id.ilike.%${word}%`,
+                    ...(stem !== word ? [
+                        `description.ilike.%${stem}%`,
+                        `short_description.ilike.%${stem}%`,
+                        `shape.ilike.%${stem}%`
+                    ] : [])
                 ].join(',');
                 prodQ = prodQ.or(wordFilter);
             });
@@ -122,7 +138,16 @@ export const onyxQueries = {
             const clean = params.query.trim();
             const words = clean.split(/\s+/).filter(w => w.length >= 2);
             words.forEach(word => {
-                const f = `description.ilike.%${word}%,material.ilike.%${word}%,shape.ilike.%${word}%,color.ilike.%${word}%,item_id.ilike.%${word}%,book_barcode.ilike.%${word}%`;
+                const stem = (word.toLowerCase().endsWith('s') && word.length > 3) ? word.slice(0, -1) : word;
+                const f = [
+                    `description.ilike.%${word}%`,
+                    `material.ilike.%${word}%`,
+                    `shape.ilike.%${word}%`,
+                    `color.ilike.%${word}%`,
+                    `item_id.ilike.%${word}%`,
+                    `book_barcode.ilike.%${word}%`,
+                    ...(stem !== word ? [`description.ilike.%${stem}%`, `shape.ilike.%${stem}%`] : [])
+                ].join(',');
                 invSumQ = invSumQ.or(f);
                 prodSumQ = prodSumQ.or(f);
             });
