@@ -160,7 +160,14 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
 
     const callGemini = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const sys = `You are Onyx Intelligence. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}. Real items (Fluorite) = 65. Deploy artifacts always.`;
+        const sys = `
+            You are Onyx Intelligence. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
+            RULES:
+            1. Identify items ONLY by their 'Tag ID'. NEVER use the terms 'item id', 'system id', or 'serial number'.
+            2. The Tag ID is the primary identifier (e.g., DH-51XC2WKX).
+            3. Deploy artifacts always when requested.
+            4. If asked for a summary, always include the Tag ID and Weight for the heaviest items.
+        `.trim();
         const payload: any = { contents, system_instruction: { parts: [{ text: sys }] } };
         if (tools) payload.tools = [{ function_declarations: tools }];
         const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
