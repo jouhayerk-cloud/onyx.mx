@@ -27,6 +27,9 @@ export const onyxQueries = {
         let orFilters = [];
         if (params.query) {
             const clean = params.query.trim();
+            const words = clean.split(/\s+/).filter(w => w.length > 2);
+            
+            // Search whole query
             orFilters.push(
                 `description.ilike.%${clean}%`, 
                 `short_description.ilike.%${clean}%`, 
@@ -34,8 +37,20 @@ export const onyxQueries = {
                 `shape.ilike.%${clean}%`,
                 `color.ilike.%${clean}%`,
                 `book_barcode.ilike.%${clean}%`,
-                `item_id.ilike.%${clean}%`
+                `item_id.ilike.%${clean}%`,
+                `type.ilike.%${clean}%`
             );
+
+            // Search individual words for better matching
+            words.forEach(word => {
+                orFilters.push(
+                    `description.ilike.%${word}%`,
+                    `material.ilike.%${word}%`,
+                    `shape.ilike.%${word}%`,
+                    `color.ilike.%${word}%`,
+                    `type.ilike.%${word}%`
+                );
+            });
         }
         if (params.shape) orFilters.push(`shape.ilike.%${params.shape}%`);
         const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
@@ -44,9 +59,16 @@ export const onyxQueries = {
         let invQ = supabase.from('inventory').select(columns, { count: 'exact' });
         if (params.status) invQ = invQ.eq('status', params.status);
         if (orFilterString) invQ = invQ.or(orFilterString);
+        
+        // Handle vendor filter carefully
         if (params.vendor) {
-            const prefix = `${params.vendor}%`;
-            invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+            if (params.vendor.length <= 3) {
+                const prefix = `${params.vendor}%`;
+                invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+            } else {
+                // If it's a long string (like "Tehuacan"), treat it as a general keyword search
+                invQ = invQ.or(`description.ilike.%${params.vendor}%,color.ilike.%${params.vendor}%,material.ilike.%${params.vendor}%`);
+            }
         }
 
         // Fetch from Production
@@ -54,8 +76,12 @@ export const onyxQueries = {
         if (params.status) prodQ = prodQ.eq('status', params.status);
         if (orFilterString) prodQ = prodQ.or(orFilterString);
         if (params.vendor) {
-            const prefix = `${params.vendor}%`;
-            prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+            if (params.vendor.length <= 3) {
+                const prefix = `${params.vendor}%`;
+                prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+            } else {
+                prodQ = prodQ.or(`description.ilike.%${params.vendor}%,color.ilike.%${params.vendor}%,material.ilike.%${params.vendor}%`);
+            }
         }
 
         const [invRes, prodRes] = await Promise.all([
@@ -142,8 +168,8 @@ export const onyxQueries = {
 
     getDatabaseContext: async () => {
         const [invRes, prodRes] = await Promise.all([
-            supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color'),
-            supabase.from('production').select('shape, material, item_id, book_barcode, status, color')
+            supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color, type'),
+            supabase.from('production').select('shape, material, item_id, book_barcode, status, color, type')
         ]);
         
         const data = [...(invRes.data || []), ...(prodRes.data || [])];
