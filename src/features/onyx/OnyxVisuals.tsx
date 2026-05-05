@@ -123,9 +123,10 @@ interface OnyxVisualsProps {
     isProcessing?: boolean;
     tint?: string;
     volume?: number; // 0 to 1
+    onClick?: () => void;
 }
 
-export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, tint, volume = 0 }) => {
+export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, tint, volume = 0, onClick }) => {
     const mountRef = useRef<HTMLDivElement>(null);
     
     // Refs for animation loop stability
@@ -282,6 +283,7 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
     return (
         <div 
             ref={mountRef} 
+            onClick={onClick}
             className="w-full h-full cursor-pointer transition-opacity duration-1000"
             style={{ touchAction: 'none' }}
         />
