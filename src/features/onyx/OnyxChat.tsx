@@ -312,23 +312,25 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             {appLanguage.toUpperCase()}
                         </button>
 
-                        {/* Transparent Input Field */}
-                        <div className="relative min-w-[160px] md:min-w-[240px]">
+                        {/* Transparent Input Form */}
+                        <form 
+                            onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+                            className="relative min-w-[160px] md:min-w-[240px]"
+                        >
                             <input 
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                                 placeholder={appLanguage === 'es' ? "Pregunta..." : "Query..."}
                                 className="w-full bg-transparent border-b border-white/5 p-2 px-0 text-xs font-black tracking-[0.4em] text-white outline-none focus:border-white/20 transition-all placeholder:text-white/5 uppercase"
                             />
                             <button 
-                                onClick={() => sendMessage()}
+                                type="submit"
                                 className={`absolute right-0 top-1/2 -translate-y-1/2 text-white/10 hover:text-white transition-all ${input.trim() ? 'opacity-100' : 'opacity-0'}`}
                             >
                                 <Send size={12} />
                             </button>
-                        </div>
+                        </form>
                     </div>
 
                     {/* FREE-FLOATING GLASSMORPHIC TALK ICON (Bottom) */}
