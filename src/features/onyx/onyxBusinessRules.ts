@@ -17,6 +17,7 @@ export const ONYX_CONTEXT = {
                 status: "Current state: 'Warehouse' (In Stock), 'Inventory' (Historical Stock), 'Available' (Listed for sale), 'Sold' (Not in stock).",
                 shape: "The physical form (e.g. Squared, Heart, Moon).",
                 material: "The composition (e.g. Onyx, Amethyst, Marble).",
+                color: "The specific hue (e.g. Tehuacan, Blanco, Cafe).",
                 vendor_id: "The 2-letter source code (e.g. EM, GE, JM)."
             },
             rules: [
@@ -100,5 +101,6 @@ export const getOnyxSystemGrounding = () => {
     - Relations: 'logistics.inventory_ids' links items to crates. 'finance.related_ids' links items to payments.
     - UI Colors: RED=Partial, YELLOW=Requested, GREEN=Paid, BLUE=New.
     - VENDOR NAMES: ${vendors}. If a user mentions a name like 'Emmanuel', they mean vendor 'EM'.
+    - IMPORTANT: 'Tehuacan' is a COLOR (often used for Onyx). 'Onyx' is a MATERIAL. If a user asks for 'Tehuacan items', search for color='Tehuacan'.
     `;
 };
