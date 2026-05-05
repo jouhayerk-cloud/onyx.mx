@@ -65,8 +65,18 @@ export const onyxToolDefinitions = [
             properties: {}
         }
     },
-        },
-        required: ["item_ids"]
+    {
+        name: "deploy_inventory_artifact",
+        description: "Deploys a UI 'Artifact' to display specific items in a rich grid/gallery view.",
+        parameters: {
+            type: "object",
+            properties: {
+                item_ids: { type: "array", items: { type: "string" } },
+                title: { type: "string" },
+                viewMode: { type: "string", enum: ["modal", "sidebar", "embedded"] }
+            },
+            required: ["item_ids"]
+        }
     },
     {
         name: "search_logistics",
