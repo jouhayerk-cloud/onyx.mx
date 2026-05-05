@@ -7,7 +7,8 @@ import {
     inventoryArtifactConfigAtom, 
     paymentsArtifactConfigAtom, 
     sentTruckIdAtom,
-    languageAtom
+    languageAtom,
+    onyxIsListeningAtom
 } from '../../lib/atoms';
 import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
 import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages } from 'lucide-react';
@@ -39,7 +40,7 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
     
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [isListening, setIsListening] = useState(false);
+    const [isListening, setIsListening] = useAtom(onyxIsListeningAtom);
     const [lastError, setLastError] = useState<string | null>(null);
     const [availableModels, setAvailableModels] = useState<string[]>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -90,10 +91,18 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
         }
     }, [appLanguage]);
 
-    const toggleListening = () => {
+    // External Trigger Sync (Orb click etc)
+    useEffect(() => {
         if (!recognitionRef.current) return;
-        if (isListening) recognitionRef.current.stop();
-        else { setIsListening(true); recognitionRef.current.start(); }
+        if (isListening) {
+            try { recognitionRef.current.start(); } catch (e) {}
+        } else {
+            try { recognitionRef.current.stop(); } catch (e) {}
+        }
+    }, [isListening]);
+
+    const toggleListening = () => {
+        setIsListening(prev => !prev);
     };
 
     useEffect(() => {

@@ -5,11 +5,12 @@ import { OnyxChat } from './OnyxChat';
 import { OnyxContextModal } from './OnyxContextModal';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { ShieldCheck } from 'lucide-react';
-import { useAtomValue } from 'jotai';
-import { inventoryArtifactConfigAtom } from '../../lib/atoms';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { inventoryArtifactConfigAtom, onyxIsListeningAtom } from '../../lib/atoms';
 
 export function OnyxOrbView() {
     const artifactConfig = useAtomValue(inventoryArtifactConfigAtom);
+    const setIsListening = useSetAtom(onyxIsListeningAtom);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isContextOpen, setIsContextOpen] = useState(false);
     const [transcript, setTranscript] = useState('');
@@ -20,7 +21,12 @@ export function OnyxOrbView() {
         <div className="relative flex h-full w-full overflow-hidden bg-black">
             {/* Full Panel Visualizer Background */}
             <div className="absolute inset-0 z-0">
-                <OnyxVisuals isProcessing={isProcessing} tint={currentVendorColor} volume={volume} />
+                <OnyxVisuals 
+                    isProcessing={isProcessing} 
+                    tint={currentVendorColor} 
+                    volume={volume} 
+                    onClick={() => setIsListening(prev => !prev)}
+                />
             </div>
 
 

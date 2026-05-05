@@ -86,7 +86,7 @@ export const onyxToolHandlers = {
             const result = await onyxQueries.searchInventory(args);
             return {
                 items: result.items.map(item => ({ 
-                    tag_id: item.book_barcode || "No TAG ID", 
+                    tag_id: item.item_id || item.book_barcode || "No TAG ID", 
                     shape: item.shape, 
                     material: item.material,
                     dimensions: {
@@ -98,8 +98,7 @@ export const onyxToolHandlers = {
                     color: item.color,
                     description: item.generated_description || item.description, 
                     quantity: item.quantity,
-                    status: item.status,
-                    system_id: item.item_id
+                    status: item.status
                 })),
                 total_records: result.total_records,
                 total_quantity: result.total_quantity
@@ -114,7 +113,7 @@ export const onyxToolHandlers = {
             if (!item) return { error: "Item not found" };
             
             return {
-                tag_id: item.book_barcode || "No TAG ID",
+                tag_id: item.item_id || item.book_barcode || "No TAG ID",
                 display_title: item.generated_description || item.short_description || item.description,
                 specs: {
                     shape: item.shape,
@@ -129,10 +128,6 @@ export const onyxToolHandlers = {
                 visuals: {
                     image_urls: item.generated_image_urls || item.media_urls,
                     ai_description: item.generated_description
-                },
-                system: {
-                    id: item.id,
-                    book_item_id: item.item_id
                 }
             };
         } catch (err: any) {
