@@ -15,27 +15,41 @@ export const ONYX_CONTEXT = {
             },
             key_columns: {
                 status: "Current state: 'Warehouse' (In Stock), 'Inventory' (Historical Stock), 'Available' (Listed for sale), 'Sold' (Not in stock).",
-                shape: "The physical form (e.g. Squared, Heart, Moon).",
-                material: "The composition (e.g. Onyx, Amethyst, Marble).",
-                vendor_id: "The 2-letter source code (e.g. EM, GE, JM)."
+                shape: "The physical form (e.g. Squared, Heart, Moon, Bowl, Plate, Cylinder, Sphere).",
+                material: "The composition (e.g. Onyx, Amethyst, Marble, Obsidian, Selenite).",
+                color: "The primary color (e.g. White, Green, Brown, Honey, Multi-Color)."
             },
             rules: [
                 "Always prioritize book_barcode when referring to an item's unique identity.",
                 "Warehouse and Inventory statuses are the primary sources of truth for physical stock.",
-                "Available status usually means the item is listed elsewhere and may not be in the physical warehouse.",
+                "Bowl results might be listed under 'shape' or 'description'.",
                 "To search for a vendor, use a prefix match on 'item_id' (e.g. item_id ilike EM%)."
             ]
+        },
+        production: {
+            description: "Items currently in the manufacturing process.",
+            key_columns: {
+                status: "'Production', 'Polishing', 'Cutting', 'Ready'."
+            }
         },
         expenses: {
             description: "Financial records of payments to vendors and shippers.",
             key_columns: {
                 status: "'Paid', 'Partial', 'Requested'.",
                 subcategory: "'prod' (Production), 'packing' (Logistics), 'acq' (Acquisition)."
-            },
-            rules: [
-                "A 'Partial' status in expenses combined with a specific inventory item indicates a payment plan.",
-                "Red status in the UI corresponds to Partial payments."
-            ]
+            }
+        }
+    },
+    // MASTER SCHEMA ENUMERATIONS (For AI Grounding)
+    manifest: {
+        shapes: ["Bowl", "Plate", "Squared", "Heart", "Moon", "Cylinder", "Sphere", "Pyramid", "Egg", "Cross", "Animal", "Lamp", "Sink", "Table"],
+        materials: ["Onyx", "Marble", "Travertine", "Obsidian", "Selenite", "Amethyst", "Fluorite", "Sodalite", "Rose Quartz", "Clear Quartz"],
+        colors: ["White", "Green", "Honey", "Brown", "Black", "Gray", "Pink", "Purple", "Blue", "Orange", "Multi-Color"],
+        common_terms: {
+            "Bowl": ["Cuenco", "Plato hondo", "Sopera"],
+            "Sink": ["Lavabo", "Ovalo", "Tarja"],
+            "Lamp": ["Lampara", "Iluminacion"],
+            "Table": ["Mesa", "Cubierta", "Pedestal"]
         }
     },
     vendor_mapping: {
@@ -62,11 +76,16 @@ export const getOnyxSystemGrounding = () => {
     const vendors = Object.entries(ONYX_CONTEXT.vendor_mapping)
         .map(([id, info]) => `${info.name} (${info.firstName}) = ID: ${id}`)
         .join(', ');
+    
+    const shapes = ONYX_CONTEXT.manifest.shapes.join(', ');
+    const materials = ONYX_CONTEXT.manifest.materials.join(', ');
 
     return `
     WAREHOUSE CONTEXT:
     - Tag IDs: Always use 'book_barcode'.
     - Physical Stock: Statuses 'Warehouse' and 'Inventory'.
+    - Valid Shapes: ${shapes}.
+    - Valid Materials: ${materials}.
     - Financials: 'expenses' table tracks vendor payments. 
     - UI Colors: RED=Partial, YELLOW=Requested, GREEN=Paid, BLUE=New.
     - VENDOR NAMES: ${vendors}. If a user mentions a name like 'Emmanuel', they mean vendor 'EM'.
