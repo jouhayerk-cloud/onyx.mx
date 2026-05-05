@@ -18,7 +18,18 @@ export function OnyxOrbView() {
     const [currentVendorColor, setCurrentVendorColor] = useState<string | undefined>(undefined);
 
     return (
-        <div className="relative flex h-full w-full overflow-hidden bg-black">
+        <div 
+            className="relative flex h-full w-full overflow-hidden bg-black"
+            onMouseDown={() => setIsListening(true)}
+            onMouseUp={() => setIsListening(false)}
+            onMouseLeave={() => setIsListening(false)}
+            onTouchStart={(e) => {
+                // If touching a button or input, don't trigger mic
+                if ((e.target as HTMLElement).closest('button, input')) return;
+                setIsListening(true);
+            }}
+            onTouchEnd={() => setIsListening(false)}
+        >
             {/* Full Panel Visualizer Background */}
             <div className="absolute inset-0 z-0">
                 <OnyxVisuals 
@@ -35,6 +46,8 @@ export function OnyxOrbView() {
             <div className="absolute top-12 right-12 z-30">
                 <button 
                     onClick={() => setIsContextOpen(true)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     className="w-12 h-12 flex items-center justify-center rounded-full bg-white/0 hover:bg-white/5 border border-white/0 hover:border-white/5 transition-all duration-700 backdrop-blur-sm group/btn"
                 >
                     <ShieldCheck className="text-white/20 group-hover/btn:text-(--main-color) transition-colors" size={20} />
