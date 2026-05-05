@@ -54,7 +54,7 @@ export function OnyxOrbView() {
                 <div className="flex-1" />
                 
                 {/* Free Floating High-Density Chat Panel */}
-                <div className="w-full max-w-3xl ml-auto pointer-events-auto p-6 md:p-12 mb-12 mr-6 md:mr-12 h-[75%]">
+                <div className="w-full max-w-4xl ml-auto pointer-events-auto p-6 md:p-12 mb-12 mr-6 md:mr-12 h-full">
                     <OnyxChat 
                         onProcessingChange={setIsProcessing} 
                         onTranscriptChange={setTranscript}

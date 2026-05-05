@@ -272,7 +272,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             </div>
 
             {/* TACTICAL COMMAND STACK (BOTTOM RIGHT) */}
-            <div className="absolute bottom-0 right-0 p-8 md:p-12 pointer-events-none flex flex-col items-end gap-10">
+            <div className="absolute bottom-0 right-0 p-8 md:p-12 pointer-events-none flex flex-col items-end gap-10 z-[100]">
                 
                 {/* VERTICAL INTEGRATED STACK */}
                 <div className="flex flex-col items-end gap-8 pointer-events-auto">
