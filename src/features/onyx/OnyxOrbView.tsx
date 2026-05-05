@@ -96,13 +96,13 @@ export function OnyxOrbView() {
 
             {/* MINIMALIST COMPACT TACTICAL CONTROL BAR (Translucent Glassmorphic) */}
             <div className="h-auto z-40 relative">
-                {/* No Visual anchor gradients or shadows as requested */}
                 <OnyxChatControls 
                     input={onyx.input}
                     setInput={onyx.setInput}
                     sendMessage={onyx.sendMessage}
                     isListening={onyx.isListening}
                     setIsListening={onyx.setIsListening}
+                    resetNeuralKey={onyx.resetNeuralKey}
                 />
             </div>
         </div>
