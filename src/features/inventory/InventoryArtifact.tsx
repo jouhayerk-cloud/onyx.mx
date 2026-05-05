@@ -88,7 +88,10 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
         else if (urls.length > 0) { setViewerUrls(urls); setViewerIdx(idx); setShowViewer(true); }
     };
 
-    const targetIds = useMemo(() => ids.map(id => String(id)), [ids]);
+    const targetIds = useMemo(() => {
+        const safeIds = Array.isArray(ids) ? ids : (ids ? [ids] : []);
+        return safeIds.map(id => String(id));
+    }, [ids]);
 
     const filteredItems = useMemo(() => {
         const logMap = new Map();

@@ -530,19 +530,6 @@ export function OnyxChatControls(props: {
 
             {/* Action Buttons Panel */}
             <div className="flex items-center gap-8 relative shrink-0">
-                {/* Reset Credentials Button */}
-                <button 
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        resetNeuralKey?.();
-                    }}
-                    className="flex items-center justify-center text-white hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110"
-                    title="Reset Neural Key"
-                >
-                    <RefreshCw size={24} strokeWidth={2} />
-                </button>
-
                 {/* Stop Voice Response */}
                 <button 
                     type="button"
