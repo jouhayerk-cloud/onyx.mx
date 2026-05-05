@@ -93,22 +93,60 @@ import {
     isPaymentFiltersOpenAtom,
     isPaymentActionPanelOpenAtom,
     isPaymentWizardOpenAtom,
-    isCrateCreationModalOpenAtom
+    isCrateCreationModalOpenAtom,
+    isBotOrbOpenAtom
 } from '../../lib/atoms';
+
+const OnyxBar: React.FC = () => {
+    const [isBotOpen, setIsBotOpen] = useAtom(isBotOrbOpenAtom);
+    const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
+    const [search, setSearch] = useAtom(inventorySearchTermAtom);
+
+    return (
+        <div className="flex flex-1 items-center gap-6">
+            <div className="flex items-center gap-2 pr-6 border-r border-white/5 shrink-0">
+                <Brain size={28} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" strokeWidth={2} />
+                <span className="text-[12px] font-black uppercase tracking-[0.4em] text-white opacity-40">Neural HUD</span>
+            </div>
+
+            <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left duration-700">
+                <button 
+                    onClick={() => setIsBotOpen(true)}
+                    className={`flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all active:scale-90 group/bot select-none ${isBotOpen ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
+                >
+                    <Bot size={24} strokeWidth={2} className={`${isBotOpen ? 'text-(--main-color) animate-pulse' : 'group-hover/bot:scale-110'} transition-transform mb-1`} />
+                    <span className="text-[8px] font-black uppercase tracking-widest leading-none">Bot Orb</span>
+                </button>
+
+                <div className="w-px h-6 bg-white/5" />
+
+                <DeployableSearch 
+                    value={search} 
+                    onChange={setSearch} 
+                    isOpen={isSearchOpen} 
+                    setIsOpen={setIsSearchOpen} 
+                    accentColor="var(--main-color)"
+                    placeholder="NEURAL QUERY..."
+                />
+            </div>
+        </div>
+    );
+};
+
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
+
 import { CameraView } from '../../lib/Types';
 import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { saveAs } from 'file-saver';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
-
-
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
 import { supabase } from '../../lib/supabase';
+
 import {
     ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink, Layout, ShoppingBag,
     CreditCard, Truck, Upload, Shield, Search, RefreshCw, LogOut, LayoutGrid, 
@@ -119,13 +157,14 @@ import {
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
-    PackagePlus, Boxes, PackageOpen, History
+    PackagePlus, Boxes, PackageOpen, History, Bot, Brain
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
 import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 
 declare const __APP_VERSION__: string;
+
 
 const themes = [
     { name: 'talan', swatch: THEME_ASSETS.talan.swatch },
@@ -1879,6 +1918,7 @@ export function MainHeader() {
                         {activeView === 'upload' && <UploadBar />}
                         {activeView === 'process' && <ProcessBar />}
                         {activeView === 'control' && <ControlBar />}
+                        {activeView === 'onyx' && <OnyxBar />}
                         {activeView === 'overview' && (
                             <div className="flex items-center gap-1 sm:gap-4">
                                 <ModuleBadge icon="layout-dashboard" label="" color="var(--main-color)" />

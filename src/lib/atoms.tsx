@@ -181,6 +181,7 @@ export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistic
 export const onyxMessagesAtom = atom<any[]>([]);
 export const onyxIsListeningAtom = atom<boolean>(false);
 export const onyxApiKeyAtom = atomWithStorage<string>('onyxApiKey', '');
+export const isBotOrbOpenAtom = atom<boolean>(false);
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'Production' | 'Acquired' | 'New'>('inventoryStatusFilter', 'All', sessionJSONStorage);

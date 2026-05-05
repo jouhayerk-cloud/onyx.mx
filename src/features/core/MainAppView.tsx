@@ -25,7 +25,8 @@ import {
     universalViewAtom,
     tagIdAtom,
     isStudioSettingsOpenAtom,
-    isFinanceScrolledAtom
+    isFinanceScrolledAtom,
+    isBotOrbOpenAtom
 } from '../../lib/atoms';
 import React, { useEffect, useState } from 'react';
 import {
@@ -58,6 +59,7 @@ import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { StudioSettingsPortal } from './StudioSettingsPortal';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { PaymentsArtifact } from '../finance/PaymentsArtifact';
+import { BotOrb } from '../onyx/BotOrb';
 import { ViewerView } from '../viewer/ViewerView';
 import { ThreeDAppView } from '../threed/ThreeDView';
 import { DeployedView } from '../logistics/DeployedView';
@@ -504,6 +506,7 @@ export function MainAppView() {
             <StudioSettingsPortal />
             <InventoryArtifact />
             <PaymentsArtifact />
+            <BotOrb />
         </>
     );
 }
