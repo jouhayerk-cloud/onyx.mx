@@ -21,24 +21,17 @@ export function OnyxOrbView() {
     return (
         <div 
             className="relative flex h-full w-full overflow-hidden bg-black"
-            onMouseDown={() => setIsListening(true)}
-            onMouseUp={() => setIsListening(false)}
-            onMouseLeave={() => setIsListening(false)}
-            onTouchStart={(e) => {
-                // If touching a button or input, don't trigger mic
+            onPointerDown={(e) => {
                 if ((e.target as HTMLElement).closest('button, input, form')) return;
-                e.preventDefault();
                 setIsListening(true);
             }}
-            onTouchEnd={(e) => {
+            onPointerUp={(e) => {
                 if ((e.target as HTMLElement).closest('button, input, form')) return;
-                e.preventDefault();
                 setIsListening(false);
             }}
-            onTouchCancel={(e) => {
-                e.preventDefault();
-                setIsListening(false);
-            }}
+            onPointerLeave={() => setIsListening(false)}
+            onPointerCancel={() => setIsListening(false)}
+            style={{ touchAction: 'none' }}
         >
             {/* Full Panel Visualizer Background */}
             <div className="absolute inset-0 z-0">

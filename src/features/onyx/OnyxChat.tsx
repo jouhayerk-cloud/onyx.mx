@@ -336,14 +336,19 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         {/* Transparent Input Form */}
                         <form 
                             onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
                             className="relative min-w-[160px] md:min-w-[240px]"
                         >
                             <input 
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        sendMessage();
+                                    }
+                                }}
                                 placeholder={appLanguage === 'es' ? "Pregunta..." : "Query..."}
                                 className="w-full bg-transparent border-b border-white/5 p-2 px-0 text-sm md:text-xs font-black tracking-[0.2em] md:tracking-[0.4em] text-white outline-none focus:border-white/20 transition-all placeholder:text-white/10 uppercase"
                             />
@@ -368,31 +373,22 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                                 if (input.trim()) sendMessage();
                             }}
                             className={`flex items-center justify-center w-14 h-14 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
+                            style={{ touchAction: 'none' }}
                         >
-                            <div className="absolute inset-[-10px] rounded-full pointer-events-auto" /> {/* Expanded Hit Area */}
+                            <div className="absolute inset-[-10px] rounded-full" /> {/* Expanded Hit Area */}
                             <Send size={18} strokeWidth={1.5} className="text-white/20 group-hover/send:text-white transition-colors" />
                         </button>
 
                         {/* TALK ICON - Floating */}
                         <button 
-                            onMouseDown={(e) => { e.stopPropagation(); setIsListening(true); }}
-                            onMouseUp={(e) => { e.stopPropagation(); setIsListening(false); }}
-                            onMouseLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
-                            onTouchStart={(e) => {
-                                e.stopPropagation();
-                                setIsListening(true);
-                            }}
-                            onTouchEnd={(e) => {
-                                e.stopPropagation();
-                                setIsListening(false);
-                            }}
-                            onTouchCancel={(e) => {
-                                e.stopPropagation();
-                                setIsListening(false);
-                            }}
+                            onPointerDown={(e) => { e.stopPropagation(); setIsListening(true); }}
+                            onPointerUp={(e) => { e.stopPropagation(); setIsListening(false); }}
+                            onPointerLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
+                            onPointerCancel={(e) => { e.stopPropagation(); setIsListening(false); }}
                             className={`relative flex items-center justify-center w-24 h-24 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-1000 group/mic ${isListening ? 'scale-110 border-red-500/20' : 'hover:scale-105'}`}
+                            style={{ touchAction: 'none' }}
                         >
-                            <div className="absolute inset-[-15px] rounded-full pointer-events-auto" /> {/* Expanded Hit Area */}
+                            <div className="absolute inset-[-15px] rounded-full" /> {/* Expanded Hit Area */}
                             <div className={`transition-all duration-700 relative z-10 ${
                                 isListening 
                                     ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.4)]' 
