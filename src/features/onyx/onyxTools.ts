@@ -112,6 +112,7 @@ export const onyxToolHandlers = {
                     }
 
                     return { 
+                        id: item.id,
                         tag_id: barcode, 
                         shape: item.shape, 
                         material: item.material,
