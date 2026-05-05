@@ -23,13 +23,14 @@ export const onyxQueries = {
         material?: string,
         limit?: number 
     }) => {
-        const columns = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
+        const invCols = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
+        const prodCols = '*, item_id, book_barcode, quantity, status';
         
         // Define filters
         let orFilters = [];
         if (params.query) {
             const clean = params.query.trim();
-            const words = clean.split(/\s+/).filter(w => w.length > 2);
+            const words = clean.split(/\s+/).filter(w => w.length >= 2);
             
             // Search whole query
             orFilters.push(
@@ -39,8 +40,7 @@ export const onyxQueries = {
                 `shape.ilike.%${clean}%`,
                 `color.ilike.%${clean}%`,
                 `book_barcode.ilike.%${clean}%`,
-                `item_id.ilike.%${clean}%`,
-                `type.ilike.%${clean}%`
+                `item_id.ilike.%${clean}%`
             );
 
             // Search individual words for better matching
@@ -49,8 +49,7 @@ export const onyxQueries = {
                     `description.ilike.%${word}%`,
                     `material.ilike.%${word}%`,
                     `shape.ilike.%${word}%`,
-                    `color.ilike.%${word}%`,
-                    `type.ilike.%${word}%`
+                    `color.ilike.%${word}%`
                 );
             });
         }
@@ -61,7 +60,7 @@ export const onyxQueries = {
         const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
 
         // Fetch from Inventory
-        let invQ = supabase.from('inventory').select(columns, { count: 'exact' });
+        let invQ = supabase.from('inventory').select(invCols, { count: 'exact' });
         if (params.status) invQ = invQ.eq('status', params.status);
         if (orFilterString) invQ = invQ.or(orFilterString);
         
@@ -77,7 +76,7 @@ export const onyxQueries = {
         }
 
         // Fetch from Production
-        let prodQ = supabase.from('production').select(columns, { count: 'exact' });
+        let prodQ = supabase.from('production').select(prodCols, { count: 'exact' });
         if (params.status) prodQ = prodQ.eq('status', params.status);
         if (orFilterString) prodQ = prodQ.or(orFilterString);
         if (params.vendor) {
