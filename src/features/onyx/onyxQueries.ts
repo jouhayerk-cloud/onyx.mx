@@ -49,7 +49,9 @@ export const onyxQueries = {
                     `description.ilike.%${word}%`,
                     `material.ilike.%${word}%`,
                     `shape.ilike.%${word}%`,
-                    `color.ilike.%${word}%`
+                    `color.ilike.%${word}%`,
+                    `item_id.ilike.%${word}%`,
+                    `book_barcode.ilike.%${word}%`
                 );
             });
         }
