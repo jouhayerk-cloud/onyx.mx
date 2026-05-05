@@ -608,13 +608,27 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                     <div className="flex items-center justify-between pt-6 border-t border-white/5 mt-4">
                                                         <div className="flex items-center gap-6">
                                                            <div className="flex flex-col">
-                                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Quantity</span>
+                                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Qty</span>
                                                                 <span className="text-xs font-black text-white/60">x{norm.quantity || 1}</span>
                                                            </div>
                                                            <div className="flex flex-col border-l border-white/10 pl-6">
-                                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Tag ID</span>
+                                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Tag</span>
                                                                 <span className="text-xs font-black text-white/60">{norm.itemId}</span>
                                                            </div>
+                                                           {(norm.weight_kg || norm.weightKg) && (
+                                                                <div className="flex flex-col border-l border-white/10 pl-6">
+                                                                    <span className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest mb-1">Weight</span>
+                                                                    <span className="text-xs font-black text-white/60">{norm.weight_kg || norm.weightKg} kg</span>
+                                                                </div>
+                                                           )}
+                                                           {(norm.width_cm || norm.height_cm || norm.length_cm) && (
+                                                                <div className="flex flex-col border-l border-white/10 pl-6">
+                                                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Dims</span>
+                                                                    <span className="text-xs font-black text-white/60">
+                                                                        {[norm.length_cm, norm.width_cm, norm.height_cm].filter(Boolean).join('×')}
+                                                                    </span>
+                                                                </div>
+                                                           )}
                                                         </div>
                                                         <Maximize2 size={16} className="text-white/10 group-hover:text-white/40 transition-all" />
                                                     </div>
@@ -626,6 +640,18 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                             );
                         }
                     })()}
+
+                    {/* LARGE PERSISTENT CLOSE BUTTON */}
+                    {!isEmbeddedArtifact && (
+                       <div className="flex justify-center py-12">
+                           <button 
+                               onClick={onClose}
+                               className="px-16 py-6 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.5em] text-white/40 hover:text-white hover:bg-white/10 hover:border-emerald-500/40 hover:shadow-[0_0_50px_rgba(16,185,129,0.1)] transition-all active:scale-95 backdrop-blur-xl group"
+                           >
+                               <span className="group-hover:tracking-[0.7em] transition-all duration-500">Terminate Manifest</span>
+                           </button>
+                       </div>
+                    )}
 
                     {/* Payments Traceability List */}
                     {!isSidebar && aggregateFinancials.uniquePayments.length > 0 && (

@@ -119,8 +119,8 @@ export const onyxToolHandlers = {
                 specs: {
                     shape: item.shape,
                     material: item.material,
-                    dimensions: `${item.length_cm}x${item.width_cm}x${item.height_cm} cm`,
-                    weight: `${item.weight_kg} kg`
+                    dimensions: `${item.length_cm || '?'}x${item.width_cm || '?'}x${item.height_cm || '?'} cm`,
+                    weight: item.weight_kg ? `${item.weight_kg} kg` : "Not recorded"
                 },
                 financials: {
                     price_mxn: item.price_mxn,

@@ -1,22 +1,18 @@
 
 import { supabase } from '../../lib/supabase';
+import { vendors } from '../../lib/consts';
 
 /**
  * Onyx Query Engine
  * Provides structured access to the warehouse database with built-in context awareness.
- * Note: 'vendor_id' is derived from the first two letters of 'item_id'.
+ * Integrates both 'inventory' and 'production' asset streams.
  */
 
-import { vendors } from '../../lib/consts';
-
-// Ordered list of vendor keys (longest first to prevent greedy matching)
 const VENDOR_KEYS = Object.keys(vendors).sort((a, b) => b.length - a.length);
 
 export const onyxQueries = {
-    // ... rest of the file
     /**
-     * Search inventory with flexible status and identifier logic.
-     * Prioritizes Tag IDs (book_barcode) and filters by status.
+     * Search inventory & production with flexible status and identifier logic.
      */
     searchInventory: async (params: { 
         query?: string, 
@@ -25,15 +21,9 @@ export const onyxQueries = {
         shape?: string,
         limit?: number 
     }) => {
-        // Select essential columns. Excluding 'vendor_id' as it may not exist on server.
-        let q = supabase.from('inventory').select('*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color', { count: 'exact' });
-
-        // Handle Status logic from user: "only read INVENTORY, not available items"
-        // We exclude what's NOT wanted to be as inclusive as possible for physical stock.
-        if (params.status) {
-            q = q.eq('status', params.status);
-        }
-
+        const columns = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
+        
+        // Define filters
         let orFilters = [];
         if (params.query) {
             const clean = params.query.trim();
@@ -47,89 +37,89 @@ export const onyxQueries = {
                 `item_id.ilike.%${clean}%`
             );
         }
-        
-        if (params.shape) {
-            orFilters.push(`shape.ilike.%${params.shape}%`);
-        }
+        if (params.shape) orFilters.push(`shape.ilike.%${params.shape}%`);
+        const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
 
-        if (orFilters.length > 0) {
-            q = q.or(orFilters.join(','));
-        }
-
-        // Vendor is derived from item_id or book_barcode prefix
+        // Fetch from Inventory
+        let invQ = supabase.from('inventory').select(columns, { count: 'exact' });
+        if (params.status) invQ = invQ.eq('status', params.status);
+        if (orFilterString) invQ = invQ.or(orFilterString);
         if (params.vendor) {
             const prefix = `${params.vendor}%`;
-            q = q.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+            invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
         }
 
-        const { data, error, count } = await q.limit(params.limit || 50);
-        
-        if (error) {
-            console.error("[OnyxQuery] Search Error:", error);
-            throw new Error(error.message);
-        }
-
-        // Fetch sum separately to ensure accuracy for the WHOLE matched set
-        let sumQ = supabase.from('inventory').select('quantity, item_id');
-        if (params.status) {
-            sumQ = sumQ.eq('status', params.status);
-        }
-        if (orFilters.length > 0) sumQ = sumQ.or(orFilters.join(','));
+        // Fetch from Production
+        let prodQ = supabase.from('production').select(columns, { count: 'exact' });
+        if (params.status) prodQ = prodQ.eq('status', params.status);
+        if (orFilterString) prodQ = prodQ.or(orFilterString);
         if (params.vendor) {
             const prefix = `${params.vendor}%`;
-            sumQ = sumQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+            prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
         }
 
-        const { data: sumData } = await sumQ;
-        const totalQty = sumData?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0;
+        const [invRes, prodRes] = await Promise.all([
+            invQ.limit(params.limit || 50),
+            prodQ.limit(params.limit || 50)
+        ]);
+
+        const combinedData = [
+            ...(invRes.data || []).map(i => ({ ...i, source: 'inventory', vendor_id: i.item_id?.substring(0, 2) })),
+            ...(prodRes.data || []).map(i => ({ ...i, source: 'production', vendor_id: i.item_id?.substring(0, 2) }))
+        ];
+
+        // Fetch sum separately (Inventory only for now as per business rules, or both?)
+        // User asked to fetch production info too, so we sum both.
+        let invSumQ = supabase.from('inventory').select('quantity');
+        if (params.status) invSumQ = invSumQ.eq('status', params.status);
+        if (orFilterString) invSumQ = invSumQ.or(orFilterString);
+        if (params.vendor) invSumQ = invSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
+
+        let prodSumQ = supabase.from('production').select('quantity');
+        if (params.status) prodSumQ = prodSumQ.eq('status', params.status);
+        if (orFilterString) prodSumQ = prodSumQ.or(orFilterString);
+        if (params.vendor) prodSumQ = prodSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
+
+        const [invSum, prodSum] = await Promise.all([invSumQ, prodSumQ]);
+        const totalQty = (invSum.data?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0) +
+                         (prodSum.data?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0);
 
         return {
-            items: (data || []).map(i => ({ 
-                ...i, 
-                vendor_id: i.item_id?.substring(0, 2) // Virtual column
-            })),
-            total_records: count || 0,
+            items: combinedData,
+            total_records: (invRes.count || 0) + (prodRes.count || 0),
             total_quantity: totalQty
         };
     },
 
-    /**
-     * Specialized summary query that ignores the 50-item limit for counting.
-     */
     getAggregatedSummary: async (group_by: string, vendor?: string, query?: string) => {
         try {
-            console.log(`[OnyxQuery] Aggregating ${group_by} (virtual) for vendor: ${vendor}, query: ${query}`);
-            
-            // Map virtual group_by if needed
             const dbField = group_by === 'vendor_id' ? 'item_id' : group_by;
-            let q = supabase.from('inventory').select(`quantity, ${dbField}, status`);
+            const columns = `quantity, ${dbField}, status`;
             
-            // No automatic status filtering to ensure maximum visibility of all assets
+            let invQ = supabase.from('inventory').select(columns);
+            let prodQ = supabase.from('production').select(columns);
 
             if (vendor) {
                 const prefix = `${vendor}%`;
-                q = q.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+                invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+                prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
             }
             
             if (query) {
                 const clean = query.trim();
-                q = q.or(`description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%`);
+                const filter = `description.ilike.%${clean}%,short_description.ilike.%${clean}%,material.ilike.%${clean}%,shape.ilike.%${clean}%,color.ilike.%${clean}%,book_barcode.ilike.%${clean}%,item_id.ilike.%${clean}%`;
+                invQ = invQ.or(filter);
+                prodQ = prodQ.or(filter);
             }
 
-            const { data, error } = await q;
-            if (error) {
-                console.error("[OnyxQuery] Aggregation Error:", error);
-                throw new Error(`Aggregation failed: ${error.message}`);
-            }
-
-            if (!data) return { summary: {}, total_quantity: 0, total_records: 0 };
+            const [invRes, prodRes] = await Promise.all([invQ, prodQ]);
+            const data = [...(invRes.data || []), ...(prodRes.data || [])];
 
             const summary: Record<string, number> = {};
             data.forEach((item: any) => {
                 let key = 'Unknown';
                 if (group_by === 'vendor_id') {
                     const idString = (item.item_id || item.book_barcode || '').toString().toUpperCase().trim();
-                    // Find the best matching vendor key
                     const match = VENDOR_KEYS.find(k => idString.startsWith(k.toUpperCase()));
                     key = match || idString.substring(0, 2) || 'Unknown';
                 } else {
@@ -146,18 +136,17 @@ export const onyxQueries = {
                 total_records: data.length
             };
         } catch (err: any) {
-            console.error("[OnyxQuery] Catch Error:", err);
             throw err;
         }
     },
 
-    /**
-     * Get unique values for knowledge grounding.
-     * Expanded to include color + material context.
-     */
     getDatabaseContext: async () => {
-        const { data, error } = await supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color');
-        if (error) throw new Error(error.message);
+        const [invRes, prodRes] = await Promise.all([
+            supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color'),
+            supabase.from('production').select('shape, material, item_id, book_barcode, status, color')
+        ]);
+        
+        const data = [...(invRes.data || []), ...(prodRes.data || [])];
 
         return {
             vendors: Array.from(new Set(data.map(i => {
@@ -173,21 +162,20 @@ export const onyxQueries = {
         };
     },
 
-    /**
-     * Get item details by any identifier.
-     */
     getItemByAnyId: async (id: string) => {
-        const { data, error } = await supabase
-            .from('inventory')
-            .select('*')
-            .or(`id.eq.${id},item_id.eq.${id},book_barcode.eq.${id}`)
-            .maybeSingle();
+        const [invRes, prodRes] = await Promise.all([
+            supabase.from('inventory').select('*').or(`id.eq.${id},item_id.eq.${id},book_barcode.eq.${id}`).maybeSingle(),
+            supabase.from('production').select('*').or(`id.eq.${id},item_id.eq.${id},book_barcode.eq.${id}`).maybeSingle()
+        ]);
         
-        if (error) throw new Error(error.message);
-        
+        const data = invRes.data || prodRes.data;
         if (data) {
-            return { ...data, vendor_id: data.item_id?.substring(0, 2) };
+            return { 
+                ...data, 
+                source: invRes.data ? 'inventory' : 'production',
+                vendor_id: data.item_id?.substring(0, 2) 
+            };
         }
-        return data;
+        return null;
     }
 };
