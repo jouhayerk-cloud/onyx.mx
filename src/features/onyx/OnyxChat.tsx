@@ -74,6 +74,18 @@ export function useOnyx(props: {
         window.speechSynthesis.speak(utt);
     };
 
+    const discoverModels = async () => {
+        const key = getApiKey();
+        if (!key || key.length < 10) return;
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+            if (res.ok) {
+                const data = await res.json();
+                setAvailableModels(data.models?.map((m: any) => m.name.replace('models/', '')) || []);
+            }
+        } catch (e) {}
+    };
+
     const checkForVendor = (text: string) => {
         if (!onVendorDetect) return;
         const lower = text.toLowerCase();
@@ -321,17 +333,6 @@ export function useOnyx(props: {
     }, [requestSend]);
 
     useEffect(() => {
-        const discoverModels = async () => {
-            const key = getApiKey();
-            if (!key || key.length < 10) return;
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setAvailableModels(data.models?.map((m: any) => m.name.replace('models/', '')) || []);
-                }
-            } catch (e) {}
-        };
         discoverModels();
 
         // Ensure voices are loaded for mobile
