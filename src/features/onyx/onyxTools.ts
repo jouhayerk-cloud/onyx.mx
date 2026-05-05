@@ -13,8 +13,7 @@ export const onyxToolDefinitions = [
                 status: { type: "string", description: "Specific status to filter by" },
                 shape: { type: "string", description: "Filter by shape (e.g. Squared, Heart)" },
                 color: { type: "string", description: "Filter by color (e.g. Tehuacan, Black, Blanco)" },
-                material: { type: "string", description: "Filter by material (e.g. Onyx, Marble, Amethyst)" },
-                type: { type: "string", description: "Filter by item type" }
+                material: { type: "string", description: "Filter by material (e.g. Onyx, Marble, Amethyst)" }
             }
         }
     },

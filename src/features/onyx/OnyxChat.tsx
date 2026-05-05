@@ -127,7 +127,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             let contents = messages.filter(m => m.content?.trim()).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
             contents.push({ role: 'user', parts: [{ text: finalInput }] });
             
-            const modelsToTry = [...availableModels.filter(m => m.includes('flash')), "gemini-1.5-flash", "gemini-1.5-flash-latest"];
+            const modelsToTry = [...availableModels.filter(m => m.includes('flash') && !m.includes('tts')), "gemini-1.5-flash", "gemini-1.5-flash-latest"];
             const uniqueModels = Array.from(new Set(modelsToTry));
             
             let resp = null;

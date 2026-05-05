@@ -21,7 +21,6 @@ export const onyxQueries = {
         shape?: string,
         color?: string,
         material?: string,
-        type?: string,
         limit?: number 
     }) => {
         const columns = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
@@ -58,7 +57,6 @@ export const onyxQueries = {
         if (params.shape) orFilters.push(`shape.ilike.%${params.shape}%`);
         if (params.color) orFilters.push(`color.ilike.%${params.color}%`);
         if (params.material) orFilters.push(`material.ilike.%${params.material}%`);
-        if (params.type) orFilters.push(`type.ilike.%${params.type}%`);
         
         const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
 
@@ -175,8 +173,8 @@ export const onyxQueries = {
 
     getDatabaseContext: async () => {
         const [invRes, prodRes] = await Promise.all([
-            supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color, type'),
-            supabase.from('production').select('shape, material, item_id, book_barcode, status, color, type')
+            supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color'),
+            supabase.from('production').select('shape, material, item_id, book_barcode, status, color')
         ]);
         
         const data = [...(invRes.data || []), ...(prodRes.data || [])];
