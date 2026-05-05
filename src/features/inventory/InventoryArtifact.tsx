@@ -18,7 +18,14 @@ import {
     getStatusClass 
 } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
-import { X, Package, LayoutList, LayoutGrid, Layout, Share2, DollarSign, Tag, Info, Maximize2, Video, ExternalLink, Minimize2, Eye, TrendingUp, Shield } from 'lucide-react';
+import { X, Package, LayoutList, LayoutGrid, Layout, Share2, DollarSign, Tag, Info, Maximize2, Video, ExternalLink, Minimize2, Eye, TrendingUp, Shield, User } from 'lucide-react';
+
+const VENDOR_COLORS: Record<string, string> = {
+    'emmanuel': '#00AEEF', 'gerardo': '#F7941D', 'jose': '#6BCEBB', 'carlos': '#85C1E9',
+    'angel': '#FFED00', 'susana': '#B19CD9', 'tellez': '#FFCB05', 'delfino': '#8DC63F',
+    'maria': '#F9A17A', 'fountain': '#F36F21', 'eduardo': '#636466', 'alejandro': '#800020',
+    'bernardo': '#603913', 'roberto': '#00A591', 'gift': '#D11C7E', 'cantera': '#A01E5D'
+};
 
 interface InventoryArtifactProps {
     ids: (string | number)[];
@@ -226,8 +233,17 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         </div>
                                         <div className="flex flex-col border-l border-white/5 pl-6">
                                             <span className="text-[6px] font-black text-white/40 uppercase">Tag</span>
-                                            <span className="text-xs font-black text-white">{calculated.bookBarcode}</span>
+                                            <span className="text-xs font-black text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]">{calculated.bookBarcode}</span>
                                         </div>
+                                        {norm.vendor && (
+                                            <div className="flex flex-col border-l border-white/5 pl-6">
+                                                <span className="text-[6px] font-black text-white/40 uppercase">Vendor</span>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: VENDOR_COLORS[String(norm.vendor).toLowerCase()] || '#fff' }} />
+                                                    <span className="text-xs font-black uppercase tracking-widest" style={{ color: VENDOR_COLORS[String(norm.vendor).toLowerCase()] || '#fff' }}>{norm.vendor}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="flex flex-col border-l border-white/5 pl-6">
                                             <span className="text-[6px] font-black text-white/40 uppercase">Dims</span>
                                             <span className="text-xs font-black text-white">{norm.width_cm || '—'}</span>
