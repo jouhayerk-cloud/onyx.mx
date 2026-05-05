@@ -15,41 +15,55 @@ export const ONYX_CONTEXT = {
             },
             key_columns: {
                 status: "Current state: 'Warehouse' (In Stock), 'Inventory' (Historical Stock), 'Available' (Listed for sale), 'Sold' (Not in stock).",
-                shape: "The physical form (e.g. Squared, Heart, Moon, Bowl, Plate, Cylinder, Sphere).",
-                material: "The composition (e.g. Onyx, Amethyst, Marble, Obsidian, Selenite).",
-                color: "The primary color (e.g. White, Green, Brown, Honey, Multi-Color)."
+                shape: "The physical form (e.g. Squared, Heart, Moon).",
+                material: "The composition (e.g. Onyx, Amethyst, Marble).",
+                vendor_id: "The 2-letter source code (e.g. EM, GE, JM)."
             },
             rules: [
                 "Always prioritize book_barcode when referring to an item's unique identity.",
                 "Warehouse and Inventory statuses are the primary sources of truth for physical stock.",
-                "Bowl results might be listed under 'shape' or 'description'.",
+                "Available status usually means the item is listed elsewhere and may not be in the physical warehouse.",
                 "To search for a vendor, use a prefix match on 'item_id' (e.g. item_id ilike EM%)."
             ]
         },
-        production: {
-            description: "Items currently in the manufacturing process.",
+        finance: {
+            description: "Financial records of payments to vendors, shippers, and general expenses.",
             key_columns: {
-                status: "'Production', 'Polishing', 'Cutting', 'Ready'."
-            }
+                status: "'Paid' (Green), 'Requested' (Yellow), 'Partial' (Red).",
+                category: "e.g. 'Vendor Payment', 'Logistics', 'Packing'.",
+                destination: "Payment platform used (e.g. 'BBVA', 'HSBC', 'CASH').",
+                related_ids: "A comma-separated list of inventory item IDs related to this payment."
+            },
+            rules: [
+                "To see what an expense paid for, check 'related_ids'.",
+                "A 'Requested' status means the payment has been generated but not yet confirmed as paid.",
+                "Vendor payments are often grouped by the 2-letter vendor ID in the description."
+            ]
         },
-        expenses: {
-            description: "Financial records of payments to vendors and shippers.",
+        logistics: {
+            description: "Records of crates, pallets, and boxes used for packing.",
             key_columns: {
-                status: "'Paid', 'Partial', 'Requested'.",
-                subcategory: "'prod' (Production), 'packing' (Logistics), 'acq' (Acquisition)."
-            }
-        }
-    },
-    // MASTER SCHEMA ENUMERATIONS (For AI Grounding)
-    manifest: {
-        shapes: ["Bowl", "Plate", "Squared", "Heart", "Moon", "Cylinder", "Sphere", "Pyramid", "Egg", "Cross", "Animal", "Lamp", "Sink", "Table"],
-        materials: ["Onyx", "Marble", "Travertine", "Obsidian", "Selenite", "Amethyst", "Fluorite", "Sodalite", "Rose Quartz", "Clear Quartz"],
-        colors: ["White", "Green", "Honey", "Brown", "Black", "Gray", "Pink", "Purple", "Blue", "Orange", "Multi-Color"],
-        common_terms: {
-            "Bowl": ["Cuenco", "Plato hondo", "Sopera"],
-            "Sink": ["Lavabo", "Ovalo", "Tarja"],
-            "Lamp": ["Lampara", "Iluminacion"],
-            "Table": ["Mesa", "Cubierta", "Pedestal"]
+                status: "'Empty', 'Partial', 'Packed', 'In Transit'.",
+                type: "'crate', 'pallet', 'cardboard'.",
+                inventory_ids: "A comma-separated list of 'item_id:quantity' pairs inside this container.",
+                parent_id: "If set, this container is nested inside another container (the parent ID)."
+            },
+            rules: [
+                "Use 'inventory_ids' to see exactly which products are inside a crate.",
+                "If a crate is 'In Transit', it means it has been dispatched on a truck."
+            ]
+        },
+        shipments: {
+            description: "Finalized manifests and truck load records.",
+            key_columns: {
+                manifest_id: "Unique identifier for the truck load.",
+                status: "'Dispatched', 'Draft', 'Delivered'.",
+                metadata: "JSON object containing 'sealNumber', 'tractorNumber', 'trailerNumber', and 'truckPlates'."
+            },
+            rules: [
+                "Manifests link multiple crates together into a single truck dispatch.",
+                "Use 'manifest_id' to retrieve the full digital twin of a truck load."
+            ]
         }
     },
     vendor_mapping: {
@@ -76,22 +90,15 @@ export const getOnyxSystemGrounding = () => {
     const vendors = Object.entries(ONYX_CONTEXT.vendor_mapping)
         .map(([id, info]) => `${info.name} (${info.firstName}) = ID: ${id}`)
         .join(', ');
-    
-    const shapes = ONYX_CONTEXT.manifest.shapes.join(', ');
-    const materials = ONYX_CONTEXT.manifest.materials.join(', ');
 
     return `
-    OPERATIONAL INTELLIGENCE PROTOCOL:
-    1. AUTOMATIC LANGUAGE DETECTION: Detect if the user is speaking English or Spanish. Always respond in the language the user is using.
-    2. BILINGUAL DATABASE BRIDGE: The database is stored in ENGLISH. If a user asks for an item in Spanish (e.g., "Busca cuencos", "Lamparas de onix"), you MUST translate the search terms into English for the 'search_inventory' tool (e.g., query: "Bowl", "Lamp").
-    3. SEARCH SYNONYMS: Use the 'manifest' common_terms to map Spanish intent to English schema.
-    4. CORE CONTEXT:
-       - Tag IDs: Always use 'book_barcode'.
-       - Physical Stock: Statuses 'Warehouse' and 'Inventory'.
-       - Valid Shapes: ${shapes}.
-       - Valid Materials: ${materials}.
-       - Financials: 'expenses' table tracks vendor payments. 
-       - VENDOR NAMES: ${vendors}. If a user mentions a name like 'Emmanuel', they mean vendor 'EM'.
-    5. TONE: Professional, efficient, industrial-grade. Respond as a high-fidelity warehouse command engine.
+    WAREHOUSE CONTEXT:
+    - Tag IDs: Always use 'book_barcode'.
+    - Physical Stock: Statuses 'Warehouse' and 'Inventory'.
+    - Logistics: 'logistics' table for crates (packed items) and 'shipments' for truck manifests.
+    - Financials: 'finance' table tracks all payments (Status: Requested/Paid). 
+    - Relations: 'logistics.inventory_ids' links items to crates. 'finance.related_ids' links items to payments.
+    - UI Colors: RED=Partial, YELLOW=Requested, GREEN=Paid, BLUE=New.
+    - VENDOR NAMES: ${vendors}. If a user mentions a name like 'Emmanuel', they mean vendor 'EM'.
     `;
 };
