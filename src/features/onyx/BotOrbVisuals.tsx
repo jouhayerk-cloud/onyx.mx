@@ -138,9 +138,11 @@ export class Analyser {
 interface BotOrbVisualsProps {
     inputNode: AudioNode | null;
     outputNode: AudioNode | null;
+    volumeOverride?: number;
+    isProcessing?: boolean;
 }
 
-export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputNode }) => {
+export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputNode, volumeOverride = 0, isProcessing = false }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>(null);
@@ -149,10 +151,10 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
         if (!canvasRef.current || !containerRef.current) return;
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a0a);
+        scene.background = new THREE.Color(0x050505);
 
         const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-        camera.position.set(0, 0, 4);
+        camera.position.set(2, -2, 5);
 
         const renderer = new THREE.WebGLRenderer({
             canvas: canvasRef.current,
@@ -179,11 +181,11 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
         scene.add(backdrop);
 
         const sphereMaterial = new THREE.MeshStandardMaterial({
-            color: 0x000020,
-            metalness: 0.8,
-            roughness: 0.2,
-            emissive: 0x000030,
-            emissiveIntensity: 2.0,
+            color: 0x000000,
+            metalness: 0.9,
+            roughness: 0.05,
+            emissive: 0x000020,
+            emissiveIntensity: 3.0,
         });
 
         sphereMaterial.onBeforeCompile = (shader) => {
@@ -194,11 +196,11 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
             shader.vertexShader = sphereVS;
         };
 
-        const sphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 12), sphereMaterial);
+        const sphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 24), sphereMaterial);
         scene.add(sphere);
 
         const renderPass = new RenderPass(scene, camera);
-        const bloomPass = new UnrealBloomPass(new THREE.Vector2(512, 512), 2.5, 0.4, 0.1);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(512, 512), 5.0, 0.5, 0.0);
         const composer = new EffectComposer(renderer);
         composer.addPass(renderPass);
         composer.addPass(bloomPass);
@@ -222,13 +224,15 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
                 const inData = inputAnalyser ? inputAnalyser.data : [0, 0, 0];
                 const outData = outputAnalyser ? outputAnalyser.data : [0, 0, 0];
 
-                const outVol = outData[0] / 255;
-                const inVol = inData[0] / 255;
+                // Use volumeOverride if no nodes are provided (Stable Mode)
+                const outVol = outputNode ? outData[0] / 255 : volumeOverride;
+                const inVol = inputNode ? inData[0] / 255 : (isProcessing ? 0.05 : 0);
 
-                sphere.scale.setScalar(1 + 0.3 * outVol + 0.1 * inVol);
+                const scale = 1 + (isProcessing ? 0.2 : 0) + 0.3 * outVol + 0.1 * inVol;
+                sphere.scale.setScalar(scale);
                 
                 rotation.x += dt * 0.01 * (outVol + 0.1);
-                rotation.y += dt * 0.015 * (inVol + 0.1);
+                rotation.y += dt * 0.015 * (inVol + (isProcessing ? 0.2 : 0.05));
                 
                 sphere.rotation.set(rotation.x, rotation.y, rotation.z);
 
@@ -245,6 +249,13 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
                     (10 * outData[2]) / 255,
                     0
                 );
+
+                // Pulse emissive intensity during processing
+                if (isProcessing) {
+                    sphereMaterial.emissiveIntensity = 3.0 + Math.sin(t * 0.005) * 1.5;
+                } else {
+                    sphereMaterial.emissiveIntensity = 2.0 + outVol * 3.0;
+                }
             }
 
             composer.render();
