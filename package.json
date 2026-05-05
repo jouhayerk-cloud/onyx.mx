@@ -10,7 +10,7 @@
     "deploy": "npm run build && npx gh-pages -d dist"
   },
   "dependencies": {
-    "@google/genai": "^1.47.0",
+    "@google/genai": "^1.52.0",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.97.0",
     "@tailwindcss/vite": "^4.2.1",
@@ -38,6 +38,7 @@
     "react-canvas-masker": "^1.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.6.0",
+    "react-markdown": "^10.1.0",
     "react-resize-detector": "^12.3.0",
     "rxdb": "^17.1.0",
     "rxjs": "^7.8.2",
