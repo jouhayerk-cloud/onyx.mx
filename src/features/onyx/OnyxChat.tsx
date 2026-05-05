@@ -401,7 +401,7 @@ export function OnyxChatControls(props: {
                     e.stopPropagation();
                     setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
                 }}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-[8px] font-black text-white/40 hover:text-white transition-all shrink-0"
+                className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-[10px] md:text-[8px] font-black text-white/40 hover:text-white transition-all shrink-0"
             >
                 {appLanguage.toUpperCase()}
             </button>
@@ -422,7 +422,7 @@ export function OnyxChatControls(props: {
                         }
                     }}
                     placeholder={appLanguage === 'es' ? "Neural Query..." : "Neural Query..."}
-                    className="w-full bg-transparent p-2 px-3 text-[12px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase"
+                    className="w-full bg-transparent p-3 md:p-2 px-4 md:px-3 text-[14px] md:text-[12px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase"
                 />
             </form>
 
@@ -435,10 +435,10 @@ export function OnyxChatControls(props: {
                         e.stopPropagation();
                         resetNeuralKey?.();
                     }}
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-white/10 hover:text-white/40 transition-all shrink-0"
+                    className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-white/10 hover:text-white/40 transition-all shrink-0"
                     title="Reset Neural Key"
                 >
-                    <RefreshCw size={12} strokeWidth={2} />
+                    <RefreshCw size={14} className="md:w-3 md:h-3" strokeWidth={2} />
                 </button>
 
                 {/* Artifact Toggle Button */}
@@ -449,22 +449,19 @@ export function OnyxChatControls(props: {
                             e.stopPropagation();
                             setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
                         }}
-                        className={`flex items-center justify-center w-8 h-8 rounded-full border border-white/5 transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'bg-(--main-color)/10' : 'bg-white/5'}`}
+                        className={`flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-full border border-white/5 transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'bg-(--main-color)/10' : 'bg-white/5'}`}
                         title="Toggle Manifest"
                     >
-                        <Package size={12} strokeWidth={2} className={`${inventoryConfig.isOpen ? 'text-(--main-color)' : 'text-white/40'} group-hover/art:text-white transition-colors`} />
+                        <Package size={14} className="md:w-3 md:h-3" strokeWidth={2} className={`${inventoryConfig.isOpen ? 'text-(--main-color)' : 'text-white/40'} group-hover/art:text-white transition-colors`} />
                     </button>
                 )}
 
                 {/* Minimal Send Button */}
                 <button 
                     type="submit"
-                    onClick={(e) => {
-                        // Let form handle submit
-                    }}
-                    className={`flex items-center justify-center w-8 h-8 rounded-full border border-white/5 bg-white/5 transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
+                    className={`flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-full border border-white/5 bg-white/5 transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
                 >
-                    <Send size={12} strokeWidth={2} className="text-white/40 group-hover/send:text-white transition-colors" />
+                    <Send size={14} className="md:w-3 md:h-3" strokeWidth={2} className="text-white/40 group-hover/send:text-white transition-colors" />
                 </button>
 
                 {/* Minimal Talk Button */}
@@ -486,13 +483,13 @@ export function OnyxChatControls(props: {
                             setIsListening(true); 
                         }}
                         onTouchEnd={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        className={`relative flex items-center justify-center w-10 h-10 rounded-full border border-white/5 bg-white/5 transition-all duration-300 group/mic ${isListening ? 'scale-110 border-red-500/20 bg-red-500/10' : 'hover:scale-105'}`}
+                        className={`relative flex items-center justify-center w-12 h-12 md:w-10 md:h-10 rounded-full border border-white/5 bg-white/5 transition-all duration-300 group/mic ${isListening ? 'scale-110 border-red-500/20 bg-red-500/10' : 'hover:scale-105'}`}
                         style={{ touchAction: 'none' }}
                     >
                         <div className={`transition-all duration-700 relative z-10 ${
                             isListening ? 'text-red-500' : 'text-white/20 group-hover/mic:text-white'
                         }`}>
-                            {isListening ? <MicOff size={16} strokeWidth={2} /> : <Mic size={16} strokeWidth={2} />}
+                            {isListening ? <MicOff size={20} className="md:w-4 md:h-4" strokeWidth={2} /> : <Mic size={20} className="md:w-4 md:h-4" strokeWidth={2} />}
                         </div>
                         {isListening && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
