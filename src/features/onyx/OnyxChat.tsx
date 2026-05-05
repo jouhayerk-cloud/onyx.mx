@@ -72,56 +72,69 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
     useEffect(() => {
         if (SpeechRecognition) {
             recognitionRef.current = new SpeechRecognition();
-            recognitionRef.current.continuous = false;
+            recognitionRef.current.continuous = true; // Changed to true for better hold-to-talk stability
             recognitionRef.current.interimResults = true;
             recognitionRef.current.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
             
             recognitionRef.current.onresult = (event: any) => {
+                let finalTranscript = '';
                 let interimTranscript = '';
-                const results = Array.from(event.results);
+
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (!event.results[i].isFinal) interimTranscript += event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
                 }
-                const fullTranscript = results.map((r: any) => r[0].transcript).join('');
+
+                if (finalTranscript) {
+                    setInput(finalTranscript);
+                    checkForVendor(finalTranscript);
+                }
                 
-                // Update input state
-                setInput(fullTranscript);
-                checkForVendor(fullTranscript);
-                if (onTranscriptChange) onTranscriptChange(interimTranscript || fullTranscript);
+                if (onTranscriptChange) onTranscriptChange(interimTranscript || finalTranscript);
             };
 
             recognitionRef.current.onend = () => {
-                setIsListening(false);
                 // Auto-send if we have a transcript and just finished listening
-                if (inputRef.current.trim()) {
+                if (inputRef.current.trim() && !isListeningRef.current) {
                     sendMessage(inputRef.current);
+                    setInput('');
+                    if (onTranscriptChange) onTranscriptChange('');
+                }
+                
+                // Restart if still supposed to be listening (held down)
+                if (isListeningRef.current) {
+                    try { recognitionRef.current.start(); } catch (e) {}
                 }
             };
 
             recognitionRef.current.onerror = (e: any) => {
                 console.error("Speech Error:", e.error);
-                setIsListening(false);
+                if (e.error !== 'no-speech') setIsListening(false);
             };
         }
     }, [appLanguage]);
 
-    // Track input in a ref to use inside onend without re-running effect
+    // Track input and listening state in refs
     const inputRef = useRef('');
+    const isListeningRef = useRef(false);
     useEffect(() => { inputRef.current = input; }, [input]);
+    useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
 
     // External Trigger Sync (Orb click etc)
     useEffect(() => {
         if (!recognitionRef.current) return;
         if (isListening) {
+            setInput(''); // Clear on start
             try { 
                 recognitionRef.current.start(); 
-            } catch (e) {
-                // If already started, ignore
-            }
+            } catch (e) {}
         } else {
             try { 
-                // abort() is more aggressive than stop() and helps on mobile
-                recognitionRef.current.abort(); 
+                // stop() instead of abort() allows onresult to finish
+                recognitionRef.current.stop(); 
             } catch (e) {}
         }
     }, [isListening]);
@@ -307,6 +320,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         {/* Language Selector (Transparent) */}
                         <button 
                             onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             className="w-10 h-10 flex items-center justify-center rounded-full bg-transparent border border-white/5 text-[9px] font-black text-white/20 hover:text-white hover:border-white/10 transition-all backdrop-blur-3xl"
                         >
                             {appLanguage.toUpperCase()}
@@ -315,6 +330,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         {/* Transparent Input Form */}
                         <form 
                             onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             className="relative min-w-[160px] md:min-w-[240px]"
                         >
                             <input 
@@ -326,6 +343,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             />
                             <button 
                                 type="submit"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onTouchStart={(e) => e.stopPropagation()}
                                 className={`absolute right-0 top-1/2 -translate-y-1/2 text-white/10 hover:text-white transition-all ${input.trim() ? 'opacity-100' : 'opacity-0'}`}
                             >
                                 <Send size={12} />
@@ -345,15 +364,17 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         )}
 
                         <button 
-                            onMouseDown={() => setIsListening(true)}
-                            onMouseUp={() => setIsListening(false)}
-                            onMouseLeave={() => setIsListening(false)}
+                            onMouseDown={(e) => { e.stopPropagation(); setIsListening(true); }}
+                            onMouseUp={(e) => { e.stopPropagation(); setIsListening(false); }}
+                            onMouseLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
                             onTouchStart={(e) => {
                                 e.preventDefault();
+                                e.stopPropagation();
                                 setIsListening(true);
                             }}
                             onTouchEnd={(e) => {
                                 e.preventDefault();
+                                e.stopPropagation();
                                 setIsListening(false);
                             }}
                             className={`relative flex items-center justify-center transition-all duration-1000 group ${isListening ? 'scale-110' : 'hover:scale-105'}`}
