@@ -50,10 +50,10 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     const activeSrc = mediaUrls.length > 0 ? mediaUrls[currentIdx] : src;
     const isVideo = isVideoFile(activeSrc);
     return createPortal(
-        <div className="fixed inset-0 z-100000 bg-black/98 backdrop-blur-3xl flex items-center justify-center animate-in fade-in duration-300" onClick={onClose}>
-            <button onClick={onClose} className="absolute top-8 right-8 z-10 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all"><X size={24} /></button>
+        <div className="fixed inset-0 z-100000 bg-black/95 backdrop-blur-3xl flex items-center justify-center animate-in fade-in duration-300" onClick={onClose}>
+            <button onClick={onClose} className="absolute top-8 right-8 z-10 w-12 h-12 rounded-full border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all"><X size={24} /></button>
             {isVideo ? (
-                <video src={getCleanImageUrl(activeSrc)} controls autoPlay className="max-w-[90vw] max-h-[90vh] shadow-2xl rounded-2xl" onClick={(e) => e.stopPropagation()} />
+                <video src={getCleanImageUrl(activeSrc)} controls autoPlay className="max-w-[90vw] max-h-[90vh] rounded-2xl" onClick={(e) => e.stopPropagation()} />
             ) : (
                 <img key={currentIdx} src={getCleanImageUrl(activeSrc)} alt="" className="max-w-[90vw] max-h-[90vh] object-contain animate-in fade-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()} />
             )}
@@ -158,41 +158,39 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     const getStatusLabel = (s: string) => s === 'GREEN' ? 'Paid' : s === 'YELLOW' ? 'Requested' : s === 'RED' ? 'Partial' : s === 'BLUE' ? 'New' : 'New';
 
     const containerClasses = viewMode === 'sidebar' 
-        ? "fixed top-0 right-0 h-full w-full sm:w-[500px] z-[9999] animate-in slide-in-from-right duration-700 flex flex-col bg-transparent backdrop-blur-[80px]"
+        ? "fixed top-0 right-0 h-full w-full sm:w-[500px] z-[9999] animate-in slide-in-from-right duration-700 flex flex-col bg-transparent backdrop-blur-[60px]"
         : "fixed inset-0 z-[9999] flex items-center justify-center p-0 animate-in fade-in duration-300 bg-transparent";
 
     const artifactContent = (
         <div className="relative w-full h-full flex flex-col overflow-hidden pointer-events-none">
-            {/* FREE FLOATING TOP TITLE & ELEMENTS */}
-            <div className={`absolute top-12 left-12 right-12 z-50 flex items-center justify-between pointer-events-auto transition-all duration-700 ${isSidebar ? 'px-4 top-8' : ''}`}>
+            {/* FRAMELESS FREE FLOATING TOP ELEMENTS */}
+            <div className={`absolute top-12 left-12 right-12 z-50 flex items-center justify-between pointer-events-auto transition-all duration-1000 ${isSidebar ? 'px-4 top-8' : ''}`}>
                 <div className="flex items-center gap-6">
-                    <div className="w-10 h-10 rounded-full bg-white/5 border border-white/5 backdrop-blur-xl flex items-center justify-center">
-                        <Package size={18} className="text-white/20" />
-                    </div>
+                    <Package size={24} className="text-white/20" />
                     <div className="flex flex-col">
-                        <h2 className="text-xl font-black text-white uppercase tracking-tight">{propTitle || "Manifest"}</h2>
-                        <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">{allResolvedItems.length} Assets Linked</span>
+                        <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">{propTitle || "Manifest"}</h2>
+                        <span className="text-[8px] font-black uppercase tracking-[0.6em] text-white/10">{allResolvedItems.length} Linked Assets</span>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-white/5 backdrop-blur-xl rounded-full p-1 border border-white/5">
-                        <button onClick={() => setDisplayMode('list')} className={`p-2 rounded-full transition-all ${displayMode === 'list' ? 'bg-white/10 text-white' : 'text-white/20'}`}><LayoutList size={14} /></button>
-                        <button onClick={() => setDisplayMode('grid')} className={`p-2 rounded-full transition-all ${displayMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/20'}`}><LayoutGrid size={14} /></button>
-                        <button onClick={() => setDisplayMode('gallery')} className={`p-2 rounded-full transition-all ${displayMode === 'gallery' ? 'bg-white/10 text-white' : 'text-white/20'}`}><Layout size={14} /></button>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setDisplayMode('list')} className={`p-2 transition-all ${displayMode === 'list' ? 'text-white' : 'text-white/10 hover:text-white/40'}`}><LayoutList size={16} /></button>
+                        <button onClick={() => setDisplayMode('grid')} className={`p-2 transition-all ${displayMode === 'grid' ? 'text-white' : 'text-white/10 hover:text-white/40'}`}><LayoutGrid size={16} /></button>
+                        <button onClick={() => setDisplayMode('gallery')} className={`p-2 transition-all ${displayMode === 'gallery' ? 'text-white' : 'text-white/10 hover:text-white/40'}`}><Layout size={16} /></button>
                     </div>
                     {isSidebar ? (
-                        <button onClick={() => setConfig(prev => ({ ...prev, viewMode: 'modal' }))} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 backdrop-blur-xl flex items-center justify-center text-white/40"><Maximize2 size={16} /></button>
+                        <button onClick={() => setConfig(prev => ({ ...prev, viewMode: 'modal' }))} className="p-2 text-white/10 hover:text-white/40 transition-all"><Maximize2 size={18} /></button>
                     ) : (
-                        <button onClick={() => setConfig(prev => ({ ...prev, viewMode: 'sidebar' }))} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 backdrop-blur-xl flex items-center justify-center text-white/40"><Minimize2 size={16} /></button>
+                        <button onClick={() => setConfig(prev => ({ ...prev, viewMode: 'sidebar' }))} className="p-2 text-white/10 hover:text-white/40 transition-all"><Minimize2 size={18} /></button>
                     )}
-                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 backdrop-blur-xl flex items-center justify-center text-white/40 hover:text-white transition-all"><X size={18} /></button>
+                    <button onClick={onClose} className="p-2 text-white/20 hover:text-white transition-all"><X size={20} /></button>
                 </div>
             </div>
 
-            {/* MAIN CONTENT - BORDERLESS GRID */}
-            <div className={`flex-1 overflow-y-auto no-scrollbar pointer-events-auto transition-all duration-700 ${isSidebar ? 'pt-32 px-8' : 'pt-40 px-12 md:px-24'}`}>
-                <div className={`grid gap-6 md:gap-10 ${isSidebar ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+            {/* MAIN CONTENT - TRUE BORDERLESS GRID */}
+            <div className={`flex-1 overflow-y-auto no-scrollbar pointer-events-auto transition-all duration-700 ${isSidebar ? 'pt-32 px-8' : 'pt-40 px-12 md:px-32'}`}>
+                <div className={`grid gap-10 md:gap-16 ${isSidebar ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
                     {allResolvedItems.map((item: any) => {
                         const norm = normalizeInventoryData(item.data);
                         const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
@@ -203,36 +201,36 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
 
                         return (
                             <div key={item.row} onClick={() => handleItemAction(item, displayUrlsArr, 0)}
-                                className="group relative flex flex-col rounded-[32px] overflow-hidden bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-700 cursor-pointer min-h-[360px]">
-                                <div className="aspect-[4/3] relative flex items-center justify-center bg-black/40 overflow-hidden">
+                                className="group relative flex flex-col transition-all duration-1000 cursor-pointer min-h-[340px]">
+                                <div className="aspect-[4/3] relative flex items-center justify-center bg-black/5 overflow-hidden rounded-[32px] transition-all duration-700 group-hover:bg-black/20">
                                     {mainImageUrl ? (
-                                        <img src={getCleanImageUrl(mainImageUrl)} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-1000 opacity-80 group-hover:opacity-100" />
+                                        <img src={getCleanImageUrl(mainImageUrl)} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-1000 opacity-60 group-hover:opacity-100" />
                                     ) : (
-                                        <Package size={40} className="text-white/5" />
+                                        <Package size={32} className="text-white/[0.03]" />
                                     )}
-                                    <div className="absolute top-5 right-6 text-lg font-black text-white/80">${Math.ceil(norm.price || 0).toLocaleString()}</div>
-                                    <div className="absolute top-5 left-6 px-2 py-1 rounded-full backdrop-blur-xl bg-black/40 border border-white/5 flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }} />
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{getStatusLabel(payStatus || '')}</span>
+                                    <div className="absolute top-6 right-8 text-lg font-black text-white/60 group-hover:text-white transition-colors tabular-nums">${Math.ceil(norm.price || 0).toLocaleString()}</div>
+                                    <div className="absolute top-6 left-8 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
+                                        <span className="text-[7px] font-black uppercase tracking-widest text-white/20 group-hover:text-white/40">{getStatusLabel(payStatus || '')}</span>
                                     </div>
                                 </div>
-                                <div className="p-6 flex flex-col gap-4">
+                                <div className="p-6 flex flex-col gap-5">
                                     <div className="flex flex-col">
-                                        <h3 className="text-lg font-black text-white uppercase tracking-tighter truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
-                                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/10">{norm.color} · {norm.material}</span>
+                                        <h3 className="text-lg md:text-xl font-black text-white/80 group-hover:text-white uppercase tracking-tighter transition-colors truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
+                                        <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/10 group-hover:text-white/20 transition-colors">{norm.color} · {norm.material}</span>
                                     </div>
-                                    <div className="flex items-center gap-4 pt-4 border-t border-white/5">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-[7px] font-black text-white/10 uppercase">Qty</span>
-                                            <span className="text-xs font-black text-white/60">x{norm.quantity || 1}</span>
+                                    <div className="flex items-center gap-6 opacity-40 group-hover:opacity-80 transition-opacity">
+                                        <div className="flex flex-col">
+                                            <span className="text-[6px] font-black text-white/40 uppercase">Qty</span>
+                                            <span className="text-xs font-black text-white">x{norm.quantity || 1}</span>
                                         </div>
-                                        <div className="flex flex-col gap-0.5 border-l border-white/5 pl-4">
-                                            <span className="text-[7px] font-black text-white/10 uppercase">Tag</span>
-                                            <span className="text-xs font-black text-white/60">{calculated.bookBarcode}</span>
+                                        <div className="flex flex-col border-l border-white/5 pl-6">
+                                            <span className="text-[6px] font-black text-white/40 uppercase">Tag</span>
+                                            <span className="text-xs font-black text-white">{calculated.bookBarcode}</span>
                                         </div>
-                                        <div className="flex flex-col gap-0.5 border-l border-white/5 pl-4">
-                                            <span className="text-[7px] font-black text-white/10 uppercase">Dims</span>
-                                            <span className="text-xs font-black text-white/60">{norm.width_cm || '—'}</span>
+                                        <div className="flex flex-col border-l border-white/5 pl-6">
+                                            <span className="text-[6px] font-black text-white/40 uppercase">Dims</span>
+                                            <span className="text-xs font-black text-white">{norm.width_cm || '—'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -240,43 +238,43 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                         );
                     })}
                 </div>
-                <div className="h-64" /> {/* Spacer for footer */}
+                <div className="h-64" />
             </div>
 
-            {/* SMALL BOTTOM DETAILS PANEL - FREE FLOATING */}
-            <div className={`absolute bottom-12 left-12 right-12 z-50 flex items-center justify-between pointer-events-auto transition-all duration-700 ${isSidebar ? 'flex-col gap-6 items-start bottom-8' : ''}`}>
-                <div className={`flex items-center gap-12 bg-white/[0.02] backdrop-blur-3xl border border-white/5 p-6 rounded-[2rem] shadow-2xl ${isSidebar ? 'w-full grid grid-cols-2 gap-4 p-4' : ''}`}>
+            {/* BORDERLESS FREE FLOATING BOTTOM DETAILS */}
+            <div className={`absolute bottom-12 left-12 right-12 z-50 flex items-center justify-between pointer-events-auto transition-all duration-1000 ${isSidebar ? 'flex-col gap-8 items-start bottom-8 px-4' : ''}`}>
+                <div className={`flex items-center gap-16 md:gap-24 transition-all duration-1000 ${isSidebar ? 'w-full grid grid-cols-2 gap-4' : ''}`}>
                     <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                            <TrendingUp size={10} className="text-white/20" />
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Inventory Value</span>
+                        <div className="flex items-center gap-2 mb-1">
+                            <TrendingUp size={12} className="text-white/10" />
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Inventory Value</span>
                         </div>
-                        <span className="text-xl font-black text-white/90 tabular-nums">${Math.ceil(aggregateFinancials.listValue).toLocaleString()}</span>
+                        <span className="text-2xl md:text-3xl font-black text-white/90 tabular-nums">${Math.ceil(aggregateFinancials.listValue).toLocaleString()}</span>
                     </div>
-                    <div className={`flex flex-col gap-1 ${isSidebar ? '' : 'border-l border-white/5 pl-12'}`}>
-                        <div className="flex items-center gap-2">
-                            <Shield size={10} className="text-emerald-500/40" />
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Paid To Date</span>
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Shield size={12} className="text-emerald-500/20" />
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Paid To Date</span>
                         </div>
-                        <span className="text-xl font-black text-emerald-400 tabular-nums">${Math.ceil(aggregateFinancials.netPaid).toLocaleString()}</span>
+                        <span className="text-2xl md:text-3xl font-black text-emerald-400 tabular-nums">${Math.ceil(aggregateFinancials.netPaid).toLocaleString()}</span>
                     </div>
                     {!isSidebar && (
-                        <div className="flex flex-col gap-1 border-l border-white/5 pl-12">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Grand Sum</span>
-                            <span className="text-xl font-black text-emerald-400/40 tabular-nums">${Math.ceil(aggregateFinancials.total).toLocaleString()}</span>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em] mb-1">Grand Sum</span>
+                            <span className="text-2xl md:text-3xl font-black text-emerald-400/20 tabular-nums">${Math.ceil(aggregateFinancials.total).toLocaleString()}</span>
                         </div>
                     )}
                 </div>
 
-                <button onClick={onClose} className="h-14 px-10 rounded-full border border-white/5 bg-white/5 text-[9px] font-black uppercase tracking-[0.4em] text-white/40 hover:text-white hover:bg-white/10 transition-all backdrop-blur-xl">Dismiss Artifact</button>
+                <button onClick={onClose} className="text-[10px] font-black uppercase tracking-[0.6em] text-white/10 hover:text-white transition-all">Dismiss Artifact</button>
             </div>
         </div>
     );
 
     return createPortal(
         <div className={containerClasses}>
-            {/* TRUE TRANSPARENT GLASSMORPHIC BACKGROUND */}
-            {!isSidebar && <div className="absolute inset-0 bg-transparent backdrop-blur-[100px]" onClick={onClose} />}
+            {/* ULTRA HIGH TRANSPARENCY GLASSMORPHIC BACKDROP */}
+            {!isSidebar && <div className="absolute inset-0 bg-black/[0.01] backdrop-blur-[120px]" onClick={onClose} />}
             {showViewer && <FullscreenImageViewer src={viewerUrls[viewerIdx]} mediaUrls={viewerUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
             {artifactContent}
         </div>, document.body
