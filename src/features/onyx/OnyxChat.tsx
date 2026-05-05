@@ -349,19 +349,11 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                                 placeholder={appLanguage === 'es' ? "Pregunta..." : "Query..."}
                                 className="w-full bg-transparent border-b border-white/5 p-2 px-0 text-xs font-black tracking-[0.4em] text-white outline-none focus:border-white/20 transition-all placeholder:text-white/5 uppercase"
                             />
-                            <button 
-                                type="submit"
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onTouchStart={(e) => e.stopPropagation()}
-                                className={`absolute right-0 top-1/2 -translate-y-1/2 text-white/10 hover:text-white transition-all ${input.trim() ? 'opacity-100' : 'opacity-0'}`}
-                            >
-                                <Send size={12} />
-                            </button>
                         </form>
                     </div>
 
-                    {/* FREE-FLOATING GLASSMORPHIC TALK ICON (Bottom) */}
-                    <div className="relative">
+                    {/* FREE-FLOATING GLASSMORPHIC CONTROL ROW (Bottom) */}
+                    <div className="flex items-center gap-8 relative">
                         {isListening && (
                             <div className="absolute bottom-full right-4 mb-4 flex items-center gap-2 opacity-30 animate-in fade-in slide-in-from-bottom-2">
                                 <div className="flex gap-1">
@@ -371,6 +363,17 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             </div>
                         )}
 
+                        {/* SEND BUTTON - Floating */}
+                        <button 
+                            onClick={() => sendMessage()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            className={`flex items-center justify-center w-14 h-14 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
+                        >
+                            <Send size={18} strokeWidth={1.5} className="text-white/20 group-hover/send:text-white transition-colors" />
+                        </button>
+
+                        {/* TALK ICON - Floating */}
                         <button 
                             onMouseDown={(e) => { e.stopPropagation(); setIsListening(true); }}
                             onMouseUp={(e) => { e.stopPropagation(); setIsListening(false); }}
@@ -385,24 +388,21 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                                 e.stopPropagation();
                                 setIsListening(false);
                             }}
-                            className={`relative flex items-center justify-center transition-all duration-1000 group ${isListening ? 'scale-110' : 'hover:scale-105'}`}
+                            className={`relative flex items-center justify-center w-24 h-24 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-1000 group/mic ${isListening ? 'scale-110 border-red-500/20' : 'hover:scale-105'}`}
                         >
-                            {/* Pure Glass Aura */}
-                            <div className="absolute inset-0 rounded-full backdrop-blur-[100px] border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-                            
-                            <div className={`transition-all duration-700 relative z-10 p-6 ${
+                            <div className={`transition-all duration-700 relative z-10 ${
                                 isListening 
-                                    ? 'text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.5)]' 
-                                    : 'text-white/10 group-hover:text-white'
+                                    ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.4)]' 
+                                    : 'text-white/10 group-hover/mic:text-white'
                             }`}>
-                                {isListening ? <MicOff size={72} strokeWidth={1} /> : <Mic size={72} strokeWidth={1} />}
+                                {isListening ? <MicOff size={32} strokeWidth={1} /> : <Mic size={32} strokeWidth={1} />}
                             </div>
 
                             {/* Tactical Pulse Aura */}
                             {isListening && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="w-24 h-24 rounded-full border border-red-500/20 animate-ping" />
-                                    <div className="absolute w-32 h-32 rounded-full border border-red-500/10 animate-pulse scale-110" />
+                                    <div className="w-full h-full rounded-full border border-red-500/20 animate-ping" />
+                                    <div className="absolute w-[120%] h-[120%] rounded-full border border-red-500/10 animate-pulse" />
                                 </div>
                             )}
                         </button>
