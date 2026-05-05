@@ -345,7 +345,17 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         )}
 
                         <button 
-                            onClick={toggleListening}
+                            onMouseDown={() => setIsListening(true)}
+                            onMouseUp={() => setIsListening(false)}
+                            onMouseLeave={() => setIsListening(false)}
+                            onTouchStart={(e) => {
+                                e.preventDefault();
+                                setIsListening(true);
+                            }}
+                            onTouchEnd={(e) => {
+                                e.preventDefault();
+                                setIsListening(false);
+                            }}
                             className={`relative flex items-center justify-center transition-all duration-1000 group ${isListening ? 'scale-110' : 'hover:scale-105'}`}
                         >
                             {/* Pure Glass Aura */}
