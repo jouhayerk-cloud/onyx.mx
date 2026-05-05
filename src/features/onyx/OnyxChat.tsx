@@ -76,6 +76,7 @@ export function useOnyx(props: {
     const analyzerRef = useRef<AnalyserNode | null>(null);
     const dataArrayRef = useRef<Uint8Array | null>(null);
     const animationFrameRef = useRef<number | null>(null);
+    const isAbortedRef = useRef(false);
     const ttsIntervalRef = useRef<any>(null);
     const inputRef = useRef('');
     const isListeningRef = useRef(false);
@@ -157,6 +158,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         setInput('');
         setIsTyping(true);
         onProcessingChange(true);
+        isAbortedRef.current = false; // Reset abortion flag on new message
         checkForVendor(finalInput);
         try {
             let contents = messages.filter(m => m.content?.trim()).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
@@ -191,7 +193,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             }
             
             let iter = 0;
-            while (iter < 5) {
+            while (iter < 5 && !isAbortedRef.current) {
                 const parts = resp.candidates?.[0]?.content?.parts || [];
                 const calls = parts.filter((p: any) => p.functionCall);
                 const text = parts.find((p: any) => p.text)?.text;
@@ -200,7 +202,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                     setMessages(prev => [...prev, { role: 'model', content: text }]);
                     // Filter out Tag IDs from vocalization (alphanumeric 8-12 chars)
                     const vocalText = text.replace(/\b(?=[A-Z\d]*\d)(?=[A-Z\d]*[A-Z])[A-Z\d]{8,12}\b/g, '').replace(/\s+/g, ' ').trim();
-                    if (vocalText) {
+                    if (vocalText && !isAbortedRef.current) {
                         if (ttsIntervalRef.current) clearInterval(ttsIntervalRef.current);
                         const utt = new SpeechSynthesisUtterance(vocalText);
                         utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
@@ -237,6 +239,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
                 if (calls.length === 0) break;
                 contents.push(resp.candidates[0].content);
+                if (isAbortedRef.current) break;
+                
                 const resps = [];
                 for (const c of calls) {
                     const res = await (onyxToolHandlers as any)[c.functionCall.name]?.(c.functionCall.args);
@@ -403,11 +407,14 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     };
 
     const stopVoice = () => {
+        isAbortedRef.current = true;
         window.speechSynthesis.cancel();
         if (ttsIntervalRef.current) {
             clearInterval(ttsIntervalRef.current);
             ttsIntervalRef.current = null;
         }
+        setIsTyping(false);
+        onProcessingChange(false);
         if (onVolumeChange) onVolumeChange(0);
     };
 
