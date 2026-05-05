@@ -248,17 +248,27 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
             setIsHydrating(true);
             import('../../lib/supabase').then(async ({ supabase }) => {
                 try {
+                    const cleanIds = missingIds.map(id => String(id).replace(/"/g, ''));
+                    const idList = `(${cleanIds.map(id => `"${id}"`).join(',')})`;
+                    const filter = `id.in.${idList},item_id.in.${idList},book_barcode.in.${idList}`;
+                    
                     const { data, error } = await supabase
                         .from('inventory')
                         .select('*')
-                        .or(`id.in.(${missingIds.map(id => `"${id}"`).join(',')}),item_id.in.(${missingIds.map(id => `"${id}"`).join(',')}),book_barcode.in.(${missingIds.map(id => `"${id}"`).join(',')})`);
+                        .or(filter);
                     
                     if (data && data.length > 0) {
                         setFetchedItems(prev => {
                             const newItems = data.map(d => ({ row: d.id, data: d }));
                             return [...prev, ...newItems];
                         });
+                    } else {
+                        // If nothing found after explicit fetch, stop trying for these IDs
+                        // to avoid infinite stuck state
+                        console.warn("Could not resolve IDs:", missingIds);
                     }
+                } catch (e) {
+                    console.error("Hydration Link Error:", e);
                 } finally {
                     setIsHydrating(false);
                 }
@@ -282,6 +292,23 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     
     // If we have IDs but nothing resolved yet, show a subtle loading state
     if (targetIds.length > 0 && allResolvedItems.length === 0) {
+        if (!isHydrating && fetchedItems.length === 0) {
+            return (
+                <div className={`fixed z-[9999] bg-black/20 backdrop-blur-3xl flex items-center justify-center transition-all duration-700 ${isSidebar ? 'top-0 right-0 h-full w-full sm:w-[560px] border-l border-white/5' : 'inset-0'}`}>
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                            <X size={24} />
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-red-500/80">Resolution Failed</span>
+                            <span className="text-[8px] font-medium text-white/20">Assets could not be manifested.</span>
+                        </div>
+                        <button onClick={onClose} className="mt-4 px-6 py-2 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">Dismiss</button>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className={`fixed z-[9999] bg-black/20 backdrop-blur-3xl flex items-center justify-center transition-all duration-700 ${isSidebar ? 'top-0 right-0 h-full w-full sm:w-[560px] border-l border-white/5' : 'inset-0'}`}>
                 <div className="flex flex-col items-center gap-4 animate-pulse">
