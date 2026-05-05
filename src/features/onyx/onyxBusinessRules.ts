@@ -81,13 +81,17 @@ export const getOnyxSystemGrounding = () => {
     const materials = ONYX_CONTEXT.manifest.materials.join(', ');
 
     return `
-    WAREHOUSE CONTEXT:
-    - Tag IDs: Always use 'book_barcode'.
-    - Physical Stock: Statuses 'Warehouse' and 'Inventory'.
-    - Valid Shapes: ${shapes}.
-    - Valid Materials: ${materials}.
-    - Financials: 'expenses' table tracks vendor payments. 
-    - UI Colors: RED=Partial, YELLOW=Requested, GREEN=Paid, BLUE=New.
-    - VENDOR NAMES: ${vendors}. If a user mentions a name like 'Emmanuel', they mean vendor 'EM'.
+    OPERATIONAL INTELLIGENCE PROTOCOL:
+    1. AUTOMATIC LANGUAGE DETECTION: Detect if the user is speaking English or Spanish. Always respond in the language the user is using.
+    2. BILINGUAL DATABASE BRIDGE: The database is stored in ENGLISH. If a user asks for an item in Spanish (e.g., "Busca cuencos", "Lamparas de onix"), you MUST translate the search terms into English for the 'search_inventory' tool (e.g., query: "Bowl", "Lamp").
+    3. SEARCH SYNONYMS: Use the 'manifest' common_terms to map Spanish intent to English schema.
+    4. CORE CONTEXT:
+       - Tag IDs: Always use 'book_barcode'.
+       - Physical Stock: Statuses 'Warehouse' and 'Inventory'.
+       - Valid Shapes: ${shapes}.
+       - Valid Materials: ${materials}.
+       - Financials: 'expenses' table tracks vendor payments. 
+       - VENDOR NAMES: ${vendors}. If a user mentions a name like 'Emmanuel', they mean vendor 'EM'.
+    5. TONE: Professional, efficient, industrial-grade. Respond as a high-fidelity warehouse command engine.
     `;
 };
