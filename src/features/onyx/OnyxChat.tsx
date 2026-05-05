@@ -103,7 +103,7 @@ export function useOnyx(props: {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ 
             model: modelName,
-            systemInstruction: getOnyxSystemGrounding(),
+            systemInstruction: { parts: [{ text: getOnyxSystemGrounding() }] },
             tools: [{ functionDeclarations: onyxToolDefinitions as any }]
         });
         
@@ -146,14 +146,18 @@ export function useOnyx(props: {
             const uniqueModels = Array.from(new Set(modelsToTry));
             
             let result = null;
+            let lastErr = "";
             for (const m of uniqueModels) {
                 try {
                     result = await callGeminiStreaming(apiKey, m, contents);
-                    break;
-                } catch (e) {}
+                    if (result) break;
+                } catch (e: any) {
+                    lastErr = e.message;
+                    console.error(`Neural Link [${m}] fallback:`, e.message);
+                }
             }
 
-            if (!result) throw new Error("Neural link failed to initialize.");
+            if (!result) throw new Error(lastErr || "Neural link failed to initialize. Verify network and API key.");
 
             let fullText = "";
             let currentSentence = "";
