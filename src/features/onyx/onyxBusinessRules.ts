@@ -101,6 +101,7 @@ export const getOnyxSystemGrounding = () => {
     - Relations: 'logistics.inventory_ids' links items to crates. 'finance.related_ids' links items to payments.
     - UI Colors: RED=Partial, YELLOW=Requested, GREEN=Paid, BLUE=New.
     - VENDOR NAMES: ${vendors}. If a user mentions a name like 'Emmanuel', they mean vendor 'EM'.
-    - IMPORTANT: 'Tehuacan' is a COLOR (often used for Onyx). 'Onyx' is a MATERIAL. If a user asks for 'Tehuacan items', search for color='Tehuacan'.
+    - IMPORTANT: 'Tehuacan', 'Nacar', 'Pearlecent', 'White', 'Blanco', 'Cafe' are COLORS. 'Onyx', 'Marble', 'Amethyst' are MATERIALS.
+    - If a user asks for 'Tehuacan items', search for color='Tehuacan'.
     `;
 };

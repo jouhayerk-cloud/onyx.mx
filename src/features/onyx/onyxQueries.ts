@@ -54,7 +54,10 @@ export const onyxQueries = {
 
         if (params.query) {
             const clean = params.query.trim();
-            const words = clean.split(/\s+/).filter(w => w.length >= 2);
+            // Split by spaces or commas, and remove empty strings
+            const words = clean.split(/[\s,]+/)
+                .map(w => w.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim())
+                .filter(w => w.length >= 2);
             
             // Search each word as an OR group, but ANDed together
             words.forEach(word => {
@@ -101,7 +104,9 @@ export const onyxQueries = {
 
         if (params.query) {
             const clean = params.query.trim();
-            const words = clean.split(/\s+/).filter(w => w.length >= 2);
+            const words = clean.split(/[\s,]+/)
+                .map(w => w.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim())
+                .filter(w => w.length >= 2);
             words.forEach(word => {
                 const stem = (word.toLowerCase().endsWith('s') && word.length > 3) ? word.slice(0, -1) : word;
                 const wordFilter = [
@@ -153,7 +158,9 @@ export const onyxQueries = {
         
         if (params.query) {
             const clean = params.query.trim();
-            const words = clean.split(/\s+/).filter(w => w.length >= 2);
+            const words = clean.split(/[\s,]+/)
+                .map(w => w.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim())
+                .filter(w => w.length >= 2);
             words.forEach(word => {
                 const stem = (word.toLowerCase().endsWith('s') && word.length > 3) ? word.slice(0, -1) : word;
                 const f = [
@@ -202,7 +209,9 @@ export const onyxQueries = {
             
             if (query) {
                 const clean = query.trim();
-                const words = clean.split(/\s+/).filter(w => w.length >= 2);
+                const words = clean.split(/[\s,]+/)
+                    .map(w => w.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim())
+                    .filter(w => w.length >= 2);
                 words.forEach(word => {
                     const stem = (word.toLowerCase().endsWith('s') && word.length > 3) ? word.slice(0, -1) : word;
                     const f = [
