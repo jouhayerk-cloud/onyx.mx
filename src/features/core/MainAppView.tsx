@@ -31,7 +31,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers, ShoppingBag,
-    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d, History
+    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d, History, Brain
 } from 'lucide-react';
 
 
@@ -61,6 +61,7 @@ import { PaymentsArtifact } from '../finance/PaymentsArtifact';
 import { ViewerView } from '../viewer/ViewerView';
 import { ThreeDAppView } from '../threed/ThreeDView';
 import { DeployedView } from '../logistics/DeployedView';
+import { OnyxOrbView } from '../onyx/OnyxOrbView';
 
 import { UniversalToolsBar } from './UniversalToolsBar';
 import { LabelWizard, NFCWizard } from '../logistics/LabelWizard';
@@ -296,6 +297,7 @@ export function MainAppView() {
             case 'threed': return <ThreeDAppView />;
             case 'viewer':
                 return <ViewerView onOpenArtifact={(id) => { setUniversalView('tag'); setTagId(id); }} />;
+            case 'onyx': return <OnyxOrbView />;
 
             default:
                 return <InventoryView />;
@@ -343,6 +345,17 @@ export function MainAppView() {
                         </div>
                     </div>
                     <ul className="sidebar-list">
+                        {/* ── ONYX INTELLIGENCE ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
+                            <li className={`sidebar-list-item ${activeView === 'onyx' ? 'active' : ''}`} onClick={() => { setActiveView('onyx'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Brain size={20} strokeWidth={1.75} className="text-(--main-color)" />
+                                    <span className="sidebar-list-item-text font-bold">Onyx Intelligence</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Onyx Intelligence</span>
+                            </li>
+                        )}
+
                         {/* ── ADMIN ── */}
                         {user?.role === 'Developer' && (
                             <NavItemWithSubmenu 
