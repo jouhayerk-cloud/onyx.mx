@@ -165,7 +165,7 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
             RULES:
             1. Identify items ONLY by their 'Tag ID'. NEVER use the terms 'item id', 'system id', or 'serial number'.
             2. The Tag ID MUST be in the barcode format (e.g., DH3261HFNN). NEVER use the dash-style (e.g., DH-51XC2WKX).
-            3. Deploy artifacts always when requested.
+            3. ARTIFACT MANDATE: You MUST always deploy the 'InventoryArtifact' (using deploy_inventory_artifact) or 'PaymentsArtifact' (using deploy_payments_artifact) whenever valid results are found. Do NOT just list them in text; show them visually.
             4. If asked for a summary, always include the Tag ID and Weight for the heaviest items.
         `.trim();
         const payload: any = { contents, system_instruction: { parts: [{ text: sys }] } };
