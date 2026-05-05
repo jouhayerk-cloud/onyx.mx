@@ -78,29 +78,24 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
             recognitionRef.current.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
             
             recognitionRef.current.onresult = (event: any) => {
-                let finalTranscript = '';
-                let interimTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
+                let fullTranscript = '';
+                for (let i = 0; i < event.results.length; ++i) {
+                    fullTranscript += event.results[i][0].transcript;
                 }
 
-                if (finalTranscript) {
-                    setInput(finalTranscript);
-                    checkForVendor(finalTranscript);
+                if (fullTranscript) {
+                    setInput(fullTranscript);
+                    checkForVendor(fullTranscript);
                 }
                 
-                if (onTranscriptChange) onTranscriptChange(interimTranscript || finalTranscript);
+                if (onTranscriptChange) onTranscriptChange(fullTranscript);
             };
 
             recognitionRef.current.onend = () => {
                 // Auto-send if we have a transcript and just finished listening
-                if (inputRef.current.trim() && !isListeningRef.current) {
-                    sendMessage(inputRef.current);
+                const currentText = inputRef.current.trim();
+                if (currentText && !isListeningRef.current) {
+                    sendMessage(currentText);
                     setInput('');
                     if (onTranscriptChange) onTranscriptChange('');
                 }
@@ -113,6 +108,9 @@ export function OnyxChat({ onProcessingChange, onTranscriptChange, onVendorDetec
 
             recognitionRef.current.onerror = (e: any) => {
                 console.error("Speech Error:", e.error);
+                if (e.error === 'not-allowed') {
+                    setLastError("Microphone access denied.");
+                }
                 if (e.error !== 'no-speech') setIsListening(false);
             };
         }
@@ -365,9 +363,10 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
                         {/* SEND BUTTON - Floating */}
                         <button 
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            onClick={() => sendMessage()}
+                            onPointerDown={(e) => {
+                                e.stopPropagation();
+                                if (input.trim()) sendMessage();
+                            }}
                             className={`flex items-center justify-center w-14 h-14 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
                         >
                             <div className="absolute inset-[-10px] rounded-full pointer-events-auto" /> {/* Expanded Hit Area */}
