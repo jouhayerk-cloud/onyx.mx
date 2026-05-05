@@ -13,7 +13,15 @@ export const onyxToolDefinitions = [
                 status: { type: "string", description: "Specific status to filter by" },
                 shape: { type: "string", description: "Filter by shape (e.g. Squared, Heart)" },
                 color: { type: "string", description: "Filter by color (e.g. Tehuacan, Black, Blanco)" },
-                material: { type: "string", description: "Filter by material (e.g. Onyx, Marble, Amethyst)" }
+                material: { type: "string", description: "Filter by material (e.g. Onyx, Marble, Amethyst)" },
+                min_length: { type: "number", description: "Minimum length in cm" },
+                max_length: { type: "number", description: "Maximum length in cm" },
+                min_width: { type: "number", description: "Minimum width in cm" },
+                max_width: { type: "number", description: "Maximum width in cm" },
+                min_height: { type: "number", description: "Minimum height in cm" },
+                max_height: { type: "number", description: "Maximum height in cm" },
+                min_weight: { type: "number", description: "Minimum weight in kg" },
+                max_weight: { type: "number", description: "Maximum weight in kg" }
             }
         }
     },

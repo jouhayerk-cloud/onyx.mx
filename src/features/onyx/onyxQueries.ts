@@ -21,6 +21,14 @@ export const onyxQueries = {
         shape?: string,
         color?: string,
         material?: string,
+        min_length?: number,
+        max_length?: number,
+        min_width?: number,
+        max_width?: number,
+        min_height?: number,
+        max_height?: number,
+        min_weight?: number,
+        max_weight?: number,
         limit?: number 
     }) => {
         const invCols = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
@@ -34,6 +42,15 @@ export const onyxQueries = {
         if (params.shape) invQ = invQ.ilike('shape', `%${params.shape}%`);
         if (params.color) invQ = invQ.ilike('color', `%${params.color}%`);
         if (params.material) invQ = invQ.ilike('material', `%${params.material}%`);
+
+        if (params.min_length) invQ = invQ.gte('length_cm', params.min_length);
+        if (params.max_length) invQ = invQ.lte('length_cm', params.max_length);
+        if (params.min_width) invQ = invQ.gte('width_cm', params.min_width);
+        if (params.max_width) invQ = invQ.lte('width_cm', params.max_width);
+        if (params.min_height) invQ = invQ.gte('height_cm', params.min_height);
+        if (params.max_height) invQ = invQ.lte('height_cm', params.max_height);
+        if (params.min_weight) invQ = invQ.gte('weight_kg', params.min_weight);
+        if (params.max_weight) invQ = invQ.lte('weight_kg', params.max_weight);
 
         if (params.query) {
             const clean = params.query.trim();
