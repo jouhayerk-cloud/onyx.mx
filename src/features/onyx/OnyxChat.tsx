@@ -11,6 +11,11 @@ import {
     onyxIsListeningAtom,
     onyxRequestSendAtom
 } from '../../lib/atoms';
+import { supabase } from '../../lib/supabase';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { vendors } from '../../lib/consts';
+import { getApiKey } from './OnyxOrbView';
+import { getOnyxSystemGrounding } from './onyxBusinessRules';
 import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
 import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages, Layout, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -83,18 +88,23 @@ export function useOnyx(props: {
         }
     };
 
-    const callGeminiStreaming = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`;
-        const sys = getOnyxSystemGrounding();
-        const payload: any = { contents, system_instruction: { parts: [{ text: sys }] } };
-        if (tools) payload.tools = [{ function_declarations: tools }];
+    const callGeminiStreaming = async (apiKey: string, modelName: string, contents: any[]) => {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ 
+            model: modelName,
+            systemInstruction: getOnyxSystemGrounding(),
+            tools: [{ functionDeclarations: onyxToolDefinitions as any }]
+        });
         
-        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error?.message || `HTTP ${res.status}`);
-        }
-        return res.body?.getReader();
+        const history = contents.slice(0, -1).map(m => ({
+            role: m.role,
+            parts: m.parts
+        }));
+        
+        const chat = model.startChat({ history });
+        const lastMsg = contents[contents.length - 1].parts[0].text;
+        
+        return await chat.sendMessageStream(lastMsg);
     };
 
     const sendMessage = async (overrideInput?: string) => {
@@ -124,66 +134,50 @@ export function useOnyx(props: {
             const modelsToTry = [...availableModels.filter(m => m.includes('flash')), "gemini-1.5-flash", "gemini-1.5-flash-latest"];
             const uniqueModels = Array.from(new Set(modelsToTry));
             
-            let reader = null;
-            let usedModel = "";
+            let result = null;
             for (const m of uniqueModels) {
                 try {
-                    reader = await callGeminiStreaming(apiKey, m, contents, onyxToolDefinitions);
-                    usedModel = m;
+                    result = await callGeminiStreaming(apiKey, m, contents);
                     break;
                 } catch (e) {}
             }
 
-            if (!reader) throw new Error("Neural link failed to initialize.");
+            if (!result) throw new Error("Neural link failed to initialize.");
 
             let fullText = "";
             let currentSentence = "";
-            const decoder = new TextDecoder();
             let toolCalls: any[] = [];
             
             // Add a placeholder message for streaming
             setMessages(prev => [...prev, { role: 'model', content: '' }]);
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n').filter(l => l.startsWith('[') || l.startsWith('{'));
-                
-                for (const line of lines) {
-                    try {
-                        const json = JSON.parse(line.replace(/^,/, ''));
-                        const parts = json.candidates?.[0]?.content?.parts || [];
-                        
-                        for (const part of parts) {
-                            if (part.text) {
-                                fullText += part.text;
-                                currentSentence += part.text;
-                                
-                                // Update UI
-                                setMessages(prev => {
-                                    const next = [...prev];
-                                    next[next.length - 1].content = fullText;
-                                    return next;
-                                });
+            for await (const chunk of result.stream) {
+                const chunkText = chunk.text();
+                if (chunkText) {
+                    fullText += chunkText;
+                    currentSentence += chunkText;
+                    
+                    setMessages(prev => {
+                        const next = [...prev];
+                        next[next.length - 1].content = fullText;
+                        return next;
+                    });
 
-                                // Partial Speaking: If we have a sentence-ender, speak it
-                                if (/[.!?]\s$/.test(currentSentence)) {
-                                    const utt = new SpeechSynthesisUtterance(currentSentence.trim());
-                                    utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
-                                    utt.voice = getBestVoice(appLanguage);
-                                    window.speechSynthesis.speak(utt);
-                                    currentSentence = "";
-                                }
-                            }
-                            if (part.functionCall) toolCalls.push(part.functionCall);
-                        }
-                    } catch (e) {}
+                    // Partial Speaking
+                    if (/[.!?]\s$/.test(currentSentence) || currentSentence.length > 100) {
+                        const utt = new SpeechSynthesisUtterance(currentSentence.trim());
+                        utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
+                        utt.voice = getBestVoice(appLanguage);
+                        window.speechSynthesis.speak(utt);
+                        currentSentence = "";
+                    }
                 }
+
+                const calls = chunk.functionCalls();
+                if (calls) toolCalls.push(...calls);
             }
 
-            // Speak remaining text if any
+            // Speak remaining
             if (currentSentence.trim()) {
                 const utt = new SpeechSynthesisUtterance(currentSentence.trim());
                 utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
@@ -197,22 +191,18 @@ export function useOnyx(props: {
                 for (const c of toolCalls) {
                     const res = await (onyxToolHandlers as any)[c.name]?.(c.args);
                     resps.push({ functionResponse: { name: c.name, response: { content: res } } });
+                    
+                    // Specific Deploys
+                    if (res?.action === 'DEPLOY_INVENTORY') setInventoryConfig({ isOpen: true, itemIds: res.ids, title: res.title, viewMode: 'modal' });
                 }
                 
-                // Continue conversation after tools
-                contents.push({ role: 'model', parts: [{ text: fullText }, ...toolCalls.map(c => ({ functionCall: c }))] });
-                contents.push({ role: 'function', parts: resps });
-                
-                // Recurse for final response (non-streaming for simplicity in tool loop, or keep it?)
-                // For now, tools usually mean we finish or deploy UI.
-                for (const r of resps) {
-                    const d = r.functionResponse.response.content;
-                    if (d?.action === 'DEPLOY_INVENTORY') setInventoryConfig({ isOpen: true, itemIds: d.ids, title: d.title, viewMode: 'modal' });
-                }
+                // For now, we stop after tool execution to avoid complex recursive streaming
+                // The AI can be prompted to follow up if needed.
             }
 
         } catch (e: any) {
             setLastError(e.message);
+            setMessages(prev => [...prev, { role: 'model', content: `Neural Link Interrupted: ${e.message}` }]);
         } finally {
             setIsTyping(false);
             onProcessingChange(false);
