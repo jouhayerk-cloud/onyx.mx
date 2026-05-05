@@ -284,11 +284,11 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     const containerClasses = isEmbeddedArtifact
         ? "relative w-full h-full flex flex-col overflow-hidden"
         : isSidebar 
-            ? "fixed top-0 right-0 h-full w-full sm:w-[560px] z-[9999] animate-in slide-in-from-right duration-700 flex flex-col"
+            ? "fixed top-0 right-0 h-full w-full sm:w-[560px] z-[9999] animate-in slide-in-from-right duration-700 flex flex-col bg-white/[0.01] backdrop-blur-[50px] border-l border-white/10 shadow-[-50px_0_100px_rgba(0,0,0,0.5)]"
             : "fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300";
 
     const artifactContent = (
-        <div className={`relative w-full h-full ${(!isSidebar && !isEmbeddedArtifact) ? 'max-w-7xl h-[90vh] rounded-[40px] bg-[#0a0a0a]/80 border border-white/10 shadow-[0_50px_200px_rgba(0,0,0,0.8)] backdrop-blur-[100px]' : 'bg-transparent backdrop-blur-[80px]'} flex flex-col overflow-hidden transition-all duration-500`}>
+        <div className={`relative w-full h-full ${(!isSidebar && !isEmbeddedArtifact) ? 'max-w-7xl h-[90vh] rounded-[40px] bg-white/[0.03] border border-white/10 shadow-[0_50px_200px_rgba(0,0,0,0.8)] backdrop-blur-[100px]' : 'bg-transparent'} flex flex-col overflow-hidden transition-all duration-500`}>
             {(!isSidebar && !isEmbeddedArtifact) && (
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-(--main-color)/5 via-transparent to-transparent" />
             )}
