@@ -126,8 +126,13 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         try {
             let contents = messages.filter(m => m.content?.trim()).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
             contents.push({ role: 'user', parts: [{ text: finalInput }] });
-            
-            const modelsToTry = [...availableModels.filter(m => m.includes('flash') && !m.includes('tts')), "gemini-1.5-flash", "gemini-1.5-flash-latest"];
+
+            const modelsToTry = [
+                ...availableModels.filter(m => m.includes('2.5') || m.includes('2.0')),
+                "gemini-2.5-flash",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash"
+            ];
             const uniqueModels = Array.from(new Set(modelsToTry));
             
             let resp = null;
@@ -321,9 +326,27 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     useEffect(() => { discoverModels(); }, [userApiKey]);
 
     const resetNeuralKey = () => {
+        // Clear all possible persistent keys
         localStorage.removeItem('ONYX_GEMINI_KEY');
+        localStorage.removeItem('onyxApiKey');
         setUserApiKey('');
-        setLastError("Neural credentials reset to system default.");
+        setAvailableModels([]);
+        setLastError(null);
+        
+        // Visual feedback
+        import('react-hot-toast').then(({ toast }) => {
+            toast.success("Neural Link Reset to System Defaults", {
+                icon: '🔄',
+                style: {
+                    borderRadius: '99px',
+                    background: '#000',
+                    color: '#fff',
+                    border: '1px border white/10',
+                    backdropFilter: 'blur(20px)'
+                }
+            });
+        });
+
         setTimeout(() => discoverModels(), 500);
     };
 
@@ -379,6 +402,9 @@ export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyp
     );
 }
 
+import { BotOrb } from './BotOrb';
+import { isBotOrbOpenAtom } from '../../lib/atoms';
+
 // ── OnyxChatControls ────────────────────────────────────────────────────
 export function OnyxChatControls(props: {
     input: string;
@@ -391,113 +417,95 @@ export function OnyxChatControls(props: {
     const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey } = props;
     const [appLanguage, setAppLanguage] = useAtom(languageAtom);
     const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
+    const [isBotOpen, setIsBotOpen] = useAtom(isBotOrbOpenAtom);
 
     return (
-        <div className="w-full flex items-center justify-between gap-3 p-3 md:p-4 bg-transparent backdrop-blur-3xl animate-in slide-in-from-bottom duration-700">
-            {/* Minimal Language Toggle */}
-            <button 
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
-                }}
-                className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-[10px] md:text-[8px] font-black text-white/40 hover:text-white transition-all shrink-0"
-            >
-                {appLanguage.toUpperCase()}
-            </button>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 flex items-center justify-center gap-4 z-50 animate-in slide-in-from-bottom duration-700 pointer-events-none">
+            {/* Bot & Lang Group */}
+            <div className="flex items-center gap-2 pointer-events-auto">
+                <button 
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setIsBotOpen(true); }}
+                    className={`w-14 h-14 flex items-center justify-center rounded-full border border-white/5 transition-all shadow-2xl ${isBotOpen ? 'bg-(--main-color)/20 text-(--main-color)' : 'bg-black/40 backdrop-blur-3xl text-white/40 hover:text-white hover:bg-black/60'}`}
+                    title="Deploy Bot Orb"
+                >
+                    <Brain size={20} strokeWidth={1.5} />
+                </button>
 
-            {/* Frameless Compact Input Form */}
+                <button 
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setAppLanguage(prev => prev === 'en' ? 'es' : 'en'); }}
+                    className="w-14 h-14 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-3xl border border-white/5 text-[10px] font-black text-white/40 hover:text-white hover:bg-black/60 transition-all shadow-2xl"
+                >
+                    {appLanguage.toUpperCase()}
+                </button>
+            </div>
+
+            {/* Neural Input Capsule */}
             <form 
                 onSubmit={(props as any).handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="flex-1 relative flex items-center"
+                className="flex-1 max-w-lg relative flex items-center bg-black/40 backdrop-blur-3xl rounded-full border border-white/5 shadow-2xl pointer-events-auto overflow-hidden group hover:border-white/10 transition-all"
             >
                 <input 
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            // Let the form handle the submit for mobile Go button
-                        }
-                    }}
                     placeholder={appLanguage === 'es' ? "Neural Query..." : "Neural Query..."}
-                    className="w-full bg-transparent p-3 md:p-2 px-4 md:px-3 text-[14px] md:text-[12px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase"
+                    className="w-full bg-transparent py-4 px-6 text-[13px] font-black tracking-[0.2em] text-white outline-none placeholder:text-white/10 uppercase"
                 />
+                
+                {input.trim() && (
+                    <button 
+                        type="submit"
+                        className="absolute right-3 flex items-center justify-center w-10 h-10 rounded-full bg-(--main-color)/20 text-(--main-color) hover:bg-(--main-color)/30 transition-all animate-in fade-in scale-in"
+                    >
+                        <Send size={16} strokeWidth={2} />
+                    </button>
+                )}
             </form>
 
-            {/* Action Buttons Panel */}
-            <div className="flex items-center gap-2 relative shrink-0">
-                {/* Reset Credentials Button */}
+            {/* Tactical Tools Group */}
+            <div className="flex items-center gap-2 pointer-events-auto">
+                {/* Reset Credentials Button - HIGHLIGHTED for accessibility */}
                 <button 
                     type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        resetNeuralKey?.();
-                    }}
-                    className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-white/10 hover:text-white/40 transition-all shrink-0"
-                    title="Reset Neural Key"
+                    onClick={(e) => { e.stopPropagation(); resetNeuralKey?.(); }}
+                    className="w-14 h-14 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-3xl border border-white/5 text-white/20 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all shadow-2xl"
+                    title="Reset Neural Link"
                 >
-                    <RefreshCw size={14} className="md:w-3 md:h-3" strokeWidth={2} />
+                    <RefreshCw size={20} strokeWidth={1.5} />
                 </button>
 
-                {/* Artifact Toggle Button */}
                 {inventoryConfig.itemIds.length > 0 && (
                     <button 
                         type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
-                        }}
-                        className={`flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-full border border-white/5 transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'bg-(--main-color)/10' : 'bg-white/5'}`}
+                        onClick={(e) => { e.stopPropagation(); setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen })); }}
+                        className={`w-14 h-14 flex items-center justify-center rounded-full border border-white/5 transition-all shadow-2xl ${inventoryConfig.isOpen ? 'bg-(--main-color)/20 text-(--main-color)' : 'bg-black/40 backdrop-blur-3xl text-white/40 hover:text-white'}`}
                         title="Toggle Manifest"
                     >
-                        <Package size={14} strokeWidth={2} className={`md:w-3 md:h-3 ${inventoryConfig.isOpen ? 'text-(--main-color)' : 'text-white/40'} group-hover/art:text-white transition-colors`} />
+                        <Package size={20} strokeWidth={1.5} />
                     </button>
                 )}
 
-                {/* Minimal Send Button */}
                 <button 
-                    type="submit"
-                    className={`flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-full border border-white/5 bg-white/5 transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
+                    type="button"
+                    onPointerDown={(e) => { e.stopPropagation(); unlockTTS(); setIsListening(true); }}
+                    onPointerUp={(e) => { e.stopPropagation(); setIsListening(false); }}
+                    onPointerLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
+                    onPointerCancel={(e) => { e.stopPropagation(); setIsListening(false); }}
+                    onTouchStart={(e) => { e.stopPropagation(); unlockTTS(); setIsListening(true); }}
+                    onTouchEnd={(e) => { e.stopPropagation(); setIsListening(false); }}
+                    className={`relative w-16 h-16 flex items-center justify-center rounded-full border border-white/5 shadow-2xl transition-all duration-300 ${isListening ? 'bg-red-500/20 border-red-500/40 text-red-500 scale-110' : 'bg-black/40 backdrop-blur-3xl text-white/20 hover:text-white hover:bg-black/60'}`}
+                    style={{ touchAction: 'none' }}
                 >
-                    <Send size={14} strokeWidth={2} className="md:w-3 md:h-3 text-white/40 group-hover/send:text-white transition-colors" />
-                </button>
-
-                {/* Minimal Talk Button */}
-                <div className="relative">
-                    <button 
-                        type="button"
-                        onPointerDown={(e) => { 
-                            e.stopPropagation(); 
-                            unlockTTS(); 
-                            setIsListening(true); 
-                        }}
-                        onPointerUp={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        onPointerLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        onPointerCancel={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        // Add touch support for mobile
-                        onTouchStart={(e) => { 
-                            e.stopPropagation(); 
-                            unlockTTS(); 
-                            setIsListening(true); 
-                        }}
-                        onTouchEnd={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        className={`relative flex items-center justify-center w-12 h-12 md:w-10 md:h-10 rounded-full border border-white/5 bg-white/5 transition-all duration-300 group/mic ${isListening ? 'scale-110 border-red-500/20 bg-red-500/10' : 'hover:scale-105'}`}
-                        style={{ touchAction: 'none' }}
-                    >
-                        <div className={`transition-all duration-700 relative z-10 ${
-                            isListening ? 'text-red-500' : 'text-white/20 group-hover/mic:text-white'
-                        }`}>
-                            {isListening ? <MicOff size={20} className="md:w-4 md:h-4" strokeWidth={2} /> : <Mic size={20} className="md:w-4 md:h-4" strokeWidth={2} />}
+                    {isListening ? <MicOff size={24} strokeWidth={2} /> : <Mic size={24} strokeWidth={2} />}
+                    {isListening && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-full h-full rounded-full border border-red-500/20 animate-ping" />
                         </div>
-                        {isListening && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-full h-full rounded-full border border-red-500/20 animate-ping" />
-                            </div>
-                        )}
-                    </button>
-                </div>
+                    )}
+                </button>
             </div>
         </div>
     );
