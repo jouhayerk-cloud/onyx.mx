@@ -315,93 +315,82 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 </div>
             </div>
 
-            {/* TACTICAL COMMAND STACK (BOTTOM RIGHT) */}
-            <div className="absolute bottom-0 right-0 p-8 md:p-12 pointer-events-none flex flex-col items-end gap-10 z-[100]">
+            {/* TACTICAL COMMAND BAR (Integrated Row) */}
+            <div className="w-full flex items-center justify-between gap-4 p-4 md:p-6 bg-black/60 backdrop-blur-3xl border-t border-white/5 animate-in slide-in-from-bottom duration-700">
                 
-                {/* VERTICAL INTEGRATED STACK */}
-                <div className="flex flex-col items-end gap-8 pointer-events-auto">
-                    
-                    {/* Discrete Control Row (Top) */}
-                    <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right duration-1000">
-                        {/* Language Selector (Transparent) */}
-                        <button 
-                            onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            className="w-10 h-10 flex items-center justify-center rounded-full bg-transparent border border-white/5 text-[9px] font-black text-white/20 hover:text-white hover:border-white/10 transition-all backdrop-blur-3xl"
-                        >
-                            {appLanguage.toUpperCase()}
-                        </button>
+                {/* Left: Language Selection */}
+                <button 
+                    onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-[10px] font-black text-white/40 hover:text-white hover:border-white/20 transition-all"
+                >
+                    {appLanguage.toUpperCase()}
+                </button>
 
-                        {/* Transparent Input Form */}
-                        <form 
-                            onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            className="relative min-w-[160px] md:min-w-[240px]"
-                        >
-                            <input 
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        sendMessage();
-                                    }
-                                }}
-                                placeholder={appLanguage === 'es' ? "Pregunta..." : "Query..."}
-                                className="w-full bg-transparent border-b border-white/5 p-2 px-0 text-sm md:text-xs font-black tracking-[0.2em] md:tracking-[0.4em] text-white outline-none focus:border-white/20 transition-all placeholder:text-white/10 uppercase"
-                            />
-                        </form>
-                    </div>
+                {/* Middle: Integrated Input Form */}
+                <form 
+                    onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="flex-1 relative flex items-center"
+                >
+                    <input 
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                sendMessage();
+                            }
+                        }}
+                        placeholder={appLanguage === 'es' ? "Neural Query..." : "Neural Query..."}
+                        className="w-full bg-white/5 border-b border-white/10 p-3 px-4 text-sm font-black tracking-[0.1em] text-white outline-none focus:bg-white/10 focus:border-(--main-color)/40 transition-all placeholder:text-white/10 uppercase rounded-t-lg"
+                    />
+                </form>
 
-                    {/* FREE-FLOATING GLASSMORPHIC CONTROL ROW (Bottom) */}
-                    <div className="flex items-center gap-8 relative">
+                {/* Right: Action Controls */}
+                <div className="flex items-center gap-3 relative">
+                    {/* SEND BUTTON */}
+                    <button 
+                        onPointerDown={(e) => {
+                            e.stopPropagation();
+                            if (input.trim()) sendMessage();
+                        }}
+                        className={`flex items-center justify-center w-12 h-12 rounded-full border border-white/10 bg-white/5 backdrop-blur-3xl transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
+                        style={{ touchAction: 'none' }}
+                    >
+                        <Send size={16} strokeWidth={1.5} className="text-white/40 group-hover/send:text-white transition-colors" />
+                    </button>
+
+                    {/* TALK ICON */}
+                    <div className="relative">
                         {isListening && (
-                            <div className="absolute bottom-full right-4 mb-4 flex items-center gap-2 opacity-30 animate-in fade-in slide-in-from-bottom-2">
+                            <div className="absolute bottom-full right-0 mb-4 flex items-center gap-2 opacity-60 animate-in fade-in slide-in-from-bottom-2">
                                 <div className="flex gap-1">
                                     {[0, 1, 2].map(i => <div key={i} className="w-0.5 h-3 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 100}ms` }} />)}
                                 </div>
-                                <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">Active</span>
                             </div>
                         )}
-
-                        {/* SEND BUTTON - Floating */}
-                        <button 
-                            onPointerDown={(e) => {
-                                e.stopPropagation();
-                                if (input.trim()) sendMessage();
-                            }}
-                            className={`flex items-center justify-center w-14 h-14 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-500 group/send ${input.trim() ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}
-                            style={{ touchAction: 'none' }}
-                        >
-                            <div className="absolute inset-[-10px] rounded-full" /> {/* Expanded Hit Area */}
-                            <Send size={18} strokeWidth={1.5} className="text-white/20 group-hover/send:text-white transition-colors" />
-                        </button>
-
-                        {/* TALK ICON - Floating */}
                         <button 
                             onPointerDown={(e) => { e.stopPropagation(); setIsListening(true); }}
                             onPointerUp={(e) => { e.stopPropagation(); setIsListening(false); }}
                             onPointerLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
                             onPointerCancel={(e) => { e.stopPropagation(); setIsListening(false); }}
-                            className={`relative flex items-center justify-center w-24 h-24 rounded-full border border-white/5 backdrop-blur-3xl transition-all duration-1000 group/mic ${isListening ? 'scale-110 border-red-500/20' : 'hover:scale-105'}`}
+                            className={`relative flex items-center justify-center w-12 h-12 rounded-full border border-white/10 bg-white/5 backdrop-blur-3xl transition-all duration-1000 group/mic ${isListening ? 'scale-110 border-red-500/40 bg-red-500/10' : 'hover:scale-105'}`}
                             style={{ touchAction: 'none' }}
                         >
-                            <div className="absolute inset-[-15px] rounded-full" /> {/* Expanded Hit Area */}
                             <div className={`transition-all duration-700 relative z-10 ${
                                 isListening 
-                                    ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.4)]' 
-                                    : 'text-white/10 group-hover/mic:text-white'
+                                    ? 'text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.6)]' 
+                                    : 'text-white/20 group-hover/mic:text-white'
                             }`}>
-                                {isListening ? <MicOff size={32} strokeWidth={1} /> : <Mic size={32} strokeWidth={1} />}
+                                {isListening ? <MicOff size={20} strokeWidth={1.5} /> : <Mic size={20} strokeWidth={1.5} />}
                             </div>
 
                             {/* Tactical Pulse Aura */}
                             {isListening && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="w-full h-full rounded-full border border-red-500/20 animate-ping" />
-                                    <div className="absolute w-[120%] h-[120%] rounded-full border border-red-500/10 animate-pulse" />
+                                    <div className="w-full h-full rounded-full border border-red-500/40 animate-ping" />
                                 </div>
                             )}
                         </button>
