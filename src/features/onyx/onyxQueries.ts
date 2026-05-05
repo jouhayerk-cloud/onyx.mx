@@ -26,45 +26,33 @@ export const onyxQueries = {
         const invCols = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
         const prodCols = '*, item_id, book_barcode, quantity, status';
         
-        // Define filters
-        let orFilters = [];
+        // Fetch from Inventory
+        let invQ = supabase.from('inventory').select(invCols, { count: 'exact' });
+        if (params.status) invQ = invQ.eq('status', params.status);
+        
+        // Apply global shape/color/material if provided
+        if (params.shape) invQ = invQ.ilike('shape', `%${params.shape}%`);
+        if (params.color) invQ = invQ.ilike('color', `%${params.color}%`);
+        if (params.material) invQ = invQ.ilike('material', `%${params.material}%`);
+
         if (params.query) {
             const clean = params.query.trim();
             const words = clean.split(/\s+/).filter(w => w.length >= 2);
             
-            // Search whole query
-            orFilters.push(
-                `description.ilike.%${clean}%`, 
-                `short_description.ilike.%${clean}%`, 
-                `material.ilike.%${clean}%`, 
-                `shape.ilike.%${clean}%`,
-                `color.ilike.%${clean}%`,
-                `book_barcode.ilike.%${clean}%`,
-                `item_id.ilike.%${clean}%`
-            );
-
-            // Search individual words for better matching
+            // Search each word as an OR group, but ANDed together
             words.forEach(word => {
-                orFilters.push(
+                const wordFilter = [
                     `description.ilike.%${word}%`,
+                    `short_description.ilike.%${word}%`,
                     `material.ilike.%${word}%`,
                     `shape.ilike.%${word}%`,
                     `color.ilike.%${word}%`,
-                    `item_id.ilike.%${word}%`,
-                    `book_barcode.ilike.%${word}%`
-                );
+                    `book_barcode.ilike.%${word}%`,
+                    `item_id.ilike.%${word}%`
+                ].join(',');
+                invQ = invQ.or(wordFilter);
             });
         }
-        if (params.shape) orFilters.push(`shape.ilike.%${params.shape}%`);
-        if (params.color) orFilters.push(`color.ilike.%${params.color}%`);
-        if (params.material) orFilters.push(`material.ilike.%${params.material}%`);
-        
-        const orFilterString = orFilters.length > 0 ? orFilters.join(',') : null;
-
-        // Fetch from Inventory
-        let invQ = supabase.from('inventory').select(invCols, { count: 'exact' });
-        if (params.status) invQ = invQ.eq('status', params.status);
-        if (orFilterString) invQ = invQ.or(orFilterString);
         
         // Handle vendor filter carefully
         if (params.vendor) {
@@ -80,7 +68,27 @@ export const onyxQueries = {
         // Fetch from Production
         let prodQ = supabase.from('production').select(prodCols, { count: 'exact' });
         if (params.status) prodQ = prodQ.eq('status', params.status);
-        if (orFilterString) prodQ = prodQ.or(orFilterString);
+        if (params.shape) prodQ = prodQ.ilike('shape', `%${params.shape}%`);
+        if (params.color) prodQ = prodQ.ilike('color', `%${params.color}%`);
+        if (params.material) prodQ = prodQ.ilike('material', `%${params.material}%`);
+
+        if (params.query) {
+            const clean = params.query.trim();
+            const words = clean.split(/\s+/).filter(w => w.length >= 2);
+            words.forEach(word => {
+                const wordFilter = [
+                    `description.ilike.%${word}%`,
+                    `short_description.ilike.%${word}%`,
+                    `material.ilike.%${word}%`,
+                    `shape.ilike.%${word}%`,
+                    `color.ilike.%${word}%`,
+                    `book_barcode.ilike.%${word}%`,
+                    `item_id.ilike.%${word}%`
+                ].join(',');
+                prodQ = prodQ.or(wordFilter);
+            });
+        }
+        
         if (params.vendor) {
             if (params.vendor.length <= 3) {
                 const prefix = `${params.vendor}%`;
@@ -103,14 +111,27 @@ export const onyxQueries = {
         // Fetch sum separately (Inventory only for now as per business rules, or both?)
         // User asked to fetch production info too, so we sum both.
         let invSumQ = supabase.from('inventory').select('quantity');
-        if (params.status) invSumQ = invSumQ.eq('status', params.status);
-        if (orFilterString) invSumQ = invSumQ.or(orFilterString);
-        if (params.vendor) invSumQ = invSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
-
         let prodSumQ = supabase.from('production').select('quantity');
-        if (params.status) prodSumQ = prodSumQ.eq('status', params.status);
-        if (orFilterString) prodSumQ = prodSumQ.or(orFilterString);
-        if (params.vendor) prodSumQ = prodSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
+
+        if (params.status) {
+            invSumQ = invSumQ.eq('status', params.status);
+            prodSumQ = prodSumQ.eq('status', params.status);
+        }
+        
+        if (params.query) {
+            const clean = params.query.trim();
+            const words = clean.split(/\s+/).filter(w => w.length >= 2);
+            words.forEach(word => {
+                const f = `description.ilike.%${word}%,material.ilike.%${word}%,shape.ilike.%${word}%,color.ilike.%${word}%,item_id.ilike.%${word}%,book_barcode.ilike.%${word}%`;
+                invSumQ = invSumQ.or(f);
+                prodSumQ = prodSumQ.or(f);
+            });
+        }
+
+        if (params.vendor) {
+            invSumQ = invSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
+            prodSumQ = prodSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
+        }
 
         const [invSum, prodSum] = await Promise.all([invSumQ, prodSumQ]);
         const totalQty = (invSum.data?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0) +
