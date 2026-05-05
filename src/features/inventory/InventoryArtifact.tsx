@@ -251,7 +251,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                     const { data, error } = await supabase
                         .from('inventory')
                         .select('*')
-                        .or(`item_id.in.(${missingIds.map(id => `"${id}"`).join(',')}),book_barcode.in.(${missingIds.map(id => `"${id}"`).join(',')})`);
+                        .or(`id.in.(${missingIds.map(id => `"${id}"`).join(',')}),item_id.in.(${missingIds.map(id => `"${id}"`).join(',')}),book_barcode.in.(${missingIds.map(id => `"${id}"`).join(',')})`);
                     
                     if (data && data.length > 0) {
                         setFetchedItems(prev => {
@@ -279,6 +279,19 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     }, [filteredItems, fetchedItems]);
 
     if (!config.isOpen) return null;
+    
+    // If we have IDs but nothing resolved yet, show a subtle loading state
+    if (targetIds.length > 0 && allResolvedItems.length === 0) {
+        return (
+            <div className={`fixed z-[9999] bg-black/20 backdrop-blur-3xl flex items-center justify-center transition-all duration-700 ${isSidebar ? 'top-0 right-0 h-full w-full sm:w-[560px] border-l border-white/5' : 'inset-0'}`}>
+                <div className="flex flex-col items-center gap-4 animate-pulse">
+                    <div className="w-8 h-8 rounded-full border-t-2 border-white/20 animate-spin" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Syncing Neural Core...</span>
+                </div>
+            </div>
+        );
+    }
+
     if (allResolvedItems.length === 0) return null;
 
     const isEmbeddedArtifact = viewMode === 'embedded';
