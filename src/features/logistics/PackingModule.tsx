@@ -20,7 +20,7 @@ import { NFCTagCard } from '../../components/LabelVisuals';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Barcode from 'react-barcode';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, collectAllImages } from '../../lib/utils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -442,16 +442,8 @@ export const PackingModule: React.FC = () => {
                 const normData = normalizeInventoryData(item?.data || {});
                 const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
                 
-                // Collect all possible images from all sources
-                const rawUrls = [
-                    ...(normData.mediaUrls ? (Array.isArray(normData.mediaUrls) ? normData.mediaUrls : String(normData.mediaUrls).split(',')) : []),
-                    ...(normData.generatedImageUrls ? (Array.isArray(normData.generatedImageUrls) ? normData.generatedImageUrls : String(normData.generatedImageUrls).split(',')) : []),
-                    normData.generatedPngUrl
-                ].filter(Boolean).map(u => String(u).trim()).filter(Boolean);
-                
-                // Deduplicate AFTER cleaning to catch same URLs with different params
-                const cleanedUrls = rawUrls.map(u => getCleanImageUrl(u)).filter(Boolean) as string[];
-                const imageUrls = Array.from(new Set(cleanedUrls));
+                // Standardized robust image collection (including legacy fields)
+                const imageUrls = collectAllImages(normData);
                 const imageUrl = imageUrls[0] || null;
                 
                 return { ...item, codes, normData, imageUrl, imageUrls };

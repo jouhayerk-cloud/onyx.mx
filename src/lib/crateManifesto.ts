@@ -138,7 +138,7 @@ async function loadImageDataUrl(url: string, maxPx = 120): Promise<{ dataUrl: st
         ctx.drawImage(img, 0, 0, w, h);
         return { dataUrl: c.toDataURL('image/jpeg', 0.85), w, h };
     } catch (err) { 
-        console.warn(`[PDF] Failed to load image: ${url}`, err);
+        console.warn(`[PDF] Failed to load image from URL: ${url} | Error: ${err instanceof Error ? err.message : String(err)}`);
         return null; 
     }
 }
@@ -741,6 +741,8 @@ export async function exportCrateManifesto(
         // Indent removed to ensure unified "containing crate" attribution
         const xOffset = 0; 
 
+        // DIAGNOSTIC LOG
+        console.log(`[PDF] Processing Tag ID: ${item.itemId} | Images Found: ${item.imageUrls?.length || 0}`, item.imageUrls);
         // Gallery Row Visibility & Count Calculation
         const numImagesTotal = (!meta.excludeImages && item.imageUrls && item.imageUrls.length > 0) 
             ? item.imageUrls.length 
