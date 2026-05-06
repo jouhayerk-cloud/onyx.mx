@@ -61,7 +61,7 @@ export function useOnyx(props: {
     const { onProcessingChange, onTranscriptChange, onVendorDetect, onVolumeChange } = props;
     const [messages, setMessages] = useAtom(onyxMessagesAtom);
     const [userApiKey, setUserApiKey] = useAtom(onyxApiKeyAtom);
-    const [appLanguage] = useAtom(languageAtom);
+    const [appLanguage, setAppLanguage] = useAtom(languageAtom);
     const setInventoryConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsConfig = useSetAtom(paymentsArtifactConfigAtom);
     const setTruckId = useSetAtom(sentTruckIdAtom);
@@ -158,10 +158,25 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         }
     };
 
+    const detectLanguage = (text: string): 'en' | 'es' => {
+        const spanishRegex = /[¿¡áéíóúñ]/i;
+        const commonSpanishWords = /\b(el|la|de|que|en|un|es|por|para|con|los|las|sus)\b/i;
+        if (spanishRegex.test(text) || commonSpanishWords.test(text)) return 'es';
+        return 'en';
+    };
+
     const sendMessage = async (overrideInput?: string) => {
         const finalInput = overrideInput || inputRef.current || input;
         console.log("ONYX: sendMessage attempt:", { finalInput, isTyping });
         if (!finalInput.trim()) return;
+        
+        // Auto-Language Detection
+        const detected = detectLanguage(finalInput);
+        if (detected !== appLanguage) {
+            console.log("ONYX: Language shift detected:", detected);
+            setAppLanguage(detected);
+        }
+
         if (isTyping) {
             console.log("ONYX: sendMessage blocked (isTyping)");
             return;
