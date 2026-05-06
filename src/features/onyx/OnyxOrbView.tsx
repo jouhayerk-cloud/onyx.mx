@@ -12,11 +12,13 @@ import { useAtom, useAtomValue } from 'jotai';
 export function OnyxOrbView() {
     const onyx = useOnyx();
     const [isContextOpen, setIsContextOpen] = useState(false);
+    const [isSetupOpen, setIsSetupOpen] = useState(false);
     const artifactConfig = useAtomValue(inventoryArtifactConfigAtom);
     const isTyping = useAtomValue(onyxIsTypingAtom);
     const isListening = useAtomValue(onyxIsListeningAtom);
     const { input } = onyx;
     const [requestSend, setRequestSend] = useState(0);
+    const [tempKey, setTempKey] = useState('');
 
     // Auto-send when requestSend triggers (manual click on transcript)
     useEffect(() => {
@@ -30,8 +32,58 @@ export function OnyxOrbView() {
             
             {/* Global Error HUD */}
             {onyx.lastError && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 backdrop-blur-xl animate-in fade-in slide-in-from-top duration-500">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500/80">{onyx.lastError}</p>
+                <div 
+                    onClick={() => setIsSetupOpen(true)}
+                    className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 backdrop-blur-xl animate-in fade-in slide-in-from-top duration-500 cursor-pointer hover:bg-red-500/20 transition-all group"
+                >
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500/80 group-hover:text-red-400 flex items-center gap-2">
+                        {onyx.lastError}
+                        {onyx.lastError.includes("Credentials") && <span className="opacity-40 ml-1 underline decoration-dotted">CONFIGURE LINK</span>}
+                    </p>
+                </div>
+            )}
+
+            {/* Neural Link Setup Overlay */}
+            {isSetupOpen && (
+                <div className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-3xl flex items-center justify-center p-6 animate-in fade-in duration-500">
+                    <div className="w-full max-w-sm space-y-8 text-center">
+                        <div className="space-y-2">
+                            <h3 className="text-2xl font-black uppercase tracking-[0.4em] text-white">Neural Core Sync</h3>
+                            <p className="text-[10px] font-bold tracking-widest text-white/40 uppercase">Enter Gemini AI Credentials to activate Link</p>
+                        </div>
+                        
+                        <div className="relative group">
+                            <input 
+                                type="password"
+                                placeholder="PASTE NEURAL KEY..."
+                                value={tempKey}
+                                onChange={(e) => setTempKey(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 text-center text-sm font-bold tracking-widest text-white placeholder:text-white/10 focus:border-(--main-color) focus:ring-2 focus:ring-(--main-color)/20 transition-all outline-none"
+                            />
+                            <div className="absolute inset-0 rounded-xl border border-(--main-color)/20 opacity-0 group-focus-within:opacity-100 animate-pulse pointer-events-none" />
+                        </div>
+
+                        <div className="flex flex-col gap-4">
+                            <button 
+                                onClick={() => {
+                                    if (tempKey.trim()) {
+                                        onyx.setOnyxApiKey(tempKey.trim());
+                                        setIsSetupOpen(false);
+                                        onyx.setLastError(null);
+                                    }
+                                }}
+                                className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-[0.3em] rounded-xl hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)]"
+                            >
+                                Activate Link
+                            </button>
+                            <button 
+                                onClick={() => setIsSetupOpen(false)}
+                                className="w-full py-2 text-[9px] font-black uppercase tracking-[0.4em] text-white/20 hover:text-white transition-all"
+                            >
+                                Bypass Sync
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
