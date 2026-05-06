@@ -449,7 +449,9 @@ export const PackingModule: React.FC = () => {
                     normData.generatedPngUrl
                 ].filter(Boolean).map(u => String(u).trim()).filter(Boolean);
                 
-                const imageUrls = Array.from(new Set(rawUrls)).map(u => getCleanImageUrl(u)).filter(Boolean) as string[];
+                // Deduplicate AFTER cleaning to catch same URLs with different params
+                const cleanedUrls = rawUrls.map(u => getCleanImageUrl(u)).filter(Boolean) as string[];
+                const imageUrls = Array.from(new Set(cleanedUrls));
                 const imageUrl = imageUrls[0] || null;
                 
                 return { ...item, codes, normData, imageUrl, imageUrls };
