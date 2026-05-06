@@ -98,6 +98,17 @@ export function useOnyx(props: {
     useEffect(() => { inputRef.current = input; }, [input]);
     useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
 
+    // Safety: Reset isTyping if stuck for more than 45s
+    useEffect(() => {
+        if (isTyping) {
+            const timer = setTimeout(() => {
+                setIsTyping(false);
+                onProcessingChange?.(false);
+            }, 45000);
+            return () => clearTimeout(timer);
+        }
+    }, [isTyping]);
+
     const streamRef = useRef<MediaStream | null>(null);
 
     const getApiKey = () => {
@@ -122,9 +133,15 @@ export function useOnyx(props: {
     }, [appLanguage]);
 
     const unlockTTS = () => {
-        const utt = new SpeechSynthesisUtterance(' ');
-        utt.volume = 0.01;
-        window.speechSynthesis.speak(utt);
+        try {
+            const synth = window.speechSynthesis;
+            if (synth.speaking) synth.cancel();
+            const utt = new SpeechSynthesisUtterance(' ');
+            utt.volume = 0.01;
+            synth.speak(utt);
+        } catch (e) {
+            console.error("Neural TTS Unlock Failed", e);
+        }
     };
 
     const checkForVendor = (text: string) => {
@@ -172,10 +189,13 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     };
 
     const sendMessage = async (overrideInput?: string) => {
-        const finalInput = (overrideInput || inputRef.current || input).trim();
+        const finalInput = (overrideInput || inputRef.current).trim();
         if (!finalInput) return;
         
-        if (isTyping) return;
+        if (isTyping) {
+            console.warn("Onyx is currently processing another query.");
+            return;
+        }
         setIsTyping(true);
         onProcessingChange?.(true);
 
@@ -539,6 +559,9 @@ export function OnyxChatControls(props: {
         const finalInput = (overrideInput || input).trim();
         if (!finalInput) return;
         
+        // Prevent input clearing/sending if already processing
+        if (props.isTyping) return;
+
         unlockTTS();
         sendMessage(finalInput);
         setInput('');
@@ -554,7 +577,7 @@ export function OnyxChatControls(props: {
                     enterKeyHint="send"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
@@ -571,12 +594,12 @@ export function OnyxChatControls(props: {
 
                 <button 
                     type="button"
-                    disabled={!input.trim()}
+                    disabled={!input.trim() || props.isTyping}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (input.trim()) handleInternalSubmit();
                     }}
-                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-4 md:p-1 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_30px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100' : 'opacity-10 pointer-events-none'}`}
+                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-4 md:p-1 ${input.trim() && !props.isTyping ? 'text-(--main-color) drop-shadow-[0_0_30px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100' : 'opacity-10 pointer-events-none'}`}
                 >
                     <Send size={32} strokeWidth={3} className="md:w-6 md:h-6" />
                 </button>
@@ -605,7 +628,7 @@ export function OnyxChatControls(props: {
                 <div className="relative">
                     <button 
                         type="button"
-                        onPointerDown={(e) => { 
+                        onClick={(e) => { 
                             e.stopPropagation(); 
                             unlockTTS(); 
                             setIsListening(!isListening); 

@@ -31,7 +31,7 @@ export function OnyxOrbView() {
             {/* Background Layer: The Neural Link Visualizer */}
             <div 
                 className="absolute inset-0 z-0 cursor-pointer w-full h-full flex items-center justify-center overflow-hidden"
-                onPointerDown={(e) => {
+                onClick={(e) => {
                     e.stopPropagation();
                     onyx.unlockTTS();
                     onyx.setIsListening(!onyx.isListening);
