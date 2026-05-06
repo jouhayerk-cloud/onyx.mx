@@ -262,15 +262,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         } finally { setIsTyping(false); onProcessingChange(false); }
     };
 
-    const handleFormSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        unlockTTS(); // Unlock TTS on mobile gesture
-        // Resume AudioContext on user gesture for mobile
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-            audioContextRef.current.resume().catch(() => {});
-        }
-        sendMessage();
-    };
+
 
     useEffect(() => {
         if (SpeechRecognition) {
@@ -302,10 +294,11 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
             recognitionRef.current.onend = () => {
                 const currentText = inputRef.current.trim();
-                // Check if we were listening - if so, restart for continuous mobile feel
+                // CRITICAL: Check the REF directly to see if we were stopped by button release
                 if (isListeningRef.current) {
                     try { recognitionRef.current.start(); } catch (e) {}
                 } else if (currentText) {
+                    // Send what we have if we intentionally stopped
                     sendMessage(currentText);
                     setInput('');
                     if (onTranscriptChange) onTranscriptChange('');
@@ -321,10 +314,12 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
     useEffect(() => {
         if (!recognitionRef.current) return;
+        
+        // Sync the ref immediately to avoid race conditions in onend
+        isListeningRef.current = isListening;
+
         if (isListening) {
-            // Don't start recognition if AI is currently speaking
             if (window.speechSynthesis.speaking) return;
-            
             setInput('');
             try { recognitionRef.current.start(); } catch (e) {}
         } else {
@@ -418,13 +413,20 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         if (onVolumeChange) onVolumeChange(0);
     };
 
+    const handleFormSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
+        unlockTTS();
+        sendMessage();
+    };
+
     return {
         input, setInput,
         messages, setMessages,
         isTyping, setIsTyping,
         isListening, setIsListening,
         sendMessage, lastError,
-        resetNeuralKey, stopVoice
+        resetNeuralKey, stopVoice,
+        handleFormSubmit
     };
 }
 
@@ -498,7 +500,7 @@ export function OnyxChatControls(props: {
     };
 
     return (
-        <div className="w-full flex items-center gap-2 md:gap-8 p-2 md:p-4 bg-transparent backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700">
+        <div className="w-full flex items-center gap-4 md:gap-10 p-4 md:p-8 bg-transparent backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700">
             {/* Minimal Language Toggle - High Contrast */}
             <button 
                 type="button"
@@ -506,7 +508,7 @@ export function OnyxChatControls(props: {
                     e.stopPropagation();
                     setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
                 }}
-                className="flex items-center justify-center text-[13px] font-black tracking-widest text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110"
+                className="flex items-center justify-center text-[15px] font-black tracking-widest text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110 min-w-[50px] h-16"
             >
                 {appLanguage.toUpperCase()}
             </button>
@@ -514,8 +516,7 @@ export function OnyxChatControls(props: {
             {/* Frameless Compact Input Form */}
             <form 
                 onSubmit={handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="flex-1 flex items-center gap-2 md:gap-6 min-w-0"
+                className="flex-1 flex items-center gap-4 md:gap-8 min-w-0"
             >
                 <input 
                     type="text"
@@ -523,31 +524,38 @@ export function OnyxChatControls(props: {
                     enterKeyHint="send"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onPointerDown={(e) => e.stopPropagation()}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
-                            sendMessage();
+                            if (handleFormSubmit) handleFormSubmit();
+                            else sendMessage();
                         }
                     }}
                     placeholder="NEURAL QUERY..."
                     autoComplete="off"
                     autoCorrect="off"
                     spellCheck="false"
-                    className="flex-1 bg-transparent py-2 px-1 rounded-none text-[16px] font-bold tracking-[0.1em] text-white outline-none transition-all placeholder:text-white/10 uppercase border-b border-white/10 focus:border-(--main-color) focus:shadow-[0_1px_15px_-5px_var(--main-color)] min-w-0"
+                    className="flex-1 bg-transparent py-4 px-2 rounded-none text-[18px] md:text-[20px] font-bold tracking-[0.15em] text-white outline-none transition-all placeholder:text-white/10 uppercase border-b-2 border-white/10 focus:border-(--main-color) focus:shadow-[0_4px_20px_-10px_var(--main-color)] min-w-0"
                 />
 
                 {/* Minimal Send Button - High Prominence */}
                 <button 
                     type="submit"
                     disabled={!input.trim()}
-                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-1 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_15px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100 scale-100' : 'opacity-10 scale-90 pointer-events-none'}`}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (handleFormSubmit) handleFormSubmit();
+                        else sendMessage();
+                    }}
+                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-2 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_20px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100 scale-100' : 'opacity-10 scale-90 pointer-events-none'}`}
                 >
-                    <Send size={28} strokeWidth={2} />
+                    <Send size={36} strokeWidth={2.5} />
                 </button>
             </form>
 
             {/* Action Buttons Panel */}
-            <div className="flex items-center gap-3 md:gap-8 shrink-0">
+            <div className="flex items-center gap-6 md:gap-10 shrink-0">
                 {/* Stop Voice Response */}
                 <button 
                     type="button"
@@ -555,10 +563,10 @@ export function OnyxChatControls(props: {
                         e.stopPropagation();
                         stopVoice?.();
                     }}
-                    className="flex items-center justify-center text-red-500 hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110"
+                    className="flex items-center justify-center text-red-500 hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110 h-16 w-16"
                     title="Stop Neural Response"
                 >
-                    <Square size={28} strokeWidth={2} fill="currentColor" />
+                    <Square size={32} strokeWidth={2} fill="currentColor" />
                 </button>
 
                 {/* Artifact Toggle Button */}
@@ -569,10 +577,10 @@ export function OnyxChatControls(props: {
                             e.stopPropagation();
                             setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
                         }}
-                        className={`flex items-center justify-center transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white hover:text-(--main-color)'} hover:scale-110`}
+                        className={`flex items-center justify-center transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_15px_var(--main-color)]' : 'text-white hover:text-(--main-color)'} hover:scale-110 h-16 w-16`}
                         title="Toggle Manifest"
                     >
-                        <Package size={28} strokeWidth={2} />
+                        <Package size={36} strokeWidth={2} />
                     </button>
                 )}
 
@@ -597,16 +605,16 @@ export function OnyxChatControls(props: {
                             e.stopPropagation(); 
                             setIsListening(false); 
                         }}
-                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none`}
+                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-20 h-20`}
                     >
                         <div className={`transition-all duration-700 relative z-10 ${
-                            isListening ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
+                            isListening ? 'text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
                         }`}>
-                            {isListening ? <MicOff size={36} strokeWidth={2} /> : <Mic size={36} strokeWidth={2} />}
+                            {isListening ? <MicOff size={48} strokeWidth={2} /> : <Mic size={48} strokeWidth={2} />}
                         </div>
                         {isListening && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-16 h-16 rounded-full border border-red-500/40 animate-ping" />
+                                <div className="w-24 h-24 rounded-full border-2 border-red-500/40 animate-ping" />
                             </div>
                         )}
                     </button>
@@ -627,16 +635,18 @@ export function OnyxChat(props: OnyxChatProps) {
                 </div>
             )}
             <OnyxChatHistory messages={onyx.messages} isTyping={onyx.isTyping} />
-            <OnyxChatControls 
-                input={onyx.input} 
-                setInput={onyx.setInput} 
-                sendMessage={onyx.sendMessage} 
-                isListening={onyx.isListening} 
-                setIsListening={onyx.setIsListening} 
-                resetNeuralKey={onyx.resetNeuralKey}
-                stopVoice={onyx.stopVoice}
-                handleFormSubmit={onyx.handleFormSubmit}
-            />
+            <div className="h-auto z-40 relative">
+                <OnyxChatControls 
+                    input={onyx.input} 
+                    setInput={onyx.setInput} 
+                    sendMessage={onyx.sendMessage} 
+                    isListening={onyx.isListening} 
+                    setIsListening={onyx.setIsListening} 
+                    resetNeuralKey={onyx.resetNeuralKey}
+                    stopVoice={onyx.stopVoice}
+                    handleFormSubmit={onyx.handleFormSubmit}
+                />
+            </div>
         </div>
     );
 }

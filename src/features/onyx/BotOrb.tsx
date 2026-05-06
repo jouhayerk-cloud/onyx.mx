@@ -283,22 +283,27 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                     <div className="absolute bottom-12 flex flex-col items-center md:items-start gap-8 pointer-events-auto w-full md:w-auto px-8 md:px-0">
                         
                         {/* Text Query Field */}
-                        <div className="w-full max-w-md bg-white/[0.03] border border-white/5 rounded-2xl p-1 flex items-center gap-2 backdrop-blur-xl group/input focus-within:border-white/20 transition-all">
+                        <form 
+                            onSubmit={(e) => { e.preventDefault(); sendTextInput(); }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            className="w-full max-w-md bg-white/[0.03] border border-white/5 rounded-2xl p-1 flex items-center gap-2 backdrop-blur-xl group/input focus-within:border-white/20 transition-all"
+                        >
                             <input 
                                 type="text"
+                                inputMode="text"
+                                enterKeyHint="send"
                                 value={textInput}
                                 onChange={(e) => setTextInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && sendTextInput()}
                                 placeholder="Neural Query..."
                                 className="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 text-sm font-bold tracking-widest placeholder:text-white/10 uppercase"
                             />
                             <button 
-                                onClick={sendTextInput}
+                                type="submit"
                                 className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${textInput.trim() ? 'bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.1)]' : 'text-white/5'}`}
                             >
                                 <ChevronRight size={20} strokeWidth={3} />
                             </button>
-                        </div>
+                        </form>
 
                         <div className="flex items-center gap-16">
                             <button 
