@@ -244,6 +244,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
                         utt.voice = getBestVoice(appLanguage);
                         utt.onstart = () => { 
+                            setIsTyping(true); // Keep typing active while speaking
+                            onProcessingChange?.(true);
                             const interval = setInterval(() => {
                                 const v = 0.3 + Math.random() * 0.4;
                                 onVolumeChange?.(v);
@@ -255,6 +257,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             }
                         };
                         utt.onend = () => { 
+                            setIsTyping(false); // Done speaking
+                            onProcessingChange?.(false);
                             clearInterval(ttsIntervalRef.current); 
                             ttsIntervalRef.current = null;
                             onVolumeChange?.(0);
@@ -264,6 +268,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             }
                         };
                         utt.onerror = () => {
+                            setIsTyping(false);
+                            onProcessingChange?.(false);
                             clearInterval(ttsIntervalRef.current);
                             ttsIntervalRef.current = null;
                             onVolumeChange?.(0);
@@ -273,6 +279,10 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         };
                         window.speechSynthesis.speak(utt);
                     }
+                } else {
+                    // If no text, we still need to end the typing state
+                    setIsTyping(false);
+                    onProcessingChange?.(false);
                 }
 
                 if (calls.length === 0) break;
@@ -297,7 +307,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         } catch (e: any) {
             setLastError(e.message);
             setMessages(prev => [...prev, { role: 'model', content: `Neural Link Interrupted: ${e.message}` }]);
-        } finally { setIsTyping(false); onProcessingChange?.(false); }
+            setIsTyping(false);
+            onProcessingChange?.(false);
+        }
     };
 
     useEffect(() => {
@@ -508,15 +520,13 @@ export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyp
 export function OnyxChatControls(props: {
     input: string;
     setInput: (v: string) => void;
-    sendMessage: () => void;
+    sendMessage: (v: string) => void;
     isListening: boolean;
     setIsListening: (v: boolean) => void;
-    resetNeuralKey?: () => void;
     stopVoice?: () => void;
-    handleFormSubmit?: (e: any) => void;
     isTyping?: boolean;
 }) {
-    const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey, stopVoice, handleFormSubmit } = props;
+    const { input, setInput, sendMessage, isListening, setIsListening, stopVoice } = props;
 
     const unlockTTS = () => {
         const synth = window.speechSynthesis;
@@ -530,12 +540,13 @@ export function OnyxChatControls(props: {
         if (!finalInput) return;
         
         unlockTTS();
-        sendMessage(finalInput); // Explicitly pass the input
+        sendMessage(finalInput);
         setInput('');
     };
 
     return (
-        <div className="w-full flex flex-col md:flex-row md:items-center gap-4 md:gap-8 p-4 md:p-6 bg-white/[0.03] border-t border-white/10 backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700 pointer-events-auto">
+        <div className="w-full flex flex-col md:flex-row md:items-center gap-4 md:gap-8 p-6 md:p-6 bg-white/[0.03] border-t border-white/10 backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700 pointer-events-auto">
+            {/* INPUT SECTION */}
             <div className="flex-1 flex items-center gap-4 min-w-0 bg-white/[0.05] md:bg-transparent border-b-2 md:border-b border-white/10 md:border-white/20 focus-within:border-(--main-color) transition-all duration-500 px-4 md:px-2 rounded-xl md:rounded-none">
                 <input 
                     type="text"
@@ -555,7 +566,7 @@ export function OnyxChatControls(props: {
                     autoComplete="off"
                     autoCorrect="off"
                     spellCheck="false"
-                    className="flex-1 bg-transparent py-4 md:py-2 text-[20px] md:text-[16px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase min-w-0"
+                    className="flex-1 bg-transparent py-5 md:py-2 text-[20px] md:text-[16px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase min-w-0"
                 />
 
                 <button 
@@ -565,16 +576,16 @@ export function OnyxChatControls(props: {
                         e.stopPropagation();
                         if (input.trim()) handleInternalSubmit();
                     }}
-                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-2 md:p-1 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_30px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100' : 'opacity-10 pointer-events-none'}`}
+                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-4 md:p-1 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_30px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100' : 'opacity-10 pointer-events-none'}`}
                 >
                     <Send size={32} strokeWidth={3} className="md:w-6 md:h-6" />
                 </button>
             </div>
 
-
-
-                <div className="flex items-center gap-4">
-                    {/* STOP BUTTON */}
+            {/* CONTROLS SECTION */}
+            <div className="flex items-center justify-between md:justify-start gap-8 md:gap-4 px-2 md:px-0">
+                {/* STOP BUTTON */}
+                <div className="w-20 md:w-14 flex justify-center">
                     {props.isTyping && (
                         <button 
                             type="button"
@@ -582,35 +593,36 @@ export function OnyxChatControls(props: {
                                 e.stopPropagation();
                                 stopVoice?.();
                             }}
-                            className="flex items-center justify-center text-red-500 hover:scale-110 transition-all duration-300 animate-in fade-in zoom-in h-16 md:h-12 w-16 md:w-12"
+                            className="flex items-center justify-center text-red-500 hover:scale-110 transition-all duration-300 animate-in fade-in zoom-in h-20 md:h-14 w-20 md:w-14 bg-red-500/10 rounded-full border border-red-500/20"
                             title="Stop Neural Response"
                         >
                             <Square size={32} strokeWidth={2.5} fill="currentColor" className="md:w-6 md:h-6" />
                         </button>
                     )}
+                </div>
 
-                    <div className="relative">
-                        <button 
-                            type="button"
-                            onPointerDown={(e) => { 
-                                e.stopPropagation(); 
-                                unlockTTS(); 
-                                setIsListening(!isListening); 
-                            }}
-                            className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-20 md:w-14 h-20 md:h-14`}
-                        >
-                            <div className={`transition-all duration-700 relative z-10 ${
-                                isListening ? 'text-red-500 drop-shadow-[0_0_40px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
-                            }`}>
-                                {isListening ? <MicOff size={48} strokeWidth={2.5} className="md:w-8 md:h-8" /> : <Mic size={48} strokeWidth={2.5} className="md:w-8 md:h-8" />}
+                {/* MIC BUTTON */}
+                <div className="relative">
+                    <button 
+                        type="button"
+                        onPointerDown={(e) => { 
+                            e.stopPropagation(); 
+                            unlockTTS(); 
+                            setIsListening(!isListening); 
+                        }}
+                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-24 md:w-16 h-24 md:h-16 rounded-full bg-white/5 border border-white/10`}
+                    >
+                        <div className={`transition-all duration-700 relative z-10 ${
+                            isListening ? 'text-red-500 drop-shadow-[0_0_40px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
+                        }`}>
+                            {isListening ? <MicOff size={48} strokeWidth={2.5} className="md:w-8 md:h-8" /> : <Mic size={48} strokeWidth={2.5} className="md:w-8 md:h-8" />}
+                        </div>
+                        {isListening && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-28 md:w-20 h-28 md:h-20 rounded-full border-4 border-red-500/40 animate-ping" />
                             </div>
-                            {isListening && (
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="w-24 md:w-16 h-24 md:h-16 rounded-full border-4 border-red-500/40 animate-ping" />
-                                </div>
-                            )}
-                        </button>
-                    </div>
+                        )}
+                    </button>
                 </div>
             </div>
         </div>
@@ -635,11 +647,16 @@ export function OnyxChat(props: OnyxChatProps) {
                 sendMessage={onyx.sendMessage}
                 isListening={onyx.isListening}
                 setIsListening={onyx.setIsListening}
-                resetNeuralKey={onyx.resetNeuralKey}
                 stopVoice={onyx.stopVoice}
-                handleFormSubmit={onyx.handleFormSubmit}
                 isTyping={onyx.isTyping}
             />
         </div>
     );
+}
+
+export interface OnyxChatProps {
+    onProcessingChange?: (proc: boolean) => void;
+    onTranscriptChange?: (text: string) => void;
+    onVendorDetect?: (color: string) => void;
+    onVolumeChange?: (volume: number) => void;
 }

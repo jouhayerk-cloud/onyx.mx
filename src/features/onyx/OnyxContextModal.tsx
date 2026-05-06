@@ -118,13 +118,6 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
                     <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em]">Active Model: GEMINI-1.5-PRO-ONYX-V1</p>
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <button 
-                            onClick={resetNeuralKey}
-                            className="flex-1 md:flex-none px-6 py-2 bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-full border border-red-500/20 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
-                        >
-                            <RefreshCw size={14} />
-                            Reset Neural Core
-                        </button>
-                        <button 
                             onClick={onClose}
                             className="flex-1 md:flex-none px-8 py-2 bg-(--main-color) text-black text-xs font-black uppercase tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(var(--main-color-rgb),0.3)]"
                         >

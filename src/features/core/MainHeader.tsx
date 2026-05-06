@@ -94,8 +94,11 @@ import {
     isPaymentActionPanelOpenAtom,
     isPaymentWizardOpenAtom,
     isCrateCreationModalOpenAtom,
-    isBotOrbOpenAtom
+    isBotOrbOpenAtom,
+    sentTruckIdAtom,
+    onyxApiKeyAtom
 } from '../../lib/atoms';
+// Consolidated imports to prevent duplicates
 
 const OnyxBar: React.FC = () => null;
 
@@ -819,15 +822,19 @@ const ControlBar: React.FC = () => (
 
 
 export function MainHeader() {
-    const [activeView] = useAtom(activeViewAtom);
+    const [activeView, setView] = useAtom(activeViewAtom);
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [performanceMode, setPerformanceMode] = useAtom(performanceModeAtom);
-    const [language, setLanguage] = useAtom(languageAtom);
+    const [appLanguage, setAppLanguage] = useAtom(languageAtom);
     const [theme, setTheme] = useAtom(themeAtom);
     const [isBagOpen, setIsBagOpen] = useAtom(isStoreBagOpenAtom);
     const bagCount = useAtomValue(storeShoppingBagAtom).length;
     const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
+    const [sentTruckId, setSentTruckId] = useAtom(sentTruckIdAtom);
+    const [onyxApiKey, setOnyxApiKey] = useAtom(onyxApiKeyAtom);
+    const [artifactConfig, setArtifactConfig] = useAtom(inventoryArtifactConfigAtom);
+    const [isBotOrbOpen, setIsBotOrbOpen] = useAtom(isBotOrbOpenAtom);
 
     const inventory = useAtomValue(inventoryAtom);
     const financeDocs = useAtomValue(financeDataAtom);
@@ -1923,6 +1930,56 @@ export function MainHeader() {
                 </div>
 
                 <div className="flex items-center gap-1 sm:gap-6 shrink-0 pl-2 sm:pl-4 ml-auto h-full">
+                    {/* Onyx Neural Controls */}
+                    <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
+                        {sentTruckId && (
+                            <button 
+                                onClick={() => setView('truck')}
+                                className="w-10 h-10 flex items-center justify-center text-(--main-color) animate-pulse drop-shadow-[0_0_10px_var(--main-color)] hover:scale-110 transition-all"
+                                title="Active Crate Deployment"
+                            >
+                                <Truck size={20} strokeWidth={2.5} />
+                            </button>
+                        )}
+
+                        {artifactConfig.itemIds.length > 0 && (
+                            <button 
+                                onClick={() => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen }))}
+                                className={`w-10 h-10 flex items-center justify-center transition-all active:scale-90 hover:scale-110 ${artifactConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white/40 hover:text-white'}`}
+                                title="Toggle Neural Manifest"
+                            >
+                                <Package size={20} strokeWidth={2.5} />
+                            </button>
+                        )}
+                        
+                        {activeView === 'onyx' && (
+                            <>
+                                {/* Language Toggle */}
+                                <button 
+                                    onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
+                                    className="px-2 h-10 flex items-center justify-center text-[11px] font-black tracking-[0.3em] text-white/40 hover:text-white transition-all active:scale-95"
+                                    title="Toggle Neural Language"
+                                >
+                                    {appLanguage.toUpperCase()}
+                                </button>
+
+                                {/* Reset Neural Credentials */}
+                                <button 
+                                    onClick={() => {
+                                        if (confirm("Reset Neural Link credentials to system default?")) {
+                                            localStorage.removeItem('ONYX_GEMINI_KEY');
+                                            setOnyxApiKey('');
+                                        }
+                                    }}
+                                    className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-red-500 transition-all active:scale-90 hover:scale-110"
+                                    title="Reset Neural Credentials"
+                                >
+                                    <RefreshCw size={18} strokeWidth={2.5} />
+                                </button>
+                            </>
+                        )}
+                    </div>
+
                     {/* Full Color XLSX Download Button */}
                     <button
                         onClick={handleMasterExportXLSX}
