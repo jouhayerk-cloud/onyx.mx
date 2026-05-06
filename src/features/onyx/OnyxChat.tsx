@@ -8,6 +8,7 @@ import {
     sentTruckIdAtom,
     languageAtom,
     onyxIsListeningAtom,
+    onyxIsTypingAtom,
     onyxRequestSendAtom,
     isBotOrbOpenAtom
 } from '../../lib/atoms';
