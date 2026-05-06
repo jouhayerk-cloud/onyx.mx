@@ -31,7 +31,7 @@ export function OnyxOrbView() {
                 }}
             >
                 <div className="w-full h-full relative flex items-center justify-center">
-                    <OnyxVisuals isProcessing={onyx.isTyping} />
+                    <OnyxVisuals isProcessing={onyx.isTyping} volume={onyx.volume} />
                 </div>
             </div>
 
