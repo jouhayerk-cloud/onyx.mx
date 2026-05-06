@@ -2,14 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useOnyx, OnyxChatHistory, OnyxChatControls } from './OnyxChat';
 import { OnyxVisuals } from './OnyxVisuals';
 import { OnyxContextModal } from './OnyxContextModal';
-import { inventoryArtifactConfigAtom, languageAtom } from '../../lib/atoms';
-import { useAtom } from 'jotai';
+import { 
+    inventoryArtifactConfigAtom, 
+    languageAtom, 
+    onyxIsTypingAtom, 
+    onyxIsListeningAtom 
+} from '../../lib/atoms';
+import { useAtom, useAtomValue } from 'jotai';
 import { Package, Square } from 'lucide-react';
 
 export function OnyxOrbView() {
     const onyx = useOnyx();
     const [isContextOpen, setIsContextOpen] = useState(false);
     const [artifactConfig, setArtifactConfig] = useAtom(inventoryArtifactConfigAtom);
+    const isTyping = useAtomValue(onyxIsTypingAtom);
+    const isListening = useAtomValue(onyxIsListeningAtom);
     const { input } = onyx;
     const [requestSend, setRequestSend] = useState(0);
 
@@ -76,7 +83,7 @@ export function OnyxOrbView() {
                 }}
             >
                 <div className="w-full h-full relative flex items-center justify-center">
-                    <OnyxVisuals isProcessing={onyx.isTyping} volume={onyx.volume} />
+                    <OnyxVisuals isProcessing={isTyping} volume={onyx.volume} />
                 </div>
             </div>
 
@@ -103,7 +110,7 @@ export function OnyxOrbView() {
 
                     {/* HISTORY CONVERSATION - Glassmorphic Panels inside the Orb */}
                     <div className="flex-1 w-full h-full">
-                        <OnyxChatHistory messages={onyx.messages} isTyping={onyx.isTyping} />
+                        <OnyxChatHistory messages={onyx.messages} isTyping={isTyping} />
                     </div>
                 </div>
 

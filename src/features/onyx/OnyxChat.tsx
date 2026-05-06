@@ -172,26 +172,30 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     };
 
     const sendMessage = async (overrideInput?: string) => {
-        const finalInput = overrideInput || inputRef.current || input;
-        if (!finalInput.trim()) return;
+        const finalInput = (overrideInput || inputRef.current || input).trim();
+        if (!finalInput) return;
         
+        if (isTyping) return;
+        setIsTyping(true);
+        onProcessingChange?.(true);
+
         const detected = detectLanguage(finalInput);
         if (detected !== appLanguage) {
             setAppLanguage(detected);
         }
-
-        if (isTyping) return;
         
         const apiKey = getApiKey();
         if (!apiKey) {
             setLastError("Neural link credentials missing.");
+            setIsTyping(false);
+            onProcessingChange?.(false);
             return;
         }
+
         setLastError(null);
         setMessages(prev => [...prev, { role: 'user', content: finalInput }]);
         setInput('');
-        setIsTyping(true);
-        onProcessingChange?.(true);
+        
         isAbortedRef.current = false;
         checkForVendor(finalInput);
         try {
@@ -521,11 +525,11 @@ export function OnyxChatControls(props: {
     };
 
     const handleInternalSubmit = (overrideInput?: string) => {
-        const finalInput = overrideInput || input;
-        if (!finalInput.trim()) return;
+        const finalInput = (overrideInput || input).trim();
+        if (!finalInput) return;
         
         unlockTTS();
-        sendMessage();
+        sendMessage(finalInput); // Explicitly pass the input
         setInput('');
     };
 
@@ -556,7 +560,7 @@ export function OnyxChatControls(props: {
                 <button 
                     type="button"
                     disabled={!input.trim()}
-                    onPointerDown={(e) => {
+                    onClick={(e) => {
                         e.stopPropagation();
                         if (input.trim()) handleInternalSubmit();
                     }}
