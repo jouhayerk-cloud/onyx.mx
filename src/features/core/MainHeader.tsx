@@ -357,7 +357,6 @@ const InventoryBar: React.FC = () => {
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
     const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
-    const [isUpcomingOpen, setIsUpcomingOpen] = useAtom(isPaymentUpcomingOpenAtom);
 
     const handleToggleSelectionMode = () => {
         setIsSelectionMode(!isSelectionMode);
@@ -406,15 +405,6 @@ const InventoryBar: React.FC = () => {
                     <Search size={22} strokeWidth={2} />
                 </button>
 
-                {/* 4.5 UPCOMING PAYMENTS */}
-                <button 
-                    onClick={() => setIsUpcomingOpen(!isUpcomingOpen)}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isUpcomingOpen ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Upcoming Payments"
-                >
-                    <Hourglass size={22} strokeWidth={2} className={isUpcomingOpen ? 'animate-pulse' : ''} />
-                </button>
-                
                 <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
 
                 {/* 5. ADD (Larger) */}
