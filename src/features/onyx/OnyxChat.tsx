@@ -68,6 +68,7 @@ export function useOnyx(props: {
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [isListening, setIsListening] = useAtom(onyxIsListeningAtom);
+    const [volume, setVolume] = useState(0);
     const [lastError, setLastError] = useState<string | null>(null);
     const [availableModels, setAvailableModels] = useState<string[]>([]);
     
@@ -214,7 +215,11 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         utt.lang = appLanguage === 'es' ? 'es-MX' : 'en-US';
                         utt.voice = getBestVoice(appLanguage);
                         utt.onstart = () => { 
-                            const interval = setInterval(() => onVolumeChange?.(0.3 + Math.random() * 0.4), 50);
+                            const interval = setInterval(() => {
+                                const v = 0.3 + Math.random() * 0.4;
+                                onVolumeChange?.(v);
+                                setVolume(v);
+                            }, 50);
                             ttsIntervalRef.current = interval;
                             // Force stop recognition when AI starts speaking
                             if (recognitionRef.current) {
@@ -224,7 +229,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         utt.onend = () => { 
                             clearInterval(ttsIntervalRef.current); 
                             ttsIntervalRef.current = null;
-                            onVolumeChange?.(0); 
+                            onVolumeChange?.(0);
+                            setVolume(0);
                             // Resume recognition if user is still holding the talk button
                             if (isListeningRef.current && recognitionRef.current) {
                                 try { recognitionRef.current.start(); } catch (e) {}
@@ -358,7 +364,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         if (!analyzerRef.current || !dataArrayRef.current) return;
                         analyzerRef.current.getByteFrequencyData(dataArrayRef.current);
                         const avg = dataArrayRef.current.reduce((a, b) => a + b, 0) / dataArrayRef.current.length;
-                        onVolumeChange(Math.min(1, (avg / 64) * 1.5));
+                        const v = Math.min(1, (avg / 64) * 1.5);
+                        setVolume(v);
+                        onVolumeChange?.(v);
                         animationFrameRef.current = requestAnimationFrame(updateVolume);
                     };
                     updateVolume();
@@ -432,7 +440,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         isListening, setIsListening,
         sendMessage, lastError,
         resetNeuralKey, stopVoice,
-        handleFormSubmit
+        handleFormSubmit,
+        volume
     };
 }
 
