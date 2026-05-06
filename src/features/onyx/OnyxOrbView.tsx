@@ -28,6 +28,13 @@ export function OnyxOrbView() {
     return (
         <div className="flex flex-col h-full w-full bg-[#050505] overflow-hidden relative font-['Inter']">
             
+            {/* Global Error HUD */}
+            {onyx.lastError && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 backdrop-blur-xl animate-in fade-in slide-in-from-top duration-500">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-500/80">{onyx.lastError}</p>
+                </div>
+            )}
+
             {/* Background Layer: The Neural Link Visualizer */}
             <div 
                 className="absolute inset-0 z-0 cursor-pointer w-full h-full flex items-center justify-center overflow-hidden"
