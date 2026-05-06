@@ -28,6 +28,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
     const [transcription, setTranscription] = useState('');
     const [error, setError] = useState('');
     const [audioActivity, setAudioActivity] = useState(0);
+    const [textInput, setTextInput] = useState('');
 
     const clientRef = useRef<GoogleGenAI | null>(null);
     const sessionRef = useRef<any>(null);
@@ -194,10 +195,13 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
         mediaStreamRef.current = null;
     };
 
-    const resetNeuralKey = () => {
-        sessionRef.current?.close();
-        initSession();
-        setStatus('Neural Core Reset');
+    const sendTextInput = () => {
+        if (!textInput.trim() || !sessionRef.current) return;
+        sessionRef.current.sendRealtimeInput({
+            text: textInput
+        });
+        setTranscription(`Neural Query: ${textInput}`);
+        setTextInput('');
     };
 
     if (!isOpen) return null;
@@ -208,7 +212,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                 initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
                 animate={{ opacity: 1, backdropFilter: 'blur(60px)' }}
                 exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-                className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-12 bg-black/40 select-none touch-none"
+                className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-12 bg-black/40"
             >
                 {/* Background Glows */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -276,8 +280,27 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Controls */}
-                    <div className="absolute bottom-12 flex flex-col items-center md:items-start gap-12 pointer-events-none">
-                        <div className="flex items-center gap-16 pointer-events-auto">
+                    <div className="absolute bottom-12 flex flex-col items-center md:items-start gap-8 pointer-events-auto w-full md:w-auto px-8 md:px-0">
+                        
+                        {/* Text Query Field */}
+                        <div className="w-full max-w-md bg-white/[0.03] border border-white/5 rounded-2xl p-1 flex items-center gap-2 backdrop-blur-xl group/input focus-within:border-white/20 transition-all">
+                            <input 
+                                type="text"
+                                value={textInput}
+                                onChange={(e) => setTextInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && sendTextInput()}
+                                placeholder="Neural Query..."
+                                className="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 text-sm font-bold tracking-widest placeholder:text-white/10 uppercase"
+                            />
+                            <button 
+                                onClick={sendTextInput}
+                                className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${textInput.trim() ? 'bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.1)]' : 'text-white/5'}`}
+                            >
+                                <ChevronRight size={20} strokeWidth={3} />
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-16">
                             <button 
                                 onClick={resetNeuralKey}
                                 className="w-16 h-16 flex items-center justify-center rounded-full bg-white/[0.02] border border-white/5 text-white/10 hover:text-red-500/40 transition-all active:scale-90"
