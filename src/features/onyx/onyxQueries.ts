@@ -10,6 +10,18 @@ import { vendors } from '../../lib/consts';
 
 const VENDOR_KEYS = Object.keys(vendors).sort((a, b) => b.length - a.length);
 
+const resolveVendorId = (nameOrId: string) => {
+    if (!nameOrId) return nameOrId;
+    const lower = nameOrId.toLowerCase().trim();
+    // 1. Direct ID match
+    const idMatch = Object.keys(vendors).find(id => id.toLowerCase() === lower);
+    if (idMatch) return idMatch;
+    // 2. Name match (e.g. "Susana" -> "SU")
+    const nameMatch = Object.entries(vendors).find(([id, v]) => v.name.toLowerCase().includes(lower));
+    if (nameMatch) return nameMatch[0];
+    return nameOrId;
+};
+
 export const onyxQueries = {
     /**
      * Search inventory & production with flexible status and identifier logic.
@@ -68,7 +80,26 @@ export const onyxQueries = {
                 .filter(w => w.length >= 2);
             
             // Search each word as an OR group, but ANDed together
-            words.forEach(word => {
+            // Intelligent Vendor Extraction from Query
+            let queryVendorId = '';
+            const filteredWords = words.filter(word => {
+                const resolved = resolveVendorId(word);
+                if (resolved && resolved.length <= 3 && resolved.toLowerCase() !== word.toLowerCase()) {
+                    queryVendorId = resolved;
+                    return false; // Remove from keywords
+                }
+                return true;
+            });
+
+            // Re-apply resolved vendor if found in query
+            const finalVendorId = resolvedVendor || queryVendorId;
+            if (queryVendorId && !resolvedVendor) {
+                const prefix = `${queryVendorId}%`;
+                invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+                prodQ = prodQ.or(`tag_id.ilike.${prefix}`);
+            }
+
+            filteredWords.forEach(word => {
                 const stem = (word.toLowerCase().endsWith('s') && word.length > 3) 
                     ? word.slice(0, -1) 
                     : word;
@@ -100,16 +131,17 @@ export const onyxQueries = {
         }
         
         // Handle vendor filter carefully
-        if (params.vendor) {
-            if (params.vendor.length <= 3) {
-                const prefix = `${params.vendor}%`;
+        const resolvedVendor = resolveVendorId(params.vendor || '');
+        if (resolvedVendor) {
+            if (resolvedVendor.length <= 3) {
+                const prefix = `${resolvedVendor}%`;
                 invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
                 prodQ = prodQ.or(`tag_id.ilike.${prefix}`);
             } else {
                 // If it's a long string (like "Tehuacan"), treat it as a general keyword search
-                const f = `description.ilike.%${params.vendor}%,color.ilike.%${params.vendor}%,material.ilike.%${params.vendor}%`;
+                const f = `description.ilike.%${resolvedVendor}%,color.ilike.%${resolvedVendor}%,material.ilike.%${resolvedVendor}%`;
                 invQ = invQ.or(f);
-                prodQ = prodQ.or(`description.ilike.%${params.vendor}%`);
+                prodQ = prodQ.or(`description.ilike.%${resolvedVendor}%`);
             }
         }
 
@@ -217,8 +249,9 @@ export const onyxQueries = {
             let invQ = supabase.from('inventory').select(columns);
             let prodQ = supabase.from('production').select(columns);
 
-            if (vendor) {
-                const prefix = `${vendor}%`;
+            const resolvedVendor = resolveVendorId(vendor || '');
+            if (resolvedVendor) {
+                const prefix = `${resolvedVendor}%`;
                 invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
                 prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
             }

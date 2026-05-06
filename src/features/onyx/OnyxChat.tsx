@@ -10,7 +10,8 @@ import {
     onyxIsListeningAtom,
     onyxIsTypingAtom,
     onyxRequestSendAtom,
-    isBotOrbOpenAtom
+    isBotOrbOpenAtom,
+    userAtom
 } from '../../lib/atoms';
 import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
 import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages, Layout, RefreshCw, X, ChevronRight, Database, ShieldAlert, Square } from 'lucide-react';
@@ -451,6 +452,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 }
 
 export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyping: boolean }) {
+    const user = useAtomValue(userAtom);
+    const userName = user?.name || 'Operator';
     const scrollRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -464,7 +467,7 @@ export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyp
                     <div key={idx} className="flex flex-col items-end text-right animate-in fade-in slide-in-from-right duration-700 pointer-events-auto">
                         <div className="flex items-center gap-3 mb-2 opacity-20">
                             <span className="text-[9px] font-black uppercase tracking-widest text-white">
-                                {m.role === 'user' ? 'Operator' : 'Neural Core'}
+                                {m.role === 'user' ? userName : 'Neural Core'}
                             </span>
                             <div className="h-px w-6 bg-white/40" />
                         </div>
