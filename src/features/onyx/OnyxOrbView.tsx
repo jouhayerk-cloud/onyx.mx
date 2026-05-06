@@ -4,21 +4,17 @@ import { OnyxVisuals } from './OnyxVisuals';
 import { OnyxContextModal } from './OnyxContextModal';
 import { 
     inventoryArtifactConfigAtom, 
-    languageAtom, 
     onyxIsTypingAtom, 
-    onyxIsListeningAtom,
-    sentTruckIdAtom 
+    onyxIsListeningAtom
 } from '../../lib/atoms';
 import { useAtom, useAtomValue } from 'jotai';
-import { Package, Square, RefreshCw, Truck } from 'lucide-react';
 
 export function OnyxOrbView() {
     const onyx = useOnyx();
     const [isContextOpen, setIsContextOpen] = useState(false);
-    const [artifactConfig, setArtifactConfig] = useAtom(inventoryArtifactConfigAtom);
+    const artifactConfig = useAtomValue(inventoryArtifactConfigAtom);
     const isTyping = useAtomValue(onyxIsTypingAtom);
     const isListening = useAtomValue(onyxIsListeningAtom);
-    const sentTruckId = useAtomValue(sentTruckIdAtom);
     const { input } = onyx;
     const [requestSend, setRequestSend] = useState(0);
 
@@ -32,65 +28,6 @@ export function OnyxOrbView() {
     return (
         <div className="flex flex-col h-full w-full bg-[#050505] overflow-hidden relative font-['Inter']">
             
-            {/* TACTICAL TOP BAR */}
-            <div className="absolute top-0 inset-x-0 z-50 p-6 flex items-center justify-between pointer-events-none">
-                <div className="flex items-center gap-4 pointer-events-auto">
-                    {/* Language Toggle */}
-                    <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onyx.setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
-                        }}
-                        className="px-6 py-2 bg-white/5 border border-white/10 backdrop-blur-3xl rounded-full text-[14px] font-black tracking-[0.3em] text-white hover:text-(--main-color) hover:border-(--main-color)/30 transition-all active:scale-95"
-                    >
-                        {onyx.appLanguage.toUpperCase()}
-                    </button>
-
-                    {/* Reset Neural Credentials */}
-                    <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onyx.resetNeuralKey?.();
-                        }}
-                        className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 backdrop-blur-3xl rounded-full text-white/40 hover:text-red-500 transition-all active:scale-90"
-                        title="Reset Neural Credentials"
-                    >
-                        <RefreshCw size={20} strokeWidth={2.5} />
-                    </button>
-                </div>
-
-                <div className="flex items-center gap-4 pointer-events-auto">
-
-
-                    {/* Crates Deployment */}
-                    {sentTruckId && (
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                // Logic to view truck/crate (if needed) or just indicate deployment
-                            }}
-                            className="w-12 h-12 flex items-center justify-center bg-(--main-color)/20 border border-(--main-color)/40 backdrop-blur-3xl rounded-full text-(--main-color) animate-pulse shadow-[0_0_20px_var(--main-color)]"
-                            title={`Crate Deployment: ${sentTruckId}`}
-                        >
-                            <Truck size={22} strokeWidth={2.5} />
-                        </button>
-                    )}
-
-                    {/* Artifact Toggle Button */}
-                    {onyx.inventoryConfig.itemIds.length > 0 && (
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
-                            }}
-                            className={`w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 backdrop-blur-3xl rounded-full transition-all active:scale-90 ${artifactConfig.isOpen ? 'text-(--main-color) border-(--main-color)/40 shadow-[0_0_20px_var(--main-color)]' : 'text-white/40 hover:text-white'}`}
-                        >
-                            <Package size={22} />
-                        </button>
-                    )}
-                </div>
-            </div>
-
             {/* Background Layer: The Neural Link Visualizer */}
             <div 
                 className="absolute inset-0 z-0 cursor-pointer w-full h-full flex items-center justify-center overflow-hidden"
@@ -144,9 +81,8 @@ export function OnyxOrbView() {
                     sendMessage={onyx.sendMessage}
                     isListening={onyx.isListening}
                     setIsListening={onyx.setIsListening}
-                    resetNeuralKey={onyx.resetNeuralKey}
                     stopVoice={onyx.stopVoice}
-                    handleFormSubmit={onyx.handleFormSubmit}
+                    isTyping={onyx.isTyping}
                 />
             </div>
         </div>
