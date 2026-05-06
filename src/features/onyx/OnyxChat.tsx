@@ -147,6 +147,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
     const sendMessage = async (overrideInput?: string) => {
         const finalInput = overrideInput || input;
+        console.log("ONYX: sendMessage called with:", finalInput, "isTyping:", isTyping);
         if (!finalInput.trim() || isTyping) return;
         const apiKey = getApiKey();
         if (!apiKey) {
@@ -499,25 +500,18 @@ export function OnyxChatControls(props: {
         synth.speak(utterance);
     };
 
-    return (
-        <div className="w-full flex items-center gap-4 md:gap-10 p-4 md:p-8 bg-transparent backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700">
-            {/* Minimal Language Toggle - High Contrast */}
-            <button 
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
-                }}
-                className="flex items-center justify-center text-[15px] font-black tracking-widest text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110 min-w-[50px] h-16"
-            >
-                {appLanguage.toUpperCase()}
-            </button>
+    const handleInternalSubmit = () => {
+        if (handleFormSubmit) handleFormSubmit();
+        else {
+            unlockTTS();
+            sendMessage();
+        }
+    };
 
-            {/* Frameless Compact Input Form */}
-            <form 
-                onSubmit={handleFormSubmit || ((e) => { e.preventDefault(); sendMessage(); })}
-                className="flex-1 flex items-center gap-4 md:gap-8 min-w-0"
-            >
+    return (
+        <div className="w-full flex flex-col gap-6 p-6 md:p-10 bg-transparent backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700 pointer-events-auto">
+            {/* ROW 1: Full-Width Tactical Input */}
+            <div className="w-full flex items-center gap-4 min-w-0 bg-white/[0.03] border-b-2 border-white/10 focus-within:border-(--main-color) transition-all duration-500 px-4">
                 <input 
                     type="text"
                     inputMode="text"
@@ -528,63 +522,75 @@ export function OnyxChatControls(props: {
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
-                            if (handleFormSubmit) handleFormSubmit();
-                            else sendMessage();
+                            handleInternalSubmit();
                         }
                     }}
                     placeholder="NEURAL QUERY..."
                     autoComplete="off"
                     autoCorrect="off"
                     spellCheck="false"
-                    className="flex-1 bg-transparent py-4 px-2 rounded-none text-[18px] md:text-[20px] font-bold tracking-[0.15em] text-white outline-none transition-all placeholder:text-white/10 uppercase border-b-2 border-white/10 focus:border-(--main-color) focus:shadow-[0_4px_20px_-10px_var(--main-color)] min-w-0"
+                    className="flex-1 bg-transparent py-6 text-[22px] md:text-[26px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase min-w-0"
                 />
 
-                {/* Minimal Send Button - High Prominence */}
+                {/* Integrated Send Action */}
                 <button 
-                    type="submit"
+                    type="button"
                     disabled={!input.trim()}
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (handleFormSubmit) handleFormSubmit();
-                        else sendMessage();
+                        handleInternalSubmit();
                     }}
-                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-2 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_20px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100 scale-100' : 'opacity-10 scale-90 pointer-events-none'}`}
+                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-4 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_30px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100' : 'opacity-10 pointer-events-none'}`}
                 >
-                    <Send size={36} strokeWidth={2.5} />
+                    <Send size={48} strokeWidth={3} />
                 </button>
-            </form>
+            </div>
 
-            {/* Action Buttons Panel */}
-            <div className="flex items-center gap-6 md:gap-10 shrink-0">
-                {/* Stop Voice Response */}
-                <button 
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        stopVoice?.();
-                    }}
-                    className="flex items-center justify-center text-red-500 hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110 h-16 w-16"
-                    title="Stop Neural Response"
-                >
-                    <Square size={32} strokeWidth={2} fill="currentColor" />
-                </button>
-
-                {/* Artifact Toggle Button */}
-                {inventoryConfig.itemIds.length > 0 && (
+            {/* ROW 2: Action Controls Row */}
+            <div className="flex items-center justify-between gap-6 md:gap-12 w-full px-2">
+                <div className="flex items-center gap-10 md:gap-20">
+                    {/* Language Toggle */}
                     <button 
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
+                            setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
                         }}
-                        className={`flex items-center justify-center transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_15px_var(--main-color)]' : 'text-white hover:text-(--main-color)'} hover:scale-110 h-16 w-16`}
-                        title="Toggle Manifest"
+                        className="flex items-center justify-center text-[20px] font-black tracking-[0.2em] text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110 min-w-[70px] h-24"
                     >
-                        <Package size={36} strokeWidth={2} />
+                        {appLanguage.toUpperCase()}
                     </button>
-                )}
 
-                {/* Minimal Talk Button */}
+                    {/* Stop Voice Response */}
+                    <button 
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            stopVoice?.();
+                        }}
+                        className="flex items-center justify-center text-red-500 hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110 h-24 w-24"
+                        title="Stop Neural Response"
+                    >
+                        <Square size={48} strokeWidth={2.5} fill="currentColor" />
+                    </button>
+
+                    {/* Artifact Toggle Button */}
+                    {inventoryConfig.itemIds.length > 0 && (
+                        <button 
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
+                            }}
+                            className={`flex items-center justify-center transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_20px_var(--main-color)]' : 'text-white hover:text-(--main-color)'} hover:scale-110 h-24 w-24`}
+                            title="Toggle Manifest"
+                        >
+                            <Package size={48} strokeWidth={2.5} />
+                        </button>
+                    )}
+                </div>
+
+                {/* Primary Interaction: Mic */}
                 <div className="relative">
                     <button 
                         type="button"
@@ -605,16 +611,16 @@ export function OnyxChatControls(props: {
                             e.stopPropagation(); 
                             setIsListening(false); 
                         }}
-                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-20 h-20`}
+                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-28 h-28`}
                     >
                         <div className={`transition-all duration-700 relative z-10 ${
-                            isListening ? 'text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
+                            isListening ? 'text-red-500 drop-shadow-[0_0_50px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
                         }`}>
-                            {isListening ? <MicOff size={48} strokeWidth={2} /> : <Mic size={48} strokeWidth={2} />}
+                            {isListening ? <MicOff size={64} strokeWidth={2.5} /> : <Mic size={64} strokeWidth={2.5} />}
                         </div>
                         {isListening && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-24 h-24 rounded-full border-2 border-red-500/40 animate-ping" />
+                                <div className="w-32 h-32 rounded-full border-4 border-red-500/40 animate-ping" />
                             </div>
                         )}
                     </button>
