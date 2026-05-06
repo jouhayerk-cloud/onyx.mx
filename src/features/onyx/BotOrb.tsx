@@ -9,7 +9,7 @@ import {
     inventoryArtifactConfigAtom, 
     languageAtom
 } from '../../lib/atoms';
-import { BotOrbVisuals } from './BotOrbVisuals';
+import { OnyxVisuals } from './OnyxVisuals';
 import { onyxToolHandlers } from './onyxTools';
 import { decode, decodeAudioData, createBlob } from './BotOrbUtils';
 
@@ -216,7 +216,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                     <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-red-500/5 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
                 </div>
 
-                <div className="w-full max-w-6xl h-full relative flex flex-col items-center justify-center">
+                <div className="w-full max-w-6xl h-full relative flex flex-col items-center md:items-start justify-center">
                     
                     {/* Main Orb Button */}
                     <div 
@@ -228,10 +228,8 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                     >
                         {/* Visual Orb */}
                         <div className={`w-full h-full transition-all duration-1000 ${isRecording ? 'opacity-100 scale-105' : 'opacity-70 scale-100 group-hover/orb:opacity-90'}`}>
-                            <BotOrbVisuals 
-                                inputNode={inputNodeRef.current} 
-                                outputNode={outputNodeRef.current} 
-                                volumeOverride={isRecording ? audioActivity * 2 : 0}
+                            <OnyxVisuals 
+                                volume={isRecording ? audioActivity * 2 : 0}
                                 isProcessing={status.includes('Processing')} 
                             />
                         </div>
@@ -243,7 +241,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: 20 }}
-                                    className="absolute bottom-[20%] z-50 px-10 py-6 rounded-[2.5rem] bg-black/40 border border-white/10 backdrop-blur-3xl shadow-[0_0_80px_rgba(0,0,0,0.8)] max-w-3xl text-center pointer-events-none"
+                                    className="absolute bottom-[20%] z-50 px-10 py-6 rounded-[2.5rem] bg-black/40 border border-white/10 backdrop-blur-3xl shadow-[0_0_80px_rgba(0,0,0,0.8)] max-w-3xl text-center md:text-left pointer-events-none"
                                 >
                                     <p className="text-lg md:text-xl font-black text-white uppercase tracking-[0.2em] leading-tight">
                                         {isRecording ? (
@@ -278,7 +276,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Controls */}
-                    <div className="absolute bottom-12 flex flex-col items-center gap-12 pointer-events-none">
+                    <div className="absolute bottom-12 flex flex-col items-center md:items-start gap-12 pointer-events-none">
                         <div className="flex items-center gap-16 pointer-events-auto">
                             <button 
                                 onClick={resetNeuralKey}
