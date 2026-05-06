@@ -563,8 +563,8 @@ export const UniversalToolsBar: React.FC = () => {
                 </div>
             )}
 
-            {/* ── UPCOMING PAYMENTS (GLOBAL) ─────────────────────────────────────────────────── */}
-            {isFinUpcomingOpen && (isInventory || isFinance) && (
+            {/* ── UPCOMING PAYMENTS (FINANCE ONLY) ─────────────────────────────────────────── */}
+            {isFinUpcomingOpen && isFinance && (
                 <div className="w-full px-8 py-4 animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5">
                     <SectionHeader 
                         icon={Hourglass} 
