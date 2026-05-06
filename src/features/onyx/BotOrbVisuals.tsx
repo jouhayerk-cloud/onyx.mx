@@ -4,6 +4,9 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { useAtom } from 'jotai';
+import { themeAtom } from '../../lib/atoms';
+import { THEME_ASSETS } from '../../lib/themes-assets';
 
 // Shaders ported from AudioOrb
 const sphereVS = `
@@ -32,8 +35,8 @@ uniform vec4 outputData;
 vec3 calc( vec3 pos ) {
   vec3 dir = normalize( pos );
   return pos +
-    1. * inputData.x * inputData.y * dir * (.5 + .5 * sin(inputData.z * pos.x + time)) +
-    1. * outputData.x * outputData.y * dir * (.5 + .5 * sin(outputData.z * pos.y + time))
+    4.0 * inputData.x * inputData.y * dir * (.5 + .5 * sin(inputData.z * pos.x + time)) +
+    12.0 * outputData.x * outputData.y * dir * (.5 + .5 * sin(outputData.z * pos.y + time))
   ;
 }
 
@@ -99,7 +102,6 @@ void main() {
 
 const backdropFS = `
 precision highp float;
-layout(location = 0) out vec4 fragmentColor;
 uniform vec2 resolution;
 uniform float rand;
 void main() {
@@ -111,7 +113,7 @@ void main() {
   float d = 4. * length(vUv);
   vec3 from = vec3(3.) / 255.;
   vec3 to = vec3(16., 12., 20.) / 2550.;
-  fragmentColor = vec4(mix(from, to, d) + .005 * noise, 1.);
+  gl_FragColor = vec4(mix(from, to, d) + .005 * noise, 1.);
 }
 `;
 
@@ -146,6 +148,7 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>(null);
+    const [theme] = useAtom(themeAtom);
 
     useEffect(() => {
         if (!canvasRef.current || !containerRef.current) return;
@@ -174,18 +177,31 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
                 },
                 vertexShader: backdropVS,
                 fragmentShader: backdropFS,
-                glslVersion: THREE.GLSL3,
                 side: THREE.BackSide
             })
         );
         scene.add(backdrop);
 
+        const themeInfo = (THEME_ASSETS as any)[theme] || THEME_ASSETS.talan || { hexInfo: { primary: '#000000', accents: ['#0000ff'] }, swatch: '' };
+        const primaryColor = new THREE.Color(themeInfo.hexInfo?.primary || '#000000');
+        const accentColor = new THREE.Color(themeInfo.hexInfo?.accents?.[0] || '#0000ff');
+
+        const textureLoader = new THREE.TextureLoader();
+        const themeTexture = themeInfo.swatch ? textureLoader.load(themeInfo.swatch) : null;
+        if (themeTexture) {
+            themeTexture.wrapS = themeTexture.wrapT = THREE.RepeatWrapping;
+            themeTexture.repeat.set(2, 2);
+        }
+
         const sphereMaterial = new THREE.MeshStandardMaterial({
-            color: 0x000000,
-            metalness: 0.9,
-            roughness: 0.05,
-            emissive: 0x000020,
-            emissiveIntensity: 3.0,
+            color: primaryColor.clone().add(new THREE.Color(0x222222)), // Brighter base for visibility
+            metalness: 0.3, // Lower metalness for more 'solid/diffuse' look
+            roughness: 0.7, // Higher roughness to see texture/bumps clearly
+            emissive: accentColor,
+            emissiveIntensity: 1.5,
+            map: themeTexture,
+            bumpMap: themeTexture,
+            bumpScale: 0.15, // Significantly higher bump for tactile feel
         });
 
         sphereMaterial.onBeforeCompile = (shader) => {
@@ -228,25 +244,30 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
                 const outVol = outputNode ? outData[0] / 255 : volumeOverride;
                 const inVol = inputNode ? inData[0] / 255 : (isProcessing ? 0.05 : 0);
 
-                const scale = 1 + (isProcessing ? 0.2 : 0) + 0.3 * outVol + 0.1 * inVol;
+                // EXTREME reactive scaling
+                const scale = 1.0 + (isProcessing ? 0.3 : 0) + 2.5 * outVol + 0.8 * inVol;
                 sphere.scale.setScalar(scale);
                 
-                rotation.x += dt * 0.01 * (outVol + 0.1);
-                rotation.y += dt * 0.015 * (inVol + (isProcessing ? 0.2 : 0.05));
+                // EXTREME agile rotation
+                rotation.x += dt * 0.03 * (outVol * 10 + 0.1);
+                rotation.y += dt * 0.045 * (inVol * 5 + (isProcessing ? 0.4 : 0.05));
                 
                 sphere.rotation.set(rotation.x, rotation.y, rotation.z);
 
-                sphereMaterial.userData.shader.uniforms.time.value += dt * 0.05 * (outVol + 0.1);
+                // Intensify pulse when speaking
+                sphereMaterial.emissiveIntensity = isProcessing ? (2.0 + Math.sin(t * 0.01) * 1.0) : (1.0 + outVol * 10.0);
+
+                sphereMaterial.userData.shader.uniforms.time.value += dt * 0.05 * (outVol * 2 + 0.1);
                 sphereMaterial.userData.shader.uniforms.inputData.value.set(
-                    inVol,
-                    (0.1 * inData[1]) / 255,
-                    (10 * inData[2]) / 255,
+                    inVol * 2,
+                    (0.2 * inData[1]) / 255,
+                    (15 * inData[2]) / 255,
                     0
                 );
                 sphereMaterial.userData.shader.uniforms.outputData.value.set(
-                    2 * outVol,
-                    (0.1 * outData[1]) / 255,
-                    (10 * outData[2]) / 255,
+                    4 * outVol,
+                    (0.2 * outData[1]) / 255,
+                    (15 * outData[2]) / 255,
                     0
                 );
 
@@ -266,9 +287,11 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
             const { clientWidth: w, clientHeight: h } = containerRef.current;
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
-            renderer.setSize(w, h);
-            composer.setSize(w, h);
-            backdrop.material.uniforms.resolution.value.set(w, h);
+            renderer.setSize(w || 1, h || 1);
+            composer.setSize(w || 1, h || 1);
+            if (backdrop.material.uniforms.resolution) {
+                backdrop.material.uniforms.resolution.value.set(w || 1, h || 1);
+            }
         };
 
         window.addEventListener('resize', handleResize);
@@ -281,7 +304,7 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
             renderer.dispose();
             scene.clear();
         };
-    }, [inputNode, outputNode]);
+    }, [inputNode, outputNode, theme]);
 
     return (
         <div ref={containerRef} className="w-full h-full relative overflow-hidden bg-black/40 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl">
