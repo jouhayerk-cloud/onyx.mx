@@ -514,6 +514,7 @@ export function OnyxChatControls(props: {
     resetNeuralKey?: () => void;
     stopVoice?: () => void;
     handleFormSubmit?: (e: any) => void;
+    isTyping?: boolean;
 }) {
     const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey, stopVoice, handleFormSubmit } = props;
 
@@ -585,27 +586,44 @@ export function OnyxChatControls(props: {
                     </button>
                 </div>
 
-                <div className="relative">
-                    <button 
-                        type="button"
-                        onPointerDown={(e) => { 
-                            e.stopPropagation(); 
-                            unlockTTS(); 
-                            setIsListening(!isListening); 
-                        }}
-                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-20 md:w-14 h-20 md:h-14`}
-                    >
-                        <div className={`transition-all duration-700 relative z-10 ${
-                            isListening ? 'text-red-500 drop-shadow-[0_0_40px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
-                        }`}>
-                            {isListening ? <MicOff size={48} strokeWidth={2.5} className="md:w-8 md:h-8" /> : <Mic size={48} strokeWidth={2.5} className="md:w-8 md:h-8" />}
-                        </div>
-                        {isListening && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-24 md:w-16 h-24 md:h-16 rounded-full border-4 border-red-500/40 animate-ping" />
+                <div className="flex items-center gap-4">
+                    {/* STOP BUTTON */}
+                    {props.isTyping && (
+                        <button 
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                stopVoice?.();
+                            }}
+                            className="flex items-center justify-center text-red-500 hover:scale-110 transition-all duration-300 animate-in fade-in zoom-in h-16 md:h-12 w-16 md:w-12"
+                            title="Stop Neural Response"
+                        >
+                            <Square size={32} strokeWidth={2.5} fill="currentColor" className="md:w-6 md:h-6" />
+                        </button>
+                    )}
+
+                    <div className="relative">
+                        <button 
+                            type="button"
+                            onPointerDown={(e) => { 
+                                e.stopPropagation(); 
+                                unlockTTS(); 
+                                setIsListening(!isListening); 
+                            }}
+                            className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-20 md:w-14 h-20 md:h-14`}
+                        >
+                            <div className={`transition-all duration-700 relative z-10 ${
+                                isListening ? 'text-red-500 drop-shadow-[0_0_40px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
+                            }`}>
+                                {isListening ? <MicOff size={48} strokeWidth={2.5} className="md:w-8 md:h-8" /> : <Mic size={48} strokeWidth={2.5} className="md:w-8 md:h-8" />}
                             </div>
-                        )}
-                    </button>
+                            {isListening && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="w-24 md:w-16 h-24 md:h-16 rounded-full border-4 border-red-500/40 animate-ping" />
+                                </div>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -633,6 +651,7 @@ export function OnyxChat(props: OnyxChatProps) {
                 resetNeuralKey={onyx.resetNeuralKey}
                 stopVoice={onyx.stopVoice}
                 handleFormSubmit={onyx.handleFormSubmit}
+                isTyping={onyx.isTyping}
             />
         </div>
     );

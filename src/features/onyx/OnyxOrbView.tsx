@@ -46,17 +46,7 @@ export function OnyxOrbView() {
                 </div>
 
                 <div className="flex items-center gap-4 pointer-events-auto">
-                    {/* Stop Neural Voice */}
-                    <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onyx.stopVoice?.();
-                        }}
-                        className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 backdrop-blur-3xl rounded-full text-red-500 hover:bg-red-500/10 transition-all active:scale-90"
-                        title="Stop Neural Response"
-                    >
-                        <Square size={20} fill="currentColor" />
-                    </button>
+
 
                     {/* Artifact Toggle Button */}
                     {onyx.inventoryConfig.itemIds.length > 0 && (
