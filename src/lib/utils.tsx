@@ -198,6 +198,34 @@ export function getCleanImageUrl(url: string | null | undefined): string | null 
   return clean;
 }
 
+/**
+ * Robustly collects all unique images from every possible field (including legacy ones).
+ */
+export function collectAllImages(normData: any): string[] {
+  if (!normData) return [];
+  
+  const collect = (val: any): string[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.flatMap(v => collect(v));
+    // Split by comma or semicolon (legacy data sometimes uses semicolon)
+    return String(val).split(/[,;]/).map(v => v.trim()).filter(Boolean);
+  };
+
+  const rawUrls = [
+    ...collect(normData.mediaUrls),
+    ...collect(normData.generatedImageUrls),
+    ...collect(normData.image_url),
+    ...collect(normData.item_image),
+    ...collect(normData.imageUrl),
+    ...collect(normData.itemImage),
+    normData.generatedPngUrl
+  ].filter(Boolean).map(u => String(u).trim()).filter(Boolean);
+  
+  // Deduplicate AFTER cleaning to catch identical visuals with different tracking tags
+  const cleanedUrls = rawUrls.map(u => getCleanImageUrl(u)).filter(Boolean) as string[];
+  return Array.from(new Set(cleanedUrls));
+}
+
 export const isVideoMime = (mime: string) => mime?.startsWith('video/');
 export const isVideoFile = (fileName: string) => {
   const ext = fileName?.split('.').pop()?.toLowerCase();
@@ -891,6 +919,8 @@ export const normalizeInventoryData = (data: any): any => {
     generatedDescription: d.generated_description || d.generatedDescription,
     generatedImageUrls: d.generated_image_urls || d.generatedImageUrls,
     mediaUrls: d.media_urls || d.mediaUrls,
+    imageUrl: d.image_url || d.imageUrl,
+    itemImage: d.item_image || d.itemImage,
     payDate: d.pay_date || d.payDate,
     payReq: d.pay_req || d.payReq,
     payment_ids: d.payment_ids || d.paymentIds,

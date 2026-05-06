@@ -21,7 +21,7 @@ import {
     Maximize2, Search, ZapOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, collectAllImages } from '../../lib/utils';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
@@ -82,7 +82,7 @@ export const NFCWizard: React.FC = () => {
     const isSupported = typeof window !== 'undefined' && 'NDEFReader' in window;
     const isVerified = currentItem && verifiedTags.has(currentItem.codes.bookBarcode);
 
-    const mediaUrls = currentItem?.normData.mediaUrls?.split(',').filter(Boolean) || [];
+    const mediaUrls = collectAllImages(currentItem?.normData);
 
     const vendorPrefix = currentItem ? String(currentItem.normData.itemId || currentItem.codes.bookBarcode || '').split('-')[0].toUpperCase() : '';
     const vendorColor = (vendors as any)[vendorPrefix]?.color || '#FFFFFF';
@@ -441,7 +441,7 @@ export const LabelWizard: React.FC = () => {
                     weightKg: parseFloat(d.weightKg) || 0,
                     costMxn: 0, 
                     costUsd: 0, 
-                    imageUrls: includeImages ? [getCleanImageUrl(d.mediaUrls?.split(',')[0])].filter(Boolean) : [],
+                    imageUrls: includeImages ? collectAllImages(d) : [],
                     tagColor: (vendors as any)[vendorPrefix]?.color || '#333', 
                     dbItemCount: Number(d.quantity || 1)
                 };
@@ -479,7 +479,7 @@ export const LabelWizard: React.FC = () => {
             const results: CatalogArtifact[] = selectedItems.map(item => ({
                 data: item.data,
                 codes: item.codes,
-                images: item.normData.mediaUrls?.split(',').filter(Boolean) || [],
+                images: collectAllImages(item.normData),
                 exportType: 'catalog'
             }));
 
