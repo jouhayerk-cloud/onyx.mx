@@ -562,13 +562,6 @@ export function OnyxChatControls(props: {
 }) {
     const { input, setInput, sendMessage, isListening, setIsListening, stopVoice, unlockTTS, startAudioCapture } = props;
 
-    const unlockTTS = () => {
-        const synth = window.speechSynthesis;
-        if (synth.speaking) synth.cancel();
-        const utterance = new SpeechSynthesisUtterance('');
-        synth.speak(utterance);
-    };
-
     const handleInternalSubmit = (overrideInput?: string) => {
         const finalInput = (overrideInput || input).trim();
         if (!finalInput) return;
