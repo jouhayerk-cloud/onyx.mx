@@ -70,7 +70,7 @@ export function useOnyx(props: {
 } = {}) {
     const { onProcessingChange, onTranscriptChange, onVendorDetect, onVolumeChange } = props;
     const [messages, setMessages] = useAtom(onyxMessagesAtom);
-    const [userApiKey, setUserApiKey] = useAtom(onyxApiKeyAtom);
+    const [userApiKey, setOnyxApiKey] = useAtom(onyxApiKeyAtom);
     const [appLanguage, setAppLanguage] = useAtom(languageAtom);
     const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
     const setPaymentsConfig = useSetAtom(paymentsArtifactConfigAtom);
@@ -461,8 +461,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     useEffect(() => { discoverModels(); }, [userApiKey]);
 
     const resetNeuralKey = () => {
-        localStorage.removeItem('ONYX_GEMINI_KEY');
-        setUserApiKey('');
+        localStorage.removeItem('onyxApiKey');
+        setOnyxApiKey('');
         setLastError("Neural credentials reset to system default.");
         setTimeout(() => discoverModels(), 500);
     };
