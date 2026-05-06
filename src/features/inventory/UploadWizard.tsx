@@ -248,7 +248,7 @@ export const UploadWizard: React.FC = () => {
                 notes: itemData.description || '',
                 existingCount: 0,
                 existingNumbers: [],
-                payReq: itemData.payReq || 'paid'
+                payReq: itemData.payReq || itemData.pay_req || ''
             });
         } else if (isOpen) {
             // Reset to initial state for new entry
