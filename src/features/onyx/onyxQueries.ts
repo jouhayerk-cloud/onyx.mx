@@ -34,8 +34,10 @@ export const onyxQueries = {
         const invCols = '*, item_id, book_barcode, quantity, status, height_cm, width_cm, length_cm, weight_kg, color';
         const prodCols = '*, tag_id, quantity, status';
         
-        // Fetch from Inventory
+        // Fetch from Inventory & Production
         let invQ = supabase.from('inventory').select(invCols, { count: 'exact' });
+        let prodQ = supabase.from('production').select(prodCols, { count: 'exact' });
+
         if (params.status) {
             if (Array.isArray(params.status)) {
                 invQ = invQ.in('status', params.status);
@@ -111,8 +113,6 @@ export const onyxQueries = {
             }
         }
 
-        // Fetch from Production
-        let prodQ = supabase.from('production').select(prodCols, { count: 'exact' });
         if (params.status) prodQ = prodQ.eq('status', params.status);
         if (params.shape) prodQ = prodQ.ilike('shape', `%${params.shape}%`);
         if (params.color) prodQ = prodQ.ilike('color', `%${params.color}%`);
