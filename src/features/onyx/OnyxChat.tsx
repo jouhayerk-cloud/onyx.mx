@@ -37,7 +37,8 @@ const ColorizedText = ({ text }: { text: string }) => {
                 if (!part) return null;
                 const lowerPart = part.toLowerCase();
                 if (VENDOR_COLORS[lowerPart]) {
-                    return <span key={i} style={{ color: VENDOR_COLORS[lowerPart] }} className="font-black drop-shadow-[0_0_8px_currentColor]">{part}</span>;
+                    const capitalized = part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+                    return <span key={i} style={{ color: VENDOR_COLORS[lowerPart] }} className="font-black drop-shadow-[0_0_8px_currentColor]">{capitalized}</span>;
                 }
                 if (part.match(tagRegex)) {
                     return <span key={i} className="text-(--main-color) font-black underline decoration-dashed decoration-1 underline-offset-4 drop-shadow-[0_0_8px_var(--main-color)]">{part}</span>;
