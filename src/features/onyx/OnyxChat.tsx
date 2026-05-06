@@ -98,13 +98,13 @@ export function useOnyx(props: {
     useEffect(() => { inputRef.current = input; }, [input]);
     useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
 
-    // Safety: Reset isTyping if stuck for more than 45s
+    // Safety: Reset isTyping if stuck for more than 15s (reduced for mobile responsiveness)
     useEffect(() => {
         if (isTyping) {
             const timer = setTimeout(() => {
                 setIsTyping(false);
                 onProcessingChange?.(false);
-            }, 45000);
+            }, 15000);
             return () => clearTimeout(timer);
         }
     }, [isTyping]);
@@ -213,8 +213,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         }
 
         setLastError(null);
+        // Optimistic UI: Add message immediately
         setMessages(prev => [...prev, { role: 'user', content: finalInput }]);
-        setInput('');
         
         isAbortedRef.current = false;
         checkForVendor(finalInput);
@@ -571,7 +571,11 @@ export function OnyxChatControls(props: {
 
         unlockTTS?.();
         sendMessage?.(finalInput);
-        setInput('');
+        
+        // Only clear input if we actually started sending
+        if (!props.isTyping) {
+            setInput('');
+        }
     };
 
     return (
