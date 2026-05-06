@@ -514,12 +514,14 @@ export function OnyxChatControls(props: {
         synth.speak(utterance);
     };
 
-    const handleInternalSubmit = () => {
-        if (handleFormSubmit) handleFormSubmit();
-        else {
-            unlockTTS();
-            sendMessage();
-        }
+    const handleInternalSubmit = (overrideInput?: string) => {
+        const finalInput = overrideInput || input;
+        console.log("ONYX: Tactical Submit Triggered", { finalInput });
+        if (!finalInput.trim()) return;
+        
+        unlockTTS();
+        sendMessage(finalInput);
+        setInput('');
     };
 
     return (
@@ -537,6 +539,7 @@ export function OnyxChatControls(props: {
                         if (e.key === 'Enter') {
                             e.preventDefault();
                             handleInternalSubmit();
+                            (e.target as HTMLInputElement).blur();
                         }
                     }}
                     onKeyPress={(e) => {
