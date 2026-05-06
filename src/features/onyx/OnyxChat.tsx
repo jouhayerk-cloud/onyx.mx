@@ -497,7 +497,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         appLanguage, setAppLanguage,
         inventoryConfig, setInventoryConfig,
         unlockTTS,
-        startAudioCapture
+        startAudioCapture,
+        setOnyxApiKey,
+        setLastError
     };
 }
 
