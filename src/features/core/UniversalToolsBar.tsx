@@ -20,6 +20,7 @@ import {
     InventoryVersionAtom,
     isUploadWizardOpenAtom,
     isPaymentsSearchOpenAtom,
+    filteredInventoryIdsAtom,
     financeSearchTermAtom,
     isPaymentFiltersOpenAtom,
     paymentStatusFilterAtom,
@@ -204,6 +205,7 @@ export const UniversalToolsBar: React.FC = () => {
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const invCategoryFilter = useAtomValue(inventoryCategoryFilterAtom);
     const invMaterialFilter = useAtomValue(inventoryMaterialFilterAtom);
+    const filteredIds = useAtomValue(filteredInventoryIdsAtom);
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const setInvVersion = useSetAtom(InventoryVersionAtom);
@@ -290,50 +292,9 @@ export const UniversalToolsBar: React.FC = () => {
         activeQueueRecords.reduce((s, r) => s + (r.amount || 0) + (r.commission || 0), 0),
     [activeQueueRecords]);
 
-    // Selection Logic
-    const filteredInventory = useMemo(() => {
-        if (!allInventory) return [];
-        return allInventory.filter(item => {
-            // 1. Search Term
-            if (invSearchTerm) {
-                const term = invSearchTerm.toLowerCase();
-                const matchesSearch = 
-                    item.data.name?.toLowerCase().includes(term) ||
-                    item.data.itemId?.toLowerCase().includes(term) ||
-                    item.data.itemNumber?.toLowerCase().includes(term) ||
-                    item.data.description?.toLowerCase().includes(term);
-                if (!matchesSearch) return false;
-            }
-
-            // 2. Status Filter
-            if (invStatusFilter !== 'All') {
-                if (item.data.status !== invStatusFilter) return false;
-            }
-
-            // 3. Vendor Filter
-            if (invVendorFilter && !invVendorFilter.includes('All')) {
-                const vId = item.data.vendor_id || item.data.vendorId || '';
-                if (!invVendorFilter.includes(vId)) return false;
-            }
-
-            // 4. Category Filter
-            if (invCategoryFilter && invCategoryFilter !== 'All') {
-                if (item.data.category !== invCategoryFilter) return false;
-            }
-
-            // 5. Material Filter
-            if (invMaterialFilter && invMaterialFilter !== 'All') {
-                if (item.data.material !== invMaterialFilter) return false;
-            }
-
-            return true;
-        });
-    }, [allInventory, invSearchTerm, invStatusFilter, invVendorFilter, invCategoryFilter, invMaterialFilter]);
-
     const handleSelectAll = () => {
-        const allIds = filteredInventory.map(item => item.row);
-        setSelectedIds(allIds);
-        toast.success(`Selected ${allIds.length} items`);
+        setSelectedIds(filteredIds);
+        toast.success(`Selected ${filteredIds.length} items`);
     };
     
     if (!activeView) return null;
