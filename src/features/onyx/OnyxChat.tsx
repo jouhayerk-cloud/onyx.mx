@@ -27,7 +27,7 @@ const VENDOR_COLORS: Record<string, string> = {
 const ColorizedText = ({ text }: { text: string }) => {
     const tagRegex = /\b(?=[A-Z\d]*\d)(?=[A-Z\d]*[A-Z])[A-Z\d]{8,12}\b/g;
     const vendors = Object.keys(VENDOR_COLORS).join('|');
-    const vendorRegex = new RegExp(`\\b(${vendors})\\b`, 'gi');
+    const vendorRegex = new RegExp(`\\b(?:${vendors})\\b`, 'gi');
     
     const parts = text.split(new RegExp(`(${tagRegex.source}|${vendorRegex.source})`, 'gi'));
     
