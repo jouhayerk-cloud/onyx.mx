@@ -111,11 +111,11 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                                 setTranscription(`Neural Discovery: Checking ${toolName}...`);
                                 const res = await (onyxToolHandlers as any)[toolName]?.(args);
                                 
-                                if (toolName === 'get_inventory_details' && res?.items) {
+                                if ((toolName === 'search_inventory' || toolName === 'deploy_inventory_artifact') && (res?.items || res?.ids)) {
                                     setInventoryConfig({
                                         isOpen: true,
-                                        itemIds: res.items.map((i: any) => i.id || i.tag_id),
-                                        title: `Onyx Search: ${args.query || 'Results'}`
+                                        itemIds: res.items ? res.items.map((i: any) => i.id || i.tag_id) : res.ids,
+                                        title: res.title || `Onyx Search: ${args.query || args.vendor || 'Results'}`
                                     });
                                 }
 

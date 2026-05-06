@@ -59,8 +59,8 @@ void main() {
     float d1 = sin(pos.x * 3.0 + time * 2.0) * cos(pos.y * 3.0 + time * 2.0);
     float d2 = sin(pos.z * 5.0 - time * 3.0) * 0.5;
     
-    // MINIMALIST DISPLACEMENT
-    float distortion = (d1 + d2) * (0.02 + inputData.x * 0.5 + outputData.x * 1.0);
+    // MINIMALIST DISPLACEMENT (ULTRA CALM)
+    float distortion = (d1 + d2) * (0.01 + inputData.x * 0.2 + outputData.x * 0.4);
     pos += normal * distortion;
     
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
@@ -110,8 +110,8 @@ void main() {
     vec3 finalColor = mix(core, base, fresnel * 0.95);
     float glow = pow(fresnel, 3.0) * 1.2;
     
-    // OPAQUE AESTHETIC (0.95+)
-    float alpha = clamp(0.85 + fresnel * 0.15, 0.0, 1.0);
+    // INCREASED TRANSPARENCY (BASE 0.75)
+    float alpha = clamp(0.75 + fresnel * 0.15, 0.0, 1.0);
     gl_FragColor = vec4(finalColor + base * glow, alpha);
 }
 `;
@@ -236,7 +236,7 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             material.uniforms.inputData.value.set(inVol, 0.1, 15, 0);
             material.uniforms.outputData.value.set(outVol, 0.1, 15, 0);
 
-            const scale = 1.0 + (procRef.current ? 0.02 : 0) + 0.3 * outVol;
+            const scale = 1.0 + (procRef.current ? 0.01 : 0) + 0.15 * outVol;
             sphere.scale.setScalar(scale);
 
             sphere.rotation.y += 0.005 + (outVol * 0.05);
