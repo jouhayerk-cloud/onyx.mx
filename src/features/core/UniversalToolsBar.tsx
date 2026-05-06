@@ -202,6 +202,10 @@ export const UniversalToolsBar: React.FC = () => {
     const [isInvSearchOpen, setIsInvSearchOpen] = useAtom(isInventorySearchOpenAtom);
     const [invSearchTerm, setInvSearchTerm] = useAtom(inventorySearchTermAtom);
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
+    const invCategoryFilter = useAtomValue(inventoryCategoryFilterAtom);
+    const invMaterialFilter = useAtomValue(inventoryMaterialFilterAtom);
+    const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
+    const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const setInvVersion = useSetAtom(InventoryVersionAtom);
     
     // Finance States
@@ -285,6 +289,52 @@ export const UniversalToolsBar: React.FC = () => {
     const activeQueueTotal = useMemo(() => 
         activeQueueRecords.reduce((s, r) => s + (r.amount || 0) + (r.commission || 0), 0),
     [activeQueueRecords]);
+
+    // Selection Logic
+    const filteredInventory = useMemo(() => {
+        if (!allInventory) return [];
+        return allInventory.filter(item => {
+            // 1. Search Term
+            if (invSearchTerm) {
+                const term = invSearchTerm.toLowerCase();
+                const matchesSearch = 
+                    item.data.name?.toLowerCase().includes(term) ||
+                    item.data.itemId?.toLowerCase().includes(term) ||
+                    item.data.itemNumber?.toLowerCase().includes(term) ||
+                    item.data.description?.toLowerCase().includes(term);
+                if (!matchesSearch) return false;
+            }
+
+            // 2. Status Filter
+            if (invStatusFilter !== 'All') {
+                if (item.data.status !== invStatusFilter) return false;
+            }
+
+            // 3. Vendor Filter
+            if (invVendorFilter && !invVendorFilter.includes('All')) {
+                const vId = item.data.vendor_id || item.data.vendorId || '';
+                if (!invVendorFilter.includes(vId)) return false;
+            }
+
+            // 4. Category Filter
+            if (invCategoryFilter && invCategoryFilter !== 'All') {
+                if (item.data.category !== invCategoryFilter) return false;
+            }
+
+            // 5. Material Filter
+            if (invMaterialFilter && invMaterialFilter !== 'All') {
+                if (item.data.material !== invMaterialFilter) return false;
+            }
+
+            return true;
+        });
+    }, [allInventory, invSearchTerm, invStatusFilter, invVendorFilter, invCategoryFilter, invMaterialFilter]);
+
+    const handleSelectAll = () => {
+        const allIds = filteredInventory.map(item => item.row);
+        setSelectedIds(allIds);
+        toast.success(`Selected ${allIds.length} items`);
+    };
     
     if (!activeView) return null;
 
@@ -388,6 +438,49 @@ export const UniversalToolsBar: React.FC = () => {
                                 {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={24} strokeWidth={3} /></button>}
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── SELECTION TOOLS ─────────────────────────────────────────────────────────── */}
+            {isInventory && isSelectionMode && (
+                <div className="w-full border-t border-white/5 animate-in slide-in-from-top duration-500 overflow-hidden px-4 bg-white/[0.02]">
+                    <div className="w-full mx-auto px-6 py-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-6">
+                            <div className="w-12 h-12 rounded-xl bg-(--color-inventory)/10 border border-(--color-inventory)/20 flex items-center justify-center text-(--color-inventory) drop-shadow-[0_0_15px_rgba(var(--color-inventory-rgb),0.3)]">
+                                <SquareCheckBig size={24} strokeWidth={2.5} />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] leading-none mb-1">Batch Management</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-2xl font-black text-white tracking-tighter">{selectedIds.length}</span>
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Items Selected</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={handleSelectAll}
+                                className="group flex items-center gap-3 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 shadow-xl"
+                            >
+                                <div className="w-5 h-5 rounded-md border-2 border-white/20 group-hover:border-white/40 flex items-center justify-center transition-all">
+                                    <div className="w-2 h-2 rounded-sm bg-white scale-0 group-hover:scale-100 transition-transform" />
+                                </div>
+                                <span className="text-[11px] font-black uppercase tracking-[0.2em]">Select All</span>
+                            </button>
+
+                            <button 
+                                onClick={() => {
+                                    setSelectedIds([]);
+                                    toast.success("Selection Cleared");
+                                }}
+                                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20 transition-all font-black text-[11px] tracking-widest uppercase active:scale-95"
+                            >
+                                <X size={16} strokeWidth={3} />
+                                <span>Clear</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
