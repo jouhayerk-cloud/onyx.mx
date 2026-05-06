@@ -255,7 +255,6 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             material.uniforms.time.value = time;
             backdropMat.uniforms.time.value = time;
             
-            const outVol = volumeRef.current;
             const inVol = procRef.current ? 0.05 : 0;
             
             // SENTIENT PHYSICS
