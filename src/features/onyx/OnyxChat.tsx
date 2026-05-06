@@ -25,7 +25,6 @@ const VENDOR_COLORS: Record<string, string> = {
 };
 
 const ColorizedText = ({ text }: { text: string }) => {
-    // Matches Tag IDs (DH... etc) and Vendor names
     const tagRegex = /\b(?=[A-Z\d]*\d)(?=[A-Z\d]*[A-Z])[A-Z\d]{8,12}\b/g;
     const vendors = Object.keys(VENDOR_COLORS).join('|');
     const vendorRegex = new RegExp(`\\b(${vendors})\\b`, 'gi');
@@ -51,7 +50,6 @@ const ColorizedText = ({ text }: { text: string }) => {
 
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-// ── Shared Logic Hook ───────────────────────────────────────────────────
 export function useOnyx(props: {
     onProcessingChange?: (proc: boolean) => void;
     onTranscriptChange?: (text: string) => void;
@@ -62,7 +60,7 @@ export function useOnyx(props: {
     const [messages, setMessages] = useAtom(onyxMessagesAtom);
     const [userApiKey, setUserApiKey] = useAtom(onyxApiKeyAtom);
     const [appLanguage, setAppLanguage] = useAtom(languageAtom);
-    const setInventoryConfig = useSetAtom(inventoryArtifactConfigAtom);
+    const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
     const setPaymentsConfig = useSetAtom(paymentsArtifactConfigAtom);
     const setTruckId = useSetAtom(sentTruckIdAtom);
 
@@ -103,17 +101,15 @@ export function useOnyx(props: {
 
     useEffect(() => {
         const handleVoices = () => {
-            // Just trigger a re-render or voice check if needed
             getBestVoice(appLanguage);
         };
         window.speechSynthesis.addEventListener('voiceschanged', handleVoices);
         return () => window.speechSynthesis.removeEventListener('voiceschanged', handleVoices);
     }, [appLanguage]);
 
-    // Mobile TTS Unlock: Aggressive version for iOS/Safari
     const unlockTTS = () => {
         const utt = new SpeechSynthesisUtterance(' ');
-        utt.volume = 0.01; // Tiny volume to count as speech
+        utt.volume = 0.01;
         window.speechSynthesis.speak(utt);
     };
 
@@ -127,7 +123,6 @@ export function useOnyx(props: {
 
     const callGemini = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        console.log("ONYX: callGemini Request:", { model, url, contentsCount: contents.length });
         const sys = `You are Onyx Intelligence, a sentient warehouse asset discovery engine. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
 TRANSLATION RULE: The core database is in English. If responding in Spanish, automatically translate item descriptions, categories, and details from the search results into natural Spanish for the user.
 DOMAIN CONTEXT: Terms like 'Talan' (e.g., Green Talan) and 'Tehuacan' are common COLORS in the inventory database. If a user asks about these terms without specifying "color", treat them as color search parameters in your tool calls.
@@ -144,17 +139,13 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         
         try {
             const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            console.log("ONYX: callGemini Response Status:", res.status);
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
-                console.error("ONYX: callGemini Error Data:", errData);
                 throw new Error(errData.error?.message || `HTTP ${res.status}`);
             }
             const data = await res.json();
-            console.log("ONYX: callGemini Data Received");
             return data;
         } catch (e: any) {
-            console.error("ONYX: callGemini Fetch Failed:", e.message);
             throw e;
         }
     };
@@ -168,20 +159,14 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
     const sendMessage = async (overrideInput?: string) => {
         const finalInput = overrideInput || inputRef.current || input;
-        console.log("ONYX: sendMessage attempt:", { finalInput, isTyping });
         if (!finalInput.trim()) return;
         
-        // Auto-Language Detection
         const detected = detectLanguage(finalInput);
         if (detected !== appLanguage) {
-            console.log("ONYX: Language shift detected:", detected);
             setAppLanguage(detected);
         }
 
-        if (isTyping) {
-            console.log("ONYX: sendMessage blocked (isTyping)");
-            return;
-        }
+        if (isTyping) return;
         
         const apiKey = getApiKey();
         if (!apiKey) {
@@ -218,7 +203,6 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                     break; 
                 } catch (e: any) {
                     lastAttemptError = e.message;
-                    console.error(`Neural Link [${m}] failed:`, e.message);
                 }
             }
             
@@ -235,7 +219,6 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
                 if (text) {
                     setMessages(prev => [...prev, { role: 'model', content: text }]);
-                    // Filter out Tag IDs from vocalization (alphanumeric 8-12 chars)
                     const vocalText = text.replace(/\b(?=[A-Z\d]*\d)(?=[A-Z\d]*[A-Z])[A-Z\d]{8,12}\b/g, '').replace(/\s+/g, ' ').trim();
                     if (vocalText && !isAbortedRef.current) {
                         if (ttsIntervalRef.current) clearInterval(ttsIntervalRef.current);
@@ -249,7 +232,6 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                                 setVolume(v);
                             }, 50);
                             ttsIntervalRef.current = interval;
-                            // Force stop recognition when AI starts speaking
                             if (recognitionRef.current) {
                                 try { recognitionRef.current.stop(); } catch (e) {}
                             }
@@ -259,7 +241,6 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             ttsIntervalRef.current = null;
                             onVolumeChange?.(0);
                             setVolume(0);
-                            // Resume recognition if user is still holding the talk button
                             if (isListeningRef.current && recognitionRef.current) {
                                 try { recognitionRef.current.start(); } catch (e) {}
                             }
@@ -268,7 +249,6 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             clearInterval(ttsIntervalRef.current);
                             ttsIntervalRef.current = null;
                             onVolumeChange?.(0);
-                            // Resume recognition if user is still holding the talk button
                             if (isListeningRef.current && recognitionRef.current) {
                                 try { recognitionRef.current.start(); } catch (e) {}
                             }
@@ -302,8 +282,6 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         } finally { setIsTyping(false); onProcessingChange?.(false); }
     };
 
-
-
     useEffect(() => {
         if (SpeechRecognition) {
             recognitionRef.current = new SpeechRecognition();
@@ -314,17 +292,11 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             recognitionRef.current.onresult = (event: any) => {
                 let current = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        current += event.results[i][0].transcript;
-                    } else {
-                        current += event.results[i][0].transcript;
-                    }
+                    current += event.results[i][0].transcript;
                 }
                 
                 if (current) {
-                    // Safety check: Don't process if AI is currently speaking
                     if (window.speechSynthesis.speaking) return;
-
                     const final = current.trim();
                     setInput(final);
                     checkForVendor(final);
@@ -334,11 +306,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
             recognitionRef.current.onend = () => {
                 const currentText = inputRef.current.trim();
-                // CRITICAL: Check the REF directly to see if we were stopped by button release
                 if (isListeningRef.current) {
                     try { recognitionRef.current.start(); } catch (e) {}
                 } else if (currentText) {
-                    // Send what we have if we intentionally stopped
                     sendMessage(currentText);
                     setInput('');
                     if (onTranscriptChange) onTranscriptChange('');
@@ -354,10 +324,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
     useEffect(() => {
         if (!recognitionRef.current) return;
-        
-        // Sync the ref immediately to avoid race conditions in onend
         isListeningRef.current = isListening;
-
         if (isListening) {
             if (window.speechSynthesis.speaking) return;
             setInput('');
@@ -370,11 +337,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     useEffect(() => {
         if (isListening && onVolumeChange) {
             const startAudio = async () => {
-                // EXCLUSIVE MIC ACCESS FOR MOBILE: 
-                // We delay and check if recognition is already holding the mic.
                 await new Promise(r => setTimeout(r, 500));
                 if (!isListeningRef.current) return;
-                
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     streamRef.current = stream;
@@ -469,13 +433,13 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         sendMessage, lastError,
         resetNeuralKey, stopVoice,
         handleFormSubmit,
-        volume
+        volume,
+        appLanguage, setAppLanguage,
+        inventoryConfig, setInventoryConfig
     };
 }
 
-// ── OnyxChatHistory ─────────────────────────────────────────────────────
 export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyping: boolean }) {
-    console.log("ONYX_HISTORY: Render", { messagesCount: messages.length, isTyping });
     const scrollRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -521,7 +485,6 @@ export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyp
     );
 }
 
-// ── OnyxChatControls ────────────────────────────────────────────────────
 export function OnyxChatControls(props: {
     input: string;
     setInput: (v: string) => void;
@@ -533,8 +496,6 @@ export function OnyxChatControls(props: {
     handleFormSubmit?: (e: any) => void;
 }) {
     const { input, setInput, sendMessage, isListening, setIsListening, resetNeuralKey, stopVoice, handleFormSubmit } = props;
-    const [appLanguage, setAppLanguage] = useAtom(languageAtom);
-    const [inventoryConfig, setInventoryConfig] = useAtom(inventoryArtifactConfigAtom);
 
     const unlockTTS = () => {
         const synth = window.speechSynthesis;
@@ -545,17 +506,15 @@ export function OnyxChatControls(props: {
 
     const handleInternalSubmit = (overrideInput?: string) => {
         const finalInput = overrideInput || input;
-        console.log("ONYX: Tactical Submit Triggered", { finalInput });
         if (!finalInput.trim()) return;
         
         unlockTTS();
-        sendMessage(finalInput);
+        sendMessage();
         setInput('');
     };
 
     return (
         <div className="w-full flex flex-col md:flex-row md:items-center gap-4 md:gap-8 p-4 md:p-6 bg-white/[0.03] border-t border-white/10 backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700 pointer-events-auto">
-            {/* INPUT SECTION - Row 1 Mobile, Left Side Desktop */}
             <div className="flex-1 flex items-center gap-4 min-w-0 bg-white/[0.05] md:bg-transparent border-b-2 md:border-b border-white/10 md:border-white/20 focus-within:border-(--main-color) transition-all duration-500 px-4 md:px-2 rounded-xl md:rounded-none">
                 <input 
                     type="text"
@@ -571,11 +530,6 @@ export function OnyxChatControls(props: {
                             (e.target as HTMLInputElement).blur();
                         }
                     }}
-                    onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                            handleInternalSubmit();
-                        }
-                    }}
                     placeholder="NEURAL QUERY..."
                     autoComplete="off"
                     autoCorrect="off"
@@ -583,7 +537,6 @@ export function OnyxChatControls(props: {
                     className="flex-1 bg-transparent py-4 md:py-2 text-[20px] md:text-[16px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase min-w-0"
                 />
 
-                {/* Integrated Send Action */}
                 <button 
                     type="button"
                     disabled={!input.trim()}
@@ -597,51 +550,21 @@ export function OnyxChatControls(props: {
                 </button>
             </div>
 
-            {/* CONTROLS SECTION - Row 2 Mobile, Right Side Desktop */}
             <div className="flex items-center justify-between md:justify-end gap-6 md:gap-8 w-full md:w-auto px-2 md:px-0">
                 <div className="flex items-center gap-8 md:gap-6">
-                    {/* Language Toggle */}
                     <button 
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
+                            resetNeuralKey?.();
                         }}
-                        className="flex items-center justify-center text-[16px] md:text-[13px] font-black tracking-[0.2em] text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110 min-w-[50px] md:min-w-[40px] h-16 md:h-12"
+                        className="flex items-center justify-center text-white/40 hover:text-red-500 transition-all duration-300 shrink-0 hover:scale-110 h-16 md:h-12 w-16 md:w-12"
+                        title="Reset Neural Credentials"
                     >
-                        {appLanguage.toUpperCase()}
+                        <RefreshCw size={28} strokeWidth={2.5} className="md:w-5 md:h-5" />
                     </button>
-
-                    {/* Stop Voice Response */}
-                    <button 
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            stopVoice?.();
-                        }}
-                        className="flex items-center justify-center text-red-500 hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110 h-16 md:h-12 w-16 md:w-12"
-                        title="Stop Neural Response"
-                    >
-                        <Square size={36} strokeWidth={2.5} fill="currentColor" className="md:w-6 md:h-6" />
-                    </button>
-
-                    {/* Artifact Toggle Button */}
-                    {inventoryConfig.itemIds.length > 0 && (
-                        <button 
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
-                            }}
-                            className={`flex items-center justify-center transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_20px_var(--main-color)]' : 'text-white hover:text-(--main-color)'} hover:scale-110 h-16 md:h-12 w-16 md:w-12`}
-                            title="Toggle Manifest"
-                        >
-                            <Package size={36} strokeWidth={2.5} className="md:w-7 md:h-7" />
-                        </button>
-                    )}
                 </div>
 
-                {/* Primary Interaction: Mic */}
                 <div className="relative">
                     <button 
                         type="button"
@@ -669,7 +592,6 @@ export function OnyxChatControls(props: {
     );
 }
 
-// ── Legacy Compatibility Wrapper ────────────────────────────────────────
 export function OnyxChat(props: OnyxChatProps) {
     const onyx = useOnyx(props);
     return (
@@ -679,19 +601,19 @@ export function OnyxChat(props: OnyxChatProps) {
                     <p className="text-[10px] font-black uppercase tracking-widest text-red-500/80">{onyx.lastError}</p>
                 </div>
             )}
-            <OnyxChatHistory messages={onyx.messages} isTyping={onyx.isTyping} />
-            <div className="h-auto z-40 relative">
-                <OnyxChatControls 
-                    input={onyx.input} 
-                    setInput={onyx.setInput} 
-                    sendMessage={onyx.sendMessage} 
-                    isListening={onyx.isListening} 
-                    setIsListening={onyx.setIsListening} 
-                    resetNeuralKey={onyx.resetNeuralKey}
-                    stopVoice={onyx.stopVoice}
-                    handleFormSubmit={onyx.handleFormSubmit}
-                />
+            <div className="flex-1 flex flex-col relative overflow-hidden bg-black font-['Inter']">
+                <OnyxChatHistory messages={onyx.messages} isTyping={onyx.isTyping} />
             </div>
+            <OnyxChatControls 
+                input={onyx.input}
+                setInput={onyx.setInput}
+                sendMessage={onyx.sendMessage}
+                isListening={onyx.isListening}
+                setIsListening={onyx.setIsListening}
+                resetNeuralKey={onyx.resetNeuralKey}
+                stopVoice={onyx.stopVoice}
+                handleFormSubmit={onyx.handleFormSubmit}
+            />
         </div>
     );
 }
