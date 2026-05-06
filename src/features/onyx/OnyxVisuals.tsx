@@ -31,13 +31,12 @@ void main() {
     vec3 c2 = colorMid;
     vec3 c3 = colorTo;
     vec3 c4 = mix(c1, c3, 0.5) * 1.5;
-    float noise = fract(sin(dot(vUv, vec2(12.9898 + time * 0.05, 78.233))) * 43758.5453);
     float m1 = sin(vUv.x * 2.0 + time * 0.1) * 0.5 + 0.5;
     float m2 = cos(vUv.y * 2.0 - time * 0.15) * 0.5 + 0.5;
     vec3 base = mix(c1, c2, m1);
     vec3 accent = mix(c3, c4, m2);
     vec3 finalColor = mix(base, accent, length(vUv - 0.5) * 2.0);
-    gl_FragColor = vec4(finalColor + 0.015 * noise, 1.0);
+    gl_FragColor = vec4(finalColor, 1.0);
 }
 `;
 
@@ -202,13 +201,24 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             frameId = requestAnimationFrame(animate);
             time += 0.015;
 
+            const isLightTheme = theme === 'nacar' || theme === 'aqua';
             const root = getComputedStyle(document.documentElement);
-            const tc1 = new THREE.Color(root.getPropertyValue('--c1').trim() || '#000000');
-            const tc2 = new THREE.Color(root.getPropertyValue('--c2').trim() || '#0A1A2F');
-            const tc3 = new THREE.Color(root.getPropertyValue('--c3').trim() || '#00AEEF');
-            const tc4 = new THREE.Color(root.getPropertyValue('--c4').trim() || '#030712');
-            const tc5 = new THREE.Color(root.getPropertyValue('--c5').trim() || '#0D2A4A');
-            const tc6 = new THREE.Color(root.getPropertyValue('--c6').trim() || '#000000');
+            
+            const processColor = (val: string, fallback: string) => {
+                const color = new THREE.Color(val.trim() || fallback);
+                if (isLightTheme) {
+                    // Darken for light themes to maintain visibility
+                    color.multiplyScalar(0.6);
+                }
+                return color;
+            };
+
+            const tc1 = processColor(root.getPropertyValue('--c1'), '#000000');
+            const tc2 = processColor(root.getPropertyValue('--c2'), '#0A1A2F');
+            const tc3 = processColor(root.getPropertyValue('--c3'), '#00AEEF');
+            const tc4 = processColor(root.getPropertyValue('--c4'), '#030712');
+            const tc5 = processColor(root.getPropertyValue('--c5'), '#0D2A4A');
+            const tc6 = processColor(root.getPropertyValue('--c6'), '#000000');
 
             backdropMat.uniforms.colorFrom.value.lerp(tc1, 0.08);
             backdropMat.uniforms.colorMid.value.lerp(tc2, 0.08);
@@ -222,7 +232,10 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             material.uniforms.c6.value.lerp(tc6, 0.05);
             
             const currentTint = tint || root.getPropertyValue('--main-color') || '#00AEEF';
-            const targetColor = new THREE.Color(currentTint);
+            let targetColor = new THREE.Color(currentTint);
+            if (isLightTheme) {
+                targetColor.multiplyScalar(0.5); // Ensure tint isn't too bright on light backgrounds
+            }
             material.uniforms.baseColor.value.lerp(targetColor, 0.05);
             material.uniforms.accentColor.value.lerp(new THREE.Color(targetColor).offsetHSL(0.1, 0, 0), 0.05);
             

@@ -97,41 +97,7 @@ import {
     isBotOrbOpenAtom
 } from '../../lib/atoms';
 
-const OnyxBar: React.FC = () => {
-    const [isBotOpen, setIsBotOpen] = useAtom(isBotOrbOpenAtom);
-    const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
-    const [search, setSearch] = useAtom(inventorySearchTermAtom);
-
-    return (
-        <div className="flex flex-1 items-center gap-6">
-            <div className="flex items-center gap-2 pr-6 border-r border-white/5 shrink-0">
-                <Brain size={28} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" strokeWidth={2} />
-                <span className="text-[12px] font-black uppercase tracking-[0.4em] text-white opacity-40">Neural HUD</span>
-            </div>
-
-            <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left duration-700">
-                <button 
-                    onClick={() => setIsBotOpen(true)}
-                    className={`flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all active:scale-90 group/bot select-none ${isBotOpen ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
-                >
-                    <Bot size={24} strokeWidth={2} className={`${isBotOpen ? 'text-(--main-color) animate-pulse' : 'group-hover/bot:scale-110'} transition-transform mb-1`} />
-                    <span className="text-[8px] font-black uppercase tracking-widest leading-none">Bot Orb</span>
-                </button>
-
-                <div className="w-px h-6 bg-white/5" />
-
-                <DeployableSearch 
-                    value={search} 
-                    onChange={setSearch} 
-                    isOpen={isSearchOpen} 
-                    setIsOpen={setIsSearchOpen} 
-                    accentColor="var(--main-color)"
-                    placeholder="NEURAL QUERY..."
-                />
-            </div>
-        </div>
-    );
-};
+const OnyxBar: React.FC = () => null;
 
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';

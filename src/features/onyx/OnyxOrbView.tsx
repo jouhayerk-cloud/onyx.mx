@@ -29,22 +29,15 @@ export function OnyxOrbView() {
     return (
         <div className="flex flex-col h-full w-full bg-black overflow-hidden">
             {/* LARGE DYNAMIC ORB CONTAINER */}
-            <div 
-                className="relative flex-1 overflow-hidden"
-                onPointerDown={(e) => {
-                    if ((e.target as HTMLElement).closest('button, input, form')) return;
-                    onyx.setIsListening(true);
-                }}
-                onPointerUp={(e) => {
-                    if ((e.target as HTMLElement).closest('button, input, form')) return;
-                    onyx.setIsListening(false);
-                }}
-                onPointerLeave={() => onyx.setIsListening(false)}
-                onPointerCancel={() => onyx.setIsListening(false)}
-                style={{ touchAction: 'none' }}
-            >
-                {/* Full Panel Visualizer Background */}
-                <div className="absolute inset-0 z-0">
+            <div className="relative flex-1 overflow-hidden">
+                {/* Full Panel Visualizer Background - THIS IS THE TALK TRIGGER AREA */}
+                <div 
+                    className="absolute inset-0 z-0 touch-none"
+                    onPointerDown={() => onyx.setIsListening(true)}
+                    onPointerUp={() => onyx.setIsListening(false)}
+                    onPointerLeave={() => onyx.setIsListening(false)}
+                    onPointerCancel={() => onyx.setIsListening(false)}
+                >
                     <OnyxVisuals 
                         isProcessing={isProcessing} 
                         tint={currentVendorColor} 

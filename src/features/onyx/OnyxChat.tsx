@@ -436,7 +436,7 @@ export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyp
     }, [messages, isTyping]);
 
     return (
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-12 space-y-6 md:space-y-8 scrollbar-hide flex flex-col items-end pointer-events-none h-full">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-12 space-y-6 md:space-y-8 scrollbar-hide flex flex-col items-end h-full pointer-events-auto">
             <div className="flex-1" />
             <div className="w-full max-w-2xl space-y-6 md:space-y-8 pb-32">
                 {messages.map((m, idx) => (
@@ -498,7 +498,7 @@ export function OnyxChatControls(props: {
     };
 
     return (
-        <div className="w-full flex items-center gap-2 md:gap-8 p-2 md:p-4 bg-transparent backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700 select-none">
+        <div className="w-full flex items-center gap-2 md:gap-8 p-2 md:p-4 bg-transparent backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700">
             {/* Minimal Language Toggle - High Contrast */}
             <button 
                 type="button"
@@ -530,6 +530,9 @@ export function OnyxChatControls(props: {
                         }
                     }}
                     placeholder="NEURAL QUERY..."
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck="false"
                     className="flex-1 bg-transparent py-2 px-1 rounded-none text-[16px] font-bold tracking-[0.1em] text-white outline-none transition-all placeholder:text-white/10 uppercase border-b border-white/10 focus:border-(--main-color) focus:shadow-[0_1px_15px_-5px_var(--main-color)] min-w-0"
                 />
 
@@ -582,17 +585,19 @@ export function OnyxChatControls(props: {
                             unlockTTS(); 
                             setIsListening(true); 
                         }}
-                        onPointerUp={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        onPointerLeave={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        onPointerCancel={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        onTouchStart={(e) => { 
+                        onPointerUp={(e) => { 
                             e.stopPropagation(); 
-                            unlockTTS(); 
-                            setIsListening(true); 
+                            setIsListening(false); 
                         }}
-                        onTouchEnd={(e) => { e.stopPropagation(); setIsListening(false); }}
-                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'}`}
-                        style={{ touchAction: 'none' }}
+                        onPointerLeave={(e) => { 
+                            e.stopPropagation(); 
+                            setIsListening(false); 
+                        }}
+                        onPointerCancel={(e) => { 
+                            e.stopPropagation(); 
+                            setIsListening(false); 
+                        }}
+                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none`}
                     >
                         <div className={`transition-all duration-700 relative z-10 ${
                             isListening ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
@@ -615,7 +620,7 @@ export function OnyxChatControls(props: {
 export function OnyxChat(props: OnyxChatProps) {
     const onyx = useOnyx(props);
     return (
-        <div className="flex flex-col h-full w-full bg-black overflow-hidden select-none touch-none">
+        <div className="flex flex-col h-full w-full bg-black overflow-hidden">
             {onyx.lastError && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 backdrop-blur-xl">
                     <p className="text-[10px] font-black uppercase tracking-widest text-red-500/80">{onyx.lastError}</p>
