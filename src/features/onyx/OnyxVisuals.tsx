@@ -189,6 +189,12 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
         const sphere = new THREE.Mesh(geometry, material);
         scene.add(sphere);
 
+        // TACTICAL FLASHING LIGHTS
+        const light1 = new THREE.PointLight('#ffffff', 0, 15);
+        const light2 = new THREE.PointLight('#ffffff', 0, 15);
+        scene.add(light1);
+        scene.add(light2);
+
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
         const bloomPass = new UnrealBloomPass(new THREE.Vector2(mount.clientWidth, mount.clientHeight), 0.8, 0.5, 0.9);
@@ -254,6 +260,20 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
 
             sphere.rotation.y += 0.005 + (outVol * 0.05);
             sphere.rotation.x += 0.002 + (outVol * 0.02);
+
+            // SYNCED FLASHING LIGHTS & BLOOM
+            const flashIntensity = (outVol * 5.0) + (procRef.current ? 0.8 : 0.2);
+            light1.intensity = flashIntensity;
+            light2.intensity = flashIntensity * 0.6;
+            light1.color.lerp(tc3, 0.1);
+            light2.color.lerp(tc5, 0.1);
+            
+            const lightDist = 2.5 + outVol * 2.0;
+            light1.position.set(Math.sin(time * 1.2) * lightDist, Math.cos(time * 0.8) * lightDist, Math.sin(time * 0.5) * lightDist);
+            light2.position.set(Math.cos(time * 1.5) * lightDist, Math.sin(time * 1.1) * lightDist, Math.cos(time * 0.7) * lightDist);
+            
+            bloomPass.strength = 0.6 + (outVol * 2.0) + (procRef.current ? 0.4 : 0);
+            bloomPass.radius = 0.4 + (outVol * 0.6);
 
             composer.render();
         };
