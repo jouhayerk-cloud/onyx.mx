@@ -219,7 +219,12 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         isAbortedRef.current = false;
         checkForVendor(finalInput);
         try {
-            let contents = messages.filter(m => m.content?.trim()).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
+            // Limit history to last 10 messages for mobile performance
+            const historyLimit = 10;
+            let contents = messages.slice(-historyLimit).filter(m => m.content?.trim()).map(m => ({ 
+                role: m.role === 'user' ? 'user' : 'model', 
+                parts: [{ text: m.content }] 
+            }));
             contents.push({ role: 'user', parts: [{ text: finalInput }] });
 
             const modelsToTry = [
@@ -356,9 +361,11 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
             recognitionRef.current.onend = () => {
                 const currentText = inputRef.current.trim();
+                // If we were listening and it stopped unexpectedly (mobile), try to restart
                 if (isListeningRef.current) {
                     try { recognitionRef.current.start(); } catch (e) {}
-                } else if (currentText) {
+                } else if (currentText && !onyxIsTypingAtom) {
+                    // Only auto-send if not already processing
                     sendMessage(currentText);
                     setInput('');
                     if (onTranscriptChange) onTranscriptChange('');
@@ -384,37 +391,39 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         }
     }, [isListening]);
 
-    useEffect(() => {
-        if (isListening && onVolumeChange) {
-            const startAudio = async () => {
-                await new Promise(r => setTimeout(r, 500));
-                if (!isListeningRef.current) return;
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    streamRef.current = stream;
-                    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-                    const ctx = new AudioCtx();
-                    const source = ctx.createMediaStreamSource(stream);
-                    const analyzer = ctx.createAnalyser();
-                    analyzer.fftSize = 256;
-                    source.connect(analyzer);
-                    const dataArray = new Uint8Array(analyzer.frequencyBinCount);
-                    audioContextRef.current = ctx;
-                    analyzerRef.current = analyzer;
-                    dataArrayRef.current = dataArray;
-                    const updateVolume = () => {
-                        if (!analyzerRef.current || !dataArrayRef.current) return;
-                        analyzerRef.current.getByteFrequencyData(dataArrayRef.current);
-                        const avg = dataArrayRef.current.reduce((a, b) => a + b, 0) / dataArrayRef.current.length;
-                        const v = Math.min(1, (avg / 64) * 1.5);
-                        setVolume(v);
-                        onVolumeChange?.(v);
-                        animationFrameRef.current = requestAnimationFrame(updateVolume);
-                    };
-                    updateVolume();
-                } catch (e) {}
+    const startAudioCapture = async () => {
+        if (!isListening || !onVolumeChange) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            streamRef.current = stream;
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            const ctx = new AudioCtx();
+            const source = ctx.createMediaStreamSource(stream);
+            const analyzer = ctx.createAnalyser();
+            analyzer.fftSize = 256;
+            source.connect(analyzer);
+            const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+            audioContextRef.current = ctx;
+            analyzerRef.current = analyzer;
+            dataArrayRef.current = dataArray;
+            const updateVolume = () => {
+                if (!analyzerRef.current || !dataArrayRef.current) return;
+                analyzerRef.current.getByteFrequencyData(dataArrayRef.current);
+                const avg = dataArrayRef.current.reduce((a, b) => a + b, 0) / dataArrayRef.current.length;
+                const v = Math.min(1, (avg / 64) * 1.5);
+                setVolume(v);
+                onVolumeChange?.(v);
+                animationFrameRef.current = requestAnimationFrame(updateVolume);
             };
-            startAudio();
+            updateVolume();
+        } catch (e) {
+            console.error("Audio capture failed", e);
+        }
+    };
+
+    useEffect(() => {
+        if (isListening) {
+            startAudioCapture();
         }
         return () => {
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -426,6 +435,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 streamRef.current = null;
             }
             if (onVolumeChange) onVolumeChange(0);
+            setVolume(0);
         };
     }, [isListening]);
 
@@ -485,7 +495,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         handleFormSubmit,
         volume,
         appLanguage, setAppLanguage,
-        inventoryConfig, setInventoryConfig
+        inventoryConfig, setInventoryConfig,
+        unlockTTS,
+        startAudioCapture
     };
 }
 
@@ -545,8 +557,10 @@ export function OnyxChatControls(props: {
     setIsListening: (v: boolean) => void;
     stopVoice?: () => void;
     isTyping?: boolean;
+    unlockTTS?: () => void;
+    startAudioCapture?: () => void;
 }) {
-    const { input, setInput, sendMessage, isListening, setIsListening, stopVoice } = props;
+    const { input, setInput, sendMessage, isListening, setIsListening, stopVoice, unlockTTS, startAudioCapture } = props;
 
     const unlockTTS = () => {
         const synth = window.speechSynthesis;
@@ -630,8 +644,9 @@ export function OnyxChatControls(props: {
                         type="button"
                         onClick={(e) => { 
                             e.stopPropagation(); 
-                            unlockTTS(); 
-                            setIsListening(!isListening); 
+                            props.unlockTTS?.();
+                            if (!props.isListening) props.startAudioCapture?.();
+                            props.setIsListening(!props.isListening); 
                         }}
                         className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-24 md:w-16 h-24 md:h-16 rounded-full bg-white/5 border border-white/10`}
                     >
@@ -672,6 +687,8 @@ export function OnyxChat(props: OnyxChatProps) {
                 setIsListening={onyx.setIsListening}
                 stopVoice={onyx.stopVoice}
                 isTyping={onyx.isTyping}
+                unlockTTS={onyx.unlockTTS}
+                startAudioCapture={onyx.startAudioCapture}
             />
         </div>
     );
