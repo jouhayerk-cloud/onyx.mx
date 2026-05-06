@@ -226,9 +226,16 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             const tc5 = processColor(root.getPropertyValue('--c5'), '#0D2A4A');
             const tc6 = processColor(root.getPropertyValue('--c6'), '#000000');
 
+            const outVol = volumeRef.current;
+            const bgFlash = outVol * 0.4; 
+
             backdropMat.uniforms.colorFrom.value.lerp(tc1, 0.08);
-            backdropMat.uniforms.colorMid.value.lerp(tc2, 0.08);
-            backdropMat.uniforms.colorTo.value.lerp(tc3, 0.08);
+            
+            const flashedMid = new THREE.Color(tc2).multiplyScalar(1.0 + bgFlash);
+            const flashedTo = new THREE.Color(tc3).multiplyScalar(1.0 + bgFlash * 2.5);
+            
+            backdropMat.uniforms.colorMid.value.lerp(flashedMid, 0.08);
+            backdropMat.uniforms.colorTo.value.lerp(flashedTo, 0.08);
             
             material.uniforms.c1.value.lerp(tc1, 0.05);
             material.uniforms.c2.value.lerp(tc2, 0.05);
