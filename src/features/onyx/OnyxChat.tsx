@@ -146,9 +146,14 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     };
 
     const sendMessage = async (overrideInput?: string) => {
-        const finalInput = overrideInput || input;
-        console.log("ONYX: sendMessage called with:", finalInput, "isTyping:", isTyping);
-        if (!finalInput.trim() || isTyping) return;
+        const finalInput = overrideInput || inputRef.current || input;
+        console.log("ONYX: sendMessage attempt:", { finalInput, isTyping });
+        if (!finalInput.trim()) return;
+        if (isTyping) {
+            console.log("ONYX: sendMessage blocked (isTyping)");
+            return;
+        }
+        
         const apiKey = getApiKey();
         if (!apiKey) {
             setLastError("Neural link credentials missing.");
@@ -159,7 +164,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         setInput('');
         setIsTyping(true);
         onProcessingChange(true);
-        isAbortedRef.current = false; // Reset abortion flag on new message
+        isAbortedRef.current = false;
         checkForVendor(finalInput);
         try {
             let contents = messages.filter(m => m.content?.trim()).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
@@ -509,9 +514,9 @@ export function OnyxChatControls(props: {
     };
 
     return (
-        <div className="w-full flex flex-col gap-6 p-6 md:p-10 bg-transparent backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700 pointer-events-auto">
-            {/* ROW 1: Full-Width Tactical Input */}
-            <div className="w-full flex items-center gap-4 min-w-0 bg-white/[0.03] border-b-2 border-white/10 focus-within:border-(--main-color) transition-all duration-500 px-4">
+        <div className="w-full flex flex-col md:flex-row md:items-center gap-4 md:gap-8 p-4 md:p-6 bg-white/[0.03] border-t border-white/10 backdrop-blur-3xl overflow-hidden animate-in slide-in-from-bottom duration-700 pointer-events-auto">
+            {/* INPUT SECTION - Row 1 Mobile, Left Side Desktop */}
+            <div className="flex-1 flex items-center gap-4 min-w-0 bg-white/[0.05] md:bg-transparent border-b-2 md:border-b border-white/10 md:border-white/20 focus-within:border-(--main-color) transition-all duration-500 px-4 md:px-2 rounded-xl md:rounded-none">
                 <input 
                     type="text"
                     inputMode="text"
@@ -525,30 +530,35 @@ export function OnyxChatControls(props: {
                             handleInternalSubmit();
                         }
                     }}
+                    onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                            handleInternalSubmit();
+                        }
+                    }}
                     placeholder="NEURAL QUERY..."
                     autoComplete="off"
                     autoCorrect="off"
                     spellCheck="false"
-                    className="flex-1 bg-transparent py-6 text-[22px] md:text-[26px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase min-w-0"
+                    className="flex-1 bg-transparent py-4 md:py-2 text-[20px] md:text-[16px] font-black tracking-[0.2em] text-white outline-none transition-all placeholder:text-white/5 uppercase min-w-0"
                 />
 
                 {/* Integrated Send Action */}
                 <button 
                     type="button"
                     disabled={!input.trim()}
-                    onClick={(e) => {
+                    onPointerDown={(e) => {
                         e.stopPropagation();
-                        handleInternalSubmit();
+                        if (input.trim()) handleInternalSubmit();
                     }}
-                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-4 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_30px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100' : 'opacity-10 pointer-events-none'}`}
+                    className={`flex items-center justify-center transition-all duration-500 shrink-0 p-2 md:p-1 ${input.trim() ? 'text-(--main-color) drop-shadow-[0_0_30px_var(--main-color)] cursor-pointer hover:scale-110 opacity-100' : 'opacity-10 pointer-events-none'}`}
                 >
-                    <Send size={48} strokeWidth={3} />
+                    <Send size={32} strokeWidth={3} className="md:w-6 md:h-6" />
                 </button>
             </div>
 
-            {/* ROW 2: Action Controls Row */}
-            <div className="flex items-center justify-between gap-6 md:gap-12 w-full px-2">
-                <div className="flex items-center gap-10 md:gap-20">
+            {/* CONTROLS SECTION - Row 2 Mobile, Right Side Desktop */}
+            <div className="flex items-center justify-between md:justify-end gap-6 md:gap-8 w-full md:w-auto px-2 md:px-0">
+                <div className="flex items-center gap-8 md:gap-6">
                     {/* Language Toggle */}
                     <button 
                         type="button"
@@ -556,7 +566,7 @@ export function OnyxChatControls(props: {
                             e.stopPropagation();
                             setAppLanguage(prev => prev === 'en' ? 'es' : 'en');
                         }}
-                        className="flex items-center justify-center text-[20px] font-black tracking-[0.2em] text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110 min-w-[70px] h-24"
+                        className="flex items-center justify-center text-[16px] md:text-[13px] font-black tracking-[0.2em] text-white hover:text-(--main-color) transition-all duration-300 shrink-0 hover:scale-110 min-w-[50px] md:min-w-[40px] h-16 md:h-12"
                     >
                         {appLanguage.toUpperCase()}
                     </button>
@@ -568,10 +578,10 @@ export function OnyxChatControls(props: {
                             e.stopPropagation();
                             stopVoice?.();
                         }}
-                        className="flex items-center justify-center text-red-500 hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110 h-24 w-24"
+                        className="flex items-center justify-center text-red-500 hover:text-red-400 transition-all duration-300 shrink-0 hover:scale-110 h-16 md:h-12 w-16 md:w-12"
                         title="Stop Neural Response"
                     >
-                        <Square size={48} strokeWidth={2.5} fill="currentColor" />
+                        <Square size={36} strokeWidth={2.5} fill="currentColor" className="md:w-6 md:h-6" />
                     </button>
 
                     {/* Artifact Toggle Button */}
@@ -582,10 +592,10 @@ export function OnyxChatControls(props: {
                                 e.stopPropagation();
                                 setInventoryConfig(prev => ({ ...prev, isOpen: !prev.isOpen }));
                             }}
-                            className={`flex items-center justify-center transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_20px_var(--main-color)]' : 'text-white hover:text-(--main-color)'} hover:scale-110 h-24 w-24`}
+                            className={`flex items-center justify-center transition-all duration-500 group/art ${inventoryConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_20px_var(--main-color)]' : 'text-white hover:text-(--main-color)'} hover:scale-110 h-16 md:h-12 w-16 md:w-12`}
                             title="Toggle Manifest"
                         >
-                            <Package size={48} strokeWidth={2.5} />
+                            <Package size={36} strokeWidth={2.5} className="md:w-7 md:h-7" />
                         </button>
                     )}
                 </div>
@@ -597,30 +607,18 @@ export function OnyxChatControls(props: {
                         onPointerDown={(e) => { 
                             e.stopPropagation(); 
                             unlockTTS(); 
-                            setIsListening(true); 
+                            setIsListening(!isListening); 
                         }}
-                        onPointerUp={(e) => { 
-                            e.stopPropagation(); 
-                            setIsListening(false); 
-                        }}
-                        onPointerLeave={(e) => { 
-                            e.stopPropagation(); 
-                            setIsListening(false); 
-                        }}
-                        onPointerCancel={(e) => { 
-                            e.stopPropagation(); 
-                            setIsListening(false); 
-                        }}
-                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-28 h-28`}
+                        className={`relative flex items-center justify-center transition-all duration-300 group/mic ${isListening ? 'scale-125' : 'hover:scale-110'} touch-none w-20 md:w-14 h-20 md:h-14`}
                     >
                         <div className={`transition-all duration-700 relative z-10 ${
-                            isListening ? 'text-red-500 drop-shadow-[0_0_50px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
+                            isListening ? 'text-red-500 drop-shadow-[0_0_40px_rgba(239,68,68,0.8)]' : 'text-white hover:text-(--main-color)'
                         }`}>
-                            {isListening ? <MicOff size={64} strokeWidth={2.5} /> : <Mic size={64} strokeWidth={2.5} />}
+                            {isListening ? <MicOff size={48} strokeWidth={2.5} className="md:w-8 md:h-8" /> : <Mic size={48} strokeWidth={2.5} className="md:w-8 md:h-8" />}
                         </div>
                         {isListening && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-32 h-32 rounded-full border-4 border-red-500/40 animate-ping" />
+                                <div className="w-24 md:w-16 h-24 md:h-16 rounded-full border-4 border-red-500/40 animate-ping" />
                             </div>
                         )}
                     </button>
