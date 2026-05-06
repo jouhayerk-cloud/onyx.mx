@@ -6,10 +6,11 @@ import {
     inventoryArtifactConfigAtom, 
     languageAtom, 
     onyxIsTypingAtom, 
-    onyxIsListeningAtom 
+    onyxIsListeningAtom,
+    sentTruckIdAtom 
 } from '../../lib/atoms';
 import { useAtom, useAtomValue } from 'jotai';
-import { Package, Square } from 'lucide-react';
+import { Package, Square, RefreshCw, Truck } from 'lucide-react';
 
 export function OnyxOrbView() {
     const onyx = useOnyx();
@@ -17,6 +18,7 @@ export function OnyxOrbView() {
     const [artifactConfig, setArtifactConfig] = useAtom(inventoryArtifactConfigAtom);
     const isTyping = useAtomValue(onyxIsTypingAtom);
     const isListening = useAtomValue(onyxIsListeningAtom);
+    const sentTruckId = useAtomValue(sentTruckIdAtom);
     const { input } = onyx;
     const [requestSend, setRequestSend] = useState(0);
 
@@ -43,10 +45,36 @@ export function OnyxOrbView() {
                     >
                         {onyx.appLanguage.toUpperCase()}
                     </button>
+
+                    {/* Reset Neural Credentials */}
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onyx.resetNeuralKey?.();
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 backdrop-blur-3xl rounded-full text-white/40 hover:text-red-500 transition-all active:scale-90"
+                        title="Reset Neural Credentials"
+                    >
+                        <RefreshCw size={20} strokeWidth={2.5} />
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-4 pointer-events-auto">
 
+
+                    {/* Crates Deployment */}
+                    {sentTruckId && (
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // Logic to view truck/crate (if needed) or just indicate deployment
+                            }}
+                            className="w-12 h-12 flex items-center justify-center bg-(--main-color)/20 border border-(--main-color)/40 backdrop-blur-3xl rounded-full text-(--main-color) animate-pulse shadow-[0_0_20px_var(--main-color)]"
+                            title={`Crate Deployment: ${sentTruckId}`}
+                        >
+                            <Truck size={22} strokeWidth={2.5} />
+                        </button>
+                    )}
 
                     {/* Artifact Toggle Button */}
                     {onyx.inventoryConfig.itemIds.length > 0 && (
