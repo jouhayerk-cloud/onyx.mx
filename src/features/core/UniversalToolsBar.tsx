@@ -91,7 +91,7 @@ const ActiveRequestGridItem: React.FC<{
     return (
         <div 
             onClick={onClick}
-            className="flex flex-col justify-between p-4 h-28 cursor-pointer transition-all hover:brightness-110 active:scale-95 shadow-lg group relative overflow-hidden backdrop-blur-md border border-white/10"
+            className="flex flex-col justify-between p-4 h-28 cursor-pointer transition-all hover:brightness-110 active:scale-95 group relative overflow-hidden"
             style={{ backgroundColor: `${color}40` }}
         >
             <div className="flex items-start justify-between">
@@ -125,7 +125,7 @@ const UpcomingGridItem: React.FC<{
     return (
         <div 
             onClick={onClick}
-            className="flex flex-col justify-center p-4 h-20 cursor-pointer transition-all hover:brightness-125 active:scale-95 shadow-lg group relative overflow-hidden backdrop-blur-md border border-white/10"
+            className="flex flex-col justify-center p-4 h-20 cursor-pointer transition-all hover:brightness-125 active:scale-95 group relative overflow-hidden"
             style={{ backgroundColor: `${color}15` }}
         >
             <div className="flex items-center justify-between gap-2">
@@ -161,7 +161,7 @@ const SectionHeader: React.FC<{
 }> = ({ icon: Icon, title, count, amount, isOpen, onToggle, minimal, currencyMode = 'MXN', exRate = 1 }) => {
     const finalAmount = currencyMode === 'MXN' ? amount : (amount || 0) / exRate;
     return (
-        <div className={`flex items-center justify-between transition-all group cursor-pointer ${minimal ? 'px-4 py-3' : 'px-4 py-4 hover:bg-white/5 rounded-2xl'}`} onClick={onToggle}>
+        <div className={`flex items-center justify-between transition-all group cursor-pointer ${minimal ? 'px-4 py-3' : 'px-4 py-4'}`} onClick={onToggle}>
             <div className="flex items-center gap-6">
                 <div className={`transition-all duration-500 ${isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.8)]' : 'text-white/20'}`}>
                     <Icon size={minimal ? 20 : 28} strokeWidth={3} />
@@ -208,6 +208,19 @@ export const UniversalToolsBar: React.FC = () => {
     const invMaterialFilter = useAtomValue(inventoryMaterialFilterAtom);
     const filteredIds = useAtomValue(filteredInventoryIdsAtom);
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
+
+    const handleToggleDensity = () => {
+        if (invSlider <= 33) {
+            setInvSlider(50);
+            setInvMode('grid');
+        } else if (invSlider <= 66) {
+            setInvSlider(85);
+            setInvMode('gallery');
+        } else {
+            setInvSlider(15);
+            setInvMode('list');
+        }
+    };
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const setInvVersion = useSetAtom(InventoryVersionAtom);
     
@@ -357,7 +370,7 @@ export const UniversalToolsBar: React.FC = () => {
         <div className="flex flex-col w-full z-50">
             {/* ── TOP BAR (SEARCH/SLIDERS) ────────────────────────────────────────────────────────── */}
             {((isInventory && (isInvSearchOpen || isInvViewSliderOpen)) || (isFinance && isFinSearchOpen)) && (
-                <div className="w-full border-t border-white/5 animate-in slide-in-from-top duration-500 overflow-hidden pr-4 pl-4">
+                <div className="w-full animate-in slide-in-from-top duration-500 overflow-hidden pr-4 pl-4">
                     <div className="w-full mx-auto px-6 py-3 flex flex-col gap-4">
                         {isInventory && isInvSearchOpen && (
                             <div className="flex items-center gap-6 group transition-all">
@@ -367,10 +380,13 @@ export const UniversalToolsBar: React.FC = () => {
                             </div>
                         )}
                         {isInventory && isInvViewSliderOpen && (
-                            <div className="flex items-center justify-between w-full animate-in slide-in-from-top-4 duration-500 py-2">
-                                <div className="flex items-center gap-8 w-1/2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full animate-in slide-in-from-top-4 duration-500 py-2 gap-6 sm:gap-0">
+                                <div className="flex items-center gap-8 w-full sm:w-1/2">
                                     <div className="flex items-center gap-3 shrink-0">
-                                        <div className="relative w-12 h-12 flex items-center justify-center bg-white/5 rounded-xl border border-white/10 overflow-hidden group/view">
+                                        <button 
+                                            onClick={handleToggleDensity}
+                                            className="relative w-12 h-12 flex items-center justify-center overflow-hidden group/view transition-transform active:scale-90"
+                                        >
                                             <div className="transition-all duration-300 ease-out flex items-center justify-center"
                                                  style={{ 
                                                      transform: `scale(${1 + (invSlider / 100) * 0.8})`,
@@ -385,7 +401,7 @@ export const UniversalToolsBar: React.FC = () => {
                                                      background: `radial-gradient(circle, var(--main-color) 0%, transparent 70%)`,
                                                      opacity: (invSlider / 100) * 0.3
                                                  }} />
-                                        </div>
+                                        </button>
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] leading-none mb-1">Density</span>
                                             <span className="text-[14px] font-black text-white uppercase tracking-tighter">
@@ -413,12 +429,12 @@ export const UniversalToolsBar: React.FC = () => {
                                         />
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-6 shrink-0">
+                                <div className="flex items-center gap-6 shrink-0 sm:justify-end">
                                     <div className="flex items-center gap-2 text-white/20 uppercase font-black text-[9px] tracking-[0.2em] shrink-0">
                                         <ArrowUpDown size={14} />
                                         <span>SORT BY</span>
                                     </div>
-                                    <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/5">
+                                    <div className="flex items-center gap-2">
                                         {[
                                             { key: 'Date', label: 'DATE' },
                                             { key: 'Vendor', label: 'VENDOR' },
@@ -520,7 +536,6 @@ export const UniversalToolsBar: React.FC = () => {
                                     );
                                 })}
                             </div>
-                            <div className="w-px h-6 bg-white/5 shrink-0" />
                             <div className="flex items-center gap-5 shrink-0">
                                 {Object.entries(destinationsConfig).map(([key, cfg]) => (
                                     <button key={key} onClick={() => setFinDestFilter(finDestFilter === key ? 'All' : key as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${finDestFilter === key ? 'scale-110 grayscale-0 brightness-100' : 'grayscale brightness-50 hover:grayscale-0 hover:brightness-100'}`}>
@@ -550,7 +565,7 @@ export const UniversalToolsBar: React.FC = () => {
 
             {/* ── UPCOMING PAYMENTS (GLOBAL) ─────────────────────────────────────────────────── */}
             {isFinUpcomingOpen && (isInventory || isFinance) && (
-                <div className="w-full border-t border-white/5 px-8 py-4 animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5">
+                <div className="w-full px-8 py-4 animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5">
                     <SectionHeader 
                         icon={Hourglass} 
                         title="Upcoming Payments" 
@@ -575,16 +590,16 @@ export const UniversalToolsBar: React.FC = () => {
                                     <div key={r.id} className="relative group">
                                         <ActiveRequestGridItem label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMode} exRate={exRate} onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: Array.isArray(r.related_inventory_ids) ? r.related_inventory_ids : [r.id], title: isAuto ? `Batch: ${v}` : `Detail: ${v}` })} />
                                         
-                                        {/* Vendor Tag Badge (Large) */}
+                                        {/* Vendor Tag (Free Floating High Contrast) */}
                                         <div 
-                                            className="absolute top-1.5 left-1.5 px-2 py-0.5 text-black text-[10px] font-black uppercase rounded shadow-md pointer-events-none z-10 border border-white/20"
-                                            style={{ backgroundColor: color }}
+                                            className="absolute top-2 left-2 text-[12px] font-black uppercase tracking-[0.2em] pointer-events-none z-10"
+                                            style={{ color: color, filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.8)) drop-shadow(0 0 1px white)' }}
                                         >
                                             {v}
                                         </div>
 
                                         {isAuto && (
-                                            <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-amber-500 text-black text-[7px] font-black uppercase rounded-sm shadow-lg pointer-events-none z-10">Auto-Gen</div>
+                                            <div className="absolute top-2 right-2 text-amber-500 text-[10px] font-black uppercase tracking-[0.2em] pointer-events-none z-10" style={{ filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.8)) drop-shadow(0 0 1px rgba(245,158,11,0.5))' }}>Auto-Gen</div>
                                         )}
                                     </div>
                                 );
@@ -596,7 +611,7 @@ export const UniversalToolsBar: React.FC = () => {
 
             {/* ── INVENTORY TOOLS ─────────────────────────────────────────────────────────── */}
             {isInventory && isInvFiltersOpen && (
-                <div className="flex flex-col w-full min-h-0 border-t border-white/5">
+                <div className="flex flex-col w-full min-h-0">
                     <div className="w-full px-6 py-3 flex items-center justify-between overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center gap-5 shrink-0">
                             {[
@@ -619,11 +634,10 @@ export const UniversalToolsBar: React.FC = () => {
                                 );
                             })}
                         </div>
-                        <button onClick={() => { setInvVersion(v => v + 1); toast.success('Syncing...'); }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white text-[9px] font-black uppercase tracking-widest"><Heartbeat size={14} /> SYNC REGISTRY</button>
+                        <button onClick={() => { setInvVersion(v => v + 1); toast.success('Syncing...'); }} className="flex items-center gap-2 px-4 py-2 text-white/40 hover:text-white text-[9px] font-black uppercase tracking-widest"><Heartbeat size={14} /> SYNC REGISTRY</button>
                     </div>
-                    <div className="w-full border-t border-white/5 px-6 py-3 flex items-center gap-6 overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-700">
+                    <div className="w-full px-6 py-3 flex items-center gap-6 overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-700">
                         <button onClick={() => setInvVendorFilter(['All'])} className={`text-[10px] font-black uppercase transition-all shrink-0 ${invVendorFilter.includes('All') ? 'text-white' : 'text-zinc-600 hover:text-white'}`}>ALL<br/>VENDORS</button>
-                        <div className="w-px h-6 bg-white/10 shrink-0" />
                         <div className="flex items-center gap-6 shrink-0 py-1">
                             {activeVendors.map(v => {
                                 const vendorColor = (vendors as any)[v]?.color || '#ffffff';
