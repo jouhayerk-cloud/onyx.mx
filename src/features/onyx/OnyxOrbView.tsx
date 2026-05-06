@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOnyx, OnyxChatHistory, OnyxChatControls } from './OnyxChat';
-import { BotOrb } from './BotOrb';
+import { OnyxVisuals } from './OnyxVisuals';
 import { OnyxContextModal } from './OnyxContextModal';
 import { inventoryArtifactConfigAtom } from '../../lib/atoms';
 import { useAtom } from 'jotai';
@@ -23,14 +23,16 @@ export function OnyxOrbView() {
         <div className="flex flex-col h-full w-full bg-[#050505] overflow-hidden relative font-['Inter']">
             {/* Background Layer: The Neural Link Visualizer */}
             <div 
-                className="absolute inset-0 z-0 cursor-pointer"
+                className="absolute inset-0 z-0 cursor-pointer w-full h-full flex items-center justify-center overflow-hidden"
                 onPointerDown={(e) => {
                     e.stopPropagation();
                     onyx.unlockTTS();
                     onyx.setIsListening(!onyx.isListening);
                 }}
             >
-                <BotOrb isListening={onyx.isListening} isTyping={onyx.isTyping} />
+                <div className="w-full h-full relative flex items-center justify-center">
+                    <OnyxVisuals isProcessing={onyx.isTyping} />
+                </div>
             </div>
 
             {/* INTERACTION LAYER */}
