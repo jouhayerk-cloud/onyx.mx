@@ -52,11 +52,11 @@ const SpeechRecognition = (window as any).SpeechRecognition || (window as any).w
 
 // ── Shared Logic Hook ───────────────────────────────────────────────────
 export function useOnyx(props: {
-    onProcessingChange: (proc: boolean) => void;
+    onProcessingChange?: (proc: boolean) => void;
     onTranscriptChange?: (text: string) => void;
     onVendorDetect?: (color: string) => void;
     onVolumeChange?: (volume: number) => void;
-}) {
+} = {}) {
     const { onProcessingChange, onTranscriptChange, onVendorDetect, onVolumeChange } = props;
     const [messages, setMessages] = useAtom(onyxMessagesAtom);
     const [userApiKey, setUserApiKey] = useAtom(onyxApiKeyAtom);
@@ -163,7 +163,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         setMessages(prev => [...prev, { role: 'user', content: finalInput }]);
         setInput('');
         setIsTyping(true);
-        onProcessingChange(true);
+        onProcessingChange?.(true);
         isAbortedRef.current = false;
         checkForVendor(finalInput);
         try {
@@ -265,7 +265,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         } catch (e: any) {
             setLastError(e.message);
             setMessages(prev => [...prev, { role: 'model', content: `Neural Link Interrupted: ${e.message}` }]);
-        } finally { setIsTyping(false); onProcessingChange(false); }
+        } finally { setIsTyping(false); onProcessingChange?.(false); }
     };
 
 
@@ -415,7 +415,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             ttsIntervalRef.current = null;
         }
         setIsTyping(false);
-        onProcessingChange(false);
+        onProcessingChange?.(false);
         if (onVolumeChange) onVolumeChange(0);
     };
 
