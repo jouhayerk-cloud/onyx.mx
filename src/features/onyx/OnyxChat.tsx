@@ -111,9 +111,14 @@ export function useOnyx(props: {
 
     const streamRef = useRef<MediaStream | null>(null);
 
-    const getApiKey = () => {
-        const key = userApiKey || localStorage.getItem('onyxApiKey') || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
-        return String(key).trim().replace(/['"]/g, '');
+    const getApiKeyInfo = () => {
+        const stored = userApiKey || localStorage.getItem('onyxApiKey');
+        const system = (import.meta as any).env.VITE_GEMINI_API_KEY || '';
+        const key = stored || system;
+        return {
+            key: String(key).trim().replace(/['"]/g, ''),
+            isDefault: !stored && !!system
+        };
     };
 
     const getBestVoice = (lang: 'en' | 'es') => {
@@ -204,7 +209,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             setAppLanguage(detected);
         }
         
-        const apiKey = getApiKey();
+        const { key: apiKey, isDefault } = getApiKeyInfo();
         if (!apiKey) {
             setLastError("Neural link credentials missing.");
             setIsTyping(false);
@@ -447,7 +452,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     }, [requestSend]);
 
     const discoverModels = async () => {
-        const key = getApiKey();
+        const { key } = getApiKeyInfo();
         if (!key || key.length < 10) return;
         try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
@@ -670,6 +675,13 @@ export function OnyxChat(props: OnyxChatProps) {
     const onyx = useOnyx(props);
     return (
         <div className="flex flex-col h-full w-full bg-black overflow-hidden">
+            {getApiKeyInfo().isDefault && (
+                <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 px-6 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 backdrop-blur-xl animate-in fade-in slide-in-from-top-4 duration-1000">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-500/90 text-center">
+                        ⚠️ SYSTEM NEURAL KEY ACTIVE • RESTRICT KEY IN CLOUD CONSOLE FOR PRODUCTION
+                    </p>
+                </div>
+            )}
             {onyx.lastError && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 backdrop-blur-xl">
                     <p className="text-[10px] font-black uppercase tracking-widest text-red-500/80">{onyx.lastError}</p>
