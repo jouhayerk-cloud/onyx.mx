@@ -96,6 +96,8 @@ export function OnyxOrbView() {
                     isListening={onyx.isListening}
                     setIsListening={onyx.setIsListening}
                     resetNeuralKey={onyx.resetNeuralKey}
+                    stopVoice={onyx.stopVoice}
+                    handleFormSubmit={onyx.handleFormSubmit}
                 />
             </div>
         </div>
