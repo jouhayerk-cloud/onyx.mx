@@ -569,8 +569,8 @@ export function OnyxChatControls(props: {
         // Prevent input clearing/sending if already processing
         if (props.isTyping) return;
 
-        unlockTTS();
-        sendMessage(finalInput);
+        unlockTTS?.();
+        sendMessage?.(finalInput);
         setInput('');
     };
 

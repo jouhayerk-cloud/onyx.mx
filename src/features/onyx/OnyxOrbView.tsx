@@ -83,6 +83,8 @@ export function OnyxOrbView() {
                     setIsListening={onyx.setIsListening}
                     stopVoice={onyx.stopVoice}
                     isTyping={onyx.isTyping}
+                    unlockTTS={onyx.unlockTTS}
+                    startAudioCapture={onyx.startAudioCapture}
                 />
             </div>
         </div>
