@@ -18,10 +18,18 @@ import ReactMarkdown from 'react-markdown';
 import { BotOrb } from './BotOrb';
 
 const VENDOR_COLORS: Record<string, string> = {
+    // Codes (from consts.tsx)
+    'jm': '#6BCEBB', 'em': '#00AEEF', 'ca': '#85C1E9', 'an': '#FFED00',
+    'su': '#B19CD9', 'te': '#FFCB05', 'dh': '#8DC63F', 'ml': '#F9A17A',
+    'ge': '#F7941D', 'fr': '#F36F21', 'et': '#636466', 'am': '#800020',
+    'bt': '#603913', 'rf': '#00A591', 'gs': '#D11C7E', 'cp': '#A01E5D',
+    'gm': '#E6194B', 'mm': '#911EB4', 'on': '#4B5563',
+    // Full Names
     'emmanuel': '#00AEEF', 'gerardo': '#F7941D', 'jose': '#6BCEBB', 'carlos': '#85C1E9',
     'angel': '#FFED00', 'susana': '#B19CD9', 'tellez': '#FFCB05', 'delfino': '#8DC63F',
     'maria': '#F9A17A', 'fountain': '#F36F21', 'eduardo': '#636466', 'alejandro': '#800020',
-    'bernardo': '#603913', 'roberto': '#00A591', 'gift': '#D11C7E', 'cantera': '#A01E5D'
+    'bernardo': '#603913', 'roberto': '#00A591', 'gift': '#D11C7E', 'cantera': '#A01E5D',
+    'simona': '#E6194B', 'margarita': '#911EB4'
 };
 
 const ColorizedText = ({ text }: { text: string }) => {
@@ -37,7 +45,9 @@ const ColorizedText = ({ text }: { text: string }) => {
                 if (!part) return null;
                 const lowerPart = part.toLowerCase();
                 if (VENDOR_COLORS[lowerPart]) {
-                    const capitalized = part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+                    const capitalized = part.length <= 2 
+                        ? part.toUpperCase() 
+                        : (part.charAt(0).toUpperCase() + part.slice(1).toLowerCase());
                     return <span key={i} style={{ color: VENDOR_COLORS[lowerPart] }} className="font-black drop-shadow-[0_0_8px_currentColor]">{capitalized}</span>;
                 }
                 if (part.match(tagRegex)) {
