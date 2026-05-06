@@ -180,6 +180,7 @@ export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer' | 'onyx'>('activeView', 'upload', sessionJSONStorage);
 export const onyxMessagesAtom = atom<any[]>([]);
 export const onyxIsListeningAtom = atom<boolean>(false);
+export const onyxIsTypingAtom = atom<boolean>(false);
 export const onyxApiKeyAtom = atomWithStorage<string>('onyxApiKey', '');
 export const isBotOrbOpenAtom = atom<boolean>(false);
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);

@@ -66,7 +66,7 @@ export function useOnyx(props: {
     const setTruckId = useSetAtom(sentTruckIdAtom);
 
     const [input, setInput] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
+    const [isTyping, setIsTyping] = useAtom(onyxIsTypingAtom);
     const [isListening, setIsListening] = useAtom(onyxIsListeningAtom);
     const [volume, setVolume] = useState(0);
     const [lastError, setLastError] = useState<string | null>(null);
@@ -126,6 +126,7 @@ export function useOnyx(props: {
 
     const callGemini = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        console.log("ONYX: callGemini Request:", { model, url, contentsCount: contents.length });
         const sys = `You are Onyx Intelligence, a sentient warehouse asset discovery engine. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
 DOMAIN CONTEXT: Terms like 'Talan' (e.g., Green Talan) and 'Tehuacan' are common COLORS in the inventory database. If a user asks about these terms without specifying "color", treat them as color search parameters in your tool calls.
 OPERATIONAL STATUSES: The database uses 'Production', 'Acquisition', 'Available', and 'Requested' for the inventory pipeline. Use these for operational discovery.
@@ -138,12 +139,22 @@ When deploying artifacts via 'deploy_inventory_artifact', you MUST use the datab
 Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         const payload: any = { contents, system_instruction: { parts: [{ text: sys }] } };
         if (tools) payload.tools = [{ function_declarations: tools }];
-        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error?.message || `HTTP ${res.status}`);
+        
+        try {
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            console.log("ONYX: callGemini Response Status:", res.status);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                console.error("ONYX: callGemini Error Data:", errData);
+                throw new Error(errData.error?.message || `HTTP ${res.status}`);
+            }
+            const data = await res.json();
+            console.log("ONYX: callGemini Data Received");
+            return data;
+        } catch (e: any) {
+            console.error("ONYX: callGemini Fetch Failed:", e.message);
+            throw e;
         }
-        return await res.json();
     };
 
     const sendMessage = async (overrideInput?: string) => {
@@ -447,6 +458,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
 // ── OnyxChatHistory ─────────────────────────────────────────────────────
 export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyping: boolean }) {
+    console.log("ONYX_HISTORY: Render", { messagesCount: messages.length, isTyping });
     const scrollRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
