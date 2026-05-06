@@ -92,6 +92,7 @@ import {
     isPaymentsSearchOpenAtom,
     isPaymentFiltersOpenAtom,
     isPaymentActionPanelOpenAtom,
+    isPaymentUpcomingOpenAtom,
     isPaymentWizardOpenAtom,
     isCrateCreationModalOpenAtom,
     isBotOrbOpenAtom,
@@ -126,7 +127,7 @@ import {
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
-    PackagePlus, Boxes, PackageOpen, History, Bot, Brain
+    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -356,6 +357,7 @@ const InventoryBar: React.FC = () => {
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
     const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
+    const [isUpcomingOpen, setIsUpcomingOpen] = useAtom(isPaymentUpcomingOpenAtom);
 
     const handleToggleSelectionMode = () => {
         setIsSelectionMode(!isSelectionMode);
@@ -402,6 +404,15 @@ const InventoryBar: React.FC = () => {
                     title="Search"
                 >
                     <Search size={22} strokeWidth={2} />
+                </button>
+
+                {/* 4.5 UPCOMING PAYMENTS */}
+                <button 
+                    onClick={() => setIsUpcomingOpen(!isUpcomingOpen)}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isUpcomingOpen ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Upcoming Payments"
+                >
+                    <Hourglass size={22} strokeWidth={2} className={isUpcomingOpen ? 'animate-pulse' : ''} />
                 </button>
                 
                 <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
@@ -494,6 +505,7 @@ const FinanceBar: React.FC = () => {
     const [isActionOpen, setIsActionOpen] = useAtom(isPaymentActionPanelOpenAtom);
     const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
     const toggleCurrency = () => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN');
+    const [isUpcomingOpen, setIsUpcomingOpen] = useAtom(isPaymentUpcomingOpenAtom);
 
     return (
         <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
@@ -522,6 +534,14 @@ const FinanceBar: React.FC = () => {
                         title="Settings & Logic"
                     >
                         <SlidersHorizontal size={22} strokeWidth={2} />
+                    </button>
+
+                    <button 
+                        onClick={() => setIsUpcomingOpen(!isUpcomingOpen)}
+                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isUpcomingOpen ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-white/50 hover:text-white'}`}
+                        title="Upcoming Payments"
+                    >
+                        <Hourglass size={22} strokeWidth={2} className={isUpcomingOpen ? 'animate-pulse' : ''} />
                     </button>
 
                     <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
