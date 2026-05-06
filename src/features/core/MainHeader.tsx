@@ -1967,7 +1967,7 @@ export function MainHeader() {
                                 <button 
                                     onClick={() => {
                                         if (confirm("Reset Neural Link credentials to system default?")) {
-                                            localStorage.removeItem('ONYX_GEMINI_KEY');
+                                            localStorage.removeItem('onyxApiKey');
                                             setOnyxApiKey('');
                                         }
                                     }}

@@ -112,7 +112,7 @@ export function useOnyx(props: {
     const streamRef = useRef<MediaStream | null>(null);
 
     const getApiKey = () => {
-        const key = userApiKey || localStorage.getItem('ONYX_GEMINI_KEY') || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
+        const key = userApiKey || localStorage.getItem('onyxApiKey') || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
         return String(key).trim().replace(/['"]/g, '');
     };
 
