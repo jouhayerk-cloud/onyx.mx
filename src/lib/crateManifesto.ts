@@ -743,7 +743,7 @@ export async function exportCrateManifesto(
 
         // Gallery Row Visibility & Count Calculation
         const numImagesTotal = (!meta.excludeImages && item.imageUrls && item.imageUrls.length > 0) 
-            ? Math.max(item.qty, item.imageUrls.length) 
+            ? item.imageUrls.length 
             : 0;
         const numImagesInGallery = numImagesTotal - 1;
         const hasGallery = numImagesInGallery > 0;
@@ -850,8 +850,8 @@ export async function exportCrateManifesto(
             doc.line(gx, gy - 0.5, TABLE_END - 2, gy - 0.5);
 
             for (let j = 0; j < numImagesInGallery; j++) {
-                // Skip the first image (already in PHOTO column) and cycle through available images
-                const url = item.imageUrls?.[(j + 1) % item.imageUrls.length] || '';
+                // Skip the first image (already in PHOTO column)
+                const url = item.imageUrls?.[j + 1] || '';
                 
                 if (!url) continue;
 
