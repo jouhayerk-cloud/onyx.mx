@@ -59,13 +59,14 @@ import {
     truckingReadyFieldsAtom
 } from '../../lib/atoms';
 import { 
-    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { CompactDockCard, DeployedTrailerCard } from '../logistics/TruckingModule';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { normalizeInventoryData } from '../../lib/utils';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -292,6 +293,52 @@ export const UniversalToolsBar: React.FC = () => {
         activeQueueRecords.reduce((s, r) => s + (r.amount || 0) + (r.commission || 0), 0),
     [activeQueueRecords]);
 
+    const upcomingRecords = useMemo(() => 
+        financeDocs.filter(r => String(r.status || '').toLowerCase() === 'upcoming' || String(r.status || '').toLowerCase() === 'pending'), 
+    [financeDocs]);
+
+    const upcomingTotal = useMemo(() => 
+        upcomingRecords.reduce((s, r) => s + (r.amount || 0) + (r.commission || 0), 0),
+    [upcomingRecords]);
+
+    const autoGenPayments = useMemo(() => {
+        const requestedItems = allInventory.filter(item => {
+            const norm = normalizeInventoryData(item.data);
+            return String(norm.payReq || '').toLowerCase() === 'true';
+        });
+
+        const groups: Record<string, any[]> = {};
+        requestedItems.forEach(item => {
+            const norm = normalizeInventoryData(item.data);
+            const v = norm.vendorId || 'Unknown';
+            if (!groups[v]) groups[v] = [];
+            groups[v].push(item);
+        });
+
+        return Object.entries(groups).map(([vendor, items]) => {
+            const totalAmount = items.reduce((sum, item) => {
+                const norm = normalizeInventoryData(item.data);
+                const price = parseFloat(norm.price) || 0;
+                const qty = parseInt(norm.quantity) || 1;
+                return sum + (price * qty);
+            }, 0);
+
+            return {
+                id: `auto-${vendor}`,
+                vendor_id: vendor,
+                description: `${items.length} Pending Items`,
+                amount: totalAmount,
+                status: 'Upcoming',
+                subcategory: 'Acq',
+                related_inventory_ids: items.map(i => i.data?.id).filter(Boolean),
+                is_auto_gen: true
+            };
+        });
+    }, [allInventory]);
+
+    const combinedUpcoming = useMemo(() => [...upcomingRecords, ...autoGenPayments], [upcomingRecords, autoGenPayments]);
+    const combinedUpcomingTotal = useMemo(() => combinedUpcoming.reduce((s, r) => s + (r.amount || 0), 0), [combinedUpcoming]);
+
     const handleSelectAll = () => {
         setSelectedIds(filteredIds);
         toast.success(`Selected ${filteredIds.length} items`);
@@ -496,6 +543,52 @@ export const UniversalToolsBar: React.FC = () => {
                                     })}
                                 </div>
                             )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── UPCOMING PAYMENTS (GLOBAL) ─────────────────────────────────────────────────── */}
+            {isFinUpcomingOpen && (isInventory || isFinance) && (
+                <div className="w-full border-t border-white/5 px-8 py-4 animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5">
+                    <SectionHeader 
+                        icon={Hourglass} 
+                        title="Upcoming Payments" 
+                        count={combinedUpcoming.length} 
+                        amount={combinedUpcomingTotal} 
+                        isOpen={isFinUpcomingOpen} 
+                        onToggle={() => setIsFinUpcomingOpen(!isFinUpcomingOpen)} 
+                        currencyMode={currencyMode} 
+                        exRate={exRate} 
+                    />
+                    {isFinUpcomingOpen && (
+                        <div className={`grid gap-1 overflow-hidden transition-all duration-500 mt-2 ${combinedUpcoming.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
+                            {combinedUpcoming.length === 0 ? (
+                                <div className="py-6 text-center border border-white/5 rounded-2xl">
+                                    <span className="text-[11px] font-black uppercase tracking-[0.6em]">NO UPCOMING PAYMENTS</span>
+                                </div>
+                            ) : combinedUpcoming.map(r => {
+                                const v = r.vendor_id || 'Unknown';
+                                const color = vendors[v as keyof typeof vendors]?.color || '#888';
+                                const isAuto = (r as any).is_auto_gen;
+                                return (
+                                    <div key={r.id} className="relative group">
+                                        <ActiveRequestGridItem label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMode} exRate={exRate} onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: Array.isArray(r.related_inventory_ids) ? r.related_inventory_ids : [r.id], title: isAuto ? `Batch: ${v}` : `Detail: ${v}` })} />
+                                        
+                                        {/* Vendor Tag Badge (Large) */}
+                                        <div 
+                                            className="absolute top-1.5 left-1.5 px-2 py-0.5 text-black text-[10px] font-black uppercase rounded shadow-md pointer-events-none z-10 border border-white/20"
+                                            style={{ backgroundColor: color }}
+                                        >
+                                            {v}
+                                        </div>
+
+                                        {isAuto && (
+                                            <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-amber-500 text-black text-[7px] font-black uppercase rounded-sm shadow-lg pointer-events-none z-10">Auto-Gen</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
