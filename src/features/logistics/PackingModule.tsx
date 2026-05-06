@@ -239,7 +239,9 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                     weightKg: parseFloat(d.weightKg) || 0,
                     costMxn: 0, 
                     costUsd: 0, 
-                    imageUrls: includeImages ? [item.imageUrl].filter(Boolean) : [],
+                    imageUrls: includeImages 
+                        ? (d.mediaUrls ? String(d.mediaUrls).split(',').map((u: string) => getCleanImageUrl(u.trim())).filter(Boolean) : [item.imageUrl].filter(Boolean)) 
+                        : [],
                     tagColor: c.vendorColor || '#333', 
                     dbItemCount: Number(d.quantity || 1),
                     packetIn: ''
