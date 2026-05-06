@@ -239,9 +239,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                     weightKg: parseFloat(d.weightKg) || 0,
                     costMxn: 0, 
                     costUsd: 0, 
-                    imageUrls: includeImages 
-                        ? (d.mediaUrls ? String(d.mediaUrls).split(',').map((u: string) => getCleanImageUrl(u.trim())).filter(Boolean) : [item.imageUrl].filter(Boolean)) 
-                        : [],
+                    imageUrls: includeImages ? (item.imageUrls || []) : [],
                     tagColor: c.vendorColor || '#333', 
                     dbItemCount: Number(d.quantity || 1),
                     packetIn: ''
@@ -443,8 +441,18 @@ export const PackingModule: React.FC = () => {
             const items = inventory.map(item => {
                 const normData = normalizeInventoryData(item?.data || {});
                 const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
-                const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
-                return { ...item, codes, normData, imageUrl: getCleanImageUrl(baseImg) };
+                
+                // Collect all possible images from all sources
+                const rawUrls = [
+                    ...(normData.mediaUrls ? (Array.isArray(normData.mediaUrls) ? normData.mediaUrls : String(normData.mediaUrls).split(',')) : []),
+                    ...(normData.generatedImageUrls ? (Array.isArray(normData.generatedImageUrls) ? normData.generatedImageUrls : String(normData.generatedImageUrls).split(',')) : []),
+                    normData.generatedPngUrl
+                ].filter(Boolean).map(u => String(u).trim()).filter(Boolean);
+                
+                const imageUrls = Array.from(new Set(rawUrls)).map(u => getCleanImageUrl(u)).filter(Boolean) as string[];
+                const imageUrl = imageUrls[0] || null;
+                
+                return { ...item, codes, normData, imageUrl, imageUrls };
             }).filter(item => {
                 const { normData, codes } = item;
                 if (!normData || !codes) return false;
@@ -605,8 +613,7 @@ export const PackingModule: React.FC = () => {
                 // Properly derive vendor prefix for color coding (e.g. "EM" from "EM-001-T" or "R" from "R-001-T")
                 const vendorPrefix = String(d.itemId || c.bookBarcode || '').split('-')[0].toUpperCase();
                 
-                const rawUrls = d.mediaUrls ? String(d.mediaUrls).split(',').map((u: string) => u.trim()).filter(Boolean) : [item.imageUrl];
-                const imageUrls = rawUrls.map(u => getCleanImageUrl(u));
+                const imageUrls = item.imageUrls || [];
                 
                 return {
                     index: idx + 1,
