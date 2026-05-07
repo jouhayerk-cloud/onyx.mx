@@ -22,7 +22,10 @@ import {
     formatCurrency, 
     readFileAsDataURL, 
     calculateCodesAndPrices,
-    normalizeInventoryData
+    normalizeInventoryData,
+    getCleanImageUrl,
+    isVideoFile,
+    collectAllImages
 } from '../../lib/utils';
 import { 
     X, ArrowRight, Video, Plus, Database, Store, Hash, 
@@ -217,13 +220,12 @@ export const UploadWizard: React.FC = () => {
         if (isOpen && itemData && Object.keys(itemData).length > 0) {
             // Load existing item data for editing
             const mediaList: WizardMedia[] = [];
-            const rawUrls = itemData.mediaUrls || itemData.media_urls || '';
-            const urls = (typeof rawUrls === 'string' ? rawUrls : '').split(',').filter(Boolean);
+            const urls = collectAllImages(itemData);
             
             urls.forEach(url => {
                 mediaList.push({
                     file: null,
-                    preview: getCleanImageUrl(url),
+                    preview: url,
                     type: isVideoFile(url) ? 'video' : 'image',
                     originalUrl: url
                 });
