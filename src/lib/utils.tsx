@@ -77,11 +77,13 @@ export function getCrateDisplayName(crate: any, allCrates: any[], allInventory: 
         ? `${unitType} / ${contentList.slice(0, 2).join(' | ')}` 
         : unitType;
 
-    const vendorCodes = vendorList.map(v => {
-        if (v.length >= 2) return v.toUpperCase();
-        const full = (vendors as any)[v]?.name || v;
-        return full.slice(0, 2).toUpperCase();
-    }).join('&');
+    const vendorCodes = vendorList
+        .filter(v => !['JUAN', 'SIMONA'].includes(v.toUpperCase()))
+        .map(v => {
+            if (v.length >= 2) return v.toUpperCase();
+            const full = (vendors as any)[v]?.name || v;
+            return full.slice(0, 2).toUpperCase();
+        }).join('&');
 
     // PRIORITIZE DATABASE SAVED LABEL
     const primaryLabel = crate.label || crate.name || vendorCodes || (crate.type || 'UNIT').toUpperCase();
