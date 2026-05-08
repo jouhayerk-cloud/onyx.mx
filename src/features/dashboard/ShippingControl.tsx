@@ -501,11 +501,17 @@ export const ShippingControl = ({ isVisible }: { isVisible: boolean }) => {
         dataForExport.push(['Crate ID', 'Vendor', 'Item ID', 'Shape', 'Material', 'Dimensions (cm)', 'Weight (kg)', 'Barcode', 'Color']);
         const groupedByVendor: { [key: string]: { crate: Crate, item: PackedItem }[] } = {};
         crates.forEach((crate: Crate) => {
-            crate.inventoryItems.forEach(item => {
-                const vendorId = crate.vendorId || item.itemId || 'UNKNOWN';
+            const vendorId = crate.vendors || crate.vendor_id || (crate.inventoryItems?.[0]?.itemId?.split('-')[0]) || 'INTERNAL';
+            if (crate.inventoryItems && crate.inventoryItems.length > 0) {
+                crate.inventoryItems.forEach(item => {
+                    if (!groupedByVendor[vendorId]) groupedByVendor[vendorId] = [];
+                    groupedByVendor[vendorId].push({ crate, item });
+                });
+            } else {
+                // Include empty crates (especially Juan/Simona)
                 if (!groupedByVendor[vendorId]) groupedByVendor[vendorId] = [];
-                groupedByVendor[vendorId].push({ crate, item });
-            });
+                groupedByVendor[vendorId].push({ crate, item: null as any });
+            }
         });
         Object.keys(groupedByVendor).sort().forEach(vendorId => {
             const vendorColor = vendors[vendorId as keyof typeof vendors]?.color;
@@ -514,13 +520,17 @@ export const ShippingControl = ({ isVisible }: { isVisible: boolean }) => {
                 styles[styleKey] = { bgColor: vendorColor, textColor: getTextColorForBg(vendorColor), bold: true };
             }
             groupedByVendor[vendorId].forEach(({ crate, item }) => {
-                const dimensions = `${item.widthCm || '?'}x${item.heightCm || '?'}x${item.lengthCm || '?'}`;
+                const dimensions = item ? `${item.widthCm || '?'}x${item.heightCm || '?'}x${item.lengthCm || '?'}` : `${crate.width_cm || crate.width || '?'}x${crate.height_cm || crate.height || '?'}x${crate.length_cm || crate.length || '?'}`;
                 dataForExport.push([
-                    { value: crate.id, styleKey }, { value: vendorId, styleKey },
-                    { value: `${item.itemId}-${item.itemNumber}`, styleKey },
-                    { value: item.shape, styleKey }, { value: item.material, styleKey },
-                    { value: dimensions, styleKey }, { value: item.weightKg, styleKey },
-                    { value: item.bookBardcode, styleKey }, { value: item.color, styleKey },
+                    { value: crate.id, styleKey }, 
+                    { value: vendorId, styleKey },
+                    { value: item ? `${item.itemId}-${item.itemNumber}` : 'EMPTY', styleKey },
+                    { value: item ? item.shape : (crate.type || 'CRATE'), styleKey }, 
+                    { value: item ? item.material : (crate.material || ''), styleKey },
+                    { value: dimensions, styleKey }, 
+                    { value: item ? item.weightKg : (crate.weight_kg || crate.weight || 0), styleKey },
+                    { value: item ? item.bookBardcode : '', styleKey }, 
+                    { value: item ? item.color : '', styleKey },
                 ]);
             });
         });

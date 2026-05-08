@@ -315,39 +315,69 @@ export const UniversalToolsBar: React.FC = () => {
     [upcomingRecords]);
 
     const autoGenPayments = useMemo(() => {
-        const requestedItems = allInventory.filter(item => {
-            const norm = normalizeInventoryData(item.data);
-            return String(norm.payReq || '').toLowerCase() === 'true';
+        // 1. Identify all potentially unpaid items
+        const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'production', 'new', 'scheduled', 'ready'];
+        const targetInventory = allInventory.filter(i => {
+            const norm = normalizeInventoryData(i.data);
+            const status = (norm.status || '').toLowerCase();
+            const payReqStr = String(norm.payReq || '').toLowerCase();
+            const workbook = String(norm.workbook || '').toLowerCase();
+            
+            if (workbook === '825' || workbook === 'v825' || payReqStr === 'prepaid') return false;
+            const isUnpaid = !['true', 'paid'].includes(payReqStr);
+            return targetStatuses.includes(status) && isUnpaid;
         });
 
-        const groups: Record<string, any[]> = {};
-        requestedItems.forEach(item => {
+        // 2. Group by Vendor AND Type (Production vs Acquisition)
+        const groups: Record<string, { vendor: string, type: 'Acq' | 'Prod', items: any[], total: number }> = {};
+        
+        targetInventory.forEach(item => {
             const norm = normalizeInventoryData(item.data);
             const v = norm.vendorId || 'Unknown';
-            if (!groups[v]) groups[v] = [];
-            groups[v].push(item);
+            const status = (norm.status || '').toLowerCase();
+            const type = (status === 'production' || status === 'packing') ? 'Prod' : 'Acq';
+            const gKey = `${v}-${type}`;
+
+            if (!groups[gKey]) {
+                groups[gKey] = { vendor: v, type, items: [], total: 0 };
+            }
+            const price = parseFloat(norm.price) || 0;
+            const qty = parseInt(norm.quantity) || 1;
+            groups[gKey].items.push(item);
+            groups[gKey].total += (price * qty);
         });
 
-        return Object.entries(groups).map(([vendor, items]) => {
-            const totalAmount = items.reduce((sum, item) => {
-                const norm = normalizeInventoryData(item.data);
-                const price = parseFloat(norm.price) || 0;
-                const qty = parseInt(norm.quantity) || 1;
-                return sum + (price * qty);
+        // 3. Calculate paid offsets for each group to get true balance
+        return Object.entries(groups).map(([gKey, group]) => {
+            const itemIds = new Set(group.items.map(i => String(i.data?.id || i.row)));
+            
+            // Sum all expenses related to these items
+            const paidTotal = financeDocs.reduce((sum, exp) => {
+                if (exp.vendor_id !== group.vendor) return sum;
+                if (!['Requested', 'Paid', 'Sent', 'Dispersed'].includes(exp.status)) return sum;
+                
+                const relIds = Array.isArray(exp.related_ids) ? exp.related_ids : (typeof exp.related_inventory_ids === 'string' ? exp.related_inventory_ids.split(',') : []);
+                const isRel = relIds.some((id: any) => itemIds.has(String(id)));
+                
+                return isRel ? sum + (exp.amount || 0) : sum;
             }, 0);
 
+            const balance = group.total - paidTotal;
+
+            if (balance <= 0.5) return null; // Skip if basically paid
+
             return {
-                id: `auto-${vendor}`,
-                vendor_id: vendor,
-                description: `${items.length} Pending Items`,
-                amount: totalAmount,
+                id: `auto-${gKey}`,
+                vendor_id: group.vendor,
+                description: `${group.items.length} ${group.type === 'Acq' ? 'Acquisition' : 'Production'} Items`,
+                amount: Math.round(balance),
                 status: 'Upcoming',
-                subcategory: 'Acq',
-                related_inventory_ids: items.map(i => i.data?.id).filter(Boolean),
+                subcategory: group.type === 'Acq' ? 'Acquisition' : 'Production',
+                related_inventory_ids: Array.from(itemIds),
                 is_auto_gen: true
             };
-        });
-    }, [allInventory]);
+        }).filter(Boolean);
+    }, [allInventory, financeDocs]);
 
     const combinedUpcoming = useMemo(() => [...upcomingRecords, ...autoGenPayments], [upcomingRecords, autoGenPayments]);
     const combinedUpcomingTotal = useMemo(() => combinedUpcoming.reduce((s, r) => s + (r.amount || 0), 0), [combinedUpcoming]);

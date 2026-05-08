@@ -6,14 +6,14 @@ import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Type
 import { vendors, appUsers } from '../../lib/consts';
 import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom, financeTotalsAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
-import { useDatabase } from '../../lib/hooks';
+import { useDatabase, useNotify } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers, Minimize2
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers, Minimize2, X as CloseIcon
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
@@ -103,6 +103,7 @@ const AddPaymentModal: React.FC<{
     pendingGroups: VendorGroup[];
 }> = ({ isOpen, onClose, onSaved, pendingGroups }) => {
     const db = useDatabase();
+    const notify = useNotify();
     const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
@@ -150,10 +151,10 @@ const AddPaymentModal: React.FC<{
     const handleSubmit = async () => {
         const amt = parseFloat(form.amount);
         if (!form.description || isNaN(amt) || amt <= 0 || !form.destination) {
-            return toast.error('Fill in description, amount, and select an account.');
+            return notify.error('Fill in description, amount, and select an account.');
         }
         setSaving(true);
-        const toastId = toast.loading('Saving…');
+        const toastId = notify.loading('Saving artifact…');
         try {
             const manualFeeAmt = parseFloat(form.manualFee) || 0;
             const ivaAmt = form.includeIva ? calculateIVA(amt) : 0;
@@ -183,26 +184,18 @@ const AddPaymentModal: React.FC<{
                             } catch (e) { console.error(e); }
                         }
                     }
-                } else if (isProd && isPartial) {
-                    const up = { pay_req: `requested ${perc}%`, notes: `Partial payment of ${amt} recorded.` };
-                    await supabase.from('production').update(up).in('id', ids);
-                    if (db) {
-                        for (const iid of ids) {
-                            try {
-                                const lProd = await db.production.findOne({ selector: { id: iid } }).exec();
-                                if (lProd) await lProd.patch(up);
-                            } catch (e) { console.error(e); }
-                        }
-                    }
                 } else {
                     const table = isProd ? 'production' : 'inventory';
-                    await supabase.from(table).update({ pay_req: 'true' }).in('id', ids);
+                    const upStatus = isPartial ? `requested ${perc}%` : 'true';
+                    const upPayload = { pay_req: upStatus, payReq: upStatus };
+                    
+                    await supabase.from(table).update({ pay_req: upStatus }).in('id', ids);
                     if (db) {
                         for (const iid of ids) {
                             try {
                                 const coll = isProd ? db.production : db.inventory;
                                 const doc = await coll.findOne({ selector: { id: iid } }).exec();
-                                if (doc) await doc.patch({ pay_req: 'true', payReq: 'true' });
+                                if (doc) await doc.patch(upPayload);
                             } catch (e) { console.error(e); }
                         }
                     }
@@ -217,11 +210,11 @@ const AddPaymentModal: React.FC<{
                 linkedRows: (form.subcategory === 'Prod' || form.subcategory === 'Packing' || form.vendor_id.includes('%')) ? inventoryItemRows : null
             }, db);
 
-            toast.success('Record added!', { id: toastId });
+            notify.success('Record added!', { id: toastId });
             onSaved();
             onClose();
         } catch (err: any) {
-            toast.error(err.message, { id: toastId });
+            notify.error(err.message, { id: toastId });
         } finally {
             setSaving(false);
         }
@@ -230,95 +223,109 @@ const AddPaymentModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={onClose}>
-            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[600px] max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-300 overflow-hidden">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={onClose} />
+            <div className="bg-black/20 border border-white/10 rounded-[64px] w-full max-w-[700px] h-[85dvh] flex flex-col shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-500" onClick={e => e.stopPropagation()}>
 
-                {/* Progress Header */}
-                <div className="px-6 md:px-10 pt-8 pb-4 flex justify-between items-center shrink-0">
-                    <div className="flex gap-2">
+                {/* Progress Strip */}
+                <div className="px-12 pt-12 pb-6 flex justify-between items-center shrink-0">
+                    <div className="flex gap-3">
                         {[1, 2, 3, 4, 5, 6].map(s => (
-                            <div key={s} className={`h-1 rounded-full transition-all duration-500 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-4 bg-(--border-color)'}`} />
+                            <div key={s} className={`h-1.5 rounded-full transition-all duration-700 ${step >= s ? 'w-10 bg-(--main-color) shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]' : 'w-6 bg-white/10'}`} />
                         ))}
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-(--glass-bg) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all text-sm">✕</button>
+                    <button onClick={onClose} className="w-14 h-14 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-500 group">
+                        <CloseIcon size={24} strokeWidth={1.5} className="group-active:scale-75 transition-transform" />
+                    </button>
                 </div>
 
-                <div className="px-6 md:px-10 pb-10 flex flex-col flex-1 overflow-y-auto custom-scrollbar min-h-[460px]">
-                    {/* Stage 1: Merch vs Expenses */}
+                <div className="px-12 pb-12 flex flex-col flex-1 overflow-y-auto custom-scrollbar">
+                    {/* Stage 1: Classification */}
                     {step === 1 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 leading-tight tracking-tight uppercase">TRANSACTION<br />CLASSIFICATION</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-[0.3em] font-bold">Define the primary nature of this expenditure</p>
+                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">PROTOCOL</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Define transactional classification</p>
+                            </div>
 
-                            <div className="grid grid-cols-2 gap-5">
+                            <div className="grid grid-cols-2 gap-8">
                                 <button onClick={() => setStep(2.1)}
-                                    className="flex flex-col items-center p-10 rounded-[48px] bg-(--glass-bg) border border-(--border-color) hover:border-[#F7941D]/50 hover:bg-[#F7941D]/5 transition-all group">
-                                    <div className="w-16 h-16 mb-6 rounded-full border-2 border-[#F7941D]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-8 h-8 text-[#F7941D] opacity-70"><use href="#pkg" /></svg>
+                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-[#F7941D]/40 hover:bg-[#F7941D]/5 transition-all duration-500 relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-[#F7941D]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="w-16 h-16 mb-8 rounded-[24px] bg-[#F7941D]/10 border border-[#F7941D]/20 flex items-center justify-center text-[#F7941D] group-hover:scale-110 transition-transform">
+                                        <Layers size={32} />
                                     </div>
-                                    <span className="text-[12px] font-black text-(--text-color) uppercase tracking-[0.2em]">MERCHANDISE</span>
-                                    <span className="text-[9px] text-(--text-color-secondary) font-bold mt-3 text-center leading-relaxed">Inventory acquisitions,<br />production & labor costs</span>
+                                    <span className="text-xl font-black text-white uppercase tracking-tight mb-2">MERCHANDISE</span>
+                                    <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest text-left leading-relaxed">Inventory, production<br />& labor cycles</span>
                                 </button>
                                 <button onClick={() => setStep(2.2)}
-                                    className="flex flex-col items-center p-10 rounded-[48px] bg-(--glass-bg) border border-(--border-color) hover:border-[#00AEEF]/50 hover:bg-[#00AEEF]/5 transition-all group">
-                                    <div className="w-16 h-16 mb-6 rounded-full border-2 border-[#00AEEF]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-8 h-8 text-[#00AEEF] opacity-70"><use href="#dollar" /></svg>
+                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-[#00AEEF]/40 hover:bg-[#00AEEF]/5 transition-all duration-500 relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-[#00AEEF]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="w-16 h-16 mb-8 rounded-[24px] bg-[#00AEEF]/10 border border-[#00AEEF]/20 flex items-center justify-center text-[#00AEEF] group-hover:scale-110 transition-transform">
+                                        <DollarSign size={32} />
                                     </div>
-                                    <span className="text-[12px] font-black text-(--text-color) uppercase tracking-[0.2em]">OPERATIONS</span>
-                                    <span className="text-[9px] text-(--text-color-secondary) font-bold mt-3 text-center leading-relaxed">Business services,<br />fixed bills & utilities</span>
+                                    <span className="text-xl font-black text-white uppercase tracking-tight mb-2">OPERATIONS</span>
+                                    <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest text-left leading-relaxed">Variable services,<br />fixed bills & utilities</span>
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Stage 2.1: Merch Type (Acq vs Prod) */}
+                    {/* Stage 2.1: Merch Type */}
                     {step === 2.1 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">MERCHANDISE</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-8 uppercase tracking-widest font-bold">Classify the inventory transaction type</p>
-                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">
-                                <span className="group-hover:-translate-x-1 transition-transform">←</span> BACK TO TYPE
+                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">MERCH</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Specify inventory context</p>
+                            </div>
+                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-4 flex items-center gap-3 group transition-all">
+                                <span className="group-hover:-translate-x-2 transition-transform">←</span> BACK TO PROTOCOL
                             </button>
 
-                            <div className="grid grid-cols-2 gap-5">
+                            <div className="grid grid-cols-2 gap-8">
                                 <button onClick={() => { set('subcategory', 'Acq'); setStep(3.1); }}
-                                    className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
-                                    <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-7 h-7 opacity-50 text-(--text-color-secondary)"><use href="#download" /></svg>
+                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-white/20 hover:bg-white/[0.08] transition-all duration-500">
+                                    <div className="w-14 h-14 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:scale-110 group-hover:text-white transition-all">
+                                        <Archive size={24} />
                                     </div>
-                                    <span className="text-[11px] font-black text-(--text-color) uppercase tracking-[0.15em]">ACQUISITIONS</span>
-                                    <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 text-center uppercase leading-tight">Bulk purchase from<br />authorized vendors</span>
+                                    <span className="text-lg font-black text-white uppercase tracking-widest mb-1">ACQUISITIONS</span>
+                                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-tight">Bulk Purchase Cycles</span>
                                 </button>
                                 <button onClick={() => { set('subcategory', 'Prod'); setStep(3.1); }}
-                                    className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
-                                    <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-7 h-7 opacity-50 text-(--text-color-secondary)"><use href="#settings" /></svg>
+                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-white/20 hover:bg-white/[0.08] transition-all duration-500">
+                                    <div className="w-14 h-14 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:scale-110 group-hover:text-white transition-all">
+                                        <Cpu size={24} />
                                     </div>
-                                    <span className="text-[11px] font-black text-(--text-color) uppercase tracking-[0.15em]">PRODUCTION</span>
-                                    <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 text-center uppercase leading-tight">Manufacturing labor<br />& custom processing</span>
+                                    <span className="text-lg font-black text-white uppercase tracking-widest mb-1">PRODUCTION</span>
+                                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-tight">Labor & Processing Cycles</span>
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Stage 3.1: Select Bubble */}
+                    {/* Stage 3.1: Vendor Selection */}
                     {step === 3.1 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">VENDORS</h2>
-                            <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all">
-                                <span className="group-hover:-translate-x-1 transition-transform">←</span> BACK
+                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">VENDORS</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Link to verified provider</p>
+                            </div>
+                            <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-4 flex items-center gap-3 group transition-all">
+                                <span className="group-hover:-translate-x-2 transition-transform">←</span> BACK
                             </button>
 
-                            <div className="flex flex-wrap gap-4 justify-center">
-                                {pendingGroups.length === 0 ? (
-                                    <div className="text-center py-20 border-2 border-dashed border-(--border-color) rounded-[40px] w-full">
-                                        <p className="text-(--text-color-secondary) opacity-40 text-[10px] font-black tracking-[0.3em] uppercase">No pending items found</p>
+                            <div className="flex flex-wrap gap-6 justify-start">
+                                {pendingGroups.filter(g => {
+                                    if (form.subcategory === 'Packing') return g.type === 'Packing';
+                                    return form.subcategory === 'Prod' ? g.type === 'Production' : g.type === 'Acquisition';
+                                }).length === 0 ? (
+                                    <div className="text-center py-24 border-2 border-dashed border-white/5 rounded-[64px] w-full">
+                                        <p className="text-white/20 text-[11px] font-black tracking-[0.6em] uppercase">No artifacts pending request</p>
                                     </div>
                                 ) : (
                                     pendingGroups
                                         .filter(g => {
-                                            if (form.subcategory === 'Packing') return g.type === 'Packing' || g.vendorId === 'Crates';
-                                            if (g.vendorId === 'Crates') return false;
+                                            if (form.subcategory === 'Packing') return g.type === 'Packing';
                                             return form.subcategory === 'Prod' ? g.type === 'Production' : g.type === 'Acquisition';
                                         })
                                         .map(group => {
@@ -339,20 +346,20 @@ const AddPaymentModal: React.FC<{
                                                             }));
                                                             set('description', `Payment for ${group.items.length} Crates. Sizes: ${Array.from(sizesSet).join(', ')}`);
                                                         } else {
-                                                            set('description', `${paidPerc > 0 ? 'Liquidation' : 'Payment'} for ${group.items.length} items from ${fullName}`);
+                                                            set('description', `${paidPerc > 0 ? 'Liquidation' : 'Initial Payment'} for ${group.items.length} items from ${fullName}`);
                                                         }
                                                         setStep(4);
                                                     }}
-                                                    className="group relative flex flex-col items-center gap-2 p-4 rounded-3xl transition-all hover:bg-white/5 border border-transparent hover:border-white/10">
-                                                    <div className="w-16 h-16 rounded-[24px] flex flex-col items-center justify-center font-black text-sm shadow-xl border-2 border-white/5 relative overflow-hidden group-hover:scale-110 transition-transform"
+                                                    className="group relative flex flex-col items-center gap-4 p-6 rounded-[40px] transition-all duration-500 hover:bg-white/5 border border-transparent hover:border-white/10 scale-95 hover:scale-100">
+                                                    <div className="w-20 h-20 rounded-[32px] flex flex-col items-center justify-center font-black text-lg shadow-2xl border-2 border-white/5 relative overflow-hidden transition-all duration-500 group-hover:rotate-6"
                                                         style={{ backgroundColor: color, color: getTextColorForBg(color) }}>
-                                                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                         <span>{group.vendorId}</span>
-                                                        <span className="text-[6px] opacity-60 mt-1">{group.type === 'Production' ? 'PROD' : 'ACQ'}</span>
+                                                        <span className="text-[7px] font-black opacity-40 mt-1 uppercase tracking-widest">{group.type.slice(0,4)}</span>
                                                     </div>
                                                     <div className="text-center">
-                                                        <p className="text-[9px] font-black text-white/60 uppercase tracking-widest truncate max-w-[100px]">{fullName}</p>
-                                                        <p className="text-[10px] font-mono font-black text-(--main-color) mt-1">{fmtMXN(group.total - group.paidTotal)}</p>
+                                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] truncate max-w-[120px]">{fullName}</p>
+                                                        <p className="text-sm font-mono font-black text-(--main-color) mt-1">{fmtMXN(group.total - group.paidTotal)}</p>
                                                     </div>
                                                 </button>
                                             );
@@ -362,32 +369,33 @@ const AddPaymentModal: React.FC<{
                         </div>
                     )}
 
-                    {/* Stage 2.2: Expenses Stage 1 (Crates vs Specific) */}
+                    {/* Stage 2.2: Ops Logic */}
                     {step === 2.2 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight text-center">OPERATING COSTS</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold text-center">Classify the administrative cost</p>
-                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
+                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">OPERATIONS</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Specify administrative context</p>
+                            </div>
+                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-4 flex items-center gap-3 group transition-all">
+                                <span className="group-hover:-translate-x-2 transition-transform">←</span> BACK
+                            </button>
 
-                            <div className="grid grid-cols-2 gap-5 w-full">
-                                <button onClick={() => { 
-                                    set('subcategory', 'Packing');
-                                    setStep(3.1);
-                                }}
-                                    className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-[#8DC63F]/50 hover:bg-[#8DC63F]/5 transition-all group">
-                                    <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-7 h-7 opacity-50 text-[#8DC63F]"><use href="#pkg" /></svg>
+                            <div className="grid grid-cols-2 gap-8">
+                                <button onClick={() => { set('subcategory', 'Packing'); setStep(3.1); }}
+                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-[#8DC63F]/40 hover:bg-[#8DC63F]/5 transition-all duration-500">
+                                    <div className="w-14 h-14 mb-6 rounded-2xl bg-[#8DC63F]/10 border border-[#8DC63F]/20 flex items-center justify-center text-[#8DC63F] group-hover:scale-110 transition-transform">
+                                        <Box size={28} />
                                     </div>
-                                    <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest text-center">CRATES</span>
-                                    <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 uppercase leading-tight text-center">Material Packing<br />& Shipments</span>
+                                    <span className="text-xl font-black text-white uppercase tracking-tight mb-1">CRATES</span>
+                                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-tight">Logistics & Packaging</span>
                                 </button>
-                                <button onClick={() => { setStep(3.2); }}
-                                    className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
-                                    <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-7 h-7 opacity-50 text-(--text-color-secondary)"><use href="#file" /></svg>
+                                <button onClick={() => setStep(3.2)}
+                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-white/20 hover:bg-white/[0.08] transition-all duration-500">
+                                    <div className="w-14 h-14 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:scale-110 transition-transform">
+                                        <Filter size={28} />
                                     </div>
-                                    <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest text-center">OTHER</span>
-                                    <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 uppercase leading-tight text-center">Variable operations<br />expenditure</span>
+                                    <span className="text-xl font-black text-white uppercase tracking-tight mb-1">OTHER</span>
+                                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-tight">Variable Operations</span>
                                 </button>
                             </div>
                         </div>
@@ -395,207 +403,198 @@ const AddPaymentModal: React.FC<{
 
                     {/* Stage 3.2: Expense Categories */}
                     {step === 3.2 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">CATEGORIES</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-8 uppercase tracking-widest font-bold">Select expense department</p>
-                            <button onClick={() => setStep(2.2)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
+                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">DEPT</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Specify cost center</p>
+                            </div>
+                            <button onClick={() => setStep(2.2)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-4 flex items-center gap-3 group transition-all">
+                                <span className="group-hover:-translate-x-2 transition-transform">←</span> BACK
+                            </button>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                {['Sppl', 'Labr', 'Packing', 'Oprt', 'Monthly'].map(cat => {
-                                    const labels: Record<string, { t: string, s: string, i: string }> = {
-                                        Sppl: { t: 'SUPPLIES', s: 'Equipment & tools', i: '#hammer' },
-                                        Labr: { t: 'LABOR', s: 'Workforce payments', i: '#user' },
-                                        Packing: { t: 'PACKAGING', s: 'Shipping materials', i: '#label' },
-                                        Oprt: { t: 'OPERATIONS', s: 'General services', i: '#settings' },
-                                        Monthly: { t: 'MONTHLY', s: 'Fixed bills & subs', i: '#calendar' }
-                                    };
-                                    return (
-                                        <button key={cat}
-                                            onClick={() => { set('subcategory', cat); setStep(4); }}
-                                            className="flex flex-col items-start p-7 rounded-[32px] bg-(--glass-bg) border border-(--border-color) hover:border-(--main-color)/40 hover:bg-(--main-color)/5 transition-all group"
-                                        >
-                                            <div className="w-12 h-12 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform group-hover:border-(--main-color)/30">
-                                                <svg className="w-6 h-6 opacity-30 text-(--text-color-secondary) group-hover:opacity-100 group-hover:text-(--main-color) transition-all">
-                                                    <use href={labels[cat].i} />
-                                                </svg>
-                                            </div>
-                                            <span className="text-[12px] font-black text-(--text-color) uppercase tracking-widest">{labels[cat].t}</span>
-                                            <span className="text-[8px] text-(--text-color-secondary) font-bold mt-1 uppercase leading-none">{labels[cat].s}</span>
-                                        </button>
-                                    );
-                                })}
+                            <div className="grid grid-cols-2 gap-6">
+                                {[
+                                    { id: 'Sppl', t: 'SUPPLIES', s: 'Tools & Assets', i: TrendingUp },
+                                    { id: 'Labr', t: 'LABOR', s: 'Workforce Cycles', i: Users },
+                                    { id: 'Packing', t: 'PACKAGING', s: 'Transit Materials', i: Box },
+                                    { id: 'Oprt', t: 'OPERATIONS', s: 'Service General', i: Activity },
+                                    { id: 'Monthly', t: 'MONTHLY', s: 'Fixed Recurring', i: Calendar }
+                                ].map(cat => (
+                                    <button key={cat.id}
+                                        onClick={() => { set('subcategory', cat.id); setStep(4); }}
+                                        className="flex items-center gap-6 p-8 rounded-[40px] bg-white/5 border border-white/5 hover:border-(--main-color)/40 hover:bg-(--main-color)/5 transition-all duration-500 group"
+                                    >
+                                        <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 group-hover:text-(--main-color) group-hover:bg-(--main-color)/10 transition-all">
+                                            <cat.i size={24} />
+                                        </div>
+                                        <div className="text-left">
+                                            <span className="text-[14px] font-black text-white uppercase tracking-widest block mb-0.5">{cat.t}</span>
+                                            <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-none">{cat.s}</span>
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     )}
 
-                    {/* Stage 4: Final Form */}
+                    {/* Stage 4: Form */}
                     {step === 4 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-2 uppercase tracking-tight">DETAILS</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold">Specify payment details for {form.subcategory}</p>
-
-                            <div className="flex flex-col gap-8">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">DESCRIPTION</label>
-                                    <input value={form.description} onChange={e => set('description', e.target.value)}
-                                        className="w-full h-16 px-6 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:border-(--main-color)/50 transition-all outline-none" placeholder="Brief summary of payment" />
-                                </div>
-
-                                <div className="flex flex-col gap-5">
-                                    <div className="grid grid-cols-2 gap-5">
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">AMOUNT (MXN)</label>
-                                            <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
-                                                className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">REFERENCE</label>
-                                            <input value={form.reference} onChange={e => set('reference', e.target.value)}
-                                                className="w-full h-16 px-6 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 outline-none focus:border-(--main-color)/50 transition-all" placeholder="Optional #" />
-                                        </div>
-                                    </div>
-
-                                    {/* Recurring Toggle */}
-                                    <div className={`flex items-center justify-between p-5 rounded-[28px] border transition-all ${form.recurring ? 'bg-(--main-color)/5 border-(--main-color)/30' : 'bg-(--glass-bg) border-(--border-color)'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${form.recurring ? 'bg-(--main-color)/20' : 'bg-white/5'}`}>
-                                                <svg className={`w-5 h-5 transition-all ${form.recurring ? 'text-(--main-color) opacity-100' : 'text-white opacity-30'}`}><use href="#repeat" /></svg>
-                                            </div>
-                                            <div>
-                                                <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest block">RECURRING</span>
-                                                <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase">Repeats monthly on a fixed day</span>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
-                                            className={`w-14 h-8 rounded-full transition-all relative shrink-0 ${form.recurring ? 'bg-(--main-color)' : 'bg-white/10'}`}>
-                                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all shadow-md ${form.recurring ? 'left-7' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-
-                                    {/* Recurring Day — only when toggled on */}
-                                    {form.recurring && (
-                                        <div className="animate-in slide-in-from-top-2 duration-200 space-y-3">
-                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">DAY OF MONTH</label>
-                                            <div className="flex items-center gap-4">
-                                                <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
-                                                    className="w-32 h-14 font-mono text-xl font-bold bg-(--glass-bg) border border-(--main-color)/30 rounded-[20px] text-(--text-color) outline-none focus:border-(--main-color)/60 transition-all text-center" />
-                                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">of each month</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">DETAILS</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Specify transactional metadata</p>
                             </div>
 
-                            <div className="flex gap-5 mt-16">
+                            <div className="grid gap-10">
+                                <div className="space-y-4">
+                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">DESCRIPTION</label>
+                                    <input value={form.description} onChange={e => set('description', e.target.value)}
+                                        className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all outline-none" placeholder="Brief summary" />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">AMOUNT (MXN)</label>
+                                        <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
+                                            className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">REFERENCE</label>
+                                        <input value={form.reference} onChange={e => set('reference', e.target.value)}
+                                            className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" placeholder="Optional #" />
+                                    </div>
+                                </div>
+
+                                <div className={`flex items-center justify-between p-8 rounded-[40px] border transition-all duration-500 ${form.recurring ? 'bg-(--main-color)/10 border-(--main-color)/40' : 'bg-white/5 border-white/5'}`}>
+                                    <div className="flex items-center gap-6">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${form.recurring ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/20'}`}>
+                                            <Calendar size={28} />
+                                        </div>
+                                        <div>
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest block mb-1">RECURRING DISBURSEMENT</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Automatic monthly persistence</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
+                                        className={`w-16 h-10 rounded-full transition-all relative shrink-0 ${form.recurring ? 'bg-(--main-color)' : 'bg-white/10'}`}>
+                                        <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all shadow-xl ${form.recurring ? 'left-7.5' : 'left-1.5'}`} />
+                                    </button>
+                                </div>
+
+                                {form.recurring && (
+                                    <div className="animate-in slide-in-from-top-4 duration-500 space-y-4">
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">MONTHLY PERSISTENCE DAY</label>
+                                        <div className="flex items-center gap-6">
+                                            <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
+                                                className="w-40 h-16 font-mono text-2xl font-black bg-white/5 border border-(--main-color)/30 rounded-[28px] text-white outline-none focus:border-(--main-color)/60 transition-all text-center" />
+                                            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em]">of each period</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex gap-6 mt-16">
                                 <button onClick={() => {
                                     if (form.subcategory === 'Packing' && form.vendor_id === 'Crates') setStep(2.2);
                                     else if (form.vendor_id) setStep(3.1);
                                     else if (['Sppl', 'Labr', 'Packing', 'Oprt'].includes(form.subcategory)) setStep(3.2);
                                     else setStep(2.2);
-                                }} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                                }} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                 <button onClick={() => {
-                                    if (!form.amount || parseFloat(form.amount) <= 0) return toast.error('Enter valid amount');
+                                    if (!form.amount || parseFloat(form.amount) <= 0) return notify.error('Enter valid amount');
                                     setStep(5);
-                                }} className="flex-1 py-5 bg-(--main-color)/15 text-(--text-color) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--main-color)/25 transition-all">CONTINUE</button>
+                                }} className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl uppercase">CONTINUE →</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Stage 5: Account Selection */}
+                    {/* Step 5: Account */}
                     {step === 5 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">SOURCE</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-8 uppercase tracking-widest font-bold">Select payment disbursement account</p>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                                    return (
-                                        <button key={key} type="button"
-                                            onClick={() => set('destination', key as PaymentDestination)}
-                                            className={`flex flex-col items-center gap-3 p-6 rounded-[32px] border-2 transition-all ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-(--border-color) bg-(--glass-bg) hover:border-(--text-color-secondary)/30'}`}
-                                        >
-                                            <img src={cfg.icon} alt={cfg.name} className="h-10 w-auto object-contain mb-1" />
-                                            <div className="text-center">
-                                                <div className="text-[11px] font-black text-(--text-color) uppercase tracking-widest opacity-80">{cfg.name}</div>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">SOURCE</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Select disbursement protocol</p>
                             </div>
 
-                            <div className="flex gap-5 mt-16">
-                                <button onClick={() => setStep(4)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                            <div className="grid grid-cols-2 gap-6">
+                                {Object.entries(destinationsConfig).map(([key, cfg]) => (
+                                    <button key={key} type="button"
+                                        onClick={() => set('destination', key as PaymentDestination)}
+                                        className={`flex flex-col items-center gap-6 p-10 rounded-[48px] border-2 transition-all duration-500 ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10 scale-105 shadow-[0_0_50px_rgba(var(--main-color-rgb),0.15)]' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}>
+                                        <img src={cfg.icon} alt={cfg.name} className="h-16 w-auto object-contain transition-transform duration-500 group-hover:scale-110" />
+                                        <div className="text-[13px] font-black text-white uppercase tracking-[0.3em] opacity-80">{cfg.name}</div>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-6 mt-16">
+                                <button onClick={() => setStep(4)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                 <button onClick={() => setStep(6)} disabled={!form.destination}
-                                    className="flex-[1.5] py-5 bg-(--main-color)/15 text-(--text-color) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--main-color)/25 transition-all outline-none">
-                                    CONTINUE TO TAXES
-                                </button>
+                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 uppercase">CONTINUE TO TAXES</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Stage 6: Taxes & Fees */}
+                    {/* Step 6: Taxes */}
                     {step === 6 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">ADJUSTMENTS</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold">Optional taxes and transaction fees</p>
-
-                            <div className="flex flex-col gap-10">
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
-                                    <div className="flex flex-col">
-                                        <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">ADD 16% IVA</span>
-                                        <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Value added tax calculation</span>
-                                    </div>
-                                    <button onClick={() => {
-                                        set('includeIva', !form.includeIva);
-                                        if (!form.includeIva) set('includeComm', false);
-                                    }}
-                                        className={`w-14 h-8 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
-                                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeIva ? 'left-7' : 'left-1'}`} />
-                                    </button>
-                                </div>
-                                <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
-                                    <div className="flex flex-col">
-                                        <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">BANK COMISION (10%)</span>
-                                        <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Platform & transfer fees</span>
-                                    </div>
-                                    <button onClick={() => {
-                                        set('includeComm', !form.includeComm);
-                                        if (!form.includeComm) set('includeIva', false);
-                                    }}
-                                        className={`w-14 h-8 rounded-full transition-all relative ${form.includeComm ? 'bg-[#00AEEF]' : 'bg-white/10'}`}>
-                                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeComm ? 'left-7' : 'left-1'}`} />
-                                    </button>
-                                </div>
+                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">ADJUSTMENTS</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Tax & fee calibration</p>
                             </div>
 
-                            <div className="space-y-4 pt-6">
-                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
-                                    <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
-                                        className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
+                            <div className="grid gap-10">
+                                <div className="grid gap-4">
+                                    <div className="flex items-center justify-between p-8 rounded-[40px] bg-white/5 border border-white/5">
+                                        <div className="flex flex-col">
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">ADD 16% IVA</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Value added tax calculation</span>
+                                        </div>
+                                        <button onClick={() => { set('includeIva', !form.includeIva); if (!form.includeIva) set('includeComm', false); }}
+                                            className={`w-16 h-10 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeIva ? 'left-7.5' : 'left-1.5'}`} />
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center justify-between p-8 rounded-[40px] bg-white/5 border border-white/5">
+                                        <div className="flex flex-col">
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">BANK COMISION (10%)</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Platform processing fee</span>
+                                        </div>
+                                        <button onClick={() => { set('includeComm', !form.includeComm); if (!form.includeComm) set('includeIva', false); }}
+                                            className={`w-16 h-10 rounded-full transition-all relative ${form.includeComm ? 'bg-blue-500' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeComm ? 'left-7.5' : 'left-1.5'}`} />
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color)">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">PAYMENT SUMMARY</span>
-                                        <span className="text-xs font-mono text-(--text-color-secondary)">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
+                                <div className="space-y-4">
+                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
+                                    <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
+                                        className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
+                                </div>
+
+                                <div className="p-10 rounded-[56px] bg-white/[0.03] border border-white/5 group relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-(--main-color)/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                    <div className="relative flex justify-between items-center mb-4">
+                                        <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em]">ARTIFACT TOTAL</span>
+                                        <span className="text-[11px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
                                     </div>
-                                    <div className="text-4xl font-mono font-black text-(--text-color) tracking-tighter">
+                                    <div className="relative text-6xl font-mono font-black text-white tracking-tighter mb-4 leading-none">
                                         {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
                                     </div>
-                                    <div className="flex gap-4 mt-3 opacity-60">
-                                        {form.includeIva && <span className="text-[9px] font-black uppercase tracking-widest text-[#8DC63F]">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
-                                        {form.includeComm && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
-                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
+                                    <div className="relative flex gap-6 opacity-40">
+                                        {form.includeIva && <span className="text-[10px] font-black uppercase tracking-widest text-green-500">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                        {form.includeComm && <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
+                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[10px] font-black uppercase tracking-widest text-white">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex gap-5 mt-12">
-                                <button onClick={() => setStep(5)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                            <div className="flex gap-6 mt-16">
+                                <button onClick={() => setStep(5)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                 <button onClick={handleSubmit} disabled={saving}
-                                    className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[28px] text-[11px] font-black tracking-[0.2em] disabled:opacity-40 transition-all shadow-xl hover:scale-[1.02] active:scale-95">
-                                    {saving ? 'PROCESSING…' : 'CONFIRM PAYMENT'}
+                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl disabled:opacity-20 uppercase">
+                                    {saving ? 'RECORDING ARTIFACT…' : 'CONFIRM DISBURSEMENT'}
                                 </button>
                             </div>
                         </div>
@@ -606,11 +605,13 @@ const AddPaymentModal: React.FC<{
     );
 };
 
+
 const RequestPaymentModal: React.FC<{
     group: VendorGroup | null;
     onClose: () => void;
     onConfirm: (dest: PaymentDestination, percentage: number, manualFee: number, includeIva: boolean, includeComm: boolean) => void;
 }> = ({ group, onClose, onConfirm }) => {
+    const notify = useNotify();
     const [dest, setDest] = useState<PaymentDestination | null>(null);
     const [manualFee, setManualFee] = useState('');
     const [includeIva, setIncludeIva] = useState(false);
@@ -626,131 +627,142 @@ const RequestPaymentModal: React.FC<{
 
     if (!group) return null;
     const name = appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId;
-    const isProduction = group.items.some(i => (i.data.status || '').toLowerCase() === 'production');
+    const isProduction = group.type === 'Production';
 
     const targetAmount = group.total * (percentage / 100);
     const amountToRequest = Math.round(Math.max(0, targetAmount - group.paidTotal));
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={onClose}>
-            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[500px] max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-500 overflow-hidden">
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[80px]" onClick={onClose} />
+            <div className="bg-white/[0.02] border border-white/10 rounded-[64px] w-full max-w-[600px] h-[90dvh] flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative animate-in zoom-in-95 duration-700" onClick={e => e.stopPropagation()}>
 
-                <div className="px-6 md:px-10 pt-8 pb-4 flex justify-between items-center shrink-0">
-                    <div>
-                        <h3 className="text-xl font-black text-(--text-color) uppercase tracking-tight">
-                            {paidPerc > 0 && percentage === 100 ? 'LIQUIDATE BALANCE' : 'PAYMENT REQUEST'}
+                <div className="px-12 pt-12 pb-6 flex justify-between items-start shrink-0">
+                    <div className="flex flex-col gap-2">
+                        <h3 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">
+                            {paidPerc > 0 && percentage === 100 ? 'LIQUIDATION' : 'REQUEST'}
                         </h3>
-                        <p className="text-[10px] text-(--text-color-secondary) uppercase tracking-widest font-bold mt-1">FOR {group.vendorId}</p>
+                        <p className="text-[10px] text-white/20 uppercase tracking-[0.5em] font-black">
+                            {group.type} PROTOCOL · {group.vendorId}
+                        </p>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-(--glass-bg) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all text-sm">✕</button>
+                    <button onClick={onClose} className="w-14 h-14 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-500">
+                        <CloseIcon size={24} strokeWidth={1.5} />
+                    </button>
                 </div>
 
-                <div className="px-6 md:px-10 pb-10 flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="flex flex-col gap-6">
-                        {/* Status Summary */}
-                        <div className="flex justify-between items-end p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
-                            <div>
-                                <p className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-[0.2em] mb-1">CONTRACT TOTAL</p>
-                                <p className="text-2xl font-mono font-black text-(--text-color)">{fmtMXN(group.total)}</p>
+                <div className="px-12 pb-12 flex-1 overflow-y-auto custom-scrollbar space-y-12">
+                    <div className="flex flex-col gap-10">
+                        {/* High-Level Overview Cards */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-8 rounded-[40px] bg-white/[0.03] border border-white/5">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">CONTRACT TOTAL</p>
+                                <p className="text-3xl font-mono font-black text-white leading-none">{fmtMXN(group.total)}</p>
                             </div>
-                            <div className="text-right">
-                                <p className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-[0.2em] mb-1">STAKEHOLDERS</p>
-                                <p className="text-xs font-black text-(--text-color) uppercase tracking-widest">{group.items.length} ITEMS</p>
+                            <div className="p-8 rounded-[40px] bg-white/[0.03] border border-white/5 flex flex-col justify-center">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">ASSET COUNT</p>
+                                <p className="text-xl font-black text-(--main-color) uppercase tracking-widest">{group.items.length} ITEMS</p>
                             </div>
                         </div>
 
-                        {/* Progress Tracker */}
-                        <div className="bg-(--glass-bg) rounded-[32px] p-6 border border-(--border-color)">
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">PAYMENT ARCHITECTURE</span>
-                                <span className="text-[10px] font-mono font-black text-(--text-color)">{paidPerc}% COMPLETE</span>
+                        {/* Visual Progress Architecture */}
+                        <div className="bg-white/5 rounded-[48px] p-10 border border-white/5">
+                            <div className="flex justify-between items-end mb-6">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">CUMULATIVE PROGRESS</span>
+                                    <span className="text-4xl font-mono font-black text-white leading-none">{paidPerc}% COMPLETE</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">STAKED</span>
+                                    <span className="text-xl font-mono font-black text-white/40">{fmtMXN(group.paidTotal)}</span>
+                                </div>
                             </div>
-                            <div className="h-3 w-full bg-(--border-color) rounded-full overflow-hidden flex gap-0.5 p-0.5 border border-(--border-color)">
-                                <div className="h-full bg-green-500/40 rounded-full transition-all duration-1000" style={{ width: `${paidPerc}%` }} />
+                            <div className="h-4 w-full bg-black/40 rounded-full overflow-hidden flex gap-1 p-1 border border-white/5">
+                                <div className="h-full bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)] rounded-full transition-all duration-1000" style={{ width: `${paidPerc}%` }} />
                                 {percentage > paidPerc && (
                                     <div className="h-full bg-(--main-color)/40 rounded-full animate-pulse transition-all duration-500" style={{ width: `${percentage - paidPerc}%` }} />
                                 )}
                             </div>
                         </div>
 
-                        {/* Control Slider - Only for Production */}
+                        {/* Partial Payment Logic Slider */}
                         {isProduction ? (
-                            <div>
-                                <div className="flex justify-between items-center mb-4">
-                                    <label className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-widest leading-none">TARGET PERCENTAGE</label>
-                                    <span className="text-xl font-mono font-black text-(--main-color) leading-none">{percentage}%</span>
+                            <div className="space-y-8">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex flex-col">
+                                        <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">TARGET PERCENTAGE</label>
+                                        <span className="text-4xl font-mono font-black text-(--main-color) leading-none tracking-tighter">{percentage}%</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">DELTA TO DISBURSE</span>
+                                        <span className="text-2xl font-mono font-black text-white leading-none">{fmtMXN(amountToRequest)}</span>
+                                    </div>
                                 </div>
-                                <input type="range" min={Math.max(10, paidPerc + 5)} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
-                                    className="w-full h-2 bg-(--border-color) rounded-full appearance-none cursor-pointer accent-(--main-color) mb-4" />
-
-                                <div className="p-5 rounded-[24px] bg-(--main-color)/5 border border-(--main-color)/10 text-center">
-                                    <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em] mb-1">AMOUNT TO DISBURSE</p>
-                                    <p className="text-3xl font-mono font-black text-(--text-color)">{fmtMXN(amountToRequest)}</p>
+                                <div className="relative py-4">
+                                    <input type="range" min={Math.max(10, paidPerc + 5)} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
+                                        className="w-full h-3 bg-white/5 rounded-full appearance-none cursor-pointer accent-(--main-color) shadow-inner" />
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color) text-center">
-                                <p className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em] mb-2">FULL PAYMENT REQUIRED</p>
-                                <p className="text-3xl font-mono font-black text-(--text-color)">{fmtMXN(group.total)}</p>
+                            <div className="p-10 rounded-[48px] bg-white/5 border border-white/5 text-center flex flex-col items-center">
+                                <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] mb-4">TOTAL LIQUIDATION PROTOCOL</p>
+                                <p className="text-5xl font-mono font-black text-white tracking-tighter leading-none">{fmtMXN(amountToRequest)}</p>
                             </div>
                         )}
 
-                        {/* Destination Picker */}
-                        <div className="grid grid-cols-4 gap-2">
+                        {/* Disbursement Hub Selection */}
+                        <div className="grid grid-cols-4 gap-4">
                             {Object.entries(destinationsConfig).map(([key, cfg]) => (
                                 <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
-                                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all ${dest === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-(--border-color) bg-(--glass-bg) hover:border-(--text-color-secondary)/30'}`}>
-                                    <img src={cfg.icon} alt={cfg.name} className="h-7 w-auto grayscale group-hover:grayscale-0 transition-all opacity-40 hover:opacity-100" />
-                                    <span className="text-[8px] font-black text-(--text-color-secondary) uppercase tracking-tighter text-center leading-tight">{cfg.name}</span>
+                                    className={`group flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-500 ${dest === key ? 'border-(--main-color) bg-(--main-color)/10 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.1)]' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
+                                    <img src={cfg.icon} alt={cfg.name} className={`h-10 w-auto transition-all duration-500 ${dest === key ? 'grayscale-0 opacity-100 scale-110' : 'grayscale opacity-20 group-hover:opacity-60'}`} />
+                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest text-center leading-tight group-hover:text-white/60">{cfg.name}</span>
                                 </button>
                             ))}
                         </div>
 
-                        {/* Adjustments Section */}
-                        <div className="flex flex-col gap-4 mt-2">
-                            <div className="flex items-center justify-between p-4 rounded-2xl bg-(--glass-bg) border border-(--border-color)">
-                                <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest">ADD 16% IVA</span>
-                                <button onClick={() => {
-                                    setIncludeIva(!includeIva);
-                                    if (!includeIva) setIncludeComm(false);
-                                }}
-                                    className={`w-12 h-7 rounded-full transition-all relative ${includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
-                                    <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${includeIva ? 'left-6' : 'left-1'}`} />
+                        {/* Fiscal Adjustments */}
+                        <div className="grid gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <button onClick={() => { setIncludeIva(!includeIva); if (!includeIva) setIncludeComm(false); }}
+                                    className={`flex items-center justify-between p-6 rounded-[32px] border transition-all duration-500 ${includeIva ? 'bg-green-500/10 border-green-500/40 text-green-500' : 'bg-white/5 border-white/5 text-white/20 hover:text-white/40'}`}>
+                                    <span className="text-[10px] font-black uppercase tracking-widest">ADD 16% IVA</span>
+                                    <div className={`w-10 h-6 rounded-full relative transition-all ${includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
+                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${includeIva ? 'left-5' : 'left-1'}`} />
+                                    </div>
                                 </button>
-                            </div>
-                            <div className="flex items-center justify-between p-4 rounded-2xl bg-(--glass-bg) border border-(--border-color)">
-                                <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest">BANK COMISION (10%)</span>
-                                <button onClick={() => {
-                                    setIncludeComm(!includeComm);
-                                    if (!includeComm) setIncludeIva(false);
-                                }}
-                                    className={`w-12 h-7 rounded-full transition-all relative ${includeComm ? 'bg-[#00AEEF]' : 'bg-white/10'}`}>
-                                    <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${includeComm ? 'left-6' : 'left-1'}`} />
+                                <button onClick={() => { setIncludeComm(!includeComm); if (!includeComm) setIncludeIva(false); }}
+                                    className={`flex items-center justify-between p-6 rounded-[32px] border transition-all duration-500 ${includeComm ? 'bg-blue-500/10 border-blue-500/40 text-blue-500' : 'bg-white/5 border-white/5 text-white/20 hover:text-white/40'}`}>
+                                    <span className="text-[10px] font-black uppercase tracking-widest">BANK (10%)</span>
+                                    <div className={`w-10 h-6 rounded-full relative transition-all ${includeComm ? 'bg-blue-500' : 'bg-white/10'}`}>
+                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${includeComm ? 'left-5' : 'left-1'}`} />
+                                    </div>
                                 </button>
                             </div>
                             <div className="relative group/fee">
-                                <label className="absolute -top-2 left-4 px-2 bg-(--c1) text-[8px] font-black text-(--text-color-secondary) uppercase tracking-widest">MANUAL FEE (MXN)</label>
+                                <label className="absolute -top-3 left-8 px-3 bg-black/90 rounded-full text-[8px] font-black text-white/40 uppercase tracking-[0.4em] z-10">MANUAL FEE (MXN)</label>
                                 <input type="number" step="0.01" value={manualFee} onChange={e => setManualFee(e.target.value)}
-                                    className="w-full h-12 px-5 font-mono text-sm font-bold bg-(--glass-bg) border border-(--border-color) rounded-2xl text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
+                                    className="w-full h-16 px-8 font-mono text-lg font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" placeholder="0.00" />
                             </div>
                         </div>
 
-                        {/* Summary */}
-                        <div className="p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">TOTAL DISBURSEMENT</span>
-                                <span className="text-[10px] font-mono text-(--text-color-secondary)">{fmtMXN(amountToRequest)} BASE</span>
+                        {/* Final Verification Block */}
+                        <div className="p-10 rounded-[56px] bg-white/[0.03] border border-white/5 relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-(--main-color)/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                            <div className="relative flex justify-between items-center mb-4">
+                                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em]">TOTAL ARTIFACT DISBURSEMENT</span>
+                                <span className="text-[11px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(amountToRequest)} BASE</span>
                             </div>
-                            <div className="text-3xl font-mono font-black text-(--text-color)">
+                            <div className="relative text-5xl font-mono font-black text-white tracking-tighter leading-none">
                                 {fmtMXN(amountToRequest + (parseFloat(manualFee) || 0) + (includeIva ? (amountToRequest * 0.16) : 0) + (includeComm ? (amountToRequest * 0.10) : 0))}
                             </div>
                         </div>
 
-                        <div className="flex gap-4 mt-2">
-                            <button onClick={onClose} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[24px] text-[10px] font-black tracking-widest hover:bg-(--glass-bg) transition-all">CANCEL</button>
+                        <div className="flex gap-6 pt-4">
+                            <button onClick={onClose} className="flex-1 py-8 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">TERMINATE</button>
                             <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva, includeComm)} disabled={!dest || amountToRequest <= 0}
-                                className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[24px] text-[10px] font-black tracking-widest disabled:opacity-40 uppercase transition-all shadow-lg hover:scale-[1.02] active:scale-95">
-                                {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL PAYMENT'}
+                                className="flex-[1.5] py-8 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] disabled:opacity-20 uppercase transition-all shadow-2xl hover:scale-[1.02] active:scale-95">
+                                {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL'}
                             </button>
                         </div>
                     </div>
@@ -876,237 +888,180 @@ const EditPaymentModal: React.FC<{
     const isOpen = !!record;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={onClose}>
-            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[600px] max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-500">
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[80px]" onClick={onClose} />
+            <div className="bg-white/[0.02] border border-white/10 rounded-[64px] w-full max-w-[700px] h-[85dvh] flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative animate-in zoom-in-95 duration-700" onClick={e => e.stopPropagation()}>
 
-                {/* Header */}
-                <div className="px-6 md:px-10 pt-8 pb-4 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-(--main-color)/15 border border-(--main-color)/30 flex items-center justify-center">
-                            <Edit3 size={14} className="text-(--main-color)" />
+                {/* Header Strip */}
+                <div className="px-12 pt-12 pb-6 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-(--main-color)/15 border border-(--main-color)/30 flex items-center justify-center text-(--main-color)">
+                            <Edit3 size={24} />
                         </div>
                         <div>
-                            <p className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.3em]">Editing Payment Record</p>
-                            <p className="text-[10px] font-bold text-white/30 truncate max-w-[280px]">{record.description || 'Unnamed Transaction'}</p>
+                            <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-1">Editing Payment Record</p>
+                            <p className="text-xl font-black text-white/90 truncate max-w-[350px] tracking-tight">{record.description || 'Unnamed Transaction'}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-(--glass-bg) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all text-sm shrink-0">✕</button>
+                    <button onClick={onClose} className="w-14 h-14 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-500">
+                        <CloseIcon size={24} strokeWidth={1.5} />
+                    </button>
                 </div>
 
-                <div className="px-6 md:px-10 pb-10 flex flex-col flex-1 overflow-y-auto custom-scrollbar min-h-[460px]">
-                    {/* Step 1: Classification (re-classify if needed) */}
-                    {step === 1 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 leading-tight tracking-tight uppercase">TRANSACTION<br />CLASSIFICATION</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-[0.3em] font-bold">Re-classify this transaction type</p>
-                            <div className="grid grid-cols-2 gap-5">
-                                <button onClick={() => setStep(2.1)}
-                                    className="flex flex-col items-center p-10 rounded-[48px] bg-(--glass-bg) border border-(--border-color) hover:border-[#F7941D]/50 hover:bg-[#F7941D]/5 transition-all group">
-                                    <div className="w-16 h-16 mb-6 rounded-full border-2 border-[#F7941D]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-8 h-8 text-[#F7941D] opacity-70"><use href="#pkg" /></svg>
-                                    </div>
-                                    <span className="text-[12px] font-black text-(--text-color) uppercase tracking-[0.2em]">MERCHANDISE</span>
-                                </button>
-                                <button onClick={() => setStep(2.2)}
-                                    className="flex flex-col items-center p-10 rounded-[48px] bg-(--glass-bg) border border-(--border-color) hover:border-[#00AEEF]/50 hover:bg-[#00AEEF]/5 transition-all group">
-                                    <div className="w-16 h-16 mb-6 rounded-full border-2 border-[#00AEEF]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-8 h-8 text-[#00AEEF] opacity-70"><use href="#dollar" /></svg>
-                                    </div>
-                                    <span className="text-[12px] font-black text-(--text-color) uppercase tracking-[0.2em]">OPERATIONS</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 2.1: Merch Type */}
-                    {step === 2.1 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">MERCHANDISE</h2>
-                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all"><span className="group-hover:-translate-x-1 transition-transform">←</span> BACK</button>
-                            <div className="grid grid-cols-2 gap-5">
-                                <button onClick={() => { set('subcategory', 'Acq'); setStep(4); }} className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
-                                    <span className="text-[11px] font-black text-(--text-color) uppercase tracking-[0.15em]">ACQUISITIONS</span>
-                                </button>
-                                <button onClick={() => { set('subcategory', 'Prod'); setStep(4); }} className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
-                                    <span className="text-[11px] font-black text-(--text-color) uppercase tracking-[0.15em]">PRODUCTION</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 2.2: Op Type */}
-                    {step === 2.2 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">OPERATING COSTS</h2>
-                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all">← BACK</button>
-                            <div className="grid grid-cols-2 gap-4">
-                                {['Packing', 'Sppl', 'Labr', 'Oprt'].map(cat => (
-                                    <button key={cat} onClick={() => { set('subcategory', cat); setStep(4); }}
-                                        className="flex flex-col items-center p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color) hover:border-(--main-color)/40 transition-all">
-                                        <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest text-center">{cat.toUpperCase()}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 4: Core Details */}
+                <div className="px-12 pb-12 flex flex-col flex-1 overflow-y-auto custom-scrollbar">
+                    {/* Step 4: Details */}
                     {step === 4 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-2 uppercase tracking-tight">DETAILS</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-8 uppercase tracking-widest font-bold">
-                                Editing: <span className="text-(--main-color)">{normalizeSubcat(form.subcategory)}</span>
-                                {form.vendor_id && <span className="ml-2 opacity-50">· {form.vendor_id}</span>}
-                            </p>
-                            <button onClick={() => setStep(1)} className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 hover:text-white/50 transition-colors">
-                                <span>←</span> Re-classify Transaction
-                            </button>
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">DETAILS</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">Refine transactional metadata</p>
+                            </div>
 
-                            <div className="flex flex-col gap-6">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">DESCRIPTION</label>
+                            <div className="grid gap-10">
+                                <div className="space-y-4">
+                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">DESCRIPTION</label>
                                     <input value={form.description} onChange={e => set('description', e.target.value)}
-                                        className="w-full h-16 px-6 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:border-(--main-color)/50 transition-all outline-none" placeholder="Brief summary of payment" />
+                                        className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all outline-none" placeholder="Brief summary" />
                                 </div>
 
-                                <div className="flex flex-col gap-5">
-                                    <div className="grid grid-cols-2 gap-5">
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">AMOUNT (MXN)</label>
-                                            <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
-                                                className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">REFERENCE</label>
-                                            <input value={form.reference} onChange={e => set('reference', e.target.value)}
-                                                className="w-full h-16 px-6 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 outline-none focus:border-(--main-color)/50 transition-all" placeholder="Optional #" />
-                                        </div>
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">AMOUNT (MXN)</label>
+                                        <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
+                                            className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
                                     </div>
-
-                                    {/* Recurring Toggle */}
-                                    <div className={`flex items-center justify-between p-5 rounded-[28px] border transition-all ${form.recurring ? 'bg-(--main-color)/5 border-(--main-color)/30' : 'bg-(--glass-bg) border-(--border-color)'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${form.recurring ? 'bg-(--main-color)/20' : 'bg-white/5'}`}>
-                                                <svg className={`w-5 h-5 transition-all ${form.recurring ? 'text-(--main-color) opacity-100' : 'text-white opacity-30'}`}><use href="#repeat" /></svg>
-                                            </div>
-                                            <div>
-                                                <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest block">RECURRING</span>
-                                                <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase">Repeats monthly on a fixed day</span>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
-                                            className={`w-14 h-8 rounded-full transition-all relative shrink-0 ${form.recurring ? 'bg-(--main-color)' : 'bg-white/10'}`}>
-                                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all shadow-md ${form.recurring ? 'left-7' : 'left-1'}`} />
-                                        </button>
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">REFERENCE</label>
+                                        <input value={form.reference} onChange={e => set('reference', e.target.value)}
+                                            className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" placeholder="Optional #" />
                                     </div>
-
-                                    {form.recurring && (
-                                        <div className="animate-in slide-in-from-top-2 duration-200 space-y-3">
-                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">DAY OF MONTH</label>
-                                            <div className="flex items-center gap-4">
-                                                <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
-                                                    className="w-32 h-14 font-mono text-xl font-bold bg-(--glass-bg) border border-(--main-color)/30 rounded-[20px] text-(--text-color) outline-none focus:border-(--main-color)/60 transition-all text-center" />
-                                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">of each month</span>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
 
-                                <div className="space-y-3">
-                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">NOTES</label>
+                                <div className={`flex items-center justify-between p-8 rounded-[40px] border transition-all duration-500 ${form.recurring ? 'bg-(--main-color)/10 border-(--main-color)/40 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.1)]' : 'bg-white/5 border-white/5'}`}>
+                                    <div className="flex items-center gap-6">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${form.recurring ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/20'}`}>
+                                            <Calendar size={28} />
+                                        </div>
+                                        <div>
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest block mb-1">RECURRING DISBURSEMENT</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Automatic monthly persistence</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
+                                        className={`w-16 h-10 rounded-full transition-all relative shrink-0 ${form.recurring ? 'bg-(--main-color)' : 'bg-white/10'}`}>
+                                        <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all shadow-xl ${form.recurring ? 'left-7.5' : 'left-1.5'}`} />
+                                    </button>
+                                </div>
+
+                                {form.recurring && (
+                                    <div className="animate-in slide-in-from-top-4 duration-500 space-y-4">
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">MONTHLY PERSISTENCE DAY</label>
+                                        <div className="flex items-center gap-6">
+                                            <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
+                                                className="w-40 h-16 font-mono text-2xl font-black bg-white/5 border border-(--main-color)/30 rounded-[28px] text-white outline-none focus:border-(--main-color)/60 transition-all text-center" />
+                                            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em]">of each period</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">NOTES / CONTEXT</label>
                                     <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
-                                        className="w-full h-20 px-6 py-4 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:border-(--main-color)/50 transition-all outline-none resize-none text-sm" placeholder="Additional context…" />
+                                        className="w-full h-32 px-8 py-6 rounded-[32px] bg-white/5 border border-white/5 text-lg font-medium text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all outline-none resize-none" placeholder="Additional context…" />
                                 </div>
                             </div>
 
-                            <div className="flex gap-5 mt-10">
-                                <button onClick={() => setStep(5)} className="flex-1 py-5 bg-(--main-color)/15 text-(--text-color) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--main-color)/25 transition-all">CONTINUE →</button>
-                            </div>
+                            <button onClick={() => setStep(5)} className="w-full py-8 bg-(--main-color) text-black rounded-[32px] text-[13px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl uppercase mt-8">CONTINUE TO SOURCE →</button>
                         </div>
                     )}
 
                     {/* Step 5: Account Selection */}
                     {step === 5 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">SOURCE</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-8 uppercase tracking-widest font-bold">Select payment disbursement account</p>
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">SOURCE</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">Select disbursement protocol</p>
+                            </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-6">
                                 {Object.entries(destinationsConfig).map(([key, cfg]) => (
                                     <button key={key} type="button"
                                         onClick={() => set('destination', key as PaymentDestination)}
-                                        className={`flex flex-col items-center gap-3 p-6 rounded-[32px] border-2 transition-all ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-(--border-color) bg-(--glass-bg) hover:border-(--text-color-secondary)/30'}`}>
-                                        <img src={cfg.icon} alt={cfg.name} className="h-10 w-auto object-contain mb-1" />
-                                        <div className="text-[11px] font-black text-(--text-color) uppercase tracking-widest opacity-80">{cfg.name}</div>
+                                        className={`flex flex-col items-center gap-6 p-10 rounded-[48px] border-2 transition-all duration-500 ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10 scale-105' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}>
+                                        <img src={cfg.icon} alt={cfg.name} className="h-16 w-auto object-contain transition-transform duration-500 group-hover:scale-110" />
+                                        <div className="text-[13px] font-black text-white uppercase tracking-[0.3em] opacity-80">{cfg.name}</div>
                                     </button>
                                 ))}
                             </div>
 
-                            <div className="flex gap-5 mt-16">
-                                <button onClick={() => setStep(4)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                            <div className="flex gap-6 mt-16">
+                                <button onClick={() => setStep(4)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                 <button onClick={() => setStep(6)} disabled={!form.destination}
-                                    className="flex-[1.5] py-5 bg-(--main-color)/15 text-(--text-color) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--main-color)/25 transition-all disabled:opacity-40">CONTINUE TO TAXES</button>
+                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 uppercase">CONTINUE TO TAXES</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 6: Taxes & Fees + Confirm */}
+                    {/* Step 6: Adjustments */}
                     {step === 6 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">ADJUSTMENTS</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold">Optional taxes and transaction fees</p>
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-12 pt-4">
+                            <div className="flex flex-col">
+                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">ADJUSTMENTS</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">Tax & fee calibration</p>
+                            </div>
 
-                            <div className="flex flex-col gap-10">
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
+                            <div className="grid gap-10">
+                                <div className="grid gap-4">
+                                    <div className="flex items-center justify-between p-8 rounded-[40px] bg-white/5 border border-white/5">
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">ADD 16% IVA</span>
-                                            <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Value added tax calculation</span>
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">ADD 16% IVA</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Value added tax calculation</span>
                                         </div>
                                         <button onClick={() => { set('includeIva', !form.includeIva); if (!form.includeIva) set('includeComm', false); }}
-                                            className={`w-14 h-8 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
-                                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeIva ? 'left-7' : 'left-1'}`} />
+                                            className={`w-16 h-10 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeIva ? 'left-7.5' : 'left-1.5'}`} />
                                         </button>
                                     </div>
-                                    <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
+                                    <div className="flex items-center justify-between p-8 rounded-[40px] bg-white/5 border border-white/5">
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">BANK COMISION (10%)</span>
-                                            <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Platform & transfer fees</span>
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">BANK COMISION (10%)</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Platform processing fee</span>
                                         </div>
                                         <button onClick={() => { set('includeComm', !form.includeComm); if (!form.includeComm) set('includeIva', false); }}
-                                            className={`w-14 h-8 rounded-full transition-all relative ${form.includeComm ? 'bg-[#00AEEF]' : 'bg-white/10'}`}>
-                                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeComm ? 'left-7' : 'left-1'}`} />
+                                            className={`w-16 h-10 rounded-full transition-all relative ${form.includeComm ? 'bg-blue-500' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeComm ? 'left-7.5' : 'left-1.5'}`} />
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4 pt-2">
-                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
+                                <div className="space-y-4">
+                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
                                     <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
-                                        className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
+                                        className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
                                 </div>
 
-                                <div className="p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color)">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">UPDATED TOTAL</span>
-                                        <span className="text-xs font-mono text-(--text-color-secondary)">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
+                                <div className="p-10 rounded-[56px] bg-white/[0.03] border border-white/5 relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-(--main-color)/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                    <div className="relative flex justify-between items-center mb-4">
+                                        <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em]">ARTIFACT TOTAL</span>
+                                        <span className="text-[11px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
                                     </div>
-                                    <div className="text-4xl font-mono font-black text-(--text-color) tracking-tighter">
+                                    <div className="relative text-6xl font-mono font-black text-white tracking-tighter mb-4">
                                         {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
                                     </div>
-                                    <div className="flex gap-4 mt-3 opacity-60">
-                                        {form.includeIva && <span className="text-[9px] font-black uppercase tracking-widest text-[#8DC63F]">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
-                                        {form.includeComm && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
-                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
+                                    <div className="relative flex gap-6 opacity-40">
+                                        {form.includeIva && <span className="text-[10px] font-black uppercase tracking-widest text-green-500">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                        {form.includeComm && <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
+                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[10px] font-black uppercase tracking-widest text-white">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex gap-5 mt-12">
-                                <button onClick={() => setStep(5)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                            <div className="flex gap-6 mt-16">
+                                <button onClick={() => setStep(5)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                 <button onClick={handleUpdate} disabled={saving}
-                                    className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[28px] text-[11px] font-black tracking-[0.2em] disabled:opacity-40 transition-all shadow-xl hover:scale-[1.02] active:scale-95">
-                                    {saving ? 'UPDATING…' : 'CONFIRM CHANGES'}
+                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl disabled:opacity-20 uppercase">
+                                    {saving ? 'UPDATING ARTIFACT…' : 'CONFIRM UPDATES'}
                                 </button>
                             </div>
                         </div>
@@ -1116,6 +1071,7 @@ const EditPaymentModal: React.FC<{
         </div>
     );
 };
+
 
 export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
     const db = useDatabase();
@@ -1141,6 +1097,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [statusFilter, setStatusFilter] = useAtom(paymentStatusFilterAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
+    const notify = useNotify();
     const setFinanceTotals = useSetAtom(financeTotalsAtom);
 
     const pendingGroups = useMemo<VendorGroup[]>(() => {
@@ -1154,13 +1111,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             // Skip 825 and Prepaid items
             if (workbook === '825' || workbook === 'v825' || payReqStr === 'prepaid') return false;
 
-            const isUnpaid = !['true', 'paid', 'requested', 'partial'].includes(payReqStr) && !payReqStr.includes('%');
+            // Only exclude items explicitly marked as fully PAID or already REQUESTED (true)
+            const isUnpaid = !['true', 'paid'].includes(payReqStr);
             return targetStatuses.includes(status) && isUnpaid;
         });
 
         const pendingCrates = logisticsData.filter(c => {
             const payReqStr = String(c.pay_req || '').toLowerCase();
-            const isUnpaid = !['true', 'paid', 'requested', 'partial'].includes(payReqStr) && !payReqStr.includes('%');
+            const isUnpaid = !['true', 'paid'].includes(payReqStr);
             return c.type === 'crate' && isUnpaid && (c.cost_mxn || 0) > 0;
         }).map(c => ({
             row: c.id,
@@ -1170,7 +1128,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 ...c,
                 status: 'Packing', 
                 item_id: c.id,
-                vendor_id: 'Crates',
+                vendor_id: c.vendor_id || 'CRATES',
                 price: c.cost_mxn,
                 quantity: c.quantity || 1
             }

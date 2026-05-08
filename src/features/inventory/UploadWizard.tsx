@@ -468,6 +468,9 @@ export const UploadWizard: React.FC = () => {
         setSaving(true);
         setSavingProgress(10);
         const tid = toast.loading(itemData?.id ? 'Updating Registry...' : 'Syncing Registry...');
+        
+        console.log('[UploadWizard] Starting save operation', { vendorId: state.vendorId, itemNumber: state.itemNumber, isEdit: !!itemData?.id });
+
         try {
             if (isDummyMode) {
                 for (let i = 20; i <= 100; i += 20) {
@@ -477,36 +480,52 @@ export const UploadWizard: React.FC = () => {
                 toast.success('Artifact Synced (Demo)', { id: tid });
                 return true;
             }
-            let uploadedUrls: string[] = [];
-            if (state.mediaList.length > 0) {
-                for (let i = 0; i < state.mediaList.length; i++) {
-                    const m = state.mediaList[i];
-                    if (m.file) {
-                        const res = await handleFileUpload(m.file, user);
-                        if (res) uploadedUrls.push(`${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`);
-                    } else if (m.originalUrl) {
-                        uploadedUrls.push(m.originalUrl);
-                    }
-                    setSavingProgress(Math.round(10 + ((i + 1) / state.mediaList.length) * 70));
-                }
-            }
-            const calculated = calculateCodesAndPrices(
-                { 
-                    price: parseFloat(state.price) || 0, 
-                    itemId: `${state.vendorId}-${String(state.itemNumber).padStart(3, '0')}`, 
-                    workbook: itemData.workbook || 'v326', 
-                    itemNumber: state.itemNumber || '1',
-                    vendorId: state.vendorId
-                },
-                exchangeRate,
-                'v326'
-            );
 
+            // --- MEDIA UPLOAD ---
+            let uploadedUrls: string[] = [];
+            try {
+                if (state.mediaList.length > 0) {
+                    for (let i = 0; i < state.mediaList.length; i++) {
+                        const m = state.mediaList[i];
+                        if (m.file) {
+                            const res = await handleFileUpload(m.file, user);
+                            if (res) uploadedUrls.push(`${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`);
+                        } else if (m.originalUrl) {
+                            uploadedUrls.push(m.originalUrl);
+                        }
+                        setSavingProgress(Math.round(10 + ((i + 1) / state.mediaList.length) * 70));
+                    }
+                }
+            } catch (mediaErr) {
+                console.error('[UploadWizard] Media upload failed:', mediaErr);
+                toast.error('Media upload failed, but attempting to save metadata...', { id: tid });
+            }
+
+            // --- CODE CALCULATION ---
+            let calculated: any = {};
+            try {
+                calculated = calculateCodesAndPrices(
+                    { 
+                        price: parseFloat(state.price) || 0, 
+                        itemId: `${state.vendorId}-${String(state.itemNumber).padStart(3, '0')}`, 
+                        workbook: itemData.workbook || 'v326', 
+                        itemNumber: state.itemNumber || '1',
+                        vendorId: state.vendorId
+                    },
+                    exchangeRate,
+                    'v326'
+                );
+            } catch (calcErr) {
+                console.error('[UploadWizard] Calculation Error:', calcErr);
+                throw new Error('Logic failure during item code generation.');
+            }
+
+            // --- PAYLOAD CONSTRUCTION ---
             const payload = {
                 id: itemData.id || crypto.randomUUID(),
                 item_id: `${state.vendorId}-${String(state.itemNumber).padStart(3, '0')}`,
-                book_barcode: calculated.bookBarcode,
-                book_aq_code: calculated.bookAqCode,
+                book_barcode: calculated.bookBarcode || '',
+                book_aq_code: calculated.bookAqCode || '',
                 status: state.status || 'Production',
                 shape: state.shape || '',
                 material: state.material || '',
@@ -527,48 +546,45 @@ export const UploadWizard: React.FC = () => {
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             };
+            
+            console.log('[UploadWizard] Construction complete, sending to Supabase...', payload.item_id);
             setSavingProgress(95);
 
-            // 1. Persist to Supabase with strict error handling (UPSERT)
+            // 1. Supabase UPSERT
             const { data: sbData, error: sbError } = await supabase.from('inventory').upsert(payload).select().single();
             if (sbError) {
-                console.error('[UploadWizard] Supabase Persistence Error:', sbError);
-                throw new Error(`Database Error: ${sbError.message}`);
+                console.error('[UploadWizard] Supabase Error:', sbError);
+                throw new Error(`Cloud Sync Failed: ${sbError.message}`);
             }
 
-            // 2. Local RxDB Upsert (Optional)
+            // 2. RxDB UPSERT
             if (db) {
                 try {
                     await db.inventory.upsert(payload);
                 } catch (rxError) {
-                    console.warn('[UploadWizard] RxDB sync skipped:', rxError);
+                    console.warn('[UploadWizard] Local DB skip:', rxError);
                 }
             }
 
-            // 3. Force UI refresh
             setInventoryVersion(v => v + 1);
-
             const bookStr = String(itemData.workbook || '326').replace(/\D/g, '');
-            const toastMsg = `${state.vendorId}${bookStr}${state.itemNumber} saved`;
-            toast.success(toastMsg, { id: tid });
+            toast.success(`${state.vendorId}${bookStr}${state.itemNumber} saved`, { id: tid });
 
             if (itemData?.id) {
-                // Edit mode: Close wizard as requested
                 setIsOpen(false);
             } else {
-                // Create mode: Stay open, increment itemNumber, clear media, keep others
                 const nextNum = (parseInt(state.itemNumber) || 0) + 1;
                 setState(prev => ({ 
                     ...prev, 
                     itemNumber: String(nextNum),
                     mediaList: [] 
                 }));
-                // Clear atom only for new entries to prevent accidental loops
                 setItemData({}); 
             }
             return true;
         } catch (err: any) {
-            toast.error(err.message || 'Upload Failed', { id: tid });
+            console.error('[UploadWizard] CRITICAL FAILURE:', err);
+            toast.error(err.message || 'Artifact Synchronization Failed', { id: tid });
             return false;
         } finally {
             setTimeout(() => { setSaving(false); setSavingProgress(0); }, 300);

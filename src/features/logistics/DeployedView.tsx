@@ -20,6 +20,7 @@ import { gsap } from 'gsap';
 import { CrateEditPanel, CrateRecord } from './CratesInventoryView';
 import { logisticsDocsAtom, inventoryAtom, liveExchangeRateAtom } from '../../lib/atoms';
 import { useAtomValue } from 'jotai';
+import { useNotify } from '../../lib/hooks';
 
 export const DeployedView: React.FC = () => {
     const [shipments, setShipments] = useState<any[]>([]);
@@ -28,6 +29,7 @@ export const DeployedView: React.FC = () => {
     const [selectedCrateId, setSelectedCrateId] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const setView = useSetAtom(universalViewAtom);
+    const notify = useNotify();
     const logisticsDocs = useAtomValue(logisticsDocsAtom);
     const allInventory = useAtomValue(inventoryAtom);
     const liveRate = useAtomValue(liveExchangeRateAtom) || 17.5;
@@ -50,7 +52,7 @@ export const DeployedView: React.FC = () => {
                 if (error) throw error;
                 setShipments(data || []);
             } catch (err: any) {
-                toast.error(`Fleet Sync Error: ${err.message}`);
+                notify.error(`Fleet Sync Error: ${err.message}`);
             } finally {
                 setLoading(false);
             }
@@ -143,7 +145,7 @@ export const DeployedView: React.FC = () => {
     };
 
     const handleSaveCrate = async (id: string, updates: any) => {
-        const tid = toast.loading('Synchronizing Matrix...');
+        const tid = notify.loading('Synchronizing Matrix...');
         try {
             const { error } = await supabase
                 .from('logistics')
@@ -152,10 +154,10 @@ export const DeployedView: React.FC = () => {
             
             if (error) throw error;
             
-            toast.success('Matrix Synchronized', { id: tid });
+            notify.success('Matrix Synchronized', { id: tid });
             setEditingCrate(null);
         } catch (err: any) {
-            toast.error(`Sync Failed: ${err.message}`, { id: tid });
+            notify.error(`Sync Failed: ${err.message}`, { id: tid });
         }
     };
 

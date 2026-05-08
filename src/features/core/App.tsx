@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
-import { themeAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom } from '../../lib/atoms';
+import { themeAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom } from '../../lib/atoms';
 import { resolveUserRole } from '../../lib/utils';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
@@ -18,6 +18,8 @@ import { useSyncEngine } from '../../lib/syncEngine';
 import { SyncProgressBar } from '../../components/SyncProgressBar';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 
+import toast from 'react-hot-toast';
+
 export default function App() {
   const [user, setUser] = useAtom(userAtom);
   const theme = useAtomValue(themeAtom);
@@ -30,6 +32,30 @@ export default function App() {
 
   // Initialize sync engine — handles online/offline transitions and change queue
   useSyncEngine();
+
+  // Multi-window toast synchronization
+  const sharedToast = useAtomValue(sharedToastAtom);
+  const lastToastId = React.useRef<string | null>(null);
+
+  useEffect(() => {
+    if (sharedToast && sharedToast.id !== lastToastId.current) {
+      // Check if the toast is fresh (e.g., within the last 10 seconds)
+      if (Date.now() - sharedToast.timestamp < 10000) {
+        lastToastId.current = sharedToast.id;
+        
+        // Trigger local toast based on type
+        const { message, type, id } = sharedToast;
+        const options = { id };
+        
+        switch (type) {
+          case 'success': toast.success(message, options); break;
+          case 'error': toast.error(message, options); break;
+          case 'loading': toast.loading(message, options); break;
+          default: toast(message, options); break;
+        }
+      }
+    }
+  }, [sharedToast]);
 
   /**
    * UNIVERSAL ID DETECTION
