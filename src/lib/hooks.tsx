@@ -33,6 +33,7 @@ import {
   sidebarStateAtom,
   userAtom,
   workflowStepAtom,
+  sharedToastAtom
 } from './atoms';
 import { translations } from './translations';
 import { InventoryItemData } from './Types';
@@ -45,7 +46,58 @@ export function useTranslation() {
   return translations[lang];
 }
 
-export const useNotify = () => toast;
+export const useNotify = () => {
+  const setSharedToast = useSetAtom(sharedToastAtom);
+
+  const notify = (message: string, options?: any) => {
+    const id = options?.id || Math.random().toString(36).substr(2, 9);
+    const type = options?.type || 'default';
+    setSharedToast({
+      id,
+      message,
+      type: type as any,
+      timestamp: Date.now()
+    });
+    return toast(message, options);
+  };
+
+  notify.success = (message: string, options?: any) => {
+    const id = options?.id || Math.random().toString(36).substr(2, 9);
+    setSharedToast({
+      id,
+      message,
+      type: 'success',
+      timestamp: Date.now()
+    });
+    return toast.success(message, options);
+  };
+
+  notify.error = (message: string, options?: any) => {
+    const id = options?.id || Math.random().toString(36).substr(2, 9);
+    setSharedToast({
+      id,
+      message,
+      type: 'error',
+      timestamp: Date.now()
+    });
+    return toast.error(message, options);
+  };
+
+  notify.loading = (message: string, options?: any) => {
+    const id = options?.id || Math.random().toString(36).substr(2, 9);
+    setSharedToast({
+      id,
+      message,
+      type: 'loading',
+      timestamp: Date.now()
+    });
+    return toast.loading(message, options);
+  };
+
+  notify.dismiss = (id?: string) => toast.dismiss(id);
+
+  return notify;
+};
 
 export function useResetState() {
   const setWorkflowStep = useSetAtom(workflowStepAtom);

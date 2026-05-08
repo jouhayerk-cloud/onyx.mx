@@ -4,7 +4,7 @@ import { useAtom, useAtomValue } from 'jotai/react';
 import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
-import { useDatabase } from '../../lib/hooks';
+import { useDatabase, useNotify } from '../../lib/hooks';
 import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom } from '../../lib/atoms';
 import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices, getCrateDisplayName } from '../../lib/utils';
 import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
@@ -707,14 +707,14 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
         const w = parseFloat(form.width) || 0;
         const l = parseFloat(form.length) || 0;
         const h = parseFloat(form.height) || 0;
-        if (!w || !l || !h) return toast.error('Enter all three dimensions.');
+        if (!w || !l || !h) return notify.error('Enter all three dimensions.');
 
         setLoading(true);
-        const tid = toast.loading(`Initializing ${qty} ${form.type}(s)…`);
+        const tid = notify.loading(`Initializing ${qty} ${form.type}(s)…`);
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1000));
-                toast.success(`${qty} ${form.type}(s) initialized. (Demo Mode)`, { id: tid, icon: '🧪' });
+                notify.success(`${qty} ${form.type}(s) initialized. (Demo Mode)`, { id: tid, icon: '🧪' });
                 onRefresh();
                 onClose();
                 return;
@@ -743,7 +743,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                 }
             }
 
-            toast.success(`${qty} ${form.type}(s) initialized.`, { id: tid });
+            notify.success(`${qty} ${form.type}(s) initialized.`, { id: tid });
             onRefresh();
             onClose();
             setForm({ 
@@ -758,7 +758,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
             });
             setSourceType('VENDOR');
         } catch (err: any) {
-            toast.error(err.message || 'Failed to create crates.', { id: tid });
+            notify.error(err.message || 'Failed to create crates.', { id: tid });
         } finally {
             setLoading(false);
         }
@@ -1239,6 +1239,7 @@ export const CrateEditPanel: React.FC<{
 
 export const CratesInventoryView: React.FC = () => {
     const db = useDatabase();
+    const notify = useNotify();
     const [, setCratesVersion] = useAtom(cratesVersionAtom);
     const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
     const [searchQuery] = useAtom(TOP_BAR_SEARCH_ATOM);
@@ -1267,12 +1268,12 @@ export const CratesInventoryView: React.FC = () => {
     const handleDeleteCrate = async (crate: CrateRecord) => {
         if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE this ${crate.type}? This action cannot be undone.`)) return;
 
-        const tid = toast.loading(`Deleting ${crate.type}...`);
+        const tid = notify.loading(`Deleting ${crate.type}...`);
 
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1000));
-                toast.success("Crate deleted (Demo Mode)", { id: tid, icon: '🧪' });
+                notify.success("Crate deleted (Demo Mode)", { id: tid, icon: '🧪' });
                 handleRefresh();
                 return;
             }
@@ -1303,19 +1304,19 @@ export const CratesInventoryView: React.FC = () => {
                 if (localCrate) await localCrate.remove();
             }
 
-            toast.success("Crate permanently deleted", { id: tid });
+            notify.success("Crate permanently deleted", { id: tid });
             handleRefresh();
         } catch (err: any) {
-            toast.error(err.message || 'Delete failed.', { id: tid });
+            notify.error(err.message || 'Delete failed.', { id: tid });
         }
     };
 
     const handleReturnToPacking = async (crate: CrateRecord) => {
-        const tid = toast.loading('Returning crate to packing state...');
+        const tid = notify.loading('Returning crate to packing state...');
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 800));
-                toast.success('Crate returned to Packed (Demo Mode)', { id: tid, icon: '🧪' });
+                notify.success('Crate returned to Packed (Demo Mode)', { id: tid, icon: '🧪' });
                 handleRefresh();
                 return;
             }
@@ -1329,20 +1330,20 @@ export const CratesInventoryView: React.FC = () => {
                 const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
                 if (lDoc) await lDoc.patch({ status: 'Packed', description: null });
             }
-            toast.success('Crate returned to Packed Crates', { id: tid });
+            notify.success('Crate returned to Packed Crates', { id: tid });
             handleRefresh();
         } catch (err: any) {
-            toast.error(err.message || 'Failed to reset crate', { id: tid });
+            notify.error(err.message || 'Failed to reset crate', { id: tid });
         }
     };
 
     const handleNestUnit = async (sourceId: string, parentId: string) => {
         setIsSavingNest(true);
-        const tid = toast.loading(`Nesting unit...`);
+        const tid = notify.loading(`Nesting unit...`);
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1000));
-                toast.success("Unit nested (Demo Mode)", { id: tid, icon: '🧪' });
+                notify.success("Unit nested (Demo Mode)", { id: tid, icon: '🧪' });
                 setNestingUnit(null);
                 handleRefresh();
                 return;
@@ -1354,11 +1355,11 @@ export const CratesInventoryView: React.FC = () => {
                 const localUnit = await db.logistics.findOne({ selector: { id: sourceId } }).exec();
                 if (localUnit) await localUnit.patch(updatePayload);
             }
-            toast.success("Unit successfully nested", { id: tid });
+            notify.success("Unit successfully nested", { id: tid });
             setNestingUnit(null);
             handleRefresh();
         } catch (err: any) {
-            toast.error(err.message || 'Nesting failed.', { id: tid });
+            notify.error(err.message || 'Nesting failed.', { id: tid });
         } finally {
             setIsSavingNest(false);
         }
@@ -1433,16 +1434,16 @@ export const CratesInventoryView: React.FC = () => {
 
     // For empty/partial crates — just switch tab
     const handlePack = (crate: CrateRecord) => {
-        toast.success(`Selected ${crate.type} ${crate.id.slice(0, 8).toUpperCase()} — switching to packing…`, { icon: '📦' });
+        notify.success(`Selected ${crate.type} ${crate.id.slice(0, 8).toUpperCase()} — switching to packing…`, { icon: '📦' });
         setSubTab('packing');
     };
 
     const handleSaveCrate = async (id: string, updates: any) => {
-        const tid = toast.loading('Syncing with logistics matrix...');
+        const tid = notify.loading('Syncing with logistics matrix...');
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 600));
-                toast.success('Record updated (Demo Mode)', { id: tid });
+                notify.success('Record updated (Demo Mode)', { id: tid });
                 setEditingCrate(null);
                 handleRefresh();
                 return;
@@ -1513,16 +1514,16 @@ export const CratesInventoryView: React.FC = () => {
                 }
             }
 
-            toast.success('Logistics protocol updated', { id: tid });
+            notify.success('Logistics protocol updated', { id: tid });
             setEditingCrate(null);
             handleRefresh();
         } catch (err: any) {
-            toast.error(err.message || 'Update failed', { id: tid });
+            notify.error(err.message || 'Update failed', { id: tid });
         }
     };
 
     const handleDeleteCratesGroup = async (ids: string[]) => {
-        const tid = toast.loading(`Purging ${ids.length} units from protocol...`);
+        const tid = notify.loading(`Purging ${ids.length} units from protocol...`);
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 600));

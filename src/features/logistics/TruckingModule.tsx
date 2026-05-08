@@ -10,7 +10,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
 import { generatePackingListXlsx } from '../../lib/xlsxUtils';
-import { useDatabase } from '../../lib/hooks';
+import { useDatabase, useNotify } from '../../lib/hooks';
 import { 
     activeViewAtom,
     inventoryAtom, cratesVersionAtom, truckReadyTriggerAtom, 
@@ -3213,6 +3213,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
     const db = useDatabase();
+    const notify = useNotify();
     const isDummyMode = useAtomValue(isDummyModeAtom);
     const allInventory = useAtomValue(inventoryAtom);
     const setCratesVersion = useSetAtom(cratesVersionAtom);
@@ -3310,9 +3311,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 senders: shipment.metadata?.senders || [''],
                 packingItems: payload.packingItems || []
             });
-            toast.success(`Recalled manifest ${shipment.manifest_id}`);
+            notify.success(`Recalled manifest ${shipment.manifest_id}`);
             setTopBarState('crates');
-        } catch (e) { toast.error('Failed to recall shipment'); }
+        } catch (e) { notify.error('Failed to recall shipment'); }
     }, [setPositions, setTopBarState, setRecalledShipment, setReadyTruckFields]);
 
 
@@ -3665,7 +3666,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         const target = allCrates.find(c => c.id === targetId);
         if (!box || !target) return;
 
-        const tid = toast.loading(`Nesting ${boxId.slice(0,6)} into ${targetId.slice(0,6)}...`);
+        const tid = notify.loading(`Nesting ${boxId.slice(0,6)} into ${targetId.slice(0,6)}...`);
         try {
             if (!isDummyMode) {
                 // Update box to point to target via parent_id
@@ -3686,11 +3687,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             setPositions(p => { const n = { ...p }; delete n[boxId]; return n; });
             setNestingBoxId(null);
             setRecalledShipment(null);
-            toast.success('Successfully nested', { id: tid });
+            notify.success('Successfully nested', { id: tid });
             onRefresh();
             setCratesVersion(v => v + 1);
         } catch (err: any) {
-            toast.error(err.message || 'Nesting failed', { id: tid });
+            notify.error(err.message || 'Nesting failed', { id: tid });
         }
     };
 
@@ -3700,7 +3701,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             setPositions({});
             setSelectedId(null);
             setRecalledShipment(null);
-            toast.success('Trailer cleared');
+            notify.success('Trailer cleared');
         }
     }, [positions]);
 
@@ -3709,7 +3710,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         setReadyTruckFields(draft.shipmentData || {
             sealNumber: '', tractorNumber: '', truckPlates: '', trailerNumber: '', trailerPlates: '', senders: [''], packingItems: []
         });
-        toast.success(`Draft "${draft.name}" loaded`);
+        notify.success(`Draft "${draft.name}" loaded`);
         setTopBarState('crates');
     };
 
@@ -3717,7 +3718,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const handleReadyTruck = async (f = readyTruckFields) => {
         if (!confirm('Are you sure you want to finalize this shipment and synchronize with the cloud?')) return;
         setIsSaving(true);
-        const tid = toast.loading('Validating shipment integrity...');
+        const tid = notify.loading('Validating shipment integrity...');
         try {
             // 0. Integrity Check: Ensure no items are already in another active shipment
             if (!isDummyMode) {
@@ -3748,13 +3749,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 }
 
                 if (conflicts.length > 0) {
-                    toast.error(`Deployment Blocked: Duplicate items found!\n${conflicts.slice(0, 3).join(', ')}${conflicts.length > 3 ? '...' : ''}`, { id: tid, duration: 6000 });
+                    notify.error(`Deployment Blocked: Duplicate items found!\n${conflicts.slice(0, 3).join(', ')}${conflicts.length > 3 ? '...' : ''}`, { id: tid, duration: 6000 });
                     setIsSaving(false);
                     return;
                 }
             }
 
-            toast.loading('Synchronizing shipment data...', { id: tid });
+            notify.loading('Synchronizing shipment data...', { id: tid });
             const manifestId = `TRK-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
             const dispatchTs = new Date().toISOString();
             const ts = new Date().toLocaleString();
@@ -3906,10 +3907,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const shareUrl = `${window.location.origin}${window.location.pathname}?truckid=${manifestId}`;
             setPublicUrl(shareUrl);
 
-            toast.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: '🚚', duration: 10000 });
+            notify.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: '🚚', duration: 10000 });
             // Wizard stays open to show the public link
         } catch (err: any) { 
-            toast.error(err.message || 'Synchronization failed', { id: tid }); 
+            notify.error(err.message || 'Synchronization failed', { id: tid }); 
         } finally { 
             setIsSaving(false); 
         }
@@ -3944,21 +3945,21 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const handleSaveDraft = (name: string) => {
         const draft = buildDraft(name);
         saveDraft(draft);
-        toast.success(`Draft "${name}" saved to local storage`, { icon: '💾' });
+        notify.success(`Draft "${name}" saved to local storage`, { icon: '💾' });
         setShowSaveDraft(false);
     };
 
     const handleExportDraft = (name: string) => {
         const draft = buildDraft(name);
         exportDraftFile(draft);
-        toast.success(`Draft "${name}" exported as file`, { icon: '📤' });
+        notify.success(`Draft "${name}" exported as file`, { icon: '📤' });
         setShowSaveDraft(false);
     };
 
     const handleDeleteShipment = async (manifest_id: string) => {
         if (!confirm('Are you sure you want to permanently delete this shipment record? This action cannot be undone.')) return;
         
-        const tid = toast.loading('Deleting shipment record...');
+        const tid = notify.loading('Deleting shipment record...');
         try {
             const { error } = await supabase
                 .from('shipments')
@@ -3968,9 +3969,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             if (error) throw error;
 
             setRecentShipments(prev => prev.filter(s => s.manifest_id !== manifest_id));
-            toast.success('Shipment record deleted', { id: tid });
+            notify.success('Shipment record deleted', { id: tid });
         } catch (err: any) {
-            toast.error(err.message || 'Deletion failed', { id: tid });
+            notify.error(err.message || 'Deletion failed', { id: tid });
         }
     };
 
@@ -4699,10 +4700,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         const { error } = await supabase.from('logistics').update(updates).eq('id', id);
                         if (!error) {
                             setEditingCrate(null);
-                            toast.success('Crate updated');
+                            notify.success('Crate updated');
                             onRefresh();
                         } else {
-                            toast.error('Update failed');
+                            notify.error('Update failed');
                         }
                     }}
                     onDeleteGroup={() => {}} 

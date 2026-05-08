@@ -97,13 +97,21 @@ export const PointsAtom = atom(
 );
 
 export type SidebarState = 'expanded' | 'compact' | 'hidden';
-export const sidebarStateAtom = atomWithStorage<SidebarState>('sidebarState', 'expanded');
+export const sidebarStateAtom = atomWithStorage<SidebarState>('sidebarState', 'expanded', sessionJSONStorage);
 export const isUploadWizardOpenAtom = atom<boolean>(false);
 
 // Studio Settings Portal
 export type StudioSettingsViewMode = 'settings' | 'about';
 export const isStudioSettingsOpenAtom = atom<boolean>(false);
 export const studioSettingsViewModeAtom = atom<StudioSettingsViewMode>('settings');
+
+export interface SharedToast {
+    id: string;
+    message: string;
+    type: 'success' | 'error' | 'loading' | 'default';
+    timestamp: number;
+}
+export const sharedToastAtom = atomWithStorage<SharedToast | null>('sharedToast', null);
 
 export const SelectedMasksAtom = atomWithStorage<number[]>(
   'selectedMasks',

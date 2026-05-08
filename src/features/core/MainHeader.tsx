@@ -1132,7 +1132,24 @@ export function MainHeader() {
                 if (!vendorRollup[v]) vendorRollup[v] = { total: 0, paid: 0, items: 0 };
                 const amt = (d.amount || 0) + (d.commission || 0);
                 vendorRollup[v].total += amt;
-                if (d.status === 'Paid') vendorRollup[v].paid += amt;
+                if (['Paid', 'Sent', 'Dispersed'].includes(d.status)) vendorRollup[v].paid += amt;
+            });
+
+            // From Crates (Juan/Simona/Other) - Only add if not already in finance
+            const allCratesForSummary = [...juanCrates, ...simonaCrates, ...otherCrates];
+            allCratesForSummary.forEach(c => {
+                const v = (c.vendors || 'INTERNAL').toUpperCase();
+                if (!vendorRollup[v]) vendorRollup[v] = { total: 0, paid: 0, items: 0 };
+                
+                // Check if this specific crate is already covered by a finance request
+                const isRequested = financeDocs.some(d => 
+                    (d.vendor_id === v || d.vendor_id === 'Crates') && 
+                    (d.related_ids?.includes(c.id) || d.related_inventory_ids?.split(',').includes(c.id))
+                );
+
+                if (!isRequested) {
+                    vendorRollup[v].total += (c.cost_mxn || 0);
+                }
             });
             
             // From Inventory (only acquisition/production)
@@ -1405,7 +1422,8 @@ export function MainHeader() {
                 if (emptyCrates.length > 0) {
                     const emptyGroups: Record<string, any> = {};
                     emptyCrates.forEach(c => {
-                        const key = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.cost_mxn}x${c.type}`;
+                        // Group by type, dimensions, AND price
+                        const key = `${c.type}-${c.width_cm}x${c.length_cm}x${c.height_cm}-${c.cost_mxn}`;
                         if (!emptyGroups[key]) {
                             emptyGroups[key] = { ...c, qty: 0 };
                         }
