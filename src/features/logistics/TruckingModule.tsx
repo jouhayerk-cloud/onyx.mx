@@ -5,7 +5,7 @@ import {
     ZoomIn, ZoomOut, Maximize2, Gauge, 
     CheckCircle2, AlertCircle, Clock, History,
     Package, Filter, Search, ArrowRight,
-    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List, Eye, Pencil
+    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List, Eye, Pencil, Library, SquareLibrary
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
@@ -29,6 +29,7 @@ import ExcelJS from 'exceljs';
 import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto, ManifestoMeta } from '../../lib/crateManifesto';
 
 import * as THREE from 'three';
+import { CrateEditPanel } from './CratesInventoryView';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import gsap from 'gsap';
 
@@ -3237,6 +3238,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
     const [showSharePopup, setShowSharePopup] = useState(false);
+    const [editingCrate, setEditingCrate] = useState<any | null>(null);
 
 
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
@@ -3362,7 +3364,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [docs, recalledShipment]);
 
     const allCrates = useMemo(() => {
-        const live = docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status));
+        const live = docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit', 'Deployed'].includes(d.status));
         
         // If we have a recalled shipment, we might need to inject "virtual" crates 
         // for IDs that are in positions but NOT in the live docs (e.g. because status changed or record missing)
@@ -3389,7 +3391,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         return live;
     }, [docs, recalledShipment]);
     // Deployed (In Transit) crates are locked — excluded from dock, cannot be re-loaded
-    const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id && c.status !== 'In Transit'), [allCrates, positions]);
+    const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id && !['In Transit', 'Deployed'].includes(c.status)), [allCrates, positions]);
+    const deployedCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id && ['In Transit', 'Deployed'].includes(c.status)), [allCrates, positions]);
     const truckCrates = useMemo(() => allCrates.filter(c => !!positions[c.id]), [allCrates, positions]);
     const truckNumbering = useMemo(() => getTruckCrateNumbering(truckCrates, positions), [truckCrates, positions]);
 
@@ -4085,13 +4088,21 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     <button 
                         onClick={() => setTopBarState(topBarState === 'crates' ? 'trailers' : 'crates')}
                         className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-4 text-white/30 hover:text-white'}`}
-                        title={topBarState === 'crates' ? 'Switch to Deployed' : 'Switch to Crates'}
+                        title={topBarState === 'crates' ? 'Switch to Deployed History' : 'Switch to Crates'}
                     >
-                        {topBarState === 'crates' ? (
-                            <Box size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
-                        ) : (
+                        {topBarState === 'trailers' ? (
                             <Truck size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
+                        ) : (
+                            <Truck size={isCompact ? 14 : 32} strokeWidth={1.25} className="opacity-20" />
                         )}
+                    </button>
+
+                    <button 
+                        onClick={() => setTopBarState('deployed')}
+                        className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-4 text-white/30 hover:text-white'}`}
+                        title="View All Deployed Crates"
+                    >
+                        <SquareLibrary size={isCompact ? 14 : 32} strokeWidth={1.25} style={topBarState === 'deployed' ? { color: 'var(--main-color)' } : { opacity: 0.2 }} />
                     </button>
 
                     <div className={`flex-1 overflow-x-auto custom-scrollbar flex items-center gap-6 no-scrollbar px-2 ${isCompact ? 'py-0' : 'py-2'}`}>
@@ -4113,6 +4124,27 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             onNest={() => setNestingBoxId(c.id)} 
                                             isCompact={isCompact}
                                         />
+                                    ))
+                                )}
+                            </>
+                        ) : topBarState === 'deployed' ? (
+                            <>
+                                {deployedCrates.length === 0 ? (
+                                    <div className="flex items-center gap-3 px-6 py-2 rounded-xl bg-white/5 border border-dashed border-white/10 text-white/20">
+                                        <SquareLibrary size={16} strokeWidth={1} />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.4em]">No Individual Deployed Crates</span>
+                                    </div>
+                                ) : (
+                                    deployedCrates.map(c => (
+                                        <div key={c.id} onClick={() => setEditingCrate(c)} className="cursor-pointer">
+                                            <CompactDockCard 
+                                                crate={c} 
+                                                allCrates={allCrates} 
+                                                allInventory={allInventory} 
+                                                onLoad={() => {}} 
+                                                isCompact={isCompact}
+                                            />
+                                        </div>
                                     ))
                                 )}
                             </>
@@ -4656,6 +4688,26 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     </button>
                 </div>
             </div>
+
+            {editingCrate && (
+                <CrateEditPanel 
+                    crate={editingCrate}
+                    allCrates={allCrates}
+                    allInventory={allInventory}
+                    onClose={() => setEditingCrate(null)}
+                    onSave={async (id, updates) => {
+                        const { error } = await supabase.from('logistics').update(updates).eq('id', id);
+                        if (!error) {
+                            setEditingCrate(null);
+                            toast.success('Crate updated');
+                            onRefresh();
+                        } else {
+                            toast.error('Update failed');
+                        }
+                    }}
+                    onDeleteGroup={() => {}} 
+                />
+            )}
         </div>
     );
 };
