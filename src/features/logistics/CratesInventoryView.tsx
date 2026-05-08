@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save } from 'lucide-react';
+import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
@@ -137,6 +137,7 @@ interface CrateRecord {
     groupedCount?: number;
     groupedIds?: string[];
     parent_id?: string | null;
+    vendors?: string;
 }
 
 // --- Extract item number from workbook barcode ---
@@ -854,23 +855,75 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
 
 // ─── Crate Edit Panel ──────────────────────────────────────────────────────────
 
+
+// ─── Local Smart Input ───────────────────────────────────────────────────────
+const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, className = "", onSet }: any) => {
+    const [isFocused, setIsFocused] = useState(false);
+    
+    const isCollapsed = !isFocused && value && value !== '0' && value !== '';
+    const sizeClasses = className.includes('compact') ? 'text-2xl md:text-3xl' : 'text-4xl md:text-5xl';
+    const containerHeight = className.includes('compact') ? 'h-10 md:h-12' : 'h-14 md:h-16';
+
+    if (isCollapsed) {
+        return (
+            <div 
+                onClick={() => setIsFocused(true)}
+                className={`group flex items-center gap-2 px-3 py-1 rounded-md bg-white/[0.03] hover:bg-white/[0.08] transition-all cursor-pointer animate-in fade-in zoom-in-95 duration-300 ${className}`}
+            >
+                {Icon && <Icon size={10} className="text-(--main-color) opacity-50" strokeWidth={3} />}
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20">{label}</span>
+                <span className="text-sm font-black uppercase tracking-tight text-white/80 group-hover:text-white transition-colors">{value}</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`group relative flex flex-col py-2 border-b transition-all duration-300 ease-out border-white/10 hover:border-white/40 ${className}`}>
+            <div className="flex justify-between items-start mb-1 select-none">
+                <div className="flex items-center gap-3">
+                    {Icon && <Icon size={12} className={value || isFocused ? 'text-(--main-color)' : 'text-white/40'} strokeWidth={3} />}
+                    <span className={`text-[9px] font-black uppercase tracking-[0.4em] transition-colors duration-200 ${value || isFocused ? 'text-(--main-color)' : 'text-white/40'}`}>{label}</span>
+                </div>
+            </div>
+            
+            <div className={`relative overflow-hidden ${containerHeight} flex items-center`}>
+                <input 
+                    autoFocus={isFocused}
+                    type={type}
+                    value={value}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                    onChange={(e) => onSet(field, e.target.value)}
+                    className={`
+                        bg-transparent border-none outline-none w-full ${sizeClasses} font-black uppercase tracking-tighter transition-all duration-200 relative z-10 text-white
+                    `}
+                />
+            </div>
+        </div>
+    );
+});
+
+// ─── Crate Edit Panel ──────────────────────────────────────────────────────────
+
 const CrateEditPanel: React.FC<{
     crate: CrateRecord;
     allCrates: CrateRecord[];
     allInventory: any[];
     onClose: () => void;
     onSave: (id: string, updates: any) => void;
-}> = ({ crate, allCrates, allInventory, onClose, onSave }) => {
+    onDeleteGroup?: (ids: string[]) => void;
+}> = ({ crate, allCrates, allInventory, onClose, onSave, onDeleteGroup }) => {
     const [formData, setFormData] = useState({
         description: crate.description || '',
-        width_cm: crate.width_cm || 0,
-        length_cm: crate.length_cm || 0,
-        height_cm: crate.height_cm || 0,
-        weight_kg: crate.weight_kg || 0,
-        brute_weight_kg: crate.brute_weight_kg || 0,
-        cost_mxn: crate.cost_mxn || 0,
+        width_cm: String(crate.width_cm || ''),
+        length_cm: String(crate.length_cm || ''),
+        height_cm: String(crate.height_cm || ''),
+        weight_kg: String(crate.weight_kg || ''),
+        brute_weight_kg: String(crate.brute_weight_kg || ''),
+        cost_mxn: String(crate.cost_mxn || ''),
         status: crate.status || 'Packed',
-        vendors: (crate as any).vendors || ''
+        vendors: (crate as any).vendors || '',
+        quantity: String(crate.groupedCount || 1)
     });
 
     const [sourceType, setSourceType] = useState(() => {
@@ -880,140 +933,184 @@ const CrateEditPanel: React.FC<{
         return 'VENDOR';
     });
 
+    const [isStatusExpanded, setIsStatusExpanded] = useState(false);
+
     const handleSave = () => {
-        const updates = { ...formData };
+        const updates = {
+            ...formData,
+            width_cm: parseFloat(formData.width_cm) || 0,
+            length_cm: parseFloat(formData.length_cm) || 0,
+            height_cm: parseFloat(formData.height_cm) || 0,
+            weight_kg: parseFloat(formData.weight_kg) || 0,
+            brute_weight_kg: parseFloat(formData.brute_weight_kg) || 0,
+            cost_mxn: parseFloat(formData.cost_mxn) || 0,
+            quantity: parseInt(formData.quantity) || 1
+        };
         if (sourceType === 'SIMONA') updates.vendors = 'SIMONA';
         else if (sourceType === 'JUAN') updates.vendors = 'JUAN';
         onSave(crate.id, updates);
     };
 
-    const lbl = "text-[10px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2 px-1";
-    const inp = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-all";
+    const set = (k: string, v: any) => setFormData(f => ({ ...f, [k]: v }));
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 lg:p-12">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div 
+            className="fixed inset-0 z-[400] flex justify-center items-start pt-[80px] md:pt-[128px] animate-in fade-in duration-500 overflow-hidden"
+            onClick={onClose}
+        >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={onClose} />
             
-            <div className="relative w-full max-w-2xl bg-[#0a0a0a]/90 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-[0_50px_100px_-20px_rgba(0,0,0,1)] overflow-hidden animate-in zoom-in fade-in duration-300">
-                {/* Header */}
-                <div className="flex items-center justify-between px-10 py-8 border-b border-white/5">
-                    <div className="flex flex-col">
-                        <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white/20 mb-1">Configuration Matrix</span>
-                        <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Edit Crate Details</h2>
-                    </div>
-                    <button 
-                        onClick={onClose}
-                        className="text-white/20 hover:text-white transition-all hover:scale-125 p-2"
-                        title="Close Panel"
-                    >
-                        <X size={28} strokeWidth={1} />
-                    </button>
-                </div>
-
-                <div className="p-10 custom-scrollbar overflow-y-auto max-h-[70vh]">
-                    <div className="grid grid-cols-2 gap-8">
-                        {/* Label & Price */}
-                        <div className="col-span-2 grid grid-cols-2 gap-6">
-                            <div>
-                                <label className={lbl}>Description / Label</label>
-                                <input type="text" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className={inp} placeholder="e.g. CUSTOM-01" />
+            <div 
+                className="relative w-full h-full flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 bg-black/10 border-none rounded-none md:rounded-[40px] shadow-2xl backdrop-blur-3xl"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex-1 overflow-y-auto no-scrollbar px-6 md:px-12 pb-48 pt-6 md:pt-10">
+                    <div className="max-w-[1200px] mx-auto space-y-8 md:space-y-12">
+                        
+                        {/* Header */}
+                        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 pb-10 border-b border-white/5">
+                            <div className="flex flex-col gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-2 h-2 rounded-full bg-(--main-color) animate-pulse" />
+                                    <h1 className="text-[20px] font-black uppercase tracking-[0.6em] text-white/40 leading-none">
+                                        Edit Storage Unit
+                                    </h1>
+                                </div>
+                                <div className="flex items-center gap-3 whitespace-nowrap opacity-50">
+                                    <span className="text-[8px] font-black uppercase tracking-[0.8em] text-white/40">Configuration Matrix</span>
+                                </div>
                             </div>
-                            <div>
-                                <label className={lbl}>Unit Price (MXN)</label>
-                                <input type="number" value={formData.cost_mxn} onChange={e => setFormData({ ...formData, cost_mxn: Number(e.target.value) })} className={inp} placeholder="0.00" />
+
+                            <div className="flex items-center gap-6 self-end lg:self-auto">
+                                <div className="flex items-center gap-6 px-6 py-3 bg-white/[0.03] rounded-3xl border border-white/10 backdrop-blur-xl">
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Unit Protocol</span>
+                                        <span className="text-2xl font-black tracking-tighter uppercase text-white tabular-nums">
+                                            {crate.id.slice(0, 8).toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
+                                        <Box size={24} />
+                                    </div>
+                                </div>
+                                <button onClick={onClose} className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">
+                                    <X size={32} strokeWidth={2} />
+                                </button>
                             </div>
                         </div>
 
-                        {/* Dimensions */}
-                        <div className="col-span-2">
-                            <label className={lbl}>Physical Dimensions (CM)</label>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="relative">
-                                    <input type="number" value={formData.width_cm} onChange={e => setFormData({ ...formData, width_cm: Number(e.target.value) })} className={inp + " text-center"} />
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/10 uppercase">W</span>
-                                </div>
-                                <div className="relative">
-                                    <input type="number" value={formData.length_cm} onChange={e => setFormData({ ...formData, length_cm: Number(e.target.value) })} className={inp + " text-center"} />
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/10 uppercase">L</span>
-                                </div>
-                                <div className="relative">
-                                    <input type="number" value={formData.height_cm} onChange={e => setFormData({ ...formData, height_cm: Number(e.target.value) })} className={inp + " text-center"} />
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/10 uppercase">H</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Weight & Status */}
-                        <div className="col-span-2 grid grid-cols-2 gap-6">
-                            <div>
-                                <label className={lbl}>Brute Weight (KG)</label>
-                                <input type="number" value={formData.brute_weight_kg} onChange={e => setFormData({ ...formData, brute_weight_kg: Number(e.target.value) })} className={inp} />
-                            </div>
-                            <div>
-                                <label className={lbl}>Status</label>
-                                <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className={inp}>
-                                    <option value="Empty">Empty</option>
-                                    <option value="Partial">Partial</option>
-                                    <option value="Packed">Packed</option>
-                                    <option value="In Transit">In Transit</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Source Selection */}
-                        <div className="col-span-2 border-t border-white/5 pt-8 mt-2">
-                            <label className={lbl}>Source Provider</label>
-                            <div className="flex gap-3 mb-6">
-                                {['SIMONA', 'JUAN', 'VENDOR'].map(s => (
+                        {/* Core Fields */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+                            {/* Status */}
+                            <div className="lg:col-span-4 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Protocol Status</label>
+                                {!isStatusExpanded ? (
                                     <button 
-                                        key={s}
-                                        type="button"
-                                        onClick={() => setSourceType(s)}
-                                        className={`flex-1 py-3 rounded-xl font-black text-[10px] tracking-[0.2em] transition-all border ${sourceType === s ? 'bg-white text-black border-white shadow-xl scale-105' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'}`}
+                                        onClick={() => setIsStatusExpanded(true)}
+                                        className="w-full flex items-center justify-between p-5 rounded-3xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-(--main-color) transition-all group"
                                     >
-                                        {s}
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-(--main-color)">
+                                                {formData.status === 'Packed' ? <CheckCircle2 size={24} /> : formData.status === 'Partial' ? <RotateCcw size={24} /> : <Box size={24} />}
+                                            </div>
+                                            <span className="text-xl font-black uppercase tracking-tight text-white">{formData.status}</span>
+                                        </div>
+                                        <ChevronDown size={20} className="text-white/20 group-hover:text-white transition-colors" />
                                     </button>
-                                ))}
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 duration-300">
+                                        {['Empty', 'Partial', 'Packed', 'In Transit'].map(s => (
+                                            <button key={s} onClick={() => { set('status', s); setIsStatusExpanded(false); }}
+                                                className={`flex flex-col items-center p-4 rounded-2xl transition-all duration-200 gap-2 ${formData.status === s ? 'bg-white text-black shadow-2xl scale-102' : 'bg-black/20 border border-white/5 text-white/40 hover:bg-white/5 hover:text-white backdrop-blur-xl'}`}>
+                                                <span className="text-[9px] font-black uppercase tracking-widest">{s}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
-                            {sourceType === 'VENDOR' && (
-                                <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
-                                    {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
-                                        const v = vendors[id as keyof typeof vendors];
-                                        const isSelected = formData.vendors === id;
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={id}
-                                                onClick={() => setFormData({ ...formData, vendors: id })}
-                                                className={`aspect-square rounded-xl flex items-center justify-center text-xs font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-2xl z-10' : 'opacity-40 hover:opacity-100 grayscale hover:grayscale-0'}`}
-                                                style={{ backgroundColor: v.color, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-                                            >
-                                                {id}
-                                            </button>
-                                        );
-                                    })}
+                            {/* Provider */}
+                            <div className="lg:col-span-5 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Source Provider</label>
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
+                                    {['SIMONA', 'JUAN', 'VENDOR'].map(s => (
+                                        <button key={s} onClick={() => setSourceType(s)}
+                                            className={`shrink-0 h-16 px-6 rounded-3xl flex items-center justify-center text-xs font-black transition-all border ${sourceType === s ? 'bg-white text-black border-white shadow-xl scale-105' : 'bg-white/5 text-white/40 border-white/10 hover:border-white/40'}`}>
+                                            {s}
+                                        </button>
+                                    ))}
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                                {sourceType === 'VENDOR' && (
+                                    <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 animate-in fade-in duration-500">
+                                        {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
+                                            const v = vendors[id as keyof typeof vendors];
+                                            const isSelected = formData.vendors === id;
+                                            return (
+                                                <button
+                                                    type="button" key={id}
+                                                    onClick={() => set('vendors', id)}
+                                                    className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-[10px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-xl z-10' : 'opacity-40 hover:opacity-100 grayscale hover:grayscale-0'}`}
+                                                    style={{ backgroundColor: v.color, color: 'white' }}
+                                                >
+                                                    {id}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
 
-                {/* Footer Actions */}
-                <div className="px-10 py-8 bg-white/[0.02] border-t border-white/5 flex items-center justify-end gap-4">
-                    <button 
-                        onClick={onClose}
-                        className="px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        onClick={handleSave}
-                        className="px-10 py-4 bg-white text-black rounded-2xl font-black text-[11px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-3"
-                    >
-                        <Save size={18} />
-                        Update Record
-                    </button>
+                            {/* Quantity */}
+                            <div className="lg:col-span-3 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Group Quantity</label>
+                                <div className="h-20 flex items-center bg-white/[0.03] border border-white/10 rounded-3xl px-6 hover:border-(--main-color) transition-all">
+                                    <SmartInput label="Quantity" field="quantity" value={formData.quantity} icon={Hash} type="number" className="border-b-0 py-0 w-full" onSet={set} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dimensions & Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <SmartInput label="Width (CM)" field="width_cm" value={formData.width_cm} icon={Ruler} type="number" onSet={set} />
+                            <SmartInput label="Length (CM)" field="length_cm" value={formData.length_cm} icon={Ruler} type="number" onSet={set} />
+                            <SmartInput label="Height (CM)" field="height_cm" value={formData.height_cm} icon={Ruler} type="number" onSet={set} />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <SmartInput label="Brute Weight (KG)" field="brute_weight_kg" value={formData.brute_weight_kg} icon={Package} type="number" onSet={set} />
+                            <SmartInput label="Acquisition Price (MXN)" field="cost_mxn" value={formData.cost_mxn} icon={Hash} type="number" onSet={set} />
+                            <SmartInput label="Label / Notes" field="description" value={formData.description} icon={FileText} onSet={set} />
+                        </div>
+
+                        {/* Save Action */}
+                        <div className="flex flex-col items-center gap-6 pt-12 border-t border-white/5">
+                            <div className="flex flex-col md:flex-row items-center gap-4 w-full justify-center">
+                                <button 
+                                    onClick={handleSave}
+                                    className="w-full md:w-auto px-16 py-6 bg-(--main-color) text-black rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 flex items-center justify-center gap-4 group"
+                                >
+                                    <Save size={20} className="group-hover:rotate-12 transition-transform" />
+                                    Sync Unit Changes
+                                </button>
+
+                                {onDeleteGroup && crate.groupedIds && crate.groupedIds.length > 0 && (
+                                    <button 
+                                        onClick={() => {
+                                            if (window.confirm(`Are you sure you want to PERMANENTLY REMOVE all ${crate.groupedIds?.length} units in this protocol group?`)) {
+                                                onDeleteGroup(crate.groupedIds || []);
+                                            }
+                                        }}
+                                        className="w-full md:w-auto px-16 py-6 bg-red-500/10 text-red-500 border border-red-500/20 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-4 group"
+                                    >
+                                        <Trash2 size={20} className="group-hover:scale-110 transition-transform" />
+                                        Delete All Units
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">Protocol version 3.2.6 · Jouhayerk Matrix</p>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
@@ -1194,13 +1291,13 @@ export const CratesInventoryView: React.FC = () => {
 
         const groups: Record<string, CrateRecord> = {};
         for (const c of filteredCrates) {
-            const key = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.type}`;
+            const vendor = (c as any).vendors || '';
+            const key = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.type}x${c.cost_mxn}x${vendor}`;
             if (!groups[key]) {
-                groups[key] = { ...c, groupedCount: 0, groupedIds: [], cost_mxn: 0, weight_kg: 0 };
+                groups[key] = { ...c, groupedCount: 0, groupedIds: [], weight_kg: 0 };
             }
             groups[key].groupedCount = (groups[key].groupedCount || 0) + 1;
             groups[key].groupedIds!.push(c.id);
-            groups[key].cost_mxn = (groups[key].cost_mxn || 0) + (c.cost_mxn || 0);
             groups[key].weight_kg = (groups[key].weight_kg || 0) + (c.weight_kg || 0);
         }
         return Object.values(groups);
@@ -1230,30 +1327,105 @@ export const CratesInventoryView: React.FC = () => {
                 return;
             }
 
-            // brute_weight_kg does NOT exist in the Supabase logistics table.
-            // Strip it from the Supabase payload; save it only to RxDB.
-            const { brute_weight_kg, ...supabaseUpdates } = updates;
+            const { brute_weight_kg, quantity, ...supabaseUpdates } = updates;
 
+            // 1. Handle Bulk Updates if it's a group
+            const targetIds = (editingCrate?.groupedIds && editingCrate.groupedIds.length > 0) 
+                ? editingCrate.groupedIds 
+                : [id];
+
+            // 2. Handle Quantity changes for Empty crates
+            if (editingCrate?.status === 'Empty' && quantity !== undefined) {
+                const currentQty = editingCrate.groupedCount || 1;
+                const diff = quantity - currentQty;
+
+                if (diff > 0) {
+                    // Create more empty crates of the same type/dims
+                    const now = new Date().toISOString();
+                    const newCrates = Array.from({ length: diff }, () => ({
+                        type: editingCrate.type,
+                        status: 'Empty',
+                        width_cm: updates.width_cm,
+                        length_cm: updates.length_cm,
+                        height_cm: updates.height_cm,
+                        cost_mxn: updates.cost_mxn,
+                        description: updates.description,
+                        date: now,
+                        updated_at: now
+                    }));
+                    const { data: inserted, error: insErr } = await supabase.from('logistics').insert(newCrates).select();
+                    if (insErr) throw insErr;
+                    if (db && inserted) {
+                        for (const row of inserted) {
+                            try { await db.logistics.insert({ ...row, id: String(row.id) }); } catch (_) {}
+                        }
+                    }
+                } else if (diff < 0) {
+                    // Delete some empty crates from this group
+                    const idsToDelete = targetIds.slice(0, Math.abs(diff));
+                    const { error: delErr } = await supabase.from('logistics').delete().in('id', idsToDelete);
+                    if (delErr) throw delErr;
+                    if (db) {
+                        for (const delId of idsToDelete) {
+                            const local = await db.logistics.findOne({ selector: { id: delId } }).exec();
+                            if (local) await local.remove();
+                        }
+                    }
+                }
+            }
+
+            // 3. Update the existing crate(s) with new metadata
             const { error } = await supabase
                 .from('logistics')
                 .update({
                     ...supabaseUpdates,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', id);
+                .in('id', targetIds);
 
             if (error) throw error;
 
             if (db) {
-                const lDoc = await db.logistics.findOne({ selector: { id } }).exec();
-                if (lDoc) await lDoc.patch({ ...updates, updated_at: new Date().toISOString() });
+                for (const tId of targetIds) {
+                    const lDoc = await db.logistics.findOne({ selector: { id: tId } }).exec();
+                    if (lDoc) await lDoc.patch({ ...updates, updated_at: new Date().toISOString() });
+                }
             }
 
-            toast.success('Crate details updated successfully', { id: tid });
+            toast.success('Logistics protocol updated', { id: tid });
             setEditingCrate(null);
             handleRefresh();
         } catch (err: any) {
             toast.error(err.message || 'Update failed', { id: tid });
+        }
+    };
+
+    const handleDeleteCratesGroup = async (ids: string[]) => {
+        const tid = toast.loading(`Purging ${ids.length} units from protocol...`);
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 600));
+                toast.success('Group purged (Demo Mode)', { id: tid });
+                setEditingCrate(null);
+                handleRefresh();
+                return;
+            }
+
+            const { error } = await supabase.from('logistics').delete().in('id', ids);
+            if (error) throw error;
+
+            if (db) {
+                for (const id of ids) {
+                    const local = await db.logistics.findOne({ selector: { id } }).exec();
+                    if (local) await local.remove();
+                }
+            }
+
+            toast.success(`Successfully purged ${ids.length} units`, { id: tid });
+            setEditingCrate(null);
+            handleRefresh();
+        } catch (err: any) {
+            toast.error(err.message || 'Purge failed', { id: tid });
         }
     };
 
@@ -1486,6 +1658,7 @@ export const CratesInventoryView: React.FC = () => {
                     allInventory={allInventory}
                     onClose={() => setEditingCrate(null)}
                     onSave={handleSaveCrate}
+                    onDeleteGroup={handleDeleteCratesGroup}
                 />
             )}
 

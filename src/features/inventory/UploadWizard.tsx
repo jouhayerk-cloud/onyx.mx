@@ -11,7 +11,21 @@ import {
     sidebarStateAtom, 
     uploadItemDataAtom,
     workbookVersionAtom,
-    InventoryVersionAtom
+    InventoryVersionAtom,
+    isInventoryViewSliderOpenAtom,
+    isInventoryFiltersPanelOpenAtom,
+    isInventorySearchOpenAtom,
+    isPaymentsSearchOpenAtom,
+    isPaymentFiltersOpenAtom,
+    isPaymentActionPanelOpenAtom,
+    isPaymentQueueOpenAtom,
+    isPaymentUpcomingOpenAtom,
+    isPaymentPendingBarOpenAtom,
+    truckShowSaveDraftAtom,
+    truckShowOpenDraftAtom,
+    truckShowExportModalAtom,
+    truckShowReadyWizardAtom,
+    truckShowPanelsAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -195,6 +209,74 @@ const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, field
 export const UploadWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isUploadWizardOpenAtom);
     const [itemData, setItemData] = useAtom(uploadItemDataAtom);
+    
+    // Auto-hide toolbar bars when wizard is open
+    const setIsViewSliderOpen = useSetAtom(isInventoryViewSliderOpenAtom);
+    const setIsFiltersOpen = useSetAtom(isInventoryFiltersPanelOpenAtom);
+    const setIsSearchOpen = useSetAtom(isInventorySearchOpenAtom);
+    
+    // Finance/Payment bars
+    const setIsPaySearchOpen = useSetAtom(isPaymentsSearchOpenAtom);
+    const setIsPayFiltersOpen = useSetAtom(isPaymentFiltersOpenAtom);
+    const setIsPayActionOpen = useSetAtom(isPaymentActionPanelOpenAtom);
+    const setIsPayQueueOpen = useSetAtom(isPaymentQueueOpenAtom);
+    const setIsPayUpcomingOpen = useSetAtom(isPaymentUpcomingOpenAtom);
+    const setIsPayPendingOpen = useSetAtom(isPaymentPendingBarOpenAtom);
+
+    // Trucking panels
+    const setTrkSave = useSetAtom(truckShowSaveDraftAtom);
+    const setTrkOpen = useSetAtom(truckShowOpenDraftAtom);
+    const setTrkExport = useSetAtom(truckShowExportModalAtom);
+    const setTrkReady = useSetAtom(truckShowReadyWizardAtom);
+    const setTrkPanels = useSetAtom(truckShowPanelsAtom);
+
+    useEffect(() => {
+        if (isOpen) {
+            // Inventory
+            setIsViewSliderOpen(false);
+            setIsFiltersOpen(false);
+            setIsSearchOpen(false);
+            
+            // Finance
+            setIsPaySearchOpen(false);
+            setIsPayFiltersOpen(false);
+            setIsPayActionOpen(false);
+            setIsPayQueueOpen(false);
+            setIsPayUpcomingOpen(false);
+            setIsPayPendingOpen(false);
+
+            // Trucking
+            setTrkSave(false);
+            setTrkOpen(false);
+            setTrkExport(false);
+            setTrkReady(false);
+            setTrkPanels(false);
+
+            // Force scroll to top of all potential containers
+            const scrollElements = [
+                document.querySelector('.app-content'),
+                document.documentElement,
+                document.body
+            ];
+            
+            scrollElements.forEach(el => {
+                if (el) {
+                    el.scrollTo({ top: 0, behavior: 'auto' });
+                    if ('scrollTop' in el) el.scrollTop = 0;
+                }
+            });
+            
+            // Fallback for window
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+    }, [
+        isOpen, 
+        itemData,
+        setIsViewSliderOpen, setIsFiltersOpen, setIsSearchOpen,
+        setIsPaySearchOpen, setIsPayFiltersOpen, setIsPayActionOpen, setIsPayQueueOpen, setIsPayUpcomingOpen, setIsPayPendingOpen,
+        setTrkSave, setTrkOpen, setTrkExport, setTrkReady, setTrkPanels
+    ]);
+
     const user = useAtomValue(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
@@ -466,8 +548,24 @@ export const UploadWizard: React.FC = () => {
             // 3. Force UI refresh
             setInventoryVersion(v => v + 1);
 
-            toast.success(itemData?.id ? 'Artifact Updated!' : 'Artifact Created!', { id: tid });
-            if (!itemData?.id) setItemData({}); // Clear atom only for new entries to prevent accidental loops
+            const bookStr = String(itemData.workbook || '326').replace(/\D/g, '');
+            const toastMsg = `${state.vendorId}${bookStr}${state.itemNumber} saved`;
+            toast.success(toastMsg, { id: tid });
+
+            if (itemData?.id) {
+                // Edit mode: Close wizard as requested
+                setIsOpen(false);
+            } else {
+                // Create mode: Stay open, increment itemNumber, clear media, keep others
+                const nextNum = (parseInt(state.itemNumber) || 0) + 1;
+                setState(prev => ({ 
+                    ...prev, 
+                    itemNumber: String(nextNum),
+                    mediaList: [] 
+                }));
+                // Clear atom only for new entries to prevent accidental loops
+                setItemData({}); 
+            }
             return true;
         } catch (err: any) {
             toast.error(err.message || 'Upload Failed', { id: tid });
@@ -756,7 +854,7 @@ export const UploadWizard: React.FC = () => {
             </div>
 
             {saving && (
-                <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/95 backdrop-blur-3xl animate-in fade-in duration-200">
+                <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/40 backdrop-blur-3xl animate-in fade-in duration-200">
                     <div className="w-[600px] p-24 flex flex-col items-center gap-16 relative">
                         <div className="w-24 h-24 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_100px_rgba(var(--main-color-rgb),0.5)]">
                             <CloudUpload size={48} strokeWidth={4} className="animate-bounce" />
