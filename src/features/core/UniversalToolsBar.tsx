@@ -622,8 +622,8 @@ export const UniversalToolsBar: React.FC = () => {
                                         
                                         {/* Vendor Tag (Free Floating High Contrast) */}
                                         <div 
-                                            className="absolute top-2 left-2 text-[12px] font-black uppercase tracking-[0.2em] pointer-events-none z-10"
-                                            style={{ color: color, filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.8)) drop-shadow(0 0 1px white)' }}
+                                            className="absolute bottom-2 right-4 text-[32px] font-black uppercase tracking-tighter pointer-events-none z-10 opacity-40 group-hover:opacity-100 transition-opacity"
+                                            style={{ color: color, filter: 'drop-shadow(0 0 12px rgba(0,0,0,0.5))' }}
                                         >
                                             {v}
                                         </div>
