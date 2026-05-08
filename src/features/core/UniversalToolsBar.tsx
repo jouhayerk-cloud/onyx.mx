@@ -59,7 +59,7 @@ import {
     truckingReadyFieldsAtom
 } from '../../lib/atoms';
 import { 
-    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -84,8 +84,9 @@ const ActiveRequestGridItem: React.FC<{
     exRate: number;
     onClick: () => void;
 }> = ({ label, amount, color, type, currencyMode, exRate, onClick }) => {
-    const isMerch = type?.toLowerCase().includes('acq') || type?.toLowerCase().includes('prod');
-    const Icon = isMerch ? ShoppingCart : Package;
+    const isAcq = type?.toLowerCase().includes('acq');
+    const isProd = type?.toLowerCase().includes('prod');
+    const Icon = isAcq ? ShoppingCart : (isProd ? Settings : Package);
     const finalAmount = currencyMode === 'MXN' ? amount : amount / exRate;
 
     return (
@@ -96,7 +97,7 @@ const ActiveRequestGridItem: React.FC<{
         >
             <div className="flex items-start justify-between">
                 <span className="text-[12px] font-black text-white/60 uppercase tracking-[0.2em] truncate max-w-[80%]">{label}</span>
-                <Icon size={16} className="text-white/40" />
+                <Icon size={24} strokeWidth={3} style={{ color: color }} className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
             </div>
             
             <div className="flex flex-col">
@@ -628,9 +629,7 @@ export const UniversalToolsBar: React.FC = () => {
                                             {v}
                                         </div>
 
-                                        {isAuto && (
-                                            <div className="absolute top-2 right-2 text-amber-500 text-[10px] font-black uppercase tracking-[0.2em] pointer-events-none z-10" style={{ filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.8)) drop-shadow(0 0 1px rgba(245,158,11,0.5))' }}>Auto-Gen</div>
-                                        )}
+                                        {/* Removed Auto-Gen Tag */}
                                     </div>
                                 );
                             })}
