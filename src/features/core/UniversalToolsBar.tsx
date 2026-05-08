@@ -82,8 +82,10 @@ const ActiveRequestGridItem: React.FC<{
     type: string;
     currencyMode: string;
     exRate: number;
+    paidAmount?: number;
+    totalAmount?: number;
     onClick: () => void;
-}> = ({ label, amount, color, type, currencyMode, exRate, onClick }) => {
+}> = ({ label, amount, color, type, currencyMode, exRate, paidAmount = 0, totalAmount = 0, onClick }) => {
     const isAcq = type?.toLowerCase().includes('acq');
     const isProd = type?.toLowerCase().includes('prod');
     const Icon = isAcq ? ShoppingCart : (isProd ? Settings : Package);
@@ -106,6 +108,19 @@ const ActiveRequestGridItem: React.FC<{
                 </span>
                 <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mt-2 truncate">{type || 'General'}</span>
             </div>
+
+            {/* Progress Bar for Partial Production */}
+            {isProd && totalAmount > 0 && paidAmount > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                    <div 
+                        className="h-full transition-all duration-1000" 
+                        style={{ 
+                            width: `${Math.min((paidAmount / totalAmount) * 100, 100)}%`,
+                            backgroundColor: color 
+                        }} 
+                    />
+                </div>
+            )}
 
             {/* Shine effect */}
             <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -330,7 +345,7 @@ export const UniversalToolsBar: React.FC = () => {
         });
 
         // 2. Group by Vendor AND Type (Production vs Acquisition)
-        const groups: Record<string, { vendor: string, type: 'Acq' | 'Prod', items: any[], total: number }> = {};
+        const groups: Record<string, { vendor: string, type: 'Acq' | 'Prod' | 'Crate', items: any[], total: number }> = {};
         
         targetInventory.forEach(item => {
             const norm = normalizeInventoryData(item.data);
@@ -348,13 +363,29 @@ export const UniversalToolsBar: React.FC = () => {
             groups[gKey].total += (price * qty);
         });
 
-        // 3. Calculate paid offsets for each group to get true balance
+        // 3. Add Crates (Juan/Simona)
+        const supplierCrates = (allCrates || []).filter(c => {
+            const v = (c.vendors || '').toLowerCase();
+            return v.includes('juan') || v.includes('simona');
+        });
+
+        supplierCrates.forEach(crate => {
+            const v = (crate.vendors || '').toUpperCase();
+            const gKey = `${v}-Crate`;
+            if (!groups[gKey]) {
+                groups[gKey] = { vendor: v, type: 'Crate', items: [], total: 0 };
+            }
+            groups[gKey].items.push(crate);
+            groups[gKey].total += (crate.cost_mxn || 0);
+        });
+
+        // 4. Calculate paid offsets for each group to get true balance
         return Object.entries(groups).map(([gKey, group]) => {
-            const itemIds = new Set(group.items.map(i => String(i.data?.id || i.row)));
+            const itemIds = new Set(group.items.map(i => String(i.id || i.data?.id || i.row)));
             
-            // Sum all expenses related to these items
+            // Sum all expenses related to these items/crates
             const paidTotal = financeDocs.reduce((sum, exp) => {
-                if (exp.vendor_id !== group.vendor) return sum;
+                if (exp.vendor_id !== group.vendor && exp.vendor_id !== 'Crates') return sum;
                 if (!['Requested', 'Paid', 'Sent', 'Dispersed'].includes(exp.status)) return sum;
                 
                 const relIds = Array.isArray(exp.related_ids) ? exp.related_ids : (typeof exp.related_inventory_ids === 'string' ? exp.related_inventory_ids.split(',') : []);
@@ -370,15 +401,17 @@ export const UniversalToolsBar: React.FC = () => {
             return {
                 id: `auto-${gKey}`,
                 vendor_id: group.vendor,
-                description: `${group.items.length} ${group.type === 'Acq' ? 'Acquisition' : 'Production'} Items`,
+                description: group.type === 'Crate' ? `${group.items.length} Logistic Units` : `${group.items.length} ${group.type === 'Acq' ? 'Acquisition' : 'Production'} Items`,
                 amount: Math.round(balance),
+                paidAmount: Math.round(paidTotal),
+                totalAmount: Math.round(group.total),
                 status: 'Upcoming',
-                subcategory: group.type === 'Acq' ? 'Acquisition' : 'Production',
+                subcategory: group.type === 'Crate' ? 'Logistics' : (group.type === 'Acq' ? 'Acquisition' : 'Production'),
                 related_inventory_ids: Array.from(itemIds),
                 is_auto_gen: true
             };
         }).filter(Boolean);
-    }, [allInventory, financeDocs]);
+    }, [allInventory, allCrates, financeDocs]);
 
     const combinedUpcoming = useMemo(() => [...upcomingRecords, ...autoGenPayments], [upcomingRecords, autoGenPayments]);
     const combinedUpcomingTotal = useMemo(() => combinedUpcoming.reduce((s, r) => s + (r.amount || 0), 0), [combinedUpcoming]);
@@ -619,7 +652,17 @@ export const UniversalToolsBar: React.FC = () => {
                                 const isAuto = (r as any).is_auto_gen;
                                 return (
                                     <div key={r.id} className="relative group">
-                                        <ActiveRequestGridItem label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMode} exRate={exRate} onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: Array.isArray(r.related_inventory_ids) ? r.related_inventory_ids : [r.id], title: isAuto ? `Batch: ${v}` : `Detail: ${v}` })} />
+                                        <ActiveRequestGridItem 
+                                            label={r.description || v} 
+                                            amount={r.amount} 
+                                            paidAmount={(r as any).paidAmount}
+                                            totalAmount={(r as any).totalAmount}
+                                            color={color} 
+                                            type={r.subcategory} 
+                                            currencyMode={currencyMode} 
+                                            exRate={exRate} 
+                                            onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: Array.isArray(r.related_inventory_ids) ? r.related_inventory_ids : [r.id], title: isAuto ? `Batch: ${v}` : `Detail: ${v}` })} 
+                                        />
                                         
                                         {/* Vendor Tag (Free Floating High Contrast) */}
                                         <div 
