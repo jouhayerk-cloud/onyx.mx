@@ -744,110 +744,123 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
     };
 
     return (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xl animate-in fade-in duration-200">
-            <div className="w-full max-w-lg bg-[#0a0a0a] border border-white/10 overflow-hidden shadow-2xl flex flex-col relative">
-                <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-transparent via-(--main-color)/60 to-transparent" />
-
-                <div className="flex items-center justify-between px-8 py-6 border-b border-white/5">
-                    <div className="flex items-center gap-3">
-                        <Package size={18} className="text-(--main-color)" />
-                        <div>
-                            <h2 className="text-sm font-black uppercase tracking-widest text-white">Initialize Storage Protocol</h2>
-                            <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em] mt-0.5">Dimensional constraints + cost basis</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="p-2 text-white/30 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
-                        <X size={18} />
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="px-8 py-7 flex flex-col gap-6">
-                    <div className="flex bg-white/5 border border-white/10 p-1">
-                        <button type="button" onClick={() => set('type', 'crate')} className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${form.type === 'crate' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white cursor-pointer'}`}>
-                            Crate
-                        </button>
-                        <button type="button" onClick={() => set('type', 'pallet')} className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${form.type === 'pallet' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white cursor-pointer'}`}>
-                            Pallet
-                        </button>
-                        <button type="button" onClick={() => set('type', 'cardboard')} className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${form.type === 'cardboard' ? 'bg-[#d97706] text-black' : 'text-white/40 hover:text-white cursor-pointer'}`}>
-                            Box
-                        </button>
-                    </div>
-
-                    <div>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-3">Dimensions (cm)</p>
-                        <div className="grid grid-cols-3 gap-3">
-                            {[['Width', 'width'], ['Length', 'length'], ['Height', 'height']].map(([label, key]) => (
-                                <div key={key}>
-                                    <label className="text-[8px] font-black uppercase tracking-widest text-white/20 block mb-1.5">{label}</label>
-                                    <input
-                                        type="number" step="0.1" min="0" required
-                                        value={form[key as keyof typeof form]}
-                                        onChange={e => set(key as any, e.target.value)}
-                                        placeholder="0"
-                                        className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
-                                    />
+        <div 
+            className="fixed inset-0 z-[400] flex justify-center items-start pt-[80px] md:pt-[128px] animate-in fade-in duration-500 overflow-hidden"
+            onClick={onClose}
+        >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={onClose} />
+            
+            <div 
+                className="relative w-full h-full flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 bg-black/10 border-none rounded-none md:rounded-[40px] shadow-2xl backdrop-blur-3xl"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex-1 overflow-y-auto no-scrollbar px-6 md:px-12 pb-48 pt-6 md:pt-10">
+                    <div className="max-w-[1200px] mx-auto space-y-8 md:space-y-12">
+                        
+                        {/* Header */}
+                        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 pb-10 border-b border-white/5">
+                            <div className="flex flex-col gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-2 h-2 rounded-full bg-(--main-color) animate-pulse" />
+                                    <h1 className="text-[20px] font-black uppercase tracking-[0.6em] text-white/40 leading-none">
+                                        Initialize Storage
+                                    </h1>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                                <div className="flex items-center gap-3 whitespace-nowrap opacity-50">
+                                    <span className="text-[8px] font-black uppercase tracking-[0.8em] text-white/40">Acquisition Protocol</span>
+                                </div>
+                            </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[8px] font-black uppercase tracking-widest text-white/20 block mb-1.5">Quantity</label>
-                            <input
-                                type="number" min="1" required
-                                value={form.quantity}
-                                onChange={e => set('quantity', e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[8px] font-black uppercase tracking-widest text-white/20 block mb-1.5">Price per item (MXN)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 font-mono text-sm">$</span>
-                                <input
-                                    type="number" step="0.01" min="0"
-                                    value={form.price}
-                                    onChange={e => set('price', e.target.value)}
-                                    placeholder="0.00"
-                                    className="w-full bg-white/5 border border-white/10 pl-7 pr-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
-                                />
+                            <div className="flex items-center gap-6 self-end lg:self-auto">
+                                <button onClick={onClose} className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">
+                                    <X size={32} strokeWidth={2} />
+                                </button>
                             </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20 block mb-1.5">Notes (optional)</label>
-                        <input
-                            type="text"
-                            value={form.description}
-                            onChange={e => set('description', e.target.value)}
-                            placeholder="Internal reference..."
-                            className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm text-white/70 focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
-                        />
-                    </div>
+                        {/* Core Configuration */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+                            {/* Unit Type */}
+                            <div className="lg:col-span-4 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Unit Type</label>
+                                <div className="flex gap-2 bg-white/[0.03] border border-white/10 rounded-3xl p-1">
+                                    {[
+                                        { id: 'crate', label: 'Crate' },
+                                        { id: 'pallet', label: 'Pallet' },
+                                        { id: 'cardboard', label: 'Box' }
+                                    ].map(t => (
+                                        <button 
+                                            key={t.id} 
+                                            type="button"
+                                            onClick={() => set('type', t.id)}
+                                            className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${form.type === t.id ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                        >
+                                            {t.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
-                    {totalCost > 0 && (
-                        <div className="flex items-center justify-between px-4 py-3 bg-(--main-color)/5 border border-(--main-color)/15">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-(--main-color)/70">Total Acquisition Cost</span>
-                            <span className="font-mono font-black text-(--main-color) text-sm">${totalCost.toLocaleString()} MXN</span>
+                            {/* Quantity */}
+                            <div className="lg:col-span-3 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Batch Quantity</label>
+                                <div className="h-20 flex items-center bg-white/[0.03] border border-white/10 rounded-3xl px-6 hover:border-(--main-color) transition-all">
+                                    <SmartInput label="Quantity" field="quantity" value={form.quantity} icon={Hash} type="number" className="border-b-0 py-0 w-full" onSet={set} />
+                                </div>
+                            </div>
+
+                            {/* Price */}
+                            <div className="lg:col-span-5 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Acquisition Cost (MXN)</label>
+                                <div className="h-20 flex items-center bg-white/[0.03] border border-white/10 rounded-3xl px-6 hover:border-(--main-color) transition-all">
+                                    <SmartInput label="Unit Price" field="price" value={form.price} icon={FileText} type="number" className="border-b-0 py-0 w-full" onSet={set} />
+                                </div>
+                            </div>
                         </div>
-                    )}
 
-                    <div className="flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white border border-white/8 hover:border-white/20 transition-all cursor-pointer">
-                            Cancel
-                        </button>
-                        <button
-                            type="submit" disabled={loading}
-                            className={`flex-2 py-3 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer ${loading ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-(--main-color) text-black hover:scale-[1.01] active:scale-[0.99] shadow-xl shadow-(--main-color)/20'}`}
-                        >
-                            {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                            {loading ? 'Initializing…' : 'Deploy Units'}
-                        </button>
+                        {/* Dimensions */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <SmartInput label="Width (CM)" field="width" value={form.width} icon={Ruler} type="number" onSet={set} />
+                            <SmartInput label="Length (CM)" field="length" value={form.length} icon={Ruler} type="number" onSet={set} />
+                            <SmartInput label="Height (CM)" field="height" value={form.height} icon={Ruler} type="number" onSet={set} />
+                        </div>
+
+                        {/* Notes */}
+                        <div className="space-y-3">
+                            <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Internal References</label>
+                            <SmartInput label="Notes / Reference Code" field="description" value={form.description} icon={FileText} onSet={set} />
+                        </div>
+
+                        {/* Total Summary */}
+                        {totalCost > 0 && (
+                            <div className="p-8 rounded-[2rem] bg-(--main-color)/5 border border-(--main-color)/10 flex items-center justify-between">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em]">Total Resource Allocation</span>
+                                    <span className="text-sm font-black text-white/40 uppercase tracking-widest">
+                                        {form.quantity} × {form.type} @ ${Number(form.price).toLocaleString()}
+                                    </span>
+                                </div>
+                                <span className="text-4xl font-black text-white tabular-nums tracking-tighter italic">
+                                    ${totalCost.toLocaleString()} <span className="text-xs not-italic text-white/40 ml-1">MXN</span>
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex flex-col items-center gap-6 pt-12 border-t border-white/5">
+                            <button 
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                className={`w-full md:w-auto px-20 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 group ${loading ? 'bg-white/5 text-white/20' : 'bg-(--main-color) text-black hover:scale-105 active:scale-95 shadow-2xl shadow-(--main-color)/20'}`}
+                            >
+                                {loading ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} className="group-hover:rotate-90 transition-transform" />}
+                                {loading ? 'Initializing Matrix...' : 'Deploy Storage Protocol'}
+                            </button>
+                            <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">Protocol version 3.2.6 · Jouhayerk Matrix</p>
+                        </div>
+
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     );
@@ -923,7 +936,8 @@ const CrateEditPanel: React.FC<{
         cost_mxn: String(crate.cost_mxn || ''),
         status: crate.status || 'Packed',
         vendors: (crate as any).vendors || '',
-        quantity: String(crate.groupedCount || 1)
+        quantity: String(crate.groupedCount || 1),
+        type: crate.type || 'crate'
     });
 
     const [sourceType, setSourceType] = useState(() => {
@@ -1001,27 +1015,47 @@ const CrateEditPanel: React.FC<{
 
                         {/* Core Fields */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+                            {/* Unit Type */}
+                            <div className="lg:col-span-3 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Unit Type</label>
+                                <div className="flex gap-2 bg-white/[0.03] border border-white/10 rounded-3xl p-1">
+                                    {[
+                                        { id: 'crate', label: 'Crate' },
+                                        { id: 'pallet', label: 'Pallet' },
+                                        { id: 'cardboard', label: 'Box' }
+                                    ].map(t => (
+                                        <button 
+                                            key={t.id} 
+                                            onClick={() => set('type', t.id)}
+                                            className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.type === t.id ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                        >
+                                            {t.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {/* Status */}
-                            <div className="lg:col-span-4 space-y-3">
+                            <div className="lg:col-span-3 space-y-3">
                                 <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Protocol Status</label>
                                 {!isStatusExpanded ? (
                                     <button 
                                         onClick={() => setIsStatusExpanded(true)}
-                                        className="w-full flex items-center justify-between p-5 rounded-3xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-(--main-color) transition-all group"
+                                        className="w-full flex items-center justify-between h-14 px-5 rounded-3xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-(--main-color) transition-all group"
                                     >
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-(--main-color)">
-                                                {formData.status === 'Packed' ? <CheckCircle2 size={24} /> : formData.status === 'Partial' ? <RotateCcw size={24} /> : <Box size={24} />}
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-(--main-color)">
+                                                {formData.status === 'Packed' ? <CheckCircle2 size={16} /> : formData.status === 'Partial' ? <RotateCcw size={16} /> : <Box size={16} />}
                                             </div>
-                                            <span className="text-xl font-black uppercase tracking-tight text-white">{formData.status}</span>
+                                            <span className="text-sm font-black uppercase tracking-tight text-white">{formData.status}</span>
                                         </div>
-                                        <ChevronDown size={20} className="text-white/20 group-hover:text-white transition-colors" />
+                                        <ChevronDown size={16} className="text-white/20 group-hover:text-white transition-colors" />
                                     </button>
                                 ) : (
-                                    <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 duration-300">
-                                        {['Empty', 'Partial', 'Packed', 'In Transit'].map(s => (
+                                    <div className="flex gap-1 animate-in slide-in-from-top-2 duration-300">
+                                        {['Empty', 'Partial', 'Packed'].map(s => (
                                             <button key={s} onClick={() => { set('status', s); setIsStatusExpanded(false); }}
-                                                className={`flex flex-col items-center p-4 rounded-2xl transition-all duration-200 gap-2 ${formData.status === s ? 'bg-white text-black shadow-2xl scale-102' : 'bg-black/20 border border-white/5 text-white/40 hover:bg-white/5 hover:text-white backdrop-blur-xl'}`}>
+                                                className={`flex-1 py-3 rounded-2xl transition-all duration-200 ${formData.status === s ? 'bg-(--main-color) text-black shadow-lg' : 'bg-black/20 border border-white/5 text-white/40 hover:bg-white/5 hover:text-white'}`}>
                                                 <span className="text-[9px] font-black uppercase tracking-widest">{s}</span>
                                             </button>
                                         ))}
@@ -1030,18 +1064,18 @@ const CrateEditPanel: React.FC<{
                             </div>
 
                             {/* Provider */}
-                            <div className="lg:col-span-5 space-y-3">
+                            <div className="lg:col-span-4 space-y-3">
                                 <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Source Provider</label>
-                                <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
+                                <div className="flex gap-1 bg-white/[0.03] border border-white/10 rounded-3xl p-1">
                                     {['SIMONA', 'JUAN', 'VENDOR'].map(s => (
                                         <button key={s} onClick={() => setSourceType(s)}
-                                            className={`shrink-0 h-16 px-6 rounded-3xl flex items-center justify-center text-xs font-black transition-all border ${sourceType === s ? 'bg-white text-black border-white shadow-xl scale-105' : 'bg-white/5 text-white/40 border-white/10 hover:border-white/40'}`}>
+                                            className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceType === s ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
                                             {s}
                                         </button>
                                     ))}
                                 </div>
                                 {sourceType === 'VENDOR' && (
-                                    <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 animate-in fade-in duration-500">
+                                    <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 animate-in fade-in duration-500 mt-2">
                                         {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
                                             const v = vendors[id as keyof typeof vendors];
                                             const isSelected = formData.vendors === id;
@@ -1061,10 +1095,10 @@ const CrateEditPanel: React.FC<{
                             </div>
 
                             {/* Quantity */}
-                            <div className="lg:col-span-3 space-y-3">
-                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Group Quantity</label>
-                                <div className="h-20 flex items-center bg-white/[0.03] border border-white/10 rounded-3xl px-6 hover:border-(--main-color) transition-all">
-                                    <SmartInput label="Quantity" field="quantity" value={formData.quantity} icon={Hash} type="number" className="border-b-0 py-0 w-full" onSet={set} />
+                            <div className="lg:col-span-2 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Units</label>
+                                <div className="h-14 flex items-center bg-white/[0.03] border border-white/10 rounded-3xl px-4 hover:border-(--main-color) transition-all">
+                                    <SmartInput label="Qty" field="quantity" value={formData.quantity} icon={Hash} type="number" className="border-b-0 py-0 w-full compact" onSet={set} />
                                 </div>
                             </div>
                         </div>
