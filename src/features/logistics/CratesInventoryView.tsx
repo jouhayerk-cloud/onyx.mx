@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler } from 'lucide-react';
+import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
@@ -725,7 +725,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                 status: 'Empty',
                 width_cm: w, length_cm: l, height_cm: h,
                 cost_mxn: price,
-                vendors: sourceType === 'VENDOR' ? form.vendors : sourceType === 'JUAN' ? 'J' : 'S',
+                vendors: sourceType === 'VENDOR' ? form.vendors : sourceType,
                 description: form.description || `${form.type.charAt(0).toUpperCase() + form.type.slice(1)} ${i + 1}/${qty}: ${w}×${l}×${h} cm`,
                 contents_summary: '',
                 quantity: 1,
@@ -746,7 +746,17 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
             toast.success(`${qty} ${form.type}(s) initialized.`, { id: tid });
             onRefresh();
             onClose();
-            setForm({ type: 'crate', width: '', length: '', height: '', quantity: '1', price: '', description: '' });
+            setForm({ 
+                type: 'crate', 
+                width: '', 
+                length: '', 
+                height: '', 
+                quantity: '1', 
+                price: '', 
+                description: '',
+                vendors: 'JM'
+            });
+            setSourceType('VENDOR');
         } catch (err: any) {
             toast.error(err.message || 'Failed to create crates.', { id: tid });
         } finally {
@@ -1141,7 +1151,7 @@ export const CrateEditPanel: React.FC<{
                                         </button>
                                     ))}
                                 </div>
-                                {sourceType === 'VENDOR' && (
+                                {sourceType === 'VENDOR' ? (
                                     <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 animate-in fade-in duration-500 mt-2">
                                         {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
                                             const v = vendors[id as keyof typeof vendors];
@@ -1157,6 +1167,15 @@ export const CrateEditPanel: React.FC<{
                                                 </button>
                                             );
                                         })}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-3 mt-2 animate-in fade-in duration-500">
+                                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
+                                            <Shield size={18} className="text-(--main-color)" />
+                                        </div>
+                                        <span className="text-[11px] font-black text-white uppercase tracking-widest">
+                                            Internal {sourceType} Matrix
+                                        </span>
                                     </div>
                                 )}
                             </div>
