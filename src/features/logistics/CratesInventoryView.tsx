@@ -683,8 +683,18 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
     const db = useDatabase();
     const isDummyMode = useAtomValue(isDummyModeAtom);
     const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState({ type: 'crate', width: '', length: '', height: '', quantity: '1', price: '', description: '' });
-    const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+    const [form, setForm] = useState({ 
+        type: 'crate', 
+        width: '', 
+        length: '', 
+        height: '', 
+        quantity: '1', 
+        price: '', 
+        description: '',
+        vendors: 'M'
+    });
+    const [sourceType, setSourceType] = useState('VENDOR');
+    const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
     if (!isOpen) return null;
 
@@ -715,6 +725,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                 status: 'Empty',
                 width_cm: w, length_cm: l, height_cm: h,
                 cost_mxn: price,
+                vendors: sourceType === 'VENDOR' ? form.vendors : sourceType === 'JUAN' ? 'J' : 'S',
                 description: form.description || `${form.type.charAt(0).toUpperCase() + form.type.slice(1)} ${i + 1}/${qty}: ${w}×${l}×${h} cm`,
                 contents_summary: '',
                 quantity: 1,
@@ -745,7 +756,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
 
     return (
         <div 
-            className="fixed inset-0 z-[400] flex justify-center items-start pt-[80px] md:pt-[128px] animate-in fade-in duration-500 overflow-hidden"
+            className="fixed inset-0 md:left-[var(--sidebar-width)] z-[400] flex justify-center items-start pt-[80px] md:pt-[128px] animate-in fade-in duration-500 overflow-hidden"
             onClick={onClose}
         >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={onClose} />
@@ -814,6 +825,62 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                                 <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Acquisition Cost (MXN)</label>
                                 <div className="h-20 flex items-center bg-white/[0.03] border border-white/10 rounded-3xl px-6 hover:border-(--main-color) transition-all">
                                     <SmartInput label="Unit Price" field="price" value={form.price} icon={FileText} type="number" className="border-b-0 py-0 w-full" onSet={set} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Provider and Source Configuration */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            {/* Source Provider */}
+                            <div className="lg:col-span-6 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Source Provider</label>
+                                <div className="flex gap-2 bg-white/[0.03] border border-white/10 rounded-[2rem] p-1.5">
+                                    {['SIMONA', 'JUAN', 'VENDOR'].map(s => (
+                                        <button 
+                                            key={s} 
+                                            type="button"
+                                            onClick={() => setSourceType(s)}
+                                            className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceType === s ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Vendor Selector (Conditional) */}
+                            <div className="lg:col-span-6 space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">
+                                    {sourceType === 'VENDOR' ? 'Primary Vendor' : 'Protocol Source'}
+                                </label>
+                                <div className="h-20 flex flex-col justify-center bg-white/[0.03] border border-white/10 rounded-[2rem] px-6">
+                                    {sourceType === 'VENDOR' ? (
+                                        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                                            {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
+                                                const v = vendors[id as keyof typeof vendors];
+                                                const isSelected = form.vendors === id;
+                                                return (
+                                                    <button
+                                                        type="button" key={id}
+                                                        onClick={() => set('vendors', id)}
+                                                        className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-[10px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-xl z-10' : 'opacity-40 hover:opacity-100 grayscale hover:grayscale-0'}`}
+                                                        style={{ backgroundColor: v.color, color: 'white' }}
+                                                    >
+                                                        {id}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
+                                                <Shield size={18} className="text-(--main-color)" />
+                                            </div>
+                                            <span className="text-[11px] font-black text-white uppercase tracking-widest">
+                                                Internal {sourceType} Matrix
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -969,7 +1036,7 @@ const CrateEditPanel: React.FC<{
 
     return (
         <div 
-            className="fixed inset-0 z-[400] flex justify-center items-start pt-[80px] md:pt-[128px] animate-in fade-in duration-500 overflow-hidden"
+            className="fixed inset-0 md:left-[var(--sidebar-width)] z-[400] flex justify-center items-start pt-[80px] md:pt-[128px] animate-in fade-in duration-500 overflow-hidden"
             onClick={onClose}
         >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={onClose} />
