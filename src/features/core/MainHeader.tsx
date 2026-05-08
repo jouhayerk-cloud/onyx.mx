@@ -127,7 +127,7 @@ import {
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
-    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass
+    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -672,6 +672,20 @@ const LogisticsBar: React.FC = () => {
                             </button>
                         </>
                     )}
+
+                    {activeView === 'trucking' && (
+                        <>
+                            <div className="w-px h-6 bg-white/5 mx-1" />
+                            <button
+                                onClick={() => setSubTab('crates')}
+                                title="Deployed Crates Library"
+                                className={`flex flex-col items-center justify-center w-16 h-16 transition-all cursor-pointer rounded-2xl hover:bg-white/5 group/library ${subTab === 'crates' ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
+                            >
+                                <SquareLibrary size={28} strokeWidth={1.5} className="group-hover/library:scale-110 transition-transform" />
+                                <span className="text-[7px] font-black tracking-widest mt-1 opacity-40 group-hover/library:opacity-100 uppercase">Library</span>
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -1023,17 +1037,55 @@ export function MainHeader() {
                 return !EXCLUDED_STATUSES.has(status);
             });
 
+            // --- CRATE CATEGORIZATION ---
+            const allCrates = (logisticsDocs || []).filter(d => 
+                ['crate', 'pallet', 'cardboard'].includes((d.type || '').toLowerCase())
+            );
+            
+            const juanCrates = allCrates.filter(c => (c.vendors || '').toLowerCase().includes('juan'));
+            const simonaCrates = allCrates.filter(c => (c.vendors || '').toLowerCase().includes('simona'));
+            const otherCrates = allCrates.filter(c => {
+                const v = (c.vendors || '').toLowerCase();
+                return !v.includes('juan') && !v.includes('simona') && v !== '' && v !== 'internal';
+            });
+            const internalCrates = allCrates.filter(c => {
+                const v = (c.vendors || '').toLowerCase();
+                return !v.includes('juan') && !v.includes('simona') && (v === '' || v === 'internal');
+            });
+
             const vendorGroups: Record<string, any[]> = {};
+            
+            // Add Inventory Items
             exportItems.forEach(item => {
                 const d = item.data as any;
-                // Proactively extract vendor from tag prefixes if direct field is missing
-                // Priority: explicit vendor_id > item.label > d.itemId > d.item_id > d.tag_id
                 const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
                 const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
-                
                 let vid = prefixId || 'Unknown';
                 if (!vendorGroups[vid]) vendorGroups[vid] = [];
                 vendorGroups[vid].push(item);
+            });
+
+            // Add Vendor Crates as items in vendor sheets
+            otherCrates.forEach(c => {
+                const vid = (c.vendors || 'Unknown').toUpperCase();
+                if (!vendorGroups[vid]) vendorGroups[vid] = [];
+                vendorGroups[vid].push({
+                    row: c.id,
+                    label: c.id,
+                    data: {
+                        id: c.id,
+                        item_number: 'CRATE',
+                        description: `${c.type || 'Crate'} - ${c.description || ''}`,
+                        quantity: 1,
+                        price: c.cost_mxn,
+                        acquisition_price_mxn: c.cost_mxn,
+                        status: c.status,
+                        width_cm: c.width_cm,
+                        height_cm: c.height_cm,
+                        length_cm: c.length_cm,
+                        weight_kg: c.weight_kg
+                    }
+                });
             });
 
             // 1. SUMMARY SHEET DASHBOARD
@@ -1277,13 +1329,13 @@ export function MainHeader() {
             );
 
             const groups = [
-                { label: 'EMPTY INVENTORY', status: ['Empty'] },
-                { label: 'PACKED INVENTORY', status: ['Packed', 'Partial'] },
-                { label: 'DEPLOYED / IN TRANSIT', status: ['Deployed', 'In Transit'] }
+                { label: 'INTERNAL EMPTY INVENTORY', status: ['Empty'] },
+                { label: 'INTERNAL PACKED INVENTORY', status: ['Packed', 'Partial'] },
+                { label: 'INTERNAL DEPLOYED / IN TRANSIT', status: ['Deployed', 'In Transit'] }
             ];
 
             groups.forEach(group => {
-                const groupItems = exportCrates.filter(c => group.status.includes(c.status || 'Empty'));
+                const groupItems = internalCrates.filter(c => group.status.includes(c.status || 'Empty'));
                 if (groupItems.length === 0) return;
 
                 // Add group header row
@@ -1317,6 +1369,84 @@ export function MainHeader() {
                         cell.alignment = { vertical: 'middle', wrapText: true };
                     });
                 });
+            });
+
+            // 3.5 JUAN & SIMONA PROVIDER SHEETS
+            [
+                { name: 'JUAN', crates: juanCrates, color: 'FF3B82F6' },
+                { name: 'SIMONA', crates: simonaCrates, color: 'FFF43F5E' }
+            ].forEach(prov => {
+                if (prov.crates.length === 0) return;
+                const pSheet = workbook.addWorksheet(prov.name, { properties: { tabColor: { argb: prov.color } } });
+                pSheet.columns = [
+                    { header: 'ID / KEY', key: 'id', width: 25 },
+                    { header: 'TYPE', key: 'type', width: 14 },
+                    { header: 'DIMENSIONS', key: 'dims', width: 28 },
+                    { header: 'QTY', key: 'qty', width: 8 },
+                    { header: 'PRICE (MXN)', key: 'price', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'TOTAL (MXN)', key: 'total', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'STATUS', key: 'status', width: 15 },
+                    { header: 'TRK', key: 'trk', width: 18 },
+                    { header: 'CONTENTS', key: 'contents', width: 40 }
+                ];
+
+                pSheet.getRow(1).eachCell(cell => {
+                    cell.font = EXCEL_STYLES.fonts.header;
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: prov.color } };
+                    cell.font = { ...EXCEL_STYLES.fonts.header, color: { argb: 'FFFFFFFF' } };
+                    cell.alignment = { horizontal: 'center' };
+                });
+
+                // Grouping Logic
+                const emptyCrates = prov.crates.filter(c => c.status === 'Empty' || c.status === 'empty');
+                const activeCrates = prov.crates.filter(c => c.status !== 'Empty' && c.status !== 'empty');
+
+                // Add Empty Grouped
+                if (emptyCrates.length > 0) {
+                    const emptyGroups: Record<string, any> = {};
+                    emptyCrates.forEach(c => {
+                        const key = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.cost_mxn}x${c.type}`;
+                        if (!emptyGroups[key]) {
+                            emptyGroups[key] = { ...c, qty: 0 };
+                        }
+                        emptyGroups[key].qty += 1;
+                    });
+
+                    Object.values(emptyGroups).forEach(g => {
+                        pSheet.addRow({
+                            id: 'GROUPED EMPTY',
+                            type: (g.type || 'Crate').toUpperCase(),
+                            dims: `${g.width_cm}x${g.length_cm}x${g.height_cm} CM`,
+                            qty: g.qty,
+                            price: g.cost_mxn,
+                            total: g.cost_mxn * g.qty,
+                            status: 'EMPTY'
+                        });
+                    });
+                }
+
+                if (activeCrates.length > 0) {
+                    const headerRow = pSheet.addRow({ id: '── PACKED / DEPLOYED ──' });
+                    pSheet.mergeCells(headerRow.number, 1, headerRow.number, pSheet.columns.length);
+                    headerRow.font = { italic: true, bold: true, size: 10 };
+                    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+
+                    activeCrates.forEach(c => {
+                        const allBarcodes = getCrateBarcodes(c.id);
+                        const contents = (c.contents_summary || '') + (allBarcodes.length > 0 ? ` [${allBarcodes.join(', ')}]` : '');
+                        pSheet.addRow({
+                            id: String(c.id).toUpperCase(),
+                            type: (c.type || 'Crate').toUpperCase(),
+                            dims: `${c.width_cm}x${c.length_cm}x${c.height_cm} CM`,
+                            qty: 1,
+                            price: c.cost_mxn,
+                            total: c.cost_mxn,
+                            status: (c.status || '').toUpperCase(),
+                            trk: crateToTruck.get(c.id) || '',
+                            contents
+                        });
+                    });
+                }
             });
 
             // 4. DEPLOYED TRUCK CONSOLIDATED SHEETS

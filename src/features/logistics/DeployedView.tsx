@@ -17,6 +17,9 @@ import {
 import { universalViewAtom } from '../../lib/atoms';
 import { toast } from 'react-hot-toast';
 import { gsap } from 'gsap';
+import { CrateEditPanel, CrateRecord } from './CratesInventoryView';
+import { logisticsDocsAtom, inventoryAtom, liveExchangeRateAtom } from '../../lib/atoms';
+import { useAtomValue } from 'jotai';
 
 export const DeployedView: React.FC = () => {
     const [shipments, setShipments] = useState<any[]>([]);
@@ -25,6 +28,10 @@ export const DeployedView: React.FC = () => {
     const [selectedCrateId, setSelectedCrateId] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const setView = useSetAtom(universalViewAtom);
+    const logisticsDocs = useAtomValue(logisticsDocsAtom);
+    const allInventory = useAtomValue(inventoryAtom);
+    const liveRate = useAtomValue(liveExchangeRateAtom) || 17.5;
+    const [editingCrate, setEditingCrate] = useState<CrateRecord | null>(null);
     
     const detailViewRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
@@ -110,6 +117,45 @@ export const DeployedView: React.FC = () => {
         if (selectedShipment) {
             setSelectedShipment(null);
             setSelectedCrateId(null);
+        }
+    };
+
+    const handleEditCrate = () => {
+        if (!selectedCrateId || !selectedCrate) return;
+        const realCrate = logisticsDocs.find(c => c.id === selectedCrateId);
+        if (realCrate) {
+            setEditingCrate(realCrate);
+        } else {
+            // Create a temporary CrateRecord from snapshot data
+            const virtual: CrateRecord = {
+                id: selectedCrate.id,
+                type: selectedCrate.type || 'crate',
+                status: 'Packed',
+                length_cm: selectedCrate.l,
+                width_cm: selectedCrate.w,
+                height_cm: selectedCrate.h,
+                inventory_ids: (selectedCrate.items || []).map((i: any) => `${i.itemId}:${i.qty}`).join(','),
+                description: selectedCrate.label || '',
+                vendors: selectedCrate.color
+            };
+            setEditingCrate(virtual);
+        }
+    };
+
+    const handleSaveCrate = async (id: string, updates: any) => {
+        const tid = toast.loading('Synchronizing Matrix...');
+        try {
+            const { error } = await supabase
+                .from('logistics')
+                .update(updates)
+                .eq('id', id);
+            
+            if (error) throw error;
+            
+            toast.success('Matrix Synchronized', { id: tid });
+            setEditingCrate(null);
+        } catch (err: any) {
+            toast.error(`Sync Failed: ${err.message}`, { id: tid });
         }
     };
 
@@ -362,9 +408,17 @@ export const DeployedView: React.FC = () => {
                                                 <span className="text-[12px] font-black text-white/40 uppercase tracking-widest">{selectedCrate.l}×{selectedCrate.w}×{selectedCrate.h} CM</span>
                                             </div>
                                         </div>
-                                        <button onClick={() => setSelectedCrateId(null)} className="w-12 h-12 rounded-full flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">
-                                            <X size={28} />
-                                        </button>
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={handleEditCrate}
+                                                className="px-6 py-3 rounded-2xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all border border-(--main-color)/20 text-[9px] font-black uppercase tracking-widest"
+                                            >
+                                                Edit Protocol
+                                            </button>
+                                            <button onClick={() => setSelectedCrateId(null)} className="w-12 h-12 rounded-full flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">
+                                                <X size={28} />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto custom-scrollbar p-12">
@@ -416,6 +470,16 @@ export const DeployedView: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {editingCrate && (
+                <CrateEditPanel 
+                    crate={editingCrate}
+                    allCrates={logisticsDocs}
+                    allInventory={allInventory}
+                    onClose={() => setEditingCrate(null)}
+                    onSave={handleSaveCrate}
+                />
+            )}
 
             {/* Background Texture Overlay */}
             <div className="absolute inset-0 pointer-events-none opacity-[0.04] mix-blend-overlay bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />

@@ -12,7 +12,7 @@ import { ExportWizard } from '../../components/ExportWizard';
 import { vendors } from '../../lib/consts';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
-const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number; fillPct?: number }> = ({
+export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number; fillPct?: number }> = ({
     w = 60, l = 60, h = 60, status = 'Empty', type = 'crate', count = 1, fillPct = 0
 }) => {
     const visH = type === 'pallet' ? 15 : h;
@@ -118,7 +118,7 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: st
 };
 
 // --- Local Crate Type ---
-interface CrateRecord {
+export interface CrateRecord {
     id: string;
     type: string;
     status: 'Empty' | 'Packed' | 'Partial';
@@ -937,7 +937,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
 
 
 // ─── Local Smart Input ───────────────────────────────────────────────────────
-const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, className = "", onSet }: any) => {
+export const SmartInput = memo(({ label, field, value, icon: Icon, type = 'text', className = '', onSet, placeholder = '' }: any) => {
     const [isFocused, setIsFocused] = useState(false);
     
     const isCollapsed = !isFocused && value && value !== '0' && value !== '';
@@ -985,7 +985,7 @@ const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, class
 
 // ─── Crate Edit Panel ──────────────────────────────────────────────────────────
 
-const CrateEditPanel: React.FC<{
+export const CrateEditPanel: React.FC<{
     crate: CrateRecord;
     allCrates: CrateRecord[];
     allInventory: any[];
@@ -1230,7 +1230,8 @@ export const CratesInventoryView: React.FC = () => {
     const [isSavingNest, setIsSavingNest] = useState(false);
     const allInventory = useAtomValue(inventoryAtom);
     const isDummyMode = useAtomValue(isDummyModeAtom);
-    const activeTab = useMemo(() => (subTab === 'packed' || subTab === 'boxes' || subTab === 'deployed') ? subTab : 'empty', [subTab]);
+    const activeTab = useMemo(() => (subTab === 'packed' || subTab === 'boxes' || subTab === 'deployed' || subTab === 'crates') ? subTab : 'empty', [subTab]);
+    const isLibraryOrDeployed = activeTab === 'crates' || activeTab === 'deployed';
 
     useEffect(() => {
         if (!db) return;
@@ -1350,7 +1351,7 @@ export const CratesInventoryView: React.FC = () => {
                 activeTab === 'empty'    ? c.status === 'Empty' :
                 activeTab === 'packed'   ? (c.status === 'Packed' || c.status === 'Partial') && c.type !== 'cardboard' :
                 activeTab === 'boxes'    ? (c.status === 'Packed' || c.status === 'Partial') && c.type === 'cardboard' :
-                /* deployed */             (c.status === 'In Transit' || c.status === 'Deployed');
+                /* deployed/crates */      (c.status === 'In Transit' || c.status === 'Deployed');
             const q = searchQuery.toLowerCase();
             const matchesSearch = !q
                 || c.id?.toLowerCase().includes(q)
@@ -1364,7 +1365,7 @@ export const CratesInventoryView: React.FC = () => {
     }, [crates, activeTab, searchQuery]);
 
     const displayCrates = useMemo(() => {
-        if (activeTab === 'packed' || activeTab === 'boxes') {
+        if (activeTab === 'packed' || activeTab === 'boxes' || activeTab === 'crates' || activeTab === 'deployed') {
             const getVendors = (c: CrateRecord) => {
                 if (!c.inventory_ids) return 'ZZZZ';
                 const vSet = new Set<string>();
@@ -1627,7 +1628,7 @@ export const CratesInventoryView: React.FC = () => {
                                         onDelete={handleDeleteCrate}
                                         onNest={(c) => setNestingUnit(c)}
                                         onEdit={(c) => setEditingCrate(c)}
-                                        isDeployedView={activeTab === 'deployed'}
+                                        isDeployedView={isLibraryOrDeployed}
                                     />
                                 ))}
                             </div>
@@ -1645,11 +1646,11 @@ export const CratesInventoryView: React.FC = () => {
                                     No {activeTab} units
                                 </h3>
                                 <p className="text-[10px] font-black text-white/25 uppercase tracking-[0.3em] font-mono max-w-xs">
-                                    {(subTab === 'empty' || subTab === 'crates')
+                                    {(subTab === 'empty')
                                         ? 'No empty units available. Create new storage to begin packing.'
-                                        : subTab === 'deployed'
-                                        ? 'No deployed crates found. Crates appear here after Ready Truck is executed.'
-                                        : 'No packed units yet. Select items in the packing flow.'}
+                                        : (subTab === 'deployed' || subTab === 'crates')
+                                        ? 'No deployed units found in the shipping registry.'
+                                        : 'No units found matching this criteria.'}
                                 </p>
                             </div>
                             {(subTab === 'empty' || subTab === 'crates') && (
