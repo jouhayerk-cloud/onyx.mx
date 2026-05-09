@@ -275,7 +275,7 @@ const AddPaymentModal: React.FC<{
                     <div className="flex-1 overflow-y-auto no-scrollbar">
                         {/* Stage 1: Classification */}
                         {step === 1 && (
-                            <div className="h-full flex flex-col justify-center items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-20 duration-1000">
+                            <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-12 md:pt-24">
                                 <div className="text-center mb-16">
                                     <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
                                         SELECT_PROTOCOL
@@ -306,7 +306,7 @@ const AddPaymentModal: React.FC<{
 
                         {/* Stage 2.1: Merch Type */}
                         {step === 2.1 && (
-                            <div className="h-full flex flex-col justify-center max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000">
+                            <div className="flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-12 md:pt-24">
                                 <div className="mb-16">
                                     <button onClick={() => setStep(1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
                                         <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
@@ -340,7 +340,7 @@ const AddPaymentModal: React.FC<{
 
                         {/* Stage 3.1: Vendor Selection */}
                         {step === 3.1 && (
-                            <div className="h-full flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000 pt-12">
+                            <div className="flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-12 md:pt-24">
                                 <div className="mb-16">
                                     <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
                                         <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
@@ -414,7 +414,7 @@ const AddPaymentModal: React.FC<{
 
                         {/* Stage 2.2: Ops Logic */}
                         {step === 2.2 && (
-                            <div className="h-full flex flex-col justify-center max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000">
+                            <div className="flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-12 md:pt-24">
                                 <div className="mb-16">
                                     <button onClick={() => setStep(1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
                                         <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
@@ -448,7 +448,7 @@ const AddPaymentModal: React.FC<{
 
                         {/* Stage 3.2: Expense Categories */}
                         {step === 3.2 && (
-                            <div className="h-full flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000 pt-12">
+                            <div className="flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-12 md:pt-24">
                                 <div className="mb-16">
                                     <button onClick={() => setStep(2.2)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
                                         <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
@@ -483,7 +483,7 @@ const AddPaymentModal: React.FC<{
 
                         {/* Stage 4: Form */}
                         {step === 4 && (
-                            <div className="h-full flex flex-col max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 pt-12">
+                            <div className="flex flex-col max-w-5xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-12 md:pt-24">
                                 <div className="mb-16">
                                     <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
                                         DETAILS_SCHEMA
@@ -558,7 +558,7 @@ const AddPaymentModal: React.FC<{
 
                         {/* Step 5: Account */}
                         {step === 5 && (
-                            <div className="h-full flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000 pt-12">
+                            <div className="flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-12 md:pt-24">
                                 <div className="mb-20">
                                     <button onClick={() => setStep(3.1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
                                         <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
@@ -600,7 +600,7 @@ const AddPaymentModal: React.FC<{
 
                         {/* Step 6: Taxes */}
                         {step === 6 && (
-                            <div className="h-full flex flex-col max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 pt-12">
+                            <div className="flex flex-col max-w-5xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-12 md:pt-24">
                                 <div className="mb-20">
                                     <h2 className="text-7xl md:text-9xl font-black text-white tracking-tighter uppercase leading-[0.8] mb-6">
                                         ADJUST<br /><span className="opacity-20">FACTORS</span>
