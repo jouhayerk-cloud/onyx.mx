@@ -11,9 +11,9 @@ import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
-    Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, Package,
+    Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, Package as PackageIcon,
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers, Minimize2, X as CloseIcon
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers, Minimize2, X as CloseIcon
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
@@ -239,11 +239,8 @@ const AddPaymentModal: React.FC<{
                             </div>
                             <div className="flex flex-col">
                                 <div className="flex items-center gap-4 mb-1">
-                                    <h1 className="text-xl md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">PROTOCOL</h1>
-                                    <span className="h-[1px] w-8 bg-white/20" />
-                                    <span className="text-[10px] font-black text-blue-500 tracking-[0.3em] uppercase">Disbursement</span>
+                                    <h1 className="text-xl md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">PAYMENTS</h1>
                                 </div>
-                                <span className="text-[9px] font-black uppercase tracking-[0.6em] text-white/30">V.04_FINANCE_MODULE</span>
                             </div>
                         </div>
                         
@@ -278,28 +275,25 @@ const AddPaymentModal: React.FC<{
                         {step === 1 && (
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="text-center mb-16">
-                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
-                                        SELECT_PROTOCOL
-                                    </p>
                                 </div>
 
                                 <div className="flex flex-col md:flex-row items-center justify-center gap-20 md:gap-40 w-full">
                                     <button onClick={() => setStep(2.1)}
                                         className="group relative flex flex-col items-center text-center transition-all duration-700">
-                                        <div className="relative w-32 h-32 mb-8 flex items-center justify-center text-orange-500 transition-all duration-700 group-hover:scale-125">
-                                            <Layers size={80} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_15px_rgba(249,115,22,0.4)]" />
-                                            <div className="absolute inset-0 bg-orange-500/20 blur-[80px] opacity-0 group-hover:opacity-60 transition-opacity" />
+                                        <div className="relative w-48 h-48 mb-8 flex items-center justify-center text-orange-500 transition-all duration-700 group-hover:scale-125">
+                                            <Layers size={120} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_20px_rgba(249,115,22,0.5)]" />
+                                            <div className="absolute inset-0 bg-orange-500/20 blur-[100px] opacity-0 group-hover:opacity-60 transition-opacity" />
                                         </div>
-                                        <span className="relative text-[12px] font-black text-white uppercase tracking-[0.8em] group-hover:text-orange-400 transition-all">MERCHANDISE</span>
+                                        <span className="relative text-2xl font-black text-white uppercase tracking-[0.8em] group-hover:text-orange-400 transition-all">MERCHANDISE</span>
                                     </button>
 
                                     <button onClick={() => setStep(2.2)}
                                         className="group relative flex flex-col items-center text-center transition-all duration-700">
-                                        <div className="relative w-32 h-32 mb-8 flex items-center justify-center text-blue-500 transition-all duration-700 group-hover:scale-125">
-                                            <DollarSign size={80} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]" />
-                                            <div className="absolute inset-0 bg-blue-500/20 blur-[80px] opacity-0 group-hover:opacity-60 transition-opacity" />
+                                        <div className="relative w-48 h-48 mb-8 flex items-center justify-center text-blue-500 transition-all duration-700 group-hover:scale-125">
+                                            <DollarSign size={120} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+                                            <div className="absolute inset-0 bg-blue-500/20 blur-[100px] opacity-0 group-hover:opacity-60 transition-opacity" />
                                         </div>
-                                        <span className="relative text-[12px] font-black text-white uppercase tracking-[0.8em] group-hover:text-blue-400 transition-all">OPERATIONS</span>
+                                        <span className="relative text-2xl font-black text-white uppercase tracking-[0.8em] group-hover:text-blue-400 transition-all">OPERATIONS</span>
                                     </button>
                                 </div>
                             </div>
@@ -309,31 +303,28 @@ const AddPaymentModal: React.FC<{
                         {step === 2.1 && (
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
-                                    <button onClick={() => setStep(1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
-                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    <button onClick={() => setStep(1)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
                                     </button>
-                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
-                                        MERCH_CONTEXT
-                                    </p>
                                 </div>
 
                                 <div className="flex flex-col md:flex-row items-center gap-20 max-w-4xl">
                                     <button onClick={() => { set('subcategory', 'Acq'); setStep(3.1); }}
                                         className="group relative flex flex-col items-center transition-all duration-700">
-                                        <div className="w-32 h-32 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all group-hover:scale-110">
-                                            <Package size={64} className="text-orange-500" />
-                                            <div className="absolute inset-0 bg-orange-500/20 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                        <div className="relative w-48 h-48 flex items-center justify-center mb-8 transition-all group-hover:scale-110">
+                                            <PackageIcon size={120} className="text-orange-500 drop-shadow-[0_0_20px_rgba(249,115,22,0.5)]" />
+                                            <div className="absolute inset-0 bg-orange-500/20 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">ACQUISITIONS</span>
+                                        <span className="text-xl font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">ACQUISITIONS</span>
                                     </button>
 
                                     <button onClick={() => { set('subcategory', 'Prod'); setStep(3.1); }}
                                         className="group relative flex flex-col items-center transition-all duration-700">
-                                        <div className="w-32 h-32 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all group-hover:scale-110">
-                                            <Cpu size={64} className="text-blue-500" />
-                                            <div className="absolute inset-0 bg-blue-500/20 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                        <div className="relative w-48 h-48 flex items-center justify-center mb-8 transition-all group-hover:scale-110">
+                                            <Cpu size={120} className="text-blue-500 drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+                                            <div className="absolute inset-0 bg-blue-500/20 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">PRODUCTION</span>
+                                        <span className="text-xl font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">PRODUCTION</span>
                                     </button>
                                 </div>
                             </div>
@@ -343,12 +334,9 @@ const AddPaymentModal: React.FC<{
                         {step === 3.1 && (
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
-                                    <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
-                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
                                     </button>
-                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
-                                        VENDORS_ARTIFACTS
-                                    </p>
                                 </div>
 
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
@@ -388,20 +376,19 @@ const AddPaymentModal: React.FC<{
                                                             }
                                                             setStep(4);
                                                         }}
-                                                        className="group relative flex flex-col items-center gap-6 p-10 rounded-[48px] transition-all duration-700 bg-white/[0.03] border border-white/5 hover:border-white/20 hover:bg-white/10 hover:-translate-y-4 shadow-2xl">
-                                                        <div className="w-24 h-24 rounded-[36px] flex flex-col items-center justify-center font-black text-2xl shadow-2xl border border-white/20 relative overflow-hidden transition-all duration-700 group-hover:rotate-12"
+                                                        className="group relative flex flex-col items-center gap-10 p-12 rounded-[56px] transition-all duration-700 bg-white/[0.03] border border-white/5 hover:border-white/20 hover:bg-white/10 hover:-translate-y-4 shadow-2xl">
+                                                        <div className="w-32 h-32 rounded-[40px] flex flex-col items-center justify-center font-black text-4xl shadow-2xl border-2 border-white/20 relative overflow-hidden transition-all duration-700 group-hover:rotate-12"
                                                             style={{ backgroundColor: color, color: getTextColorForBg(color) }}>
                                                             <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                             <span className="drop-shadow-lg">{group.vendorId}</span>
-                                                            <span className="text-[9px] font-black opacity-60 mt-2 uppercase tracking-[0.2em]">{group.type.slice(0,4)}</span>
                                                         </div>
                                                         <div className="text-center">
-                                                            <p className="text-[12px] font-black text-white uppercase tracking-[0.2em] mb-2 truncate max-w-[140px] drop-shadow-lg">{fullName}</p>
-                                                            <div className="h-[2px] w-12 bg-white/40 mx-auto mb-3" />
-                                                            <p className="text-2xl font-mono font-black text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.3)]">{fmtMXN(group.total - group.paidTotal)}</p>
+                                                            <p className="text-xl font-black text-white uppercase tracking-[0.2em] mb-4 truncate max-w-[180px] drop-shadow-lg">{fullName}</p>
+                                                            <div className="h-[2px] w-16 bg-(--main-color) mx-auto mb-4" />
+                                                            <p className="text-4xl font-mono font-black text-(--main-color) drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]">{fmtMXN(group.total - group.paidTotal)}</p>
                                                         </div>
                                                         {paidPerc > 0 && (
-                                                            <div className="absolute top-4 right-4 px-4 py-2 rounded-xl bg-blue-500 border border-blue-400 text-[10px] font-black text-white uppercase tracking-widest shadow-2xl">
+                                                            <div className="absolute top-6 right-6 px-5 py-3 rounded-2xl bg-blue-500 border border-blue-400 text-[12px] font-black text-white uppercase tracking-widest shadow-2xl">
                                                                 {paidPerc}% PAID
                                                             </div>
                                                         )}
@@ -417,31 +404,28 @@ const AddPaymentModal: React.FC<{
                         {step === 2.2 && (
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
-                                    <button onClick={() => setStep(1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
-                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    <button onClick={() => setStep(1)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
                                     </button>
-                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
-                                        OPERATIONS_LOGIC
-                                    </p>
                                 </div>
 
                                 <div className="flex flex-col md:flex-row items-center gap-20 max-w-4xl">
                                     <button onClick={() => { set('subcategory', 'Packing'); setStep(3.1); }}
                                         className="group relative flex flex-col items-center transition-all duration-700">
-                                        <div className="w-32 h-32 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all group-hover:scale-110">
-                                            <Box size={64} className="text-green-500" />
-                                            <div className="absolute inset-0 bg-green-500/20 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                        <div className="relative w-48 h-48 flex items-center justify-center mb-8 transition-all group-hover:scale-110">
+                                            <Box size={120} className="text-green-500 drop-shadow-[0_0_20px_rgba(34,197,94,0.5)]" />
+                                            <div className="absolute inset-0 bg-green-500/20 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-[11px] font-black text-white uppercase tracking-[0.8em] group-hover:text-green-500 transition-all">CRATES</span>
+                                        <span className="text-xl font-black text-white uppercase tracking-[0.8em] group-hover:text-green-500 transition-all">CRATES</span>
                                     </button>
                                     
                                     <button onClick={() => setStep(3.2)}
                                         className="group relative flex flex-col items-center transition-all duration-700">
-                                        <div className="w-32 h-32 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all group-hover:scale-110">
-                                            <Filter size={64} className="text-white" />
-                                            <div className="absolute inset-0 bg-white/10 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                        <div className="relative w-48 h-48 flex items-center justify-center mb-8 transition-all group-hover:scale-110">
+                                            <Filter size={120} className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]" />
+                                            <div className="absolute inset-0 bg-white/10 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-[11px] font-black text-white uppercase tracking-[0.8em] group-hover:text-(--main-color) transition-all">OTHER</span>
+                                        <span className="text-xl font-black text-white uppercase tracking-[0.8em] group-hover:text-(--main-color) transition-all">OTHER</span>
                                     </button>
                                 </div>
                             </div>
@@ -451,12 +435,9 @@ const AddPaymentModal: React.FC<{
                         {step === 3.2 && (
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
-                                    <button onClick={() => setStep(2.2)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
-                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    <button onClick={() => setStep(2.2)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
                                     </button>
-                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
-                                        COST_CENTERS
-                                    </p>
                                 </div>
 
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-12">
@@ -471,11 +452,11 @@ const AddPaymentModal: React.FC<{
                                             onClick={() => { set('subcategory', cat.id); setStep(4); }}
                                             className="group relative flex flex-col items-center gap-6 transition-all duration-700"
                                         >
-                                            <div className={`w-24 h-24 flex items-center justify-center transition-all duration-700 group-hover:scale-125 ${cat.c}`}>
-                                                <cat.i size={56} strokeWidth={1} className="opacity-100 transition-all drop-shadow-lg" />
-                                                <div className="absolute inset-0 bg-white/10 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                            <div className={`relative w-32 h-32 flex items-center justify-center transition-all duration-700 group-hover:scale-125 ${cat.c}`}>
+                                                <cat.i size={96} strokeWidth={1} className="opacity-100 transition-all drop-shadow-2xl" />
+                                                <div className="absolute inset-0 bg-white/5 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                             </div>
-                                            <span className="text-[12px] font-black text-white uppercase tracking-[0.6em] group-hover:scale-110 transition-all">{cat.t}</span>
+                                            <span className="text-xl font-black text-white uppercase tracking-[0.6em] group-hover:scale-110 transition-all">{cat.t}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -486,29 +467,29 @@ const AddPaymentModal: React.FC<{
                         {step === 4 && (
                             <div className="flex flex-col items-center max-w-5xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
-                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
-                                        DETAILS_SCHEMA
+                                    <p className="text-xl text-white uppercase tracking-[1.2em] font-black drop-shadow-lg">
+                                        PAYMENT DETAILS
                                     </p>
                                 </div>
 
                                 <div className="grid gap-12 max-w-4xl">
-                                    <div className="space-y-6">
-                                        <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">Transactional Description</label>
+                                    <div className="space-y-8">
+                                        <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">Transactional Description</label>
                                         <input value={form.description} onChange={e => set('description', e.target.value)}
                                             className="w-full h-24 px-10 rounded-[40px] bg-white/[0.03] border border-white/5 text-2xl font-bold text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all outline-none shadow-inner" placeholder="Session summary" />
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                        <div className="space-y-6">
-                                            <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">Volume (MXN)</label>
+                                        <div className="space-y-8">
+                                            <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">Volume (MXN)</label>
                                             <div className="relative group">
                                                 <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
                                                     className="w-full h-24 px-10 pl-16 font-mono text-5xl font-black bg-white/[0.03] border border-white/5 rounded-[40px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" />
                                                 <span className="absolute left-10 top-1/2 -translate-y-1/2 text-2xl font-black text-white/20">$</span>
                                             </div>
                                         </div>
-                                        <div className="space-y-6">
-                                            <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">Reference Protocol</label>
+                                        <div className="space-y-8">
+                                            <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">Reference Payments</label>
                                             <input value={form.reference} onChange={e => set('reference', e.target.value)}
                                                 className="w-full h-24 px-10 rounded-[40px] bg-white/[0.03] border border-white/5 text-2xl font-bold text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" placeholder="Optional identifier" />
                                         </div>
@@ -516,8 +497,8 @@ const AddPaymentModal: React.FC<{
 
                                     <div className={`flex items-center justify-between p-10 rounded-[48px] border transition-all duration-700 ${form.recurring ? 'bg-(--main-color)/5 border-(--main-color)/40' : 'bg-white/[0.03] border-white/5'}`}>
                                         <div className="flex items-center gap-10">
-                                            <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center transition-all duration-700 ${form.recurring ? 'bg-(--main-color) text-black shadow-2xl' : 'bg-white/5 text-white/20'}`}>
-                                                <Calendar size={32} strokeWidth={1.5} />
+                                            <div className={`w-24 h-24 flex items-center justify-center transition-all duration-700 ${form.recurring ? 'text-(--main-color) drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.4)]' : 'text-white/20'}`}>
+                                                <Calendar size={64} strokeWidth={1} />
                                             </div>
                                             <div className="flex flex-col text-left">
                                                 <span className="text-xl font-black text-white uppercase tracking-widest mb-1">RECURRING DISBURSEMENT</span>
@@ -548,7 +529,7 @@ const AddPaymentModal: React.FC<{
                                         else if (form.vendor_id) setStep(3.1);
                                         else if (['Sppl', 'Labr', 'Packing', 'Oprt'].includes(form.subcategory)) setStep(3.2);
                                         else setStep(2.2);
-                                    }} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">REVERT_PHASE</button>
+                                    }} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                     <button onClick={() => {
                                         if (!form.amount || parseFloat(form.amount) <= 0) return notify.error('Enter valid amount');
                                         setStep(5);
@@ -561,11 +542,11 @@ const AddPaymentModal: React.FC<{
                         {step === 5 && (
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-20">
-                                    <button onClick={() => setStep(3.1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
-                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    <button onClick={() => setStep(3.1)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
                                     </button>
                                     <h2 className="text-7xl md:text-9xl font-black text-white tracking-tighter uppercase leading-[0.8] mb-6">
-                                        SOURCE<br /><span className="opacity-20">PROTOCOL</span>
+                                        SOURCE<br /><span className="opacity-20">PAYMENTS</span>
                                     </h2>
                                     <p className="text-[14px] text-white/30 uppercase tracking-[0.6em] font-medium">Select disbursement node</p>
                                 </div>
@@ -590,7 +571,7 @@ const AddPaymentModal: React.FC<{
                                 </div>
 
                                 <div className="flex gap-8 mt-24 max-w-4xl">
-                                    <button onClick={() => setStep(4)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">REVERT_PHASE</button>
+                                    <button onClick={() => setStep(4)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                     <button onClick={() => setStep(6)} disabled={!form.destination}
                                         className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-10 uppercase shadow-2xl shadow-(--main-color)/20">
                                         CALIBRATE_ADJUSTMENTS →
@@ -666,10 +647,10 @@ const AddPaymentModal: React.FC<{
                                 </div>
 
                                 <div className="flex gap-8 mt-24 max-w-4xl pb-12">
-                                    <button onClick={() => setStep(5)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">REVERT_SOURCE</button>
+                                    <button onClick={() => setStep(5)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                     <button onClick={handleSubmit} disabled={saving}
                                         className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 disabled:opacity-20 uppercase">
-                                        {saving ? 'RECORDING ARTIFACT…' : 'CONFIRM DISBURSEMENT PROTOCOL'}
+                                        {saving ? 'RECORDING ARTIFACT…' : 'CONFIRM DISBURSEMENT PAYMENTS'}
                                     </button>
                                 </div>
                             </div>
@@ -727,7 +708,7 @@ const RequestPaymentModal: React.FC<{
                             {paidPerc > 0 && percentage === 100 ? 'LIQUIDATION' : 'REQUEST'}
                         </h3>
                         <p className="text-[10px] text-white/20 uppercase tracking-[0.5em] font-black">
-                            {group.type} PROTOCOL · {group.vendorId}
+                            {group.type} PAYMENTS · {group.vendorId}
                         </p>
                     </div>
                     <button onClick={onClose} className="w-14 h-14 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-500">
@@ -789,7 +770,7 @@ const RequestPaymentModal: React.FC<{
                             </div>
                         ) : (
                             <div className="p-10 rounded-[48px] bg-white/5 border border-white/5 text-center flex flex-col items-center">
-                                <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] mb-4">TOTAL LIQUIDATION PROTOCOL</p>
+                                <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] mb-4">TOTAL LIQUIDATION PAYMENTS</p>
                                 <p className="text-5xl font-mono font-black text-white tracking-tighter leading-none">{fmtMXN(amountToRequest)}</p>
                             </div>
                         )}
@@ -1049,19 +1030,20 @@ const EditPaymentModal: React.FC<{
                         <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-12 flex flex-col items-center max-w-4xl mx-auto pt-6">
                             <div className="flex flex-col">
                                 <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">SOURCE</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">Select disbursement protocol</p>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">Select disbursement payments</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-6">
                                 {Object.entries(destinationsConfig).map(([key, dest]) => (
                                     <button key={key} type="button"
                                         onClick={() => set('destination', key as PaymentDestination)}
-                                        className={`flex flex-col items-center p-10 rounded-[48px] border-2 transition-all duration-500 ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10 scale-105' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}>
-                                        <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/20 flex items-center justify-center mb-6">
-                                            <CreditCard size={28} className="text-white" />
+                                        className={`group relative flex flex-col items-center p-14 rounded-[56px] border-2 transition-all duration-500 ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10 scale-105' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}>
+                                        <div className="relative w-32 h-32 flex items-center justify-center mb-10 transition-all group-hover:scale-125">
+                                            <CreditCard size={96} className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]" />
+                                            <div className="absolute inset-0 bg-white/10 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <div className="text-[13px] font-black text-white uppercase tracking-[0.3em] opacity-80">{dest.name}</div>
-                                        <div className="mt-4 text-[10px] font-mono text-white/40">{dest.accountNumber}</div>
+                                        <div className="text-2xl font-black text-white uppercase tracking-[0.3em] opacity-80 mb-2">{dest.name}</div>
+                                        <div className="text-lg font-mono text-white/40 tracking-widest">{dest.accountNumber}</div>
                                     </button>
                                 ))}
                             </div>
@@ -1112,28 +1094,28 @@ const EditPaymentModal: React.FC<{
                                         className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
                                 </div>
 
-                                <div className="p-10 rounded-[56px] bg-white/[0.03] border border-white/5 relative overflow-hidden group">
+                                <div className="p-14 rounded-[64px] bg-white/[0.03] border border-white/5 relative overflow-hidden group">
                                     <div className="absolute inset-0 bg-(--main-color)/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                    <div className="relative flex justify-between items-center mb-4">
-                                        <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em]">ARTIFACT TOTAL</span>
-                                        <span className="text-[11px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
+                                    <div className="relative flex justify-between items-center mb-6">
+                                        <span className="text-[12px] font-black text-white/30 uppercase tracking-[0.6em]">ARTIFACT TOTAL</span>
+                                        <span className="text-[14px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
                                     </div>
-                                    <div className="relative text-6xl font-mono font-black text-white tracking-tighter leading-none mb-4">
+                                    <div className="relative text-8xl font-mono font-black text-white tracking-tighter leading-none mb-8">
                                         {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
                                     </div>
-                                    <div className="relative flex gap-6 opacity-40">
-                                        {form.includeIva && <span className="text-[10px] font-black uppercase tracking-widest text-green-500">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
-                                        {form.includeComm && <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
-                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[10px] font-black uppercase tracking-widest text-white">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
+                                    <div className="relative flex gap-10 opacity-60">
+                                        {form.includeIva && <span className="text-[12px] font-black uppercase tracking-widest text-green-500">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                        {form.includeComm && <span className="text-[12px] font-black uppercase tracking-widest text-blue-500">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
+                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[12px] font-black uppercase tracking-widest text-white">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex gap-6 mt-16">
-                                <button onClick={() => setStep(5)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
+                            <div className="flex gap-8 mt-16 w-full max-w-2xl">
+                                <button onClick={() => setStep(5)} className="flex-1 py-8 border border-white/10 text-white/40 rounded-[32px] text-xl font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
                                 <button onClick={handleUpdate} disabled={saving}
-                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl disabled:opacity-20 uppercase">
-                                    {saving ? 'UPDATING ARTIFACT…' : 'CONFIRM UPDATES'}
+                                    className="flex-[2] py-8 bg-(--main-color) text-black rounded-[32px] text-xl font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl disabled:opacity-20 uppercase">
+                                    {saving ? 'UPDATING…' : 'CONFIRM'}
                                 </button>
                             </div>
                         </div>
