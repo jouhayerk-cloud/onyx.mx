@@ -918,6 +918,7 @@ const RequestPaymentModal: React.FC<{
                             </div>
                         </div>
                     )}
+                    </div>
                 </div>
             </div>
         </div>
