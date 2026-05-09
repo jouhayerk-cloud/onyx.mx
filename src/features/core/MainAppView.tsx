@@ -392,16 +392,7 @@ export function MainAppView() {
                             </li>
                         )}
 
-                        {/* ── STORE ── */}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
-                            <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <ShoppingBag size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Store</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Store</span>
-                            </li>
-                        )}
+
 
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
                             <li className={`sidebar-list-item ${activeView === 'warehouse' ? 'active' : ''}`} onClick={() => { setActiveView('warehouse'); setLogisticsSubTab('empty'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
@@ -445,6 +436,17 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">Viewer</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Viewer</span>
+                            </li>
+                        )}
+
+                        {/* ── STORE ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
+                            <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <ShoppingBag size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Store</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Store</span>
                             </li>
                         )}
                     </ul>

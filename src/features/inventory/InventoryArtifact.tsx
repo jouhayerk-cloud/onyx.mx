@@ -104,12 +104,18 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
             });
         });
         return targetIds.map(id => {
+            // Try Inventory first
             const baseItem = items.find(i => {
                 const norm = i.data || i;
                 return String(i.row) === id || String(norm.id) === id || String(norm.item_id).toUpperCase() === id.toUpperCase() || String(norm.book_barcode).toUpperCase() === id.toUpperCase();
             });
-            if (!baseItem) return null;
-            return { ...baseItem, logistics: logMap.get(id) || [] };
+            if (baseItem) return { ...baseItem, logistics: logMap.get(id) || [], artifactType: 'inventory' };
+
+            // Then try Logistics
+            const logItem = logisticsDocs.find(l => String(l.id) === id || String(l.crate_id) === id);
+            if (logItem) return { data: logItem, row: logItem.id, artifactType: 'logistics' };
+
+            return null;
         }).filter(Boolean);
     }, [targetIds, items, logisticsDocs]);
 
@@ -128,8 +134,14 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     const aggregateFinancials = useMemo(() => {
         let listValue = 0, netPaid = 0, taxes = 0;
         filteredItems.forEach((item: any) => {
-            const norm = normalizeInventoryData(item.data);
-            listValue += Number(norm.price || 0) * Number(norm.quantity || 1);
+            const isLog = item.artifactType === 'logistics';
+            const data = item.data || item;
+            if (isLog) {
+                listValue += Number(data.cost_mxn || 0) * Number(data.quantity || 1);
+            } else {
+                const norm = normalizeInventoryData(data);
+                listValue += Number(norm.price || 0) * Number(norm.quantity || 1);
+            }
         });
         const relatedPayments = financeDocs.filter(d => {
             const rel = d.related_ids || d.related_inventory_ids || '';
@@ -206,15 +218,33 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                     'grid-cols-1 gap-16 md:gap-32 max-w-5xl mx-auto'
                 }`}>
                     {allResolvedItems.map((item: any) => {
-                        const norm = normalizeInventoryData(item.data);
-                        const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-                        const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
+                        const isLog = item.artifactType === 'logistics';
+                        const data = item.data || item;
+                        
+                        // Normalized data for rendering
+                        const norm = isLog ? {
+                            id: data.id,
+                            price: data.cost_mxn,
+                            quantity: data.quantity || 1,
+                            shape: String(data.type || 'Unit').toUpperCase(),
+                            shortDescription: data.description || 'Logistic Unit',
+                            color: data.vendors || 'N/A',
+                            material: data.status || 'N/A',
+                            vendor: data.vendors,
+                            width_cm: data.width_cm || data.w,
+                            book_barcode: data.crate_id || data.id,
+                            image_url: null // Logistics units usually don't have images in this view
+                        } : normalizeInventoryData(data);
+
+                        const calculated = !isLog ? calculateCodesAndPrices(norm as any, exchangeRate, '326') : { bookBarcode: norm.book_barcode };
+                        const payStatus = !isLog ? getStatusClass(norm as any, partialPayIds, fullPayIds) : (data.pay_req === 'true' || data.pay_req === 'paid' ? 'GREEN' : (data.cost_mxn > 0 ? 'YELLOW' : 'BLUE'));
+                        
                         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : '#38bdf8';
-                        const mainImageUrl = norm.generatedPngUrl || norm.generated_png_url || norm.image_url || norm.item_image || (norm.mediaUrls && String(norm.mediaUrls).split(',')[0]);
-                        const displayUrlsArr = [mainImageUrl].filter(Boolean);
+                        const mainImageUrl = !isLog ? (norm.generatedPngUrl || norm.generated_png_url || norm.image_url || (norm as any).item_image || (norm.mediaUrls && String(norm.mediaUrls).split(',')[0])) : null;
+                        const displayUrlsArr = mainImageUrl ? [mainImageUrl] : [];
 
                         return (
-                            <div key={item.row} onClick={() => handleItemAction(item, displayUrlsArr, 0)}
+                            <div key={item.row || norm.id} onClick={() => handleItemAction(item, displayUrlsArr, 0)}
                                 className={`group relative flex transition-all duration-1000 cursor-pointer ${
                                     displayMode === 'list' ? 'flex-row items-center gap-8 min-h-[140px] border-b border-white/5 pb-6' : 
                                     displayMode === 'gallery' ? 'flex-col gap-10 pb-24 border-b border-white/5' : 'flex-col min-h-[340px]'
@@ -226,9 +256,12 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                     {mainImageUrl ? (
                                         <img src={getCleanImageUrl(mainImageUrl)} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-1000 opacity-60 group-hover:opacity-100" />
                                     ) : (
-                                        <Package size={32} className="text-white/[0.03]" />
+                                        <div className="flex flex-col items-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
+                                            <Package size={displayMode === 'gallery' ? 64 : 32} strokeWidth={1} />
+                                            <span className="text-[10px] font-black tracking-[0.4em] uppercase">{isLog ? 'Logistic Unit' : 'No Image'}</span>
+                                        </div>
                                     )}
-                                    <div className={`absolute top-6 right-8 font-black text-white/60 group-hover:text-white transition-colors tabular-nums ${displayMode === 'gallery' ? 'text-3xl' : 'text-lg'}`}>${Math.ceil(norm.price || 0).toLocaleString()}</div>
+                                    <div className={`absolute top-6 right-8 font-black text-white/60 group-hover:text-white transition-colors tabular-nums ${displayMode === 'gallery' ? 'text-3xl' : 'text-lg'}`}>${Math.ceil(Number(norm.price || 0)).toLocaleString()}</div>
                                     <div className="absolute top-6 left-8 flex items-center gap-2">
                                         <div className={`rounded-full ${displayMode === 'gallery' ? 'w-3 h-3' : 'w-1.5 h-1.5'}`} style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
                                         <span className={`${displayMode === 'gallery' ? 'text-xs' : 'text-[7px]'} font-black uppercase tracking-widest text-white/20 group-hover:text-white/40`}>{getStatusLabel(payStatus || '')}</span>
@@ -245,7 +278,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                             <span className="text-xs font-black text-white">x{norm.quantity || 1}</span>
                                         </div>
                                         <div className="flex flex-col border-l border-white/5 pl-6">
-                                            <span className="text-[6px] font-black text-white/40 uppercase">Tag</span>
+                                            <span className="text-[6px] font-black text-white/40 uppercase">{isLog ? 'Unit ID' : 'Tag'}</span>
                                             <span className="text-xs font-black text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]">{calculated.bookBarcode}</span>
                                         </div>
                                         {norm.vendor && (

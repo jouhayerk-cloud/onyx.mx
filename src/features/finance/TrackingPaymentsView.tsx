@@ -223,383 +223,463 @@ const AddPaymentModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={onClose} />
-            <div className="bg-black/20 border border-white/10 rounded-[64px] w-full max-w-[700px] h-[85dvh] flex flex-col shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-500" onClick={e => e.stopPropagation()}>
+        <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-1000 overflow-hidden">
+            {/* ── IMMERSIVE BACKDROP ── */}
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-xl" onClick={onClose} />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-orange-500/5 pointer-events-none" />
 
-                {/* Progress Strip */}
-                <div className="px-12 pt-12 pb-6 flex justify-between items-center shrink-0">
-                    <div className="flex gap-3">
-                        {[1, 2, 3, 4, 5, 6].map(s => (
-                            <div key={s} className={`h-1.5 rounded-full transition-all duration-700 ${step >= s ? 'w-10 bg-(--main-color) shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]' : 'w-6 bg-white/10'}`} />
-                        ))}
+            <div className="relative w-full max-w-5xl h-[85vh] bg-black/80 border border-white/10 rounded-[48px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 duration-1000 ease-out no-select shadow-[0_0_100px_rgba(0,0,0,0.5)]" onClick={e => e.stopPropagation()}>
+
+                {/* ── IMMERSIVE HEADER ─────────────────────────────────────────── */}
+                <div className="flex items-center justify-between px-8 md:px-20 py-10 md:py-16 z-20 shrink-0">
+                    <div className="flex flex-col gap-6">
+                        <div className="flex items-center gap-6">
+                            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                <Wallet size={24} className="text-(--main-color)" />
+                            </div>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-4 mb-1">
+                                    <h1 className="text-xl md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">PROTOCOL</h1>
+                                    <span className="h-[1px] w-8 bg-white/20" />
+                                    <span className="text-[10px] font-black text-blue-500 tracking-[0.3em] uppercase">Disbursement</span>
+                                </div>
+                                <span className="text-[9px] font-black uppercase tracking-[0.6em] text-white/30">V.04_FINANCE_MODULE</span>
+                            </div>
+                        </div>
+                        
+                        {/* High-Fidelity Progress Strip */}
+                        <div className="flex gap-4">
+                            {[1, 2.1, 3.1, 4, 5, 6].map((s, idx) => {
+                                const isActive = step === s || (s === 2.1 && step === 2.2) || (s === 3.1 && step === 3.2);
+                                const isPassed = step > s || (step === 2.2 && s < 2) || (step === 3.2 && s < 3);
+                                return (
+                                    <div key={idx} className="flex flex-col gap-2">
+                                        <div className={`h-1.5 rounded-full transition-all duration-1000 ${isActive ? 'w-16 bg-(--main-color) shadow-[0_0_20px_rgba(var(--main-color-rgb),0.5)]' : isPassed ? 'w-8 bg-white/40' : 'w-4 bg-white/5'}`} />
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <button onClick={onClose} className="w-14 h-14 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-500 group">
-                        <CloseIcon size={24} strokeWidth={1.5} className="group-active:scale-75 transition-transform" />
+
+                    <button 
+                        onClick={onClose} 
+                        className="group relative w-16 h-16 flex items-center justify-center rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-500 active:scale-90"
+                    >
+                        <CloseIcon className="w-8 h-8 text-white/40 group-hover:text-white transition-colors" strokeWidth={1} />
+                        <div className="absolute inset-0 rounded-full bg-white/5 opacity-0 group-hover:opacity-100 blur-xl transition-opacity" />
                     </button>
                 </div>
 
-                <div className="px-12 pb-12 flex flex-col flex-1 overflow-y-auto custom-scrollbar">
-                    {/* Stage 1: Classification */}
-                    {step === 1 && (
-                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
-                            <div className="flex flex-col">
-                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">PROTOCOL</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Define transactional classification</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-8">
-                                <button onClick={() => setStep(2.1)}
-                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-[#F7941D]/40 hover:bg-[#F7941D]/5 transition-all duration-500 relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-[#F7941D]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <div className="w-16 h-16 mb-8 rounded-[24px] bg-[#F7941D]/10 border border-[#F7941D]/20 flex items-center justify-center text-[#F7941D] group-hover:scale-110 transition-transform">
-                                        <Layers size={32} />
-                                    </div>
-                                    <span className="text-xl font-black text-white uppercase tracking-tight mb-2">MERCHANDISE</span>
-                                    <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest text-left leading-relaxed">Inventory, production<br />& labor cycles</span>
-                                </button>
-                                <button onClick={() => setStep(2.2)}
-                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-[#00AEEF]/40 hover:bg-[#00AEEF]/5 transition-all duration-500 relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-[#00AEEF]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <div className="w-16 h-16 mb-8 rounded-[24px] bg-[#00AEEF]/10 border border-[#00AEEF]/20 flex items-center justify-center text-[#00AEEF] group-hover:scale-110 transition-transform">
-                                        <DollarSign size={32} />
-                                    </div>
-                                    <span className="text-xl font-black text-white uppercase tracking-tight mb-2">OPERATIONS</span>
-                                    <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest text-left leading-relaxed">Variable services,<br />fixed bills & utilities</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stage 2.1: Merch Type */}
-                    {step === 2.1 && (
-                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
-                            <div className="flex flex-col">
-                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">MERCH</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Specify inventory context</p>
-                            </div>
-                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-4 flex items-center gap-3 group transition-all">
-                                <span className="group-hover:-translate-x-2 transition-transform">←</span> BACK TO PROTOCOL
-                            </button>
-
-                            <div className="grid grid-cols-2 gap-8">
-                                <button onClick={() => { set('subcategory', 'Acq'); setStep(3.1); }}
-                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-white/20 hover:bg-white/[0.08] transition-all duration-500">
-                                    <div className="w-14 h-14 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:scale-110 group-hover:text-white transition-all">
-                                        <Archive size={24} />
-                                    </div>
-                                    <span className="text-lg font-black text-white uppercase tracking-widest mb-1">ACQUISITIONS</span>
-                                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-tight">Bulk Purchase Cycles</span>
-                                </button>
-                                <button onClick={() => { set('subcategory', 'Prod'); setStep(3.1); }}
-                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-white/20 hover:bg-white/[0.08] transition-all duration-500">
-                                    <div className="w-14 h-14 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:scale-110 group-hover:text-white transition-all">
-                                        <Cpu size={24} />
-                                    </div>
-                                    <span className="text-lg font-black text-white uppercase tracking-widest mb-1">PRODUCTION</span>
-                                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-tight">Labor & Processing Cycles</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stage 3.1: Vendor Selection */}
-                    {step === 3.1 && (
-                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
-                            <div className="flex flex-col">
-                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">VENDORS</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Link to verified provider</p>
-                            </div>
-                            <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-4 flex items-center gap-3 group transition-all">
-                                <span className="group-hover:-translate-x-2 transition-transform">←</span> BACK
-                            </button>
-
-                            <div className="flex flex-wrap gap-6 justify-start">
-                                {pendingGroups.filter(g => {
-                                    if (form.subcategory === 'Packing') return g.type === 'Packing';
-                                    return form.subcategory === 'Prod' ? g.type === 'Production' : g.type === 'Acquisition';
-                                }).length === 0 ? (
-                                    <div className="text-center py-24 border-2 border-dashed border-white/5 rounded-[64px] w-full">
-                                        <p className="text-white/20 text-[11px] font-black tracking-[0.6em] uppercase">No artifacts pending request</p>
-                                    </div>
-                                ) : (
-                                    pendingGroups
-                                        .filter(g => {
-                                            if (form.subcategory === 'Packing') return g.type === 'Packing';
-                                            return form.subcategory === 'Prod' ? g.type === 'Production' : g.type === 'Acquisition';
-                                        })
-                                        .map(group => {
-                                            const paidPerc = Math.round((group.paidTotal / group.total) * 100);
-                                            const vendor = vendors[group.vendorId as keyof typeof vendors];
-                                            const color = vendor?.color || '#333';
-                                            const fullName = vendor?.name || group.vendorId;
-
-                                            return (
-                                                <button key={`${group.vendorId}-${group.type}`} 
-                                                    onClick={() => {
-                                                        set('vendor_id', group.vendorId);
-                                                        set('amount', (group.total - group.paidTotal).toString());
-                                                        if (form.subcategory === 'Packing' || group.vendorId === 'Crates') {
-                                                            const sizesSet = new Set(group.items.map(i => {
-                                                                const d = i.data as any;
-                                                                return `${d.l_cm || 0}x${d.w_cm || 0}x${d.d_cm || 0}`;
-                                                            }));
-                                                            set('description', `Payment for ${group.items.length} Crates. Sizes: ${Array.from(sizesSet).join(', ')}`);
-                                                        } else {
-                                                            set('description', `${paidPerc > 0 ? 'Liquidation' : 'Initial Payment'} for ${group.items.length} items from ${fullName}`);
-                                                        }
-                                                        setStep(4);
-                                                    }}
-                                                    className="group relative flex flex-col items-center gap-4 p-6 rounded-[40px] transition-all duration-500 hover:bg-white/5 border border-transparent hover:border-white/10 scale-95 hover:scale-100">
-                                                    <div className="w-20 h-20 rounded-[32px] flex flex-col items-center justify-center font-black text-lg shadow-2xl border-2 border-white/5 relative overflow-hidden transition-all duration-500 group-hover:rotate-6"
-                                                        style={{ backgroundColor: color, color: getTextColorForBg(color) }}>
-                                                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                        <span>{group.vendorId}</span>
-                                                        <span className="text-[7px] font-black opacity-40 mt-1 uppercase tracking-widest">{group.type.slice(0,4)}</span>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] truncate max-w-[120px]">{fullName}</p>
-                                                        <p className="text-sm font-mono font-black text-(--main-color) mt-1">{fmtMXN(group.total - group.paidTotal)}</p>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stage 2.2: Ops Logic */}
-                    {step === 2.2 && (
-                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
-                            <div className="flex flex-col">
-                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">OPERATIONS</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Specify administrative context</p>
-                            </div>
-                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-4 flex items-center gap-3 group transition-all">
-                                <span className="group-hover:-translate-x-2 transition-transform">←</span> BACK
-                            </button>
-
-                            <div className="grid grid-cols-2 gap-8">
-                                <button onClick={() => { set('subcategory', 'Packing'); setStep(3.1); }}
-                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-[#8DC63F]/40 hover:bg-[#8DC63F]/5 transition-all duration-500">
-                                    <div className="w-14 h-14 mb-6 rounded-2xl bg-[#8DC63F]/10 border border-[#8DC63F]/20 flex items-center justify-center text-[#8DC63F] group-hover:scale-110 transition-transform">
-                                        <Box size={28} />
-                                    </div>
-                                    <span className="text-xl font-black text-white uppercase tracking-tight mb-1">CRATES</span>
-                                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-tight">Logistics & Packaging</span>
-                                </button>
-                                <button onClick={() => setStep(3.2)}
-                                    className="group flex flex-col items-start p-10 rounded-[56px] bg-white/5 border border-white/5 hover:border-white/20 hover:bg-white/[0.08] transition-all duration-500">
-                                    <div className="w-14 h-14 mb-6 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:scale-110 transition-transform">
-                                        <Filter size={28} />
-                                    </div>
-                                    <span className="text-xl font-black text-white uppercase tracking-tight mb-1">OTHER</span>
-                                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-tight">Variable Operations</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stage 3.2: Expense Categories */}
-                    {step === 3.2 && (
-                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
-                            <div className="flex flex-col">
-                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">DEPT</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Specify cost center</p>
-                            </div>
-                            <button onClick={() => setStep(2.2)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-4 flex items-center gap-3 group transition-all">
-                                <span className="group-hover:-translate-x-2 transition-transform">←</span> BACK
-                            </button>
-
-                            <div className="grid grid-cols-2 gap-6">
-                                {[
-                                    { id: 'Sppl', t: 'SUPPLIES', s: 'Tools & Assets', i: TrendingUp },
-                                    { id: 'Labr', t: 'LABOR', s: 'Workforce Cycles', i: Users },
-                                    { id: 'Packing', t: 'PACKAGING', s: 'Transit Materials', i: Box },
-                                    { id: 'Oprt', t: 'OPERATIONS', s: 'Service General', i: Activity },
-                                    { id: 'Monthly', t: 'MONTHLY', s: 'Fixed Recurring', i: Calendar }
-                                ].map(cat => (
-                                    <button key={cat.id}
-                                        onClick={() => { set('subcategory', cat.id); setStep(4); }}
-                                        className="flex items-center gap-6 p-8 rounded-[40px] bg-white/5 border border-white/5 hover:border-(--main-color)/40 hover:bg-(--main-color)/5 transition-all duration-500 group"
-                                    >
-                                        <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 group-hover:text-(--main-color) group-hover:bg-(--main-color)/10 transition-all">
-                                            <cat.i size={24} />
-                                        </div>
-                                        <div className="text-left">
-                                            <span className="text-[14px] font-black text-white uppercase tracking-widest block mb-0.5">{cat.t}</span>
-                                            <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest leading-none">{cat.s}</span>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stage 4: Form */}
-                    {step === 4 && (
-                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
-                            <div className="flex flex-col">
-                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">DETAILS</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Specify transactional metadata</p>
-                            </div>
-
-                            <div className="grid gap-10">
-                                <div className="space-y-4">
-                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">DESCRIPTION</label>
-                                    <input value={form.description} onChange={e => set('description', e.target.value)}
-                                        className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all outline-none" placeholder="Brief summary" />
+                {/* ── MAIN CONTENT (FREE FLOATING) ───────────────────────────────────── */}
+                <div className="flex-1 flex flex-col overflow-hidden px-8 md:px-20 pb-12">
+                    <div className="flex-1 overflow-y-auto no-scrollbar">
+                        {/* Stage 1: Classification */}
+                        {step === 1 && (
+                            <div className="h-full flex flex-col justify-center items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-20 duration-1000">
+                                <div className="text-center mb-16">
+                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
+                                        SELECT_PROTOCOL
+                                    </p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-8">
-                                    <div className="space-y-4">
-                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">AMOUNT (MXN)</label>
-                                        <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
-                                            className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">REFERENCE</label>
-                                        <input value={form.reference} onChange={e => set('reference', e.target.value)}
-                                            className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" placeholder="Optional #" />
-                                    </div>
-                                </div>
+                                <div className="flex flex-col md:flex-row items-center justify-center gap-20 md:gap-40 w-full">
+                                    <button onClick={() => setStep(2.1)}
+                                        className="group relative flex flex-col items-center text-center transition-all duration-700">
+                                        <div className="relative w-32 h-32 mb-8 flex items-center justify-center text-orange-500 transition-all duration-700 group-hover:scale-125">
+                                            <Layers size={80} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_15px_rgba(249,115,22,0.4)]" />
+                                            <div className="absolute inset-0 bg-orange-500/20 blur-[80px] opacity-0 group-hover:opacity-60 transition-opacity" />
+                                        </div>
+                                        <span className="relative text-[12px] font-black text-white uppercase tracking-[0.8em] group-hover:text-orange-400 transition-all">MERCHANDISE</span>
+                                    </button>
 
-                                <div className={`flex items-center justify-between p-8 rounded-[40px] border transition-all duration-500 ${form.recurring ? 'bg-(--main-color)/10 border-(--main-color)/40' : 'bg-white/5 border-white/5'}`}>
-                                    <div className="flex items-center gap-6">
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${form.recurring ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/20'}`}>
-                                            <Calendar size={28} />
+                                    <button onClick={() => setStep(2.2)}
+                                        className="group relative flex flex-col items-center text-center transition-all duration-700">
+                                        <div className="relative w-32 h-32 mb-8 flex items-center justify-center text-blue-500 transition-all duration-700 group-hover:scale-125">
+                                            <DollarSign size={80} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]" />
+                                            <div className="absolute inset-0 bg-blue-500/20 blur-[80px] opacity-0 group-hover:opacity-60 transition-opacity" />
                                         </div>
-                                        <div>
-                                            <span className="text-[13px] font-black text-white uppercase tracking-widest block mb-1">RECURRING DISBURSEMENT</span>
-                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Automatic monthly persistence</span>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
-                                        className={`w-16 h-10 rounded-full transition-all relative shrink-0 ${form.recurring ? 'bg-(--main-color)' : 'bg-white/10'}`}>
-                                        <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all shadow-xl ${form.recurring ? 'left-7.5' : 'left-1.5'}`} />
+                                        <span className="relative text-[12px] font-black text-white uppercase tracking-[0.8em] group-hover:text-blue-400 transition-all">OPERATIONS</span>
                                     </button>
                                 </div>
+                            </div>
+                        )}
 
-                                {form.recurring && (
-                                    <div className="animate-in slide-in-from-top-4 duration-500 space-y-4">
-                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">MONTHLY PERSISTENCE DAY</label>
-                                        <div className="flex items-center gap-6">
-                                            <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
-                                                className="w-40 h-16 font-mono text-2xl font-black bg-white/5 border border-(--main-color)/30 rounded-[28px] text-white outline-none focus:border-(--main-color)/60 transition-all text-center" />
-                                            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em]">of each period</span>
+                        {/* Stage 2.1: Merch Type */}
+                        {step === 2.1 && (
+                            <div className="h-full flex flex-col justify-center max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000">
+                                <div className="mb-16">
+                                    <button onClick={() => setStep(1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
+                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    </button>
+                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
+                                        MERCH_CONTEXT
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row items-center gap-20 max-w-4xl">
+                                    <button onClick={() => { set('subcategory', 'Acq'); setStep(3.1); }}
+                                        className="group relative flex flex-col items-center transition-all duration-700">
+                                        <div className="w-32 h-32 mb-8 flex items-center justify-center text-white/20 group-hover:scale-125 group-hover:text-white transition-all">
+                                            <Archive size={64} strokeWidth={0.5} className="opacity-30 group-hover:opacity-100 transition-all" />
+                                            <div className="absolute inset-0 bg-white/10 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                        </div>
+                                        <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">ACQUISITIONS</span>
+                                    </button>
+
+                                    <button onClick={() => { set('subcategory', 'Prod'); setStep(3.1); }}
+                                        className="group relative flex flex-col items-center transition-all duration-700">
+                                        <div className="w-32 h-32 mb-8 flex items-center justify-center text-white/20 group-hover:scale-125 group-hover:text-white transition-all">
+                                            <Cpu size={64} strokeWidth={0.5} className="opacity-30 group-hover:opacity-100 transition-all" />
+                                            <div className="absolute inset-0 bg-white/10 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                        </div>
+                                        <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">PRODUCTION</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Stage 3.1: Vendor Selection */}
+                        {step === 3.1 && (
+                            <div className="h-full flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000 pt-12">
+                                <div className="mb-16">
+                                    <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
+                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    </button>
+                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
+                                        VENDORS_ARTIFACTS
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+                                    {pendingGroups.filter(g => {
+                                        if (form.subcategory === 'Packing') return g.type === 'Packing';
+                                        return form.subcategory === 'Prod' ? g.type === 'Production' : g.type === 'Acquisition';
+                                    }).length === 0 ? (
+                                        <div className="col-span-full py-40 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-[64px] bg-white/[0.02]">
+                                            <AlertCircle size={48} className="text-white/10 mb-6" />
+                                            <p className="text-white/20 text-[12px] font-black tracking-[0.8em] uppercase">No artifacts pending request</p>
+                                        </div>
+                                    ) : (
+                                        pendingGroups
+                                            .filter(g => {
+                                                if (form.subcategory === 'Packing') return g.type === 'Packing';
+                                                return form.subcategory === 'Prod' ? g.type === 'Production' : g.type === 'Acquisition';
+                                            })
+                                            .map(group => {
+                                                const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+                                                const vendor = vendors[group.vendorId as keyof typeof vendors];
+                                                const color = vendor?.color || '#333';
+                                                const fullName = vendor?.name || group.vendorId;
+
+                                                return (
+                                                    <button key={`${group.vendorId}-${group.type}`} 
+                                                        onClick={() => {
+                                                            set('vendor_id', group.vendorId);
+                                                            set('amount', (group.total - group.paidTotal).toString());
+                                                            if (form.subcategory === 'Packing' || group.vendorId === 'Crates') {
+                                                                const sizesSet = new Set(group.items.map(i => {
+                                                                    const d = i.data as any;
+                                                                    return `${d.l_cm || 0}x${d.w_cm || 0}x${d.d_cm || 0}`;
+                                                                }));
+                                                                set('description', `Payment for ${group.items.length} Crates. Sizes: ${Array.from(sizesSet).join(', ')}`);
+                                                            } else {
+                                                                set('description', `${paidPerc > 0 ? 'Liquidation' : 'Initial Payment'} for ${group.items.length} items from ${fullName}`);
+                                                            }
+                                                            setStep(4);
+                                                        }}
+                                                        className="group relative flex flex-col items-center gap-6 p-10 rounded-[48px] transition-all duration-700 bg-white/[0.03] border border-white/5 hover:border-white/20 hover:bg-white/10 hover:-translate-y-4 shadow-2xl">
+                                                        <div className="w-24 h-24 rounded-[36px] flex flex-col items-center justify-center font-black text-2xl shadow-2xl border border-white/20 relative overflow-hidden transition-all duration-700 group-hover:rotate-12"
+                                                            style={{ backgroundColor: color, color: getTextColorForBg(color) }}>
+                                                            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            <span className="drop-shadow-lg">{group.vendorId}</span>
+                                                            <span className="text-[9px] font-black opacity-60 mt-2 uppercase tracking-[0.2em]">{group.type.slice(0,4)}</span>
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <p className="text-[12px] font-black text-white uppercase tracking-[0.2em] mb-2 truncate max-w-[140px] drop-shadow-lg">{fullName}</p>
+                                                            <div className="h-[2px] w-12 bg-white/40 mx-auto mb-3" />
+                                                            <p className="text-2xl font-mono font-black text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.3)]">{fmtMXN(group.total - group.paidTotal)}</p>
+                                                        </div>
+                                                        {paidPerc > 0 && (
+                                                            <div className="absolute top-4 right-4 px-4 py-2 rounded-xl bg-blue-500 border border-blue-400 text-[10px] font-black text-white uppercase tracking-widest shadow-2xl">
+                                                                {paidPerc}% PAID
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Stage 2.2: Ops Logic */}
+                        {step === 2.2 && (
+                            <div className="h-full flex flex-col justify-center max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000">
+                                <div className="mb-16">
+                                    <button onClick={() => setStep(1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
+                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    </button>
+                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
+                                        OPERATIONS_LOGIC
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row items-center gap-20 max-w-4xl">
+                                    <button onClick={() => { set('subcategory', 'Packing'); setStep(3.1); }}
+                                        className="group relative flex flex-col items-center transition-all duration-700">
+                                        <div className="w-32 h-32 mb-8 flex items-center justify-center text-[#8DC63F] group-hover:scale-125 transition-all">
+                                            <Box size={80} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_15px_rgba(141,198,63,0.4)]" />
+                                            <div className="absolute inset-0 bg-[#8DC63F]/20 blur-[80px] opacity-0 group-hover:opacity-60 transition-opacity" />
+                                        </div>
+                                        <span className="text-[11px] font-black text-white uppercase tracking-[0.8em] group-hover:text-[#8DC63F] transition-all">CRATES</span>
+                                    </button>
+                                    
+                                    <button onClick={() => setStep(3.2)}
+                                        className="group relative flex flex-col items-center transition-all duration-700">
+                                        <div className="w-32 h-32 mb-8 flex items-center justify-center text-white group-hover:scale-125 transition-all">
+                                            <Filter size={80} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
+                                            <div className="absolute inset-0 bg-white/10 blur-[80px] opacity-0 group-hover:opacity-60 transition-opacity" />
+                                        </div>
+                                        <span className="text-[11px] font-black text-white uppercase tracking-[0.8em] group-hover:text-(--main-color) transition-all">OTHER</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Stage 3.2: Expense Categories */}
+                        {step === 3.2 && (
+                            <div className="h-full flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000 pt-12">
+                                <div className="mb-16">
+                                    <button onClick={() => setStep(2.2)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
+                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    </button>
+                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
+                                        COST_CENTERS
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-12">
+                                    {[
+                                        { id: 'Sppl', t: 'SUPPLIES', s: 'Tools & Assets', i: TrendingUp, c: 'text-cyan-500' },
+                                        { id: 'Labr', t: 'LABOR', s: 'Workforce Cycles', i: Users, c: 'text-purple-500' },
+                                        { id: 'Packing', t: 'PACKAGING', s: 'Transit Materials', i: Box, c: 'text-green-500' },
+                                        { id: 'Oprt', t: 'OPERATIONS', s: 'Service General', i: Activity, c: 'text-blue-500' },
+                                        { id: 'Monthly', t: 'MONTHLY', s: 'Fixed Recurring', i: Calendar, c: 'text-pink-500' }
+                                    ].map(cat => (
+                                        <button key={cat.id}
+                                            onClick={() => { set('subcategory', cat.id); setStep(4); }}
+                                            className="group relative flex flex-col items-center gap-6 transition-all duration-700"
+                                        >
+                                            <div className={`w-24 h-24 flex items-center justify-center transition-all duration-700 group-hover:scale-125 ${cat.c}`}>
+                                                <cat.i size={56} strokeWidth={1} className="opacity-100 transition-all drop-shadow-lg" />
+                                                <div className="absolute inset-0 bg-white/10 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                            </div>
+                                            <span className="text-[12px] font-black text-white uppercase tracking-[0.6em] group-hover:scale-110 transition-all">{cat.t}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Stage 4: Form */}
+                        {step === 4 && (
+                            <div className="h-full flex flex-col max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 pt-12">
+                                <div className="mb-16">
+                                    <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
+                                        DETAILS_SCHEMA
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-12 max-w-4xl">
+                                    <div className="space-y-6">
+                                        <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">Transactional Description</label>
+                                        <input value={form.description} onChange={e => set('description', e.target.value)}
+                                            className="w-full h-24 px-10 rounded-[40px] bg-white/[0.03] border border-white/5 text-2xl font-bold text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all outline-none shadow-inner" placeholder="Session summary" />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        <div className="space-y-6">
+                                            <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">Volume (MXN)</label>
+                                            <div className="relative group">
+                                                <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
+                                                    className="w-full h-24 px-10 pl-16 font-mono text-5xl font-black bg-white/[0.03] border border-white/5 rounded-[40px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" />
+                                                <span className="absolute left-10 top-1/2 -translate-y-1/2 text-2xl font-black text-white/20">$</span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-6">
+                                            <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">Reference Protocol</label>
+                                            <input value={form.reference} onChange={e => set('reference', e.target.value)}
+                                                className="w-full h-24 px-10 rounded-[40px] bg-white/[0.03] border border-white/5 text-2xl font-bold text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" placeholder="Optional identifier" />
                                         </div>
                                     </div>
-                                )}
-                            </div>
 
-                            <div className="flex gap-6 mt-16">
-                                <button onClick={() => {
-                                    if (form.subcategory === 'Packing' && form.vendor_id === 'Crates') setStep(2.2);
-                                    else if (form.vendor_id) setStep(3.1);
-                                    else if (['Sppl', 'Labr', 'Packing', 'Oprt'].includes(form.subcategory)) setStep(3.2);
-                                    else setStep(2.2);
-                                }} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
-                                <button onClick={() => {
-                                    if (!form.amount || parseFloat(form.amount) <= 0) return notify.error('Enter valid amount');
-                                    setStep(5);
-                                }} className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl uppercase">CONTINUE →</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 5: Account */}
-                    {step === 5 && (
-                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
-                            <div className="flex flex-col">
-                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">SOURCE</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Select disbursement protocol</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-6">
-                                {Object.entries(destinationsConfig).map(([key, cfg]) => (
-                                    <button key={key} type="button"
-                                        onClick={() => set('destination', key as PaymentDestination)}
-                                        className={`flex flex-col items-center gap-6 p-10 rounded-[48px] border-2 transition-all duration-500 ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10 scale-105 shadow-[0_0_50px_rgba(var(--main-color-rgb),0.15)]' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}>
-                                        <img src={cfg.icon} alt={cfg.name} className="h-16 w-auto object-contain transition-transform duration-500 group-hover:scale-110" />
-                                        <div className="text-[13px] font-black text-white uppercase tracking-[0.3em] opacity-80">{cfg.name}</div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="flex gap-6 mt-16">
-                                <button onClick={() => setStep(4)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
-                                <button onClick={() => setStep(6)} disabled={!form.destination}
-                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 uppercase">CONTINUE TO TAXES</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 6: Taxes */}
-                    {step === 6 && (
-                        <div className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-12 pt-4">
-                            <div className="flex flex-col">
-                                <h2 className="text-6xl font-black text-white mb-2 tracking-tighter uppercase leading-none">ADJUSTMENTS</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black">Tax & fee calibration</p>
-                            </div>
-
-                            <div className="grid gap-10">
-                                <div className="grid gap-4">
-                                    <div className="flex items-center justify-between p-8 rounded-[40px] bg-white/5 border border-white/5">
-                                        <div className="flex flex-col">
-                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">ADD 16% IVA</span>
-                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Value added tax calculation</span>
+                                    <div className={`flex items-center justify-between p-10 rounded-[48px] border transition-all duration-700 ${form.recurring ? 'bg-(--main-color)/5 border-(--main-color)/40' : 'bg-white/[0.03] border-white/5'}`}>
+                                        <div className="flex items-center gap-10">
+                                            <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center transition-all duration-700 ${form.recurring ? 'bg-(--main-color) text-black shadow-2xl' : 'bg-white/5 text-white/20'}`}>
+                                                <Calendar size={32} strokeWidth={1.5} />
+                                            </div>
+                                            <div className="flex flex-col text-left">
+                                                <span className="text-xl font-black text-white uppercase tracking-widest mb-1">RECURRING DISBURSEMENT</span>
+                                                <span className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">Automatic monthly persistence</span>
+                                            </div>
                                         </div>
+                                        <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
+                                            className={`group w-24 h-12 rounded-full transition-all relative shrink-0 overflow-hidden p-1 ${form.recurring ? 'bg-(--main-color)' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1 w-10 h-10 rounded-full bg-white transition-all shadow-2xl ${form.recurring ? 'left-13' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+
+                                    {form.recurring && (
+                                        <div className="animate-in slide-in-from-top-4 duration-700 space-y-6 pl-6 border-l-2 border-(--main-color)/20 ml-10">
+                                            <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block">Persistence Window Day</label>
+                                            <div className="flex items-center gap-8">
+                                                <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
+                                                    className="w-48 h-20 font-mono text-4xl font-black bg-white/[0.03] border border-(--main-color)/30 rounded-[32px] text-white outline-none focus:border-(--main-color) transition-all text-center shadow-inner" />
+                                                <span className="text-[12px] font-black text-white/20 uppercase tracking-[0.6em]">of each financial period</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-8 mt-24 max-w-4xl">
+                                    <button onClick={() => {
+                                        if (form.subcategory === 'Packing' && form.vendor_id === 'Crates') setStep(2.2);
+                                        else if (form.vendor_id) setStep(3.1);
+                                        else if (['Sppl', 'Labr', 'Packing', 'Oprt'].includes(form.subcategory)) setStep(3.2);
+                                        else setStep(2.2);
+                                    }} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">REVERT_PHASE</button>
+                                    <button onClick={() => {
+                                        if (!form.amount || parseFloat(form.amount) <= 0) return notify.error('Enter valid amount');
+                                        setStep(5);
+                                    }} className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 uppercase">PROCEED_TO_SOURCE →</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 5: Account */}
+                        {step === 5 && (
+                            <div className="h-full flex flex-col max-w-6xl mx-auto animate-in fade-in slide-in-from-right-12 duration-1000 pt-12">
+                                <div className="mb-20">
+                                    <button onClick={() => setStep(3.1)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all">
+                                        <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                    </button>
+                                    <h2 className="text-7xl md:text-9xl font-black text-white tracking-tighter uppercase leading-[0.8] mb-6">
+                                        SOURCE<br /><span className="opacity-20">PROTOCOL</span>
+                                    </h2>
+                                    <p className="text-[14px] text-white/30 uppercase tracking-[0.6em] font-medium">Select disbursement node</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                                    {Object.entries(destinationsConfig).map(([key, dest]) => (
+                                        <button key={key} type="button"
+                                            onClick={() => set('destination', key as PaymentDestination)}
+                                            className={`group flex flex-col items-center p-12 rounded-[64px] border-2 transition-all duration-700 ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10 shadow-2xl scale-105' : 'border-white/5 bg-white/[0.03] hover:border-white/20 hover:bg-white/5'}`}>
+                                            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-all duration-500">
+                                                <CreditCard size={28} className="text-white drop-shadow-lg" />
+                                            </div>
+                                            <div className="flex-1 text-center">
+                                                <p className="text-[14px] font-black text-white uppercase tracking-[0.2em] mb-1 drop-shadow-lg">{dest.name}</p>
+                                                <p className="text-[10px] font-mono font-bold text-white/60 tracking-widest">{dest.accountNumber}</p>
+                                            </div>
+                                            <div className="mt-6 pt-6 border-t border-white/10 w-full text-center">
+                                                <p className="text-2xl font-mono font-black text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.3)]">{fmtMXN(dest.balance)}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="flex gap-8 mt-24 max-w-4xl">
+                                    <button onClick={() => setStep(4)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">REVERT_PHASE</button>
+                                    <button onClick={() => setStep(6)} disabled={!form.destination}
+                                        className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-10 uppercase shadow-2xl shadow-(--main-color)/20">
+                                        CALIBRATE_ADJUSTMENTS →
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 6: Taxes */}
+                        {step === 6 && (
+                            <div className="h-full flex flex-col max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 pt-12">
+                                <div className="mb-20">
+                                    <h2 className="text-7xl md:text-9xl font-black text-white tracking-tighter uppercase leading-[0.8] mb-6">
+                                        ADJUST<br /><span className="opacity-20">FACTORS</span>
+                                    </h2>
+                                    <p className="text-[14px] text-white/30 uppercase tracking-[0.6em] font-medium">Fiscal & platform calibration</p>
+                                </div>
+
+                                <div className="grid gap-12 max-w-4xl">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <button onClick={() => { set('includeIva', !form.includeIva); if (!form.includeIva) set('includeComm', false); }}
-                                            className={`w-16 h-10 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
-                                            <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeIva ? 'left-7.5' : 'left-1.5'}`} />
+                                            className={`flex items-center justify-between p-10 rounded-[48px] border transition-all duration-700 ${form.includeIva ? 'bg-green-500/10 border-green-500/40 text-green-500' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40 hover:bg-white/5'}`}>
+                                            <div className="flex flex-col text-left">
+                                                <span className="text-xl font-black uppercase tracking-widest mb-1">ADD 16% IVA</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Value added tax</span>
+                                            </div>
+                                            <div className={`w-16 h-10 rounded-full relative transition-all ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
+                                                <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeIva ? 'left-7.5' : 'left-1.5'}`} />
+                                            </div>
                                         </button>
-                                    </div>
-                                    <div className="flex items-center justify-between p-8 rounded-[40px] bg-white/5 border border-white/5">
-                                        <div className="flex flex-col">
-                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">BANK COMISION (10%)</span>
-                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Platform processing fee</span>
-                                        </div>
+
                                         <button onClick={() => { set('includeComm', !form.includeComm); if (!form.includeComm) set('includeIva', false); }}
-                                            className={`w-16 h-10 rounded-full transition-all relative ${form.includeComm ? 'bg-blue-500' : 'bg-white/10'}`}>
-                                            <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeComm ? 'left-7.5' : 'left-1.5'}`} />
+                                            className={`flex items-center justify-between p-10 rounded-[48px] border transition-all duration-700 ${form.includeComm ? 'bg-blue-500/10 border-blue-500/40 text-blue-500' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40 hover:bg-white/5'}`}>
+                                            <div className="flex flex-col text-left">
+                                                <span className="text-xl font-black uppercase tracking-widest mb-1">BANK FEE (10%)</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Processing overhead</span>
+                                            </div>
+                                            <div className={`w-16 h-10 rounded-full relative transition-all ${form.includeComm ? 'bg-blue-500' : 'bg-white/10'}`}>
+                                                <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeComm ? 'left-7.5' : 'left-1.5'}`} />
+                                            </div>
                                         </button>
                                     </div>
+
+                                    <div className="space-y-6">
+                                        <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">Manual commission / fee (MXN)</label>
+                                        <div className="relative group">
+                                            <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
+                                                className="w-full h-24 px-10 pl-16 font-mono text-5xl font-black bg-white/[0.03] border border-white/5 rounded-[40px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" />
+                                            <span className="absolute left-10 top-1/2 -translate-y-1/2 text-2xl font-black text-white/20">$</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Final Summary Card */}
+                                    <div className="p-16 rounded-[64px] bg-white/[0.04] border border-white/10 relative overflow-hidden group shadow-2xl">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+                                        <div className="relative flex justify-between items-center mb-10">
+                                            <div className="flex flex-col">
+                                                <span className="text-[11px] font-black text-white/30 uppercase tracking-[1em] mb-2">ARTIFACT TOTAL DISBURSEMENT</span>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-[12px] font-mono font-black text-white/40 tracking-widest bg-white/5 px-4 py-1 rounded-full">{fmtMXN(parseFloat(form.amount) || 0)} BASE_VAL</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end opacity-40 gap-2">
+                                                {form.includeIva && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-green-500">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                                {form.includeComm && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
+                                                {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
+                                            </div>
+                                        </div>
+                                        <div className="relative text-7xl md:text-9xl font-mono font-black text-white tracking-tighter leading-none drop-shadow-2xl">
+                                            {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
-                                    <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
-                                        className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
-                                </div>
-
-                                <div className="p-10 rounded-[56px] bg-white/[0.03] border border-white/5 group relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-(--main-color)/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                    <div className="relative flex justify-between items-center mb-4">
-                                        <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em]">ARTIFACT TOTAL</span>
-                                        <span className="text-[11px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
-                                    </div>
-                                    <div className="relative text-6xl font-mono font-black text-white tracking-tighter mb-4 leading-none">
-                                        {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
-                                    </div>
-                                    <div className="relative flex gap-6 opacity-40">
-                                        {form.includeIva && <span className="text-[10px] font-black uppercase tracking-widest text-green-500">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
-                                        {form.includeComm && <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
-                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[10px] font-black uppercase tracking-widest text-white">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
-                                    </div>
+                                <div className="flex gap-8 mt-24 max-w-4xl pb-12">
+                                    <button onClick={() => setStep(5)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">REVERT_SOURCE</button>
+                                    <button onClick={handleSubmit} disabled={saving}
+                                        className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 disabled:opacity-20 uppercase">
+                                        {saving ? 'RECORDING ARTIFACT…' : 'CONFIRM DISBURSEMENT PROTOCOL'}
+                                    </button>
                                 </div>
                             </div>
-
-                            <div className="flex gap-6 mt-16">
-                                <button onClick={() => setStep(5)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
-                                <button onClick={handleSubmit} disabled={saving}
-                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl disabled:opacity-20 uppercase">
-                                    {saving ? 'RECORDING ARTIFACT…' : 'CONFIRM DISBURSEMENT'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
+
+                <style dangerouslySetInnerHTML={{ __html: `
+                    .no-scrollbar::-webkit-scrollbar { display: none; }
+                    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                `}} />
             </div>
         </div>
     );
@@ -634,8 +714,11 @@ const RequestPaymentModal: React.FC<{
 
     return (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-500 overflow-hidden">
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-[80px]" onClick={onClose} />
-            <div className="bg-white/[0.02] border border-white/10 rounded-[64px] w-full max-w-[600px] h-[90dvh] flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative animate-in zoom-in-95 duration-700" onClick={e => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[120px]" onClick={onClose} />
+            <div className="w-full max-w-[650px] h-[90dvh] flex flex-col relative animate-in zoom-in-95 duration-700 no-select" onClick={e => e.stopPropagation()}>
+                
+                {/* Glassmorphic Background Layer */}
+                <div className="absolute inset-0 bg-white/[0.02] border border-white/5 rounded-[80px] shadow-[0_0_150px_rgba(0,0,0,0.8)] pointer-events-none" />
 
                 <div className="px-12 pt-12 pb-6 flex justify-between items-start shrink-0">
                     <div className="flex flex-col gap-2">
@@ -651,7 +734,7 @@ const RequestPaymentModal: React.FC<{
                     </button>
                 </div>
 
-                <div className="px-12 pb-12 flex-1 overflow-y-auto custom-scrollbar space-y-12">
+                <div className="px-12 pb-12 flex-1 overflow-y-auto custom-scrollbar space-y-12 relative z-10">
                     <div className="flex flex-col gap-10">
                         {/* High-Level Overview Cards */}
                         <div className="grid grid-cols-2 gap-4">
@@ -710,62 +793,131 @@ const RequestPaymentModal: React.FC<{
                             </div>
                         )}
 
-                        {/* Disbursement Hub Selection */}
-                        <div className="grid grid-cols-4 gap-4">
-                            {Object.entries(destinationsConfig).map(([key, cfg]) => (
-                                <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
-                                    className={`group flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-500 ${dest === key ? 'border-(--main-color) bg-(--main-color)/10 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.1)]' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
-                                    <img src={cfg.icon} alt={cfg.name} className={`h-10 w-auto transition-all duration-500 ${dest === key ? 'grayscale-0 opacity-100 scale-110' : 'grayscale opacity-20 group-hover:opacity-60'}`} />
-                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest text-center leading-tight group-hover:text-white/60">{cfg.name}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Fiscal Adjustments */}
-                        <div className="grid gap-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <button onClick={() => { setIncludeIva(!includeIva); if (!includeIva) setIncludeComm(false); }}
-                                    className={`flex items-center justify-between p-6 rounded-[32px] border transition-all duration-500 ${includeIva ? 'bg-green-500/10 border-green-500/40 text-green-500' : 'bg-white/5 border-white/5 text-white/20 hover:text-white/40'}`}>
-                                    <span className="text-[10px] font-black uppercase tracking-widest">ADD 16% IVA</span>
-                                    <div className={`w-10 h-6 rounded-full relative transition-all ${includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
-                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${includeIva ? 'left-5' : 'left-1'}`} />
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">STAKED</span>
+                                        <span className="text-xl font-mono font-black text-white/40">{fmtMXN(group.paidTotal)}</span>
                                     </div>
-                                </button>
-                                <button onClick={() => { setIncludeComm(!includeComm); if (!includeComm) setIncludeIva(false); }}
-                                    className={`flex items-center justify-between p-6 rounded-[32px] border transition-all duration-500 ${includeComm ? 'bg-blue-500/10 border-blue-500/40 text-blue-500' : 'bg-white/5 border-white/5 text-white/20 hover:text-white/40'}`}>
-                                    <span className="text-[10px] font-black uppercase tracking-widest">BANK (10%)</span>
-                                    <div className={`w-10 h-6 rounded-full relative transition-all ${includeComm ? 'bg-blue-500' : 'bg-white/10'}`}>
-                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${includeComm ? 'left-5' : 'left-1'}`} />
+                                </div>
+                                <div className="h-4 w-full bg-black/40 rounded-full overflow-hidden flex gap-1 p-1 border border-white/5">
+                                    <div className="h-full bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)] rounded-full transition-all duration-1000" style={{ width: `${paidPerc}%` }} />
+                                    {percentage > paidPerc && (
+                                        <div className="h-full bg-(--main-color)/40 rounded-full animate-pulse transition-all duration-500" style={{ width: `${percentage - paidPerc}%` }} />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Partial Payment Logic Slider */}
+                            {isProduction ? (
+                                <div className="space-y-8">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex flex-col">
+                                            <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">TARGET PERCENTAGE</label>
+                                            <span className="text-4xl font-mono font-black text-(--main-color) leading-none tracking-tighter">{percentage}%</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">DELTA TO DISBURSE</span>
+                                            <span className="text-2xl font-mono font-black text-white leading-none">{fmtMXN(amountToRequest)}</span>
+                                        </div>
                                     </div>
-                                </button>
-                            </div>
-                            <div className="relative group/fee">
-                                <label className="absolute -top-3 left-8 px-3 bg-black/90 rounded-full text-[8px] font-black text-white/40 uppercase tracking-[0.4em] z-10">MANUAL FEE (MXN)</label>
-                                <input type="number" step="0.01" value={manualFee} onChange={e => setManualFee(e.target.value)}
-                                    className="w-full h-16 px-8 font-mono text-lg font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" placeholder="0.00" />
-                            </div>
-                        </div>
+                                    <div className="relative py-4">
+                                        <input type="range" min={Math.max(10, paidPerc + 5)} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
+                                            className="w-full h-3 bg-white/5 rounded-full appearance-none cursor-pointer accent-(--main-color) shadow-inner" />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-10 rounded-[48px] bg-white/5 border border-white/5 text-center flex flex-col items-center">
+                                    <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] mb-4">TOTAL LIQUIDATION PROTOCOL</p>
+                                    <p className="text-5xl font-mono font-black text-white tracking-tighter leading-none">{fmtMXN(amountToRequest)}</p>
+                                </div>
+                            )}
 
-                        {/* Final Verification Block */}
-                        <div className="p-10 rounded-[56px] bg-white/[0.03] border border-white/5 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-(--main-color)/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                            <div className="relative flex justify-between items-center mb-4">
-                                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em]">TOTAL ARTIFACT DISBURSEMENT</span>
-                                <span className="text-[11px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(amountToRequest)} BASE</span>
+                            {/* Disbursement Hub Selection */}
+                            <div className="grid grid-cols-4 gap-4">
+                                {Object.entries(destinationsConfig).map(([key, cfg]) => (
+                                    <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
+                                        className={`group flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-500 ${dest === key ? 'border-(--main-color) bg-(--main-color)/10 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.1)]' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
+                                        <img src={cfg.icon} alt={cfg.name} className={`h-10 w-auto transition-all duration-500 ${dest === key ? 'grayscale-0 opacity-100 scale-110' : 'grayscale opacity-20 group-hover:opacity-60'}`} />
+                                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest text-center leading-tight group-hover:text-white/60">{cfg.name}</span>
+                                    </button>
+                                ))}
                             </div>
-                            <div className="relative text-5xl font-mono font-black text-white tracking-tighter leading-none">
-                                {fmtMXN(amountToRequest + (parseFloat(manualFee) || 0) + (includeIva ? (amountToRequest * 0.16) : 0) + (includeComm ? (amountToRequest * 0.10) : 0))}
-                            </div>
-                        </div>
-
-                        <div className="flex gap-6 pt-4">
-                            <button onClick={onClose} className="flex-1 py-8 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">TERMINATE</button>
-                            <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva, includeComm)} disabled={!dest || amountToRequest <= 0}
-                                className="flex-[1.5] py-8 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] disabled:opacity-20 uppercase transition-all shadow-2xl hover:scale-[1.02] active:scale-95">
-                                {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL'}
+                            
+                            <button onClick={() => setStep(6)} disabled={!dest || amountToRequest <= 0}
+                                className="w-full py-8 bg-white text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] disabled:opacity-20 uppercase transition-all shadow-2xl hover:scale-[1.02] active:scale-95">
+                                CONTINUE_ADJUSTMENTS
                             </button>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Stage 6: Adjustment Factors */}
+                    {step === 6 && (
+                        <div className="h-full flex flex-col justify-center items-center max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 pt-12">
+                            <div className="text-center mb-16">
+                                <button onClick={() => setStep(5)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all mx-auto">
+                                    <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
+                                </button>
+                                <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
+                                    ADJUSTMENT_FACTORS
+                                </p>
+                            </div>
+
+                            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
+                                <div className="space-y-10">
+                                    <div className="flex flex-col items-center">
+                                        <label className="text-[10px] text-white font-black uppercase tracking-[0.4em] mb-6 block text-center">LIQUIDATION_RATIO</label>
+                                        <div className="w-full flex items-center gap-10">
+                                            <input type="range" min="1" max="100" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
+                                                className="flex-1 accent-(--main-color) h-2 rounded-full bg-white/10" />
+                                            <span className="text-4xl font-mono font-black text-white w-24 text-right drop-shadow-lg">{percentage}%</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <button onClick={() => { setIncludeIva(!includeIva); if (!includeIva) setIncludeComm(false); }}
+                                            className={`flex flex-col items-center justify-center p-8 rounded-[48px] border-2 transition-all duration-700 ${includeIva ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.2)]' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40'}`}>
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all ${includeIva ? 'bg-green-500 text-black scale-110' : 'bg-white/10 text-white/40'}`}>
+                                                <Percent size={24} strokeWidth={2.5} />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-center">ADD 16% IVA</span>
+                                        </button>
+                                        <button onClick={() => { setIncludeComm(!includeComm); if (!includeComm) setIncludeIva(false); }}
+                                            className={`flex flex-col items-center justify-center p-8 rounded-[48px] border-2 transition-all duration-700 ${includeComm ? 'bg-blue-500/20 border-blue-500 text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.2)]' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40'}`}>
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all ${includeComm ? 'bg-blue-500 text-black scale-110' : 'bg-white/10 text-white/40'}`}>
+                                                <DollarSign size={24} strokeWidth={2.5} />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-center">BANK (10%)</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="relative group/fee text-center">
+                                        <label className="text-[10px] text-white font-black uppercase tracking-[0.4em] mb-4 block">MANUAL FEE (MXN)</label>
+                                        <input type="number" step="0.01" value={manualFee} onChange={e => setManualFee(e.target.value)}
+                                            className="w-full h-20 px-8 font-mono text-2xl font-black bg-white/[0.03] border border-white/10 rounded-[40px] text-white text-center outline-none focus:border-(--main-color) focus:bg-white/[0.08] transition-all shadow-2xl" placeholder="0.00" />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col justify-center">
+                                    <div className="p-12 rounded-[64px] bg-white/[0.03] border-2 border-white/10 relative overflow-hidden group text-center">
+                                        <div className="absolute inset-0 bg-(--main-color)/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                        <div className="relative mb-6">
+                                            <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.6em]">TOTAL DISBURSEMENT</span>
+                                        </div>
+                                        <div className="relative text-7xl font-mono font-black text-white tracking-tighter leading-none mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                                            {fmtMXN(amountToRequest + (parseFloat(manualFee) || 0) + (includeIva ? (amountToRequest * 0.16) : 0) + (includeComm ? (amountToRequest * 0.10) : 0))}
+                                        </div>
+                                        <p className="relative text-[12px] font-mono font-bold text-white/60 tracking-widest">{fmtMXN(amountToRequest)} BASE</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-8 w-full max-w-3xl">
+                                <button onClick={onClose} className="flex-1 py-8 border-2 border-white/10 text-white font-black rounded-[40px] text-[12px] tracking-[0.5em] hover:bg-white/10 transition-all uppercase drop-shadow-lg">TERMINATE</button>
+                                <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva, includeComm)} disabled={!dest || amountToRequest <= 0}
+                                    className="flex-[2] py-8 bg-(--main-color) text-black rounded-[40px] text-[12px] font-black tracking-[0.5em] disabled:opacity-20 uppercase transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)] hover:scale-[1.05] active:scale-95">
+                                    {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -866,7 +1018,7 @@ const EditPaymentModal: React.FC<{
             if (error) throw error;
 
             // Sync to local DB if available
-            if (db) {
+if (db) {
                 try {
                     const localDoc = await db.finance.findOne({ selector: { id: record.id } }).exec();
                     if (localDoc) await localDoc.patch(updatePayload);
@@ -885,15 +1037,16 @@ const EditPaymentModal: React.FC<{
 
     if (!record) return null;
 
-    const isOpen = !!record;
-
     return (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-500">
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-[80px]" onClick={onClose} />
-            <div className="bg-white/[0.02] border border-white/10 rounded-[64px] w-full max-w-[700px] h-[85dvh] flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative animate-in zoom-in-95 duration-700" onClick={e => e.stopPropagation()}>
+        <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-1000 overflow-hidden">
+            {/* ── IMMERSIVE BACKDROP ── */}
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-xl" onClick={onClose} />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-orange-500/5 pointer-events-none" />
 
-                {/* Header Strip */}
-                <div className="px-12 pt-12 pb-6 flex justify-between items-center shrink-0">
+            <div className="relative w-full max-w-4xl h-[80vh] bg-black/80 border border-white/10 rounded-[48px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-1000 no-select shadow-[0_0_100px_rgba(0,0,0,0.5)]" onClick={e => e.stopPropagation()}>
+                
+                {/* ── IMMERSIVE HEADER ─────────────────────────────────────────── */}
+                <div className="px-10 pt-10 pb-6 flex justify-between items-center shrink-0 relative z-20">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-(--main-color)/15 border border-(--main-color)/30 flex items-center justify-center text-(--main-color)">
                             <Edit3 size={24} />
@@ -908,7 +1061,7 @@ const EditPaymentModal: React.FC<{
                     </button>
                 </div>
 
-                <div className="px-12 pb-12 flex flex-col flex-1 overflow-y-auto custom-scrollbar">
+                <div className="px-12 pb-12 flex flex-col flex-1 overflow-y-auto custom-scrollbar relative z-10">
                     {/* Step 4: Details */}
                     {step === 4 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-12 pt-4">
@@ -984,12 +1137,15 @@ const EditPaymentModal: React.FC<{
                             </div>
 
                             <div className="grid grid-cols-2 gap-6">
-                                {Object.entries(destinationsConfig).map(([key, cfg]) => (
+                                {Object.entries(destinationsConfig).map(([key, dest]) => (
                                     <button key={key} type="button"
                                         onClick={() => set('destination', key as PaymentDestination)}
-                                        className={`flex flex-col items-center gap-6 p-10 rounded-[48px] border-2 transition-all duration-500 ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10 scale-105' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}>
-                                        <img src={cfg.icon} alt={cfg.name} className="h-16 w-auto object-contain transition-transform duration-500 group-hover:scale-110" />
-                                        <div className="text-[13px] font-black text-white uppercase tracking-[0.3em] opacity-80">{cfg.name}</div>
+                                        className={`flex flex-col items-center p-10 rounded-[48px] border-2 transition-all duration-500 ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10 scale-105' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}>
+                                        <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/20 flex items-center justify-center mb-6">
+                                            <CreditCard size={28} className="text-white" />
+                                        </div>
+                                        <div className="text-[13px] font-black text-white uppercase tracking-[0.3em] opacity-80">{dest.name}</div>
+                                        <div className="mt-4 text-[10px] font-mono text-white/40">{dest.accountNumber}</div>
                                     </button>
                                 ))}
                             </div>
@@ -1046,7 +1202,7 @@ const EditPaymentModal: React.FC<{
                                         <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em]">ARTIFACT TOTAL</span>
                                         <span className="text-[11px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
                                     </div>
-                                    <div className="relative text-6xl font-mono font-black text-white tracking-tighter mb-4">
+                                    <div className="relative text-6xl font-mono font-black text-white tracking-tighter leading-none mb-4">
                                         {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
                                     </div>
                                     <div className="relative flex gap-6 opacity-40">
@@ -1136,14 +1292,16 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
         const itemsToProcess = [...pendingItems, ...pendingCrates];
 
-        // Group by BOTH Vendor and Type (Production vs Acquisition)
-        const groups: Record<string, VendorGroup & { type: 'Production' | 'Acquisition' }> = {};
+        // Group by BOTH Vendor and Type (Production vs Acquisition vs Packing)
+        const groups: Record<string, VendorGroup> = {};
         for (const item of itemsToProcess) {
             const data = item.data;
             const itemIdStr = String(data.item_id || data.itemId || '');
             let vid = data.vendor_id || data.vendorId;
             const status = (data.status || '').toLowerCase();
-            const type = (status === 'production' || status === 'packing') ? 'Production' : 'Acquisition';
+            const type: 'Acquisition' | 'Production' | 'Packing' = 
+                status === 'packing' ? 'Packing' : 
+                (status === 'production' ? 'Production' : 'Acquisition');
 
             if (!vid) {
                 if (itemIdStr.includes('-')) {
@@ -1154,6 +1312,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 }
             }
             if (!vid) vid = 'Unknown';
+
+            // Explicitly handle Juan/Simona crates
+            if (type === 'Packing') {
+                const searchStr = `${data.vendors || ''} ${data.description || ''}`.toUpperCase();
+                if (searchStr.includes('JUAN')) vid = 'JUAN';
+                else if (searchStr.includes('SIMONA')) vid = 'SIMONA';
+            }
 
             const gKey = `${vid}-${type}`;
             if (!groups[gKey]) {
@@ -1665,7 +1830,21 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
+
+                                    {/* Progress Bar for Partial Payments */}
+                                    {(() => {
+                                        const match = String(r.description || '').match(/(\d+)%/);
+                                        if (match) {
+                                            const perc = parseInt(match[1]);
+                                            return (
+                                                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/5 overflow-hidden">
+                                                    <div className="h-full bg-(--main-color) shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)] transition-all duration-1000" style={{ width: `${perc}%` }} />
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                </div>
 
                                     {/* Expanded Content: High-Density Metadata Strip */}
                                     {isExpanded && (
@@ -1886,7 +2065,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                             </button>
                                                             {(user?.role === 'Admin' || user?.role === 'Developer') && (
                                                                 <button
-                                                                    onClick={(e) => { e.stopPropagation(); setEditRecord(r); }}
+                                                                    onClick={(e) => { 
+                                                                        e.stopPropagation(); 
+                                                                        setEditRecord(r);
+                                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                    }}
                                                                     className="flex items-center gap-2 h-8 px-4 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 text-(--text-color)/40 hover:text-(--text-color) hover:bg-(--text-color)/10 transition-all hover:scale-105 active:scale-95">
                                                                     <Pencil size={14} />
                                                                     <span className="text-[9px] font-black uppercase tracking-widest">Edit Payment</span>

@@ -56,7 +56,8 @@ import {
     inventorySearchTermAtom,
     truckDockIsCompactAtom,
     truckStatsIsCompactAtom,
-    truckingReadyFieldsAtom
+    truckingReadyFieldsAtom,
+    inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import { 
     Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings
@@ -254,6 +255,7 @@ export const UniversalToolsBar: React.FC = () => {
     const financeTotals = useAtomValue(financeTotalsAtom);
     const financeDocs = useAtomValue(financeDataAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
+    const setInvArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const liveEx = useAtomValue(liveExchangeRateAtom);
     const fixedEx = useAtomValue(exchangeRateAtom);
     const exRate = liveEx || fixedEx;
@@ -270,6 +272,7 @@ export const UniversalToolsBar: React.FC = () => {
     const [recalledShipment, setRecalledShipment] = useAtom(truckingRecalledShipmentAtom);
     const dockCrates = useAtomValue(truckingDockCratesAtom);
     const allCrates = useAtomValue(truckingAllCratesAtom);
+    const allLogistics = useAtomValue(logisticsDocsAtom);
     const allInventory = useAtomValue(inventoryAtom);
     const totalWeight = useAtomValue(truckingTotalWeightAtom);
     const floorPct = useAtomValue(truckingFloorPctAtom);
@@ -363,20 +366,29 @@ export const UniversalToolsBar: React.FC = () => {
             groups[gKey].total += (price * qty);
         });
 
-        // 3. Add Crates (Juan/Simona)
-        const supplierCrates = (allCrates || []).filter(c => {
-            const v = (c.vendors || '').toLowerCase();
-            return v.includes('juan') || v.includes('simona');
+        // 3. Add ALL pending Logistic Units (Crates/Pallets/etc)
+        const supplierLogistics = (allLogistics || []).filter(c => {
+            const payReqStr = String(c.pay_req || '').toLowerCase();
+            const isUnpaid = !['true', 'paid'].includes(payReqStr);
+            const isLogisticUnit = ['crate', 'pallet', 'cardboard'].includes(String(c.type || '').toLowerCase());
+            return isLogisticUnit && isUnpaid && (c.cost_mxn || 0) > 0;
         });
 
-        supplierCrates.forEach(crate => {
-            const v = (crate.vendors || '').toUpperCase();
+        supplierLogistics.forEach(crate => {
+            // Robust vendor detection for logistics
+            const searchStr = `${crate.vendors || ''} ${crate.description || ''} ${crate.vendor_id || ''}`.toUpperCase();
+            let v = 'CRATES';
+            if (searchStr.includes('JUAN')) v = 'JUAN';
+            else if (searchStr.includes('SIMONA')) v = 'SIMONA';
+            else v = (crate.vendors || crate.vendor_id || 'CRATES').toUpperCase();
+
             const gKey = `${v}-Crate`;
             if (!groups[gKey]) {
                 groups[gKey] = { vendor: v, type: 'Crate', items: [], total: 0 };
             }
             groups[gKey].items.push(crate);
-            groups[gKey].total += (crate.cost_mxn || 0);
+            const crateQty = parseFloat(String(crate.quantity || crate.qty || '1')) || 1;
+            groups[gKey].total += ((crate.cost_mxn || 0) * crateQty);
         });
 
         // 4. Calculate paid offsets for each group to get true balance
@@ -385,13 +397,17 @@ export const UniversalToolsBar: React.FC = () => {
             
             // Sum all expenses related to these items/crates
             const paidTotal = financeDocs.reduce((sum, exp) => {
-                if (exp.vendor_id !== group.vendor && exp.vendor_id !== 'Crates') return sum;
                 if (!['Requested', 'Paid', 'Sent', 'Dispersed'].includes(exp.status)) return sum;
                 
                 const relIds = Array.isArray(exp.related_ids) ? exp.related_ids : (typeof exp.related_inventory_ids === 'string' ? exp.related_inventory_ids.split(',') : []);
                 const isRel = relIds.some((id: any) => itemIds.has(String(id)));
                 
-                return isRel ? sum + (exp.amount || 0) : sum;
+                // For packing suppliers, also match against generic vendor IDs
+                const isPackingVendor = ['JUAN', 'SIMONA', 'PACK', 'CRATES'].includes(group.vendor.toUpperCase());
+                const expVendor = (exp.vendor_id || '').toUpperCase();
+                const vendorMatch = expVendor === group.vendor.toUpperCase() || (isPackingVendor && ['PACK', 'CRATES', 'JUAN', 'SIMONA'].includes(expVendor));
+
+                return isRel && (vendorMatch || !exp.vendor_id) ? sum + (exp.amount || 0) : sum;
             }, 0);
 
             const balance = group.total - paidTotal;
@@ -411,7 +427,7 @@ export const UniversalToolsBar: React.FC = () => {
                 is_auto_gen: true
             };
         }).filter(Boolean);
-    }, [allInventory, allCrates, financeDocs]);
+    }, [allInventory, allLogistics, financeDocs]);
 
     const combinedUpcoming = useMemo(() => [...upcomingRecords, ...autoGenPayments], [upcomingRecords, autoGenPayments]);
     const combinedUpcomingTotal = useMemo(() => combinedUpcoming.reduce((s, r) => s + (r.amount || 0), 0), [combinedUpcoming]);
@@ -614,7 +630,7 @@ export const UniversalToolsBar: React.FC = () => {
                         <div className="w-full border-t border-white/5 px-8 py-4 animate-in slide-in-from-top-4 duration-500 overflow-hidden">
                             <SectionHeader icon={Heartbeat} title="Requested" count={activeQueueRecords.length} amount={activeQueueTotal} isOpen={isFinQueueOpen} onToggle={() => setIsFinQueueOpen(!isFinQueueOpen)} currencyMode={currencyMode} exRate={exRate} />
                             {isFinQueueOpen && (
-                                <div className={`grid gap-1 overflow-hidden transition-all duration-500 ${activeQueueRecords.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
+                                <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 ${activeQueueRecords.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
                                     {activeQueueRecords.length === 0 ? <div className="py-6 text-center border border-white/5 rounded-2xl"><span className="text-[11px] font-black uppercase tracking-[0.6em]">QUEUE EMPTY</span></div> : activeQueueRecords.map(r => {
                                         const v = r.vendor_id || 'Unknown';
                                         const color = vendors[v as keyof typeof vendors]?.color || '#888';
@@ -641,7 +657,7 @@ export const UniversalToolsBar: React.FC = () => {
                         exRate={exRate} 
                     />
                     {isFinUpcomingOpen && (
-                        <div className={`grid gap-1 overflow-hidden transition-all duration-500 mt-2 ${combinedUpcoming.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
+                        <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 mt-2 ${combinedUpcoming.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
                             {combinedUpcoming.length === 0 ? (
                                 <div className="py-6 text-center border border-white/5 rounded-2xl">
                                     <span className="text-[11px] font-black uppercase tracking-[0.6em]">NO UPCOMING PAYMENTS</span>
@@ -661,7 +677,22 @@ export const UniversalToolsBar: React.FC = () => {
                                             type={r.subcategory} 
                                             currencyMode={currencyMode} 
                                             exRate={exRate} 
-                                            onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: Array.isArray(r.related_inventory_ids) ? r.related_inventory_ids : [r.id], title: isAuto ? `Batch: ${v}` : `Detail: ${v}` })} 
+                                            onClick={() => {
+                                                if (isAuto) {
+                                                    setInvArtifactConfig({ 
+                                                        isOpen: true, 
+                                                        itemIds: r.related_inventory_ids || [], 
+                                                        title: `Batch Items: ${v}`,
+                                                        displayMode: 'gallery'
+                                                    });
+                                                } else {
+                                                    setPaymentsArtifactConfig({ 
+                                                        isOpen: true, 
+                                                        paymentIds: Array.isArray(r.related_inventory_ids) ? r.related_inventory_ids : [r.id], 
+                                                        title: `Detail: ${v}` 
+                                                    });
+                                                }
+                                            }} 
                                         />
                                         
                                         {/* Vendor Tag (Free Floating High Contrast) */}

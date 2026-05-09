@@ -20,7 +20,8 @@ import {
     truckTopBarStateAtom, exchangeRateAtom, isDummyModeAtom,
     sentTruckIdAtom, universalViewAtom, truckShowPanelsAtom,
     inventoryArtifactConfigAtom,
-    logisticsSubTabAtom
+    logisticsSubTabAtom,
+    financeDataAtom
 } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
@@ -189,11 +190,25 @@ export const CompactDockCard: React.FC<{
     crate: any; allCrates: any[]; allInventory: any[]; 
     onLoad: () => void; onNest?: () => void; isCompact: boolean
 }> = ({ crate, allCrates, allInventory, onLoad, onNest, isCompact }) => {
+    const financeDocs = useAtomValue(financeDataAtom);
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#adb5bd') : '#adb5bd';
     const w = computeCrateWeight(crate, allInventory, allCrates);
     const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
     
+    const payStatus = useMemo(() => {
+        const v = (crate.vendors || '').toUpperCase();
+        const related = (financeDocs || []).filter(d => 
+            (d.vendor_id === v || d.vendor_id === 'Crates') && 
+            (d.related_ids?.includes(crate.id) || (typeof d.related_inventory_ids === 'string' && d.related_inventory_ids.split(',').includes(crate.id)))
+        );
+        if (related.some(d => d.status === 'Paid' || d.status === 'Dispersed' || d.status === 'Sent')) return 'Paid';
+        if (related.some(d => d.status === 'Requested')) return 'Requested';
+        const normV = (crate.vendors || '').toLowerCase();
+        if ((normV.includes('juan') || normV.includes('simona')) && (crate.cost_mxn || 0) > 0) return 'Pending';
+        return null;
+    }, [crate, financeDocs]);
+
     return (
         <div className={`flex items-center transition-all group shrink-0 text-left ${isCompact ? 'gap-2 px-3 py-0.5 min-w-[120px]' : 'gap-6 px-4 py-3 min-w-[200px]'}`}>
             <button
@@ -216,6 +231,15 @@ export const CompactDockCard: React.FC<{
                         <span className={`font-black uppercase tracking-tighter text-white transition-all ${isCompact ? 'text-[10px]' : 'text-[16px]'}`}>{label}</span>
                         {!isCompact && (
                             <span className="font-black px-1.5 py-0.5 rounded-full border border-white/10 transition-all uppercase tracking-[0.2em] text-[8px]" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>{typeLabel}</span>
+                        )}
+                        {payStatus && (
+                            <span className={`font-black px-1.5 py-0.5 rounded-full border transition-all uppercase tracking-[0.2em] text-[8px] ${
+                                payStatus === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                payStatus === 'Requested' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            }`}>
+                                {payStatus}
+                            </span>
                         )}
                     </div>
                     {!isCompact && (
@@ -455,11 +479,26 @@ const DockCard: React.FC<{
     crate: any; allCrates: any[]; allInventory: any[]; 
     onLoad: () => void; onNest?: () => void 
 }> = ({ crate, allCrates, allInventory, onLoad, onNest }) => {
+    const financeDocs = useAtomValue(financeDataAtom);
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
     const itemCount = (crate.inventory_ids || '').split(',').filter(Boolean).length;
     const w = computeCrateWeight(crate, allInventory, allCrates);
     const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
+    
+    const payStatus = useMemo(() => {
+        const v = (crate.vendors || '').toUpperCase();
+        const related = (financeDocs || []).filter(d => 
+            (d.vendor_id === v || d.vendor_id === 'Crates') && 
+            (d.related_ids?.includes(crate.id) || (typeof d.related_inventory_ids === 'string' && d.related_inventory_ids.split(',').includes(crate.id)))
+        );
+        if (related.some(d => d.status === 'Paid' || d.status === 'Dispersed' || d.status === 'Sent')) return 'Paid';
+        if (related.some(d => d.status === 'Requested')) return 'Requested';
+        const normV = (crate.vendors || '').toLowerCase();
+        if ((normV.includes('juan') || normV.includes('simona')) && (crate.cost_mxn || 0) > 0) return 'Pending';
+        return null;
+    }, [crate, financeDocs]);
+
     return (
         <div 
             className="flex flex-col gap-1.5 p-2.5 rounded-xl transition-all group shrink-0 text-left border-2 cursor-pointer shadow-lg relative"
@@ -478,6 +517,15 @@ const DockCard: React.FC<{
                     <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-black/40 text-white border border-white/10">
                         {typeLabel}
                     </span>
+                    {payStatus && (
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${
+                            payStatus === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            payStatus === 'Requested' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                            'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                            {payStatus}
+                        </span>
+                    )}
                 </div>
             </div>
             {/* Label */}
