@@ -915,13 +915,13 @@ const RequestPaymentModal: React.FC<{
                                     className="flex-[2] py-8 bg-(--main-color) text-black rounded-[40px] text-[12px] font-black tracking-[0.5em] disabled:opacity-20 uppercase transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)] hover:scale-[1.05] active:scale-95">
                                     {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL'}
                                 </button>
-                            </div>
                         </div>
-                    )}
                     </div>
+                )}
                 </div>
             </div>
         </div>
+    </div>
     );
 };
 
