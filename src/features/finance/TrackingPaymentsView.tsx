@@ -225,10 +225,10 @@ const AddPaymentModal: React.FC<{
     return (
         <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-1000 overflow-hidden">
             {/* ── IMMERSIVE BACKDROP ── */}
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-xl" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-xl" onClick={onClose} />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-orange-500/5 pointer-events-none" />
 
-            <div className="relative w-full max-w-5xl h-[85vh] bg-black/80 border border-white/10 rounded-[48px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 duration-1000 ease-out no-select shadow-[0_0_100px_rgba(0,0,0,0.5)]" onClick={e => e.stopPropagation()}>
+            <div className="relative w-full max-w-5xl h-[85vh] bg-white/[0.02] backdrop-blur-3xl border border-white/10 rounded-[48px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 duration-1000 ease-out no-select shadow-[0_0_120px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
 
                 {/* ── IMMERSIVE HEADER ─────────────────────────────────────────── */}
                 <div className="flex items-center justify-between px-8 md:px-20 py-10 md:py-16 z-20 shrink-0">
@@ -319,18 +319,18 @@ const AddPaymentModal: React.FC<{
                                 <div className="flex flex-col md:flex-row items-center gap-20 max-w-4xl">
                                     <button onClick={() => { set('subcategory', 'Acq'); setStep(3.1); }}
                                         className="group relative flex flex-col items-center transition-all duration-700">
-                                        <div className="w-32 h-32 mb-8 flex items-center justify-center text-white/20 group-hover:scale-125 group-hover:text-white transition-all">
-                                            <Archive size={64} strokeWidth={0.5} className="opacity-30 group-hover:opacity-100 transition-all" />
-                                            <div className="absolute inset-0 bg-white/10 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                        <div className="w-32 h-32 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all group-hover:scale-110">
+                                            <Package size={64} className="text-orange-500" />
+                                            <div className="absolute inset-0 bg-orange-500/20 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
                                         <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">ACQUISITIONS</span>
                                     </button>
 
                                     <button onClick={() => { set('subcategory', 'Prod'); setStep(3.1); }}
                                         className="group relative flex flex-col items-center transition-all duration-700">
-                                        <div className="w-32 h-32 mb-8 flex items-center justify-center text-white/20 group-hover:scale-125 group-hover:text-white transition-all">
-                                            <Cpu size={64} strokeWidth={0.5} className="opacity-30 group-hover:opacity-100 transition-all" />
-                                            <div className="absolute inset-0 bg-white/10 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
+                                        <div className="w-32 h-32 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all group-hover:scale-110">
+                                            <Cpu size={64} className="text-blue-500" />
+                                            <div className="absolute inset-0 bg-blue-500/20 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
                                         <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">PRODUCTION</span>
                                     </button>
@@ -427,18 +427,18 @@ const AddPaymentModal: React.FC<{
                                 <div className="flex flex-col md:flex-row items-center gap-20 max-w-4xl">
                                     <button onClick={() => { set('subcategory', 'Packing'); setStep(3.1); }}
                                         className="group relative flex flex-col items-center transition-all duration-700">
-                                        <div className="w-32 h-32 mb-8 flex items-center justify-center text-[#8DC63F] group-hover:scale-125 transition-all">
-                                            <Box size={80} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_15px_rgba(141,198,63,0.4)]" />
-                                            <div className="absolute inset-0 bg-[#8DC63F]/20 blur-[80px] opacity-0 group-hover:opacity-60 transition-opacity" />
+                                        <div className="w-32 h-32 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all group-hover:scale-110">
+                                            <Box size={64} className="text-green-500" />
+                                            <div className="absolute inset-0 bg-green-500/20 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-[11px] font-black text-white uppercase tracking-[0.8em] group-hover:text-[#8DC63F] transition-all">CRATES</span>
+                                        <span className="text-[11px] font-black text-white uppercase tracking-[0.8em] group-hover:text-green-500 transition-all">CRATES</span>
                                     </button>
                                     
                                     <button onClick={() => setStep(3.2)}
                                         className="group relative flex flex-col items-center transition-all duration-700">
-                                        <div className="w-32 h-32 mb-8 flex items-center justify-center text-white group-hover:scale-125 transition-all">
-                                            <Filter size={80} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
-                                            <div className="absolute inset-0 bg-white/10 blur-[80px] opacity-0 group-hover:opacity-60 transition-opacity" />
+                                        <div className="w-32 h-32 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all group-hover:scale-110">
+                                            <Filter size={64} className="text-white" />
+                                            <div className="absolute inset-0 bg-white/10 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
                                         <span className="text-[11px] font-black text-white uppercase tracking-[0.8em] group-hover:text-(--main-color) transition-all">OTHER</span>
                                     </button>
@@ -714,7 +714,7 @@ const RequestPaymentModal: React.FC<{
 
     return (
         <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-500 overflow-hidden">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[120px]" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[120px]" onClick={onClose} />
             <div className="w-full max-w-[650px] h-[80vh] flex flex-col relative animate-in zoom-in-95 duration-700 no-select" onClick={e => e.stopPropagation()}>
                 
                 {/* Glassmorphic Background Layer */}
@@ -933,7 +933,7 @@ const EditPaymentModal: React.FC<{
             if (error) throw error;
 
             // Sync to local DB if available
-if (db) {
+            if (db) {
                 try {
                     const localDoc = await db.finance.findOne({ selector: { id: record.id } }).exec();
                     if (localDoc) await localDoc.patch(updatePayload);
@@ -955,10 +955,10 @@ if (db) {
     return (
         <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-1000 overflow-hidden">
             {/* ── IMMERSIVE BACKDROP ── */}
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-xl" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-2xl" onClick={onClose} />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-orange-500/5 pointer-events-none" />
 
-            <div className="relative w-full max-w-4xl h-[80vh] bg-black/80 border border-white/10 rounded-[48px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-1000 no-select shadow-[0_0_100px_rgba(0,0,0,0.5)]" onClick={e => e.stopPropagation()}>
+            <div className="relative w-full max-w-4xl h-[80vh] bg-white/[0.02] backdrop-blur-3xl border border-white/10 rounded-[48px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-1000 no-select shadow-[0_0_120px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
                 
                 {/* ── IMMERSIVE HEADER ─────────────────────────────────────────── */}
                 <div className="px-10 pt-10 pb-6 flex justify-between items-center shrink-0 relative z-20">
