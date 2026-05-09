@@ -5,7 +5,7 @@ import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileT
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase, useNotify } from '../../lib/hooks';
-import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom } from '../../lib/atoms';
+import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom } from '../../lib/atoms';
 import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices, getCrateDisplayName } from '../../lib/utils';
 import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
 import { ExportWizard } from '../../components/ExportWizard';
@@ -229,8 +229,10 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
     onNest: (c: CrateRecord) => void;
     onEdit: (c: CrateRecord) => void;
     isDeployedView?: boolean; 
+    isDeployedView?: boolean; 
     isPackedView?: boolean 
 }) => {
+    const financeDocs = useAtomValue(financeDataAtom);
     const [isExpanded, setIsExpanded] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [showExportMenu, setShowExportMenu] = useState(false);
@@ -244,6 +246,26 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
 
     const dynamicId = useMemo(() => generateDynamicCrateId(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     
+    const payStatus = useMemo(() => {
+        const v = (crate.vendors || '').toUpperCase();
+        const related = financeDocs.filter(d => {
+            const relIds = Array.isArray(d.related_ids) ? d.related_ids : (typeof d.related_inventory_ids === 'string' ? d.related_inventory_ids.split(',') : []);
+            const isRel = relIds.some((id: any) => String(id) === crate.id);
+            if (isRel) return true;
+            
+            // Fallback to vendor check if no specific IDs linked
+            const dVendor = (d.vendor_id || '').toUpperCase();
+            const cVendor = (crate.vendors || '').toUpperCase();
+            const isPackingMatch = ['JUAN', 'SIMONA', 'PACK', 'CRATES'].includes(cVendor) && ['PACK', 'CRATES', 'JUAN', 'SIMONA'].includes(dVendor);
+            return (dVendor === cVendor || isPackingMatch) && d.description?.includes(crate.id.slice(0, 8));
+        });
+        if (related.some(d => d.status === 'Paid' || d.status === 'Dispersed' || d.status === 'Sent')) return 'Paid';
+        if (related.some(d => d.status === 'Requested')) return 'Requested';
+        const normV = (crate.vendors || '').toLowerCase();
+        if ((normV.includes('juan') || normV.includes('simona')) && (crate.cost_mxn || 0) > 0) return 'Pending';
+        return null;
+    }, [crate, financeDocs]);
+
     const nestedCount = useMemo(() => allCrates.filter(nu => nu.parent_id === crate.id).length, [allCrates, crate.id]);
     const itemCount = crate.inventory_ids ? crate.inventory_ids.split(',').filter(Boolean).length : 0;
     const vol = ((crate.width_cm ?? 0) * (crate.length_cm ?? 0) * (crate.height_cm ?? 0) / 1_000_000).toFixed(3);
@@ -422,8 +444,17 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                             fillPct={fillPct}
                         />
                     </div>
-                    <div className="absolute top-0 left-0">
+                    <div className="absolute top-0 left-0 flex flex-col gap-1 items-start">
                         <StatusBadge status={crate.status} />
+                        {payStatus && (
+                            <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+                                payStatus === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                payStatus === 'Requested' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            }`}>
+                                PAY: {payStatus}
+                            </div>
+                        )}
                     </div>
                 </div>
 

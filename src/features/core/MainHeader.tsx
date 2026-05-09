@@ -499,54 +499,48 @@ const FinanceBar: React.FC = () => {
 
     return (
         <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
-            <DeployableSearch 
-                value={search} 
-                onChange={setSearch} 
-                isOpen={isSearchOpen} 
-                setIsOpen={setIsSearchOpen} 
-                accentColor="var(--color-finance)"
-                placeholder="FIND PAYMENTS..."
-            />
+            <button 
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                title="Search Payments"
+            >
+                <Search size={22} strokeWidth={2} />
+            </button>
 
-            {!isSearchOpen && (
-                <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
+            <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
+                <button 
+                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Filter Payments"
+                >
+                    <Filter size={22} strokeWidth={2} />
+                </button>
+                <button 
+                    onClick={() => setIsActionOpen(!isActionOpen)}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isActionOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Settings & Logic"
+                >
+                    <SlidersHorizontal size={22} strokeWidth={2} />
+                </button>
 
-                    <button 
-                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                        title="Filter Payments"
-                    >
-                        <Filter size={22} strokeWidth={2} />
-                    </button>
-                    <button 
-                        onClick={() => setIsActionOpen(!isActionOpen)}
-                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isActionOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                        title="Settings & Logic"
-                    >
-                        <SlidersHorizontal size={22} strokeWidth={2} />
-                    </button>
+                <button 
+                    onClick={() => setIsUpcomingOpen(!isUpcomingOpen)}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isUpcomingOpen ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Upcoming Payments"
+                >
+                    <Hourglass size={22} strokeWidth={2} className={isUpcomingOpen ? 'animate-pulse' : ''} />
+                </button>
 
-                    <button 
-                        onClick={() => setIsUpcomingOpen(!isUpcomingOpen)}
-                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isUpcomingOpen ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-white/50 hover:text-white'}`}
-                        title="Upcoming Payments"
-                    >
-                        <Hourglass size={22} strokeWidth={2} className={isUpcomingOpen ? 'animate-pulse' : ''} />
-                    </button>
+                <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
 
-                    <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
-
-                    <button 
-                        onClick={toggleCurrency}
-                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 text-white/50 hover:text-white`}
-                        title={`Switch to ${currencyMode === 'MXN' ? 'USD' : 'MXN'}`}
-                    >
-                        <DollarSign size={22} strokeWidth={2} className={currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'} />
-                    </button>
-
-
-                </div>
-            )}
+                <button 
+                    onClick={toggleCurrency}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 text-white/50 hover:text-white`}
+                    title={`Switch to ${currencyMode === 'MXN' ? 'USD' : 'MXN'}`}
+                >
+                    <DollarSign size={22} strokeWidth={2} className={currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'} />
+                </button>
+            </div>
         </div>
     );
 };
