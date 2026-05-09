@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
-    Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
+    Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, Package,
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
     Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers, Minimize2, X as CloseIcon
 } from 'lucide-react';
@@ -225,10 +225,10 @@ const AddPaymentModal: React.FC<{
     return (
         <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-1000 overflow-hidden">
             {/* ── IMMERSIVE BACKDROP ── */}
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-xl" onClick={onClose} />
+            <div className="absolute inset-0 bg-white/[0.01] backdrop-blur-2xl" onClick={onClose} />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-orange-500/5 pointer-events-none" />
 
-            <div className="relative w-full max-w-5xl h-[85vh] bg-white/[0.02] backdrop-blur-3xl border border-white/10 rounded-[48px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 duration-1000 ease-out no-select shadow-[0_0_120px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
+            <div className="relative w-full max-w-7xl h-full flex flex-col animate-in fade-in zoom-in-95 duration-1000 no-select" onClick={e => e.stopPropagation()}>
 
                 {/* ── IMMERSIVE HEADER ─────────────────────────────────────────── */}
                 <div className="flex items-center justify-between px-8 md:px-20 py-10 md:py-16 z-20 shrink-0">
@@ -714,11 +714,11 @@ const RequestPaymentModal: React.FC<{
 
     return (
         <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-500 overflow-hidden">
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-[120px]" onClick={onClose} />
-            <div className="w-full max-w-[650px] h-[80vh] flex flex-col relative animate-in zoom-in-95 duration-700 no-select" onClick={e => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-white/[0.01] backdrop-blur-2xl" onClick={onClose} />
+            <div className="w-full max-w-7xl h-full flex flex-col relative animate-in fade-in zoom-in-95 duration-700 no-select" onClick={e => e.stopPropagation()}>
                 
-                {/* Glassmorphic Background Layer */}
-                <div className="absolute inset-0 bg-white/[0.02] border border-white/5 rounded-[80px] shadow-[0_0_150px_rgba(0,0,0,0.8)] pointer-events-none" />
+                {/* Integrated Glassmorphic Flow */}
+                <div className="absolute inset-0 pointer-events-none" />
 
                 <div className="px-12 pt-12 pb-6 flex justify-between items-start shrink-0">
                     <div className="flex flex-col gap-2">
@@ -955,10 +955,10 @@ const EditPaymentModal: React.FC<{
     return (
         <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-1000 overflow-hidden">
             {/* ── IMMERSIVE BACKDROP ── */}
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-2xl" onClick={onClose} />
+            <div className="absolute inset-0 bg-white/[0.01] backdrop-blur-2xl" onClick={onClose} />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-orange-500/5 pointer-events-none" />
 
-            <div className="relative w-full max-w-4xl h-[80vh] bg-white/[0.02] backdrop-blur-3xl border border-white/10 rounded-[48px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-1000 no-select shadow-[0_0_120px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
+            <div className="relative w-full max-w-6xl h-full flex flex-col animate-in fade-in zoom-in-95 duration-1000 no-select" onClick={e => e.stopPropagation()}>
                 
                 {/* ── IMMERSIVE HEADER ─────────────────────────────────────────── */}
                 <div className="px-10 pt-10 pb-6 flex justify-between items-center shrink-0 relative z-20">
