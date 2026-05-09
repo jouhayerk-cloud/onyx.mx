@@ -713,9 +713,9 @@ const RequestPaymentModal: React.FC<{
     const amountToRequest = Math.round(Math.max(0, targetAmount - group.paidTotal));
 
     return (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-500 overflow-hidden">
+        <div className="absolute inset-0 z-[1000] flex justify-center items-start pt-12 md:pt-24 animate-in fade-in duration-500 overflow-hidden">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[120px]" onClick={onClose} />
-            <div className="w-full max-w-[650px] h-[90dvh] flex flex-col relative animate-in zoom-in-95 duration-700 no-select" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-[650px] h-[80vh] flex flex-col relative animate-in zoom-in-95 duration-700 no-select" onClick={e => e.stopPropagation()}>
                 
                 {/* Glassmorphic Background Layer */}
                 <div className="absolute inset-0 bg-white/[0.02] border border-white/5 rounded-[80px] shadow-[0_0_150px_rgba(0,0,0,0.8)] pointer-events-none" />
@@ -793,135 +793,49 @@ const RequestPaymentModal: React.FC<{
                             </div>
                         )}
 
-                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">STAKED</span>
-                                        <span className="text-xl font-mono font-black text-white/40">{fmtMXN(group.paidTotal)}</span>
+                        {/* Disbursement Hub Selection */}
+                        <div className="grid grid-cols-4 gap-4">
+                            {Object.entries(destinationsConfig).map(([key, cfg]) => (
+                                <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
+                                    className={`group flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-500 ${dest === key ? 'border-(--main-color) bg-(--main-color)/10 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.1)]' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
+                                    <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center transition-all ${dest === key ? 'bg-white text-black' : 'text-white/20'}`}>
+                                        <CreditCard size={20} />
                                     </div>
-                                </div>
-                                <div className="h-4 w-full bg-black/40 rounded-full overflow-hidden flex gap-1 p-1 border border-white/5">
-                                    <div className="h-full bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)] rounded-full transition-all duration-1000" style={{ width: `${paidPerc}%` }} />
-                                    {percentage > paidPerc && (
-                                        <div className="h-full bg-(--main-color)/40 rounded-full animate-pulse transition-all duration-500" style={{ width: `${percentage - paidPerc}%` }} />
-                                    )}
-                                </div>
-                            </div>
+                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest text-center leading-tight group-hover:text-white/60">{cfg.name}</span>
+                                </button>
+                            ))}
+                        </div>
 
-                            {/* Partial Payment Logic Slider */}
-                            {isProduction ? (
-                                <div className="space-y-8">
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex flex-col">
-                                            <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">TARGET PERCENTAGE</label>
-                                            <span className="text-4xl font-mono font-black text-(--main-color) leading-none tracking-tighter">{percentage}%</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">DELTA TO DISBURSE</span>
-                                            <span className="text-2xl font-mono font-black text-white leading-none">{fmtMXN(amountToRequest)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="relative py-4">
-                                        <input type="range" min={Math.max(10, paidPerc + 5)} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
-                                            className="w-full h-3 bg-white/5 rounded-full appearance-none cursor-pointer accent-(--main-color) shadow-inner" />
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="p-10 rounded-[48px] bg-white/5 border border-white/5 text-center flex flex-col items-center">
-                                    <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] mb-4">TOTAL LIQUIDATION PROTOCOL</p>
-                                    <p className="text-5xl font-mono font-black text-white tracking-tighter leading-none">{fmtMXN(amountToRequest)}</p>
-                                </div>
-                            )}
-
-                            {/* Disbursement Hub Selection */}
-                            <div className="grid grid-cols-4 gap-4">
-                                {Object.entries(destinationsConfig).map(([key, cfg]) => (
-                                    <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
-                                        className={`group flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-500 ${dest === key ? 'border-(--main-color) bg-(--main-color)/10 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.1)]' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
-                                        <img src={cfg.icon} alt={cfg.name} className={`h-10 w-auto transition-all duration-500 ${dest === key ? 'grayscale-0 opacity-100 scale-110' : 'grayscale opacity-20 group-hover:opacity-60'}`} />
-                                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest text-center leading-tight group-hover:text-white/60">{cfg.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                            
-                            <button onClick={() => setStep(6)} disabled={!dest || amountToRequest <= 0}
-                                className="w-full py-8 bg-white text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] disabled:opacity-20 uppercase transition-all shadow-2xl hover:scale-[1.02] active:scale-95">
-                                CONTINUE_ADJUSTMENTS
+                        <div className="grid grid-cols-2 gap-6">
+                            <button onClick={() => { setIncludeIva(!includeIva); if (!includeIva) setIncludeComm(false); }}
+                                className={`flex flex-col items-center justify-center p-8 rounded-[40px] border-2 transition-all duration-700 ${includeIva ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40'}`}>
+                                <Percent size={24} className="mb-2" />
+                                <span className="text-[9px] font-black uppercase tracking-widest">ADD 16% IVA</span>
+                            </button>
+                            <button onClick={() => { setIncludeComm(!includeComm); if (!includeComm) setIncludeIva(false); }}
+                                className={`flex flex-col items-center justify-center p-8 rounded-[40px] border-2 transition-all duration-700 ${includeComm ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40'}`}>
+                                <DollarSign size={24} className="mb-2" />
+                                <span className="text-[9px] font-black uppercase tracking-widest">BANK (10%)</span>
                             </button>
                         </div>
-                    )}
 
-                    {/* Stage 6: Adjustment Factors */}
-                    {step === 6 && (
-                        <div className="h-full flex flex-col justify-center items-center max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 pt-12">
-                            <div className="text-center mb-16">
-                                <button onClick={() => setStep(5)} className="group flex items-center gap-4 text-[11px] font-black text-white uppercase tracking-[0.8em] mb-12 hover:text-(--main-color) transition-all mx-auto">
-                                    <span className="group-hover:-translate-x-2 transition-transform">←</span> REVERT
-                                </button>
-                                <p className="text-[11px] text-white uppercase tracking-[1em] font-black drop-shadow-lg">
-                                    ADJUSTMENT_FACTORS
-                                </p>
-                            </div>
+                        <div className="relative group/fee">
+                            <label className="text-[9px] text-white/20 font-black uppercase tracking-[0.4em] mb-4 block text-center">MANUAL FEE (MXN)</label>
+                            <input type="number" step="0.01" value={manualFee} onChange={e => setManualFee(e.target.value)}
+                                className="w-full h-16 px-8 font-mono text-xl font-black bg-white/[0.03] border border-white/10 rounded-[32px] text-white text-center outline-none focus:border-(--main-color) focus:bg-white/[0.08] transition-all" placeholder="0.00" />
+                        </div>
 
-                            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
-                                <div className="space-y-10">
-                                    <div className="flex flex-col items-center">
-                                        <label className="text-[10px] text-white font-black uppercase tracking-[0.4em] mb-6 block text-center">LIQUIDATION_RATIO</label>
-                                        <div className="w-full flex items-center gap-10">
-                                            <input type="range" min="1" max="100" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
-                                                className="flex-1 accent-(--main-color) h-2 rounded-full bg-white/10" />
-                                            <span className="text-4xl font-mono font-black text-white w-24 text-right drop-shadow-lg">{percentage}%</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <button onClick={() => { setIncludeIva(!includeIva); if (!includeIva) setIncludeComm(false); }}
-                                            className={`flex flex-col items-center justify-center p-8 rounded-[48px] border-2 transition-all duration-700 ${includeIva ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.2)]' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40'}`}>
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all ${includeIva ? 'bg-green-500 text-black scale-110' : 'bg-white/10 text-white/40'}`}>
-                                                <Percent size={24} strokeWidth={2.5} />
-                                            </div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-center">ADD 16% IVA</span>
-                                        </button>
-                                        <button onClick={() => { setIncludeComm(!includeComm); if (!includeComm) setIncludeIva(false); }}
-                                            className={`flex flex-col items-center justify-center p-8 rounded-[48px] border-2 transition-all duration-700 ${includeComm ? 'bg-blue-500/20 border-blue-500 text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.2)]' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40'}`}>
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all ${includeComm ? 'bg-blue-500 text-black scale-110' : 'bg-white/10 text-white/40'}`}>
-                                                <DollarSign size={24} strokeWidth={2.5} />
-                                            </div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-center">BANK (10%)</span>
-                                        </button>
-                                    </div>
-
-                                    <div className="relative group/fee text-center">
-                                        <label className="text-[10px] text-white font-black uppercase tracking-[0.4em] mb-4 block">MANUAL FEE (MXN)</label>
-                                        <input type="number" step="0.01" value={manualFee} onChange={e => setManualFee(e.target.value)}
-                                            className="w-full h-20 px-8 font-mono text-2xl font-black bg-white/[0.03] border border-white/10 rounded-[40px] text-white text-center outline-none focus:border-(--main-color) focus:bg-white/[0.08] transition-all shadow-2xl" placeholder="0.00" />
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col justify-center">
-                                    <div className="p-12 rounded-[64px] bg-white/[0.03] border-2 border-white/10 relative overflow-hidden group text-center">
-                                        <div className="absolute inset-0 bg-(--main-color)/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                        <div className="relative mb-6">
-                                            <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.6em]">TOTAL DISBURSEMENT</span>
-                                        </div>
-                                        <div className="relative text-7xl font-mono font-black text-white tracking-tighter leading-none mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                                            {fmtMXN(amountToRequest + (parseFloat(manualFee) || 0) + (includeIva ? (amountToRequest * 0.16) : 0) + (includeComm ? (amountToRequest * 0.10) : 0))}
-                                        </div>
-                                        <p className="relative text-[12px] font-mono font-bold text-white/60 tracking-widest">{fmtMXN(amountToRequest)} BASE</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-8 w-full max-w-3xl">
-                                <button onClick={onClose} className="flex-1 py-8 border-2 border-white/10 text-white font-black rounded-[40px] text-[12px] tracking-[0.5em] hover:bg-white/10 transition-all uppercase drop-shadow-lg">TERMINATE</button>
-                                <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva, includeComm)} disabled={!dest || amountToRequest <= 0}
-                                    className="flex-[2] py-8 bg-(--main-color) text-black rounded-[40px] text-[12px] font-black tracking-[0.5em] disabled:opacity-20 uppercase transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)] hover:scale-[1.05] active:scale-95">
-                                    {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL'}
-                                </button>
+                        <div className="pt-8 flex gap-6">
+                            <button onClick={onClose} className="flex-1 py-7 border-2 border-white/10 text-white font-black rounded-[32px] text-[10px] tracking-[0.4em] hover:bg-white/10 transition-all uppercase">TERMINATE</button>
+                            <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva, includeComm)} disabled={!dest || amountToRequest <= 0}
+                                className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[10px] font-black tracking-[0.4em] disabled:opacity-20 uppercase transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)] hover:scale-[1.02] active:scale-95">
+                                {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM REQUEST'}
+                            </button>
                         </div>
                     </div>
-                )}
                 </div>
             </div>
         </div>
-    </div>
     );
 };
 
