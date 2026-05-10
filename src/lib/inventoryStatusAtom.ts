@@ -55,12 +55,25 @@ export const inventoryStatusSetsAtom = atom<InventoryStatusSets>((get) => {
         
         const payReqStr = String(norm.payReq || '').toLowerCase();
 
-        if (norm.workbook === 'v825' || norm.workbook === '825' || payReqStr === 'prepaid') {
+        // 0. Book 825 / Prepaid Override
+        // We only auto-mark as full if:
+        // 1. It's in book 825 or marked prepaid
+        // 2. It's NOT in production
+        // 3. AND we have NO payment activity (actual or requested) in the finance records
+        const is825 = norm.workbook === 'v825' || norm.workbook === '825' || payReqStr === 'prepaid';
+        const isProduction = String(norm.status || item.status || item.source || '').toLowerCase().includes('production');
+        
+        if (is825 && !isProduction && totalPaid === 0 && totalRequested === 0) {
             fIds.add(id);
             return;
         }
 
-        if (totalCost > 0 && totalPaid >= totalCost) {
+        // 1. Precise Payment Tracking
+        // We track against the MAXIMUM of calculated cost or total requested across finance records
+        // This ensures production items with requests higher than acquisition price stay RED/YELLOW
+        const targetCost = Math.max(totalCost, totalRequested);
+        
+        if (targetCost > 0 && totalPaid >= targetCost && !isProduction) {
             fIds.add(id);
             return;
         }
