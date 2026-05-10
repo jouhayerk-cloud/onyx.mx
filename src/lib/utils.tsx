@@ -907,6 +907,7 @@ export const normalizeInventoryData = (data: any): any => {
     itemId: d.item_id ?? d.itemId,
     vendorId: d.vendor_id || d.vendorId || (String(d.item_id || d.itemId || '').includes('-') ? String(d.item_id || d.itemId || '').split('-')[0] : ''),
     itemNumber: d.item_number ?? d.itemNumber,
+    status: d.status || d.item_status || d.itemStatus || '',
     shape: d.shape,
     material: d.material,
     description: d.description,
@@ -1242,15 +1243,16 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayId
   const statusStr = String(item.status || item.item_status || '').toLowerCase();
   const dispStatus = String(item.dispersal_status || '').toLowerCase();
   
-  // 0. Book 825 Override (Always Green)
-  const workbook = String(item.workbook || item.data?.workbook || '').toLowerCase();
-  const payReq = String(item.payReq || item.pay_req || item.data?.payReq || item.data?.pay_req || '').toLowerCase();
-  if (workbook === 'v825' || workbook === '825' || payReq === 'prepaid' || payReq === 'paid') return 'GREEN';
-
   // 1. Precise status from calculation sets (highest priority)
   if (partialPayIds?.has(String(item.id))) return 'RED';
   if (fullPayIds?.has(String(item.id))) return 'GREEN';
   if (requestedAcqIds?.has(String(item.id))) return 'YELLOW';
+
+  // 2. Book 825 / Prepaid Override (Now with production safety)
+  const workbook = String(item.workbook || item.data?.workbook || '').toLowerCase();
+  const payReq = String(item.payReq || item.pay_req || item.data?.payReq || item.data?.pay_req || '').toLowerCase();
+  const isProductionItem = statusStr.includes('production') || String(item.source || '').toLowerCase().includes('production');
+  if ((workbook === 'v825' || workbook === '825' || payReq === 'prepaid' || payReq === 'paid') && !isProductionItem) return 'GREEN';
 
   // 2. Fallback to item fields (Legacy or direct field check)
   if (item.payDate || item.pay_date || payReqStr === 'paid' || payReqStr === 'prepaid' || dispStatus === 'dispersed') return 'GREEN';
