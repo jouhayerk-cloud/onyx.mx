@@ -13,7 +13,8 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, Package as PackageIcon,
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers, Minimize2, X as CloseIcon
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers, Minimize2, X as CloseIcon,
+    CreditCard, Percent
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
