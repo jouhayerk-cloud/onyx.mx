@@ -1745,15 +1745,14 @@ export function MainHeader() {
                                 const statusLookupItem = { ...norm, id: String(atomItem?.row || pItem.row || norm.id || norm.itemId || '') };
                                 const payStatusClass = getStatusClass(statusLookupItem, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
                                 
+                                const isProd = String(norm.status || atomItem?.status || '').toLowerCase().includes('production');
                                 const payStatusText = payStatusClass === 'GREEN' ? 'PAID' : 
                                                     payStatusClass === 'YELLOW' ? 'REQUESTED' : 
-                                                    payStatusClass === 'RED' ? 'PARTIAL' : 
-                                                    payStatusClass === 'PURPLE' ? 'PARTIAL' : 'NEW';
+                                                    payStatusClass === 'RED' ? (isProd ? 'ADVANCE' : 'PARTIAL') : 'NEW';
 
                                 const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' : 
                                                      payStatusClass === 'YELLOW' ? 'FFFACC15' : 
-                                                     payStatusClass === 'RED' ? 'FFEF4444' : 
-                                                     payStatusClass === 'PURPLE' ? 'FFA855F7' : 'FF38BDF8';
+                                                     payStatusClass === 'RED' ? 'FFEF4444' : 'FF38BDF8';
 
                                 let formattedPayDate = 'N/A';
                                 try {
@@ -1897,15 +1896,14 @@ export function MainHeader() {
                     const calculated = calculateCodesAndPrices(norm, bookRate, '326');
                     const payStatusClass = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
                     
+                    const isProd = String(norm.status || item.status || '').toLowerCase().includes('production');
                     const payStatusText = payStatusClass === 'GREEN' ? 'PAID' : 
                                         payStatusClass === 'YELLOW' ? 'REQUESTED' : 
-                                        payStatusClass === 'RED' ? 'PARTIAL' : 
-                                        payStatusClass === 'PURPLE' ? 'PURPLE' : 'NEW';
+                                        payStatusClass === 'RED' ? (isProd ? 'ADVANCE' : 'PARTIAL') : 'NEW';
 
                     const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' : 
                                          payStatusClass === 'YELLOW' ? 'FFFACC15' : 
-                                         payStatusClass === 'RED' ? 'FFEF4444' : 
-                                         payStatusClass === 'PURPLE' ? 'FFA855F7' : 'FF38BDF8';
+                                         payStatusClass === 'RED' ? 'FFEF4444' : 'FF38BDF8';
 
                     let formattedPayDate = 'N/A';
                     try {

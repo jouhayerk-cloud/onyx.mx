@@ -214,13 +214,13 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
 
     const getPayLabel = () => {
         if (!payStatus) return 'New';
-        if (payStatus === 'GREEN') {
-            return 'Paid';
-        }
+        if (payStatus === 'GREEN') return 'Paid';
         if (payStatus === 'YELLOW') return 'Requested';
-        if (payStatus === 'RED') return 'Advance';
+        if (payStatus === 'RED') {
+            const isProd = String(norm.status || item.status || item.source || '').toLowerCase().includes('production');
+            return isProd ? 'Advance' : 'Partial';
+        }
         if (payStatus === 'BLUE') return 'NEW';
-        if (payStatus === 'PURPLE') return 'Acquired';
         return 'New';
     };
 

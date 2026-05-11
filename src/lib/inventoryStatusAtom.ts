@@ -73,17 +73,17 @@ export const inventoryStatusSetsAtom = atom<InventoryStatusSets>((get) => {
         // This ensures production items with requests higher than acquisition price stay RED/YELLOW
         const targetCost = Math.max(totalCost, totalRequested);
         
-        if (targetCost > 0 && totalPaid >= targetCost && !isProduction) {
+        if (targetCost > 0 && totalPaid >= targetCost) {
             fIds.add(id);
             return;
         }
 
         const hasActivity = totalRequested > 0 || (payReqStr && payReqStr !== 'false');
         if (hasActivity) {
-            const hasPayments = totalPaid > 0;
-            if (totalPaid === 0 && (totalRequested > 0 || payReqStr === 'requested')) {
+            const hasActiveRequest = (totalRequested > totalPaid) || payReqStr === 'requested';
+            if (hasActiveRequest) {
                 rAcqIds.add(id);
-            } else {
+            } else if (totalPaid > 0) {
                 pIds.add(id);
             }
         }

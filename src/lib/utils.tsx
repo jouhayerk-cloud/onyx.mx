@@ -1244,9 +1244,9 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayId
   const dispStatus = String(item.dispersal_status || '').toLowerCase();
   
   // 1. Precise status from calculation sets (highest priority)
-  if (partialPayIds?.has(String(item.id))) return 'RED';
   if (fullPayIds?.has(String(item.id))) return 'GREEN';
   if (requestedAcqIds?.has(String(item.id))) return 'YELLOW';
+  if (partialPayIds?.has(String(item.id))) return 'RED';
 
   // 2. Book 825 / Prepaid Override (Now with production safety)
   const workbook = String(item.workbook || item.data?.workbook || '').toLowerCase();
@@ -1263,10 +1263,6 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayId
     return 'YELLOW';
   }
 
-  // 5. Default: check for price/qty
-  const qty = parseInt(String(item.quantity || 1));
-  const price = parseFloat(String(item.price || 0));
-  if (price > 0 && qty > 0 && statusStr === 'acquired') return 'PURPLE';
-  if (price > 0 && qty > 0) return 'BLUE';
+  // 5. Default: BLUE (NEW) for items with no payment data
   return 'BLUE';
 };
