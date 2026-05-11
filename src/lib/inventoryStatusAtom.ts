@@ -80,8 +80,10 @@ export const inventoryStatusSetsAtom = atom<InventoryStatusSets>((get) => {
 
         const hasActivity = totalRequested > 0 || (payReqStr && payReqStr !== 'false');
         if (hasActivity) {
-            const isRequestedAcq = String(norm.status || '').toLowerCase() === 'acquisition' && totalPaid === 0 && (totalRequested > 0 || payReqStr === 'requested');
-            if (!isRequestedAcq) {
+            const hasPayments = totalPaid > 0;
+            if (totalPaid === 0 && (totalRequested > 0 || payReqStr === 'requested')) {
+                rAcqIds.add(id);
+            } else {
                 pIds.add(id);
             }
         }
