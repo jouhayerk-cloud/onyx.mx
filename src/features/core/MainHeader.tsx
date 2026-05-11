@@ -105,6 +105,7 @@ const OnyxBar: React.FC = () => null;
 
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
+import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
 
@@ -853,6 +854,7 @@ export function MainHeader() {
     const [onyxApiKey, setOnyxApiKey] = useAtom(onyxApiKeyAtom);
     const [artifactConfig, setArtifactConfig] = useAtom(inventoryArtifactConfigAtom);
     const [isBotOrbOpen, setIsBotOrbOpen] = useAtom(isBotOrbOpenAtom);
+    const statusSets = useAtomValue(inventoryStatusSetsAtom);
 
     const inventory = useAtomValue(inventoryAtom);
     const financeDocs = useAtomValue(financeDataAtom);
@@ -877,9 +879,9 @@ export function MainHeader() {
             workbook.lastModifiedBy = 'Onyx.mx Studio';
             workbook.created = new Date();
 
-            const partialPayIds = new Set<string>();
-            const fullPayIds = new Set<string>();
-            const requestedAcqIds = new Set<string>();
+            const partialPayIds = new Set(statusSets.partialPayIds);
+            const fullPayIds = new Set(statusSets.fullPayIds);
+            const requestedAcqIds = new Set(statusSets.requestedAcqIds);
             const paymentDateMap = new Map<string, string>();
 
             const paidMap = new Map<string, number>();
@@ -900,34 +902,6 @@ export function MainHeader() {
                     if (pDate) ids.forEach(id => paymentDateMap.set(id, pDate));
                 } else if (d.status === 'Requested') {
                     ids.forEach(id => requestedMap.set(id, (requestedMap.get(id) || 0) + amount));
-                }
-            });
-
-            inventory.forEach(item => {
-                const id = String(item.data.id || item.row);
-                const norm = normalizeInventoryData(item.data);
-                const price = parseFloat(String(norm.price || 0));
-                const qty = parseInt(String(norm.quantity || 1));
-                const totalCost = price * qty;
-                const totalPaid = paidMap.get(id) || 0;
-                const totalRequested = requestedMap.get(id) || 0;
-                
-                const payReqStr = String(norm.payReq || '').toLowerCase();
-                const statusStr = String(norm.status || '').toLowerCase();
-                const workbook = String(norm.workbook || '').toLowerCase();
-
-                // 0. Book 825 or Prepaid Override
-                if (workbook === '825' || workbook === 'v825' || payReqStr === 'prepaid' || payReqStr === 'paid') {
-                    fullPayIds.add(id);
-                } else if (totalCost > 0 && totalPaid >= totalCost) {
-                    fullPayIds.add(id);
-                } else if (totalPaid > 0 || totalRequested > 0 || payReqStr === 'requested' || payReqStr === 'true' || payReqStr.includes('%')) {
-                    // Distinguish between Requested Acquisition and Partial/Advance
-                    if (statusStr === 'acquisition' && totalPaid === 0 && (totalRequested > 0 || payReqStr === 'requested')) {
-                        requestedAcqIds.add(id);
-                    } else {
-                        partialPayIds.add(id);
-                    }
                 }
             });
 
@@ -1773,12 +1747,12 @@ export function MainHeader() {
                                 
                                 const payStatusText = payStatusClass === 'GREEN' ? 'PAID' : 
                                                     payStatusClass === 'YELLOW' ? 'REQUESTED' : 
-                                                    payStatusClass === 'RED' ? 'REQUESTED' : 
+                                                    payStatusClass === 'RED' ? 'PARTIAL' : 
                                                     payStatusClass === 'PURPLE' ? 'PARTIAL' : 'NEW';
 
                                 const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' : 
                                                      payStatusClass === 'YELLOW' ? 'FFFACC15' : 
-                                                     payStatusClass === 'RED' ? 'FFFACC15' : 
+                                                     payStatusClass === 'RED' ? 'FFEF4444' : 
                                                      payStatusClass === 'PURPLE' ? 'FFA855F7' : 'FF38BDF8';
 
                                 let formattedPayDate = 'N/A';
@@ -1930,7 +1904,7 @@ export function MainHeader() {
 
                     const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' : 
                                          payStatusClass === 'YELLOW' ? 'FFFACC15' : 
-                                         payStatusClass === 'RED' ? 'FFFACC15' : 
+                                         payStatusClass === 'RED' ? 'FFEF4444' : 
                                          payStatusClass === 'PURPLE' ? 'FFA855F7' : 'FF38BDF8';
 
                     let formattedPayDate = 'N/A';

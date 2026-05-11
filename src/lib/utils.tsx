@@ -1260,8 +1260,7 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayId
   if (payReqStr.includes('%') || payReqStr === 'partial') return 'RED';
 
   if (payReqStr === 'requested' || payReqStr === 'true' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') {
-    const isAcq = String(item.status || item.item_status || '').toLowerCase() === 'acquisition';
-    return isAcq ? 'YELLOW' : 'RED';
+    return 'YELLOW';
   }
 
   // 5. Default: check for price/qty
