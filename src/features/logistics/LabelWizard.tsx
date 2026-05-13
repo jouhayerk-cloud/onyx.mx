@@ -372,10 +372,17 @@ export const LabelWizard: React.FC = () => {
     const [urls, setUrls] = useState({ xlsx: '', pdf: '', catalog: '' });
 
     const selectedItems = useMemo(() => {
-        return inventory.filter(item => selectedIds.includes(item.row)).map(item => {
+        const items = inventory.filter(item => selectedIds.includes(item.row)).map(item => {
             const normData = normalizeInventoryData(item.data);
             const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
             return { ...item, normData, codes };
+        });
+
+        // Sort by bookBarcode (TAGID) descending
+        return items.sort((a, b) => {
+            const tagA = String(a.codes.bookBarcode || '');
+            const tagB = String(b.codes.bookBarcode || '');
+            return tagB.localeCompare(tagA, undefined, { numeric: true, sensitivity: 'base' });
         });
     }, [inventory, selectedIds, exchangeRate, workbookPrefix]);
 
@@ -456,7 +463,8 @@ export const LabelWizard: React.FC = () => {
                 exportedAt: new Date().toLocaleString(),
                 customTitle: 'CONTROL PAGE MANIFESTO',
                 excludeImages: !includeImages,
-                excludeHeader: true
+                excludeHeader: true,
+                sortByTagDesc: true
             }, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob');
             
             if (blob instanceof Blob) {
