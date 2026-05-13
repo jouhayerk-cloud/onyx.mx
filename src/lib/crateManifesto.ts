@@ -70,6 +70,7 @@ export interface ManifestoMeta {
     trailerPlates?: string;
     senders?: string[];
     packingItems?: Array<{ name: string; count: number; weight: number }>;
+    sortByTagDesc?: boolean;  // NEW: Sort items by itemId descending
 }
 
 // ─── QR Code via free API ────────────────────────────────────────────────────
@@ -213,17 +214,27 @@ export async function exportCrateManifesto(
         });
     }
 
-    const itemsByVendor = items.reduce((acc, item) => {
-        const v = item.vendorPrefix || 'OTHER';
-        if (!acc[v]) acc[v] = [];
-        acc[v].push(item);
-        return acc;
-    }, {} as Record<string, ManifestoItem[]>);
-
     const sortedItems: Array<ManifestoItem | { isHeader: boolean; label: string }> = [];
-    Object.keys(itemsByVendor).sort().forEach(v => {
-        sortedItems.push(...itemsByVendor[v].sort((a, b) => b.qty - a.qty));
-    });
+    
+    if (meta.sortByTagDesc) {
+        // Sort by itemId (Tag ID) descending
+        sortedItems.push(...items.sort((a, b) => {
+            const idA = String(a.itemId || '');
+            const idB = String(b.itemId || '');
+            return idB.localeCompare(idA, undefined, { numeric: true, sensitivity: 'base' });
+        }));
+    } else {
+        const itemsByVendor = items.reduce((acc, item) => {
+            const v = item.vendorPrefix || 'OTHER';
+            if (!acc[v]) acc[v] = [];
+            acc[v].push(item);
+            return acc;
+        }, {} as Record<string, ManifestoItem[]>);
+
+        Object.keys(itemsByVendor).sort().forEach(v => {
+            sortedItems.push(...itemsByVendor[v].sort((a, b) => b.qty - a.qty));
+        });
+    }
 
     // 2. Append Manual Packing Items at the VERY BOTTOM
     if (meta.packingItems && meta.packingItems.length > 0) {
