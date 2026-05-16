@@ -542,8 +542,8 @@ export const LabelWizard: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[1em] mb-2">BUFFER_COUNT</span>
-                        <span className="text-6xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter">{selectedItems.length}</span>
+                        <span className="text-[12px] font-black text-white/40 uppercase tracking-[1em] mb-4">BUFFER_COUNT</span>
+                        <span className="text-8xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)]">{selectedItems.length}</span>
                     </div>
                 </div>
 
@@ -575,9 +575,9 @@ export const LabelWizard: React.FC = () => {
                             )}
                         </button>
                         
-                        <div className="flex flex-col items-center gap-1 w-full max-w-[160px]">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">CSV_BUFFER</span>
-                            <span className="text-sm font-black text-white uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">Export Labels</span>
+                        <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CSV_BUFFER</span>
+                            <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">Labels</span>
                             
                             {/* Progress Bar */}
                             {progress.xlsx > 0 && (
@@ -615,9 +615,9 @@ export const LabelWizard: React.FC = () => {
                             )}
                         </button>
                         
-                        <div className="flex flex-col items-center gap-1 w-full max-w-[160px]">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">PDF_RENDER</span>
-                            <span className="text-sm font-black text-white uppercase tracking-[0.2em] group-hover:text-red-400 transition-colors">Control Page</span>
+                        <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">PDF_RENDER</span>
+                            <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-red-400 transition-colors">Control</span>
                             
                             {/* Progress Bar */}
                             {progress.pdf > 0 && (
@@ -668,9 +668,9 @@ export const LabelWizard: React.FC = () => {
                             </div>
                         </div>
                         
-                        <div className="flex flex-col items-center gap-1 w-full max-w-[160px]">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">CATALOG_ENGINE</span>
-                            <span className="text-sm font-black text-white uppercase tracking-[0.2em] group-hover:text-blue-400 transition-colors">Sales Catalog</span>
+                        <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CATALOG_ENGINE</span>
+                            <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-blue-400 transition-colors">Catalog</span>
                             
                             {/* Progress Bar */}
                             {progress.catalog > 0 && (
