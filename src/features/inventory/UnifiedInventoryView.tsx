@@ -56,6 +56,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
+import { WireframeIcon } from './InventoryArtifact';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, CreditCard, Link } from 'lucide-react';
 
 
@@ -318,7 +319,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     )}
 
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden group/listimg" 
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden group/listimg isolate" 
                         onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}
                         onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}
                         onTouchStart={(e) => { e.stopPropagation(); setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); }}
@@ -330,7 +331,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
                             if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                         }}>
-                        {mediaUrls[cardIdx] ? <img key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
+                        {mediaUrls[cardIdx] ? <img key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} color={accentColor} /></div>}
                         {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></div>}
                         
                         {/* List View Card Navigation Chevrons */}
@@ -513,7 +514,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     {isEditable && <button onClick={handleEdit} className="h-10 px-4 rounded-xl bg-(--main-color)/20 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all">Edit Item</button>}
                     <button onClick={() => onToggleExpand()} className="h-10 px-4 rounded-xl bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">Close</button>
                 </div>
-                <div className="h-72 sm:h-96 bg-black relative shrink-0 group/hero">
+                <div className="h-72 sm:h-96 bg-black relative shrink-0 group/hero isolate">
                     {mediaUrls[modalIdx] ? (
                         <div className="w-full h-full relative cursor-zoom-in" onClick={() => { setViewerIdx(modalIdx); setShowViewer(true); }}>
                             {isVideoFile(mediaUrls[modalIdx]) ? (
@@ -536,7 +537,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                 </>
                             )}
                         </div>
-                    ) : <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo width={64} height={64} /></div>}
+                    ) : <div className="w-full h-full flex items-center justify-center opacity-80 mix-blend-screen scale-[1.5]"><WireframeIcon item={norm} color={accentColor} /></div>}
                 </div>
 
                 {/* Modal Thumbnail Gallery Bar */}
@@ -787,7 +788,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                  style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={() => onToggleExpand()}
              onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
             {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-            <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/gridimg" 
+            <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/gridimg isolate" 
                 onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}
                 onTouchStart={(e) => { e.stopPropagation(); setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); }}
                 onTouchMove={(e) => { e.stopPropagation(); setTouchEnd(e.targetTouches[0].clientX); }}
@@ -798,7 +799,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
                     if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                 }}>
-                {mediaUrls[cardIdx] ? <img key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="w-full h-full flex items-center justify-center"><OnyxMiniLogo className="w-16 h-16 opacity-10" /></div>}
+                {mediaUrls[cardIdx] ? <img key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="absolute inset-0 flex items-center justify-center opacity-80 mix-blend-screen scale-[1.3] group-hover:scale-[1.35] transition-transform duration-700"><WireframeIcon item={norm} color={accentColor} /></div>}
                 {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Upload size={24} className="text-white/40" /></div>}
                 
                 {/* Grid View Card Navigation Chevrons */}
