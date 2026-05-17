@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData } from './utils';
+import { generateAxonometricDataUrl } from './axonometric';
 
 // We accept a generalized artifact structure so different modules can use it
 export interface CatalogArtifact {
@@ -47,9 +48,34 @@ const toImp = (val: any, type: 'in' | 'lbs' | 'ft' = 'in') => {
     return cmToImperial(v);
 };
 
-function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, exportType: 'regular' | 'catalog' = 'regular'): number {
+async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, exportType: 'regular' | 'catalog' = 'regular'): Promise<number> {
     const norm = normalizeInventoryData(item.data); 
     const codes = item.codes; 
+    
+    // Draw 3D Axonometric representation in the top right corner
+    const wCm = parseFloat(norm.widthCm);
+    const hCm = parseFloat(norm.heightCm);
+    let dCm = parseFloat(norm.lengthCm);
+    
+    // Round objects often lack a depth dimension because depth = width
+    if (!dCm && wCm) {
+        dCm = wCm;
+    }
+
+    const shapeStr = norm.shape || '';
+    const descStr = norm.shortDescription || norm.description || '';
+    if (wCm && hCm && dCm) {
+        try {
+            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr);
+            if (axoDataUrl) {
+                const axoSize = 45; // Size in mm
+                doc.addImage(axoDataUrl, 'PNG', PW - M - axoSize, startY + 5, axoSize, axoSize);
+            }
+        } catch (e) {
+            console.error("Failed to draw axonometric box", e);
+        }
+    }
+
     const tY = startY + 8; // Tag ID row
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
     doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(barcode, M + 4, tY);
@@ -166,12 +192,12 @@ export async function exportCatalogPdf(
 
             if (imgs.length === 0) {
                 doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
-                const specY = drawHeader(doc, item, M, PW, M, exportType);
+                const specY = await drawHeader(doc, item, M, PW, M, exportType);
                 doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
             } else {
                 for (let j = 0; j < imgs.length; j++) {
                     doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
-                    const specY = drawHeader(doc, item, M, PW, M, exportType);
+                    const specY = await drawHeader(doc, item, M, PW, M, exportType);
                     
                     const imgUrl = getCleanImageUrl(imgs[j]);
                     const d = await loadImgData(imgUrl, 1200);
