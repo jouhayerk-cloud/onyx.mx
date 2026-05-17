@@ -1,6 +1,7 @@
 export async function generateAxonometricDataUrl(
     w_cm: number, h_cm: number, d_cm: number,
-    shapeStr: string = '', descStr: string = ''
+    shapeStr: string = '', descStr: string = '',
+    wireframeColor?: string
 ): Promise<string> {
     return new Promise((resolve) => {
         const W = w_cm;
@@ -10,11 +11,23 @@ export async function generateAxonometricDataUrl(
         const s = shapeStr.toLowerCase();
         const t = descStr.toLowerCase();
         let geom = 'box';
+        let isMirror = false;
         
         if (s.includes('bowl') || t.includes('bowl')) geom = 'bowl';
-        else if ((s.includes('mirror') || t.includes('mirror')) && (s.includes('rectangular') || t.includes('rectangular') || s.includes('squared') || t.includes('squared'))) geom = 'box';
-        else if (s.includes('mirror') || t.includes('mirror')) geom = 'mirror';
-        else if (s.includes('cylinder') || t.includes('cylinder') || t.includes('cilinder') || s.includes('round') || t.includes('round') || s.includes('pendant') || t.includes('pendant')) geom = 'cylinder';
+        else if (s.includes('mirror') || t.includes('mirror')) {
+            isMirror = true;
+            if (s.includes('rectangular') || t.includes('rectangular') || s.includes('squared') || t.includes('squared')) {
+                geom = 'box';
+            } else {
+                geom = 'mirror';
+            }
+        }
+        else if (s.includes('squared') || t.includes('squared') || s.includes('rectangular') || t.includes('rectangular')) {
+            geom = 'box';
+        }
+        else if (s.includes('cylinder') || t.includes('cylinder') || t.includes('cilinder') || s.includes('round') || t.includes('round') || s.includes('pendant') || t.includes('pendant')) {
+            geom = 'cylinder';
+        }
         else if (s.includes('rock') || t.includes('rock') || s.includes('sculpture') || t.includes('sculpture') || s.includes('fountain') || t.includes('fountain')) geom = 'polyhedron';
 
         const cos30 = Math.cos(Math.PI / 6);
@@ -53,18 +66,19 @@ export async function generateAxonometricDataUrl(
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
 
-        // Grayscale Palette
-        const COLOR_TOP = '#F0F0F0';
-        const COLOR_RIGHT = '#D4D4D4';
-        const COLOR_LEFT = '#9E9E9E';
-        const COLOR_OUTLINE = '#111111';
+        const isWireframe = !!wireframeColor;
+        // Grayscale Palette (transparent if wireframe to achieve hidden-line look)
+        const COLOR_TOP = isWireframe ? 'rgba(0,0,0,0)' : '#F0F0F0';
+        const COLOR_RIGHT = isWireframe ? 'rgba(0,0,0,0)' : '#D4D4D4';
+        const COLOR_LEFT = isWireframe ? 'rgba(0,0,0,0)' : '#9E9E9E';
+        const COLOR_OUTLINE = wireframeColor || '#111111';
 
         ctx.font = 'bold 18px "Helvetica Neue", Helvetica, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
         function drawLabel(val: number, label: string, p1: {u:number, v:number}, p2: {u:number, v:number}, angle: number, offsetV: number) {
-            if (!val) return;
+            if (!val || isWireframe) return;
             const midU = (p1.u + p2.u) / 2;
             const midV = (p1.v + p2.v) / 2;
             ctx!.save();
@@ -116,6 +130,7 @@ export async function generateAxonometricDataUrl(
             drawEllipsePath(cb_u, cb_v, 1.0, 0, 2 * Math.PI);
             ctx.fillStyle = COLOR_RIGHT;
             ctx.fill();
+            if (isWireframe) ctx.stroke();
 
             drawEllipsePath(cb_u, cb_v, 1.0, tFrontStart, tFrontEnd);
             ctx.stroke();
@@ -144,6 +159,22 @@ export async function generateAxonometricDataUrl(
 
             drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
             ctx.fillStyle = COLOR_TOP;
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw inner top ellipse (hollow interior)
+            drawEllipsePath(ct_u, ct_v, 0.75, 0, 2 * Math.PI);
+            if (isWireframe) {
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+            } else {
+                const holeGrd = ctx!.createLinearGradient(
+                    cx + (ct_u) * scale, cy + (ct_v - (W/2)*sin30) * scale,
+                    cx + (ct_u) * scale, cy + (ct_v + (W/2)*sin30) * scale
+                );
+                holeGrd.addColorStop(0, '#555555');
+                holeGrd.addColorStop(1, '#0A0A0A');
+                ctx.fillStyle = holeGrd;
+            }
             ctx.fill();
             ctx.stroke();
 
@@ -292,6 +323,7 @@ export async function generateAxonometricDataUrl(
             ctx.closePath();
             ctx.fillStyle = COLOR_RIGHT;
             ctx.fill();
+            if (isWireframe) ctx.stroke();
 
             // Stroke rim edges
             ctx.beginPath();
@@ -303,14 +335,24 @@ export async function generateAxonometricDataUrl(
             ctx.lineTo(frontCx + r * Math.cos(t2), frontCy + r * Math.sin(t2));
             ctx.stroke();
 
-            // Draw perfect front circle (Mirror Face)
+            // Draw perfect front circle (Mirror Frame)
             ctx.beginPath();
             ctx.arc(frontCx, frontCy, r, 0, 2 * Math.PI);
+            ctx.fillStyle = COLOR_TOP;
+            ctx.fill();
+            ctx.stroke();
+
+            // Inner glass
+            const frameThick = Math.min(20, Math.max(W,H) * 0.3) * scale;
+            const innerR = r - frameThick;
+
+            ctx.beginPath();
+            ctx.arc(frontCx, frontCy, innerR, 0, 2 * Math.PI);
             
             // Mirror glass reflection slash
             const faceGrd = ctx!.createLinearGradient(
-                frontCx + r*0.5, frontCy - r*0.5,
-                frontCx - r*0.5, frontCy + r*0.5
+                frontCx + innerR*0.5, frontCy - innerR*0.5,
+                frontCx - innerR*0.5, frontCy + innerR*0.5
             );
             faceGrd.addColorStop(0, COLOR_TOP);
             faceGrd.addColorStop(0.45, COLOR_TOP);
@@ -352,6 +394,71 @@ export async function generateAxonometricDataUrl(
             drawFace([4, 5, 6, 7], COLOR_TOP);
             drawFace([0, 3, 7, 4], COLOR_LEFT);
             drawFace([0, 1, 5, 4], COLOR_RIGHT);
+
+            if (isMirror) {
+                // Find largest face to draw the glass on
+                const areaLeft = D * H;
+                const areaRight = W * H;
+                const areaTop = W * D;
+                const maxArea = Math.max(areaLeft, areaRight, areaTop);
+                
+                const frameX = Math.min(20, W * 0.3);
+                const frameY = Math.min(20, H * 0.3);
+                const frameZ = Math.min(20, D * 0.3);
+                
+                let glassPts3d = [];
+                if (maxArea === areaRight) {
+                    glassPts3d = [
+                        {x: frameX, y: frameY, z: 0},
+                        {x: W - frameX, y: frameY, z: 0},
+                        {x: W - frameX, y: H - frameY, z: 0},
+                        {x: frameX, y: H - frameY, z: 0}
+                    ];
+                } else if (maxArea === areaLeft) {
+                    glassPts3d = [
+                        {x: 0, y: frameY, z: frameZ},
+                        {x: 0, y: frameY, z: D - frameZ},
+                        {x: 0, y: H - frameY, z: D - frameZ},
+                        {x: 0, y: H - frameY, z: frameZ}
+                    ];
+                } else {
+                    glassPts3d = [
+                        {x: frameX, y: H, z: frameZ},
+                        {x: W - frameX, y: H, z: frameZ},
+                        {x: W - frameX, y: H, z: D - frameZ},
+                        {x: frameX, y: H, z: D - frameZ}
+                    ];
+                }
+                
+                const glassProjected = glassPts3d.map(p => project(p.x, p.y, p.z));
+                const gPts = glassProjected.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
+                
+                ctx.beginPath();
+                ctx.moveTo(gPts[0].u, gPts[0].v);
+                ctx.lineTo(gPts[1].u, gPts[1].v);
+                ctx.lineTo(gPts[2].u, gPts[2].v);
+                ctx.lineTo(gPts[3].u, gPts[3].v);
+                ctx.closePath();
+                
+                const minGu = Math.min(...gPts.map(p=>p.u));
+                const maxGu = Math.max(...gPts.map(p=>p.u));
+                const minGv = Math.min(...gPts.map(p=>p.v));
+                const maxGv = Math.max(...gPts.map(p=>p.v));
+                
+                const faceGrd = ctx!.createLinearGradient(
+                    maxGu, minGv,
+                    minGu, maxGv
+                );
+                faceGrd.addColorStop(0, COLOR_TOP);
+                faceGrd.addColorStop(0.45, COLOR_TOP);
+                faceGrd.addColorStop(0.5, COLOR_RIGHT);
+                faceGrd.addColorStop(0.55, COLOR_TOP);
+                faceGrd.addColorStop(1, COLOR_TOP);
+
+                ctx.fillStyle = faceGrd;
+                ctx.fill();
+                ctx.stroke();
+            }
 
             drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
             drawLabel(W, 'W', pts[0], pts[1], -Math.PI / 6, 25);
