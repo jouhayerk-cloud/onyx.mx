@@ -13,7 +13,7 @@ export async function generateAxonometricDataUrl(
         let geom = 'box';
         let isMirror = false;
         
-        if (s.includes('bowl') || t.includes('bowl')) geom = 'bowl';
+        if (s.includes('bowl') || t.includes('bowl') || s.includes('canoe') || t.includes('canoe') || s.includes('canoa') || t.includes('canoa')) geom = 'bowl';
         else if (s.includes('mirror') || t.includes('mirror')) {
             isMirror = true;
             if (s.includes('rectangular') || t.includes('rectangular') || s.includes('squared') || t.includes('squared')) {
@@ -198,7 +198,7 @@ export async function generateAxonometricDataUrl(
             
             // Visual height adjustment to ensure the bowl body sweeps elegantly downwards
             // It MUST be visibly lower than the front arc (vLowest) of the top ellipse.
-            const visualH = Math.max(H, vLowest + W * 0.25);
+            const visualH = Math.max(H, vLowest + Math.min(W, D) * 0.25);
             const cb_v = ct_v + visualH;
 
             const t1 = Math.atan2(-D, W); // Right tangent
