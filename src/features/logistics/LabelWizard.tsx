@@ -26,6 +26,7 @@ import { exportToXLSX } from '../../lib/xlsxUtils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
 import { vendors } from '../../lib/consts';
+import { generateAxonometricDataUrl } from '../../lib/axonometric';
 import { NFCTagCard } from '../../components/LabelVisuals';
 
 /* ─── NFC Tags HUD Component ─── */
@@ -368,8 +369,163 @@ export const LabelWizard: React.FC = () => {
     const [name, setName] = useState(`BATCH_${new Date().toISOString().split('T')[0]}`);
     const [includeImages, setIncludeImages] = useState(true);
     const [catalogMethod, setCatalogMethod] = useState<'grid' | 'single'>('grid');
-    const [progress, setProgress] = useState({ xlsx: -1, pdf: -1, catalog: -1 });
+    const [progress, setProgress] = useState({ xlsx: -1, pdf: -1, catalog: -1, printer: -1 });
     const [urls, setUrls] = useState({ xlsx: '', pdf: '', catalog: '' });
+
+    const [isPrinterOverlayOpen, setIsPrinterOverlayOpen] = useState(false);
+    const iframeRef = React.useRef<HTMLIFrameElement>(null);
+    const pendingBatchRef = React.useRef<any>(null);
+
+    const handleIframeLoad = () => {
+        if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(
+                { type: 'LOAD_BATCH_PREVIEW', payload: pendingBatchRef.current },
+                '*'
+            );
+            pendingBatchRef.current = null;
+        }
+    };
+
+    const ONYX_MASTER_TEMPLATE_V4 = (width: number, height: number) => ({
+        name: "OnyxLabels_V4",
+        version: 4,
+        isTemplate: true,
+        labelSize: { width, height },
+        templateFields: ["TAG ID", "DESCRIPTION", "SIZES", "BOOK RETAIL", "MATERIAL COLOR", "QR URL", "AXONOMETRIC"],
+        elements: [
+            {
+                id: "el_axonometric",
+                type: "image",
+                zone: 0,
+                x: 10, y: 15, width: 80, height: 80,
+                rotation: 0,
+                imageData: "{{AXONOMETRIC}}",
+                naturalWidth: 800,
+                naturalHeight: 800,
+                lockAspectRatio: true
+            },
+            {
+                id: "el_qr",
+                type: "qr",
+                zone: 0,
+                x: 295, y: 15, width: 75, height: 75,
+                rotation: 0,
+                qrData: "{{QR URL}}"
+            },
+            {
+                id: "el_desc",
+                type: "text",
+                zone: 0,
+                x: 95, y: 15, width: 190, height: 32,
+                rotation: 0,
+                text: "{{DESCRIPTION}}",
+                fontSize: 22,
+                fontFamily: "Inter, sans-serif",
+                fontWeight: "bold",
+                align: "center",
+                color: "white",
+                background: "black"
+            },
+            {
+                id: "el_mat",
+                type: "text",
+                zone: 0,
+                x: 95, y: 55, width: 190, height: 20,
+                rotation: 0,
+                text: "{{MATERIAL COLOR}}",
+                fontSize: 18,
+                fontFamily: "Inter, sans-serif",
+                align: "center",
+                fontWeight: "bold"
+            },
+            {
+                id: "el_sizes",
+                type: "text",
+                zone: 0,
+                x: 95, y: 75, width: 190, height: 20,
+                rotation: 0,
+                text: "{{SIZES}}",
+                fontSize: 15,
+                fontFamily: "Inter, sans-serif",
+                align: "center"
+            },
+            {
+                id: "el_barcode",
+                type: "barcode",
+                zone: 0,
+                x: 20, y: 110, width: 350, height: 110,
+                rotation: 0,
+                barcodeData: "{{TAG ID}}",
+                barcodeFormat: "CODE128",
+                textFontSize: 24,
+                textBold: true,
+                showText: true
+            }
+        ]
+    });
+
+    const buildBatchJSONAsync = async (items: any[], workbookPrefix: string, activeLabelSize: string = '50x30') => {
+        const [wStr, hStr] = activeLabelSize.split('x');
+        const width = parseInt(wStr) || 50;
+        const height = parseInt(hStr) || 30;
+
+        const baseRecords = await Promise.all(items.map(async item => {
+            const d = item.normData;
+            const c = item.codes;
+            const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
+            const retailStr = String(c.bookRetail || '0').padStart(4, '0');
+            
+            // Generate dynamic axonometric wireframe for this item's specific dimensions and type
+            const w_cm = parseFloat(d.widthCm) || 20;
+            const h_cm = parseFloat(d.heightCm) || 20;
+            const d_cm = parseFloat(d.lengthCm) || 20;
+            const shapeStr = d.shape || '';
+            const descStr = d.shortDescription || d.description || '';
+            
+            const axoBase64 = await generateAxonometricDataUrl(w_cm, h_cm, d_cm, shapeStr, descStr, '#000000');
+
+            return {
+                "TAG ID": c.bookBarcode || '',
+                "DESCRIPTION": `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim().toUpperCase() || 'ONYX PIECE',
+                "MATERIAL COLOR": `${d.material || 'ONYX'} ${d.color || ''}`.trim().toUpperCase(),
+                "SIZES": `${d.widthCm || 0}×${d.lengthCm || 0}×${d.heightCm || 0} CM`,
+                "BOOK RETAIL": `${c.bookAqCode}-${bookv}${retailStr}`,
+                "QUANTITY": d.quantity || 1,
+                "LANDED CODE": c.bookLandCode,
+                "ACQ CODE": c.bookAqCode,
+                "QR URL": `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBarcode}`,
+                "AXONOMETRIC": axoBase64
+            };
+        }));
+
+        const templateData = baseRecords.flatMap(r =>
+            Array.from({ length: (Number(r["QUANTITY"]) || 1) }, () => ({ ...r }))
+        );
+
+        return {
+            ...ONYX_MASTER_TEMPLATE_V4(width, height),
+            name: `Onyx_Batch_${new Date().toISOString().split('T')[0]}`,
+            exportedAt: new Date().toISOString(),
+            templateData
+        };
+    };
+
+    const handlePrintBluetooth = async () => {
+        setProgress(p => ({ ...p, printer: 5 }));
+        const tid = toast.loading('Generating dynamic 3D structures for labels...');
+        try {
+            const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix);
+            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            pendingBatchRef.current = batchProject;
+            setProgress(p => ({ ...p, printer: 100 }));
+            toast.success('Batch Prepared! Launching Print Engine', { id: tid });
+            setIsPrinterOverlayOpen(true);
+        } catch (e: any) {
+            console.error(e);
+            setProgress(p => ({ ...p, printer: -1 }));
+            toast.error(`Print setup failed: ${e.message}`, { id: tid });
+        }
+    };
 
     const selectedItems = useMemo(() => {
         const items = inventory.filter(item => selectedIds.includes(item.row)).map(item => {
@@ -388,8 +544,9 @@ export const LabelWizard: React.FC = () => {
 
     useEffect(() => {
         if (isOpen) {
-            setProgress({ xlsx: -1, pdf: -1, catalog: -1 });
+            setProgress({ xlsx: -1, pdf: -1, catalog: -1, printer: -1 });
             setUrls({ xlsx: '', pdf: '', catalog: '' });
+            setIsPrinterOverlayOpen(false);
         }
     }, [isOpen, selectedIds.length]);
 
@@ -561,7 +718,35 @@ export const LabelWizard: React.FC = () => {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
+                    {/* Bluetooth Print Module */}
+                    <div className="flex flex-col items-center gap-6 group">
+                        <button 
+                            onClick={handlePrintBluetooth} 
+                            disabled={progress.printer > 0 && progress.printer < 100} 
+                            className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            <Printer size={64} strokeWidth={1} className={`transition-all duration-500 ${progress.printer === 100 ? 'text-(--main-color) drop-shadow-[0_0_20px_rgba(var(--main-color-rgb),0.4)]' : 'text-(--main-color)/20 group-hover:text-(--main-color)'}`} />
+                            {progress.printer > 0 && progress.printer < 100 && (
+                                <div className="absolute -inset-4 border-2 border-(--main-color)/20 border-t-(--main-color) animate-spin rounded-full" />
+                            )}
+                        </button>
+                        
+                        <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">THERMAL_BT</span>
+                            <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-(--main-color) transition-colors">Printer</span>
+                            
+                            {/* Progress Bar */}
+                            {progress.printer > 0 && (
+                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-3 relative">
+                                    <div 
+                                        className={`h-full transition-all duration-500 ${progress.printer === 100 ? 'bg-(--main-color) shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]' : 'bg-(--main-color)/50'}`} 
+                                        style={{ width: `${progress.printer}%` }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     {/* XLSX Export Module */}
                     <div className="flex flex-col items-center gap-6 group">
                         <button 
@@ -698,6 +883,52 @@ export const LabelWizard: React.FC = () => {
 
                 <div className="mt-auto pt-16 flex justify-between items-end opacity-5"><Cpu size={16} strokeWidth={1} /></div>
             </div>
+
+            {/* ── LABEL PREVIEW OVERLAY — Fullscreen Glass Panel ── */}
+            {isPrinterOverlayOpen && (
+                <div className="absolute inset-0 z-[2000] flex flex-col animate-in fade-in duration-200 pointer-events-auto bg-black">
+
+                    {/* ━━ Floating glass top bar ━━ */}
+                    <div className="relative z-10 flex items-center justify-between px-6 py-3 bg-black/70 backdrop-blur-2xl border-b border-white/8">
+                        {/* Left: mode label */}
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-(--main-color)/15 border border-(--main-color)/20">
+                                <Printer size={15} strokeWidth={2.5} className="text-(--main-color)" />
+                            </div>
+                            <div>
+                                <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] leading-none mb-0.5">OnyxLabels Engine</p>
+                                <p className="text-xs font-black text-white uppercase tracking-widest leading-none">
+                                    Batch Preview
+                                    <span className="text-(--main-color) ml-1.5">— {selectedItems.length} Labels</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Right: actions */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setIsPrinterOverlayOpen(false)}
+                                className="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/8 transition-all"
+                            >
+                                <X size={18} strokeWidth={2.5} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ━━ Full-height iframe (no border, no padding) ━━ */}
+                    <div className="flex-1 relative bg-black/50">
+                        <iframe
+                            ref={iframeRef}
+                            src={`phomemo-designer/index.html?mini=true&v=${selectedIds.length}`}
+                            className="w-full h-full border-none"
+                            title="OnyxLabels Designer"
+                            allow="bluetooth"
+                            onLoad={handleIframeLoad}
+                        />
+                    </div>
+
+                </div>
+            )}
         </div>
     );
 };
