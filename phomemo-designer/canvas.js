@@ -989,7 +989,24 @@ export class CanvasRenderer {
     }
 
     for (const line of lines) {
-      this.ctx.fillText(line, textX, textY);
+      if (align === 'justify' && line.length > 1) {
+        this.ctx.textAlign = 'left';
+        const totalTextWidth = this.ctx.measureText(line).width;
+        if (totalTextWidth < width) {
+          const extraSpace = width - totalTextWidth;
+          const spacePerGap = extraSpace / (line.length - 1);
+          let currentX = -width / 2;
+          for (let i = 0; i < line.length; i++) {
+            this.ctx.fillText(line[i], currentX, textY);
+            currentX += this.ctx.measureText(line[i]).width + spacePerGap;
+          }
+        } else {
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText(line, 0, textY);
+        }
+      } else {
+        this.ctx.fillText(line, textX, textY);
+      }
 
       // Draw underline manually if enabled
       if (textDecoration === 'underline') {
@@ -1242,9 +1259,28 @@ export class CanvasRenderer {
             if (textY < renderHeight) {  // Only draw if there's room
               tempCtx.fillStyle = 'black';
               tempCtx.font = `${textBold ? 'bold ' : ''}${renderFontSize}px monospace`;
-              tempCtx.textAlign = 'center';
               tempCtx.textBaseline = 'top';
-              tempCtx.fillText(barcodeData, renderWidth / 2, textY);
+
+              const chars = barcodeData.split('');
+              if (chars.length > 1) {
+                tempCtx.textAlign = 'left';
+                const totalTextWidth = tempCtx.measureText(barcodeData).width;
+                if (totalTextWidth < scaledW) {
+                  const extraSpace = scaledW - totalTextWidth;
+                  const spacePerGap = extraSpace / (chars.length - 1);
+                  let currentX = dx;
+                  for (let i = 0; i < chars.length; i++) {
+                    tempCtx.fillText(chars[i], currentX, textY);
+                    currentX += tempCtx.measureText(chars[i]).width + spacePerGap;
+                  }
+                } else {
+                  tempCtx.textAlign = 'center';
+                  tempCtx.fillText(barcodeData, renderWidth / 2, textY);
+                }
+              } else {
+                tempCtx.textAlign = 'center';
+                tempCtx.fillText(barcodeData, renderWidth / 2, textY);
+              }
             }
           }
 

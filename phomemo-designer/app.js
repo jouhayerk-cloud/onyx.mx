@@ -178,9 +178,10 @@ const state = {
     printerModel: 'auto',  // 'auto', 'narrow-48', 'mini-54', 'wide-72', 'mid-76', 'wide-81', 'd-series'
   },
   // Template state
-  templateFields: [],     // Detected field names from elements
+  templateFields: [],     // Array of detected {{fields}} in current design
   templateData: [],       // Array of data records for batch printing
-  selectedRecords: [],    // Indices of selected records for printing
+  selectedRecords: [],    // Array of indices of records selected for printing
+  activeRecordIndex: 0,   // Index of the currently previewed record
   currentPreviewIndex: 0, // Current label index in full preview
   // Inline text editing state
   editingTextId: null,    // ID of text element being inline-edited
@@ -1193,10 +1194,19 @@ function zoomToFitIfNeeded() {
  * Render the canvas
  */
 function render() {
-  // In print preview mode, evaluate expressions so users see actual values
-  const elementsToRender = state.ditherPreview
-    ? evaluateExpressions(state.elements)
-    : state.elements;
+  // If we have template data, substitute the fields of the active record so the user sees a real preview
+  let elementsToRender = state.elements;
+  if (state.templateData && state.templateData.length > 0) {
+    const idx = state.activeRecordIndex || 0;
+    const record = state.templateData[idx] || state.templateData[0];
+    elementsToRender = substituteFields(elementsToRender, record);
+  }
+
+  // In print preview mode, OR when we have substituted template data, evaluate expressions so users see actual values
+  if (state.ditherPreview || (state.templateData && state.templateData.length > 0)) {
+    elementsToRender = evaluateExpressions(elementsToRender);
+  }
+
   state.renderer.renderAll(elementsToRender, state.selectedIds, state.alignmentGuides);
 }
 
@@ -7858,6 +7868,11 @@ window.addEventListener('message', (event) => {
       render();
       setStatus('Template data updated');
     }
+  }
+
+  if (type === 'SET_PREVIEW_RECORD') {
+    state.activeRecordIndex = payload.index || 0;
+    render();
   }
 
   if (type === 'GET_RASTER') {
