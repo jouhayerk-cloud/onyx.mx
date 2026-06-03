@@ -27,6 +27,10 @@ export function extractFields(elements) {
     if (el.qrData) {
       extractFromString(el.qrData, fields);
     }
+    // Check image data
+    if (el.imageData) {
+      extractFromString(el.imageData, fields);
+    }
   }
 
   return Array.from(fields);
@@ -73,6 +77,9 @@ export function substituteFields(elements, record) {
     }
     if (clone.qrData) {
       clone.qrData = substituteString(clone.qrData, record);
+    }
+    if (clone.imageData) {
+      clone.imageData = substituteString(clone.imageData, record);
     }
 
     return clone;
