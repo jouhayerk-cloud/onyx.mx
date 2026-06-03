@@ -347,7 +347,7 @@ export function MainAppView() {
                         </div>
                     </div>
                     <ul className="sidebar-list">
-                        {/* ── ONYX INTELLIGENCE ── */}
+                        {/* ── ONYX INTELLIGENCE (DISABLED) ── 
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
                             <li className={`sidebar-list-item ${activeView === 'onyx' ? 'active' : ''}`} onClick={() => { setActiveView('onyx'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
@@ -357,6 +357,7 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Onyx Intelligence</span>
                             </li>
                         )}
+                        */}
 
                         {/* ── ADMIN ── */}
                         {user?.role === 'Developer' && (
@@ -508,7 +509,7 @@ export function MainAppView() {
             <StudioSettingsPortal />
             <InventoryArtifact />
             <PaymentsArtifact />
-            <BotOrb />
+            {/* <BotOrb /> Disabled for performance */}
         </>
     );
 }
