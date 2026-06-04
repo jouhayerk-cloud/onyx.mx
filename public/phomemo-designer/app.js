@@ -1902,6 +1902,9 @@ async function handleBatchPrint() {
       // Evaluate instant expressions (date/time, etc.)
       const mergedElements = evaluateExpressions(substitutedElements);
 
+      // Slow down parsing so images (like axo base64) can decode fully
+      await new Promise(r => setTimeout(r, 150));
+
       // Render to raster (use raw format for rotated printers like D-series and P12)
       const deviceName = state.transport.getDeviceName?.() || '';
       const printerWidth = getPrinterWidthBytes(deviceName, printerModel);
@@ -1930,7 +1933,44 @@ async function handleBatchPrint() {
       // Delay between prints
       if (rowIndex < totalRows - 1 && !isPrintCancelled()) {
         updatePrintProgress(rowIndex + 1, totalRows, 'Waiting...');
-        await new Promise(r => setTimeout(r, 500));
+        
+        const isOutOfPaper = $('#pi-paper')?.classList.contains('text-red-600') || false;
+        
+        if ((rowIndex + 1) % 50 === 0 || isOutOfPaper) {
+          const nextBtn = $('#progress-next-batch');
+          const cancelBtn = $('#progress-cancel');
+          nextBtn.classList.remove('hidden');
+          
+          if (isOutOfPaper) {
+              $('#progress-subtitle').textContent = `Out of Paper! Printed ${rowIndex + 1} labels. Load paper and click Resume Print.`;
+              nextBtn.textContent = 'Resume Print';
+          } else {
+              $('#progress-subtitle').textContent = `Paused. Printed ${rowIndex + 1} labels. Load paper and click Print Next 50.`;
+              nextBtn.textContent = 'Print Next 50 Labels';
+          }
+          
+          await new Promise(resolve => {
+             const onNext = () => {
+                 cleanup();
+                 resolve();
+             };
+             const onCancel = () => {
+                 printProgressCancelled = true;
+                 cleanup();
+                 resolve();
+             };
+             const cleanup = () => {
+                 nextBtn.removeEventListener('click', onNext);
+                 cancelBtn.removeEventListener('click', onCancel);
+                 nextBtn.classList.add('hidden');
+             };
+             
+             nextBtn.addEventListener('click', onNext);
+             cancelBtn.addEventListener('click', onCancel);
+          });
+        } else {
+          await new Promise(r => setTimeout(r, 500));
+        }
       }
     }
 

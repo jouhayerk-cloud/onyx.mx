@@ -422,7 +422,7 @@ export const LabelWizard: React.FC = () => {
                 id: "el_side",
                 type: "text",
                 zone: 0,
-                x: -95, y: 105, width: 220, height: 30,
+                x: -95, y: 107.2, width: 220, height: 23.6,
                 rotation: 90,
                 text: "MADE IN MEXICO",
                 fontSize: 15,
@@ -434,9 +434,9 @@ export const LabelWizard: React.FC = () => {
                 id: "el_retail",
                 type: "text",
                 zone: 0,
-                x: 45, y: 5, width: 145, height: 25,
+                x: 78.7, y: 0, width: 215, height: 28.6,
                 rotation: 0,
-                align: "left",
+                align: "center",
                 text: "{{BOOK RETAIL}}",
                 fontSize: 15,
                 fontFamily: "Inter, sans-serif",
@@ -448,9 +448,9 @@ export const LabelWizard: React.FC = () => {
                 id: "el_desc",
                 type: "text",
                 zone: 0,
-                x: 45, y: 30, width: 145, height: 28,
+                x: 78.7, y: 22, width: 220, height: 36,
                 rotation: 0,
-                align: "left",
+                align: "center",
                 text: "{{DESCRIPTION}}",
                 fontSize: 23,
                 fontFamily: "Inter, sans-serif",
@@ -462,9 +462,9 @@ export const LabelWizard: React.FC = () => {
                 id: "el_mat",
                 type: "text",
                 zone: 0,
-                x: 45, y: 58, width: 145, height: 28,
+                x: 75.6, y: 49.8, width: 220, height: 35.1,
                 rotation: 0,
-                align: "left",
+                align: "center",
                 text: "{{COLOR MATERIAL}}",
                 fontSize: 23,
                 fontFamily: "Inter, sans-serif",
@@ -475,9 +475,9 @@ export const LabelWizard: React.FC = () => {
                 id: "el_sizes",
                 type: "text",
                 zone: 0,
-                x: 45, y: 86, width: 145, height: 20,
+                x: 77, y: 79.6, width: 218.6, height: 25.3,
                 rotation: 0,
-                align: "left",
+                align: "center",
                 text: "{{SIZES}}",
                 fontSize: 15,
                 fontFamily: "Inter, sans-serif",
@@ -489,7 +489,7 @@ export const LabelWizard: React.FC = () => {
                 id: "el_axo",
                 type: "image",
                 zone: 0,
-                x: 190, y: 0, width: 112, height: 112,
+                x: -6.2, y: -5.1, width: 115.2, height: 115.2,
                 rotation: 0,
                 imageData: "{{AXO_IMAGE}}"
             },
@@ -497,7 +497,7 @@ export const LabelWizard: React.FC = () => {
                 id: "el_qr",
                 type: "qr",
                 zone: 0,
-                x: 290, y: 8, width: 95, height: 95,
+                x: 291.2, y: 5, width: 95, height: 95,
                 rotation: 0,
                 qrData: "{{QR DATA}}"
             },
@@ -505,7 +505,7 @@ export const LabelWizard: React.FC = () => {
                 id: "el_barcode",
                 type: "barcode",
                 zone: 0,
-                x: 30, y: 108, width: 363, height: 132,
+                x: 24.4, y: 101.6, width: 361.9, height: 138.4,
                 rotation: 0,
                 barcodeData: "{{TAG ID}}",
                 barcodeFormat: "CODE128",
@@ -549,7 +549,7 @@ export const LabelWizard: React.FC = () => {
         }));
 
         const templateData = baseRecords.flatMap(r =>
-            Array.from({ length: (Number(r["QUANTITY"]) || 1) }, () => ({ ...r }))
+            Array.from({ length: (Number(r["QUANTITY"]) || 1) * 2 }, () => ({ ...r }))
         );
 
         return {
@@ -675,7 +675,7 @@ export const LabelWizard: React.FC = () => {
                     name: `${d.shape || ''} ${d.shortDescription || ''}`.trim() || 'Artifact',
                     material: d.material || '', 
                     color: d.color || '',
-                    dims: [d.widthCm, d.heightCm, d.lengthCm].filter(Boolean).join('×'),
+                    dims: [d.lengthCm, d.widthCm, d.heightCm].filter(Boolean).join('×'),
                     weightKg: parseFloat(d.weightKg) || 0,
                     costMxn: 0, 
                     costUsd: 0, 
