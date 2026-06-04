@@ -235,7 +235,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                     name: `${d.shape || ''} ${d.shortDescription || ''}`.trim() || 'Artifact',
                     material: d.material || '', 
                     color: d.color || '',
-                    dims: [d.widthCm, d.heightCm, d.lengthCm].filter(Boolean).join('×'),
+                    dims: [d.lengthCm, d.widthCm, d.heightCm].filter(Boolean).join('×'),
                     weightKg: parseFloat(d.weightKg) || 0,
                     costMxn: 0, 
                     costUsd: 0, 

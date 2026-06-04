@@ -78,15 +78,8 @@ export async function generateAxonometricDataUrl(
         ctx.textBaseline = 'middle';
 
         function drawLabel(val: number, label: string, p1: {u:number, v:number}, p2: {u:number, v:number}, angle: number, offsetV: number) {
-            if (!val || isWireframe) return;
-            const midU = (p1.u + p2.u) / 2;
-            const midV = (p1.v + p2.v) / 2;
-            ctx!.save();
-            ctx!.translate(midU, midV);
-            ctx!.rotate(angle);
-            ctx!.fillStyle = '#111111';
-            ctx!.fillText(`${Math.round(val)}cm ${label}`, 0, offsetV);
-            ctx!.restore();
+            // Text annotations removed: already printed on manifesto
+            return;
         }
 
         ctx.lineWidth = 5;

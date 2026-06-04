@@ -5,6 +5,7 @@
  */
 import { jsPDF } from 'jspdf';
 import { cmToImperial } from './utils';
+import { generateAxonometricDataUrl } from './axonometric';
 
 export interface ManifestoItem {
     index: number;            // DB item number (numeric portion from itemId)
@@ -109,6 +110,26 @@ async function loadBarcodeDataUrl(text: string): Promise<string | null> {
         });
         const c = document.createElement('canvas');
         c.width = img.width; c.height = img.height;
+        c.getContext('2d')!.drawImage(img, 0, 0);
+        return c.toDataURL('image/png');
+    } catch { return null; }
+}
+
+async function loadCode39DataUrl(text: string): Promise<string | null> {
+    const encoded = encodeURIComponent(text);
+    const url = `https://barcodeapi.org/api/code39/${encoded}`;
+    try {
+        const img = await new Promise<HTMLImageElement>((res, rej) => {
+            const el = new Image();
+            el.crossOrigin = 'anonymous';
+            el.onload = () => res(el);
+            el.onerror = rej;
+            el.src = url;
+            setTimeout(() => rej(new Error('barcode timeout')), 8000);
+        });
+        const c = document.createElement('canvas');
+        c.width = img.width; 
+        c.height = img.height - 35; // aggressively crop out text
         c.getContext('2d')!.drawImage(img, 0, 0);
         return c.toDataURL('image/png');
     } catch { return null; }
@@ -288,12 +309,13 @@ export async function exportCrateManifesto(
 
     // ─── Column definitions (Optimized for Readability & Distribution) ───────
     const TABLE_END = PW - MR;
-    const COL_QR   = { x: ML,       w: 18  }; 
-    const COL_IMG  = { x: COL_QR.x + COL_QR.w, w: meta.excludeImages ? 0 : 25 };
-    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 40  }; 
-    const COL_NAME = { x: COL_TAG.x + COL_TAG.w, w: meta.excludeImages ? 130 : 105 }; 
-    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 70  }; 
-    const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
+    const COL_QTY     = { x: ML, w: 12 };
+    const COL_IMG     = { x: COL_QTY.x + COL_QTY.w, w: meta.excludeImages ? 0 : 25 };
+    const COL_QR      = { x: COL_IMG.x + COL_IMG.w, w: 18  }; 
+    const COL_BARCODE = { x: COL_QR.x + COL_QR.w, w: 50 };
+    const COL_TAG     = { x: COL_BARCODE.x + COL_BARCODE.w,  w: 40  }; 
+    const COL_NAME    = { x: COL_TAG.x + COL_TAG.w, w: meta.excludeImages ? 85 : 75 }; 
+    const COL_DIMS    = { x: COL_NAME.x + COL_NAME.w, w: TABLE_END - (COL_NAME.x + COL_NAME.w) };
 
     const COL_HDR_H = 8;
     const ROW_H = 22;
@@ -723,12 +745,13 @@ export async function exportCrateManifesto(
         doc.setFontSize(7);
         doc.setFont('helvetica', 'bold');
         const ty = y + 4.5;
-        doc.text('SCAN', COL_QR.x + COL_QR.w / 2, ty, { align: 'center' });
+        doc.text('QTY', COL_QTY.x + COL_QTY.w / 2, ty, { align: 'center' });
         if (!meta.excludeImages) doc.text('PHOTO', COL_IMG.x + COL_IMG.w / 2, ty, { align: 'center' });
+        doc.text('SCAN', COL_QR.x + COL_QR.w / 2, ty, { align: 'center' });
+        doc.text('BARCODE', COL_BARCODE.x + 2, ty);
         doc.text('BOOK TAG ID', COL_TAG.x + 2, ty);
         doc.text('ITEM DESCRIPTION', COL_NAME.x + 2, ty);
         doc.text('DIMENSIONS · WEIGHT', COL_DIMS.x + 2, ty);
-        doc.text('QTY', COL_QTY.x + COL_QTY.w - 2, ty, { align: 'right' });
     }
 
     if (isMultiCrate) {
@@ -791,10 +814,12 @@ export async function exportCrateManifesto(
             doc.addImage(qrDataUrl, 'PNG', COL_QR.x + 3 + xOffset, y + 5, 12, 12);
         }
 
-        // 2. PHOTO (Main Item Photo)
+        // 2. PHOTO (Main Item Photo) & AXONOMETRIC
+        let hasMainImage = false;
         if (!meta.excludeImages && item.imageUrls && item.imageUrls.length > 0) {
             const imgRes = await loadImageDataUrl(item.imageUrls[0], 150);
             if (imgRes) {
+                hasMainImage = true;
                 const { dataUrl, w, h } = imgRes;
                 const aspect = w / h;
                 let dw = 18, dh = 18;
@@ -805,17 +830,37 @@ export async function exportCrateManifesto(
                 doc.addImage(dataUrl, 'JPEG', COL_IMG.x + (COL_IMG.w - dw) / 2 + xOffset, y + (ROW_H - dh) / 2, dw, dh);
             }
         }
+        
 
-        // 4. BOOK TAG ID (with Contrast Check)
+        // 4. BOOK TAG ID (Black Text + Vendor Color Indicator on Right)
         const [tr, tg, tb] = hexToRgb(item.tagColor);
         doc.setFillColor(tr, tg, tb);
+        
         doc.setFontSize(10); 
         doc.setFont('helvetica', 'bold');
-        const textW = doc.getTextWidth(item.itemId);
-        const badgeW = Math.min(COL_TAG.w - 4 - xOffset, textW + 6);
-        doc.roundedRect(COL_TAG.x + 2 + xOffset, y + (ROW_H - 7) / 2, badgeW, 7, 0.5, 0.5, 'F');
-        doc.setTextColor(...getContrastColor(item.tagColor));
-        doc.text(item.itemId, COL_TAG.x + 2 + xOffset + badgeW/2, y + (ROW_H + 3) / 2, { align: 'center' });
+        doc.setTextColor(0, 0, 0); // Black text
+        
+        const formattedTagId = item.itemId.length > 5 ? item.itemId.slice(0, 5) + ' ' + item.itemId.slice(5) : item.itemId;
+        doc.text(formattedTagId, COL_TAG.x + 2 + xOffset, y + (ROW_H + 3) / 2, { align: 'left' });
+        
+        // Draw Vendor Color Indicator Bubble
+        const textW = doc.getTextWidth(formattedTagId);
+        const bubbleRadius = 2.5;
+        const bubbleX = COL_TAG.x + 2 + xOffset + textW + 3 + bubbleRadius;
+        const bubbleY = y + ROW_H / 2;
+        doc.circle(bubbleX, bubbleY, bubbleRadius, 'F');
+
+        // 4b. BARCODE (Code 39)
+        if (item.itemId && item.itemId !== 'MISC-PACK') {
+            try {
+                const bcodeDataUrl = await loadCode39DataUrl(item.itemId);
+                if (bcodeDataUrl) {
+                    const bw = COL_BARCODE.w - 4;
+                    const bh = 14;
+                    doc.addImage(bcodeDataUrl, 'PNG', COL_BARCODE.x + 2, y + (ROW_H - bh) / 2, bw, bh);
+                }
+            } catch (e) { console.error('Error drawing barcode', e); }
+        }
 
         // 5. ITEM DESCRIPTION
         doc.setTextColor(...TEXT_HI);
@@ -848,11 +893,33 @@ export async function exportCrateManifesto(
         doc.setFont('helvetica', 'normal');
         doc.text(`${item.weightKg} kg  ·  ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2, y + 14);
 
+        try {
+            // Draw LARGER axometric icon next to dimensions panel
+            let wCm = 0, hCm = 0, dCm = 0;
+            if (item.dims && item.dims !== '—') {
+                const parts = item.dims.replace(/[^0-9.×x]/gi, '').split(/×|x/i).map(Number);
+                if (parts.length >= 2) {
+                    dCm = parts[0] || 0;
+                    wCm = parts[1] || 0;
+                    hCm = parts[2] || dCm;
+                }
+            }
+            if (wCm && hCm && dCm) {
+                const shapeStr = item.name.split(' - ')[0] || '';
+                const descStr = item.name.split(' - ')[1] || item.name;
+                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr);
+                if (axoDataUrl) {
+                    const axoSize = 20; // LARGER
+                    doc.addImage(axoDataUrl, 'PNG', COL_DIMS.x + COL_DIMS.w - axoSize - 2, y + (ROW_H - axoSize) / 2, axoSize, axoSize);
+                }
+            }
+        } catch (e) { console.error('Error drawing axometric in manifesto', e); }
+
         // 7. QTY (Slightly Smaller)
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(15);
         doc.setFont('helvetica', 'bold');
-        doc.text(`×${item.qty}`, COL_QTY.x + COL_QTY.w - 2, y + 13.5, { align: 'right' });
+        doc.text(`×${item.qty}`, COL_QTY.x + COL_QTY.w / 2, y + 13.5, { align: 'center' });
 
         // ─── Extended Gallery (Non-duplicated) ───────────────────────────────
         if (hasGallery) {

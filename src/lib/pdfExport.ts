@@ -107,7 +107,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, lineY, PW - M, lineY);
     
     const specY = lineY + 12;
-    const priceLabel = codes.primaryPriceLabel || (exportType === 'regular' ? 'ACQUISITION COST' : 'USD RETAIL');
+    const priceLabel = codes.primaryPriceLabel || (exportType === 'regular' ? 'ACQUISITION COST' : '');
     const priceValue = codes.primaryPriceValue || (codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—');
     const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
     const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
@@ -247,8 +247,8 @@ export async function exportCatalogPdf(
 
                 doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
                 
-                const gridPriceLabel = codes.primaryPriceLabel || (exportType === 'regular' ? 'ACQUISITION COST' : 'USD RETAIL');
-                const gridPriceValue = codes.primaryPriceValue || (codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—');
+                const gridPriceLabel = codes.primaryPriceLabel || (exportType === 'regular' ? 'ACQUISITION COST' : '');
+                const gridPriceValue = codes.primaryPriceValue || (codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—');
                 
                 doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(100, 100, 100); doc.text(gridPriceLabel, sx + 2, M + 26);
                 doc.setFontSize(15); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(gridPriceValue, sx + 2, M + 33);
@@ -275,10 +275,45 @@ export async function exportCatalogPdf(
                     doc.text(weightIStr, sx + 2, M + 56);
                 }
 
+                const wCm = parseFloat(norm.widthCm);
+                const hCm = parseFloat(norm.heightCm);
+                let dCm = parseFloat(norm.lengthCm);
+                if (!dCm && wCm) { dCm = wCm; }
+                const shapeStr = norm.shape || '';
+                const descStr = norm.shortDescription || norm.description || '';
+                let axoDataUrl = null;
+                if (wCm && hCm && dCm) {
+                    try { axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr); } catch (e) {}
+                }
+
                 const imgTop = M + 58; const imgH = PH - imgTop - 14; const imgW = HW - 4; const imgs = item.images;
-                if (imgs.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
-                else if (imgs.length === 1) { const d = await loadImgData(getCleanImageUrl(imgs[0])); if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); } }
-                else { const cellH = (imgH - 2) / 2; for (let j = 0; j < 2; j++) { const cy = imgTop + j * (cellH + 2); const d = await loadImgData(getCleanImageUrl(imgs[j])); if (d) drawContain(doc, d, sx + 2, cy, imgW, cellH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, cy, imgW, cellH, 'F'); } } }
+                if (imgs.length === 0) { 
+                    doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); 
+                    if (axoDataUrl) {
+                        const axoSize = Math.min(imgW, imgH) * 0.8;
+                        doc.addImage(axoDataUrl, 'PNG', sx + 2 + (imgW - axoSize) / 2, imgTop + (imgH - axoSize) / 2, axoSize, axoSize);
+                    }
+                }
+                else if (imgs.length === 1) { 
+                    const d = await loadImgData(getCleanImageUrl(imgs[0])); 
+                    if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); } 
+                    if (axoDataUrl) {
+                        const axoSize = 35;
+                        doc.addImage(axoDataUrl, 'PNG', sx + 2 + imgW - axoSize - 4, imgTop + imgH - axoSize - 4, axoSize, axoSize);
+                    }
+                }
+                else { 
+                    const cellH = (imgH - 2) / 2; 
+                    for (let j = 0; j < 2; j++) { 
+                        const cy = imgTop + j * (cellH + 2); 
+                        const d = await loadImgData(getCleanImageUrl(imgs[j])); 
+                        if (d) drawContain(doc, d, sx + 2, cy, imgW, cellH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, cy, imgW, cellH, 'F'); } 
+                    } 
+                    if (axoDataUrl) {
+                        const axoSize = 35;
+                        doc.addImage(axoDataUrl, 'PNG', sx + 2 + imgW - axoSize - 4, imgTop + imgH - axoSize - 4, axoSize, axoSize);
+                    }
+                }
             }
         }
         
