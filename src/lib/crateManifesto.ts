@@ -833,9 +833,6 @@ export async function exportCrateManifesto(
         
 
         // 4. BOOK TAG ID (Black Text + Vendor Color Indicator on Right)
-        const [tr, tg, tb] = hexToRgb(item.tagColor);
-        doc.setFillColor(tr, tg, tb);
-        
         doc.setFontSize(10); 
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0); // Black text
@@ -844,6 +841,8 @@ export async function exportCrateManifesto(
         doc.text(formattedTagId, COL_TAG.x + 2 + xOffset, y + (ROW_H + 3) / 2, { align: 'left' });
         
         // Draw Vendor Color Indicator Bubble
+        const [tr, tg, tb] = hexToRgb(item.tagColor);
+        doc.setFillColor(tr, tg, tb);
         const textW = doc.getTextWidth(formattedTagId);
         const bubbleRadius = 2.5;
         const bubbleX = COL_TAG.x + 2 + xOffset + textW + 3 + bubbleRadius;
