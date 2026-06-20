@@ -329,7 +329,7 @@ const ItemImage = ({ imageUrl }: { imageUrl: string | null }) => {
         return <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><p className="text-xs text-red-400">Failed to load image</p></div>;
     }
 
-    return <img src={dataUrl} alt="Item" className="w-full h-auto rounded-lg object-contain bg-black/20" />;
+    return <img loading="lazy" src={dataUrl} alt="Item" className="w-full h-auto rounded-lg object-contain bg-black/20" />;
 };
 
 const DetailRow = ({ label, value }: { label: string, value: any }) => {
@@ -759,7 +759,7 @@ function ThreeDCatalogGrid({ onSelect }: { onSelect: (item: InventoryItem) => vo
                         >
                             <div className="w-full aspect-square bg-black/30 rounded-lg flex items-center justify-center p-4 relative overflow-hidden">
                                 {item.data.generatedPngUrl && (
-                                    <img src={item.data.generatedPngUrl} className="w-full h-full object-contain drop-shadow-2xl" alt={item.data.shape} />
+                                    <img loading="lazy" src={item.data.generatedPngUrl} className="w-full h-full object-contain drop-shadow-2xl" alt={item.data.shape} />
                                 )}
                                 {(item.data.usdzUrl || item.data.glbUrl) && (
                                     <div className="absolute top-2 right-2 bg-indigo-500/80 backdrop-blur text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full">

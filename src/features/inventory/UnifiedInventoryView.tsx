@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import Barcode from 'react-barcode';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
@@ -134,9 +134,9 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
                 </div>
             )}
             {isVideo ? (
-                <video src={getCleanImageUrl(activeSrc)} controls autoPlay className="max-w-[90vw] max-h-[90vh] shadow-2xl rounded-2xl" onClick={(e) => e.stopPropagation()} />
+                <video preload="none" src={getCleanImageUrl(activeSrc)} controls autoPlay className="max-w-[90vw] max-h-[90vh] shadow-2xl rounded-2xl" onClick={(e) => e.stopPropagation()} />
             ) : (
-                <img src={getCleanImageUrl(activeSrc)} alt="" draggable={false}
+                <img loading="lazy" src={getCleanImageUrl(activeSrc)} alt="" draggable={false}
                     key={currentIdx}
                     className="max-w-[90vw] max-h-[90vh] object-contain select-none transition-transform animate-in fade-in zoom-in-95 duration-300"
                     style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
@@ -149,7 +149,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs, deployedItemsMap }: any) => {
+const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs, deployedItemsMap }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const theme = useAtomValue(themeAtom);
@@ -331,7 +331,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
                             if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                         }}>
-                        {mediaUrls[cardIdx] ? <img key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} color={accentColor} /></div>}
+                        {mediaUrls[cardIdx] ? <img loading="lazy" key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} color={accentColor} /></div>}
                         {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></div>}
                         
                         {/* List View Card Navigation Chevrons */}
@@ -405,7 +405,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                 {mediaUrls.map((u, i) => (
                                     <div key={i} onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
                                         className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden shrink-0 cursor-pointer hover:border-(--main-color)/50 transition-all group/thumb relative">
-                                        <img src={getCleanImageUrl(u)} className="w-full h-full object-cover opacity-60 group-hover/thumb:opacity-100 transition-all" />
+                                        <img loading="lazy" src={getCleanImageUrl(u)} className="w-full h-full object-cover opacity-60 group-hover/thumb:opacity-100 transition-all" />
                                         {isVideoFile(u) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/40 group-hover/thumb:text-white transition-all"><Video size={14} /></div>}
                                     </div>
                                 ))}
@@ -518,9 +518,9 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     {mediaUrls[modalIdx] ? (
                         <div className="w-full h-full relative cursor-zoom-in" onClick={() => { setViewerIdx(modalIdx); setShowViewer(true); }}>
                             {isVideoFile(mediaUrls[modalIdx]) ? (
-                                <video src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" autoPlay muted loop />
+                                <video preload="none" src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" autoPlay muted loop />
                             ) : (
-                                <img src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" />
+                                <img loading="lazy" src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" />
                             )}
                             
                             {/* Modal Hero Navigation Chevrons */}
@@ -546,7 +546,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         {mediaUrls.map((u, i) => (
                             <div key={i} onClick={() => setModalIdx(i)}
                                 className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${modalIdx === i ? 'border-(--main-color) scale-110' : 'border-transparent opacity-40 hover:opacity-100'}`}>
-                                <img src={getCleanImageUrl(u)} className="w-full h-full object-cover" />
+                                <img loading="lazy" src={getCleanImageUrl(u)} className="w-full h-full object-cover" />
                             </div>
                         ))}
                     </div>
@@ -655,7 +655,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         return (
                             <div className="relative w-full bg-black/40 overflow-hidden cursor-pointer"
                                  onClick={(e) => { e.stopPropagation(); setViewerIdx(0); setShowViewer(true); }}>
-                                <img src={getCleanImageUrl(visibleUrls[0])} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 hover:scale-105" />
+                                <img loading="lazy" src={getCleanImageUrl(visibleUrls[0])} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 hover:scale-105" />
                                 {isVideoFile(visibleUrls[0]) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={32} className="text-white/60" /></div>}
                             </div>
                         );
@@ -667,7 +667,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                 {visibleUrls.map((url, i) => (
                                     <div key={i} className="relative overflow-hidden cursor-pointer bg-black/20"
                                          onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
-                                        <img src={getCleanImageUrl(url)} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 hover:scale-110" />
+                                        <img loading="lazy" src={getCleanImageUrl(url)} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 hover:scale-110" />
                                         {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={24} className="text-white/60" /></div>}
                                     </div>
                                 ))}
@@ -682,7 +682,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             {visibleUrls.map((url, i) => (
                                 <div key={i} className={`relative overflow-hidden group/galimg aspect-square cursor-pointer`}
                                      onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
-                                    <img src={getCleanImageUrl(url)} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
+                                    <img loading="lazy" src={getCleanImageUrl(url)} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
                                     {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
                                     {i === visibleUrls.length - 1 && remaining > 0 && (
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
@@ -799,7 +799,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
                     if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                 }}>
-                {mediaUrls[cardIdx] ? <img key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="absolute inset-0 flex items-center justify-center opacity-80 mix-blend-screen scale-[1.3] group-hover:scale-[1.35] transition-transform duration-700"><WireframeIcon item={norm} color={accentColor} /></div>}
+                {mediaUrls[cardIdx] ? <img loading="lazy" key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="absolute inset-0 flex items-center justify-center opacity-80 mix-blend-screen scale-[1.3] group-hover:scale-[1.35] transition-transform duration-700"><WireframeIcon item={norm} color={accentColor} /></div>}
                 {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Upload size={24} className="text-white/40" /></div>}
                 
                 {/* Grid View Card Navigation Chevrons */}
@@ -886,7 +886,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
         {FullscreenModal}
     </>
 );
-};
+});
 
 export const UnifiedInventoryView = () => {
     const t = useTranslation(); const db = useDatabase(); const items = useAtomValue(inventoryAtom); const financeDocs = useAtomValue(financeDataAtom);
@@ -902,6 +902,7 @@ export const UnifiedInventoryView = () => {
     const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
     const [mode, setMode] = useAtom(detailsPanelModeAtom); const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom); const searchTerm = useAtomValue(inventorySearchTermAtom);
+    const deferredSearchTerm = useDeferredValue(searchTerm);
     const [sortOrder, setSortOrder] = useAtom(inventorySortOrderAtom); const [sortKey, setSortKey] = useAtom(inventorySortKeyAtom);
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom); const [categoryFilter, setCategoryFilter] = useAtom(inventoryCategoryFilterAtom);
     const [isCategoryOpen, setIsCategoryOpen] = useAtom(isInventoryCategoryFilterOpenAtom); const [materialFilter, setMaterialFilter] = useAtom(inventoryMaterialFilterAtom);
@@ -1056,12 +1057,12 @@ export const UnifiedInventoryView = () => {
 
     const { partialPayIds, fullPayIds, requestedAcqIds } = useAtomValue(inventoryStatusSetsAtom);
 
-    const handleEditItem = async (rowId: string, currentData: any) => {
+    const handleEditItem = useCallback(async (rowId: string, currentData: any) => {
         const item = items.find(i => (i.row ?? i.data?.id) === rowId);
         const dataToLoad = item ? { ...item.data, id: rowId } : { ...currentData, id: rowId };
         setUploadItemData(dataToLoad);
         setIsUploadWizardOpen(true);
-    };
+    }, [items, setUploadItemData, setIsUploadWizardOpen]);
 
     const filteredItems = useMemo(() => {
         const filtered = items.filter(item => {
@@ -1095,7 +1096,7 @@ export const UnifiedInventoryView = () => {
             // Independent Attribute Filters
             if (categoryFilter !== 'All' && catNormalized !== categoryFilter.toUpperCase()) return false;
             if (materialFilter !== 'All' && matNormalized !== materialFilter.toUpperCase()) return false;
-            if (searchTerm) {
+            if (deferredSearchTerm) {
                 const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
                 // Build a wide search string including all relevant fields
                 const searchStr = [
@@ -1113,7 +1114,7 @@ export const UnifiedInventoryView = () => {
                 ].join(' ').toLowerCase();
 
                 // Space = OR between groups; + = AND within a group
-                const groups = searchTerm.trim().split(/\s+/).filter(Boolean);
+                const groups = deferredSearchTerm.trim().split(/\s+/).filter(Boolean);
                 const matchesAnyGroup = groups.some(group => {
                     const tokens = group.toLowerCase().split('+').filter(Boolean);
                     return tokens.every(t => searchStr.includes(t));
@@ -1157,7 +1158,7 @@ export const UnifiedInventoryView = () => {
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter, materialFilter]);
+    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter, materialFilter]);
 
 
 
@@ -1195,7 +1196,7 @@ export const UnifiedInventoryView = () => {
     const [bgIdx, setBgIdx] = useState(0);
     useEffect(() => { if (bgMediaUrls.length < 2) return; const i = setInterval(() => setBgIdx(p => (p + 1) % bgMediaUrls.length), 6000); return () => clearInterval(i); }, [bgMediaUrls]);
 
-    const toggleExpandCard = (id: string, stage?: number) => setExpandedCards(prev => {
+    const toggleExpandCard = useCallback((id: string, stage?: number) => setExpandedCards(prev => {
         const current = prev[id] || 0;
         let next: number;
         if (stage !== undefined) {
@@ -1208,7 +1209,7 @@ export const UnifiedInventoryView = () => {
         if (next === 0) delete copy[id];
         else copy[id] = next;
         return copy;
-    });
+    }), []);
     return (
         <div className="flex-1 flex flex-col relative m-0 gap-0">
             {/* ── INFO PANEL ── */}

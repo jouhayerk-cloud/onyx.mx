@@ -427,7 +427,7 @@ export function Content() {
           {imageSrc && (
             isVideo ? (
               <foreignObject x="0" y="0" width={imageDimensions.width} height={imageDimensions.height}>
-                <video
+                <video preload="none"
                   src={imageSrc}
                   className="w-full h-full object-contain"
                   controls
@@ -631,7 +631,7 @@ export function Content() {
                                     onClick={() => handleJumpTo(i)}
                                     className={`relative shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${i === galleryIndex ? 'border-(--main-color) scale-110' : 'border-transparent opacity-50 hover:opacity-100 hover:scale-105'}`}
                                 >
-                                    <img src={thumbUrl} className="w-full h-full object-cover" />
+                                    <img loading="lazy" src={thumbUrl} className="w-full h-full object-cover" />
                                     {isVid && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                                             <div className="w-0 h-0 border-t-4 border-t-transparent border-l-6 border-l-white border-b-4 border-b-transparent ml-0.5" />
