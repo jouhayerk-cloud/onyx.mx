@@ -1,5 +1,8 @@
 import { jsPDF } from 'jspdf';
 import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData } from './utils';
+import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
+import { getVendorColor } from './excelStyles';
 import { generateAxonometricDataUrl } from './axonometric';
 
 // We accept a generalized artifact structure so different modules can use it
@@ -64,82 +67,163 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
 
     const shapeStr = norm.shape || '';
     const descStr = norm.shortDescription || norm.description || '';
+    // Generate QR Code
+    let qrDataUrl = '';
+    const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
+    try {
+        qrDataUrl = await QRCode.toDataURL(barcode, { margin: 0, width: 200, color: { dark: '#000000', light: '#ffffff' } });
+    } catch (e) { console.error('QR code err', e); }
+
+    // Generate Barcode
+    let barDataUrl = '';
+    try {
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, barcode, { format: 'CODE128', displayValue: false, margin: 0, height: 40 });
+        barDataUrl = canvas.toDataURL('image/png');
+    } catch (e) { console.error('Barcode err', e); }
+
+    const qrSize = 16; // smaller QR code
+    const axoSize = 30; // smaller Axonometric box
+    
+    let currentRightX = PW - M;
+
+    // Axonometric icon stays on the right
     if (wCm && hCm && dCm) {
         try {
             const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr);
             if (axoDataUrl) {
-                const axoSize = 45; // Size in mm
-                doc.addImage(axoDataUrl, 'PNG', PW - M - axoSize, startY + 5, axoSize, axoSize);
+                currentRightX -= axoSize;
+                doc.addImage(axoDataUrl, 'PNG', currentRightX, startY + 5, axoSize, axoSize);
             }
         } catch (e) {
             console.error("Failed to draw axonometric box", e);
         }
     }
 
-    const tY = startY + 8; // Tag ID row
-    const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(barcode, M + 4, tY);
-    
-    const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
-    if (aqld) { 
-        doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80); 
-        doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 12, tY); 
+    // QR Code moves to the left
+    let textX = M + 4;
+    if (qrDataUrl) {
+        doc.addImage(qrDataUrl, 'PNG', M + 4, startY + 5, qrSize, qrSize);
+        textX += qrSize + 6;
+    }
+
+    let currentY = startY + 5;
+
+    // 1. BARCODE IMAGE - Moved ABOVE Tag ID and ACQ/LND codes
+    if (barDataUrl) {
+        doc.addImage(barDataUrl, 'PNG', textX, currentY, 50, 8); // smaller barcode
+        currentY += 12;
+    } else {
+        currentY += 2;
     }
     
-    // Shape + Type (Description)
+    // 2. TAG ID + VENDOR BUBBLE + TOP CODES
+    // Font Size 2: 12 (Larger)
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0); // Black
+
+    const tagVColor = getVendorColor(barcode);
+    const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
+    doc.setFillColor(tagHexColor);
+    doc.circle(textX + 2, currentY - 1, 2, 'F');
+    
+    const tagTextX = textX + 6;
+    doc.text(barcode, tagTextX, currentY);
+    
+    // Add USD retail price next to ACQ and LND codes (numbers only)
+    const retailNum = codes.bookRetail && codes.bookRetail !== '-' ? codes.bookRetail.toString().replace(/[^0-9.]/g, '') : '';
+    const topCodesArr = [codes.bookAqCode, codes.bookLandCode, retailNum].filter(c => c && c !== '-');
+    const topCodes = topCodesArr.join('  ·  ');
+    
+    if (topCodes) { 
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0); // Black
+        doc.text(topCodes, tagTextX + doc.getTextWidth(barcode) + 16, currentY); 
+    }
+    
+    currentY += 10;
+
+    // 3. ITEM TITLE
+    // Font Size 1: 22 (Larger)
     const shape = norm.shape || '';
     const type = norm.shortDescription || '';
     const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
-    const nY = tY + 14;
-    doc.setFontSize(24); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(nameStr.toUpperCase(), M + 4, nY, { maxWidth: PW - M * 2 - 10 });
     
-    // Color + Material
+    doc.setFontSize(22); 
+    doc.setFont('helvetica', 'bold'); 
+    doc.setTextColor(0, 0, 0); // Black
+    doc.text(nameStr.toUpperCase(), textX, currentY, { maxWidth: PW - textX - M - axoSize - 8 });
+    
+    currentY += 9; // Adjust for next line
+    
+    // 4. VENDOR NAME + DETAILS (Color + Material)
+    // Font Size 2: 12
+    doc.setFontSize(12); 
+    doc.setFont('helvetica', 'bold'); 
+    doc.setTextColor(0, 0, 0); // Black
+
+    let currentDX = textX;
+    const vendorName = norm.vendor || '';
+    if (vendorName) {
+        const vColor = getVendorColor(vendorName);
+        const hexColor = vColor.startsWith('FF') ? '#' + vColor.substring(2) : '#' + vColor;
+        doc.setFillColor(hexColor);
+        doc.circle(currentDX + 2, currentY - 1, 2, 'F');
+        currentDX += 6;
+        
+        const vnUpper = vendorName.toUpperCase();
+        doc.text(vnUpper, currentDX, currentY);
+        currentDX += doc.getTextWidth(vnUpper) + 8;
+    }
+
     const color = item.data.color || item.data.Color || '';
     const material = item.data.material || item.data.Material || '';
     const detailStr = [color, material].filter(Boolean).join(' · ');
-    const dY = nY + 12;
+
     if (detailStr) {
-        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(60, 60, 60);
-        doc.text(detailStr.toUpperCase(), M + 4, dY);
+        doc.setFont('helvetica', 'normal'); 
+        doc.setTextColor(0, 0, 0); // Black
+        if (vendorName) {
+            doc.text('·', currentDX, currentY);
+            currentDX += doc.getTextWidth('·') + 8;
+        }
+        doc.text(detailStr.toUpperCase(), currentDX, currentY);
     }
 
-    const lineY = dY + 8;
+    const lineY = currentY + 10;
     doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, lineY, PW - M, lineY);
     
-    const specY = lineY + 12;
-    const priceLabel = codes.primaryPriceLabel || (exportType === 'regular' ? 'ACQUISITION COST' : '');
-    const priceValue = codes.primaryPriceValue || (codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—');
+    const specY = lineY + 14;
     const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
     const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
     const weightImp = toImp(norm.weightKg, 'lbs');
 
     const cols = [
-        { label: priceLabel, value: priceValue, x: M + 4, accent: true },
-        { label: 'QTY',        value: String(norm.quantity || 1), x: M + 75 },
-        { label: 'DIMENSIONS', m: dimsMetric, i: (dimsMetric ? `(${dimsImp})` : ''), x: M + 105 },
-        { label: 'WEIGHT',     m: (norm.weightKg ? `${norm.weightKg}kg` : ''), i: (norm.weightKg ? `(${weightImp})` : ''), x: M + 172 }
+        { label: 'QTY',        value: String(norm.quantity || 1), x: M + 4, accent: true },
+        { label: 'DIMENSIONS', m: dimsMetric, i: (dimsMetric ? `(${dimsImp})` : ''), x: M + 50 },
+        { label: 'WEIGHT',     m: (norm.weightKg ? `${norm.weightKg}kg` : ''), i: (norm.weightKg ? `(${weightImp})` : ''), x: M + 140 }
     ];
     
     cols.forEach((col: any) => {
         const cx = col.x;
-        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120); doc.text(col.label, cx, specY);
+        doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0); doc.text(col.label, cx, specY); // Black Labels
         
         if (col.label === 'DIMENSIONS' || col.label === 'WEIGHT') {
-            doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); // Black Metric
             const mVal = col.m || '—';
-            doc.text(mVal, cx, specY + 10);
+            doc.text(mVal, cx, specY + 8);
             if (col.i && exportType !== 'regular') {
-                doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
-                doc.text(col.i, cx, specY + 16);
+                doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0); // Black Imperial
+                doc.text(col.i, cx, specY + 14);
             }
         } else {
-            doc.setFontSize(col.accent ? 18 : 14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(col.value, cx, specY + 10);
+            doc.setFontSize(col.accent ? 22 : 14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(col.value, cx, specY + 10);
         }
     });
 
-    
     doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 22, PW - M, specY + 22);
-    return specY + 28;
+    return specY + 30;
 }
 
 function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, pageNum: number, totalPages: number): number {
@@ -164,19 +248,20 @@ export async function exportCatalogPdf(
     const PW = 210, PH = 297, M = 12;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
-    // --- COVER PAGE ---
-    doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F');
-    doc.setFontSize(48); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text('Art of Decor', M + 4, 88);
-    doc.setFontSize(22); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 100, 15); doc.text(config.title || 'Artifact Catalog', M + 4, 102);
-    doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, 110, PW - M, 110);
-    doc.setFontSize(9); doc.setTextColor(160, 160, 160); doc.text(`${results.length} Items  \xb7  ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, M + 4, 118);
-    
     let globalPageNum = 0;
     const footer = (doc: any) => { 
         globalPageNum++; 
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200); 
-        doc.text('Art of Decor', M + 4, PH - 8); 
-        doc.text(String(globalPageNum), PW - M, PH - 8, { align: 'right' }); 
+        doc.text(config.title || 'Artifact Catalog', M + 4, PH - 8); 
+        doc.text(`Page ${globalPageNum}`, PW - M, PH - 8, { align: 'right' }); 
+    };
+
+    let isFirstPage = true;
+    const addPage = () => {
+        if (isFirstPage) { isFirstPage = false; } else { doc.addPage(); }
+        doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); 
+        doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); 
+        footer(doc);
     };
 
     const totalItems = results.length;
@@ -191,12 +276,37 @@ export async function exportCatalogPdf(
             onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
 
             if (imgs.length === 0) {
-                doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                addPage();
                 const specY = await drawHeader(doc, item, M, PW, M, exportType);
                 doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
+                
+                // Draw large axonometric icon in place of image
+                const norm = normalizeInventoryData(item.data);
+                const wCm = parseFloat(norm.widthCm);
+                const hCm = parseFloat(norm.heightCm);
+                let dCm = parseFloat(norm.lengthCm);
+                if (!dCm && wCm) { dCm = wCm; }
+                const shapeStr = norm.shape || '';
+                const descStr = norm.shortDescription || norm.description || '';
+                
+                if (wCm && hCm && dCm) {
+                    try {
+                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr);
+                        if (axoDataUrl) {
+                            const cw = PW - M * 2 - 4;
+                            const ch = PH - specY - 24;
+                            const axoSize = Math.min(cw * 0.8, ch * 0.8, 160);
+                            const axoX = M + 4 + (cw - axoSize) / 2;
+                            const axoY = specY + 4 + (ch - axoSize) / 2;
+                            doc.addImage(axoDataUrl, 'PNG', axoX, axoY, axoSize, axoSize);
+                        }
+                    } catch (e) {
+                        console.error("Failed to draw large axonometric box", e);
+                    }
+                }
             } else {
                 for (let j = 0; j < imgs.length; j++) {
-                    doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                    addPage();
                     const specY = await drawHeader(doc, item, M, PW, M, exportType);
                     
                     const imgUrl = getCleanImageUrl(imgs[j]);
@@ -223,7 +333,7 @@ export async function exportCatalogPdf(
         const HW = (PW - M * 2 - 4) / 2; const HG = 4;
 
         for (let i = 0; i < simple.length; i += 2) {
-            doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+            addPage();
             doc.setDrawColor(240, 240, 240); doc.setLineWidth(0.2); doc.line(M + HW + HG / 2, M, M + HW + HG / 2, PH - M);
             for (let slot = 0; slot < 2; slot++) {
                 const item = simple[i + slot]; if (!item) break;
@@ -325,7 +435,7 @@ export async function exportCatalogPdf(
             const totalPagesForItem = Math.ceil(n / CHUNK);
             
             for (let p = 0; p < totalPagesForItem; p++) {
-                doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                addPage();
                 
                 let imgTop = 0;
                 if (p === 0) {
