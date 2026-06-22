@@ -195,10 +195,10 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ onFinalTranscr
             const ctx = canvas.getContext("2d");
             if (!ctx) return;
 
-            let WIDTH = window.innerWidth;
-            let HEIGHT = window.innerHeight;
-            canvas.width = WIDTH;
-            canvas.height = HEIGHT;
+            const WIDTH = canvas.width;
+            const HEIGHT = canvas.height;
+
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
             const path = (channel: number) => {
                 const color = (optsRef.current as any)[`color${channel + 1}`].map(Math.floor);
@@ -281,10 +281,28 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ onFinalTranscr
     };
 
     useEffect(() => {
+        let timeoutId: number;
+        const handleResize = () => {
+            clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => {
+                if (canvasRef.current) {
+                    canvasRef.current.width = window.innerWidth;
+                    canvasRef.current.height = window.innerHeight;
+                }
+            }, 100) as unknown as number;
+        };
+        
+        handleResize(); // Initial sizing
+        window.addEventListener('resize', handleResize);
+
         if (autoStart) {
             start();
         }
-        return () => stop();
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
+            stop();
+        };
     }, [autoStart]);
 
     return (

@@ -207,19 +207,25 @@ export function WorkbookShippingView() {
                 store.set(workbookSelectedCrateIdAtom, clickedCrate ? clickedCrate.object.parent?.userData.crateId : null);
             };
 
+            let timeoutId: number;
             const handleResize = () => {
+                clearTimeout(timeoutId);
+                timeoutId = window.setTimeout(() => {
                 camera.aspect = mount.clientWidth / mount.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(mount.clientWidth, mount.clientHeight);
                 labelRenderer.setSize(mount.clientWidth, mount.clientHeight);
+            }, 100) as unknown as number;
             };
 
             mount.addEventListener('click', onCanvasClick);
-            window.addEventListener('resize', handleResize);
+            window.addEventListener('resize', handleResize);
+
             const unsub = store.sub(workbookShippingCratesAtom, () => {
                 const crates = store.get(workbookShippingCratesAtom);
                 const allCrateIdsInState = new Set(crates.map(c => c.id));
-                const allCrateMeshesInScene = new Set(crateMeshes.keys());
+                const allCrateMeshesInScene = new Set(crateMeshes.keys());
+
                 for (const crateId of allCrateMeshesInScene) {
                     if (!allCrateIdsInState.has(crateId)) {
                         scene.remove(crateMeshes.get(crateId)!);
@@ -227,7 +233,8 @@ export function WorkbookShippingView() {
                         scene.remove(crateLabels.get(crateId)!);
                         crateLabels.delete(crateId);
                     }
-                }
+                }
+
                 crates.forEach(crate => {
                     if (!crateMeshes.has(crate.id)) {
                         createCrateMesh(crate);
@@ -317,7 +324,8 @@ export function WorkbookShippingView() {
                 gsap.to(scene.background as THREE.Color, { r: newBgColor.r, g: newBgColor.g, b: newBgColor.b, duration: 0.5 });
                 const newFogColor = new THREE.Color(newColors.fog);
                 gsap.to(scene.fog!.color, { r: newFogColor.r, g: newFogColor.g, b: newFogColor.b, duration: 0.5 });
-            });
+            });
+
             updateCamera();
 
             const unsub1 = store.sub(workbookShippingCratesAtom, updateVisuals);
@@ -336,6 +344,7 @@ export function WorkbookShippingView() {
                 unsubCam1(); unsubCam2(); unsubCam3();
                 unsubTheme();
                 window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
                 mount.removeEventListener('click', onCanvasClick);
                 cancelAnimationFrame(animationFrameId);
                 controls.dispose();

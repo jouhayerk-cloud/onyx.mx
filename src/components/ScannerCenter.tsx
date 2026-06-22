@@ -32,9 +32,18 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
     const qrRegionId = "qr-reader-region-shared";
     const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
-    const playBeep = () => {
+    // AudioContext singleton — creating a new AudioContext on every beep is very expensive.
+    // Reuse the same context for the lifetime of the scanner.
+    const audioCtxRef = useRef<AudioContext | null>(null);
+
+    const playBeep = useCallback(() => {
         try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+                audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            }
+            const ctx = audioCtxRef.current;
+            // Resume if suspended (browser autoplay policy)
+            if (ctx.state === 'suspended') ctx.resume();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain);
@@ -47,7 +56,7 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
             osc.start();
             osc.stop(ctx.currentTime + 0.1);
         } catch (e) {}
-    };
+    }, []);
 
     const handleIdCaptured = useCallback(async (id: string) => {
         if (!id.trim()) return;
@@ -236,7 +245,9 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center gap-8 p-12 text-center">
                                 <div className="relative">
-                                    <div className="absolute inset-0 bg-(--main-color)/20 blur-[100px] animate-pulse" />
+                                    {/* Replaced blur-[100px] animate-pulse with opacity-animated radial shadow.
+                                        Blur rasterization on every frame is expensive on mobile. */}
+                                    <div className="absolute inset-0 animate-pulse" style={{ boxShadow: '0 0 80px 40px color-mix(in srgb, var(--main-color) 25%, transparent)', borderRadius: '50%' }} />
                                     <Nfc size={120} strokeWidth={0.5} className="text-(--main-color) relative" />
                                 </div>
                                 <div className="flex flex-col gap-2">

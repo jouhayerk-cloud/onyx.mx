@@ -547,15 +547,20 @@ export const ThreeDCanvas: React.FC<{ cameraYOffset?: number }> = ({ cameraYOffs
     };
     animate();
 
+    let timeoutId: number;
     const handleResize = () => {
+        clearTimeout(timeoutId);
+        timeoutId = window.setTimeout(() => {
         camera.aspect = mount.clientWidth / mount.clientHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(mount.clientWidth, mount.clientHeight);
+    }, 100) as unknown as number;
     };
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
       cancelAnimationFrame(animationFrameId);
       controls.dispose();
       scene.traverse(object => {

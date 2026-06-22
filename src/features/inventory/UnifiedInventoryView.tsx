@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Barcode from 'react-barcode';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
     inventoryStatusFilterAtom,
     showFinancialsAtom,
@@ -172,8 +173,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const handleToggleSelection = (id: string | number) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
-    const db = useDatabase();
-    const norm = normalizeInventoryData(item.data);
+    const norm = useMemo(() => normalizeInventoryData(item.data), [item.data]);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
     const [showViewer, setShowViewer] = useState(false);
@@ -198,7 +198,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const dimensionsStr = formatDimensionsImperial(norm.widthCm, norm.heightCm, norm.lengthCm);
     const weightStr = formatWeightImperial(norm.weightKg);
 
-    const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+    const calculated = useMemo(() => calculateCodesAndPrices(norm, exchangeRate, '326'), [norm, exchangeRate]);
     const payStatus = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds);
     const col = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
     const accentColor = col;
@@ -604,28 +604,32 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-center p-1.5 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
-                                    <Barcode 
-                                        value={calculated.bookBarcode || 'N/A'} 
-                                        format="CODE39" 
-                                        width={1.6} 
-                                        height={50} 
-                                        displayValue={false}
-                                        margin={0}
-                                    />
+                                    {isExpanded > 0 && (
+                                        <Barcode 
+                                            value={calculated.bookBarcode || 'N/A'} 
+                                            format="CODE39" 
+                                            width={1.6} 
+                                            height={50} 
+                                            displayValue={false}
+                                            margin={0}
+                                        />
+                                    )}
                                 </div>
                                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-(--main-color) opacity-25" />
                             </div>
 
                             {/* Free-Floating Modal QR - SVG Theme Colored */}
                             <div className="flex-none p-4 relative group/modal-qr">
-                                <QRCodeSVG 
-                                    value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`}
-                                    size={150}
-                                    level="H"
-                                    includeMargin={false}
-                                    fgColor={qrColor}
-                                    bgColor="transparent"
-                                />
+                                {isExpanded > 0 && (
+                                    <QRCodeSVG 
+                                        value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`}
+                                        size={150}
+                                        level="H"
+                                        includeMargin={false}
+                                        fgColor={qrColor}
+                                        bgColor="transparent"
+                                    />
+                                )}
                                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.4em] whitespace-nowrap">Secure Identity Artifact</div>
                             </div>
                         </div>
@@ -952,20 +956,7 @@ export const UnifiedInventoryView = () => {
         return map;
     }, [deployedCrates]);
 
-    useEffect(() => {
-        if (!user || (user.role !== 'Admin' && user.role !== 'Developer')) return;
-        const sync825 = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('inventory')
-                    .update({ pay_req: 'paid' })
-                    .or('workbook.eq.v825,workbook.eq.825')
-                    .neq('pay_req', 'paid');
-                if (error) console.error('Error syncing 825 items:', error);
-            } catch (e) { console.error(e); }
-        };
-        sync825();
-    }, [user]);
+
 
     const handleCopyShareLink = () => {
         const idsToShare = selectedIds.length > 0 ? selectedIds : filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
@@ -1191,8 +1182,26 @@ export const UnifiedInventoryView = () => {
         setIsLoading(items.length === 0);
     }, [activeVendors, filteredItems, items.length, totalCount, totalValueMXN]);
 
-    // Ken Burns Logic
-    const bgMediaUrls = useMemo(() => items.flatMap(i => (i.data as any)._allMedia || []).filter(u => !isVideoFile(u)).map(u => getCleanImageUrl(u)).slice(0, 20), [items]);
+    const listVirtualizer = useVirtualizer({
+        count: viewMode === 'list' ? filteredItems.length : 0,
+        getScrollElement: () => document.querySelector('.app-content') as HTMLDivElement | null,
+        estimateSize: () => 120, // Better baseline estimate for list cards
+        overscan: 10,
+    });
+
+    // Ken Burns Logic — deferred 2s after mount so it doesn't compete with initial render
+    const [bgMediaUrls, setBgMediaUrls] = useState<string[]>([]);
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const urls = items
+                .flatMap(i => (i.data as any)._allMedia || [])
+                .filter((u: string) => !isVideoFile(u))
+                .map((u: string) => getCleanImageUrl(u))
+                .slice(0, 20);
+            setBgMediaUrls(urls);
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, [items]);
     const [bgIdx, setBgIdx] = useState(0);
     useEffect(() => { if (bgMediaUrls.length < 2) return; const i = setInterval(() => setBgIdx(p => (p + 1) % bgMediaUrls.length), 6000); return () => clearInterval(i); }, [bgMediaUrls]);
 
@@ -1227,42 +1236,90 @@ export const UnifiedInventoryView = () => {
                         viewMode === 'grid' 
                             ? { gridTemplateColumns: `repeat(auto-fill, minmax(${200 * gridScale}px, 1fr))` } 
                             : viewMode === 'list' 
-                                ? { zoom: listScale } as React.CSSProperties
+                                ? {} // Removed zoom here to prevent virtualization double-scale distortion
                                 : { gridTemplateColumns: `repeat(auto-fill, minmax(${300 * galleryScale}px, 1fr))` }
                     }
                 >
 
                     {isLoading && items.length === 0 ? (
-                        <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div>
+                        viewMode === 'list'
+                            ? <InventorySkeletonList />
+                            : <InventorySkeletonGrid />
                     ) : (
-                        filteredItems.map(item => {
-                            const mediaCount = ((item.data.generatedPngUrl ? item.data.generatedPngUrl + ',' : '') + (item.data.mediaUrls || '')).split(',').map((u: string) => u.trim()).filter(Boolean).length;
-                            const isLarge = mediaCount >= 1 && mediaCount < 10;
-                            const isFull = mediaCount >= 10;
-                            
-                            return (
-                                <div key={item.row} className={
-                                    viewMode === 'gallery' 
-                                        ? `break-inside-avoid ${isFull ? 'col-span-full' : isLarge ? 'md:col-span-2' : ''}` 
-                                        : ""
-                                }>
-                                    <UnifiedInventoryCard 
-                                        item={item} 
-                                        isExpanded={expandedCards[String(item.row)] || 0} 
-                                        onToggleExpand={(stage?: number) => toggleExpandCard(String(item.row), stage)} 
-                                        exchangeRate={exchangeRate} 
-                                        showFinancials={showFinancials} 
-                                        viewMode={viewMode} 
-                                        partialPayIds={partialPayIds} 
-                                        fullPayIds={fullPayIds} 
-                                        requestedAcqIds={requestedAcqIds}
-                                        onEdit={handleEditItem} 
-                                        financeDocs={financeDocs}
-                                        deployedItemsMap={deployedItemsMap}
-                                    />
-                                </div>
-                            );
-                        })
+                        viewMode === 'list' ? (
+                            <div
+                                style={{
+                                    height: `${listVirtualizer.getTotalSize()}px`,
+                                    width: '100%',
+                                    position: 'relative',
+                                }}
+                            >
+                                {listVirtualizer.getVirtualItems().map(virtualRow => {
+                                    const item = filteredItems[virtualRow.index];
+                                    if (!item) return null;
+                                    return (
+                                        <div
+                                            key={item.row}
+                                            ref={listVirtualizer.measureElement}
+                                            data-index={virtualRow.index}
+                                            style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                width: '100%',
+                                                transform: `translateY(${virtualRow.start}px)`,
+                                            }}
+                                        >
+                                            <div style={{ zoom: listScale } as React.CSSProperties}>
+                                                <UnifiedInventoryCard 
+                                                    item={item} 
+                                                    isExpanded={expandedCards[String(item.row)] || 0} 
+                                                    onToggleExpand={(stage?: number) => toggleExpandCard(String(item.row), stage)} 
+                                                    exchangeRate={exchangeRate} 
+                                                    showFinancials={showFinancials} 
+                                                    viewMode={viewMode} 
+                                                    partialPayIds={partialPayIds} 
+                                                    fullPayIds={fullPayIds} 
+                                                    requestedAcqIds={requestedAcqIds}
+                                                    onEdit={handleEditItem} 
+                                                    financeDocs={financeDocs}
+                                                    deployedItemsMap={deployedItemsMap}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            filteredItems.map(item => {
+                                const mediaCount = ((item.data.generatedPngUrl ? item.data.generatedPngUrl + ',' : '') + (item.data.mediaUrls || '')).split(',').map((u: string) => u.trim()).filter(Boolean).length;
+                                const isLarge = mediaCount >= 1 && mediaCount < 10;
+                                const isFull = mediaCount >= 10;
+                                
+                                return (
+                                    <div key={item.row} className={
+                                        viewMode === 'gallery' 
+                                            ? `break-inside-avoid ${isFull ? 'col-span-full' : isLarge ? 'md:col-span-2' : ''}` 
+                                            : ""
+                                    }>
+                                        <UnifiedInventoryCard 
+                                            item={item} 
+                                            isExpanded={expandedCards[String(item.row)] || 0} 
+                                            onToggleExpand={(stage?: number) => toggleExpandCard(String(item.row), stage)} 
+                                            exchangeRate={exchangeRate} 
+                                            showFinancials={showFinancials} 
+                                            viewMode={viewMode} 
+                                            partialPayIds={partialPayIds} 
+                                            fullPayIds={fullPayIds} 
+                                            requestedAcqIds={requestedAcqIds}
+                                            onEdit={handleEditItem} 
+                                            financeDocs={financeDocs}
+                                            deployedItemsMap={deployedItemsMap}
+                                        />
+                                    </div>
+                                );
+                            })
+                        )
                     )}
                 </div>
             </div>

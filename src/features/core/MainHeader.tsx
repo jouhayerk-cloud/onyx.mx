@@ -131,17 +131,19 @@ import {
     PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary
 } from 'lucide-react';
 
-import { THEME_ASSETS } from '../../lib/themes-assets';
+// ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
+// Loading it asynchronously prevents it from blocking the initial JS parse.
+// The swatch images are non-critical (shown in the settings sidebar only).
+
 import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 
 declare const __APP_VERSION__: string;
 
-
-const themes = [
-    { name: 'talan', swatch: THEME_ASSETS.talan.swatch },
-    { name: 'fluorite', swatch: THEME_ASSETS.fluorite.swatch },
-    { name: 'nacar', swatch: THEME_ASSETS.nacar.swatch },
-    { name: 'aqua', swatch: THEME_ASSETS.aqua.swatch },
+const DEFAULT_THEMES = [
+    { name: 'talan', swatch: null as string | null },
+    { name: 'fluorite', swatch: null as string | null },
+    { name: 'nacar', swatch: null as string | null },
+    { name: 'aqua', swatch: null as string | null },
 ];
 
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
