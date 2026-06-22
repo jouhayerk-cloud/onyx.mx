@@ -83,7 +83,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     } catch (e) { console.error('Barcode err', e); }
 
     const qrSize = 16; // smaller QR code
-    const axoSize = 30; // smaller Axonometric box
+    const axoSize = 45; // larger Axonometric box
     
     let currentRightX = PW - M;
 
@@ -153,9 +153,10 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     doc.setFontSize(22); 
     doc.setFont('helvetica', 'bold'); 
     doc.setTextColor(0, 0, 0); // Black
-    doc.text(nameStr.toUpperCase(), textX, currentY, { maxWidth: PW - textX - M - axoSize - 8 });
+    const titleLines = doc.splitTextToSize(nameStr.toUpperCase(), PW - textX - M - axoSize - 8);
+    doc.text(titleLines, textX, currentY);
     
-    currentY += 9; // Adjust for next line
+    currentY += titleLines.length * 9; // Adjust for next line based on number of wrapped lines
     
     // 4. VENDOR NAME + DETAILS (Color + Material)
     // Font Size 2: 12

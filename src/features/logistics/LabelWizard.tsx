@@ -416,19 +416,36 @@ export const LabelWizard: React.FC = () => {
     const handleLaunchIframe = async (indices: Set<number>, instances: any[]) => {
         if (indices.size > 0 && iframeRef.current?.contentWindow) {
             const filteredInstances = instances.filter(inst => indices.has(inst.globalIndex));
-            const records = filteredInstances.map(inst => {
+            const records = await Promise.all(filteredInstances.map(async inst => {
                 const item = inst.item;
-                const norm = item.normData || {};
+                const d = item.normData || {};
+                const c = item.codes || {};
+                const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
+                const retailStr = String(c.bookRetail || '0').padStart(4, '0');
+                
+                const wCm = parseFloat(d.widthCm) || 10;
+                const hCm = parseFloat(d.heightCm) || 10;
+                const dCm = parseFloat(d.lengthCm) || wCm;
+                
+                const axoBase64 = await generateAxonometricDataUrl(
+                    wCm, hCm, dCm,
+                    d.shape || '', d.itemType || d.type || d.shortDescription || d.description || '',
+                    '#111111'
+                );
+
                 return {
-                    "TAG ID": item.codes?.bookBarcode || '',
-                    "DESCRIPTION": norm.shortDescription || norm.type || '',
-                    "SIZES": `${norm.widthCm || ''}*${norm.lengthCm || ''}*${norm.heightCm || ''} CM  WT ${norm.weightKg || ''} KG`,
-                    "BOOK RETAIL": item.codes?.bookRetail || '',
-                    "COLOR MATERIAL": `${norm.color || ''} ${norm.material || ''}`,
-                    "QR DATA": `https://app.onyx.com/item/${item.codes?.bookBarcode || ''}`,
-                    "AXO_IMAGE": ''
+                    "TAG ID": c.bookBarcode || '',
+                    "DESCRIPTION": `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'Onyx Piece',
+                    "COLOR MATERIAL": `${d.color || ''} ${d.material || 'Onyx'}`.trim(),
+                    "SIZES": `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM${d.weightKg ? '  WT ' + d.weightKg + ' KG' : ''}`,
+                    "BOOK RETAIL": `${c.bookAqCode}-${bookv}${retailStr}`,
+                    "QUANTITY": 1,
+                    "LANDED CODE": c.bookLandCode || '',
+                    "ACQ CODE": c.bookAqCode || '',
+                    "QR DATA": c.bookBarcode || '',
+                    "AXO_IMAGE": axoBase64
                 };
-            });
+            }));
             iframeRef.current.contentWindow.postMessage(
                 { type: 'UPDATE_DATA', payload: { templateData: records } },
                 '*'
@@ -514,7 +531,7 @@ export const LabelWizard: React.FC = () => {
                 id: "el_axo",
                 type: "image",
                 zone: 0,
-                x: -6.2, y: -5.1, width: 115.2, height: 115.2,
+                x: -6.2, y: 12, width: 73, height: 73,
                 rotation: 0,
                 imageData: "{{AXO_IMAGE}}"
             },
@@ -553,8 +570,12 @@ export const LabelWizard: React.FC = () => {
             const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
             const retailStr = String(c.bookRetail || '0').padStart(4, '0');
             
+            const wCm = parseFloat(d.widthCm) || 10;
+            const hCm = parseFloat(d.heightCm) || 10;
+            const dCm = parseFloat(d.lengthCm) || wCm;
+
             const axoBase64 = await generateAxonometricDataUrl(
-                d.widthCm || 10, d.heightCm || 10, d.lengthCm || 10,
+                wCm, hCm, dCm,
                 d.shape || '', d.itemType || d.type || d.shortDescription || d.description || '',
                 '#111111'
             );
