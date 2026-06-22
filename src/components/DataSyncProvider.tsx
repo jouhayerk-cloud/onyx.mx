@@ -111,7 +111,7 @@ export const DataSyncProvider: React.FC = () => {
         let currentFinanceData: any[] = [];
         const fetchInitialFinance = async () => {
             try {
-                const { data, error } = await supabase.from('finance').select('*');
+                const { data, error } = await supabase.from('finance').select('*').limit(50);
                 if (!error && data) {
                     currentFinanceData = data;
                     setFinance(currentFinanceData);
@@ -176,15 +176,15 @@ export const DataSyncProvider: React.FC = () => {
             subscriptions.forEach(sub => sub.unsubscribe());
             supabase.removeChannel(realtimeChannel);
         };
-    }, [db, setInventory, setFinance, setLogistics]);
+    }, [db, setInventory, setStoreInventory, setFinance, setLogistics]);
 
     // 5. Manual Sync Trigger (Version-based)
-    // When inventoryVersion increments (e.g. after a save or delete),
-    // we perform an explicit poll to ensure the UI is perfectly in sync.
+    // Debounced: waits 500ms after the last version bump before fetching.
+    // Prevents waterfall fetches when the user makes rapid back-to-back changes.
     useEffect(() => {
         if (!db || inventoryVersion === 0) return;
         
-        const forceSync = async () => {
+        const timer = setTimeout(async () => {
             console.log(`📡 [DataSync] Explicit sync triggered (v${inventoryVersion})`);
             try {
                 // Fetch latest from BOTH tables
@@ -203,9 +203,9 @@ export const DataSyncProvider: React.FC = () => {
             } catch (err) {
                 console.error('[DataSync] Manual sync failed:', err);
             }
-        };
+        }, 500);
 
-        forceSync();
+        return () => clearTimeout(timer);
     }, [db, inventoryVersion]);
 
     // This component renders nothing, it just manages side-effects

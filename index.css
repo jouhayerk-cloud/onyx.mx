@@ -18,6 +18,46 @@ html, body, #root {
     scrollbar-width: none;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────────
+   PERFORMANCE OPTIMIZATIONS
+   GPU compositing hints and layout containment to prevent costly repaints.
+   ────────────────────────────────────────────────────────────────────────────── */
+
+/** Inventory cards: contain layout+style+paint so card mutations don't
+    trigger reflow across all siblings in the list. */
+.inventory-card-container {
+    contain: layout style; /* Removed 'paint' to prevent breaking backdrop-filter */
+}
+
+/** Sidebar: promote to its own compositor layer for smooth width transitions.
+    Only apply will-change while sidebar is transitioning. */
+.sidebar {
+    will-change: width;
+    /* Removed translateZ(0) to prevent breaking backdrop-filter */
+}
+
+/** Removed animate-in/out GPU promotion as it breaks backdrop-filter on modals */
+
+/** Performance mode: strip all transitions/animations for low-end devices.
+    The performanceModeAtom applies this class to <html>. */
+.performance-mode-active *,
+.performance-mode-active *::before,
+.performance-mode-active *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+/** Hero background: GPU compositing (avoids painting the mesh gradient on CPU) */
+.hero-bg {
+    will-change: opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────── */
+
 /* 3D Logistics Workspace Utilities */
 .logistics-3d-container {
     perspective: 2000px;
@@ -1214,7 +1254,7 @@ button.secondary {
   outline: 0;
   background: transparent !important;
   color: var(--text-color) !important;
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 1rem + 3vw, 3rem);
   line-height: 3.5rem;
   border-radius: 0 !important;
   width: 100%;
@@ -1333,7 +1373,7 @@ button.secondary {
   left: 50%;
   transform: translate(-50%, -150px);
   z-index: 100;
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 1rem + 3vw, 3rem);
   font-weight: bold;
   color: white;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
@@ -1519,7 +1559,7 @@ button.secondary {
   background: transparent !important;
   border: none !important;
   color: white !important;
-  font-size: 3rem;
+  font-size: clamp(1.5rem, 1rem + 3vw, 3rem);
   text-align: center;
   letter-spacing: 0.5em;
   padding: 0 !important;

@@ -64,7 +64,9 @@ import {
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
-import { CompactDockCard, DeployedTrailerCard } from '../logistics/TruckingModule';
+// Lazy load logistics cards to prevent bundling 400KB+ of trucking/inventory modules into main
+const CompactDockCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.CompactDockCard })));
+const DeployedTrailerCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.DeployedTrailerCard })));
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { normalizeInventoryData } from '../../lib/utils';
@@ -839,7 +841,9 @@ export const UniversalToolsBar: React.FC = () => {
                                             <div className="flex gap-6 pr-4">
                                                 {dockCrates.map(crate => (
                                                     <div key={crate.id} className="shrink-0 transition-all hover:scale-105 active:scale-95 duration-500">
+                                                    <React.Suspense fallback={<div className="h-16 bg-black/5 animate-pulse" />}>
                                                         <CompactDockCard crate={crate} allCrates={allCrates} allInventory={allInventory} isCompact={false} onLoad={() => setPositions(p => ({ ...p, [crate.id]: { x: 0, y: 0, r: 0, z: 0 } }))} />
+                                                    </React.Suspense>
                                                     </div>
                                                 ))}
                                             </div>
@@ -873,7 +877,9 @@ export const UniversalToolsBar: React.FC = () => {
                                             </div>
                                         ) : (
                                             recentShipments.map(s => (
-                                                <DeployedTrailerCard key={s.id} shipment={s} allCrates={allCrates} allInventory={allInventory} onRecall={() => handleRecall(s)} onDelete={() => handleDeleteShipment(s.id)} />
+                                                <React.Suspense key={s.id} fallback={<div className="h-24 bg-black/5 animate-pulse" />}>
+                                                    <DeployedTrailerCard shipment={s} allCrates={allCrates} allInventory={allInventory} onRecall={() => handleRecall(s)} onDelete={() => handleDeleteShipment(s.id)} />
+                                                </React.Suspense>
                                             ))
                                         )}
                                     </div>

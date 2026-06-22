@@ -227,11 +227,15 @@ const ThreeScene = ({ setCrates, cratesVersion, user, store }: { setCrates: any,
             store.set(selectedCrateIdAtom, clickedCrate ? clickedCrate.object.parent?.userData.crateId : null);
         };
 
+        let timeoutId: number;
         const handleResize = () => {
+            clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => {
             camera.aspect = mount.clientWidth / mount.clientHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(mount.clientWidth, mount.clientHeight);
             labelRenderer.setSize(mount.clientWidth, mount.clientHeight);
+        }, 100) as unknown as number;
         };
 
         mount.addEventListener('click', onCanvasClick);
@@ -360,6 +364,7 @@ const ThreeScene = ({ setCrates, cratesVersion, user, store }: { setCrates: any,
             unsubCam1(); unsubCam2(); unsubCam3();
             unsubTheme();
             window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
             mount.removeEventListener('click', onCanvasClick);
             cancelAnimationFrame(animationFrameId);
             controls.dispose();

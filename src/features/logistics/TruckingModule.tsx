@@ -431,7 +431,7 @@ export const DeployedTrailerCard: React.FC<{
         <div className="flex items-center gap-6 group shrink-0 transition-all select-none">
             {/* Larger SVG Crate Map Indicator */}
             <div className="relative w-36 h-28 flex items-center justify-center transition-all duration-700 group-hover:scale-110 cursor-pointer active:scale-95" onClick={onRecall}>
-                <div className="absolute inset-0 bg-white/5 rounded-full scale-0 group-hover:scale-150 transition-all duration-1000 blur-[40px] opacity-20" />
+                <div className="absolute inset-0 bg-white/5 rounded-full scale-0 group-hover:scale-150 transition-all duration-1000 blur-[40px] opacity-20 transform-gpu will-change-transform" />
                 {truckCrates.length > 0 ? (
                     <MiniIsoView 
                         truckCrates={truckCrates} 
@@ -2332,18 +2332,23 @@ const InteractiveTruckViewer: React.FC<{
         };
         animate();
 
+        let timeoutId: number;
         const handleResize = () => {
-            if (!containerRef.current || !sceneRef.current) return;
-            const w = containerRef.current.clientWidth;
-            const h = containerRef.current.clientHeight;
-            sceneRef.current.camera.aspect = w / h;
-            sceneRef.current.camera.updateProjectionMatrix();
-            sceneRef.current.renderer.setSize(w, h);
+            clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => {
+                if (!containerRef.current || !sceneRef.current) return;
+                const w = containerRef.current.clientWidth;
+                const h = containerRef.current.clientHeight;
+                sceneRef.current.camera.aspect = w / h;
+                sceneRef.current.camera.updateProjectionMatrix();
+                sceneRef.current.renderer.setSize(w, h);
+            }, 100) as unknown as number;
         };
         window.addEventListener('resize', handleResize);
 
         return () => {
             window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
             if (containerRef.current) {
                 containerRef.current.removeEventListener('click', handleClick);
                 if (renderer.domElement && containerRef.current.contains(renderer.domElement)) {
@@ -3386,16 +3391,23 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     };
 
     useEffect(() => {
+        let timeoutId: number;
         const handleResize = () => {
-            const mobile = window.innerWidth < 768;
-            setIsMobile(mobile);
-            if (mobile) {
-                setIsCompact(true);
-            }
+            clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => {
+                const mobile = window.innerWidth < 768;
+                setIsMobile(mobile);
+                if (mobile) {
+                    setIsCompact(true);
+                }
+            }, 100) as unknown as number;
         };
         window.addEventListener('resize', handleResize);
         handleResize();
-        return () => window.removeEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
+        };
     }, [setIsCompact]);
 
     useEffect(() => {
@@ -4086,24 +4098,28 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         const el = canvasRef.current;
         if (!el) return;
 
+        let timeoutId: number;
         const centerCanvas = () => {
-            const trailer = document.getElementById('trailer-main-map');
-            if (trailer && el) {
-                // Calculate absolute center scroll positions
-                const centerX = trailer.offsetLeft + (trailer.offsetWidth / 2) - (el.clientWidth / 2);
-                const centerY = trailer.offsetTop + (trailer.offsetHeight / 2) - (el.clientHeight / 2);
-                
-                el.scrollTo({
-                    left: centerX,
-                    top: centerY,
-                    behavior: 'smooth'
-                });
-            } else if (el) {
-                const scrollX = (el.scrollWidth - el.clientWidth) / 2;
-                const scrollY = (el.scrollHeight - el.clientHeight) / 2;
-                el.scrollLeft = scrollX;
-                el.scrollTop = scrollY;
-            }
+            clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => {
+                const trailer = document.getElementById('trailer-main-map');
+                if (trailer && el) {
+                    // Calculate absolute center scroll positions
+                    const centerX = trailer.offsetLeft + (trailer.offsetWidth / 2) - (el.clientWidth / 2);
+                    const centerY = trailer.offsetTop + (trailer.offsetHeight / 2) - (el.clientHeight / 2);
+                    
+                    el.scrollTo({
+                        left: centerX,
+                        top: centerY,
+                        behavior: 'smooth'
+                    });
+                } else if (el) {
+                    const scrollX = (el.scrollWidth - el.clientWidth) / 2;
+                    const scrollY = (el.scrollHeight - el.clientHeight) / 2;
+                    el.scrollLeft = scrollX;
+                    el.scrollTop = scrollY;
+                }
+            }, 100) as unknown as number;
         };
 
         // Center on mount and after render cycles
@@ -4116,6 +4132,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         window.addEventListener('resize', centerCanvas);
         return () => {
             timers.forEach(t => clearTimeout(t));
+            clearTimeout(timeoutId);
             window.removeEventListener('resize', centerCanvas);
         };
     }, [zoom, viewMode]);

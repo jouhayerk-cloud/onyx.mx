@@ -13,11 +13,19 @@ export const HeroBackground = () => {
     const activeView = useAtomValue(activeViewAtom);
     const [patternSeed, setPatternSeed] = useState(0);
 
-    // Track global clicks to trigger pattern shifts
+    // Debounced click handler — each click triggers an expensive 8-layer gradient repaint.
+    // Debouncing at 400ms prevents mobile tap-spam from flooding the paint pipeline.
     useEffect(() => {
-        const handleClick = () => setPatternSeed(s => s + 1);
-        window.addEventListener('click', handleClick);
-        return () => window.removeEventListener('click', handleClick);
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        const handleClick = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => setPatternSeed(s => s + 1), 400);
+        };
+        window.addEventListener('click', handleClick, { passive: true });
+        return () => {
+            window.removeEventListener('click', handleClick);
+            clearTimeout(debounceTimer);
+        };
     }, []);
 
     // Generate unique positions based on view AND click seed
@@ -57,8 +65,8 @@ export const HeroBackground = () => {
 
     return (
         <div 
-            className="fixed inset-0 overflow-hidden z--2 pointer-events-none select-none transition-all duration-[2000ms] ease-in-out" 
-            style={meshStyle} 
+            className="fixed inset-0 overflow-hidden z--2 pointer-events-none select-none transition-opacity duration-[2000ms] ease-in-out" 
+            style={{ ...meshStyle, transform: 'translateZ(0)' }} 
         />
     );
 };

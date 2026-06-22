@@ -167,7 +167,10 @@ export const CratePackingWorkspace: React.FC<CratePackingWorkspaceProps> = ({
         };
         animate();
 
+        let timeoutId: number;
         const handleResize = () => {
+            clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => {
             if (!containerRef.current) return;
             const w = containerRef.current.clientWidth;
             const aspect = w / h;
@@ -178,11 +181,13 @@ export const CratePackingWorkspace: React.FC<CratePackingWorkspaceProps> = ({
             camera.bottom = -d;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
+        }, 100) as unknown as number;
         };
         window.addEventListener('resize', handleResize);
 
         return () => {
             window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
             renderer.dispose();
             if (containerRef.current?.contains(renderer.domElement)) {
                 containerRef.current.removeChild(renderer.domElement);

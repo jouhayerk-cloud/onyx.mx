@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
 import { themeAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom } from '../../lib/atoms';
@@ -8,17 +7,18 @@ import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
 import { WelcomePage } from '../auth/WelcomePage';
-import { TagView } from '../logistics/TagView';
-import { ViewerView } from '../viewer/ViewerView';
-import SentTruckViewer from '../logistics/SentTruckViewer';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { PullToRefresh } from '../../components/ui/PullToRefresh';
 import { sentTruckIdAtom } from '../../lib/atoms';
 import { useSyncEngine } from '../../lib/syncEngine';
 import { SyncProgressBar } from '../../components/SyncProgressBar';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
-
 import toast from 'react-hot-toast';
+
+// Lazy-load deep-link views — only needed for URL-based tag/truck entry flows
+const TagView         = React.lazy(() => import('../logistics/TagView').then(m => ({ default: m.TagView })));
+const SentTruckViewer = React.lazy(() => import('../logistics/SentTruckViewer').then(m => ({ default: m.default ?? m.SentTruckViewer })));
+const ViewerView      = React.lazy(() => import('../viewer/ViewerView').then(m => ({ default: m.ViewerView })));
 
 export default function App() {
   const [user, setUser] = useAtom(userAtom);
@@ -227,6 +227,8 @@ export default function App() {
   }, [performanceMode]);
 
   useEffect(() => {
+    // Only run heartbeat when user is authenticated
+    if (!user) return;
     const intervalId = setInterval(() => {
       fetch(SCRIPT_URL, {
         method: 'POST',
@@ -237,18 +239,20 @@ export default function App() {
       }).catch(err => console.warn("Heartbeat failed:", err));
     }, 5 * 60 * 1000); // every 5 minutes
 
-    return () => clearInterval(intervalId);
-  }, []);
+      return () => clearInterval(intervalId);
+  }, [user]);
 
   return (
     <>
       <PullToRefresh />
       <SyncProgressBar />
       {view === 'tag' && tagId ? (
-         <TagView tagId={tagId} onBack={() => { setView('viewer'); setTagId(null); }} />
+         <Suspense fallback={null}>
+           <TagView tagId={tagId} onBack={() => { setView('viewer'); setTagId(null); }} />
+         </Suspense>
       ) : view === 'truck' && sentTruckId ? (
          <div className="fixed inset-0 z-[10000] bg-white flex flex-col">
-            <SentTruckViewer />
+            <Suspense fallback={null}><SentTruckViewer /></Suspense>
             <button 
               onClick={() => { setView('app'); setSentTruckId(null); }}
               className="absolute top-8 right-8 p-4 rounded-full bg-black/5 hover:bg-black/10 transition-all text-black/40 hover:text-black z-[10001] group"
@@ -260,7 +264,9 @@ export default function App() {
             </button>
          </div>
       ) : view === 'viewer' ? (
-         <ViewerView onOpenArtifact={(id) => { setTagId(id); setView('tag'); }} />
+         <Suspense fallback={null}>
+           <ViewerView onOpenArtifact={(id) => { setTagId(id); setView('tag'); }} />
+         </Suspense>
       ) : (
         <>
           <DataSyncProvider />

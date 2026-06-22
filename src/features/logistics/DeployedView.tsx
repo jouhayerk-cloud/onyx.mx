@@ -69,7 +69,10 @@ export const DeployedView: React.FC = () => {
             );
 
             // Calculate scale to fit map area
+            let timeoutId: number;
             const updateScale = () => {
+                clearTimeout(timeoutId);
+                timeoutId = window.setTimeout(() => {
                 if (mapAreaRef.current) {
                     const { width, height } = mapAreaRef.current.getBoundingClientRect();
                     const targetL = TRUCK_L_CM * BASE_SCALE;
@@ -78,10 +81,12 @@ export const DeployedView: React.FC = () => {
                     const scaleY = (height - 300) / targetW; // Leave room for HUD
                     setViewScale(Math.min(scaleX, scaleY, 1.2));
                 }
+            }, 100) as unknown as number;
             };
             setTimeout(updateScale, 100);
             window.addEventListener('resize', updateScale);
             return () => window.removeEventListener('resize', updateScale);
+            clearTimeout(timeoutId);
         } else {
             gsap.fromTo(listRef.current,
                 { opacity: 0, y: 20 },

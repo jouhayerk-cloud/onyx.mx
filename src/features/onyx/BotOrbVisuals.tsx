@@ -282,7 +282,10 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
             composer.render();
         };
 
+        let timeoutId: number;
         const handleResize = () => {
+            clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => {
             if (!containerRef.current) return;
             const { clientWidth: w, clientHeight: h } = containerRef.current;
             camera.aspect = w / h;
@@ -292,6 +295,7 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
             if (backdrop.material.uniforms.resolution) {
                 backdrop.material.uniforms.resolution.value.set(w || 1, h || 1);
             }
+        }, 100) as unknown as number;
         };
 
         window.addEventListener('resize', handleResize);
@@ -300,6 +304,7 @@ export const BotOrbVisuals: React.FC<BotOrbVisualsProps> = ({ inputNode, outputN
 
         return () => {
             window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
             renderer.dispose();
             scene.clear();

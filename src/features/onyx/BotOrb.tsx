@@ -216,8 +216,8 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
             >
                 {/* Background Glows */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full animate-pulse" />
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-red-500/5 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[radial-gradient(circle,_rgba(59,130,246,0.1)_0%,_transparent_70%)] transform-gpu will-change-opacity rounded-full animate-pulse" />
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[radial-gradient(circle,_rgba(239,68,68,0.1)_0%,_transparent_70%)] transform-gpu will-change-opacity rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
                 </div>
 
                 <div className="w-full max-w-6xl h-full relative flex flex-col items-center md:items-start justify-center">
