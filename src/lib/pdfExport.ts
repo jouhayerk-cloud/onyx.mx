@@ -98,9 +98,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
         } catch (e) {
             console.error("Failed to draw axonometric box", e);
         }
-    }
-
-    // QR Code moves to the left
+    }    // QR Code moves to the left
     let textX = M + 4;
     if (qrDataUrl) {
         doc.addImage(qrDataUrl, 'PNG', M + 4, startY + 5, qrSize, qrSize);
@@ -109,42 +107,48 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
 
     let currentY = startY + 5;
 
-    // 1. BARCODE IMAGE - Moved ABOVE Tag ID and ACQ/LND codes
+    // 1. BARCODE IMAGE & VENDOR BUBBLE
     if (barDataUrl) {
-        doc.addImage(barDataUrl, 'PNG', textX, currentY, 50, 8); // smaller barcode
-        currentY += 12;
+        doc.addImage(barDataUrl, 'PNG', textX, currentY, 55, 8); // Slightly wider barcode
+        
+        // VENDOR BUBBLE - Placed to the right of the barcode
+        const tagVColor = getVendorColor(barcode);
+        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
+        doc.setFillColor(tagHexColor);
+        doc.circle(textX + 55 + 6, currentY + 4, 2.5, 'F');
+        
+        currentY += 13;
     } else {
         currentY += 2;
     }
     
-    // 2. TAG ID + VENDOR BUBBLE + TOP CODES
-    // Font Size 2: 12 (Larger)
-    doc.setFontSize(12);
+    // 2. TAG ID + TOP CODES
+    doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0); // Black
-
-    const tagVColor = getVendorColor(barcode);
-    const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-    doc.setFillColor(tagHexColor);
-    doc.circle(textX + 2, currentY - 1, 2, 'F');
+    doc.text(barcode, textX, currentY);
     
-    const tagTextX = textX + 6;
-    doc.text(barcode, tagTextX, currentY);
-    
-    // Add USD retail price next to ACQ and LND codes (numbers only)
+    // Combine ACQ code and retail (e.g. FMO11958)
     const retailNum = codes.bookRetail && codes.bookRetail !== '-' ? codes.bookRetail.toString().replace(/[^0-9.]/g, '') : '';
-    const topCodesArr = [codes.bookAqCode, codes.bookLandCode, retailNum].filter(c => c && c !== '-');
-    const topCodes = topCodesArr.join('  ·  ');
+    const topCodes = `${codes.bookAqCode || ''}${retailNum}`.trim();
     
     if (topCodes) { 
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0, 0, 0); // Black
-        doc.text(topCodes, tagTextX + doc.getTextWidth(barcode) + 16, currentY); 
+        doc.setTextColor(120, 120, 120); // Gray for secondary visual hierarchy
+        doc.text(topCodes, textX + doc.getTextWidth(barcode) + 12, currentY); 
     }
     
-    currentY += 10;
+    currentY += 6;
 
-    // 3. ITEM TITLE
+    // Draw subtle separation line below the top codes
+    doc.setDrawColor(240, 240, 240);
+    doc.setLineWidth(0.4);
+    doc.line(textX, currentY, PW - M - axoSize - 4, currentY);
+    
+    currentY += 9;
+
+    // 4. ITEM TITLETLE
     // Font Size 1: 22 (Larger)
     const shape = norm.shape || '';
     const type = norm.shortDescription || '';
