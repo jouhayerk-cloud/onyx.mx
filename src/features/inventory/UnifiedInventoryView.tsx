@@ -1189,6 +1189,16 @@ export const UnifiedInventoryView = () => {
         overscan: 10,
     });
 
+    // Fix for overlapping cards in list view due to virtualization caching heights during CSS transitions
+    useEffect(() => {
+        if (viewMode !== 'list') return;
+        listVirtualizer.measure();
+        const t1 = setTimeout(() => listVirtualizer.measure(), 100);
+        const t2 = setTimeout(() => listVirtualizer.measure(), 250);
+        const t3 = setTimeout(() => listVirtualizer.measure(), 450);
+        return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }, [expandedCards, items, viewMode, listVirtualizer]);
+
     // Ken Burns Logic — deferred 2s after mount so it doesn't compete with initial render
     const [bgMediaUrls, setBgMediaUrls] = useState<string[]>([]);
     useEffect(() => {
