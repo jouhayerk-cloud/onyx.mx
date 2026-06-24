@@ -265,7 +265,6 @@ export async function exportCatalogPdf(
     const addPage = () => {
         if (isFirstPage) { isFirstPage = false; } else { doc.addPage(); }
         doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); 
-        doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); 
         footer(doc);
     };
 
