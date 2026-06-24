@@ -1,12 +1,42 @@
+export function resolveItemColor(item: any): string {
+    const textToSearch = [
+        item.color, item.color_en, item.color_es,
+        item.finish, item.finish_en, item.finish_es,
+        item.material, item.material_en, item.material_es,
+        item.description, item.shortDescription,
+        item.title, item.name
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    if (textToSearch.includes('gold') || textToSearch.includes('brass') || textToSearch.includes('laton') || textToSearch.includes('dorado')) return '#FDE047'; 
+    if (textToSearch.includes('silver') || textToSearch.includes('chrome') || textToSearch.includes('steel') || textToSearch.includes('aluminum') || textToSearch.includes('plata') || textToSearch.includes('acero')) return '#E2E8F0';
+    if (textToSearch.includes('copper') || textToSearch.includes('bronze') || textToSearch.includes('rust') || textToSearch.includes('cobre') || textToSearch.includes('bronce')) return '#F59E0B'; 
+    if (textToSearch.includes('aqua') || textToSearch.includes('teal')) return '#0D9488'; 
+    if (textToSearch.includes('emperador')) return '#FB923C'; 
+    if (textToSearch.includes('amber') || textToSearch.includes('ambar')) return '#D97706'; 
+    if (textToSearch.includes('red') || textToSearch.includes('rojo')) return '#EF4444'; 
+    if (textToSearch.includes('blue') || textToSearch.includes('azul')) return '#3B82F6'; 
+    if (textToSearch.includes('green') || textToSearch.includes('verde') || textToSearch.includes('emerald')) return '#10B981'; 
+    if (textToSearch.includes('pink') || textToSearch.includes('rosa')) return '#EC4899'; 
+    if (textToSearch.includes('purple') || textToSearch.includes('violet') || textToSearch.includes('morado')) return '#8B5CF6'; 
+    if (textToSearch.includes('orange') || textToSearch.includes('naranja')) return '#F97316'; 
+    if (textToSearch.includes('yellow') || textToSearch.includes('amarillo')) return '#EAB308'; 
+    if (textToSearch.includes('brown') || textToSearch.includes('wood') || textToSearch.includes('walnut') || textToSearch.includes('oak') || textToSearch.includes('madera') || textToSearch.includes('cafe') || textToSearch.includes('marrón')) return '#D97706'; 
+    if (textToSearch.includes('black') || textToSearch.includes('nero') || textToSearch.includes('dark') || textToSearch.includes('negro')) return '#888888';
+    if (textToSearch.includes('white') || textToSearch.includes('blanco') || textToSearch.includes('clear') || textToSearch.includes('transparent')) return '#FFFFFF';
+    if (textToSearch.includes('grey') || textToSearch.includes('gray') || textToSearch.includes('gris') || textToSearch.includes('concrete') || textToSearch.includes('cement')) return '#A1A1AA'; 
+    
+    return '#71717A'; // default neutral
+}
+
 export async function generateAxonometricDataUrl(
     w_cm: number, h_cm: number, d_cm: number,
     shapeStr: string = '', descStr: string = '',
     wireframeColor?: string
 ): Promise<string> {
     return new Promise((resolve) => {
-        const W = w_cm;
-        const H = h_cm;
-        const D = d_cm;
+        let W = w_cm;
+        let H = h_cm;
+        let D = d_cm;
 
         const s = shapeStr.toLowerCase();
         const t = descStr.toLowerCase();
@@ -18,17 +48,24 @@ export async function generateAxonometricDataUrl(
             isMirror = true;
             if (s.includes('rectangular') || t.includes('rectangular') || s.includes('squared') || t.includes('squared')) {
                 geom = 'box';
-            } else {
+            } else if (s.includes('round') || t.includes('round') || s.includes('circle') || t.includes('circle') || s.includes('redondo') || t.includes('redondo') || s.includes('oval') || t.includes('oval')) {
                 geom = 'mirror';
+            } else {
+                geom = 'box';
             }
-        }
-        else if (s.includes('squared') || t.includes('squared') || s.includes('rectangular') || t.includes('rectangular')) {
-            geom = 'box';
         }
         else if (s.includes('cylinder') || t.includes('cylinder') || t.includes('cilinder') || s.includes('round') || t.includes('round') || s.includes('pendant') || t.includes('pendant')) {
             geom = 'cylinder';
         }
         else if (s.includes('rock') || t.includes('rock') || s.includes('sculpture') || t.includes('sculpture') || s.includes('fountain') || t.includes('fountain')) geom = 'polyhedron';
+
+        if (geom === 'mirror') {
+            const maxVal = Math.max(W, H, D);
+            const minVal = Math.min(W, H, D);
+            W = maxVal;
+            H = maxVal;
+            D = minVal;
+        }
 
         const cos30 = Math.cos(Math.PI / 6);
         const sin30 = Math.sin(Math.PI / 6);
@@ -155,10 +192,38 @@ export async function generateAxonometricDataUrl(
             ctx.fill();
             ctx.stroke();
 
-            // Draw inner top ellipse (hollow interior)
-            drawEllipsePath(ct_u, ct_v, 0.75, 0, 2 * Math.PI);
+            // Draw inner top ellipse (hollow interior or glass)
+            drawEllipsePath(ct_u, ct_v, isMirror ? 0.85 : 0.75, 0, 2 * Math.PI);
             if (isWireframe) {
                 ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fill();
+                ctx.stroke();
+                
+                if (isMirror) {
+                    ctx.beginPath();
+                    const slashAngle = Math.PI / 4;
+                    const len = (W/2) * 0.5 * scale;
+                    const dx = Math.cos(slashAngle) * len;
+                    const dy = Math.sin(slashAngle) * len;
+                    ctx.moveTo(cx + ct_u*scale - dx, cy + ct_v*scale - dy);
+                    ctx.lineTo(cx + ct_u*scale + dx, cy + ct_v*scale + dy);
+                    ctx.moveTo(cx + ct_u*scale - dx + 8, cy + ct_v*scale - dy - 4);
+                    ctx.lineTo(cx + ct_u*scale + dx + 8, cy + ct_v*scale + dy - 4);
+                    ctx.stroke();
+                }
+            } else if (isMirror) {
+                const faceGrd = ctx!.createLinearGradient(
+                    cx + (ct_u - W/4)*scale, cy + (ct_v - W/4)*scale,
+                    cx + (ct_u + W/4)*scale, cy + (ct_v + W/4)*scale
+                );
+                faceGrd.addColorStop(0, COLOR_TOP);
+                faceGrd.addColorStop(0.45, COLOR_TOP);
+                faceGrd.addColorStop(0.5, COLOR_RIGHT); // sleek diagonal glass shine
+                faceGrd.addColorStop(0.55, COLOR_TOP);
+                faceGrd.addColorStop(1, COLOR_TOP);
+                ctx.fillStyle = faceGrd;
+                ctx.fill();
+                ctx.stroke();
             } else {
                 const holeGrd = ctx!.createLinearGradient(
                     cx + (ct_u) * scale, cy + (ct_v - (W/2)*sin30) * scale,
@@ -167,9 +232,9 @@ export async function generateAxonometricDataUrl(
                 holeGrd.addColorStop(0, '#555555');
                 holeGrd.addColorStop(1, '#0A0A0A');
                 ctx.fillStyle = holeGrd;
+                ctx.fill();
+                ctx.stroke();
             }
-            ctx.fill();
-            ctx.stroke();
 
             const pts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
             drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
@@ -280,82 +345,113 @@ export async function generateAxonometricDataUrl(
             drawLabel(W, 'W', pts[0], pts[1], -Math.PI / 6, 25);
             drawLabel(H, 'H', pts[1], pts[5], Math.atan2(pts[5].v - pts[1].v, pts[5].u - pts[1].u), 25);
 
+
+
         } else if (geom === 'mirror') {
-            // To ensure the mirror looks perfectly 'ROUND', we abandon strict isometric ellipses 
-            // for the front face and instead use a perfect circle (oblique projection).
-            // We extrude this circle along the Z-axis (Depth) to show the thickness.
-            const r = (Math.max(W, H) / 2) * scale;
+            const R = Math.max(W, H) / 2;
             
-            // Isometric center of the front face (z = D)
-            const frontCx = cx + ((W/2 - D) * cos30) * scale;
-            const frontCy = cy + (-H/2 - (W/2 + D) * sin30) * scale;
+            // Center of the back face (Z=0)
+            const backCx = cx + project(W/2, H/2, 0).u * scale;
+            const backCy = cy + project(W/2, H/2, 0).v * scale;
             
-            // Isometric center of the back face (z = 0)
-            const backCx = cx + ((W/2) * cos30) * scale;
-            const backCy = cy + (-H/2 - (W/2) * sin30) * scale;
+            // Center of the front face (Z=D)
+            const frontCx = cx + project(W/2, H/2, D).u * scale;
+            const frontCy = cy + project(W/2, H/2, D).v * scale;
 
-            // Draw back circle
-            ctx.beginPath();
-            ctx.arc(backCx, backCy, r, 0, 2 * Math.PI);
-            ctx.fillStyle = COLOR_RIGHT;
-            ctx.fill();
-            ctx.stroke();
+            function traceIsoCircle(centerX: number, centerY: number, radius: number) {
+                ctx!.beginPath();
+                for (let t = 0; t <= 2 * Math.PI + 0.05; t += 0.05) {
+                    const x = radius * Math.cos(t);
+                    const y = radius * Math.sin(t);
+                    const p = project(x, y, 0);
+                    const ptX = centerX + p.u * scale;
+                    const ptY = centerY + p.v * scale;
+                    if (t === 0) ctx!.moveTo(ptX, ptY);
+                    else ctx!.lineTo(ptX, ptY);
+                }
+                ctx!.closePath();
+            }
 
-            // Draw connecting rim
-            const dx = backCx - frontCx;
-            const dy = backCy - frontCy;
-            const angle = Math.atan2(dy, dx);
-            const t1 = angle - Math.PI / 2;
-            const t2 = angle + Math.PI / 2;
+            // 1. Draw back face
+            traceIsoCircle(backCx, backCy, R);
+            ctx!.fillStyle = COLOR_RIGHT;
+            ctx!.fill();
+            if (isWireframe) ctx!.stroke();
 
-            ctx.beginPath();
-            ctx.moveTo(backCx + r * Math.cos(t1), backCy + r * Math.sin(t1));
-            ctx.lineTo(frontCx + r * Math.cos(t1), frontCy + r * Math.sin(t1));
-            ctx.lineTo(frontCx + r * Math.cos(t2), frontCy + r * Math.sin(t2));
-            ctx.lineTo(backCx + r * Math.cos(t2), backCy + r * Math.sin(t2));
-            ctx.closePath();
-            ctx.fillStyle = COLOR_RIGHT;
-            ctx.fill();
-            if (isWireframe) ctx.stroke();
+            // 2. Draw connecting rim
+            ctx!.beginPath();
+            for (let t = 0; t <= 2 * Math.PI + 0.05; t += 0.05) {
+                const x = R * Math.cos(t);
+                const y = R * Math.sin(t);
+                const p = project(x, y, 0);
+                const bx = backCx + p.u * scale;
+                const by = backCy + p.v * scale;
+                if (t === 0) ctx!.moveTo(bx, by);
+                else ctx!.lineTo(bx, by);
+            }
+            for (let t = 2 * Math.PI; t >= 0; t -= 0.05) {
+                const x = R * Math.cos(t);
+                const y = R * Math.sin(t);
+                const p = project(x, y, 0);
+                const fx = frontCx + p.u * scale;
+                const fy = frontCy + p.v * scale;
+                ctx!.lineTo(fx, fy);
+            }
+            ctx!.closePath();
+            ctx!.fillStyle = COLOR_RIGHT;
+            ctx!.fill();
 
-            // Stroke rim edges
-            ctx.beginPath();
-            ctx.moveTo(backCx + r * Math.cos(t1), backCy + r * Math.sin(t1));
-            ctx.lineTo(frontCx + r * Math.cos(t1), frontCy + r * Math.sin(t1));
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(backCx + r * Math.cos(t2), backCy + r * Math.sin(t2));
-            ctx.lineTo(frontCx + r * Math.cos(t2), frontCy + r * Math.sin(t2));
-            ctx.stroke();
+            // Outline the rim
+            ctx!.beginPath();
+            const tTangent1 = -Math.PI/4;
+            const tTangent2 = 3*Math.PI/4;
+            const p1 = project(R * Math.cos(tTangent1), R * Math.sin(tTangent1), 0);
+            ctx!.moveTo(backCx + p1.u * scale, backCy + p1.v * scale);
+            ctx!.lineTo(frontCx + p1.u * scale, frontCy + p1.v * scale);
+            const p2 = project(R * Math.cos(tTangent2), R * Math.sin(tTangent2), 0);
+            ctx!.moveTo(backCx + p2.u * scale, backCy + p2.v * scale);
+            ctx!.lineTo(frontCx + p2.u * scale, frontCy + p2.v * scale);
+            ctx!.stroke();
 
-            // Draw perfect front circle (Mirror Frame)
-            ctx.beginPath();
-            ctx.arc(frontCx, frontCy, r, 0, 2 * Math.PI);
-            ctx.fillStyle = COLOR_TOP;
-            ctx.fill();
-            ctx.stroke();
+            // 3. Draw front face
+            traceIsoCircle(frontCx, frontCy, R);
+            ctx!.fillStyle = COLOR_TOP;
+            ctx!.fill();
+            ctx!.stroke();
 
-            // Inner glass
-            const frameThick = Math.min(20, Math.max(W,H) * 0.3) * scale;
-            const innerR = r - frameThick;
-
-            ctx.beginPath();
-            ctx.arc(frontCx, frontCy, innerR, 0, 2 * Math.PI);
-            
-            // Mirror glass reflection slash
-            const faceGrd = ctx!.createLinearGradient(
-                frontCx + innerR*0.5, frontCy - innerR*0.5,
-                frontCx - innerR*0.5, frontCy + innerR*0.5
-            );
-            faceGrd.addColorStop(0, COLOR_TOP);
-            faceGrd.addColorStop(0.45, COLOR_TOP);
-            faceGrd.addColorStop(0.5, COLOR_RIGHT); // sleek diagonal glass shine
-            faceGrd.addColorStop(0.55, COLOR_TOP);
-            faceGrd.addColorStop(1, COLOR_TOP);
-
-            ctx.fillStyle = faceGrd;
-            ctx.fill();
-            ctx.stroke();
+            // 4. Draw inner glass
+            const innerR = R * 0.85;
+            traceIsoCircle(frontCx, frontCy, innerR);
+            if (isWireframe) {
+                ctx!.fillStyle = 'rgba(0,0,0,0)';
+                ctx!.fill();
+                ctx!.stroke();
+                // Add wireframe slash
+                ctx!.beginPath();
+                const sp1 = project(innerR * Math.cos(Math.PI/4), innerR * Math.sin(Math.PI/4), 0);
+                const sp2 = project(innerR * Math.cos(Math.PI/4 + Math.PI), innerR * Math.sin(Math.PI/4 + Math.PI), 0);
+                ctx!.moveTo(frontCx + sp1.u*scale, frontCy + sp1.v*scale);
+                ctx!.lineTo(frontCx + sp2.u*scale, frontCy + sp2.v*scale);
+                
+                const sp3 = project(innerR * Math.cos(Math.PI/4)*0.8, innerR * Math.sin(Math.PI/4)*0.8, 0);
+                const sp4 = project(innerR * Math.cos(Math.PI/4 + Math.PI)*0.8, innerR * Math.sin(Math.PI/4 + Math.PI)*0.8, 0);
+                ctx!.moveTo(frontCx + sp3.u*scale + 10, frontCy + sp3.v*scale - 5);
+                ctx!.lineTo(frontCx + sp4.u*scale + 10, frontCy + sp4.v*scale - 5);
+                ctx!.stroke();
+            } else {
+                const faceGrd = ctx!.createLinearGradient(
+                    frontCx - R*scale, frontCy - R*scale,
+                    frontCx + R*scale, frontCy + R*scale
+                );
+                faceGrd.addColorStop(0, COLOR_TOP);
+                faceGrd.addColorStop(0.45, COLOR_TOP);
+                faceGrd.addColorStop(0.5, COLOR_RIGHT);
+                faceGrd.addColorStop(0.55, COLOR_TOP);
+                faceGrd.addColorStop(1, COLOR_TOP);
+                ctx!.fillStyle = faceGrd;
+                ctx!.fill();
+                ctx!.stroke();
+            }
 
             // Labels
             const pts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
