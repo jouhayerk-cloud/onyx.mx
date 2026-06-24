@@ -3,7 +3,7 @@ import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInve
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
-import { generateAxonometricDataUrl } from './axonometric';
+import { generateAxonometricDataUrl, resolveItemColor } from './axonometric';
 
 // We accept a generalized artifact structure so different modules can use it
 export interface CatalogArtifact {
@@ -90,7 +90,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     // Axonometric icon stays on the right
     if (wCm && hCm && dCm) {
         try {
-            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr);
+            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
             if (axoDataUrl) {
                 currentRightX -= axoSize;
                 doc.addImage(axoDataUrl, 'PNG', currentRightX, startY + 5, axoSize, axoSize);
@@ -296,7 +296,7 @@ export async function exportCatalogPdf(
                 
                 if (wCm && hCm && dCm) {
                     try {
-                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr);
+                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
                         if (axoDataUrl) {
                             const cw = PW - M * 2 - 4;
                             const ch = PH - specY - 24;
@@ -333,110 +333,45 @@ export async function exportCatalogPdf(
         }
     } else {
         // --- METHOD: GRID CATALOG ---
-        const simple = results.filter(r => r.images.length <= 2);
-        const rich = results.filter(r => r.images.length > 2);
-        const HW = (PW - M * 2 - 4) / 2; const HG = 4;
-
-        for (let i = 0; i < simple.length; i += 2) {
-            addPage();
-            doc.setDrawColor(240, 240, 240); doc.setLineWidth(0.2); doc.line(M + HW + HG / 2, M, M + HW + HG / 2, PH - M);
-            for (let slot = 0; slot < 2; slot++) {
-                const item = simple[i + slot]; if (!item) break;
-                processedCount++;
-                onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
-                const norm = normalizeInventoryData(item.data); 
-                const codes = item.codes; const sx = M + slot * (HW + HG);
-                doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—', sx + 2, M + 6);
-                const shape = norm.shape || '';
-                const desc = norm.shortDescription || '';
-                const nameStr = (shape && desc && shape !== desc) ? `${shape} - ${desc}` : (shape || desc || 'Stone Piece');
-                doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(nameStr.toUpperCase(), sx + 2, M + 13, { maxWidth: HW - 4 });
+        // Unified grid layout: ALL items use the full detailed header, with a smart grid of images below.
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i]; 
+            const imgs = item.images; 
+            const n = imgs.length;
+            processedCount++;
+            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+            
+            if (n === 0) {
+                // Item with NO images - draw header and large axometric icon
+                addPage();
+                const specY = await drawHeader(doc, item, M, PW, M, exportType);
+                doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
                 
-                const color = item.data.color || item.data.Color || '';
-                const material = item.data.material || item.data.Material || '';
-                const detailStr = [color, material].filter(Boolean).join(' · ');
-                if (detailStr) {
-                    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(60, 60, 60);
-                    doc.text(detailStr.toUpperCase(), sx + 2, M + 18);
-                }
-
-                doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
-                
-                const gridPriceLabel = codes.primaryPriceLabel || (exportType === 'regular' ? 'ACQUISITION COST' : '');
-                const gridPriceValue = codes.primaryPriceValue || (codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—');
-                
-                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(100, 100, 100); doc.text(gridPriceLabel, sx + 2, M + 26);
-                doc.setFontSize(15); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(gridPriceValue, sx + 2, M + 33);
-                
-                doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(40, 40, 40);
-                const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
-                const dimsMStr = dimsM ? `${dimsM}cm` : '—';
-                const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
-                const weightMStr = norm.weightKg ? `${norm.weightKg}kg` : '—';
-                const weightIStr = norm.weightKg ? `(${toImp(norm.weightKg, 'lbs')})` : '';
-
-                // Dimensions (Two lines)
-                doc.text(dimsMStr, sx + 2, M + 39);
-                if (dimsMStr !== '—' && exportType !== 'regular') {
-                    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
-                    doc.text(`(${dimsI})`, sx + 2, M + 44);
-                }
-
-                // Weight (Two lines)
-                doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(40, 40, 40);
-                doc.text(weightMStr, sx + 2, M + 51);
-                if (weightMStr !== '—' && exportType !== 'regular') {
-                    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
-                    doc.text(weightIStr, sx + 2, M + 56);
-                }
-
+                const norm = normalizeInventoryData(item.data);
                 const wCm = parseFloat(norm.widthCm);
                 const hCm = parseFloat(norm.heightCm);
                 let dCm = parseFloat(norm.lengthCm);
                 if (!dCm && wCm) { dCm = wCm; }
                 const shapeStr = norm.shape || '';
                 const descStr = norm.shortDescription || norm.description || '';
-                let axoDataUrl = null;
+                
                 if (wCm && hCm && dCm) {
-                    try { axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr); } catch (e) {}
+                    try {
+                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
+                        if (axoDataUrl) {
+                            const cw = PW - M * 2 - 4;
+                            const ch = PH - specY - 24;
+                            const axoSize = Math.min(cw * 0.8, ch * 0.8, 160);
+                            const axoX = M + 4 + (cw - axoSize) / 2;
+                            const axoY = specY + 4 + (ch - axoSize) / 2;
+                            doc.addImage(axoDataUrl, 'PNG', axoX, axoY, axoSize, axoSize);
+                        }
+                    } catch (e) {}
                 }
-
-                const imgTop = M + 58; const imgH = PH - imgTop - 14; const imgW = HW - 4; const imgs = item.images;
-                if (imgs.length === 0) { 
-                    doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); 
-                    if (axoDataUrl) {
-                        const axoSize = Math.min(imgW, imgH) * 0.8;
-                        doc.addImage(axoDataUrl, 'PNG', sx + 2 + (imgW - axoSize) / 2, imgTop + (imgH - axoSize) / 2, axoSize, axoSize);
-                    }
-                }
-                else if (imgs.length === 1) { 
-                    const d = await loadImgData(getCleanImageUrl(imgs[0])); 
-                    if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); } 
-                    if (axoDataUrl) {
-                        const axoSize = 35;
-                        doc.addImage(axoDataUrl, 'PNG', sx + 2 + imgW - axoSize - 4, imgTop + imgH - axoSize - 4, axoSize, axoSize);
-                    }
-                }
-                else { 
-                    const cellH = (imgH - 2) / 2; 
-                    for (let j = 0; j < 2; j++) { 
-                        const cy = imgTop + j * (cellH + 2); 
-                        const d = await loadImgData(getCleanImageUrl(imgs[j])); 
-                        if (d) drawContain(doc, d, sx + 2, cy, imgW, cellH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, cy, imgW, cellH, 'F'); } 
-                    } 
-                    if (axoDataUrl) {
-                        const axoSize = 35;
-                        doc.addImage(axoDataUrl, 'PNG', sx + 2 + imgW - axoSize - 4, imgTop + imgH - axoSize - 4, axoSize, axoSize);
-                    }
-                }
+                continue;
             }
-        }
-        
-        for (let i = 0; i < rich.length; i++) {
-            const item = rich[i]; const imgs = item.images; const n = imgs.length;
-            processedCount++;
-            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
-            const CHUNK = 12; // 4 columns x 3 rows
+
+            const CHUNK = 12; // 4 columns x 3 rows max per page
             const totalPagesForItem = Math.ceil(n / CHUNK);
             
             for (let p = 0; p < totalPagesForItem; p++) {
@@ -444,17 +379,20 @@ export async function exportCatalogPdf(
                 
                 let imgTop = 0;
                 if (p === 0) {
-                    imgTop = drawHeader(doc, item, M, PW, M, exportType);
+                    imgTop = await drawHeader(doc, item, M, PW, M, exportType);
                 } else {
                     imgTop = drawHeaderCompact(doc, item, M, PW, M, p + 1, totalPagesForItem);
                 }
                 
-                const imgH = PH - imgTop - 14; const imgW = PW - M * 2 - 4;
+                const imgH = PH - imgTop - 14; 
+                const imgW = PW - M * 2 - 4;
                 const currentChunk = imgs.slice(p * CHUNK, (p + 1) * CHUNK);
                 const numInChunk = currentChunk.length;
                 
-                let cols = 2, rows = 1;
-                if (numInChunk <= 4) { cols = 2; rows = Math.ceil(numInChunk / 2); }
+                let cols = 1, rows = 1;
+                if (numInChunk === 1) { cols = 1; rows = 1; }
+                else if (numInChunk === 2) { cols = 2; rows = 1; }
+                else if (numInChunk <= 4) { cols = 2; rows = 2; }
                 else if (numInChunk <= 6) { cols = 3; rows = 2; }
                 else if (numInChunk <= 9) { cols = 3; rows = 3; }
                 else { cols = 4; rows = 3; }

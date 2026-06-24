@@ -1182,6 +1182,8 @@ export const UnifiedInventoryView = () => {
         setIsLoading(items.length === 0);
     }, [activeVendors, filteredItems, items.length, totalCount, totalValueMXN]);
 
+    const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
     const listVirtualizer = useVirtualizer({
         count: viewMode === 'list' ? filteredItems.length : 0,
         getScrollElement: () => document.querySelector('.app-content') as HTMLDivElement | null,
@@ -1190,12 +1192,20 @@ export const UnifiedInventoryView = () => {
     });
 
     // Fix for overlapping cards in list view due to virtualization caching heights during CSS transitions
+    // We must force the virtualizer to actually read the DOM element's getBoundingClientRect()
     useEffect(() => {
         if (viewMode !== 'list') return;
-        listVirtualizer.measure();
-        const t1 = setTimeout(() => listVirtualizer.measure(), 100);
-        const t2 = setTimeout(() => listVirtualizer.measure(), 250);
-        const t3 = setTimeout(() => listVirtualizer.measure(), 450);
+        
+        const triggerMeasure = () => {
+            Object.values(itemRefs.current).forEach(el => {
+                if (el) listVirtualizer.measureElement(el);
+            });
+        };
+
+        triggerMeasure();
+        const t1 = setTimeout(triggerMeasure, 150);
+        const t2 = setTimeout(triggerMeasure, 350);
+        const t3 = setTimeout(triggerMeasure, 550);
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }, [expandedCards, items, viewMode, listVirtualizer]);
 
@@ -1270,7 +1280,10 @@ export const UnifiedInventoryView = () => {
                                     return (
                                         <div
                                             key={item.row}
-                                            ref={listVirtualizer.measureElement}
+                                            ref={(el) => {
+                                                listVirtualizer.measureElement(el);
+                                                itemRefs.current[virtualRow.index] = el;
+                                            }}
                                             data-index={virtualRow.index}
                                             style={{
                                                 position: 'absolute',
@@ -1280,7 +1293,11 @@ export const UnifiedInventoryView = () => {
                                                 transform: `translateY(${virtualRow.start}px)`,
                                             }}
                                         >
-                                            <div style={{ zoom: listScale } as React.CSSProperties}>
+                                            <div style={{ 
+                                                transform: `scale(${listScale})`, 
+                                                transformOrigin: 'top left',
+                                                width: `${100 / listScale}%`
+                                            }}>
                                                 <UnifiedInventoryCard 
                                                     item={item} 
                                                     isExpanded={expandedCards[String(item.row)] || 0} 

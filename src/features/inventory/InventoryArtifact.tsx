@@ -41,36 +41,9 @@ import { inventoryArtifactConfigAtom } from '../../lib/atoms';
 export const WireframeIcon = ({ item, color }: { item: any, color?: string }) => {
     const [src, setSrc] = useState<string | null>(null);
 
-    const resolveItemColor = (item: any) => {
-        const textToSearch = [
-            item.color, item.color_en, item.color_es,
-            item.finish, item.finish_en, item.finish_es,
-            item.material, item.material_en, item.material_es,
-            item.description, item.shortDescription,
-            item.title, item.name
-        ].filter(Boolean).join(' ').toLowerCase();
-
-        if (textToSearch.includes('gold') || textToSearch.includes('brass') || textToSearch.includes('laton') || textToSearch.includes('dorado')) return '#FDE047'; 
-        if (textToSearch.includes('silver') || textToSearch.includes('chrome') || textToSearch.includes('steel') || textToSearch.includes('aluminum') || textToSearch.includes('plata') || textToSearch.includes('acero')) return '#E2E8F0';
-        if (textToSearch.includes('copper') || textToSearch.includes('bronze') || textToSearch.includes('rust') || textToSearch.includes('cobre') || textToSearch.includes('bronce')) return '#F59E0B'; 
-        if (textToSearch.includes('red') || textToSearch.includes('rojo')) return '#EF4444'; 
-        if (textToSearch.includes('blue') || textToSearch.includes('azul')) return '#3B82F6'; 
-        if (textToSearch.includes('green') || textToSearch.includes('verde') || textToSearch.includes('emerald')) return '#10B981'; 
-        if (textToSearch.includes('pink') || textToSearch.includes('rosa')) return '#EC4899'; 
-        if (textToSearch.includes('purple') || textToSearch.includes('violet') || textToSearch.includes('morado')) return '#8B5CF6'; 
-        if (textToSearch.includes('orange') || textToSearch.includes('naranja')) return '#F97316'; 
-        if (textToSearch.includes('yellow') || textToSearch.includes('amarillo')) return '#EAB308'; 
-        if (textToSearch.includes('brown') || textToSearch.includes('wood') || textToSearch.includes('walnut') || textToSearch.includes('oak') || textToSearch.includes('madera') || textToSearch.includes('cafe') || textToSearch.includes('marrón')) return '#D97706'; 
-        if (textToSearch.includes('black') || textToSearch.includes('nero') || textToSearch.includes('dark') || textToSearch.includes('negro')) return '#888888';
-        if (textToSearch.includes('white') || textToSearch.includes('blanco') || textToSearch.includes('clear') || textToSearch.includes('transparent')) return '#FFFFFF';
-        if (textToSearch.includes('grey') || textToSearch.includes('gray') || textToSearch.includes('gris') || textToSearch.includes('concrete') || textToSearch.includes('cement')) return '#A1A1AA'; 
-        
-        return '#71717A'; // default neutral
-    };
-
     useEffect(() => {
         let active = true;
-        import('../../lib/axonometric').then(({ generateAxonometricDataUrl }) => {
+        import('../../lib/axonometric').then(({ generateAxonometricDataUrl, resolveItemColor }) => {
             const w = parseFloat(item.width_cm || item.widthCm) || 40;
             const h = parseFloat(item.height_cm || item.heightCm) || 40;
             const d = parseFloat(item.length_cm || item.lengthCm) || parseFloat(item.depth_cm || item.depthCm) || w;
