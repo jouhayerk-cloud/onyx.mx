@@ -612,7 +612,11 @@ export const LabelWizard: React.FC = () => {
         const tid = toast.loading('Generating dynamic 3D structures for labels...');
         try {
             const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix);
-            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            try {
+                localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            } catch (storageError) {
+                console.warn('LocalStorage quota exceeded. Relying purely on postMessage for iframe payload transfer.');
+            }
             pendingBatchRef.current = batchProject;
             setProgress(p => ({ ...p, printer: 100 }));
             toast.success('Batch Prepared! Launching Print Engine', { id: tid });
