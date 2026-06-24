@@ -379,39 +379,29 @@ export async function generateAxonometricDataUrl(
             if (isWireframe) ctx!.stroke();
 
             // 2. Draw connecting rim
+            const tTangent1 = -Math.PI/4;
+            const tTangent2 = 3*Math.PI/4;
+            const p1 = project(R * Math.cos(tTangent1), R * Math.sin(tTangent1), 0);
+            const p2 = project(R * Math.cos(tTangent2), R * Math.sin(tTangent2), 0);
+
             ctx!.beginPath();
-            for (let t = 0; t <= 2 * Math.PI + 0.05; t += 0.05) {
-                const x = R * Math.cos(t);
-                const y = R * Math.sin(t);
-                const p = project(x, y, 0);
-                const bx = backCx + p.u * scale;
-                const by = backCy + p.v * scale;
-                if (t === 0) ctx!.moveTo(bx, by);
-                else ctx!.lineTo(bx, by);
-            }
-            for (let t = 2 * Math.PI; t >= 0; t -= 0.05) {
-                const x = R * Math.cos(t);
-                const y = R * Math.sin(t);
-                const p = project(x, y, 0);
-                const fx = frontCx + p.u * scale;
-                const fy = frontCy + p.v * scale;
-                ctx!.lineTo(fx, fy);
-            }
+            ctx!.moveTo(backCx + p1.u * scale, backCy + p1.v * scale);
+            ctx!.lineTo(frontCx + p1.u * scale, frontCy + p1.v * scale);
+            ctx!.lineTo(frontCx + p2.u * scale, frontCy + p2.v * scale);
+            ctx!.lineTo(backCx + p2.u * scale, backCy + p2.v * scale);
             ctx!.closePath();
             ctx!.fillStyle = COLOR_RIGHT;
             ctx!.fill();
 
-            // Outline the rim
-            ctx!.beginPath();
-            const tTangent1 = -Math.PI/4;
-            const tTangent2 = 3*Math.PI/4;
-            const p1 = project(R * Math.cos(tTangent1), R * Math.sin(tTangent1), 0);
-            ctx!.moveTo(backCx + p1.u * scale, backCy + p1.v * scale);
-            ctx!.lineTo(frontCx + p1.u * scale, frontCy + p1.v * scale);
-            const p2 = project(R * Math.cos(tTangent2), R * Math.sin(tTangent2), 0);
-            ctx!.moveTo(backCx + p2.u * scale, backCy + p2.v * scale);
-            ctx!.lineTo(frontCx + p2.u * scale, frontCy + p2.v * scale);
-            ctx!.stroke();
+            if (isWireframe) {
+                // Outline the rim
+                ctx!.beginPath();
+                ctx!.moveTo(backCx + p1.u * scale, backCy + p1.v * scale);
+                ctx!.lineTo(frontCx + p1.u * scale, frontCy + p1.v * scale);
+                ctx!.moveTo(backCx + p2.u * scale, backCy + p2.v * scale);
+                ctx!.lineTo(frontCx + p2.u * scale, frontCy + p2.v * scale);
+                ctx!.stroke();
+            }
 
             // 3. Draw front face
             traceIsoCircle(frontCx, frontCy, R);
