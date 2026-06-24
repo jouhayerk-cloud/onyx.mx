@@ -5,7 +5,7 @@
  */
 import { jsPDF } from 'jspdf';
 import { cmToImperial } from './utils';
-import { generateAxonometricDataUrl } from './axonometric';
+import { generateAxonometricDataUrl, resolveItemColor } from './axonometric';
 
 export interface ManifestoItem {
     index: number;            // DB item number (numeric portion from itemId)
@@ -906,7 +906,8 @@ export async function exportCrateManifesto(
             if (wCm && hCm && dCm) {
                 const shapeStr = item.name.split(' - ')[0] || '';
                 const descStr = item.name.split(' - ')[1] || item.name;
-                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr);
+                const itemColor = resolveItemColor(item as any);
+                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, itemColor);
                 if (axoDataUrl) {
                     const axoSize = 20; // LARGER
                     doc.addImage(axoDataUrl, 'PNG', COL_DIMS.x + COL_DIMS.w - axoSize - 2, y + (ROW_H - axoSize) / 2, axoSize, axoSize);
