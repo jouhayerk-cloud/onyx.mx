@@ -668,7 +668,11 @@ export const PackingModule: React.FC = () => {
             
             // STEP 2: Build JSON Project (Multiplier = 2)
             const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 2);
-            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            try {
+                localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            } catch (storageError) {
+                console.warn('LocalStorage quota exceeded. Relying purely on postMessage for iframe payload transfer.');
+            }
             pendingBatchRef.current = batchProject; // stash for postMessage after DESIGNER_READY
             
             // STEP 3: Open Overlay PREVIEW
@@ -729,8 +733,12 @@ export const PackingModule: React.FC = () => {
     /* ── Open Designer full screen with batch ── */
     const openDesignerFullscreen = () => {
         const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize);
-        localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
-        window.open('https://jouhayerk-cloud.github.io/phomemo-designer/index.html', '_blank');
+        try {
+            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            window.open('https://jouhayerk-cloud.github.io/phomemo-designer/index.html', '_blank');
+        } catch(storageError) {
+            toast.error('Batch is too large for Fullscreen Mode. Please use the Print Wizard internal view instead.');
+        }
     };
 
     // Listen for triggers from Top Bar
