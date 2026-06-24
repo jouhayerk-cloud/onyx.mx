@@ -350,13 +350,13 @@ export async function generateAxonometricDataUrl(
         } else if (geom === 'mirror') {
             const R = Math.max(W, H) / 2;
             
-            // Center of the back face (Z=0)
-            const backCx = cx + project(W/2, H/2, 0).u * scale;
-            const backCy = cy + project(W/2, H/2, 0).v * scale;
+            // Center of the back face (Z=D)
+            const backCx = cx + project(W/2, H/2, D).u * scale;
+            const backCy = cy + project(W/2, H/2, D).v * scale;
             
-            // Center of the front face (Z=D)
-            const frontCx = cx + project(W/2, H/2, D).u * scale;
-            const frontCy = cy + project(W/2, H/2, D).v * scale;
+            // Center of the front face (Z=0)
+            const frontCx = cx + project(W/2, H/2, 0).u * scale;
+            const frontCy = cy + project(W/2, H/2, 0).v * scale;
 
             function traceIsoCircle(centerX: number, centerY: number, radius: number) {
                 ctx!.beginPath();
