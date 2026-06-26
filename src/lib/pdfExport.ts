@@ -37,11 +37,12 @@ async function loadImgData(url: string, maxSize = 900, keepPng = false): Promise
     } catch { return null; }
 }
 
-function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number, ch: number) {
-    doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cw, ch, 'F');
+function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number, ch: number, scale = 1.0) {
+    // doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cw, ch, 'F');
     const ir = img.w / img.h; const cr = cw / ch;
     let dw: number, dh: number;
     if (ir > cr) { dw = cw; dh = cw / ir; } else { dh = ch; dw = ch * ir; }
+    dw *= scale; dh *= scale;
     doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
 }
 
@@ -311,7 +312,7 @@ export async function exportCatalogPdf(
 
             if (imgs.length === 0) {
                 addPage();
-                const specY = await drawHeader(doc, item, M, PW, M, exportType);
+                const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
                 doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
                 
                 // Draw large axonometric icon in place of image
@@ -341,16 +342,16 @@ export async function exportCatalogPdf(
             } else {
                 for (let j = 0; j < imgs.length; j++) {
                     addPage();
-                    const specY = await drawHeader(doc, item, M, PW, M, exportType);
+                    const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
                     
                     const imgUrl = getCleanImageUrl(imgs[j]);
                     const d = await loadImgData(imgUrl, 1200);
                     const imgW = PW - M * 2 - 4;
                     const imgH = PH - specY - 24;
                     if (d) {
-                        drawContain(doc, d, M + 4, specY + 4, imgW, imgH);
+                        drawContain(doc, d, M + 4, specY + 4, imgW, imgH, 0.95);
                     } else {
-                        doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, imgW, imgH, 'F');
+                        // doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, imgW, imgH, 'F');
                     }
                                         if (imgs.length > 1) {
                           doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
@@ -372,7 +373,7 @@ export async function exportCatalogPdf(
             if (n === 0) {
                 // Item with NO images - draw header and large axometric icon
                 addPage();
-                const specY = await drawHeader(doc, item, M, PW, M, exportType);
+                const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
                 doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
                 
                 const norm = normalizeInventoryData(item.data);
@@ -407,9 +408,9 @@ export async function exportCatalogPdf(
                 
                 let imgTop = 0;
                 if (p === 0) {
-                    imgTop = await drawHeader(doc, item, M, PW, M, exportType);
+                    imgTop = await drawHeader(doc, item, M, PW, M - 6, exportType);
                 } else {
-                    imgTop = drawHeaderCompact(doc, item, M, PW, M, p + 1, totalPagesForItem);
+                    imgTop = drawHeaderCompact(doc, item, M, PW, M - 6, p + 1, totalPagesForItem);
                 }
                 
                 const imgH = PH - imgTop - 14; 
