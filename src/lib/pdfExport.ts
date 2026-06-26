@@ -273,7 +273,7 @@ export async function exportCatalogPdf(
             let logoW = 0;
             let logoH = 0;
             if (logoData) {
-                logoH = 5.5; 
+                logoH = 4.2; 
                 logoW = logoData.w * (logoH / logoData.h);
             }
             const tw = doc.getTextWidth(madeText);
@@ -282,7 +282,7 @@ export async function exportCatalogPdf(
             
             doc.text(madeText, startX, PH - 8);
             if (logoData) {
-                doc.addImage(logoData.dataUrl, 'PNG', startX + tw + 2, PH - 8 - 4.2, logoW, logoH);
+                doc.addImage(logoData.dataUrl, 'PNG', startX + tw + 2, PH - 8 - 3.5, logoW, logoH);
             }
         }
         
