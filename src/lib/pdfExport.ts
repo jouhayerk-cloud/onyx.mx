@@ -263,17 +263,17 @@ export async function exportCatalogPdf(
     let globalPageNum = 0;
     const footer = (doc: any) => { 
         globalPageNum++; 
-        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200); 
+        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0); 
         doc.text(config.title || 'Artifact Catalog', M + 4, PH - 8); 
         
         if (config.method === 'single') {
-            doc.setFontSize(8);
+            doc.setFontSize(11);
             const madeText = 'Made in Mexico for ';
-            doc.setTextColor(150, 150, 150);
+            doc.setTextColor(0, 0, 0);
             let logoW = 0;
             let logoH = 0;
             if (logoData) {
-                logoH = 5; 
+                logoH = 5.5; 
                 logoW = logoData.w * (logoH / logoData.h);
             }
             const tw = doc.getTextWidth(madeText);
@@ -282,11 +282,11 @@ export async function exportCatalogPdf(
             
             doc.text(madeText, startX, PH - 8);
             if (logoData) {
-                doc.addImage(logoData.dataUrl, 'PNG', startX + tw + 2, PH - 8 - 4, logoW, logoH);
+                doc.addImage(logoData.dataUrl, 'PNG', startX + tw + 2, PH - 8 - 4.2, logoW, logoH);
             }
         }
         
-        doc.setFontSize(7); doc.setTextColor(200, 200, 200);
+        doc.setFontSize(10); doc.setTextColor(0, 0, 0);
         doc.text(`Page ${globalPageNum}`, PW - M, PH - 8, { align: 'right' }); 
     };
 
