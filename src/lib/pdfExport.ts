@@ -71,14 +71,13 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let qrDataUrl = '';
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
     try {
-        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { margin: 0, width: 200, color: { dark: '#000000', light: '#ffffff' } });
+        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
     } catch (e) { console.error('QR code err', e); }
 
-    // Generate Barcode
     let barDataUrl = '';
     try {
         const canvas = document.createElement('canvas');
-        JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40 });
+        JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40, lineColor: '#141414' });
         barDataUrl = canvas.toDataURL('image/png');
     } catch (e) { console.error('Barcode err', e); }
 
@@ -125,7 +124,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     // 2. TAG ID + TOP CODES
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0); // Black
+    doc.setTextColor(20, 20, 20); // Black
     doc.text(barcode, textX, currentY);
     
     // Combine ACQ code and retail (e.g. FMO11958)
@@ -156,7 +155,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     
     doc.setFontSize(22); 
     doc.setFont('helvetica', 'bold'); 
-    doc.setTextColor(0, 0, 0); // Black
+    doc.setTextColor(20, 20, 20); // Black
     const titleLines = doc.splitTextToSize(nameStr.toUpperCase(), PW - textX - M - axoSize - 8);
     doc.text(titleLines, textX, currentY);
     
@@ -166,7 +165,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     // Font Size 2: 12
     doc.setFontSize(12); 
     doc.setFont('helvetica', 'bold'); 
-    doc.setTextColor(0, 0, 0); // Black
+    doc.setTextColor(20, 20, 20); // Black
 
     let currentDX = textX;
     const vendorName = norm.vendor || '';
@@ -188,7 +187,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
 
     if (detailStr) {
         doc.setFont('helvetica', 'normal'); 
-        doc.setTextColor(0, 0, 0); // Black
+        doc.setTextColor(20, 20, 20); // Black
         if (vendorName) {
             doc.text('·', currentDX, currentY);
             currentDX += doc.getTextWidth('·') + 8;
@@ -212,18 +211,18 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     
     cols.forEach((col: any) => {
         const cx = col.x;
-        doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0); doc.text(col.label, cx, specY); // Black Labels
+        doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(20, 20, 20); doc.text(col.label, cx, specY); // Black Labels
         
         if (col.label === 'DIMENSIONS' || col.label === 'WEIGHT') {
-            doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); // Black Metric
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20); // Black Metric
             const mVal = col.m || '—';
             doc.text(mVal, cx, specY + 8);
             if (col.i && exportType !== 'regular') {
-                doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0); // Black Imperial
+                doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(20, 20, 20); // Black Imperial
                 doc.text(col.i, cx, specY + 14);
             }
         } else {
-            doc.setFontSize(col.accent ? 22 : 14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0); doc.text(col.value, cx, specY + 10);
+            doc.setFontSize(col.accent ? 22 : 14); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20); doc.text(col.value, cx, specY + 10);
         }
     });
 
@@ -236,7 +235,7 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
     const hY = startY + 4;
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
     doc.text(`${item.codes.bookBarcodeDisplay || item.codes.bookBarcode || item.codes.bookTagId || '—'}  \xb7  PAGE ${pageNum} OF ${totalPages}`, M + 4, hY);
-    doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0);
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
     doc.text((norm.shortDescription || norm.shape || 'Stone Piece').toUpperCase(), M + 4, hY + 8);
     doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
     return hY + 12;
@@ -267,7 +266,7 @@ export async function exportCatalogPdf(
         if (config.method === 'single') {
             doc.setFontSize(11);
             const madeText = 'Made in Mexico for';
-            doc.setTextColor(0, 0, 0);
+            doc.setTextColor(20, 20, 20);
             const tw = doc.getTextWidth(madeText);
             
             let logoW = 0;
@@ -288,7 +287,7 @@ export async function exportCatalogPdf(
             }
         }
         
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(20, 20, 20);
         doc.text(String(globalPageNum), M + 4, PH - 14); 
     };
 
@@ -354,7 +353,7 @@ export async function exportCatalogPdf(
                         doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, imgW, imgH, 'F');
                     }
                                         if (imgs.length > 1) {
-                          doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0);
+                          doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
                           doc.text(`${j + 1} OF ${imgs.length}`, PW - M, specY - 2, { align: 'right' });
                       }
                 }
