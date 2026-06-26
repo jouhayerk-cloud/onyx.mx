@@ -71,14 +71,14 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let qrDataUrl = '';
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
     try {
-        qrDataUrl = await QRCode.toDataURL(barcode, { margin: 0, width: 200, color: { dark: '#000000', light: '#ffffff' } });
+        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { margin: 0, width: 200, color: { dark: '#000000', light: '#ffffff' } });
     } catch (e) { console.error('QR code err', e); }
 
     // Generate Barcode
     let barDataUrl = '';
     try {
         const canvas = document.createElement('canvas');
-        JsBarcode(canvas, barcode, { format: 'CODE128', displayValue: false, margin: 0, height: 40 });
+        JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40 });
         barDataUrl = canvas.toDataURL('image/png');
     } catch (e) { console.error('Barcode err', e); }
 
