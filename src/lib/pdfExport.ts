@@ -266,21 +266,25 @@ export async function exportCatalogPdf(
         
         if (config.method === 'single') {
             doc.setFontSize(11);
-            const madeText = 'Made in Mexico for ';
+            const madeText = 'Made in Mexico for';
             doc.setTextColor(0, 0, 0);
+            const tw = doc.getTextWidth(madeText);
+            
             let logoW = 0;
             let logoH = 0;
             if (logoData) {
-                logoH = 4.2; 
+                logoH = 4.8; 
                 logoW = logoData.w * (logoH / logoData.h);
             }
-            const tw = doc.getTextWidth(madeText);
-            const totalW = tw + (logoW ? logoW + 2 : 0);
-            const startX = (PW - totalW) / 2;
             
-            doc.text(madeText, startX, PH - 8);
+            const rightEdge = PW - M;
+            
+            const textX = rightEdge - tw;
+            doc.text(madeText, textX, PH - 11);
+            
             if (logoData) {
-                doc.addImage(logoData.dataUrl, 'PNG', startX + tw + 2, PH - 8 - 3.5, logoW, logoH);
+                const logoX = rightEdge - logoW;
+                doc.addImage(logoData.dataUrl, 'PNG', logoX, PH - 9.5, logoW, logoH);
             }
         }
         
