@@ -93,7 +93,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
             const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
             if (axoDataUrl) {
                 currentRightX -= axoSize;
-                doc.addImage(axoDataUrl, 'PNG', currentRightX, startY + 5, axoSize, axoSize);
+                doc.addImage(axoDataUrl, 'PNG', currentRightX, startY + 9, axoSize, axoSize);
             }
         } catch (e) {
             console.error("Failed to draw axonometric box", e);
@@ -358,7 +358,7 @@ export async function exportCatalogPdf(
                     }
                     if (imgs.length > 1) {
                         doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-                        doc.text(`${j + 1} OF ${imgs.length}`, PW - M, M - 2, { align: 'right' });
+                        doc.text(`${j + 1} OF ${imgs.length}`, PW - M, M + 2, { align: 'right' });
                     }
                 }
             }
