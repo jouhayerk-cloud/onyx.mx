@@ -228,7 +228,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     });
 
     // doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 18, PW - M, specY + 18);
-    return specY + 22;
+    return specY + 18;
 }
 
 function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, pageNum: number, totalPages: number): number {
@@ -349,14 +349,14 @@ export async function exportCatalogPdf(
                     const imgW = PW - M * 2 - 4;
                     const imgH = PH - specY - 24;
                     if (d) {
-                        drawContain(doc, d, M + 4, specY + 4, imgW, imgH, 0.95);
+                        drawContain(doc, d, M + 4, specY + 4, imgW, imgH, 0.90);
                     } else {
                         // doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, imgW, imgH, 'F');
                     }
-                                        if (imgs.length > 1) {
-                          doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-                          doc.text(`${j + 1} OF ${imgs.length}`, PW - M, specY - 2, { align: 'right' });
-                      }
+                    if (imgs.length > 1) {
+                        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+                        doc.text(`${j + 1} OF ${imgs.length}`, PW - M, M - 2, { align: 'right' });
+                    }
                 }
             }
         }
