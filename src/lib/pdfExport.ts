@@ -242,6 +242,8 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
     return hY + 12;
 }
 
+import { ART_OF_DECOR_LOGO } from './artOfDecorLogo';
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single'; exportType?: 'regular' | 'catalog' },
@@ -255,7 +257,7 @@ export async function exportCatalogPdf(
     
     let logoData: ImgData | null = null;
     if (config.method === 'single') {
-        logoData = await loadImgData('/ArtOfDecorLogo.png', 400, true);
+        logoData = await loadImgData(ART_OF_DECOR_LOGO, 400, true);
     }
     
     let globalPageNum = 0;
