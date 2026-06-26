@@ -263,8 +263,6 @@ export async function exportCatalogPdf(
     let globalPageNum = 0;
     const footer = (doc: any) => { 
         globalPageNum++; 
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0); 
-        doc.text(config.title || 'Artifact Catalog', M + 4, PH - 8); 
         
         if (config.method === 'single') {
             doc.setFontSize(11);
@@ -286,8 +284,8 @@ export async function exportCatalogPdf(
             }
         }
         
-        doc.setFontSize(10); doc.setTextColor(0, 0, 0);
-        doc.text(`Page ${globalPageNum}`, PW - M, PH - 8, { align: 'right' }); 
+        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
+        doc.text(String(globalPageNum), M + 4, PH - 8); 
     };
 
     let isFirstPage = true;
