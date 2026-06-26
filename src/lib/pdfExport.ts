@@ -24,7 +24,7 @@ export interface CatalogArtifact {
 
 interface ImgData { dataUrl: string; w: number; h: number; }
 
-async function loadImgData(url: string, maxSize = 900): Promise<ImgData | null> {
+async function loadImgData(url: string, maxSize = 900, keepPng = false): Promise<ImgData | null> {
     try {
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
             const el = new Image(); el.crossOrigin = 'anonymous'; el.onload = () => resolve(el); el.onerror = reject; el.src = url; setTimeout(() => reject(new Error('timeout')), 8000);
@@ -33,7 +33,7 @@ async function loadImgData(url: string, maxSize = 900): Promise<ImgData | null> 
         const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
         const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
         canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
-        return { dataUrl: canvas.toDataURL('image/jpeg', 0.88), w, h };
+        return { dataUrl: canvas.toDataURL(keepPng ? 'image/png' : 'image/jpeg', 0.88), w, h };
     } catch { return null; }
 }
 
@@ -160,7 +160,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     const titleLines = doc.splitTextToSize(nameStr.toUpperCase(), PW - textX - M - axoSize - 8);
     doc.text(titleLines, textX, currentY);
     
-    currentY += titleLines.length * 9; // Adjust for next line based on number of wrapped lines
+    currentY += titleLines.length * 7; // Adjust for next line based on number of wrapped lines
     
     // 4. VENDOR NAME + DETAILS (Color + Material)
     // Font Size 2: 12
@@ -196,10 +196,10 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
         doc.text(detailStr.toUpperCase(), currentDX, currentY);
     }
 
-    const lineY = currentY + 10;
+    const lineY = currentY + 6;
     doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, lineY, PW - M, lineY);
     
-    const specY = lineY + 14;
+    const specY = lineY + 8;
     const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
     const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
     const weightImp = toImp(norm.weightKg, 'lbs');
@@ -227,8 +227,8 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
         }
     });
 
-    doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 22, PW - M, specY + 22);
-    return specY + 30;
+    doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 18, PW - M, specY + 18);
+    return specY + 22;
 }
 
 function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, pageNum: number, totalPages: number): number {
@@ -253,11 +253,38 @@ export async function exportCatalogPdf(
     const PW = 210, PH = 297, M = 12;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
+    let logoData: ImgData | null = null;
+    if (config.method === 'single') {
+        logoData = await loadImgData('https://www.artofdecorusa.com/wp-content/uploads/2017/06/logo.png', 400, true);
+    }
+    
     let globalPageNum = 0;
     const footer = (doc: any) => { 
         globalPageNum++; 
         doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200); 
         doc.text(config.title || 'Artifact Catalog', M + 4, PH - 8); 
+        
+        if (config.method === 'single') {
+            doc.setFontSize(8);
+            const madeText = 'Made in Mexico for ';
+            doc.setTextColor(150, 150, 150);
+            let logoW = 0;
+            let logoH = 0;
+            if (logoData) {
+                logoH = 5; 
+                logoW = logoData.w * (logoH / logoData.h);
+            }
+            const tw = doc.getTextWidth(madeText);
+            const totalW = tw + (logoW ? logoW + 2 : 0);
+            const startX = (PW - totalW) / 2;
+            
+            doc.text(madeText, startX, PH - 8);
+            if (logoData) {
+                doc.addImage(logoData.dataUrl, 'PNG', startX + tw + 2, PH - 8 - 4, logoW, logoH);
+            }
+        }
+        
+        doc.setFontSize(7); doc.setTextColor(200, 200, 200);
         doc.text(`Page ${globalPageNum}`, PW - M, PH - 8, { align: 'right' }); 
     };
 
@@ -322,11 +349,10 @@ export async function exportCatalogPdf(
                     } else {
                         doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, imgW, imgH, 'F');
                     }
-                    
-                    if (imgs.length > 1) {
-                        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
-                        doc.text(`IMAGE ${j + 1} OF ${imgs.length}`, PW - M, specY - 2, { align: 'right' });
-                    }
+                                        if (imgs.length > 1) {
+                          doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0);
+                          doc.text(`${j + 1} OF ${imgs.length}`, PW - M, specY - 2, { align: 'right' });
+                      }
                 }
             }
         }
