@@ -255,7 +255,7 @@ export async function exportCatalogPdf(
     
     let logoData: ImgData | null = null;
     if (config.method === 'single') {
-        logoData = await loadImgData('/artofdecor-logo.png', 400, true);
+        logoData = await loadImgData('/ArtOfDecorLogo.png', 400, true);
     }
     
     let globalPageNum = 0;
