@@ -280,16 +280,16 @@ export async function exportCatalogPdf(
             const rightEdge = PW - M;
             
             const textX = rightEdge - tw;
-            doc.text(madeText, textX, PH - 11);
+            doc.text(madeText, textX, PH - 17);
             
             if (logoData) {
                 const logoX = rightEdge - logoW;
-                doc.addImage(logoData.dataUrl, 'PNG', logoX, PH - 9.5, logoW, logoH);
+                doc.addImage(logoData.dataUrl, 'PNG', logoX, PH - 15.5, logoW, logoH);
             }
         }
         
         doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
-        doc.text(String(globalPageNum), M + 4, PH - 8); 
+        doc.text(String(globalPageNum), M + 4, PH - 14); 
     };
 
     let isFirstPage = true;
