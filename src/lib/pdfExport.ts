@@ -148,11 +148,16 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     
     currentY += 9;
 
-    // 4. ITEM TITLETLE
-    // Font Size 1: 22 (Larger)
+    // 4. ITEM TITLE AND QTY
     const shape = norm.shape || '';
     const type = norm.shortDescription || '';
     const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
+    
+    // Draw QTY indicator below QR Code
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+    doc.text('QTY', M + 4, currentY - 6);
+    doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(String(norm.quantity || 1), M + 4, currentY);
     
     doc.setFontSize(22); 
     doc.setFont('helvetica', 'bold'); 
@@ -197,7 +202,6 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     }
 
     const lineY = currentY + 6;
-    // doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, lineY, PW - M, lineY);
     
     const specY = lineY + 8;
     const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
@@ -205,9 +209,8 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     const weightImp = toImp(norm.weightKg, 'lbs');
 
     const cols = [
-        { label: 'QTY',        value: String(norm.quantity || 1), x: M + 4, accent: true },
-        { label: 'DIMENSIONS', m: dimsMetric, i: (dimsMetric ? `(${dimsImp})` : ''), x: M + 50 },
-        { label: 'WEIGHT',     m: (norm.weightKg ? `${norm.weightKg}kg` : ''), i: (norm.weightKg ? `(${weightImp})` : ''), x: M + 140 }
+        { label: 'DIMENSIONS', m: dimsMetric, i: (dimsMetric ? `(${dimsImp})` : ''), x: M + 4 },
+        { label: 'WEIGHT',     m: (norm.weightKg ? `${norm.weightKg}kg` : ''), i: (norm.weightKg ? `(${weightImp})` : ''), x: M + 90 }
     ];
     
     cols.forEach((col: any) => {
