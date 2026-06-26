@@ -142,9 +142,9 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     currentY += 6;
 
     // Draw subtle separation line below the top codes
-    doc.setDrawColor(240, 240, 240);
-    doc.setLineWidth(0.4);
-    doc.line(textX, currentY, PW - M - axoSize - 4, currentY);
+    // doc.setDrawColor(240, 240, 240);
+    // doc.setLineWidth(0.4);
+    // doc.line(textX, currentY, PW - M - axoSize - 4, currentY);
     
     currentY += 9;
 
@@ -197,7 +197,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     }
 
     const lineY = currentY + 6;
-    doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, lineY, PW - M, lineY);
+    // doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, lineY, PW - M, lineY);
     
     const specY = lineY + 8;
     const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
@@ -227,7 +227,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
         }
     });
 
-    doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 18, PW - M, specY + 18);
+    // doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 18, PW - M, specY + 18);
     return specY + 22;
 }
 
@@ -255,7 +255,7 @@ export async function exportCatalogPdf(
     
     let logoData: ImgData | null = null;
     if (config.method === 'single') {
-        logoData = await loadImgData('https://www.artofdecorusa.com/wp-content/uploads/2017/06/logo.png', 400, true);
+        logoData = await loadImgData('/artofdecor-logo.png', 400, true);
     }
     
     let globalPageNum = 0;
