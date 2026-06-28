@@ -2396,6 +2396,7 @@
     });
   })();
 </script>
+
 <script>
   window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
@@ -2413,8 +2414,8 @@
 
     function applyTheme(currentTheme) {
       if (currentTheme === 'dark') {
-        style.textContent = \
-          body, .bg-white, .bg-gray-50, .bg-gray-100 { 
+        style.textContent = `
+          html, body, main, .bg-white, .bg-gray-50, .bg-gray-100 { 
             background-color: transparent !important; 
           }
           header, #sidebar, #properties-panel, #elements-panel, .toolbar-btn, select, input, button {
@@ -2431,21 +2432,28 @@
           }
           .canvas-bg {
             background-image: none !important;
-            background-color: rgba(0,0,0,0.2) !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
+            background-color: transparent !important;
+            border: none !important;
           }
+          .toolbar-btn svg { width: 22px !important; height: 22px !important; }
+          .toolbar-btn span { font-size: 12px !important; line-height: 16px !important; }
+          .toolbar-btn { padding: 8px 12px !important; gap: 4px !important; min-width: 60px !important; }
           /* Fix specific inputs like color pickers or canvas */
+          .toolbar-btn svg { width: 22px !important; height: 22px !important; }
+          .toolbar-btn span { font-size: 12px !important; line-height: 16px !important; }
+          .toolbar-btn { padding: 8px 12px !important; gap: 4px !important; min-width: 60px !important; }
           #label-canvas {
             background-color: white !important; /* The actual label must remain white for thermal preview */
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
           }
-        \;
+        `;
       } else {
-        style.textContent = \
-          body, .bg-white, .bg-gray-50, .bg-gray-100 { 
+        style.textContent = `
+          html, body, main, .bg-white, .bg-gray-50, .bg-gray-100 { 
             background-color: transparent !important; 
           }
           header, #sidebar, #properties-panel, #elements-panel, .toolbar-btn, select, input, button {
-            background-color: rgba(255, 255, 255, 0.3) !important;
+            background-color: rgba(255, 255, 255, 0.5) !important;
             backdrop-filter: blur(20px) !important;
             border-color: rgba(0, 0, 0, 0.1) !important;
             color: black !important;
@@ -2458,13 +2466,14 @@
           }
           .canvas-bg {
             background-image: none !important;
-            background-color: rgba(255,255,255,0.1) !important;
-            border: 1px solid rgba(0,0,0,0.1) !important;
+            background-color: transparent !important;
+            border: none !important;
           }
           #label-canvas {
             background-color: white !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
           }
-        \;
+        `;
       }
     }
     
@@ -2475,7 +2484,8 @@
     if (titleEl) {
       titleEl.innerHTML = '&larr; Exit Designer';
       titleEl.style.cursor = 'pointer';
-      titleEl.style.padding = '8px 12px';
+      titleEl.style.padding = '8px 16px';
+      titleEl.style.fontSize = '14px';
       titleEl.style.borderRadius = '8px';
       titleEl.style.backgroundColor = 'rgba(255,255,255,0.1)';
       titleEl.style.border = '1px solid rgba(255,255,255,0.2)';
@@ -2488,4 +2498,3 @@
 </script>
 </body>
 </html>
-
