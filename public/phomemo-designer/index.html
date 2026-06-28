@@ -2385,21 +2385,66 @@
       // Apply embedded mode
       if (isMini) document.body.classList.add('is-embedded');
 
+      let fallbackTimer = null;
+
+
       // Load from localStorage if data was pre-populated
+
+
       const raw = localStorage.getItem('onyx_packing_batch');
+
+
       if (raw) {
+
+
         try {
+
+
           // Delay to let the designer fully initialize first
-          setTimeout(() => handleOnyxData(JSON.parse(raw)), 800);
+
+
+          fallbackTimer = setTimeout(() => handleOnyxData(JSON.parse(raw)), 800);
+
+
         } catch(e) { console.warn('OnyxLabels: failed to parse batch', e); }
+
+
       }
     });
 
     // Listen for postMessage from parent app (iframe mode)
+
+
     window.addEventListener('message', (event) => {
+
+
       const { type, payload } = event.data || {};
+
+
+      if (type === 'ONYX_LOAD_BATCH' || type === 'LOAD_DESIGN') {
+
+
+        if (typeof fallbackTimer !== 'undefined' && fallbackTimer) {
+
+
+          clearTimeout(fallbackTimer);
+
+
+          fallbackTimer = null;
+
+
+        }
+
+
+      }
+
+
       if (type === 'ONYX_LOAD_BATCH' && payload) {
+
+
         handleOnyxData(payload);
+
+
       }
       // LOAD_DESIGN and UPDATE_DATA are handled natively by app.js below
     });

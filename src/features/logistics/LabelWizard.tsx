@@ -678,6 +678,11 @@ export const LabelWizard: React.FC = () => {
             const timer = setTimeout(async () => {
                 try {
                     const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix);
+                    
+                    try {
+                        localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+                    } catch (storageError) {}
+                    
                     iframeRef.current?.contentWindow?.postMessage(
                         { type: 'UPDATE_DATA', payload: { templateData: batchProject.templateData } },
                         '*'
