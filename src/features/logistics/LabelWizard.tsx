@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
+import { createPortal } from 'react-dom';
 import { 
     isPackingPrintWizardOpenAtom,
     isPackingNFCWizardOpenAtom,
@@ -25,6 +26,7 @@ import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, coll
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
+import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { vendors } from '../../lib/consts';
 import { generateAxonometricDataUrl } from '../../lib/axonometric';
 import { NFCTagCard } from '../../components/LabelVisuals';
@@ -798,11 +800,11 @@ export const LabelWizard: React.FC = () => {
 
     if (!isOpen) return null;
 
-    return (
-        <div className="absolute inset-0 z-[1000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
-            <div className="absolute inset-0 backdrop-blur-xl bg-black/40 pointer-events-auto" onClick={() => setIsOpen(false)} />
+    return createPortal(
+        <div className="fixed inset-0 z-[5000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[80px] pointer-events-auto" onClick={() => setIsOpen(false)} />
             
-            <div className="relative w-full h-full flex flex-col pointer-events-auto p-8 md:p-12 lg:p-16 overflow-y-auto no-scrollbar max-w-7xl mx-auto bg-black/10 backdrop-blur-3xl border border-white/5 shadow-2xl">
+            <div className="relative w-full h-[100dvh] md:w-[95vw] md:h-[95vh] flex flex-col overflow-hidden pointer-events-auto p-8 md:p-12 lg:p-16 max-w-7xl mx-auto animate-in zoom-in-95 duration-700 bg-transparent">
                 
                 {/* Floating Close Button - Studio Standard */}
                 <button 
@@ -1012,7 +1014,7 @@ export const LabelWizard: React.FC = () => {
 
             {/* UNIFIED PRINT WORKFLOW - VERTICAL CAROUSEL */}
             {isPrintWorkflowOpen && (
-                <div className="absolute inset-0 z-[2000] flex flex-col pointer-events-auto bg-zinc-950/60 backdrop-blur-3xl overflow-hidden">
+                <div className="absolute inset-0 z-[5010] flex flex-col pointer-events-auto bg-black/20 backdrop-blur-[80px] overflow-hidden">
                     {/* Header / Nav */}
                     <div className="absolute top-6 right-6 z-[2010] flex gap-4">
                         <button
@@ -1093,7 +1095,7 @@ export const LabelWizard: React.FC = () => {
                             <div className="flex-1 relative overflow-hidden bg-transparent">
                                 <iframe
                                     ref={iframeRef}
-                                    src={`phomemo-designer/index.html?v=${selectedIds.length}`}
+                                    src={`phomemo-designer/index.html?v=${selectedIds.length}&theme=${theme}`}
                                     className="w-full h-full border-none bg-transparent"
                                     title="OnyxLabels Designer"
                                     allow="bluetooth"
@@ -1104,6 +1106,7 @@ export const LabelWizard: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </div>,
+        document.body
     );
 };
