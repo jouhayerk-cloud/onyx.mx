@@ -1,4 +1,4 @@
-import{j as e}from"./vendor-animation-CsQXa6Ud.js";import{bu as S,bv as C,aa as R,bw as A,i as z,bx as T,by as D,bz as P,C as M,r as L,aU as E,O as F}from"./main-CHD_dXRo.js";import{T as l}from"./themes-assets-iyrvH4b1.js";import{f as o}from"./vendor-react-X1ncQZTb.js";import{X as O,U,am as $,bi as B,bj as H,Q as V,aR as x,a7 as q,as as G,be as W}from"./vendor-icons-9OGlS-QX.js";import"./vendor-pdf-9nCjTQbs.js";import"./vendor-db-CJUS5vCL.js";import"./vendor-supabase-CHLpTVyu.js";import"./vendor-excel-BQc79nsb.js";const Q=`# Changelog
+import{j as e}from"./vendor-animation-CsQXa6Ud.js";import{bu as S,bv as C,aa as R,bw as A,i as z,bx as T,by as D,bz as P,C as M,r as L,aU as E,O as F}from"./main-CdN1b769.js";import{T as l}from"./themes-assets-iyrvH4b1.js";import{f as o}from"./vendor-react-X1ncQZTb.js";import{X as O,U,am as $,bi as B,bj as H,Q as V,aR as x,a7 as q,as as G,be as W}from"./vendor-icons-9OGlS-QX.js";import"./vendor-pdf-9nCjTQbs.js";import"./vendor-db-CJUS5vCL.js";import"./vendor-supabase-CHLpTVyu.js";import"./vendor-excel-BQc79nsb.js";const Q=`# Changelog
 # 
 ## [1.80.0] - 2026-04-24
 ### Added
