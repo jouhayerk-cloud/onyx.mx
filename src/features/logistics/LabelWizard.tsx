@@ -368,6 +368,7 @@ export const LabelWizard: React.FC = () => {
     const inventory = useAtomValue(inventoryAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const workbookPrefix = useAtomValue(workbookVersionAtom);
+    const theme = useAtomValue(themeAtom);
 
     const [name, setName] = useState(`BATCH_${new Date().toISOString().split('T')[0]}`);
     const [includeImages, setIncludeImages] = useState(true);
