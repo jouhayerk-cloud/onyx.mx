@@ -1015,20 +1015,16 @@ export const LabelWizard: React.FC = () => {
 
             {/* UNIFIED PRINT WORKFLOW - VERTICAL CAROUSEL */}
             {isPrintWorkflowOpen && (
-                <div className="absolute inset-0 z-[5010] flex flex-col pointer-events-auto bg-black/20 backdrop-blur-[80px] overflow-hidden">
-                    {/* Header / Nav */}
-                    <div className="absolute top-6 right-6 z-[2010] flex gap-4">
-                        <button
-                            onClick={() => setIsPrintWorkflowOpen(false)}
-                            className="p-3 rounded-full text-white/30 hover:text-white hover:bg-white/10 transition-all bg-black/50 backdrop-blur-xl border border-white/10"
-                        >
-                            <X size={24} strokeWidth={2.5} />
-                        </button>
-                    </div>
-
+                <div 
+                    className="absolute inset-0 z-[5010] flex flex-col pointer-events-auto bg-transparent overflow-hidden"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Escape') setIsPrintWorkflowOpen(false);
+                    }}
+                    tabIndex={-1}
+                >
                     {/* Vertical Carousel Container */}
                     <div 
-                        className="flex-1 w-full flex flex-col transition-transform duration-700 ease-in-out h-full"
+                        className="flex-1 w-full flex flex-col transition-transform duration-700 ease-out"
                         style={{ transform: `translateY(-${activeSlide * 100}%)` }}
                     >
                         {/* ----------------------------------------------------- */}
@@ -1083,16 +1079,6 @@ export const LabelWizard: React.FC = () => {
                         {/* SLIDE 1: Phomemo Designer Iframe                        */}
                         {/* ----------------------------------------------------- */}
                         <div className="w-full h-full shrink-0 flex flex-col relative bg-transparent">
-                            {/* Slide up back button */}
-                            <div className="absolute top-6 left-6 z-[2010]">
-                                <button
-                                    onClick={() => setIsPrintWorkflowOpen(false)}
-                                    className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-xl hover:bg-white/10 text-white font-bold flex items-center gap-2 border border-white/10 transition-all"
-                                >
-                                    &larr; Exit Designer
-                                </button>
-                            </div>
-                            
                             <div className="flex-1 relative overflow-hidden bg-transparent">
                                 <iframe
                                     ref={iframeRef}
