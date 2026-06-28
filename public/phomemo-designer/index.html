@@ -821,6 +821,15 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
         <span id="template-toolbar-label" class="hidden sm:inline">Manage Data</span>
       </button>
+          <button id="top-preview-btn" class="toolbar-btn bg-white hover:bg-gray-100 text-gray-700 border-gray-200" title="Preview All Labels">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <span class="hidden sm:inline">Preview</span>
+          </button>
+          <button id="top-print-all-btn" class="toolbar-btn bg-purple-600 hover:bg-purple-700 text-white border-purple-700" title="Print All Labels">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <span class="hidden sm:inline">Print All</span>
+          </button>
+
     </div>
   </div>
 
@@ -870,7 +879,7 @@
   <main class="flex-1 flex overflow-hidden relative">
     <!-- Canvas Area -->
     <div class="flex-1 flex items-center justify-center p-3 sm:p-6 overflow-auto relative">
-      <div id="canvas-container" class="rounded-lg shadow-inner transition-transform origin-center" style="touch-action: none;">
+      <div id="canvas-container" class="rounded-lg shadow-inner transition-transform origin-center canvas-bg" style="touch-action: none;">
         <canvas id="preview-canvas" class="cursor-crosshair rounded-lg" style="touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;"></canvas>
       </div>
 
@@ -882,7 +891,7 @@
         <button id="zoom-out" class="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors" title="Zoom Out">
           <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
         </button>
-        <span id="zoom-level" class="text-sm sm:text-base text-gray-700 w-12 sm:w-14 text-center font-semibold">100%</span>
+        <span id="zoom-level" class="text-sm sm:text-base text-gray-700 w-12 sm:w-14 text-center font-semibold">125%</span>
         <button id="zoom-in" class="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors" title="Zoom In">
           <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
         </button>
@@ -2435,13 +2444,13 @@
             background-color: transparent !important;
             border: none !important;
           }
-          .toolbar-btn svg { width: 22px !important; height: 22px !important; }
-          .toolbar-btn span { font-size: 12px !important; line-height: 16px !important; }
-          .toolbar-btn { padding: 8px 12px !important; gap: 4px !important; min-width: 60px !important; }
+          .toolbar-btn svg { width: 16px !important; height: 16px !important; }
+          .toolbar-btn span { font-size: 10px !important; line-height: 12px !important; }
+          .toolbar-btn { padding: 4px 8px !important; gap: 4px !important; min-width: 50px !important; }
           /* Fix specific inputs like color pickers or canvas */
-          .toolbar-btn svg { width: 22px !important; height: 22px !important; }
-          .toolbar-btn span { font-size: 12px !important; line-height: 16px !important; }
-          .toolbar-btn { padding: 8px 12px !important; gap: 4px !important; min-width: 60px !important; }
+          .toolbar-btn svg { width: 16px !important; height: 16px !important; }
+          .toolbar-btn span { font-size: 10px !important; line-height: 12px !important; }
+          .toolbar-btn { padding: 4px 8px !important; gap: 4px !important; min-width: 50px !important; }
           #label-canvas {
             background-color: #333 !important;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);

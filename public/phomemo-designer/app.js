@@ -167,7 +167,7 @@ const state = {
   dragStartBounds: null,    // Group bounds at drag start
   dragStartAngle: 0,        // For group rotation
   // Zoom state
-  zoom: 1,
+  zoom: 1.25,
   // Dither preview mode (shows how images will look when printed)
   ditherPreview: false,
   // Print settings
@@ -592,6 +592,19 @@ function showToast(message, type = 'info', duration = 2000) {
  * Print progress state
  */
 let printProgressCancelled = false;
+
+    // Wiring up new top toolbar buttons
+    const topPreviewBtn = document.getElementById('top-preview-btn');
+    const topPrintAllBtn = document.getElementById('top-print-all-btn');
+    
+    if (topPreviewBtn) {
+        topPreviewBtn.addEventListener('click', showPreviewDialog);
+    }
+    
+    if (topPrintAllBtn) {
+        topPrintAllBtn.addEventListener('click', handleBatchPrint);
+    }
+
 
 /**
  * Show print progress modal
@@ -1118,7 +1131,7 @@ function zoomOut() {
  * Reset zoom to 100%
  */
 function zoomReset() {
-  state.zoom = 1;
+  state.zoom = 1.25;
   updateZoom();
   resetPanOffset();
 }
@@ -1181,7 +1194,7 @@ function zoomToFitIfNeeded() {
 
   if (fitsAt100) {
     // Label fits at 100%, reset to default zoom
-    state.zoom = 1;
+    state.zoom = 1.25;
     updateZoom();
     resetPanOffset();
   } else {
@@ -3513,7 +3526,7 @@ function endPinchGesture() {
   state.pointer.isPanning = false;
   state.pointer.gestureMode = null;
   state.pointer.pinchStartDistance = 0;
-  state.pointer.pinchStartZoom = 1;
+  state.pointer.pinchStartZoom = 1.25;
   state.pointer.panStartMidpoint = null;
   state.pointer.lastDistance = 0;
   state.pointer.lastMidpoint = null;
@@ -6771,6 +6784,8 @@ function syncMobileLabelSize() {
  * Initialize the application
  */
 function init() {
+  window.parent.postMessage({ type: "DESIGNER_READY" }, "*");
+
   if (!checkCompatibility()) {
     return;
   }

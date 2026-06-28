@@ -14,7 +14,7 @@ import {
     logisticsSubTabAtom
 } from '../../lib/atoms';
 import { 
-    X, Printer, Nfc, FileSpreadsheet, FileText, Download, 
+    X, Printer, Nfc, FileSpreadsheet, FileText, Download, Sheet, ListChecks, 
     CheckCircle2, ChevronRight, ChevronLeft, Zap, Info, Package,
     ShieldAlert, CheckCircle, Edit3, Check, BookOpen, Layers,
     Sparkles, ArrowRight, Activity, Terminal, ExternalLink,
@@ -400,21 +400,7 @@ export const LabelWizard: React.FC = () => {
         );
     };
 
-    const handleIframeLoad = () => {
-        if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
-            iframeRef.current.contentWindow.postMessage(
-                { type: 'LOAD_DESIGN', payload: pendingBatchRef.current },
-                '*'
-            );
-            setTimeout(() => {
-                 iframeRef.current?.contentWindow?.postMessage(
-                     { type: 'UPDATE_DATA', payload: { templateData: pendingBatchRef.current.templateData } },
-                     '*'
-                 );
-            }, 300);
-            pendingBatchRef.current = null;
-        }
-    };
+    
 
     const handleLaunchIframe = async (indices: Set<number>, instances: any[]) => {
         if (indices.size > 0 && iframeRef.current?.contentWindow) {
@@ -650,8 +636,23 @@ export const LabelWizard: React.FC = () => {
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data?.type === 'CLOSE_WIZARD') {
-                setIsPrintWorkflowOpen(false);
-            }
+                  setIsPrintWorkflowOpen(false);
+              }
+              if (event.data?.type === 'DESIGNER_READY') {
+                  if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
+                      iframeRef.current.contentWindow.postMessage(
+                          { type: 'LOAD_DESIGN', payload: pendingBatchRef.current },
+                          '*'
+                      );
+                      setTimeout(() => {
+                           iframeRef.current?.contentWindow?.postMessage(
+                               { type: 'UPDATE_DATA', payload: { templateData: pendingBatchRef.current.templateData } },
+                               '*'
+                           );
+                      }, 300);
+                      pendingBatchRef.current = null;
+                  }
+              }
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
@@ -666,7 +667,7 @@ export const LabelWizard: React.FC = () => {
 
             const initialQ: Record<string, number> = {};
             selectedItems.forEach(item => {
-                initialQ[String(item.row)] = Number(item.normData.quantity) || 1;
+                initialQ[String(item.row)] = 1; // Default to 1 label per item
             });
             setQuantities(initialQ);
         }
@@ -835,28 +836,22 @@ export const LabelWizard: React.FC = () => {
                             </div>
                             <div className="flex flex-col">
                                 <h2 className="text-3xl font-black text-white tracking-[0.3em] uppercase leading-none">PRINT</h2>
-                                <span className="text-[10px] font-black text-white/20 tracking-[1em] uppercase mt-3">SYSTEM_TACTICAL_OUTPUT_HUB</span>
-                            </div>
+                                </div>
                         </div>
-                    </div>
-                    <div className="flex flex-col items-end">
-                        <span className="text-[12px] font-black text-white/40 uppercase tracking-[1em] mb-4">BUFFER_COUNT</span>
-                        <span className="text-8xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)]">{selectedItems.length}</span>
                     </div>
                 </div>
 
-                <div className="flex flex-col mb-20 shrink-0 max-w-2xl">
-                    <div className="flex items-center gap-3 mb-4 opacity-30">
-                        <Activity size={12} className="text-(--main-color)" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.8em]">MANIFEST_ID_PROTOCOL</span>
-                    </div>
+                <div className="flex items-center gap-8 mb-20 shrink-0 max-w-4xl">
                     <input
                         type="text"
                         value={name}
                         onChange={e => setName(e.target.value)}
-                        className="bg-transparent border-none outline-none w-full text-5xl font-black text-white uppercase tracking-tighter placeholder:text-white/5 focus:text-(--main-color) transition-all"
+                        className="bg-transparent border-none outline-none w-full text-5xl md:text-6xl font-black text-white uppercase tracking-tighter placeholder:text-white/5 focus:text-(--main-color) transition-all"
                         placeholder="ID_NULL"
                     />
+                    <div className="text-6xl md:text-7xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)] shrink-0">
+                        {selectedItems.length}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
@@ -867,14 +862,13 @@ export const LabelWizard: React.FC = () => {
                             disabled={progress.printer > 0 && progress.printer < 100} 
                             className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
                         >
-                            <Printer size={64} strokeWidth={1} className={`transition-all duration-500 ${progress.printer === 100 ? 'text-(--main-color) drop-shadow-[0_0_20px_rgba(var(--main-color-rgb),0.4)]' : 'text-(--main-color)/20 group-hover:text-(--main-color)'}`} />
+                            <Printer size={64} fill="currentColor" strokeWidth={1} className={`transition-all duration-500 ${progress.printer === 100 ? 'text-(--main-color) drop-shadow-[0_0_20px_rgba(var(--main-color-rgb),0.4)]' : 'text-(--main-color)/20 group-hover:text-(--main-color)'}`} />
                             {progress.printer > 0 && progress.printer < 100 && (
                                 <div className="absolute -inset-4 border-2 border-(--main-color)/20 border-t-(--main-color) animate-spin rounded-full" />
                             )}
                         </button>
                         
                         <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">THERMAL_BT</span>
                             <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-(--main-color) transition-colors">Printer</span>
                             
                             {/* Progress Bar */}
@@ -895,14 +889,13 @@ export const LabelWizard: React.FC = () => {
                             disabled={progress.xlsx > 0 && progress.xlsx < 100} 
                             className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
                         >
-                            <FileSpreadsheet size={64} strokeWidth={1} className={`transition-all duration-500 ${progress.xlsx === 100 ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.4)]' : 'text-emerald-500/20 group-hover:text-emerald-400'}`} />
+                            <Sheet size={64} fill="currentColor" strokeWidth={1} className={`transition-all duration-500 ${progress.xlsx === 100 ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.4)]' : 'text-emerald-500/20 group-hover:text-emerald-400'}`} />
                             {progress.xlsx > 0 && progress.xlsx < 100 && (
                                 <div className="absolute -inset-4 border-2 border-emerald-500/20 border-t-emerald-500 animate-spin rounded-full" />
                             )}
                         </button>
                         
                         <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CSV_BUFFER</span>
                             <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">Labels</span>
                             
                             {/* Progress Bar */}
@@ -935,14 +928,13 @@ export const LabelWizard: React.FC = () => {
                             disabled={progress.pdf > 0 && progress.pdf < 100} 
                             className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
                         >
-                            <FileText size={64} strokeWidth={1} className={`transition-all duration-500 ${progress.pdf === 100 ? 'text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.4)]' : 'text-red-500/20 group-hover:text-red-400'}`} />
+                            <ListChecks size={64} fill="currentColor" strokeWidth={1} className={`transition-all duration-500 ${progress.pdf === 100 ? 'text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.4)]' : 'text-red-500/20 group-hover:text-red-400'}`} />
                             {progress.pdf > 0 && progress.pdf < 100 && (
                                 <div className="absolute -inset-4 border-2 border-red-500/20 border-t-red-500 animate-spin rounded-full" />
                             )}
                         </button>
                         
                         <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">PDF_RENDER</span>
                             <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-red-400 transition-colors">Control</span>
                             
                             {/* Progress Bar */}
@@ -976,7 +968,7 @@ export const LabelWizard: React.FC = () => {
                                 disabled={progress.catalog > 0 && progress.catalog < 100} 
                                 className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
                             >
-                                <BookOpen size={64} strokeWidth={1} className={`transition-all duration-500 ${progress.catalog === 100 ? 'text-blue-400 drop-shadow-[0_0_20px_rgba(96,165,250,0.4)]' : 'text-blue-500/20 group-hover:text-blue-400'}`} />
+                                <BookOpen size={64} fill="currentColor" strokeWidth={1} className={`transition-all duration-500 ${progress.catalog === 100 ? 'text-blue-400 drop-shadow-[0_0_20px_rgba(96,165,250,0.4)]' : 'text-blue-500/20 group-hover:text-blue-400'}`} />
                                 {progress.catalog > 0 && progress.catalog < 100 && (
                                     <div className="absolute -inset-4 border-2 border-blue-500/20 border-t-blue-500 animate-spin rounded-full" />
                                 )}
@@ -995,7 +987,6 @@ export const LabelWizard: React.FC = () => {
                         </div>
                         
                         <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CATALOG_ENGINE</span>
                             <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-blue-400 transition-colors">Catalog</span>
                             
                             {/* Progress Bar */}
@@ -1036,13 +1027,13 @@ export const LabelWizard: React.FC = () => {
                 >
                     {/* Vertical Carousel Container */}
                     <div 
-                        className="flex-1 w-full flex flex-col transition-transform duration-700 ease-out"
+                        className="flex-1 min-h-0 w-full flex flex-col transition-transform duration-700 ease-out"
                         style={{ transform: `translateY(-${activeSlide * 100}%)` }}
                     >
                         {/* ----------------------------------------------------- */}
                         {/* SLIDE 0: Print Quantities & Preview Labels Grid         */}
                         {/* ----------------------------------------------------- */}
-                        <div className="w-full h-full shrink-0 flex">
+                        <div className="w-full h-full shrink-0 flex overflow-hidden">
                             {/* Left: Quantity Selector Panel */}
                             <div className="flex flex-col w-80 border-r border-white/10 bg-black/40 p-6 overflow-y-auto shrink-0 relative z-20">
                                 <div className="flex items-center justify-between mb-6">
@@ -1090,7 +1081,7 @@ export const LabelWizard: React.FC = () => {
                         {/* ----------------------------------------------------- */}
                         {/* SLIDE 1: Phomemo Designer Iframe                        */}
                         {/* ----------------------------------------------------- */}
-                        <div className="w-full h-full shrink-0 flex flex-col relative bg-transparent">
+                        <div className="w-full h-full shrink-0 flex flex-col relative bg-transparent overflow-hidden">
                             <div className="flex-1 relative overflow-hidden bg-transparent">
                                 <iframe
                                     ref={iframeRef}
@@ -1098,7 +1089,7 @@ export const LabelWizard: React.FC = () => {
                                     className="w-full h-full border-none bg-transparent"
                                     title="OnyxLabels Designer"
                                     allow="bluetooth"
-                                    onLoad={handleIframeLoad}
+                                    
                                 />
                             </div>
                         </div>
