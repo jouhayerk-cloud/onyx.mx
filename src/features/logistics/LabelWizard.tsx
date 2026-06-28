@@ -667,7 +667,7 @@ export const LabelWizard: React.FC = () => {
 
             const initialQ: Record<string, number> = {};
             selectedItems.forEach(item => {
-                initialQ[String(item.row)] = 1; // Default to 1 label per item
+                initialQ[String(item.row)] = Number(item.normData.quantity) || 1; // Default to inventory quantity
             });
             setQuantities(initialQ);
         }
@@ -849,8 +849,19 @@ export const LabelWizard: React.FC = () => {
                         className="bg-transparent border-none outline-none w-full text-5xl md:text-6xl font-black text-white uppercase tracking-tighter placeholder:text-white/5 focus:text-(--main-color) transition-all"
                         placeholder="ID_NULL"
                     />
-                    <div className="text-6xl md:text-7xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)] shrink-0">
-                        {selectedItems.length}
+                    <div className="flex gap-8 shrink-0">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">TYPES</span>
+                            <div className="text-5xl md:text-6xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)]">
+                                {selectedItems.length}
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">TOTAL ITEMS</span>
+                            <div className="text-5xl md:text-6xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)]">
+                                {selectedItems.reduce((acc, item) => acc + (quantities[String(item.row)] ?? (Number(item.normData.quantity) || 1)), 0)}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
