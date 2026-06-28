@@ -534,7 +534,7 @@ export const LabelWizard: React.FC = () => {
                 id: "el_axo",
                 type: "image",
                 zone: 0,
-                x: -6.2, y: 12, width: 73, height: 73,
+                x: 24, y: 12, width: 73, height: 73,
                 rotation: 0,
                 imageData: "{{AXO_IMAGE}}"
             },
@@ -646,6 +646,16 @@ export const LabelWizard: React.FC = () => {
             return tagB.localeCompare(tagA, undefined, { numeric: true, sensitivity: 'base' });
         });
     }, [inventory, selectedIds, exchangeRate, workbookPrefix]);
+
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'CLOSE_WIZARD') {
+                setIsPrintWorkflowOpen(false);
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
