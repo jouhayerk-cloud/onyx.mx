@@ -2431,7 +2431,7 @@
           }
           .canvas-bg {
             background-image: none !important;
-            background-color: rgba(0,0,0,0.5) !important;
+            background-color: rgba(0,0,0,0.2) !important;
             border: 1px solid rgba(255,255,255,0.1) !important;
           }
           /* Fix specific inputs like color pickers or canvas */
@@ -2445,7 +2445,7 @@
             background-color: transparent !important; 
           }
           header, #sidebar, #properties-panel, #elements-panel, .toolbar-btn, select, input, button {
-            background-color: rgba(255, 255, 255, 0.5) !important;
+            background-color: rgba(255, 255, 255, 0.3) !important;
             backdrop-filter: blur(20px) !important;
             border-color: rgba(0, 0, 0, 0.1) !important;
             color: black !important;
@@ -2458,7 +2458,7 @@
           }
           .canvas-bg {
             background-image: none !important;
-            background-color: rgba(255,255,255,0.3) !important;
+            background-color: rgba(255,255,255,0.1) !important;
             border: 1px solid rgba(0,0,0,0.1) !important;
           }
           #label-canvas {
@@ -2469,7 +2469,23 @@
     }
     
     applyTheme(['nacar', 'aqua'].includes(theme) ? 'light' : 'dark');
+
+    // Make title the Exit Designer button
+    const titleEl = document.querySelector('h1');
+    if (titleEl) {
+      titleEl.innerHTML = '&larr; Exit Designer';
+      titleEl.style.cursor = 'pointer';
+      titleEl.style.padding = '8px 12px';
+      titleEl.style.borderRadius = '8px';
+      titleEl.style.backgroundColor = 'rgba(255,255,255,0.1)';
+      titleEl.style.border = '1px solid rgba(255,255,255,0.2)';
+      titleEl.style.display = 'inline-block';
+      titleEl.onclick = () => {
+        window.parent.postMessage({ type: 'CLOSE_WIZARD' }, '*');
+      };
+    }
   });
 </script>
 </body>
 </html>
+
