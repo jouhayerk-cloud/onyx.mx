@@ -316,7 +316,7 @@ export async function exportCatalogPdf(
             if (imgs.length === 0) {
                 addPage();
                 const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
-                doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
+                doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 28, 'F');
                 
                 // Draw large axonometric icon in place of image
                 const norm = normalizeInventoryData(item.data);
@@ -332,7 +332,7 @@ export async function exportCatalogPdf(
                         const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
                         if (axoDataUrl) {
                             const cw = PW - M * 2 - 4;
-                            const ch = PH - specY - 24;
+                            const ch = PH - specY - 28;
                             const axoSize = Math.min(cw * 0.8, ch * 0.8, 160);
                             const axoX = M + 4 + (cw - axoSize) / 2;
                             const axoY = specY + 4 + (ch - axoSize) / 2;
@@ -377,7 +377,7 @@ export async function exportCatalogPdf(
                 // Item with NO images - draw header and large axometric icon
                 addPage();
                 const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
-                doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
+                doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 28, 'F');
                 
                 const norm = normalizeInventoryData(item.data);
                 const wCm = parseFloat(norm.widthCm);
@@ -392,7 +392,7 @@ export async function exportCatalogPdf(
                         const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
                         if (axoDataUrl) {
                             const cw = PW - M * 2 - 4;
-                            const ch = PH - specY - 24;
+                            const ch = PH - specY - 28;
                             const axoSize = Math.min(cw * 0.8, ch * 0.8, 160);
                             const axoX = M + 4 + (cw - axoSize) / 2;
                             const axoY = specY + 4 + (ch - axoSize) / 2;
