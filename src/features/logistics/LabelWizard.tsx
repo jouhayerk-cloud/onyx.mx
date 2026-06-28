@@ -621,7 +621,7 @@ export const LabelWizard: React.FC = () => {
             setProgress(p => ({ ...p, printer: 100 }));
             toast.success('Batch Prepared! Launching Print Engine', { id: tid });
             setIsPrintWorkflowOpen(true);
-            setActiveSlide(0);
+            setActiveSlide(1);
         } catch (e: any) {
             console.error(e);
             setProgress(p => ({ ...p, printer: -1 }));
@@ -1083,10 +1083,10 @@ export const LabelWizard: React.FC = () => {
                             {/* Slide up back button */}
                             <div className="absolute top-6 left-6 z-[2010]">
                                 <button
-                                    onClick={() => setActiveSlide(0)}
+                                    onClick={() => setIsPrintWorkflowOpen(false)}
                                     className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-xl hover:bg-white/10 text-white font-bold flex items-center gap-2 border border-white/10 transition-all"
                                 >
-                                    &larr; Back to Preview
+                                    &larr; Exit Designer
                                 </button>
                             </div>
                             
