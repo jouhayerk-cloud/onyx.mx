@@ -595,7 +595,7 @@ export const LabelWizard: React.FC = () => {
         }));
 
         const templateData = baseRecords.flatMap(r =>
-            Array.from({ length: (Number(r["QUANTITY"]) || 1) * 2 }, () => ({ ...r }))
+            Array.from({ length: (Number(r["QUANTITY"]) || 1) }, () => ({ ...r }))
         );
 
         return {
