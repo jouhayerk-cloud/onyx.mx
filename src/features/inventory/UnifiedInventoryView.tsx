@@ -1291,6 +1291,7 @@ export const UnifiedInventoryView = () => {
                                                 left: 0,
                                                 width: '100%',
                                                 transform: `translateY(${virtualRow.start}px)`,
+                                                zIndex: expandedCards[String(item.row)] ? 10 : 1,
                                             }}
                                         >
                                             <div style={{ 
