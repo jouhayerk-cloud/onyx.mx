@@ -5830,7 +5830,13 @@ function initMobileUI() {
     closeMobileMenu();
     showInfoDialog();
   });
-  $('#mobile-print-btn')?.addEventListener('click', handlePrint);
+  $('#mobile-print-btn')?.addEventListener('click', () => {
+    if (state.templateData && state.templateData.length > 0) {
+      handleBatchPrint();
+    } else {
+      handlePrint();
+    }
+  });
 
   // Mobile dither preview toggle
   $('#mobile-dither-preview-btn')?.addEventListener('click', () => {
@@ -6898,7 +6904,13 @@ function init() {
 
   // Connect and print
   $('#connect-btn').addEventListener('click', handleConnect);
-  $('#print-btn').addEventListener('click', handlePrint);
+  $('#print-btn').addEventListener('click', () => {
+    if (state.templateData && state.templateData.length > 0) {
+      handleBatchPrint();
+    } else {
+      handlePrint();
+    }
+  });
 
   // Printer info popup
   const printerInfoPopup = $('#printer-info-popup');
