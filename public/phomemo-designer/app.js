@@ -7934,7 +7934,10 @@ window.addEventListener('message', (event) => {
       state.labelSize = payload.labelSize;
       state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
     }
-    if (payload.templateData) state.templateData = payload.templateData;
+    if (payload.templateData) {
+      state.templateData = payload.templateData;
+      state.selectedRecords = state.templateData.map((_, i) => i);
+    }
     
     resetHistory();
     state.renderer.clearCache();
@@ -7948,6 +7951,7 @@ window.addEventListener('message', (event) => {
   if (type === 'UPDATE_DATA') {
     if (payload.templateData) {
       state.templateData = payload.templateData;
+      state.selectedRecords = state.templateData.map((_, i) => i);
       detectTemplateFields();
       render();
       setStatus('Template data updated');
