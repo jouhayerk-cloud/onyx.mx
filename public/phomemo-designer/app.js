@@ -7971,3 +7971,4 @@ window.addEventListener('message', (event) => {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
+
