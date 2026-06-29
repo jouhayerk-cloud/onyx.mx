@@ -147,6 +147,7 @@ if (isMiniMode || isPreviewMode) {
 }
 
 // App state
+window.activePrintResolve = null;
 const state = {
   connectionType: 'ble',
   labelSize: { width: 40, height: 30 },
@@ -760,6 +761,12 @@ function updatePrinterInfoFromQuery(field, value, allInfo) {
       // Update summary
       const deviceName = state.transport?.getDeviceName?.() || '';
       updatePrinterInfoUI(deviceName, state.printSettings.printerModel);
+      break;
+    case 'print':
+      if (value === 1 && window.activePrintResolve) {
+        window.activePrintResolve();
+        window.activePrintResolve = null;
+      }
       break;
     case 'paper':
       // Use icon prefix for accessibility (not just color)
@@ -1982,7 +1989,12 @@ async function handleBatchPrint() {
              cancelBtn.addEventListener('click', onCancel);
           });
         } else {
-          await new Promise(r => setTimeout(r, 500));
+          await Promise.race([
+            new Promise(r => { window.activePrintResolve = r; }),
+            new Promise(r => setTimeout(r, 10000))
+          ]);
+          window.activePrintResolve = null;
+          await new Promise(r => setTimeout(r, 400));
         }
       }
     }
@@ -4808,7 +4820,12 @@ async function handlePrint() {
 
       // Small delay between copies
       if (copy < copies) {
-        await new Promise(r => setTimeout(r, 500));
+        await Promise.race([
+          new Promise(r => { window.activePrintResolve = r; }),
+          new Promise(r => setTimeout(r, 10000))
+        ]);
+        window.activePrintResolve = null;
+        await new Promise(r => setTimeout(r, 400));
       }
     }
 
