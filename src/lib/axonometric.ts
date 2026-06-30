@@ -261,23 +261,6 @@ export async function generateAxonometricDataUrl(
             const a = (W/2)*cos30, b = -(W/2)*sin30;
             const c = -(D/2)*cos30, d = -(D/2)*sin30;
 
-            const tLowest = Math.atan2(-D, -W);
-            const vLowest = b * Math.cos(tLowest) + d * Math.sin(tLowest);
-            
-            // Visual height adjustment to ensure the bowl body sweeps elegantly downwards
-            // It MUST be visibly lower than the front arc (vLowest) of the top ellipse.
-            const depthFactor = isPlate ? 0.08 : 0.25;
-            const visualH = Math.max(H, vLowest + Math.min(W, D) * depthFactor);
-            const cb_v = ct_v + visualH;
-
-            const t1 = Math.atan2(-D, W); // Right tangent
-            const t2 = Math.atan2(D, -W); // Left tangent
-            const x1 = Math.cos(t1), z1 = Math.sin(t1);
-            const x2 = Math.cos(t2), z2 = Math.sin(t2);
-
-            const u1 = a*x1 + c*z1, v1 = b*x1 + d*z1;
-            const u2 = a*x2 + c*z2, v2 = b*x2 + d*z2;
-
             function drawEllipsePath(c_u: number, c_v: number, scaleFactor: number, tStart: number, tEnd: number) {
                 ctx!.beginPath();
                 for (let t = tStart; t <= tEnd + 0.05; t += 0.05) {
@@ -292,65 +275,146 @@ export async function generateAxonometricDataUrl(
                 }
             }
 
-            const p0_u = cx + (ct_u + u2)*scale; // Left tangent
-            const p0_v = cy + (ct_v + v2)*scale;
-            const p2_u = cx + (ct_u + u1)*scale; // Right tangent
-            const p2_v = cy + (ct_v + v1)*scale;
-            
-            const pm_u = cx + ct_u*scale; // Top center
-            const pm_v = cy + ct_v*scale;
-            
-            const pBot_u = cx + cb_u*scale; // Bottom center
-            const pBot_v = cy + cb_v*scale;
+            if (isPlate) {
+                // FLAT CONCAVE SHALLOW PLATE rendering
+                const plateThickness = Math.max(H * 0.15, 2/scale);
+                const baseDepth = Math.max(H * 0.4, 6/scale);
+                
+                // 1. Draw outer rim bottom edge (for thickness)
+                drawEllipsePath(ct_u, ct_v + plateThickness, 1.0, 0, Math.PI);
+                ctx.strokeStyle = wireframeColor || '#94a3b8';
+                ctx.stroke();
 
-            // U-shape Bezier control points for a perfect semi-ellipse profile
-            const kappa = isPlate ? 0.7 : 0.55228;
-            const hLeft = pBot_v - p0_v;
-            const hRight = pBot_v - p2_v;
-            
-            const cp1_u = p0_u;
-            const cp1_v = p0_v + kappa * hLeft;
-            const cp2_u = pBot_u - kappa * (pBot_u - p0_u);
-            const cp2_v = pBot_v;
-            
-            const cp3_u = pBot_u + kappa * (p2_u - pBot_u);
-            const cp3_v = pBot_v;
-            const cp4_u = p2_u;
-            const cp4_v = p2_v + kappa * hRight;
+                // 2. Connect thickness edges
+                ctx.beginPath();
+                const pLeft_u = cx + (ct_u + a*Math.cos(Math.PI) + c*Math.sin(Math.PI))*scale;
+                const pLeft_v = cy + (ct_v + b*Math.cos(Math.PI) + d*Math.sin(Math.PI))*scale;
+                const pRight_u = cx + (ct_u + a*Math.cos(0) + c*Math.sin(0))*scale;
+                const pRight_v = cy + (ct_v + b*Math.cos(0) + d*Math.sin(0))*scale;
+                
+                ctx.moveTo(pLeft_u, pLeft_v);
+                ctx.lineTo(pLeft_u, pLeft_v + plateThickness*scale);
+                ctx.moveTo(pRight_u, pRight_v);
+                ctx.lineTo(pRight_u, pRight_v + plateThickness*scale);
+                ctx.stroke();
 
-            // Fill bowl body
-            ctx.beginPath();
-            ctx.moveTo(p0_u, p0_v);
-            ctx.bezierCurveTo(cp1_u, cp1_v, cp2_u, cp2_v, pBot_u, pBot_v);
-            ctx.bezierCurveTo(cp3_u, cp3_v, cp4_u, cp4_v, p2_u, p2_v);
-            ctx.lineTo(pm_u, pm_v);
-            ctx.closePath();
-            
-            const grd = ctx!.createLinearGradient(p0_u, 0, p2_u, 0);
-            grd.addColorStop(0, COLOR_LEFT);
-            grd.addColorStop(1, COLOR_RIGHT);
-            ctx.fillStyle = grd;
-            ctx.fill();
+                // 3. Draw full top ellipse (outer rim)
+                drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
+                ctx.fillStyle = COLOR_TOP;
+                ctx.fill();
+                ctx.stroke();
 
-            // Stroke bottom sweeping curve
-            ctx.beginPath();
-            ctx.moveTo(p0_u, p0_v);
-            ctx.bezierCurveTo(cp1_u, cp1_v, cp2_u, cp2_v, pBot_u, pBot_v);
-            ctx.bezierCurveTo(cp3_u, cp3_v, cp4_u, cp4_v, p2_u, p2_v);
-            ctx.stroke();
+                // 4. Draw inner concave area
+                const innerRadius = 0.82;
+                drawEllipsePath(ct_u, ct_v, innerRadius, 0, 2 * Math.PI);
+                const grad = ctx.createLinearGradient(
+                    cx + (ct_u - a)*scale, cy + (ct_v - b)*scale,
+                    cx + (ct_u + a)*scale, cy + (ct_v + b)*scale
+                );
+                grad.addColorStop(0, '#f4f4f5'); // zinc-100
+                grad.addColorStop(1, '#a1a1aa'); // zinc-400
+                ctx.fillStyle = grad;
+                ctx.fill();
+                ctx.stroke();
 
-            // Draw full top ellipse (outer rim)
-            drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
-            ctx.fillStyle = COLOR_TOP;
-            ctx.fill();
-            ctx.stroke();
+                // 5. Draw flat base (inner center)
+                const baseRadius = 0.55;
+                drawEllipsePath(ct_u, ct_v + baseDepth, baseRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = '#d4d4d8'; // zinc-300
+                ctx.fill();
+                ctx.stroke();
 
-            // Draw inner top ellipse (hollow interior)
-            const innerRadius = isPlate ? 0.92 : 0.85;
-            drawEllipsePath(ct_u, ct_v, innerRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = isPlate ? '#D4D4D4' : '#C0C0C0'; // Lighter inner shade for shallow plate
-            ctx.fill();
-            ctx.stroke();
+                // Draw lines connecting inner rim to flat base
+                const numSpokes = 8;
+                for (let i = 0; i < numSpokes; i++) {
+                    const angle = (i / numSpokes) * Math.PI * 2;
+                    const x = Math.cos(angle);
+                    const z = Math.sin(angle);
+                    const u = a * x + c * z;
+                    const v = b * x + d * z;
+                    ctx.beginPath();
+                    ctx.moveTo(cx + (ct_u + u * innerRadius) * scale, cy + (ct_v + v * innerRadius) * scale);
+                    ctx.lineTo(cx + (ct_u + u * baseRadius) * scale, cy + (ct_v + baseDepth + v * baseRadius) * scale);
+                    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+                    ctx.stroke();
+                }
+
+                ctx.strokeStyle = wireframeColor || '#000'; // Reset stroke
+
+            } else {
+                // BOWL rendering (original)
+                const tLowest = Math.atan2(-D, -W);
+                const vLowest = b * Math.cos(tLowest) + d * Math.sin(tLowest);
+                
+                const visualH = Math.max(H, vLowest + Math.min(W, D) * 0.25);
+                const cb_v = ct_v + visualH;
+
+                const t1 = Math.atan2(-D, W); // Right tangent
+                const t2 = Math.atan2(D, -W); // Left tangent
+                const x1 = Math.cos(t1), z1 = Math.sin(t1);
+                const x2 = Math.cos(t2), z2 = Math.sin(t2);
+
+                const u1 = a*x1 + c*z1, v1 = b*x1 + d*z1;
+                const u2 = a*x2 + c*z2, v2 = b*x2 + d*z2;
+
+                const p0_u = cx + (ct_u + u2)*scale; // Left tangent
+                const p0_v = cy + (ct_v + v2)*scale;
+                const p2_u = cx + (ct_u + u1)*scale; // Right tangent
+                const p2_v = cy + (ct_v + v1)*scale;
+                
+                const pm_u = cx + ct_u*scale; // Top center
+                const pm_v = cy + ct_v*scale;
+                
+                const pBot_u = cx + cb_u*scale; // Bottom center
+                const pBot_v = cy + cb_v*scale;
+
+                const kappa = 0.55228;
+                const hLeft = pBot_v - p0_v;
+                const hRight = pBot_v - p2_v;
+                
+                const cp1_u = p0_u;
+                const cp1_v = p0_v + kappa * hLeft;
+                const cp2_u = pBot_u - kappa * (pBot_u - p0_u);
+                const cp2_v = pBot_v;
+                
+                const cp3_u = pBot_u + kappa * (p2_u - pBot_u);
+                const cp3_v = pBot_v;
+                const cp4_u = p2_u;
+                const cp4_v = p2_v + kappa * hRight;
+
+                // Fill bowl body
+                ctx.beginPath();
+                ctx.moveTo(p0_u, p0_v);
+                ctx.bezierCurveTo(cp1_u, cp1_v, cp2_u, cp2_v, pBot_u, pBot_v);
+                ctx.bezierCurveTo(cp3_u, cp3_v, cp4_u, cp4_v, p2_u, p2_v);
+                ctx.lineTo(pm_u, pm_v);
+                ctx.closePath();
+                
+                const grd = ctx.createLinearGradient(p0_u, 0, p2_u, 0);
+                grd.addColorStop(0, COLOR_LEFT);
+                grd.addColorStop(1, COLOR_RIGHT);
+                ctx.fillStyle = grd;
+                ctx.fill();
+
+                // Stroke bottom sweeping curve
+                ctx.beginPath();
+                ctx.moveTo(p0_u, p0_v);
+                ctx.bezierCurveTo(cp1_u, cp1_v, cp2_u, cp2_v, pBot_u, pBot_v);
+                ctx.bezierCurveTo(cp3_u, cp3_v, cp4_u, cp4_v, p2_u, p2_v);
+                ctx.stroke();
+
+                // Draw full top ellipse (outer rim)
+                drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
+                ctx.fillStyle = COLOR_TOP;
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw inner top ellipse (hollow interior)
+                drawEllipsePath(ct_u, ct_v, 0.85, 0, 2 * Math.PI);
+                ctx.fillStyle = '#C0C0C0';
+                ctx.fill();
+                ctx.stroke();
+            }
 
             const pts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
             drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
