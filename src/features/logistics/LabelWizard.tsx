@@ -419,7 +419,7 @@ export const LabelWizard: React.FC = () => {
                 const axoBase64 = await generateAxonometricDataUrl(
                     wCm, hCm, dCm,
                     d.shape || '', d.itemType || d.type || d.shortDescription || d.description || '',
-                    '#111111'
+                    '#111111', true
                 );
 
                 return {
@@ -566,7 +566,7 @@ export const LabelWizard: React.FC = () => {
             const axoBase64 = await generateAxonometricDataUrl(
                 wCm, hCm, dCm,
                 d.shape || '', d.itemType || d.type || d.shortDescription || d.description || '',
-                '#111111'
+                '#111111', true
             );
 
             return {
