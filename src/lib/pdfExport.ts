@@ -90,10 +90,10 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     // Axonometric icon stays on the right
     if (wCm && hCm && dCm) {
         try {
-            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
+            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
             if (axoDataUrl) {
                 currentRightX -= axoSize;
-                doc.addImage(axoDataUrl, 'PNG', currentRightX, startY + 9, axoSize, axoSize);
+                doc.addImage(axoDataUrl, 'JPEG', currentRightX, startY + 9, axoSize, axoSize);
             }
         } catch (e) {
             console.error("Failed to draw axonometric box", e);
@@ -329,14 +329,14 @@ export async function exportCatalogPdf(
                 
                 if (wCm && hCm && dCm) {
                     try {
-                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
+                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
                         if (axoDataUrl) {
                             const cw = PW - M * 2 - 4;
                             const ch = PH - specY - 28;
                             const axoSize = Math.min(cw * 0.8, ch * 0.8, 160);
                             const axoX = M + 4 + (cw - axoSize) / 2;
                             const axoY = specY + 4 + (ch - axoSize) / 2;
-                            doc.addImage(axoDataUrl, 'PNG', axoX, axoY, axoSize, axoSize);
+                            doc.addImage(axoDataUrl, 'JPEG', axoX, axoY, axoSize, axoSize);
                         }
                     } catch (e) {
                         console.error("Failed to draw large axonometric box", e);
@@ -389,14 +389,14 @@ export async function exportCatalogPdf(
                 
                 if (wCm && hCm && dCm) {
                     try {
-                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data));
+                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
                         if (axoDataUrl) {
                             const cw = PW - M * 2 - 4;
                             const ch = PH - specY - 28;
                             const axoSize = Math.min(cw * 0.8, ch * 0.8, 160);
                             const axoX = M + 4 + (cw - axoSize) / 2;
                             const axoY = specY + 4 + (ch - axoSize) / 2;
-                            doc.addImage(axoDataUrl, 'PNG', axoX, axoY, axoSize, axoSize);
+                            doc.addImage(axoDataUrl, 'JPEG', axoX, axoY, axoSize, axoSize);
                         }
                     } catch (e) {}
                 }

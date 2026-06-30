@@ -31,7 +31,8 @@ export function resolveItemColor(item: any): string {
 export async function generateAxonometricDataUrl(
     w_cm: number, h_cm: number, d_cm: number,
     shapeStr: string = '', descStr: string = '',
-    wireframeColor?: string
+    wireframeColor?: string,
+    asJpeg: boolean = false
 ): Promise<string> {
     return new Promise((resolve) => {
         let W = w_cm;
@@ -101,6 +102,13 @@ export async function generateAxonometricDataUrl(
         canvas.width = canvasSize;
         canvas.height = canvasSize;
         const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(''); return; }
+        
+        if (asJpeg) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
 
@@ -548,6 +556,6 @@ export async function generateAxonometricDataUrl(
             drawLabel(H, 'H', pts[1], pts[5], Math.atan2(pts[5].v - pts[1].v, pts[5].u - pts[1].u), 25);
         }
 
-        resolve(canvas.toDataURL('image/png', 1.0));
+        resolve(canvas.toDataURL(asJpeg ? 'image/jpeg' : 'image/png', 1.0));
     });
 }

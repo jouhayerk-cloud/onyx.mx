@@ -907,10 +907,10 @@ export async function exportCrateManifesto(
                 const shapeStr = item.name.split(' - ')[0] || '';
                 const descStr = item.name.split(' - ')[1] || item.name;
                 const itemColor = resolveItemColor(item as any);
-                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, itemColor);
+                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, itemColor, true);
                 if (axoDataUrl) {
                     const axoSize = 20; // LARGER
-                    doc.addImage(axoDataUrl, 'PNG', COL_DIMS.x + COL_DIMS.w - axoSize - 2, y + (ROW_H - axoSize) / 2, axoSize, axoSize);
+                    doc.addImage(axoDataUrl, 'JPEG', COL_DIMS.x + COL_DIMS.w - axoSize - 2, y + (ROW_H - axoSize) / 2, axoSize, axoSize);
                 }
             }
         } catch (e) { console.error('Error drawing axometric in manifesto', e); }
