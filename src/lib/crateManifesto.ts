@@ -286,10 +286,10 @@ export async function exportCrateManifesto(
     const PW = 297;
     const PH = 210;
     console.log(`[PDF] Init document. format: [${PW}, ${PH}] landscape. Return: ${returnType}`);
-    const doc = existingDoc || new jsPDF({ orientation: 'landscape', unit: 'mm', format: [PW, PH] });
+    const doc = existingDoc || new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     if (existingDoc) {
         console.log(`[PDF] Appending to existing doc. Pages: ${doc.getNumberOfPages()}`);
-        doc.addPage([PW, PH], 'landscape');
+        doc.addPage('a4', 'landscape');
     }
     const ML = 10; // margin left
     const MR = 10; // margin right
@@ -554,7 +554,7 @@ export async function exportCrateManifesto(
         }
         
         if (meta.isoViewImg) {
-            doc.addPage([PW, PH], 'landscape');
+            doc.addPage('a4', 'landscape');
             await drawPageChrome(false);
             sy = MT + 8;
             doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
@@ -564,14 +564,14 @@ export async function exportCrateManifesto(
             const imgH = imgW * 0.45; 
             doc.addImage(meta.isoViewImg, 'JPEG', ML, sy, imgW, imgH);
             sy += imgH + 12;
-            doc.addPage([PW, PH], 'landscape');
+            doc.addPage('a4', 'landscape');
             await drawPageChrome(false);
             sy = MT + 8; 
         }
 
         if (meta.allTruckCrates) {
             if (sy + 25 > PH - MB) {
-                doc.addPage([PW, PH], 'landscape');
+                doc.addPage('a4', 'landscape');
                 await drawPageChrome(false);
                 sy = MT + 8;
             }
@@ -593,7 +593,7 @@ export async function exportCrateManifesto(
                 let by = sy + row * (boxH + 4);
                 
                 if (by + boxH > PH - MB) {
-                    doc.addPage([PW, PH], 'landscape');
+                    doc.addPage('a4', 'landscape');
                     await drawPageChrome(false);
                     sy = MT + 8;
                     drawnOnThisPage = 0;
@@ -618,7 +618,7 @@ export async function exportCrateManifesto(
 
             const boxes = (meta.allTruckCrates || []).filter(c => c.type === 'cardboard');
             if (boxes.length > 0) {
-                doc.addPage([PW, PH], 'landscape');
+                doc.addPage('a4', 'landscape');
                 await drawPageChrome(false);
                 sy = MT + 8;
                 doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
@@ -632,7 +632,7 @@ export async function exportCrateManifesto(
                     const bx = ML + col * (boxW + 4);
                     let by = sy + row * (boxH + 4);
                     if (by + boxH > PH - MB) {
-                        doc.addPage([PW, PH], 'landscape');
+                        doc.addPage('a4', 'landscape');
                         await drawPageChrome(false);
                         sy = MT + 8;
                         boxDrawn = 0;
@@ -668,7 +668,7 @@ export async function exportCrateManifesto(
         
         if (!hasBoxes && !hasPacking) return;
         
-        doc.addPage([PW, PH], 'landscape');
+        doc.addPage('a4', 'landscape');
         await drawPageChrome(false);
         let sy = MT + 8;
         
@@ -684,7 +684,7 @@ export async function exportCrateManifesto(
                 // Check for space
                 const needed = 8 + (boxItems.length * 6);
                 if (sy + needed > PH - MB) {
-                    doc.addPage([PW, PH], 'landscape');
+                    doc.addPage('a4', 'landscape');
                     await drawPageChrome(false);
                     sy = MT + 8;
                 }
@@ -716,7 +716,7 @@ export async function exportCrateManifesto(
             // Check for space
             const needed = 12 + (meta.packingItems!.length * 6);
             if (sy + needed > PH - MB) {
-                doc.addPage([PW, PH], 'landscape');
+                doc.addPage('a4', 'landscape');
                 await drawPageChrome(false);
                 sy = MT + 8;
             }
@@ -756,7 +756,7 @@ export async function exportCrateManifesto(
 
     if (isMultiCrate) {
         await drawSummaryPage();
-        doc.addPage([PW, PH], 'landscape');
+        doc.addPage('a4', 'landscape');
         await drawPageChrome(false);
         y = MT;
     } else {
@@ -790,7 +790,7 @@ export async function exportCrateManifesto(
 
         // Check for page break
         if (y + totalRowH > PH - FOOTER_H) {
-            doc.addPage([PW, PH], 'landscape');
+            doc.addPage('a4', 'landscape');
             y = MT;
             await drawPageChrome(false);
             drawColHeaders(y);
