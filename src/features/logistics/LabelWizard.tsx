@@ -549,129 +549,8 @@ export const LabelWizard: React.FC = () => {
         ]
     });
 
-    
-    const ONYX_MASTER_TEMPLATE_50x50 = (width: number, height: number) => ({
-        name: "OnyxLabels_50x50",
-        version: 5,
-        isTemplate: true,
-        labelSize: { width, height },
-        templateFields: ["TAG ID", "DESCRIPTION", "SIZES", "BOOK RETAIL", "COLOR MATERIAL", "QR DATA", "AXO_IMAGE"],
-        elements: [
-            {
-                id: "el_qr",
-                type: "qr",
-                zone: 0,
-                x: 12, y: 12, width: 90, height: 90,
-                rotation: 0,
-                qrData: "{{QR DATA}}"
-            },
-            {
-                id: "el_retail",
-                type: "text",
-                zone: 0,
-                x: 105, y: 15, width: 280, height: 28,
-                rotation: 0,
-                align: "left",
-                text: "{{BOOK RETAIL}}",
-                fontSize: 26,
-                fontFamily: "Inter, sans-serif",
-                fontWeight: "bold",
-                autoScale: true,
-                noWrap: true
-            },
-            {
-                id: "el_desc",
-                type: "text",
-                zone: 0,
-                x: 105, y: 55, width: 280, height: 35,
-                rotation: 0,
-                align: "left",
-                text: "{{DESCRIPTION}}",
-                fontSize: 23,
-                fontFamily: "Inter, sans-serif",
-                fontWeight: "bold",
-                autoScale: true,
-                noWrap: true
-            },
-            {
-                id: "el_mat",
-                type: "text",
-                zone: 0,
-                x: 16, y: 110, width: 230, height: 35,
-                rotation: 0,
-                align: "left",
-                text: "{{COLOR MATERIAL}}",
-                fontSize: 22,
-                fontFamily: "Inter, sans-serif",
-                autoScale: true,
-                noWrap: true
-            },
-            {
-                id: "el_sizes",
-                type: "text",
-                zone: 0,
-                x: 16, y: 155, width: 230, height: 25,
-                rotation: 0,
-                align: "left",
-                text: "{{SIZES}}",
-                fontSize: 16,
-                fontFamily: "Inter, sans-serif",
-                fontWeight: "bold",
-                autoScale: true,
-                noWrap: true
-            },
-            {
-                id: "el_madein",
-                type: "text",
-                zone: 0,
-                x: 14, y: 200, width: 230, height: 20,
-                rotation: 0,
-                align: "left",
-                text: "Made in Mexico For",
-                fontSize: 15,
-                fontFamily: "Inter, sans-serif",
-                autoScale: false,
-                noWrap: true
-            },
-            {
-                id: "el_artofdecor",
-                type: "text",
-                zone: 0,
-                x: 12, y: 220, width: 230, height: 35,
-                rotation: 0,
-                align: "left",
-                text: "Art of Decor",
-                fontSize: 30,
-                fontFamily: "serif",
-                autoScale: true,
-                noWrap: true
-            },
-            {
-                id: "el_axo",
-                type: "image",
-                zone: 0,
-                x: 255, y: 110, width: 130, height: 130,
-                rotation: 0,
-                imageData: "{{AXO_IMAGE}}"
-            },
-            {
-                id: "el_barcode",
-                type: "barcode",
-                zone: 0,
-                x: 20, y: 260, width: 360, height: 120,
-                rotation: 0,
-                barcodeData: "{{TAG ID}}",
-                barcodeFormat: "CODE128",
-                format: "CODE128",
-                textFontSize: 16,
-                textBold: true,
-                showText: true
-            }
-        ]
-    });
-
-    const buildBatchJSONAsync = async (items: any[], workbookPrefix: string, labelSizeConfig: string = '50x30') => {
-        const [wStr, hStr] = labelSizeConfig.split('x');
+    const buildBatchJSONAsync = async (items: any[], workbookPrefix: string, activeLabelSize: string = '50x30') => {
+        const [wStr, hStr] = activeLabelSize.split('x');
         const width = parseInt(wStr) || 50;
         const height = parseInt(hStr) || 30;
 
@@ -995,37 +874,30 @@ export const LabelWizard: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
                     {/* Bluetooth Print Module */}
                     <div className="flex flex-col items-center gap-6 group">
-                                                <div className="flex flex-col items-center gap-2">
-                            <div className="flex items-center justify-center gap-2 bg-white/5 rounded-full p-1 w-[80%] mx-auto shadow-inner">
-                                <button 
-                                    onClick={() => setActiveLabelSize('50x30')}
-                                    className={`flex-1 px-2 py-1 text-[10px] font-black tracking-widest rounded-full transition-all ${activeLabelSize === '50x30' ? 'bg-(--main-color) text-black shadow-[0_0_15px_var(--main-color)] scale-105' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
-                                >
-                                    50x30
-                                </button>
-                                <button 
-                                    onClick={() => setActiveLabelSize('50x50')}
-                                    className={`flex-1 px-2 py-1 text-[10px] font-black tracking-widest rounded-full transition-all ${activeLabelSize === '50x50' ? 'bg-(--main-color) text-black shadow-[0_0_15px_var(--main-color)] scale-105' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
-                                >
-                                    50x50
-                                </button>
-                            </div>
+                        <div className="flex items-center justify-center gap-2 bg-white/5 rounded-full p-1 w-[80%] mx-auto shadow-inner mb-[-10px] z-10">
                             <button 
-                                onClick={handlePrintBluetooth} 
-                                disabled={progress.printer > 0 && progress.printer < 100} 
-                                className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 group"
+                                onClick={() => setActiveLabelSize('50x30')}
+                                className={`flex-1 px-2 py-1 text-[10px] font-black tracking-widest rounded-full transition-all ${activeLabelSize === '50x30' ? 'bg-(--main-color) text-black shadow-[0_0_15px_var(--main-color)] scale-105' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
                             >
-                                <div className="absolute inset-0 bg-[#E87320] blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-                                <div className="relative flex flex-col items-center justify-center w-32 h-32 rounded-3xl bg-gradient-to-br from-[#E87320] to-[#E87320]/20 border border-white/20 shadow-2xl overflow-hidden">
-                                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 mix-blend-overlay" />
-                                    <Printer size={48} className="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] mb-2" strokeWidth={1.5} />
-                                    <span className="text-white font-black tracking-widest text-sm drop-shadow-md">PRINT</span>
-                                    {progress.printer > 0 && progress.printer < 100 && (
-                                        <div className="absolute bottom-0 left-0 h-1.5 bg-white/40" style={{ width: `${progress.printer}%` }} />
-                                    )}
-                                </div>
+                                50x30
+                            </button>
+                            <button 
+                                onClick={() => setActiveLabelSize('50x50')}
+                                className={`flex-1 px-2 py-1 text-[10px] font-black tracking-widest rounded-full transition-all ${activeLabelSize === '50x50' ? 'bg-(--main-color) text-black shadow-[0_0_15px_var(--main-color)] scale-105' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                            >
+                                50x50
                             </button>
                         </div>
+                        <button 
+                            onClick={handlePrintBluetooth} 
+                            disabled={progress.printer > 0 && progress.printer < 100} 
+                            className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            <Printer size={64} fill="currentColor" strokeWidth={1} className={`transition-all duration-500 ${progress.printer === 100 ? 'text-(--main-color) drop-shadow-[0_0_20px_rgba(var(--main-color-rgb),0.4)]' : 'text-(--main-color)/20 group-hover:text-(--main-color)'}`} />
+                            {progress.printer > 0 && progress.printer < 100 && (
+                                <div className="absolute -inset-4 border-2 border-(--main-color)/20 border-t-(--main-color) animate-spin rounded-full" />
+                            )}
+                        </button>
                         
                         <div className="flex flex-col items-center gap-1 w-full max-w-[200px]">
                             <span className="text-2xl font-black text-white uppercase tracking-[0.2em] group-hover:text-(--main-color) transition-colors">Printer</span>
