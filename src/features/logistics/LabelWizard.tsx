@@ -548,6 +548,24 @@ export const LabelWizard: React.FC = () => {
             }
         ]
     });
+    const ONYX_MASTER_TEMPLATE_50x50 = (width: number, height: number) => ({
+        name: "OnyxLabels_50x50",
+        version: 5,
+        isTemplate: true,
+        labelSize: { width, height },
+        templateFields: ["TAG ID", "DESCRIPTION", "SIZES", "BOOK RETAIL", "COLOR MATERIAL", "QR DATA", "AXO_IMAGE"],
+        elements: [
+            { id: "el_qr", type: "qr", zone: 0, x: 12, y: 12, width: 90, height: 90, rotation: 0, qrData: "{{QR DATA}}" },
+            { id: "el_retail", type: "text", zone: 0, x: 105, y: 15, width: 280, height: 28, rotation: 0, align: "left", text: "{{BOOK RETAIL}}", fontSize: 26, fontFamily: "Inter, sans-serif", fontWeight: "bold", autoScale: true, noWrap: true },
+            { id: "el_desc", type: "text", zone: 0, x: 105, y: 55, width: 280, height: 35, rotation: 0, align: "left", text: "{{DESCRIPTION}}", fontSize: 23, fontFamily: "Inter, sans-serif", fontWeight: "bold", autoScale: true, noWrap: true },
+            { id: "el_mat", type: "text", zone: 0, x: 16, y: 110, width: 230, height: 35, rotation: 0, align: "left", text: "{{COLOR MATERIAL}}", fontSize: 22, fontFamily: "Inter, sans-serif", autoScale: true, noWrap: true },
+            { id: "el_sizes", type: "text", zone: 0, x: 16, y: 155, width: 230, height: 25, rotation: 0, align: "left", text: "{{SIZES}}", fontSize: 16, fontFamily: "Inter, sans-serif", fontWeight: "bold", autoScale: true, noWrap: true },
+            { id: "el_madein", type: "text", zone: 0, x: 14, y: 200, width: 230, height: 20, rotation: 0, align: "left", text: "Made in Mexico For", fontSize: 15, fontFamily: "Inter, sans-serif", autoScale: false, noWrap: true },
+            { id: "el_artofdecor", type: "text", zone: 0, x: 12, y: 220, width: 230, height: 35, rotation: 0, align: "left", text: "Art of Decor", fontSize: 30, fontFamily: "serif", autoScale: true, noWrap: true },
+            { id: "el_axo", type: "image", zone: 0, x: 255, y: 110, width: 130, height: 130, rotation: 0, imageData: "{{AXO_IMAGE}}" },
+            { id: "el_barcode", type: "barcode", zone: 0, x: 20, y: 260, width: 360, height: 120, rotation: 0, barcodeData: "{{TAG ID}}", barcodeFormat: "CODE128", format: "CODE128", textFontSize: 16, textBold: true, showText: true }
+        ]
+    });
 
     const buildBatchJSONAsync = async (items: any[], workbookPrefix: string, activeLabelSize: string = '50x30') => {
         const [wStr, hStr] = activeLabelSize.split('x');
