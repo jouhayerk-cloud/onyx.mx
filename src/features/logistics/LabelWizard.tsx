@@ -589,7 +589,7 @@ export const LabelWizard: React.FC = () => {
         );
 
         return {
-            ...(labelSizeConfig === '50x50' ? ONYX_MASTER_TEMPLATE_50x50(width, height) : ONYX_MASTER_TEMPLATE_V4(width, height)),
+            ...(activeLabelSize === '50x50' ? ONYX_MASTER_TEMPLATE_50x50(width, height) : ONYX_MASTER_TEMPLATE_V4(width, height)),
             name: `Onyx_Batch_${new Date().toISOString().split('T')[0]}`,
             exportedAt: new Date().toISOString(),
             records: templateData,
