@@ -53,6 +53,7 @@ import { ViewSkeleton } from '../../components/ui/ViewSkeleton';
 // Saves ~2-3MB of JS parse time on initial load.
 const ControlView        = React.lazy(() => import('../control/ControlView').then(m => ({ default: m.ControlView })));
 const UploadView         = React.lazy(() => import('../upload/UploadView').then(m => ({ default: m.UploadView })));
+const WelcomeView        = React.lazy(() => import('../welcome/WelcomeView').then(m => ({ default: m.WelcomeView })));
 const InventoryView      = React.lazy(() => import('../inventory/InventoryView').then(m => ({ default: m.InventoryView })));
 const LogisticsView      = React.lazy(() => import('../logistics/LogisticsView').then(m => ({ default: m.LogisticsView })));
 const FinanceView        = React.lazy(() => import('../finance/FinanceView').then(m => ({ default: m.FinanceView })));
@@ -306,6 +307,7 @@ export function MainAppView() {
             case 'control': return <ControlView />;
             case 'dashboard': return <AdminDashboard />;
             case 'upload': return <UploadView />;
+            case 'welcome': return <WelcomeView />;
             case 'inventory': return <InventoryView />;
             case 'warehouse':
             case 'trucking':
@@ -385,8 +387,7 @@ export function MainAppView() {
                                 label="Admin"
                                 icon="shield"
                                 subItems={[
-                                    { id: 'control', label: 'Control Center', icon: 'shield', action: () => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'control' },
-                                    { id: 'dashboard', label: 'Dashboard', icon: 'bar-chart-3', action: () => { setActiveView('dashboard'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'dashboard' }
+                                    { id: 'control', label: 'Control Center', icon: 'shield', action: () => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'control' }
                                 ]}
                             />
                         )}
@@ -456,17 +457,6 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">Viewer</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Viewer</span>
-                            </li>
-                        )}
-
-                        {/* ── STORE ── */}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
-                            <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <ShoppingBag size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Store</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Store</span>
                             </li>
                         )}
                     </ul>
@@ -540,3 +530,4 @@ export function MainAppView() {
         </>
     );
 }
+
