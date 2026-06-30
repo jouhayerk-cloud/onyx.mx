@@ -44,6 +44,7 @@ export async function generateAxonometricDataUrl(
         let isMirror = false;
         
         if (s.includes('bowl') || t.includes('bowl') || s.includes('canoe') || t.includes('canoe') || s.includes('canoa') || t.includes('canoa')) geom = 'bowl';
+        else if (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) geom = 'plate';
         else if (s.includes('mirror') || t.includes('mirror')) {
             isMirror = true;
             if (s.includes('rectangular') || t.includes('rectangular') || s.includes('squared') || t.includes('squared')) {
@@ -243,7 +244,8 @@ export async function generateAxonometricDataUrl(
             const pRightTop = {u: cx + (ct_u + u1)*scale, v: cy + (ct_v + v1)*scale};
             drawLabel(H, 'H', pRightBottom, pRightTop, Math.atan2(pRightTop.v - pRightBottom.v, pRightTop.u - pRightBottom.u), 25);
 
-        } else if (geom === 'bowl') {
+        } else if (geom === 'bowl' || geom === 'plate') {
+            const isPlate = geom === 'plate';
             const ct_u = (W/2 - D/2) * cos30;
             const ct_v = -H - (W/2 + D/2) * sin30;
             const cb_u = (W/2 - D/2) * cos30;
@@ -256,7 +258,8 @@ export async function generateAxonometricDataUrl(
             
             // Visual height adjustment to ensure the bowl body sweeps elegantly downwards
             // It MUST be visibly lower than the front arc (vLowest) of the top ellipse.
-            const visualH = Math.max(H, vLowest + Math.min(W, D) * 0.25);
+            const depthFactor = isPlate ? 0.08 : 0.25;
+            const visualH = Math.max(H, vLowest + Math.min(W, D) * depthFactor);
             const cb_v = ct_v + visualH;
 
             const t1 = Math.atan2(-D, W); // Right tangent
@@ -293,7 +296,7 @@ export async function generateAxonometricDataUrl(
             const pBot_v = cy + cb_v*scale;
 
             // U-shape Bezier control points for a perfect semi-ellipse profile
-            const kappa = 0.55228;
+            const kappa = isPlate ? 0.7 : 0.55228;
             const hLeft = pBot_v - p0_v;
             const hRight = pBot_v - p2_v;
             
@@ -335,8 +338,9 @@ export async function generateAxonometricDataUrl(
             ctx.stroke();
 
             // Draw inner top ellipse (hollow interior)
-            drawEllipsePath(ct_u, ct_v, 0.85, 0, 2 * Math.PI);
-            ctx.fillStyle = '#C0C0C0'; // Darker inner shade to emphasize the cavity depth
+            const innerRadius = isPlate ? 0.92 : 0.85;
+            drawEllipsePath(ct_u, ct_v, innerRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = isPlate ? '#D4D4D4' : '#C0C0C0'; // Lighter inner shade for shallow plate
             ctx.fill();
             ctx.stroke();
 
