@@ -31,11 +31,6 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
             title: "Global Search",
             content: "The Search bar allows you to instantly find items across your entire inventory using names, codes, or tags.",
             image: `${basePath}tutorial/F/5.jpg`
-        },
-        {
-            title: "Batch Actions",
-            content: "When you select items, a bottom toolbar appears. This active selection bar lets you perform bulk actions like packing crates, generating labels, or updating statuses all at once.",
-            image: `${basePath}tutorial/F/6.jpg`
         }
     ];
 
@@ -43,7 +38,7 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
         <div className="fixed inset-0 z-[5000] flex items-center justify-center animate-in fade-in duration-700 overflow-hidden">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[80px]" onClick={onClose} />
 
-            <div className="relative w-full h-[100dvh] md:w-[95vw] md:h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-700 bg-white/[0.02] border border-white/10 md:rounded-[32px] shadow-2xl">
+            <div className="relative w-full h-[100dvh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-700">
                 
                 {/* ── HEADER ─────────────────────────────────────────── */}
                 <div className="flex items-center justify-between p-6 md:p-12 z-20 shrink-0">
@@ -65,15 +60,15 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
                 </div>
 
                 {/* ── CONTENT ────────────────────────────────────────── */}
-                <div className="flex-1 flex flex-col overflow-hidden relative">
+                <div className="flex-1 flex flex-col overflow-hidden relative px-6 md:px-12 pb-6 md:pb-12 gap-6">
                     
                     {/* Top: Image Viewer */}
-                    <div className="w-full relative flex items-center justify-center p-6 md:p-12 md:pt-0 flex-1 overflow-hidden">
-                        <div className="w-full h-full relative bg-black/20 rounded-[24px] border border-white/5 overflow-hidden flex items-center justify-center p-4 md:p-10 shadow-inner">
+                    <div className="w-full relative flex items-center justify-center flex-1 overflow-hidden">
+                        <div className="w-full h-full relative overflow-hidden flex items-center justify-center rounded-[32px] shadow-2xl">
                             <img 
                                 src={steps[step].image} 
                                 alt={steps[step].title}
-                                className="w-full h-auto max-h-full object-contain opacity-95 transition-opacity duration-500"
+                                className="w-full h-full object-cover opacity-100 transition-opacity duration-500 rounded-[32px]"
                                 onError={(e) => {
                                     e.currentTarget.style.display = 'none';
                                     e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-(--main-color)/10', 'to-transparent');
@@ -82,8 +77,8 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
                         </div>
                     </div>
 
-                    {/* Bottom: Text & Controls */}
-                    <div className="w-full shrink-0 p-8 md:px-12 md:pb-12 md:pt-6 flex flex-col bg-gradient-to-t from-black/60 to-transparent relative z-10 border-t border-white/5">
+                    {/* Bottom: Text & Controls (Glassmorphic Window) */}
+                    <div className="w-full shrink-0 p-8 md:p-10 flex flex-col relative z-10 bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-2xl overflow-hidden">
                         
                         <div className="mb-8 flex flex-col">
                             <div className="flex items-center gap-4 mb-4 text-(--main-color)">
