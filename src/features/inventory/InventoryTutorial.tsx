@@ -65,10 +65,10 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
                 </div>
 
                 {/* ── CONTENT ────────────────────────────────────────── */}
-                <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+                <div className="flex-1 flex flex-col overflow-hidden relative">
                     
-                    {/* Left: Image Viewer */}
-                    <div className="w-full md:w-3/5 relative flex items-center justify-center p-6 md:p-12 md:pt-0">
+                    {/* Top: Image Viewer */}
+                    <div className="w-full relative flex items-center justify-center p-6 md:p-12 md:pt-0 flex-1 overflow-hidden">
                         <div className="w-full h-full relative bg-black/20 rounded-[24px] border border-white/5 overflow-hidden flex items-center justify-center p-4 md:p-10 shadow-inner">
                             <img 
                                 src={steps[step].image} 
@@ -82,19 +82,19 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
                         </div>
                     </div>
 
-                    {/* Right: Text & Controls */}
-                    <div className="w-full md:w-2/5 p-8 md:p-12 md:pt-0 flex flex-col justify-center bg-gradient-to-l from-black/40 to-transparent relative z-10">
+                    {/* Bottom: Text & Controls */}
+                    <div className="w-full shrink-0 p-8 md:px-12 md:pb-12 md:pt-6 flex flex-col bg-gradient-to-t from-black/60 to-transparent relative z-10 border-t border-white/5">
                         
-                        <div className="mb-12 mt-auto md:mt-0 flex flex-col justify-center flex-1">
-                            <div className="flex items-center gap-4 mb-6 text-(--main-color)">
+                        <div className="mb-8 flex flex-col">
+                            <div className="flex items-center gap-4 mb-4 text-(--main-color)">
                                 <div className="p-3 bg-(--main-color)/10 border border-(--main-color)/20 rounded-2xl">
                                     <Lightbulb size={24} />
                                 </div>
+                                <h2 className="text-3xl md:text-4xl font-black tracking-tighter text-white leading-tight">
+                                    {steps[step].title}
+                                </h2>
                             </div>
-                            <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-white mb-6 leading-tight">
-                                {steps[step].title}
-                            </h2>
-                            <p className="text-white/60 text-lg md:text-xl leading-relaxed font-medium">
+                            <p className="text-white/60 text-lg md:text-xl leading-relaxed font-medium max-w-5xl">
                                 {steps[step].content}
                             </p>
                         </div>
