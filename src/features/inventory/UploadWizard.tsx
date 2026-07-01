@@ -768,9 +768,10 @@ export const UploadWizard: React.FC = () => {
                         <div className="space-y-3">
                             <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Evidence</label>
                             <div className="flex flex-col gap-3">
+                                  <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
                                 {state.mediaList.length === 0 ? (
                                     <div onClick={() => fileInputRef.current?.click()} className="w-full h-24 rounded-2xl border-2 border-dashed border-white/10 hover:border-(--main-color) hover:bg-(--main-color)/5 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer group">
-                                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
+                                        
                                         <Upload size={20} strokeWidth={4} className="text-white/20 group-hover:text-(--main-color) transition-all" />
                                         <span className="text-[8px] font-black text-white/20 group-hover:text-(--main-color) uppercase tracking-[0.5em]">Capture Evidence</span>
                                     </div>

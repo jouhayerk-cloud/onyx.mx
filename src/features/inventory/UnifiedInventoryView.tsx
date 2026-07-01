@@ -321,13 +321,13 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     <div className="flex flex-col min-w-[40px] shrink-0 items-center justify-center gap-2 px-2">
                             <span 
                                 title={getPayLabel()}
-                                className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" 
+                                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" 
                                 style={{ backgroundColor: accentColor || '#38bdf8', boxShadow: `0 0 10px ${accentColor || '#38bdf8'}60` }} 
                             />
                             {deployedInfo && (
                                 <span 
                                     title={deployedInfo.manifestId ? deployedInfo.manifestId.replace('TRK-', 'TRKA ') : 'Deployed'}
-                                    className="w-3.5 h-3.5 rounded-full bg-teal-400 shrink-0 shadow-sm"
+                                    className="w-2.5 h-2.5 rounded-full bg-teal-400 shrink-0 shadow-sm"
                                     style={{ boxShadow: '0 0 10px rgba(45, 212, 191, 0.4)' }}
                                 />
                             )}
