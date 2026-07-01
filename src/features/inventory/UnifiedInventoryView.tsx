@@ -318,6 +318,24 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         </div>
                     )}
 
+                    <div className="flex flex-col min-w-[80px] shrink-0 items-start pl-4 gap-1 justify-center">
+                            <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
+                                {getPayLabel()}
+                            </span>
+                            {deployedInfo && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit bg-teal-500/10 border border-teal-500/20">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                                    <span className="text-teal-400">
+                                        {deployedInfo.manifestId
+                                            ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
+                                            : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}`
+                                        }
+                                    </span>
+                                </span>
+                            )}
+                        </div>
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
                     <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden group/listimg isolate" 
                         onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}
@@ -363,35 +381,18 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     navigator.clipboard.writeText(calculated.bookBarcode); 
                                     toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '📋' }); 
                                 }}
-                                className="inline-flex items-center px-3 py-1 rounded text-black text-[14px] font-black uppercase tracking-tight shadow-lg w-fit hover:scale-105 active:scale-95 transition-all" 
-                                style={{ backgroundColor: vendorColor }}
+                                className="inline-flex items-center rounded text-black text-[14px] font-black uppercase tracking-tight shadow-lg w-fit hover:scale-105 active:scale-95 transition-all overflow-hidden" 
                             >
-                                {calculated.bookBarcodeDisplay || 'N/A'}
+                                <span className="px-2 py-1" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || 'N/A').slice(0, 5)}</span>
+                                <span className="px-2 py-1 text-(--text-color) bg-transparent border border-white/10">{(calculated.bookBarcodeDisplay || 'N/A').slice(5)}</span>
                             </button>
                         </div>
-                        <div className="flex flex-col min-w-[140px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[11px] font-mono text-(--text-color)/60">{dimensionsStr || '—'}</span><span className="text-[11px] font-mono text-(--text-color)/40">{weightStr || '—'}</span></div></div>
+                        <div className="flex flex-col min-w-[140px] shrink-0 justify-center gap-1"><span className="text-[13px] font-mono text-(--text-color)/80">{dimensionsStr || '—'}</span><span className="text-[13px] font-mono text-(--text-color)/60">{weightStr || '—'}</span></div>
                         <div className="flex flex-col min-w-[90px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-sm font-bold text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span></div></div>
                         <div className="flex flex-col min-w-[90px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-sm font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
                         <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[13px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
                         <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[13px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
-                        <div className="flex flex-col min-w-[90px] shrink-0 ml-auto items-end pr-4 gap-1">
-                            <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
-                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
-                                {getPayLabel()}
-                            </span>
-                            {deployedInfo && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit bg-teal-500/10 border border-teal-500/20">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
-                                    <span className="text-teal-400">
-                                        {deployedInfo.manifestId
-                                            ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
-                                            : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}`
-                                        }
-                                    </span>
-                                </span>
-                            )}
-                        </div>
+                        
                         <div className="flex items-center gap-1 shrink-0 border-l border-white/5 pl-4 ml-2 opacity-10">
                              {/* Expanded via row click */}
                         </div>
@@ -596,10 +597,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                                 navigator.clipboard.writeText(calculated.bookBarcode); 
                                                 toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '📋' }); 
                                             }}
-                                            className="px-2.5 py-1 rounded-none text-black text-[10px] font-black uppercase tracking-[0.2em] border border-black/5 hover:scale-105 active:scale-95 transition-all" 
-                                            style={{ backgroundColor: vendorColor }}
+                                            className="inline-flex items-center rounded-none text-black text-[10px] font-black uppercase tracking-[0.2em] border border-black/5 hover:scale-105 active:scale-95 transition-all overflow-hidden" 
                                         >
-                                            {calculated.bookBarcodeDisplay}
+                                            <span className="px-2 py-1" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || '').slice(0, 5)}</span>
+                                            <span className="px-2 py-1 text-(--text-color) bg-transparent border border-white/10">{(calculated.bookBarcodeDisplay || '').slice(5)}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -712,10 +713,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                         navigator.clipboard.writeText(calculated.bookBarcode); 
                                         toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '📋' }); 
                                     }}
-                                    className="px-3 py-1.5 rounded text-black text-[13px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all" 
-                                    style={{ backgroundColor: vendorColor }}
+                                    className="inline-flex items-center rounded text-black text-[13px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all overflow-hidden" 
                                 >
-                                    {calculated.bookBarcodeDisplay || vendorPrefix || 'N/A'}
+                                    <span className="px-2 py-1.5" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || vendorPrefix || 'N/A').slice(0, 5)}</span>
+                                    <span className="px-2 py-1.5 text-(--text-color) bg-transparent border border-white/10">{(calculated.bookBarcodeDisplay || vendorPrefix || 'N/A').slice(5)}</span>
                                 </button>
                                 <div className="flex gap-1">
                                      <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookAqCode}</div>
@@ -833,10 +834,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         navigator.clipboard.writeText(calculated.bookBarcode); 
                         toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '📋' }); 
                     }}
-                    className="absolute top-2 left-2 z-10 px-2.5 py-0.5 rounded text-[11px] font-black uppercase text-black shadow-md hover:scale-105 active:scale-95 transition-all" 
-                    style={{ backgroundColor: vendorColor }}
+                    className="absolute top-2 left-2 z-10 flex items-center rounded text-[11px] font-black uppercase text-black shadow-md hover:scale-105 active:scale-95 transition-all overflow-hidden" 
                 >
-                    {calculated.bookBarcodeDisplay || vendorPrefix}
+                    <span className="px-2 py-0.5" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || vendorPrefix || '').slice(0, 5)}</span>
+                    <span className="px-2 py-0.5 text-white bg-transparent backdrop-blur-md bg-black/40 border border-white/10">{(calculated.bookBarcodeDisplay || vendorPrefix || '').slice(5)}</span>
                 </button>
             </div>
             <div className="p-3 flex flex-col gap-2 flex-1">
@@ -1061,10 +1062,15 @@ export const UnifiedInventoryView = () => {
             
             const status = getStatusClass(item.data, partialPayIds, fullPayIds);
             if (statusFilter !== 'All') {
-                if (statusFilter === 'Partial' && status !== 'RED') return false;
-                if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
-                if (statusFilter === 'Paid' && status !== 'GREEN') return false;
-                if (statusFilter === 'New' && status !== 'BLUE') return false;
+                if (statusFilter === 'Shipped') {
+                    const itemKey = String(item.row ?? item.data?.id ?? '');
+                    if (!deployedItemsMap.has(itemKey)) return false;
+                } else {
+                    if (statusFilter === 'Partial' && status !== 'RED') return false;
+                    if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
+                    if (statusFilter === 'Paid' && status !== 'GREEN') return false;
+                    if (statusFilter === 'New' && status !== 'BLUE') return false;
+                }
             }
             const itemIdStr = String(item.data.itemId || item.data.item_id || '');
             let vPre = item.data.vendor_id || item.data.vendorId || '';
@@ -1089,9 +1095,14 @@ export const UnifiedInventoryView = () => {
             if (materialFilter !== 'All' && matNormalized !== materialFilter.toUpperCase()) return false;
             if (deferredSearchTerm) {
                 const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
+                const normalizedItemId = itemId.replace(/[^a-z0-9]/g, '');
+                const calculatedCodes = calculateCodesAndPrices(item.data, exchangeRate, '326');
                 // Build a wide search string including all relevant fields
                 const searchStr = [
                     itemId,
+                    normalizedItemId,
+                    calculatedCodes.bookBarcodeDisplay || '',
+                    (calculatedCodes.bookBarcodeDisplay || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(),
                     item.data.shape || '',
                     item.data.shortDescription || item.data.short_description || '',
                     item.data.color || '',

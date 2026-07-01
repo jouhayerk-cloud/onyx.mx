@@ -60,7 +60,7 @@ import {
     inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import { 
-    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -455,7 +455,7 @@ export const UniversalToolsBar: React.FC = () => {
                 <div className="w-full animate-in slide-in-from-top duration-500 overflow-hidden pr-4 pl-4">
                     <div className="w-full mx-auto px-6 py-3 flex flex-col gap-4">
                         {isInventory && isInvSearchOpen && (
-                            <div className="flex items-center gap-6 group transition-all">
+                            <div className="flex items-center gap-6 group transition-all shrink-0">
                                 <Search size={24} strokeWidth={3} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
                                 <input autoFocus type="text" value={invSearchTerm} onChange={(e) => setInvSearchTerm(e.target.value)} placeholder="SEARCH INVENTORY..." className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
                                 {invSearchTerm && <button onClick={() => setInvSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={24} strokeWidth={3} /></button>}
@@ -511,7 +511,7 @@ export const UniversalToolsBar: React.FC = () => {
                                         />
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-6 shrink-0 sm:justify-end">
+                                <div className="flex items-center gap-6 shrink-0 sm:justify-end overflow-x-auto no-scrollbar">
                                     <div className="flex items-center gap-2 text-white/20 uppercase font-black text-[9px] tracking-[0.2em] shrink-0">
                                         <ArrowUpDown size={14} />
                                         <span>SORT BY</span>
@@ -538,7 +538,7 @@ export const UniversalToolsBar: React.FC = () => {
                             </div>
                         )}
                         {isFinance && isFinSearchOpen && (
-                            <div className="flex items-center gap-6 group transition-all">
+                            <div className="flex items-center gap-6 group transition-all shrink-0">
                                 <Search size={24} strokeWidth={3} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
                                 <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder="SEARCH PAYMENTS..." className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
                                 {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={24} strokeWidth={3} /></button>}
@@ -551,7 +551,7 @@ export const UniversalToolsBar: React.FC = () => {
             {/* ── SELECTION TOOLS ─────────────────────────────────────────────────────────── */}
             {isInventory && isSelectionMode && (
                 <div className="w-full border-t border-white/5 animate-in slide-in-from-top duration-500 overflow-hidden px-4 bg-white/[0.02]">
-                    <div className="w-full mx-auto px-6 py-4 flex items-center justify-between gap-4">
+                    <div className="w-full mx-auto px-6 py-4 flex items-center justify-between gap-4 overflow-x-auto no-scrollbar">
                         <div className="flex items-center gap-6">
                             <div className="w-12 h-12 rounded-xl bg-(--color-inventory)/10 border border-(--color-inventory)/20 flex items-center justify-center text-(--color-inventory) drop-shadow-[0_0_15px_rgba(var(--color-inventory-rgb),0.3)]">
                                 <SquareCheckBig size={24} strokeWidth={2.5} />
@@ -723,7 +723,7 @@ export const UniversalToolsBar: React.FC = () => {
                                 { id: 'All', icon: LayoutGrid, color: '#FFFFFF' },
                                 { id: 'New', icon: Plus, color: '#38bdf8' },
                                 { id: 'Production', icon: Hammer, color: '#6366f1' },
-                                { id: 'Available', icon: ShoppingBag, color: '#10b981' },
+                                { id: 'Shipped', icon: Send, color: '#06b6d4' },
                                 { id: 'Acquired', icon: Tag, color: '#10b981' },
                                 { id: 'Partial', icon: FlaskConical, color: '#a855f7' },
                                 { id: 'Requested', icon: Activity, color: '#f59e0b' },
