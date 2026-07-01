@@ -6,52 +6,57 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
     
     const steps = [
         {
-            title: "Welcome to Inventory",
-            content: "This is your central hub for tracking all your items and assets. Let's take a quick tour of the features available to you.",
-            image: "/tutorial/1_blurred.png"
+            title: "Compact View",
+            content: "Use the Compact view for a high-density table of all items. Perfect for quick scanning and bulk actions.",
+            image: "/tutorial/F/1.jpg"
         },
         {
-            title: "Main Top Bar & Tools",
-            content: "The top bar contains your primary navigation and tools. Use it to search, filter your inventory by status, vendor, or category, and switch between different modules like logistics and finance.",
-            image: "/tutorial/1_blurred.png"
+            title: "Standard View",
+            content: "The Standard view offers a balanced layout with clear item thumbnails alongside their key data.",
+            image: "/tutorial/F/2.jpg"
         },
         {
-            title: "Inventory View Modes",
-            content: "You can visualize your inventory in three ways:\n- List View: A compact, detailed table of all items.\n- Grid View: Visual cards focusing on item thumbnails.\n- Studio View: An immersive 3D/Axonometric experience for spatial tracking.",
-            image: "/tutorial/1_blurred.png"
+            title: "Spacious View",
+            content: "Switch to Spacious view when you need large, clear images of your items and more breathing room.",
+            image: "/tutorial/F/3.jpg"
         },
         {
-            title: "Selected Items Toolbar",
-            content: "When you select one or more items using the checkboxes, a bottom toolbar will appear. This allows you to perform batch actions like printing labels, generating manifests, or moving items in bulk.",
-            image: "/tutorial/1_blurred.png"
+            title: "Powerful Filters",
+            content: "Use the comprehensive Filters menu to drill down into your inventory by specific categories, vendors, or attributes.",
+            image: "/tutorial/F/4.jpg"
         },
         {
-            title: "Inventory Details",
-            content: "Click on any item to open its details panel. Here you can edit item data, update the status, attach media, and view its full lifecycle history.",
-            image: "/tutorial/1_blurred.png"
+            title: "Global Search",
+            content: "The Search bar allows you to instantly find items across your entire inventory using names, codes, or tags.",
+            image: "/tutorial/F/5.jpg"
+        },
+        {
+            title: "Batch Actions",
+            content: "When you select items, a bottom toolbar appears. This active selection bar lets you perform bulk actions like packing crates, generating labels, or updating statuses all at once.",
+            image: "/tutorial/F/6.jpg"
         }
     ];
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-            <div className="bg-[#1a1a1a] border border-white/10 rounded-[32px] overflow-hidden w-full max-w-4xl shadow-[0_20px_80px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative flex flex-col md:flex-row">
+            <div className="bg-[#1a1a1a] border border-white/10 rounded-[32px] overflow-hidden w-full max-w-4xl shadow-[0_20px_80px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative flex flex-col">
                 
-                {/* Left side: Image */}
-                <div className="w-full md:w-1/2 bg-black/50 relative min-h-[300px] md:min-h-[500px] flex items-center justify-center border-b md:border-b-0 md:border-r border-white/10 overflow-hidden">
+                {/* Top: Image */}
+                <div className="w-full bg-black/50 relative h-[250px] md:h-[450px] flex items-center justify-center border-b border-white/10 overflow-hidden">
                     <img 
                         src={steps[step].image} 
                         alt={steps[step].title}
-                        className="absolute inset-0 w-full h-full object-cover opacity-80"
+                        className="absolute inset-0 w-full h-full object-cover opacity-90"
                         onError={(e) => {
                             e.currentTarget.style.display = 'none';
                             e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-(--main-color)/20', 'to-transparent');
                         }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-transparent pointer-events-none" />
                 </div>
 
-                {/* Right side: Content */}
-                <div className="w-full md:w-1/2 p-8 flex flex-col justify-between relative">
+                {/* Bottom: Content */}
+                <div className="w-full p-8 flex flex-col justify-between relative">
                     <button 
                         onClick={onClose}
                         className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full z-10"
