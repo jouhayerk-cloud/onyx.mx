@@ -3,37 +3,38 @@ import { X, ChevronRight, Lightbulb } from 'lucide-react';
 
 export function InventoryTutorial({ onClose }: { onClose: () => void }) {
     const [step, setStep] = useState(0);
+    const basePath = import.meta.env.BASE_URL;
     
     const steps = [
         {
             title: "Compact View",
             content: "Use the Compact view for a high-density table of all items. Perfect for quick scanning and bulk actions.",
-            image: "/tutorial/F/1.jpg"
+            image: `${basePath}tutorial/F/1.jpg`
         },
         {
             title: "Standard View",
             content: "The Standard view offers a balanced layout with clear item thumbnails alongside their key data.",
-            image: "/tutorial/F/2.jpg"
+            image: `${basePath}tutorial/F/2.jpg`
         },
         {
             title: "Spacious View",
             content: "Switch to Spacious view when you need large, clear images of your items and more breathing room.",
-            image: "/tutorial/F/3.jpg"
+            image: `${basePath}tutorial/F/3.jpg`
         },
         {
             title: "Powerful Filters",
             content: "Use the comprehensive Filters menu to drill down into your inventory by specific categories, vendors, or attributes.",
-            image: "/tutorial/F/4.jpg"
+            image: `${basePath}tutorial/F/4.jpg`
         },
         {
             title: "Global Search",
             content: "The Search bar allows you to instantly find items across your entire inventory using names, codes, or tags.",
-            image: "/tutorial/F/5.jpg"
+            image: `${basePath}tutorial/F/5.jpg`
         },
         {
             title: "Batch Actions",
             content: "When you select items, a bottom toolbar appears. This active selection bar lets you perform bulk actions like packing crates, generating labels, or updating statuses all at once.",
-            image: "/tutorial/F/6.jpg"
+            image: `${basePath}tutorial/F/6.jpg`
         }
     ];
 
