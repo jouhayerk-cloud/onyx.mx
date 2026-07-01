@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronRight, Lightbulb } from 'lucide-react';
 
 export function InventoryTutorial({ onClose }: { onClose: () => void }) {
@@ -38,78 +39,103 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
         }
     ];
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-            <div className="bg-[#1a1a1a] border border-white/10 rounded-[32px] overflow-hidden w-full max-w-4xl shadow-[0_20px_80px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative flex flex-col">
-                
-                {/* Top: Image */}
-                <div className="w-full bg-[#0a0a0a] relative min-h-[120px] md:min-h-[180px] p-6 md:p-10 flex items-center justify-center border-b border-white/10 overflow-hidden">
-                    <img 
-                        src={steps[step].image} 
-                        alt={steps[step].title}
-                        className="w-full h-auto max-h-[300px] object-contain opacity-95"
-                        onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-(--main-color)/20', 'to-transparent');
-                        }}
-                    />
-                </div>
+    return createPortal(
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center animate-in fade-in duration-700 overflow-hidden">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[80px]" onClick={onClose} />
 
-                {/* Bottom: Content */}
-                <div className="w-full p-8 flex flex-col justify-between relative">
+            <div className="relative w-full h-[100dvh] md:w-[95vw] md:h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-700 bg-white/[0.02] border border-white/10 md:rounded-[32px] shadow-2xl">
+                
+                {/* ── HEADER ─────────────────────────────────────────── */}
+                <div className="flex items-center justify-between p-6 md:p-12 z-20 shrink-0">
+                    <div className="flex items-center gap-6 md:gap-8">
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-3 mb-1">
+                                <h1 className="text-lg md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">Onyx.mx</h1>
+                                <span className="h-[1px] w-8 bg-white/40" />
+                                <span className="text-[9px] font-black text-(--main-color) tracking-[0.3em] uppercase">Tutorial</span>
+                            </div>
+                        </div>
+                    </div>
                     <button 
                         onClick={onClose}
-                        className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full z-10"
+                        className="p-3 text-white/50 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full"
                     >
                         <X size={24} />
                     </button>
+                </div>
+
+                {/* ── CONTENT ────────────────────────────────────────── */}
+                <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                     
-                    <div className="mt-8">
-                        <div className="flex items-center gap-4 mb-6 text-(--main-color)">
-                            <div className="p-3 bg-(--main-color)/10 rounded-2xl">
-                                <Lightbulb size={28} />
-                            </div>
-                            <h2 className="text-3xl font-bold text-white">{steps[step].title}</h2>
-                        </div>
-                        
-                        <p className="text-white/70 mb-10 text-lg leading-relaxed whitespace-pre-wrap font-medium">
-                            {steps[step].content}
-                        </p>
-                    </div>
-                    
-                    <div className="flex items-center justify-between mt-auto pt-8 border-t border-white/10">
-                        <div className="flex gap-2">
-                            {steps.map((_, i) => (
-                                <div 
-                                    key={i} 
-                                    className={`h-2 rounded-full transition-all ${i === step ? 'w-8 bg-(--main-color)' : 'w-2 bg-white/20'}`}
-                                />
-                            ))}
-                        </div>
-                        
-                        <div className="flex gap-3">
-                            {step > 0 && (
-                                <button 
-                                    onClick={() => setStep(s => s - 1)}
-                                    className="px-5 py-3 rounded-xl text-white/70 hover:bg-white/5 transition-colors font-semibold"
-                                >
-                                    Back
-                                </button>
-                            )}
-                            <button 
-                                onClick={() => {
-                                    if (step < steps.length - 1) setStep(s => s + 1);
-                                    else onClose();
+                    {/* Left: Image Viewer */}
+                    <div className="w-full md:w-3/5 relative flex items-center justify-center p-6 md:p-12 md:pt-0">
+                        <div className="w-full h-full relative bg-black/20 rounded-[24px] border border-white/5 overflow-hidden flex items-center justify-center p-4 md:p-10 shadow-inner">
+                            <img 
+                                src={steps[step].image} 
+                                alt={steps[step].title}
+                                className="w-full h-auto max-h-full object-contain opacity-95 transition-opacity duration-500"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-(--main-color)/10', 'to-transparent');
                                 }}
-                                className="flex items-center gap-2 px-6 py-3 bg-(--main-color) hover:brightness-110 text-white rounded-xl transition-all font-bold shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)] hover:shadow-[0_0_25px_rgba(var(--main-color-rgb),0.5)]"
-                            >
-                                {step < steps.length - 1 ? 'Next' : 'Got it!'}
-                                {step < steps.length - 1 && <ChevronRight size={20} />}
-                            </button>
+                            />
                         </div>
                     </div>
+
+                    {/* Right: Text & Controls */}
+                    <div className="w-full md:w-2/5 p-8 md:p-12 md:pt-0 flex flex-col justify-center bg-gradient-to-l from-black/40 to-transparent relative z-10">
+                        
+                        <div className="mb-12 mt-auto md:mt-0 flex flex-col justify-center flex-1">
+                            <div className="flex items-center gap-4 mb-6 text-(--main-color)">
+                                <div className="p-3 bg-(--main-color)/10 border border-(--main-color)/20 rounded-2xl">
+                                    <Lightbulb size={24} />
+                                </div>
+                            </div>
+                            <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-white mb-6 leading-tight">
+                                {steps[step].title}
+                            </h2>
+                            <p className="text-white/60 text-lg md:text-xl leading-relaxed font-medium">
+                                {steps[step].content}
+                            </p>
+                        </div>
+
+                        {/* Navigation Footer */}
+                        <div className="flex items-center justify-between mt-auto pt-8 border-t border-white/10 shrink-0">
+                            <div className="flex gap-2">
+                                {steps.map((_, i) => (
+                                    <div 
+                                        key={i} 
+                                        className={`h-1.5 rounded-full transition-all duration-500 ${i === step ? 'w-12 bg-(--main-color)' : 'w-3 bg-white/20'}`}
+                                    />
+                                ))}
+                            </div>
+                            
+                            <div className="flex gap-3">
+                                {step > 0 && (
+                                    <button 
+                                        onClick={() => setStep(s => s - 1)}
+                                        className="px-6 py-4 rounded-xl text-white/50 hover:bg-white/5 transition-colors font-bold tracking-widest uppercase text-xs"
+                                    >
+                                        Back
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={() => {
+                                        if (step < steps.length - 1) setStep(s => s + 1);
+                                        else onClose();
+                                    }}
+                                    className="flex items-center gap-3 px-8 py-4 bg-(--main-color)/20 hover:bg-(--main-color) text-(--main-color) hover:text-white rounded-xl transition-all duration-300 font-bold tracking-widest uppercase text-xs shadow-lg border border-(--main-color)/30 hover:border-transparent"
+                                >
+                                    {step < steps.length - 1 ? 'Next Step' : 'Get Started'}
+                                    {step < steps.length - 1 && <ChevronRight size={16} />}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
