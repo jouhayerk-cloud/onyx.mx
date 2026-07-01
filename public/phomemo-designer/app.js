@@ -1922,8 +1922,11 @@ async function handleBatchPrint() {
       // Evaluate instant expressions (date/time, etc.)
       const mergedElements = evaluateExpressions(substitutedElements);
 
-      // Slow down parsing so images (like axo base64) can decode fully
-      await new Promise(r => setTimeout(r, 150));
+      // Pre-render to trigger async generation of barcodes/QRs
+      state.renderer._renderToPixels(mergedElements);
+
+      // Give async elements (barcodes, QRs, images) time to decode fully
+      await new Promise(r => setTimeout(r, 400));
 
       // Render to raster (use raw format for rotated printers like D-series and P12)
       const deviceName = state.transport.getDeviceName?.() || '';
@@ -2052,6 +2055,12 @@ async function handlePrintSinglePreview() {
     // Substitute fields and evaluate expressions
     const substitutedElements = substituteFields(state.elements, record);
     const mergedElements = evaluateExpressions(substitutedElements);
+
+    // Pre-render to trigger async generation of barcodes/QRs
+    state.renderer._renderToPixels(mergedElements);
+
+    // Give async elements (barcodes, QRs, images) time to decode fully
+    await new Promise(r => setTimeout(r, 400));
 
     // Render to raster (use raw format for rotated printers like D-series and P12)
     const deviceName = state.transport.getDeviceName?.() || '';
