@@ -42,17 +42,16 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
             <div className="bg-[#1a1a1a] border border-white/10 rounded-[32px] overflow-hidden w-full max-w-4xl shadow-[0_20px_80px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300 relative flex flex-col">
                 
                 {/* Top: Image */}
-                <div className="w-full bg-black/50 relative h-[250px] md:h-[450px] flex items-center justify-center border-b border-white/10 overflow-hidden">
+                <div className="w-full bg-[#0a0a0a] relative min-h-[120px] md:min-h-[180px] p-6 md:p-10 flex items-center justify-center border-b border-white/10 overflow-hidden">
                     <img 
                         src={steps[step].image} 
                         alt={steps[step].title}
-                        className="absolute inset-0 w-full h-full object-cover opacity-90"
+                        className="w-full h-auto max-h-[300px] object-contain opacity-95"
                         onError={(e) => {
                             e.currentTarget.style.display = 'none';
                             e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-(--main-color)/20', 'to-transparent');
                         }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-transparent pointer-events-none" />
                 </div>
 
                 {/* Bottom: Content */}
