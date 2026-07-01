@@ -154,6 +154,7 @@ export const M_SERIES_LABEL_SIZES = {
   '40x60': { width: 40, height: 60 },
   '50x25': { width: 50, height: 25 },
   '50x30': { width: 50, height: 30 },
+  '50x50': { width: 50, height: 50 },
   '50x80': { width: 50, height: 80 },
   '60x40': { width: 60, height: 40 },
 };
