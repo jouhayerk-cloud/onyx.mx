@@ -408,7 +408,19 @@ const InventoryBar: React.FC = () => {
                     <Search size={22} strokeWidth={2} />
                 </button>
 
+                <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
 
+                {/* 5. ADD ENTRY */}
+                <button 
+                    onClick={() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        setIsUploadWizardOpen(true);
+                    }}
+                    className="flex items-center justify-center transition-all duration-300 text-(--color-inventory) hover:text-white hover:scale-110 group"
+                    title="Add Entry"
+                >
+                    <Plus size={32} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.8)]" />
+                </button>
             </div>
             
             <div className="flex items-center gap-4 shrink-0 justify-end flex-1">

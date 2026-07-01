@@ -318,22 +318,18 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         </div>
                     )}
 
-                    <div className="flex flex-col min-w-[80px] shrink-0 items-start pl-4 gap-1 justify-center">
-                            <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
-                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
-                                {getPayLabel()}
-                            </span>
+                    <div className="flex flex-col min-w-[40px] shrink-0 items-center justify-center gap-2 px-2">
+                            <span 
+                                title={getPayLabel()}
+                                className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" 
+                                style={{ backgroundColor: accentColor || '#38bdf8', boxShadow: `0 0 10px ${accentColor || '#38bdf8'}60` }} 
+                            />
                             {deployedInfo && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit bg-teal-500/10 border border-teal-500/20">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
-                                    <span className="text-teal-400">
-                                        {deployedInfo.manifestId
-                                            ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
-                                            : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}`
-                                        }
-                                    </span>
-                                </span>
+                                <span 
+                                    title={deployedInfo.manifestId ? deployedInfo.manifestId.replace('TRK-', 'TRKA ') : 'Deployed'}
+                                    className="w-3.5 h-3.5 rounded-full bg-teal-400 shrink-0 shadow-sm"
+                                    style={{ boxShadow: '0 0 10px rgba(45, 212, 191, 0.4)' }}
+                                />
                             )}
                         </div>
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
