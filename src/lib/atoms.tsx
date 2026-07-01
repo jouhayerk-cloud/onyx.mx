@@ -469,7 +469,7 @@ export const universalViewAtom = atom<'app' | 'tag' | 'viewer' | 'truck', ['app'
 // Packing Module Atoms
 export const packingViewModeAtom = atomWithStorage<'grid' | 'list'>('packingViewMode', 'list');
 export const packingVendorFilterAtom = atomWithStorage<string | null>('packingVendorFilter', null);
-export const packingLabelSizeAtom = atomWithStorage<'40x30' | '50x30' | '50x80'>('packingLabelSize', '50x30');
+export const packingLabelSizeAtom = atomWithStorage<'40x30' | '50x30' | '50x50' | '50x80'>('packingLabelSize', '50x30');
 export const packingSortKeyAtom = atomWithStorage<'Date' | 'Status' | 'Vendor' | '#'>('packingSortKey', 'Date');
 export const packingSortOrderAtom = atomWithStorage<'asc' | 'desc'>('packingSortOrder', 'asc');
 export const packingSelectedIdsAtom = atomWithStorage<Set<string>>('packingSelectedIds', new Set<string>(), {
