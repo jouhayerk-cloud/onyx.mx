@@ -1297,14 +1297,18 @@ export const UnifiedInventoryView = () => {
                                                 top: 0,
                                                 left: 0,
                                                 width: '100%',
-                                                transform: `translateY(${virtualRow.start}px)`,
+                                                transform: `translate3d(0, ${virtualRow.start}px, 0)`,
+                                                willChange: 'transform',
+                                                backfaceVisibility: 'hidden',
                                                 zIndex: expandedCards[String(item.row)] ? 10 : 1,
                                             }}
                                         >
                                             <div style={{ 
-                                                transform: `scale(${listScale})`, 
+                                                transform: `scale(${listScale}) translateZ(0)`, 
                                                 transformOrigin: 'top left',
-                                                width: `${100 / listScale}%`
+                                                width: `${100 / listScale}%`,
+                                                willChange: 'transform',
+                                                backfaceVisibility: 'hidden',
                                             }}>
                                                 <UnifiedInventoryCard 
                                                     item={item} 
