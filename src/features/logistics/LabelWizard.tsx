@@ -379,6 +379,8 @@ export const LabelWizard: React.FC = () => {
 
     const [isPrintWorkflowOpen, setIsPrintWorkflowOpen] = useState(false);
     const [activeLabelSize, setActiveLabelSize] = useState<'50x30' | '50x50'>('50x30');
+    const [isPrintHelperOpen, setIsPrintHelperOpen] = useState(false);
+    const [logoVariant, setLogoVariant] = useState<'ArtOfDecor' | 'RareEarth'>('ArtOfDecor');
     const [activeSlide, setActiveSlide] = useState<0 | 1>(0);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [activePreviewId, setActivePreviewId] = useState<string | null>(null);
@@ -837,7 +839,116 @@ export const LabelWizard: React.FC = () => {
 
     if (!isOpen) return null;
 
+
     return createPortal(
+        <>
+            {/* Print Helper Modal */}
+            {isPrintHelperOpen && (
+<div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 pointer-events-auto">
+                    <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+                        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
+                            <div className="flex items-center gap-3">
+                                <Printer className="text-(--main-color)" size={24} />
+                                <h3 className="text-xl font-black text-white tracking-wider">PRINT SETTINGS</h3>
+                            </div>
+                            <button 
+                                onClick={() => setIsPrintHelperOpen(false)}
+                                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        
+                        <div className="p-8 flex flex-col md:flex-row gap-8">
+                            <div className="flex-1 space-y-8">
+                                <div>
+                                    <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">Label Size</h4>
+                                    <div className="flex bg-black/40 border border-white/5 rounded-full p-1">
+                                        <button 
+                                            onClick={() => setActiveLabelSize('50x30')}
+                                            className={`flex-1 px-4 py-3 text-[12px] font-black tracking-widest rounded-full transition-all ${activeLabelSize === '50x30' ? 'bg-(--main-color) text-black shadow-[0_0_15px_var(--main-color)] scale-105' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                                        >
+                                            50x30
+                                        </button>
+                                        <button 
+                                            onClick={() => setActiveLabelSize('50x50')}
+                                            className={`flex-1 px-4 py-3 text-[12px] font-black tracking-widest rounded-full transition-all ${activeLabelSize === '50x50' ? 'bg-(--main-color) text-black shadow-[0_0_15px_var(--main-color)] scale-105' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                                        >
+                                            50x50
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className={`transition-all duration-300 ${activeLabelSize === '50x50' ? 'opacity-100 max-h-[200px]' : 'opacity-0 max-h-0 overflow-hidden pointer-events-none'}`}>
+                                    <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">Logo Variant (50x50 Only)</h4>
+                                    <div className="flex bg-black/40 border border-white/5 rounded-full p-1">
+                                        <button 
+                                            onClick={() => setLogoVariant('ArtOfDecor')}
+                                            className={`flex-1 px-4 py-3 text-[10px] font-black tracking-widest rounded-full transition-all ${logoVariant === 'ArtOfDecor' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                                        >
+                                            Art Of Decor
+                                        </button>
+                                        <button 
+                                            onClick={() => setLogoVariant('RareEarth')}
+                                            className={`flex-1 px-4 py-3 text-[10px] font-black tracking-widest rounded-full transition-all ${logoVariant === 'RareEarth' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                                        >
+                                            Rare Earth
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <button
+                                    onClick={() => {
+                                        setIsPrintHelperOpen(false);
+                                        handlePrintBluetooth();
+                                    }}
+                                    disabled={progress.printer > 0 && progress.printer < 100}
+                                    className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_var(--main-color)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    <Printer size={18} />
+                                    {progress.printer > 0 && progress.printer < 100 ? 'GENERATING...' : 'LAUNCH PRINT ENGINE'}
+                                </button>
+                            </div>
+                            
+                            <div className="flex-[1.5] bg-black/30 border border-white/5 rounded-2xl p-6 flex items-center justify-center min-h-[300px]">
+                                {activeLabelSize === '50x30' ? (
+                                    <div className="w-[300px] h-[180px] bg-white rounded-md shadow-lg p-3 flex flex-col gap-2 relative pointer-events-none">
+                                        <div className="h-4 w-2/3 bg-gray-200 rounded"></div>
+                                        <div className="h-3 w-1/2 bg-gray-200 rounded"></div>
+                                        <div className="h-6 w-1/3 bg-gray-200 rounded mt-1"></div>
+                                        <div className="mt-auto flex justify-between items-end">
+                                            <div className="h-3 w-1/4 bg-gray-200 rounded"></div>
+                                            <div className="flex-1 flex justify-end">
+                                                <div className="w-full h-12 bg-gray-800/10 rounded-sm max-w-[140px] flex items-center justify-center">
+                                                    <Barcode size={32} className="text-gray-400" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-[300px] h-[300px] bg-white rounded-md shadow-lg p-3 flex flex-col gap-2 relative overflow-hidden pointer-events-none">
+                                        <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-gray-100 rounded-bl-3xl flex items-center justify-center">
+                                            <Package className="text-gray-300" size={32} />
+                                        </div>
+                                        <div className="h-5 w-2/3 bg-gray-200 rounded"></div>
+                                        <div className="h-4 w-1/2 bg-gray-200 rounded"></div>
+                                        <div className="h-8 w-1/3 bg-gray-200 rounded mt-2"></div>
+                                        <div className="h-4 w-1/4 bg-gray-200 rounded mt-auto"></div>
+                                        <div className="h-3 w-1/3 bg-gray-200 rounded mt-1"></div>
+                                        <div className="w-1/2 h-8 border border-gray-200 rounded mt-2 flex items-center justify-center">
+                                            <span className="text-gray-400 text-[10px] font-bold uppercase">{logoVariant} LOGO</span>
+                                        </div>
+                                        <div className="mt-2 w-full h-16 bg-gray-800/10 rounded-sm flex items-center justify-center">
+                                            <Barcode size={48} className="text-gray-400" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         <div className="fixed inset-0 z-[5000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
             <div className="absolute inset-0 bg-black/20 backdrop-blur-[80px] pointer-events-auto" onClick={() => setIsOpen(false)} />
             
@@ -1140,7 +1251,7 @@ export const LabelWizard: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div>,
+        </div></>,
         document.body
     );
 };
