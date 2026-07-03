@@ -1,0 +1,1 @@
+const fs = require('fs'); const b64 = fs.readFileSync('scratch/rare_earth_b64.txt', 'utf8'); fs.writeFileSync('src/features/logistics/RareEarthLogoBase64.ts', 'export const RareEarthLogoBase64 = \' + b64 + '\;\n');
