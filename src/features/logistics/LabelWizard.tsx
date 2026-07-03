@@ -882,18 +882,18 @@ export const LabelWizard: React.FC = () => {
                                 
                                 <div className={`transition-all duration-300 ${activeLabelSize === '50x50' ? 'opacity-100 max-h-[200px]' : 'opacity-0 max-h-0 overflow-hidden pointer-events-none'}`}>
                                     <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">Logo Variant (50x50 Only)</h4>
-                                    <div className="flex bg-black/40 border border-white/5 rounded-full p-1">
+                                    <div className="flex justify-center gap-6 mt-2">
                                         <button 
                                             onClick={() => setLogoVariant('ArtOfDecor')}
-                                            className={`flex-1 px-4 py-3 text-[10px] font-black tracking-widest rounded-full transition-all ${logoVariant === 'ArtOfDecor' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                                            className={`transition-all duration-300 ${logoVariant === 'ArtOfDecor' ? 'opacity-100 scale-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-105'}`}
                                         >
-                                            Art Of Decor
+                                            <img src={`${import.meta.env.BASE_URL}ArtOfDecorLogo.png`} alt="Art Of Decor" className="h-10 object-contain" />
                                         </button>
                                         <button 
                                             onClick={() => setLogoVariant('RareEarth')}
-                                            className={`flex-1 px-4 py-3 text-[10px] font-black tracking-widest rounded-full transition-all ${logoVariant === 'RareEarth' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
+                                            className={`transition-all duration-300 ${logoVariant === 'RareEarth' ? 'opacity-100 scale-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-105'}`}
                                         >
-                                            Rare Earth
+                                            <img src={`${import.meta.env.BASE_URL}REG_Logo.png`} alt="Rare Earth Gallery" className="h-10 object-contain" />
                                         </button>
                                     </div>
                                 </div>
@@ -913,34 +913,74 @@ export const LabelWizard: React.FC = () => {
                             
                             <div className="flex-[1.5] bg-black/30 border border-white/5 rounded-2xl p-6 flex items-center justify-center min-h-[300px]">
                                 {activeLabelSize === '50x30' ? (
-                                    <div className="w-[300px] h-[180px] bg-white rounded-md shadow-lg p-3 flex flex-col gap-2 relative pointer-events-none">
-                                        <div className="h-4 w-2/3 bg-gray-200 rounded"></div>
-                                        <div className="h-3 w-1/2 bg-gray-200 rounded"></div>
-                                        <div className="h-6 w-1/3 bg-gray-200 rounded mt-1"></div>
-                                        <div className="mt-auto flex justify-between items-end">
-                                            <div className="h-3 w-1/4 bg-gray-200 rounded"></div>
-                                            <div className="flex-1 flex justify-end">
-                                                <div className="w-full h-12 bg-gray-800/10 rounded-sm max-w-[140px] flex items-center justify-center">
-                                                    <Barcode size={32} className="text-gray-400" />
-                                                </div>
+                                    <div className="w-[300px] h-[180px] bg-white rounded-md shadow-lg p-3 flex flex-col relative pointer-events-none overflow-hidden text-black font-sans">
+                                        <div className="flex flex-1 gap-2">
+                                            {/* Vertical Text */}
+                                            <div className="w-4 flex flex-col justify-between items-center py-1">
+                                                {Array.from("MADE IN MEXICO").map((char, i) => (
+                                                    <span key={i} className="text-[6px] font-black leading-none">{char}</span>
+                                                ))}
+                                            </div>
+                                            {/* Axometric Icon */}
+                                            <div className="w-10 h-16 flex items-center justify-center">
+                                                <div className="w-6 h-12 border border-gray-600 flex items-center justify-center skew-y-12"></div>
+                                            </div>
+                                            {/* Text Stack */}
+                                            <div className="flex-1 flex flex-col justify-start gap-[2px] pt-1">
+                                                <div className="text-[9px] font-black leading-none">ABC-123ABCDE</div>
+                                                <div className="text-[14px] font-black leading-none mt-1">Shape Type</div>
+                                                <div className="text-[12px] text-gray-700 leading-none">Color Material</div>
+                                                <div className="text-[8px] font-black leading-none mt-1">12*12*12 CM 12Kg</div>
+                                            </div>
+                                            {/* QR Code */}
+                                            <div className="w-16 h-16 border-[4px] border-black p-1 flex items-center justify-center">
+                                                <div className="w-full h-full bg-black"></div>
+                                            </div>
+                                        </div>
+                                        {/* Barcode */}
+                                        <div className="h-14 w-full mt-2 flex flex-col">
+                                            <div className="flex-1 w-full opacity-90 border-x-[1px] border-black flex" style={{backgroundImage: 'repeating-linear-gradient(to right, transparent, transparent 2px, black 2px, black 4px)'}}></div>
+                                            <div className="h-3 flex justify-between items-center px-2 text-[7px] font-black mt-1">
+                                                <span>V</span><span>C</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="w-[300px] h-[300px] bg-white rounded-md shadow-lg p-3 flex flex-col gap-2 relative overflow-hidden pointer-events-none">
-                                        <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-gray-100 rounded-bl-3xl flex items-center justify-center">
-                                            <Package className="text-gray-300" size={32} />
+                                    <div className="w-[300px] h-[300px] bg-white rounded-md shadow-lg p-4 flex flex-col relative overflow-hidden pointer-events-none text-black font-sans">
+                                        <div className="flex gap-4">
+                                            {/* QR Code */}
+                                            <div className="w-20 h-20 border-[4px] border-black p-1 flex items-center justify-center shrink-0">
+                                                <div className="w-full h-full bg-black"></div>
+                                            </div>
+                                            {/* Text Stack */}
+                                            <div className="flex-1 flex flex-col justify-start gap-1 pt-1">
+                                                <div className="text-[16px] font-black leading-none">Shape Type</div>
+                                                <div className="text-[14px] text-gray-700 leading-none">Color Material</div>
+                                                <div className="text-[10px] font-black leading-none mt-1">12*12*12 CM WT 12KG</div>
+                                            </div>
                                         </div>
-                                        <div className="h-5 w-2/3 bg-gray-200 rounded"></div>
-                                        <div className="h-4 w-1/2 bg-gray-200 rounded"></div>
-                                        <div className="h-8 w-1/3 bg-gray-200 rounded mt-2"></div>
-                                        <div className="h-4 w-1/4 bg-gray-200 rounded mt-auto"></div>
-                                        <div className="h-3 w-1/3 bg-gray-200 rounded mt-1"></div>
-                                        <div className="w-1/2 h-8 border border-gray-200 rounded mt-2 flex items-center justify-center">
-                                            <span className="text-gray-400 text-[10px] font-bold uppercase">{logoVariant} LOGO</span>
+                                        <div className="flex mt-6 gap-2 flex-1">
+                                            <div className="flex-1 flex flex-col pt-2 gap-1">
+                                                <div className="text-[14px] font-black leading-none">ABC-123456</div>
+                                                <div className="text-[11px] text-gray-600 leading-none mt-2">Made in Mexico For</div>
+                                                {/* Logo Placeholder */}
+                                                <div className="mt-4 w-[120px] h-[30px] flex items-center justify-start">
+                                                    <img src={logoVariant === 'ArtOfDecor' ? `${import.meta.env.BASE_URL}ArtOfDecorLogo.png` : `${import.meta.env.BASE_URL}REG_Logo.png`} alt="Logo" className="max-h-full object-contain" />
+                                                </div>
+                                            </div>
+                                            {/* Axometric Icon */}
+                                            <div className="w-16 h-24 mr-4 mt-2 flex items-center justify-center">
+                                                <div className="w-10 h-20 border-[1.5px] border-gray-800 flex items-center justify-center skew-y-12 shrink-0">
+                                                    <div className="w-8 h-16 border border-gray-300"></div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="mt-2 w-full h-16 bg-gray-800/10 rounded-sm flex items-center justify-center">
-                                            <Barcode size={48} className="text-gray-400" />
+                                        {/* Barcode */}
+                                        <div className="h-20 w-full mt-4 flex flex-col">
+                                            <div className="flex-1 w-full opacity-90 border-x-[1px] border-black flex" style={{backgroundImage: 'repeating-linear-gradient(to right, transparent, transparent 2px, black 2px, black 4px)'}}></div>
+                                            <div className="h-4 flex justify-between items-center px-4 text-[9px] font-black mt-1">
+                                                <span>V</span><span>C</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
