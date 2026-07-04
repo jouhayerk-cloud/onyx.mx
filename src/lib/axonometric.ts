@@ -43,7 +43,15 @@ export async function generateAxonometricDataUrl(
         const t = descStr.toLowerCase();
 
         if (!W) W = D || H || 10;
-        if (!H) H = (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) ? 5 : W;
+        if (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) {
+            if (!H) H = 5;
+            // Force shallow round shape
+            H = 5;
+            W = Math.max(W, D);
+            D = W;
+        } else {
+            if (!H) H = W;
+        }
         if (!D) D = W;
         
         let geom = 'box';

@@ -64,9 +64,9 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let dCm = parseFloat(norm.lengthCm) || 0;
     
     if (wCm || hCm || dCm) {
-        if (!wCm) wCm = dCm || hCm || 10;
-        if (!hCm) hCm = shapeStr.toLowerCase().includes('plate') ? 5 : wCm;
-        if (!dCm) dCm = wCm;
+        
+        
+        
     }
     // Generate QR Code
     let qrDataUrl = '';
@@ -82,165 +82,144 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
         barDataUrl = canvas.toDataURL('image/png');
     } catch (e) { console.error('Barcode err', e); }
 
-    const qrSize = 16; // smaller QR code
-    const axoSize = 22; // smaller Axonometric box in the corner
+    const qrSize = 18; 
+    const barWidth = 50;
+    const barHeight = 11;
     
-    let currentRightX = PW - M;
-
-    // Axonometric icon stays on the right
+    let row1Y = startY + 4;
+    
+    // 1. QR Code
+    let currentX = M + 4;
+    if (qrDataUrl) {
+        doc.addImage(qrDataUrl, 'PNG', currentX, row1Y, qrSize, qrSize);
+        const tagVColor = getVendorColor(barcode);
+        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
+        const qrCenterX = currentX + qrSize / 2;
+        const qrCenterY = row1Y + qrSize / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.circle(qrCenterX, qrCenterY, 2.2, 'F');
+        doc.setFillColor(tagHexColor);
+        doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
+        currentX += qrSize + 4;
+    }
+    
+    // 2. Barcode & Codes
+    let codesX = currentX;
+    if (barDataUrl) {
+        doc.addImage(barDataUrl, 'PNG', codesX, row1Y, barWidth, barHeight);
+    }
+    
+    const tagIdY = row1Y + barHeight + 5;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 20);
+    doc.text(barcode, codesX, tagIdY);
+    
+    const barcodeWidth = doc.getTextWidth(barcode);
+    
+    const retailNum = codes.bookRetail && codes.bookRetail !== '-' ? codes.bookRetail.toString().replace(/[^0-9.]/g, '') : '';
+    const topCodes = `${codes.bookAqCode || ''}${retailNum}`.trim();
+    if (topCodes) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(140, 140, 140);
+        doc.text(topCodes, codesX + barcodeWidth + 4, tagIdY);
+    }
+    
+    // 3. Dimensions Block
+    const dimX = M + 85;
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
+    const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
+    
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text('DIMENSIONS', dimX, row1Y + 3);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 20);
+    const mVal = dimsMetric || '—';
+    doc.text(mVal, dimX, row1Y + 8);
+    
+    if (dimsMetric) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text(`(${dimsImp})`, dimX, row1Y + 12);
+    }
+    
+    // 4. Weight Block
+    const weightX = dimX + 55;
+    const weightImp = toImp(norm.weightKg, 'lbs');
+    
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text('WEIGHT', weightX, row1Y + 3);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 20);
+    const wVal = norm.weightKg ? `${norm.weightKg}kg` : '—';
+    doc.text(wVal, weightX, row1Y + 8);
+    
+    if (norm.weightKg) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text(`(${weightImp})`, weightX, row1Y + 12);
+    }
+    
+    // 5. Axonometric icon
+    const axoSize = 22;
+    const axoX = PW - M - axoSize;
     if (wCm || hCm || dCm) {
         try {
             const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
             if (axoDataUrl) {
-                currentRightX -= axoSize;
-                doc.addImage(axoDataUrl, 'JPEG', currentRightX, startY + 3, axoSize, axoSize);
+                doc.addImage(axoDataUrl, 'JPEG', axoX, row1Y - 2, axoSize, axoSize);
             }
         } catch (e) {
             console.error("Failed to draw axonometric box", e);
         }
-    }    // QR Code moves to the left
-    let textX = M + 4;
-    if (qrDataUrl) {
-        doc.addImage(qrDataUrl, 'PNG', M + 4, startY + 5, qrSize, qrSize);
-        
-        // VENDOR BUBBLE INSIDE QR CODE
-        const tagVColor = getVendorColor(barcode);
-        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-        
-        const qrCenterX = M + 4 + qrSize / 2;
-        const qrCenterY = startY + 5 + qrSize / 2;
-        
-        // Draw white background circle to punch out the QR code pixels
-        doc.setFillColor(255, 255, 255);
-        doc.circle(qrCenterX, qrCenterY, 2.2, 'F');
-        
-        // Draw the vendor color bubble
-        doc.setFillColor(tagHexColor);
-        doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
-        
-        textX += qrSize + 6;
     }
 
-    let currentY = startY + 5;
-
-    // 1. BARCODE IMAGE
-    if (barDataUrl) {
-        doc.addImage(barDataUrl, 'PNG', textX, currentY, 55, 8); // Slightly wider barcode
-        currentY += 13;
-    } else {
-        currentY += 2;
-    }
+    // Row 2
+    let row2Y = row1Y + 28;
     
-    // 2. TAG ID + TOP CODES
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(20, 20, 20); // Black
-    doc.text(barcode, textX, currentY);
-    
-    // Combine ACQ code and retail (e.g. FMO11958)
-    const retailNum = codes.bookRetail && codes.bookRetail !== '-' ? codes.bookRetail.toString().replace(/[^0-9.]/g, '') : '';
-    const topCodes = `${codes.bookAqCode || ''}${retailNum}`.trim();
-    
-    if (topCodes) { 
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(120, 120, 120); // Gray for secondary visual hierarchy
-        doc.text(topCodes, textX + doc.getTextWidth(barcode) + 12, currentY); 
-    }
-    
-    currentY += 6;
-
-    // Draw subtle separation line below the top codes
-    // doc.setDrawColor(240, 240, 240);
-    // doc.setLineWidth(0.4);
-    // doc.line(textX, currentY, PW - M - axoSize - 4, currentY);
-    
-    currentY += 9;
-
-    // 4. ITEM TITLE AND QTY
     const shape = norm.shape || '';
     const type = norm.shortDescription || '';
     const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
     
-    // Draw QTY indicator below QR Code
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
-    doc.text('QTY', M + 4, currentY - 6);
-    doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(String(norm.quantity || 1), M + 4, currentY);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 20);
+    doc.text(nameStr.toUpperCase(), M + 4, row2Y);
     
-    doc.setFontSize(22); 
-    doc.setFont('helvetica', 'bold'); 
-    doc.setTextColor(20, 20, 20); // Black
-    const titleLines = doc.splitTextToSize(nameStr.toUpperCase(), PW - textX - M - axoSize - 8);
-    doc.text(titleLines, textX, currentY);
-    
-    currentY += titleLines.length * 7; // Adjust for next line based on number of wrapped lines
-    
-    // 4. VENDOR NAME + DETAILS (Color + Material)
-    // Font Size 2: 12
-    doc.setFontSize(12); 
-    doc.setFont('helvetica', 'bold'); 
-    doc.setTextColor(20, 20, 20); // Black
-
-    let currentDX = textX;
-    const vendorName = norm.vendor || '';
-    if (vendorName) {
-        const vColor = getVendorColor(vendorName);
-        const hexColor = vColor.startsWith('FF') ? '#' + vColor.substring(2) : '#' + vColor;
-        doc.setFillColor(hexColor);
-        doc.circle(currentDX + 2, currentY - 1, 2, 'F');
-        currentDX += 6;
-        
-        const vnUpper = vendorName.toUpperCase();
-        doc.text(vnUpper, currentDX, currentY);
-        currentDX += doc.getTextWidth(vnUpper) + 8;
-    }
-
     const color = item.data.color || item.data.Color || '';
     const material = item.data.material || item.data.Material || '';
     const detailStr = [color, material].filter(Boolean).join(' · ');
-
+    
     if (detailStr) {
-        doc.setFont('helvetica', 'normal'); 
-        doc.setTextColor(20, 20, 20); // Black
-        if (vendorName) {
-            doc.text('·', currentDX, currentY);
-            currentDX += doc.getTextWidth('·') + 8;
-        }
-        doc.text(detailStr.toUpperCase(), currentDX, currentY);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        doc.text(detailStr.toUpperCase(), M + 4, row2Y + 6);
     }
-
-    const lineY = currentY + 6;
     
-    const specY = lineY + 8;
-    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
-    const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
-    const weightImp = toImp(norm.weightKg, 'lbs');
-
-    const cols = [
-        { label: 'DIMENSIONS', m: dimsMetric, i: (dimsMetric ? `(${dimsImp})` : ''), x: M + 4 },
-        { label: 'WEIGHT',     m: (norm.weightKg ? `${norm.weightKg}kg` : ''), i: (norm.weightKg ? `(${weightImp})` : ''), x: M + 90 }
-    ];
+    // QTY and Page
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 20);
+    const qtyStr = `QTY ${norm.quantity || 1}`;
+    doc.text(qtyStr, PW - M - doc.getTextWidth(qtyStr), row2Y - 2);
     
-    cols.forEach((col: any) => {
-        const cx = col.x;
-        doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(20, 20, 20); doc.text(col.label, cx, specY); // Black Labels
-        
-        if (col.label === 'DIMENSIONS' || col.label === 'WEIGHT') {
-            doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20); // Black Metric
-            const mVal = col.m || '—';
-            doc.text(mVal, cx, specY + 8);
-            if (col.i && exportType !== 'regular') {
-                doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(20, 20, 20); // Black Imperial
-                doc.text(col.i, cx, specY + 14);
-            }
-        } else {
-            doc.setFontSize(col.accent ? 22 : 14); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20); doc.text(col.value, cx, specY + 10);
-        }
-    });
-
-    // doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 18, PW - M, specY + 18);
-    return specY + 18;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('1 OF 1', PW - M - doc.getTextWidth('1 OF 1'), row2Y + 3);
+    
+    return row2Y + 12;
 }
 
 function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, pageNum: number, totalPages: number): number {
@@ -255,10 +234,11 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
 }
 
 import { ART_OF_DECOR_LOGO } from './artOfDecorLogo';
+import { RARE_EARTH_LOGO } from './rareEarthLogo';
 
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single'; exportType?: 'regular' | 'catalog' },
+    config: { title: string; method: 'grid' | 'single'; logo?: string; exportType?: 'regular' | 'catalog' },
     onProgress?: (p: number, s: string) => void,
     output: 'download' | 'blob' = 'download'
 ) {
@@ -269,7 +249,8 @@ export async function exportCatalogPdf(
     
     let logoData: ImgData | null = null;
     if (config.method === 'single') {
-        logoData = await loadImgData(ART_OF_DECOR_LOGO, 400, true);
+        const logoStr = config.logo === 'RareEarth' ? RARE_EARTH_LOGO : ART_OF_DECOR_LOGO;
+        logoData = await loadImgData(logoStr, 400, true);
     }
     
     let globalPageNum = 0;
@@ -284,20 +265,29 @@ export async function exportCatalogPdf(
             
             let logoW = 0;
             let logoH = 0;
-            if (logoData) {
-                logoH = 4.8; 
-                logoW = logoData.w * (logoH / logoData.h);
-            }
+            let logoY = PH - 21.5;
             
             const rightEdge = PW - M;
             
-            const textX = rightEdge - tw;
-            doc.text(madeText, textX, PH - 23);
-            
             if (logoData) {
-                const logoX = rightEdge - logoW;
-                doc.addImage(logoData.dataUrl, 'PNG', logoX, PH - 21.5, logoW, logoH);
+                if (config.logo === 'RareEarth') {
+                    logoH = 12; 
+                    logoW = logoData.w * (logoH / logoData.h);
+                    logoY = PH - 28.5;
+                    const logoX = rightEdge - logoW;
+                    doc.addImage(logoData.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
+                } else {
+                    logoH = 4.8; 
+                    logoW = logoData.w * (logoH / logoData.h);
+                    logoY = PH - 21.5;
+                    const logoX = rightEdge - logoW;
+                    doc.addImage(logoData.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
+                }
             }
+            
+            const textY = logoData ? logoY - 2 : PH - 23;
+            const textX = rightEdge - tw;
+            doc.text(madeText, textX, textY);
         }
         
         // Page numbers removed as requested
@@ -335,9 +325,9 @@ export async function exportCatalogPdf(
                 let dCm = parseFloat(norm.lengthCm) || 0;
                 
                 if (wCm || hCm || dCm) {
-                    if (!wCm) wCm = dCm || hCm || 10;
-                    if (!hCm) hCm = shapeStr.toLowerCase().includes('plate') ? 5 : wCm;
-                    if (!dCm) dCm = wCm;
+                    
+                    
+                    
 
                     try {
                         const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
@@ -398,9 +388,9 @@ export async function exportCatalogPdf(
                 let dCm = parseFloat(norm.lengthCm) || 0;
                 
                 if (wCm || hCm || dCm) {
-                    if (!wCm) wCm = dCm || hCm || 10;
-                    if (!hCm) hCm = shapeStr.toLowerCase().includes('plate') ? 5 : wCm;
-                    if (!dCm) dCm = wCm;
+                    
+                    
+                    
 
                     try {
                         const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
