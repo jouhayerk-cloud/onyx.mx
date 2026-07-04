@@ -300,8 +300,7 @@ export async function exportCatalogPdf(
             }
         }
         
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(20, 20, 20);
-        doc.text(String(globalPageNum), M + 4, PH - 20); 
+        // Page numbers removed as requested
     };
 
     let isFirstPage = true;
@@ -325,7 +324,7 @@ export async function exportCatalogPdf(
             if (imgs.length === 0) {
                 addPage();
                 const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
-                doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 28, 'F');
+                // Gray background removed to prevent overlapping footer
                 
                 // Draw large axonometric icon in place of image
                 const norm = normalizeInventoryData(item.data);
@@ -386,7 +385,7 @@ export async function exportCatalogPdf(
                 // Item with NO images - draw header and large axometric icon
                 addPage();
                 const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
-                doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 28, 'F');
+                // Gray background removed to prevent overlapping footer
                 
                 const norm = normalizeInventoryData(item.data);
                 const wCm = parseFloat(norm.widthCm);
