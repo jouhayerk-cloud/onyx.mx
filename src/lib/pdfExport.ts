@@ -57,17 +57,17 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     const codes = item.codes; 
     
     // Draw 3D Axonometric representation in the top right corner
-    const wCm = parseFloat(norm.widthCm);
-    const hCm = parseFloat(norm.heightCm);
-    let dCm = parseFloat(norm.lengthCm);
-    
-    // Round objects often lack a depth dimension because depth = width
-    if (!dCm && wCm) {
-        dCm = wCm;
-    }
-
     const shapeStr = norm.shape || '';
     const descStr = norm.shortDescription || norm.description || '';
+    let wCm = parseFloat(norm.widthCm) || 0;
+    let hCm = parseFloat(norm.heightCm) || 0;
+    let dCm = parseFloat(norm.lengthCm) || 0;
+    
+    if (wCm || hCm || dCm) {
+        if (!wCm) wCm = dCm || hCm || 10;
+        if (!hCm) hCm = wCm * (shapeStr.toLowerCase().includes('plate') ? 0.15 : 1);
+        if (!dCm) dCm = wCm;
+    }
     // Generate QR Code
     let qrDataUrl = '';
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
@@ -88,7 +88,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let currentRightX = PW - M;
 
     // Axonometric icon stays on the right
-    if (wCm && hCm && dCm) {
+    if (wCm || hCm || dCm) {
         try {
             const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
             if (axoDataUrl) {
@@ -328,14 +328,17 @@ export async function exportCatalogPdf(
                 
                 // Draw large axonometric icon in place of image
                 const norm = normalizeInventoryData(item.data);
-                const wCm = parseFloat(norm.widthCm);
-                const hCm = parseFloat(norm.heightCm);
-                let dCm = parseFloat(norm.lengthCm);
-                if (!dCm && wCm) { dCm = wCm; }
                 const shapeStr = norm.shape || '';
                 const descStr = norm.shortDescription || norm.description || '';
+                let wCm = parseFloat(norm.widthCm) || 0;
+                let hCm = parseFloat(norm.heightCm) || 0;
+                let dCm = parseFloat(norm.lengthCm) || 0;
                 
-                if (wCm && hCm && dCm) {
+                if (wCm || hCm || dCm) {
+                    if (!wCm) wCm = dCm || hCm || 10;
+                    if (!hCm) hCm = wCm * (shapeStr.toLowerCase().includes('plate') ? 0.15 : 1);
+                    if (!dCm) dCm = wCm;
+
                     try {
                         const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
                         if (axoDataUrl) {
@@ -388,14 +391,17 @@ export async function exportCatalogPdf(
                 // Gray background removed to prevent overlapping footer
                 
                 const norm = normalizeInventoryData(item.data);
-                const wCm = parseFloat(norm.widthCm);
-                const hCm = parseFloat(norm.heightCm);
-                let dCm = parseFloat(norm.lengthCm);
-                if (!dCm && wCm) { dCm = wCm; }
                 const shapeStr = norm.shape || '';
                 const descStr = norm.shortDescription || norm.description || '';
+                let wCm = parseFloat(norm.widthCm) || 0;
+                let hCm = parseFloat(norm.heightCm) || 0;
+                let dCm = parseFloat(norm.lengthCm) || 0;
                 
-                if (wCm && hCm && dCm) {
+                if (wCm || hCm || dCm) {
+                    if (!wCm) wCm = dCm || hCm || 10;
+                    if (!hCm) hCm = wCm * (shapeStr.toLowerCase().includes('plate') ? 0.15 : 1);
+                    if (!dCm) dCm = wCm;
+
                     try {
                         const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
                         if (axoDataUrl) {

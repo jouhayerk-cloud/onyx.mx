@@ -910,12 +910,18 @@ export async function exportCrateManifesto(
                 if (parts.length >= 2) {
                     dCm = parts[0] || 0;
                     wCm = parts[1] || 0;
-                    hCm = parts[2] || dCm;
+                    hCm = parts[2] || 0;
                 }
             }
-            if (wCm && hCm && dCm) {
-                const shapeStr = item.name.split(' - ')[0] || '';
-                const descStr = item.name.split(' - ')[1] || item.name;
+            
+            const shapeStr = item.name.split(' - ')[0] || '';
+            const descStr = item.name.split(' - ')[1] || item.name;
+            
+            if (wCm || hCm || dCm) {
+                if (!wCm) wCm = dCm || hCm || 10;
+                if (!hCm) hCm = wCm * (shapeStr.toLowerCase().includes('plate') ? 0.15 : 1);
+                if (!dCm) dCm = wCm;
+                
                 const itemColor = resolveItemColor(item as any);
                 const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, itemColor, true);
                 if (axoDataUrl) {
