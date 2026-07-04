@@ -1338,6 +1338,7 @@ export class CanvasRenderer {
         QRCode.toCanvas(cachedCanvas, qrData, {
           width: size,
           margin: 1,
+          errorCorrectionLevel: 'H',
           color: { dark: '#000000', light: '#ffffff' },
         }, (error) => {
           if (error) {
@@ -1364,6 +1365,19 @@ export class CanvasRenderer {
       const dx = -size / 2;
       const dy = -size / 2;
       this.ctx.drawImage(cachedCanvas, dx, dy, size, size);
+
+      // Draw white circle in center of QR for manual vendor color coding
+      this.ctx.beginPath();
+      const radius = size * 0.12; 
+      this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.fill();
+
+      // Thin guide outline
+      this.ctx.lineWidth = Math.max(1, size * 0.015);
+      this.ctx.strokeStyle = '#cccccc';
+      this.ctx.stroke();
+
       this.ctx.imageSmoothingEnabled = prevSmoothing;
     } else {
       // Placeholder
