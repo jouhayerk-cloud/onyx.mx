@@ -253,7 +253,6 @@ export async function generateAxonometricDataUrl(
             drawLabel(H, 'H', pRightBottom, pRightTop, Math.atan2(pRightTop.v - pRightBottom.v, pRightTop.u - pRightBottom.u), 25);
 
         } else if (geom === 'bowl' || geom === 'plate') {
-            const isPlate = geom === 'plate';
             const ct_u = (W/2 - D/2) * cos30;
             const ct_v = -H - (W/2 + D/2) * sin30;
             const cb_u = (W/2 - D/2) * cos30;
@@ -275,74 +274,8 @@ export async function generateAxonometricDataUrl(
                 }
             }
 
-            if (isPlate) {
-                // FLAT CONCAVE SHALLOW PLATE rendering
-                const plateThickness = Math.max(H * 0.15, 2/scale);
-                const baseDepth = Math.max(H * 0.4, 6/scale);
-                
-                // 1. Draw outer rim bottom edge (for thickness)
-                drawEllipsePath(ct_u, ct_v + plateThickness, 1.0, 0, Math.PI);
-                ctx.strokeStyle = wireframeColor || '#94a3b8';
-                ctx.stroke();
+            // BOWL & PLATE rendering
 
-                // 2. Connect thickness edges
-                ctx.beginPath();
-                const pLeft_u = cx + (ct_u + a*Math.cos(Math.PI) + c*Math.sin(Math.PI))*scale;
-                const pLeft_v = cy + (ct_v + b*Math.cos(Math.PI) + d*Math.sin(Math.PI))*scale;
-                const pRight_u = cx + (ct_u + a*Math.cos(0) + c*Math.sin(0))*scale;
-                const pRight_v = cy + (ct_v + b*Math.cos(0) + d*Math.sin(0))*scale;
-                
-                ctx.moveTo(pLeft_u, pLeft_v);
-                ctx.lineTo(pLeft_u, pLeft_v + plateThickness*scale);
-                ctx.moveTo(pRight_u, pRight_v);
-                ctx.lineTo(pRight_u, pRight_v + plateThickness*scale);
-                ctx.stroke();
-
-                // 3. Draw full top ellipse (outer rim)
-                drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
-                ctx.fillStyle = COLOR_TOP;
-                ctx.fill();
-                ctx.stroke();
-
-                // 4. Draw inner concave area
-                const innerRadius = 0.82;
-                drawEllipsePath(ct_u, ct_v, innerRadius, 0, 2 * Math.PI);
-                const grad = ctx.createLinearGradient(
-                    cx + (ct_u - a)*scale, cy + (ct_v - b)*scale,
-                    cx + (ct_u + a)*scale, cy + (ct_v + b)*scale
-                );
-                grad.addColorStop(0, '#f4f4f5'); // zinc-100
-                grad.addColorStop(1, '#a1a1aa'); // zinc-400
-                ctx.fillStyle = grad;
-                ctx.fill();
-                ctx.stroke();
-
-                // 5. Draw flat base (inner center)
-                const baseRadius = 0.55;
-                drawEllipsePath(ct_u, ct_v + baseDepth, baseRadius, 0, 2 * Math.PI);
-                ctx.fillStyle = '#d4d4d8'; // zinc-300
-                ctx.fill();
-                ctx.stroke();
-
-                // Draw lines connecting inner rim to flat base
-                const numSpokes = 8;
-                for (let i = 0; i < numSpokes; i++) {
-                    const angle = (i / numSpokes) * Math.PI * 2;
-                    const x = Math.cos(angle);
-                    const z = Math.sin(angle);
-                    const u = a * x + c * z;
-                    const v = b * x + d * z;
-                    ctx.beginPath();
-                    ctx.moveTo(cx + (ct_u + u * innerRadius) * scale, cy + (ct_v + v * innerRadius) * scale);
-                    ctx.lineTo(cx + (ct_u + u * baseRadius) * scale, cy + (ct_v + baseDepth + v * baseRadius) * scale);
-                    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
-                    ctx.stroke();
-                }
-
-                ctx.strokeStyle = wireframeColor || '#000'; // Reset stroke
-
-            } else {
-                // BOWL rendering (original)
                 const tLowest = Math.atan2(-D, -W);
                 const vLowest = b * Math.cos(tLowest) + d * Math.sin(tLowest);
                 
