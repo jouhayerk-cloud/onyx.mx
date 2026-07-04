@@ -347,7 +347,6 @@ export async function generateAxonometricDataUrl(
                 ctx.fillStyle = '#C0C0C0';
                 ctx.fill();
                 ctx.stroke();
-            }
 
             const pts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
             drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
