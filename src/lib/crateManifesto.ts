@@ -4,7 +4,9 @@
  * Each row includes a live QR code linking to the item's inventory record.
  */
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
 import { cmToImperial } from './utils';
+import { getVendorColor } from './excelStyles';
 import { generateAxonometricDataUrl, resolveItemColor } from './axonometric';
 
 export interface ManifestoItem {
@@ -77,22 +79,12 @@ export interface ManifestoMeta {
 // ─── QR Code via free API ────────────────────────────────────────────────────
 // Uses api.qrserver.com to render a tiny QR PNG from a URL string.
 async function loadQrDataUrl(text: string, sizePx = 80): Promise<string | null> {
-    const encoded = encodeURIComponent(text);
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${sizePx}x${sizePx}&format=png&data=${encoded}`;
     try {
-        const img = await new Promise<HTMLImageElement>((res, rej) => {
-            const el = new Image();
-            el.crossOrigin = 'anonymous';
-            el.onload = () => res(el);
-            el.onerror = rej;
-            el.src = qrUrl;
-            setTimeout(() => rej(new Error('qr timeout')), 8000);
-        });
-        const c = document.createElement('canvas');
-        c.width = img.width; c.height = img.height;
-        c.getContext('2d')!.drawImage(img, 0, 0);
-        return c.toDataURL('image/png');
-    } catch { return null; }
+        return await QRCode.toDataURL(text.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: sizePx, color: { dark: '#141414', light: '#ffffff' } });
+    } catch (e) {
+        console.error('QR code err', e);
+        return null;
+    }
 }
 
 // Uses barcodeapi.org to render a Code 128 barcode PNG from a string.
@@ -811,7 +803,25 @@ export async function exportCrateManifesto(
         // 1. SCAN (QR Code with Padding)
         const qrDataUrl = await loadQrDataUrl(item.itemId, 150);
         if (qrDataUrl) {
-            doc.addImage(qrDataUrl, 'PNG', COL_QR.x + 3 + xOffset, y + 5, 12, 12);
+            const qrDrawSize = 12;
+            const qrDrawX = COL_QR.x + 3 + xOffset;
+            const qrDrawY = y + 5;
+            doc.addImage(qrDataUrl, 'PNG', qrDrawX, qrDrawY, qrDrawSize, qrDrawSize);
+            
+            // VENDOR BUBBLE INSIDE QR CODE
+            const tagVColor = getVendorColor(item.itemId);
+            const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
+            
+            const qrCenterX = qrDrawX + qrDrawSize / 2;
+            const qrCenterY = qrDrawY + qrDrawSize / 2;
+            
+            // Draw white background circle to punch out the QR code pixels
+            doc.setFillColor(255, 255, 255);
+            doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
+            
+            // Draw the vendor color bubble
+            doc.setFillColor(tagHexColor);
+            doc.circle(qrCenterX, qrCenterY, 1.4, 'F');
         }
 
         // 2. PHOTO (Main Item Photo) & AXONOMETRIC
