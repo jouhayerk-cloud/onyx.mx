@@ -59,7 +59,15 @@ export async function generateAxonometricDataUrl(
         else if (s.includes('cylinder') || t.includes('cylinder') || t.includes('cilinder') || s.includes('round') || t.includes('round') || s.includes('pendant') || t.includes('pendant')) {
             geom = 'cylinder';
         }
-        else if (s.includes('rock') || t.includes('rock') || s.includes('sculpture') || t.includes('sculpture') || s.includes('fountain') || t.includes('fountain')) geom = 'polyhedron';
+        else if (s.includes('sphere') || t.includes('sphere') || s.includes('esfera') || t.includes('esfera')) {
+            geom = 'sphere';
+        }
+        else if (s.includes('sculpture') || t.includes('sculpture')) {
+            geom = 'octahedron';
+        }
+        else if (s.includes('rock') || t.includes('rock') || s.includes('fountain') || t.includes('fountain')) {
+            geom = 'polyhedron';
+        }
 
         if (geom === 'mirror') {
             const maxVal = Math.max(W, H, D);
@@ -456,6 +464,75 @@ export async function generateAxonometricDataUrl(
             drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
             drawLabel(W, 'W', pts[0], pts[1], -Math.PI / 6, 25);
             drawLabel(H, 'H', pts[1], pts[5], Math.atan2(pts[5].v - pts[1].v, pts[5].u - pts[1].u), 25);
+
+        } else if (geom === 'sphere') {
+            const R = Math.max(W, H, D) / 2;
+            const center3d = project(W/2, H/2, D/2);
+            const ptX = cx + center3d.u * scale;
+            const ptY = cy + center3d.v * scale;
+            
+            ctx!.beginPath();
+            ctx!.arc(ptX, ptY, R * scale, 0, 2 * Math.PI);
+            ctx!.closePath();
+
+            const grd = ctx!.createRadialGradient(ptX - (R*0.3)*scale, ptY - (R*0.3)*scale, R*0.1*scale, ptX, ptY, R*scale);
+            grd.addColorStop(0, COLOR_TOP);
+            grd.addColorStop(0.7, COLOR_RIGHT);
+            grd.addColorStop(1, COLOR_LEFT);
+            
+            if (isWireframe) {
+                ctx!.fillStyle = 'rgba(0,0,0,0)';
+            } else {
+                ctx!.fillStyle = grd;
+            }
+            ctx!.fill();
+            ctx!.stroke();
+
+            const pts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
+            drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
+            drawLabel(W, 'W', pts[0], pts[1], -Math.PI / 6, 25);
+            drawLabel(H, 'H', pts[1], pts[5], Math.atan2(pts[5].v - pts[1].v, pts[5].u - pts[1].u), 25);
+
+        } else if (geom === 'octahedron') {
+            const v3d = [
+                {x: W/2, y: H, z: D/2}, // 0: Top
+                {x: W/2, y: 0, z: D/2}, // 1: Bottom
+                {x: 0, y: H/2, z: D/2}, // 2: Left
+                {x: W, y: H/2, z: D/2}, // 3: Right
+                {x: W/2, y: H/2, z: D}, // 4: Front
+                {x: W/2, y: H/2, z: 0}  // 5: Back
+            ];
+            const projected = v3d.map(p => project(p.x, p.y, p.z));
+            const pts = projected.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
+
+            function drawFace(indices: number[], color: string) {
+                ctx!.beginPath();
+                ctx!.moveTo(pts[indices[0]].u, pts[indices[0]].v);
+                for (let i = 1; i < indices.length; i++) ctx!.lineTo(pts[indices[i]].u, pts[indices[i]].v);
+                ctx!.closePath();
+                ctx!.fillStyle = color;
+                ctx!.fill();
+                ctx!.stroke();
+            }
+
+            drawFace([0, 4, 2], COLOR_TOP);
+            drawFace([0, 3, 4], COLOR_RIGHT);
+            drawFace([1, 2, 4], COLOR_LEFT);
+            
+            // Adjust COLOR_RIGHT a bit darker for the bottom right
+            ctx!.fillStyle = isWireframe ? 'rgba(0,0,0,0)' : '#A3A3A3'; 
+            ctx!.beginPath();
+            ctx!.moveTo(pts[1].u, pts[1].v);
+            ctx!.lineTo(pts[4].u, pts[4].v);
+            ctx!.lineTo(pts[3].u, pts[3].v);
+            ctx!.closePath();
+            ctx!.fill();
+            ctx!.stroke();
+
+            const boxPts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
+            drawLabel(D, 'D', boxPts[0], boxPts[3], Math.PI / 6, 25);
+            drawLabel(W, 'W', boxPts[0], boxPts[1], -Math.PI / 6, 25);
+            drawLabel(H, 'H', boxPts[1], boxPts[5], Math.atan2(boxPts[5].v - boxPts[1].v, boxPts[5].u - boxPts[1].u), 25);
 
         } else {
             const inset = geom === 'polyhedron' ? 0.3 : 0;
