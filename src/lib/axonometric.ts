@@ -497,10 +497,10 @@ export async function generateAxonometricDataUrl(
             const v3d = [
                 {x: W/2, y: H, z: D/2}, // 0: Top
                 {x: W/2, y: 0, z: D/2}, // 1: Bottom
-                {x: 0, y: H/2, z: D/2}, // 2: Left
-                {x: W, y: H/2, z: D/2}, // 3: Right
-                {x: W/2, y: H/2, z: D}, // 4: Front
-                {x: W/2, y: H/2, z: 0}  // 5: Back
+                {x: 0, y: H/2, z: 0},   // 2: Front
+                {x: W, y: H/2, z: 0},   // 3: Right
+                {x: W, y: H/2, z: D},   // 4: Back
+                {x: 0, y: H/2, z: D}    // 5: Left
             ];
             const projected = v3d.map(p => project(p.x, p.y, p.z));
             const pts = projected.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
@@ -515,15 +515,18 @@ export async function generateAxonometricDataUrl(
                 ctx!.stroke();
             }
 
-            drawFace([0, 4, 2], COLOR_TOP);
-            drawFace([0, 3, 4], COLOR_RIGHT);
-            drawFace([1, 2, 4], COLOR_LEFT);
+            // Top-Left Face
+            drawFace([0, 5, 2], COLOR_TOP);
+            // Top-Right Face
+            drawFace([0, 2, 3], COLOR_RIGHT);
+            // Bottom-Left Face
+            drawFace([1, 5, 2], COLOR_LEFT);
             
-            // Adjust COLOR_RIGHT a bit darker for the bottom right
+            // Bottom-Right Face
             ctx!.fillStyle = isWireframe ? 'rgba(0,0,0,0)' : '#A3A3A3'; 
             ctx!.beginPath();
             ctx!.moveTo(pts[1].u, pts[1].v);
-            ctx!.lineTo(pts[4].u, pts[4].v);
+            ctx!.lineTo(pts[2].u, pts[2].v);
             ctx!.lineTo(pts[3].u, pts[3].v);
             ctx!.closePath();
             ctx!.fill();
