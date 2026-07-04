@@ -303,14 +303,14 @@ export async function exportCrateManifesto(
     const TABLE_END = PW - MR;
     const COL_QTY     = { x: ML, w: 12 };
     const COL_IMG     = { x: COL_QTY.x + COL_QTY.w, w: meta.excludeImages ? 0 : 25 };
-    const COL_QR      = { x: COL_IMG.x + COL_IMG.w, w: 18  }; 
+    const COL_QR      = { x: COL_IMG.x + COL_IMG.w, w: 22  }; 
     const COL_BARCODE = { x: COL_QR.x + COL_QR.w, w: 50 };
     const COL_TAG     = { x: COL_BARCODE.x + COL_BARCODE.w,  w: 40  }; 
-    const COL_NAME    = { x: COL_TAG.x + COL_TAG.w, w: meta.excludeImages ? 85 : 75 }; 
+    const COL_NAME    = { x: COL_TAG.x + COL_TAG.w, w: meta.excludeImages ? 81 : 71 }; 
     const COL_DIMS    = { x: COL_NAME.x + COL_NAME.w, w: TABLE_END - (COL_NAME.x + COL_NAME.w) };
 
     const COL_HDR_H = 8;
-    const ROW_H = 22;
+    const ROW_H = 28;
     let y = 0;
 
     // ─── Helper: Draw Page Chrome ──────────────────────────────────────────
@@ -803,9 +803,9 @@ export async function exportCrateManifesto(
         // 1. SCAN (QR Code with Padding)
         const qrDataUrl = await loadQrDataUrl(item.itemId, 150);
         if (qrDataUrl) {
-            const qrDrawSize = 12;
-            const qrDrawX = COL_QR.x + 3 + xOffset;
-            const qrDrawY = y + 5;
+            const qrDrawSize = 18;
+            const qrDrawX = COL_QR.x + (COL_QR.w - qrDrawSize) / 2 + xOffset;
+            const qrDrawY = y + (ROW_H - qrDrawSize) / 2;
             doc.addImage(qrDataUrl, 'PNG', qrDrawX, qrDrawY, qrDrawSize, qrDrawSize);
             
             // VENDOR BUBBLE INSIDE QR CODE
@@ -817,11 +817,11 @@ export async function exportCrateManifesto(
             
             // Draw white background circle to punch out the QR code pixels
             doc.setFillColor(255, 255, 255);
-            doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
+            doc.circle(qrCenterX, qrCenterY, 2.7, 'F');
             
             // Draw the vendor color bubble
             doc.setFillColor(tagHexColor);
-            doc.circle(qrCenterX, qrCenterY, 1.4, 'F');
+            doc.circle(qrCenterX, qrCenterY, 2.1, 'F');
         }
 
         // 2. PHOTO (Main Item Photo) & AXONOMETRIC
@@ -832,8 +832,8 @@ export async function exportCrateManifesto(
                 hasMainImage = true;
                 const { dataUrl, w, h } = imgRes;
                 const aspect = w / h;
-                let dw = 18, dh = 18;
-                if (aspect > 1) dh = 18 / aspect; else dw = 18 * aspect;
+                let dw = 24, dh = 24;
+                if (aspect > 1) dh = 24 / aspect; else dw = 24 * aspect;
                 
                 doc.setDrawColor(230, 230, 230);
                 doc.rect(COL_IMG.x + (COL_IMG.w - dw) / 2 - 0.2 + xOffset, y + (ROW_H - dh) / 2 - 0.2, dw + 0.4, dh + 0.4, 'S');
@@ -842,22 +842,13 @@ export async function exportCrateManifesto(
         }
         
 
-        // 4. BOOK TAG ID (Black Text + Vendor Color Indicator on Right)
-        doc.setFontSize(10); 
+        // 4. BOOK TAG ID (Black Text)
+        doc.setFontSize(12.5); 
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0); // Black text
         
         const formattedTagId = item.itemId.length > 5 ? item.itemId.slice(0, 5) + ' ' + item.itemId.slice(5) : item.itemId;
-        doc.text(formattedTagId, COL_TAG.x + 2 + xOffset, y + (ROW_H + 3) / 2, { align: 'left' });
-        
-        // Draw Vendor Color Indicator Bubble
-        const [tr, tg, tb] = hexToRgb(item.tagColor);
-        doc.setFillColor(tr, tg, tb);
-        const textW = doc.getTextWidth(formattedTagId);
-        const bubbleRadius = 2.5;
-        const bubbleX = COL_TAG.x + 2 + xOffset + textW + 3 + bubbleRadius;
-        const bubbleY = y + ROW_H / 2;
-        doc.circle(bubbleX, bubbleY, bubbleRadius, 'F');
+        doc.text(formattedTagId, COL_TAG.x + 2 + xOffset, y + (ROW_H + 4) / 2, { align: 'left' });
 
         // 4b. BARCODE (Code 39)
         if (item.itemId && item.itemId !== 'MISC-PACK') {
@@ -876,40 +867,34 @@ export async function exportCrateManifesto(
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         const nameLines = doc.splitTextToSize(item.name.toUpperCase(), COL_NAME.w - 4 - xOffset);
-        doc.text(nameLines[0], COL_NAME.x + 2 + xOffset, y + 8);
+        doc.text(nameLines[0], COL_NAME.x + 2 + xOffset, y + 10);
         
-        let pillX = COL_NAME.x + 2 + xOffset;
-        const pillY = y + 12;
-        const drawPill = (txt: string, br: number, bg: number, bb: number) => {
-            if (!txt) return;
-            doc.setFontSize(7);
-            const tw = doc.getTextWidth(txt.toUpperCase());
-            doc.setFillColor(br, bg, bb);
-            doc.roundedRect(pillX, pillY, tw + 5, 5, 0.5, 0.5, 'F');
-            doc.setTextColor(60, 60, 60);
-            doc.text(txt.toUpperCase(), pillX + 2.5, pillY + 3.8);
-            pillX += tw + 8;
-        };
-        if (item.color) drawPill(item.color, 240, 240, 240);
-        if (item.material) drawPill(item.material, 230, 230, 230);
+        // Color / Material plain text
+        doc.setFontSize(8.5);
+        doc.setTextColor(110, 110, 110);
+        doc.setFont('helvetica', 'normal');
+        const mats = [item.color, item.material].filter(Boolean).map(s => s.toUpperCase()).join(' · ');
+        if (mats) {
+            doc.text(mats, COL_NAME.x + 2 + xOffset, y + 16.5);
+        }
 
         // 6. DIMENSIONS · WEIGHT (Larger & Bolder)
         doc.setTextColor(...TEXT_HI);
         doc.setFontSize(11.5);
         doc.setFont('helvetica', 'bold');
-        doc.text(item.dims || '—', COL_DIMS.x + 2, y + 8);
+        doc.text(item.dims || '—', COL_DIMS.x + 2, y + 10);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(`${item.weightKg} kg  ·  ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2, y + 14);
+        doc.text(`${item.weightKg} kg  ·  ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2, y + 16);
 
         try {
             // Draw LARGER axometric icon next to dimensions panel
             let wCm = 0, hCm = 0, dCm = 0;
             if (item.dims && item.dims !== '—') {
                 const parts = item.dims.replace(/[^0-9.×x]/gi, '').split(/×|x/i).map(Number);
-                if (parts.length >= 2) {
+                if (parts.length >= 1) {
                     dCm = parts[0] || 0;
-                    wCm = parts[1] || 0;
+                    wCm = parts.length > 1 ? parts[1] : parts[0] || 0;
                     hCm = parts[2] || 0;
                 }
             }
