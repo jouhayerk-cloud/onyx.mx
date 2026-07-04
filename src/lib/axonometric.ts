@@ -41,6 +41,11 @@ export async function generateAxonometricDataUrl(
 
         const s = shapeStr.toLowerCase();
         const t = descStr.toLowerCase();
+
+        if (!W) W = D || H || 10;
+        if (!H) H = (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) ? 5 : W;
+        if (!D) D = W;
+        
         let geom = 'box';
         let isMirror = false;
         
