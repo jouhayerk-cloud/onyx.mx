@@ -83,7 +83,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     } catch (e) { console.error('Barcode err', e); }
 
     const qrSize = 16; // smaller QR code
-    const axoSize = 45; // larger Axonometric box
+    const axoSize = 22; // smaller Axonometric box in the corner
     
     let currentRightX = PW - M;
 
@@ -93,7 +93,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
             const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
             if (axoDataUrl) {
                 currentRightX -= axoSize;
-                doc.addImage(axoDataUrl, 'JPEG', currentRightX, startY + 9, axoSize, axoSize);
+                doc.addImage(axoDataUrl, 'JPEG', currentRightX, startY + 3, axoSize, axoSize);
             }
         } catch (e) {
             console.error("Failed to draw axonometric box", e);
