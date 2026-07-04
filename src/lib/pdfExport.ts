@@ -65,7 +65,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     
     if (wCm || hCm || dCm) {
         if (!wCm) wCm = dCm || hCm || 10;
-        if (!hCm) hCm = wCm * (shapeStr.toLowerCase().includes('plate') ? 0.15 : 1);
+        if (!hCm) hCm = shapeStr.toLowerCase().includes('plate') ? 5 : wCm;
         if (!dCm) dCm = wCm;
     }
     // Generate QR Code
@@ -336,7 +336,7 @@ export async function exportCatalogPdf(
                 
                 if (wCm || hCm || dCm) {
                     if (!wCm) wCm = dCm || hCm || 10;
-                    if (!hCm) hCm = wCm * (shapeStr.toLowerCase().includes('plate') ? 0.15 : 1);
+                    if (!hCm) hCm = shapeStr.toLowerCase().includes('plate') ? 5 : wCm;
                     if (!dCm) dCm = wCm;
 
                     try {
@@ -399,7 +399,7 @@ export async function exportCatalogPdf(
                 
                 if (wCm || hCm || dCm) {
                     if (!wCm) wCm = dCm || hCm || 10;
-                    if (!hCm) hCm = wCm * (shapeStr.toLowerCase().includes('plate') ? 0.15 : 1);
+                    if (!hCm) hCm = shapeStr.toLowerCase().includes('plate') ? 5 : wCm;
                     if (!dCm) dCm = wCm;
 
                     try {
