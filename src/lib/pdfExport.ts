@@ -52,7 +52,7 @@ const toImp = (val: any, type: 'in' | 'lbs' | 'ft' = 'in') => {
     return cmToImperial(v);
 };
 
-async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, exportType: 'regular' | 'catalog' = 'regular'): Promise<number> {
+async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, exportType: 'regular' | 'catalog' = 'regular', pageInfo?: { current: number, total: number }): Promise<number> {
     const norm = normalizeInventoryData(item.data); 
     const codes = item.codes; 
     
@@ -215,9 +215,12 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     const qtyStr = `QTY ${norm.quantity || 1}`;
     doc.text(qtyStr, PW - M - doc.getTextWidth(qtyStr), row2Y - 2);
     
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text('1 OF 1', PW - M - doc.getTextWidth('1 OF 1'), row2Y + 3);
+    if (pageInfo && pageInfo.total > 0) {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        const pageStr = `${pageInfo.current} OF ${pageInfo.total}`;
+        doc.text(pageStr, PW - M - doc.getTextWidth(pageStr), row2Y + 3);
+    }
     
     return row2Y + 12;
 }
@@ -273,7 +276,7 @@ export async function exportCatalogPdf(
                 if (config.logo === 'RareEarth') {
                     logoH = 12; 
                     logoW = logoData.w * (logoH / logoData.h);
-                    logoY = PH - 28.5;
+                    logoY = PH - 26.5; // Moved down slightly
                     const logoX = rightEdge - logoW;
                     doc.addImage(logoData.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
                 } else {
@@ -285,7 +288,7 @@ export async function exportCatalogPdf(
                 }
             }
             
-            const textY = logoData ? logoY - 2 : PH - 23;
+            const textY = logoData ? logoY - 1.5 : PH - 23;
             const textX = rightEdge - tw;
             doc.text(madeText, textX, textY);
         }
@@ -346,7 +349,7 @@ export async function exportCatalogPdf(
             } else {
                 for (let j = 0; j < imgs.length; j++) {
                     addPage();
-                    const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
+                    const specY = await drawHeader(doc, item, M, PW, M - 6, exportType, { current: j + 1, total: imgs.length });
                     
                     const imgUrl = getCleanImageUrl(imgs[j]);
                     const d = await loadImgData(imgUrl, 1200);
@@ -354,12 +357,6 @@ export async function exportCatalogPdf(
                     const imgH = PH - specY - 24;
                     if (d) {
                         drawContain(doc, d, M + 4, specY + 4, imgW, imgH, 0.90);
-                    } else {
-                        // doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, imgW, imgH, 'F');
-                    }
-                    if (imgs.length > 1) {
-                        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-                        doc.text(`${j + 1} OF ${imgs.length}`, PW - M, M + 2, { align: 'right' });
                     }
                 }
             }
