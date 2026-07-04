@@ -72,7 +72,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let qrDataUrl = '';
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
     try {
-        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
+        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
     } catch (e) { console.error('QR code err', e); }
 
     let barDataUrl = '';
@@ -102,21 +102,30 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let textX = M + 4;
     if (qrDataUrl) {
         doc.addImage(qrDataUrl, 'PNG', M + 4, startY + 5, qrSize, qrSize);
+        
+        // VENDOR BUBBLE INSIDE QR CODE
+        const tagVColor = getVendorColor(barcode);
+        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
+        
+        const qrCenterX = M + 4 + qrSize / 2;
+        const qrCenterY = startY + 5 + qrSize / 2;
+        
+        // Draw white background circle to punch out the QR code pixels
+        doc.setFillColor(255, 255, 255);
+        doc.circle(qrCenterX, qrCenterY, 2.2, 'F');
+        
+        // Draw the vendor color bubble
+        doc.setFillColor(tagHexColor);
+        doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
+        
         textX += qrSize + 6;
     }
 
     let currentY = startY + 5;
 
-    // 1. BARCODE IMAGE & VENDOR BUBBLE
+    // 1. BARCODE IMAGE
     if (barDataUrl) {
         doc.addImage(barDataUrl, 'PNG', textX, currentY, 55, 8); // Slightly wider barcode
-        
-        // VENDOR BUBBLE - Placed to the right of the barcode
-        const tagVColor = getVendorColor(barcode);
-        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-        doc.setFillColor(tagHexColor);
-        doc.circle(textX + 55 + 6, currentY + 4, 2.5, 'F');
-        
         currentY += 13;
     } else {
         currentY += 2;
