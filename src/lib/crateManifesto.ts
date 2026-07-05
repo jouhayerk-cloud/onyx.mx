@@ -374,12 +374,13 @@ export async function exportCrateManifesto(
             
             subY += 6;
             doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-            doc.text((meta.customTitle || "LOGISTICS MANIFESTO").toUpperCase(), textX, subY);
-
+            let titleText = (meta.customTitle || "LOGISTICS MANIFESTO").toUpperCase();
             if (meta.subtitle) {
-                doc.setFontSize(12); doc.setTextColor(...TEXT_MID); doc.setFont('helvetica', 'normal');
-                doc.text(meta.subtitle.toUpperCase(), textX + 65, subY);
+                titleText += `  ·  ${meta.subtitle.toUpperCase()}`;
             }
+            const maxTitleWidth = (PW / 2) - textX - 25; // Prevent overlapping with centered logo
+            const titleLines = doc.splitTextToSize(titleText, maxTitleWidth);
+            doc.text(titleLines, textX, subY);
             
             // Left side crate dims moved to right side
 
@@ -405,7 +406,7 @@ export async function exportCrateManifesto(
 
             if (!meta.excludeHeaderWireframe) {
                 const typeForIcon = (meta.crateType || 'crate').toLowerCase();
-                drawWireframeIcon(doc, PW - MR - 28, 8, 22, cw, cl, ch, meta.crateColor || '#D95A0A', typeForIcon);
+                drawWireframeIcon(doc, PW - MR - 23, 8, 22, cw, cl, ch, meta.crateColor || '#D95A0A', typeForIcon);
             }
 
             let ry = 10;
