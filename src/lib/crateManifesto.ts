@@ -212,7 +212,7 @@ function drawWireframeIcon(doc: jsPDF, x: number, y: number, sizePx: number, cw:
         const x0 = x, y0 = y + depth; 
         let [R, G, B] = hexToRgb(colorHex);
         doc.setDrawColor(R, G, B);
-        doc.setLineWidth(0.08);
+        doc.setLineWidth(0.6);
         
         // Back face (dotted)
         doc.setLineDashPattern([0.5, 0.5], 0);
@@ -426,8 +426,6 @@ export async function exportCrateManifesto(
             if (isMultiCrate) {
                 if (nCrates > 0) parts.push(`${nCrates} Crates`);
                 if (nPallets > 0) parts.push(`${nPallets} Pallets`);
-            } else {
-                parts.push(meta.crateType.toUpperCase());
             }
             parts.push(`${totalSkus} SKU(S)`);
             doc.setFontSize(12); doc.setFont('helvetica', 'bold');
@@ -441,8 +439,6 @@ export async function exportCrateManifesto(
             doc.text(`${pageTitle}  ·  PAGE ${pageNum}`, ML, MT - 4);
         }
 
-        doc.setFillColor(...SURFACE);
-        doc.rect(0, PH - FOOTER_H, PW, FOOTER_H, 'F');
         doc.setDrawColor(...BORDER);
         doc.setLineWidth(0.05);
         doc.line(0, PH - FOOTER_H, PW, PH - FOOTER_H);
@@ -451,21 +447,17 @@ export async function exportCrateManifesto(
                         : meta.branding === 'RareEarth' ? 'Onyx.mx - Made In Mexico for Rare Earth Gallery'
                         : 'ONYX MX - LOGISTICS MANIFESTO';
         doc.text(footerText, ML, PH - 10);
-        doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 10, { align: 'right' });
     }
 
     async function drawSummaryPage() {
         console.log(`[PDF] Rendering Unified Load Dashboard...`);
         
         // Draw Footer manually for the summary page
-        doc.setFillColor(...SURFACE);
-        doc.rect(0, PH - FOOTER_H, PW, FOOTER_H, 'F');
         doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
         const footerText = meta.branding === 'ArtOfDecor' ? 'Onyx.mx - Made In Mexico for Art Of Decor' 
                         : meta.branding === 'RareEarth' ? 'Onyx.mx - Made In Mexico for Rare Earth Gallery'
                         : 'ONYX MX - LOGISTICS MANIFESTO';
         doc.text(footerText, ML, PH - 10);
-        doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 10, { align: 'right' });
 
         let sy = 8;
         const DASH_W = PW - ML - MR;
@@ -782,12 +774,10 @@ export async function exportCrateManifesto(
     }
 
     function drawColHeaders(y: number) {
-        doc.setFillColor(240, 240, 240);
-        doc.rect(ML, y, TABLE_END - ML, COL_HDR_H, 'F');
         doc.setTextColor(...TEXT_LO);
-        doc.setFontSize(7);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        const ty = y + 4.5;
+        const ty = y + 5;
         doc.text('QTY', COL_QTY.x + COL_QTY.w / 2, ty, { align: 'center' });
         if (!meta.excludeImages) doc.text('PHOTO', COL_IMG.x + COL_IMG.w / 2, ty, { align: 'center' });
         doc.text('SCAN', COL_QR.x + COL_QR.w / 2, ty, { align: 'center' });
