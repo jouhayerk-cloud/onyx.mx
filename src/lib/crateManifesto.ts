@@ -348,8 +348,7 @@ export async function exportCrateManifesto(
 
             if (meta.branding && meta.branding !== 'None') {
                 const logoName = meta.branding === 'ArtOfDecor' ? 'ArtOfDecorLogo.png' : 'REG_Logo.png';
-                // Inside browser, window.location.origin is available
-                const logoUrl = window.location.origin + '/' + logoName;
+                const logoUrl = `${import.meta.env.BASE_URL}${logoName}`;
                 const logoData = await loadLocalImageDataUrl(logoUrl, 200);
                 if (logoData) {
                     const logoH = 14;
