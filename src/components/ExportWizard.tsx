@@ -8,6 +8,7 @@ interface ExportConfig {
     includeImages: boolean;
     notes: string;
     bruteWeight?: string;
+    branding?: 'ArtOfDecor' | 'RareEarth';
 }
 
 interface ExportWizardProps {
@@ -37,7 +38,8 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
         method: 'grid',
         includeImages: true,
         notes: '',
-        bruteWeight: initialBruteWeight
+        bruteWeight: initialBruteWeight,
+        branding: 'ArtOfDecor'
     });
 
     // Reset step when opened
@@ -128,6 +130,25 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                             <p className={`text-xs font-black uppercase tracking-widest ${config.method === 'single' ? 'text-white' : 'text-white/40'}`}>Per Image</p>
                                             <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">High fidelity cards</p>
                                         </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Branding Selection */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Document Branding</label>
+                                <div className="flex gap-3 h-16">
+                                    <button 
+                                        onClick={() => setConfig({ ...config, branding: 'ArtOfDecor' })}
+                                        className={`flex-1 flex items-center justify-center rounded-2xl transition-all duration-300 ${config.branding === 'ArtOfDecor' ? 'bg-white/[0.08] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]' : 'bg-transparent hover:bg-white/[0.04]'}`}
+                                    >
+                                        <img src={`${import.meta.env.BASE_URL}ArtOfDecorLogo.png`} alt="Art Of Decor" className={`h-8 object-contain transition-all duration-300 ${config.branding === 'ArtOfDecor' ? 'opacity-100 scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-100'}`} />
+                                    </button>
+                                    <button 
+                                        onClick={() => setConfig({ ...config, branding: 'RareEarth' })}
+                                        className={`flex-1 flex items-center justify-center rounded-2xl transition-all duration-300 ${config.branding === 'RareEarth' ? 'bg-white/[0.08] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]' : 'bg-transparent hover:bg-white/[0.04]'}`}
+                                    >
+                                        <img src={`${import.meta.env.BASE_URL}REG_Logo.png`} alt="Rare Earth Gallery" className={`h-8 object-contain transition-all duration-300 ${config.branding === 'RareEarth' ? 'opacity-100 scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-100'}`} />
                                     </button>
                                 </div>
                             </div>

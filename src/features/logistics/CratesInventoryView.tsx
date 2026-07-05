@@ -403,6 +403,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                 exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
                 exportNotes: cfg.notes?.trim() || '',
                 exportBruteWeight: cfg.bruteWeight?.trim() || undefined,
+                branding: cfg.branding,
                 excludeImages: !cfg.includeImages,
                 crateColor: (vendors as any)[dynamicId.split('-')[0]]?.color,
                 customTitle: cfg.title
