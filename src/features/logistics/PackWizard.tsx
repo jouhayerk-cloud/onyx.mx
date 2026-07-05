@@ -153,8 +153,8 @@ export const PackWizard: React.FC = () => {
                 existingWeight += (Number(normalizeInventoryData(inv.data).weightKg) || 0) * qty;
             }
         });
-        const newVol = selectedItems.reduce((acc, item) => acc + getItemPaddedVolume(item.data, packQuantities[item.row] || 1), 0);
-        const newWeight = selectedItems.reduce((acc, item) => acc + (Number(item.norm.weightKg) || 0) * (packQuantities[item.row] || 1), 0);
+        const newVol = selectedItems.reduce((acc, item) => acc + getItemPaddedVolume(item.data, packQuantities[item.row] ?? (item.norm.quantity || 1)), 0);
+        const newWeight = selectedItems.reduce((acc, item) => acc + (Number(item.norm.weightKg) || 0) * (packQuantities[item.row] ?? (item.norm.quantity || 1)), 0);
         const totalVol = existingVol + newVol;
         const totalWeight = existingWeight + newWeight;
         const fillPct = internalVol > 0 ? (totalVol / internalVol) * 100 : 0;
@@ -167,7 +167,7 @@ export const PackWizard: React.FC = () => {
         const tid = toast.loading('Synchronizing container manifest...');
         try {
             const existingIds = (selectedCrate.inventory_ids || '').split(',').filter(Boolean);
-            const newIds = selectedItems.map(item => `${item.row}:${packQuantities[item.row] || 1}`);
+            const newIds = selectedItems.map(item => `${item.row}:${packQuantities[item.row] ?? (item.norm.quantity || 1)}`);
             const updatedIds = [...existingIds, ...newIds].join(',');
             const { error } = await supabase.from('logistics').update({
                 inventory_ids: updatedIds, status: 'Packed', updated_at: new Date().toISOString()
@@ -379,20 +379,26 @@ export const PackWizard: React.FC = () => {
                                                 </div>
                                                 
                                                 {/* Quantity Selector */}
-                                                <div className="flex items-center gap-3 bg-white/5 rounded-lg px-2 py-1 shrink-0 ml-4">
-                                                    <button 
-                                                        onClick={() => setPackQuantities(prev => ({ ...prev, [item.row]: Math.max(1, (prev[item.row] || 1) - 1) }))}
-                                                        className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all"
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <span className="text-xs font-black w-6 text-center tabular-nums">{packQuantities[item.row] || 1}</span>
-                                                    <button 
-                                                        onClick={() => setPackQuantities(prev => ({ ...prev, [item.row]: (prev[item.row] || 1) + 1 }))}
-                                                        className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all"
-                                                    >
-                                                        +
-                                                    </button>
+                                                <div className="flex flex-col items-end gap-1 shrink-0 ml-4">
+                                                    <div className="flex items-center gap-3 bg-white/5 rounded-lg px-2 py-1">
+                                                        <button 
+                                                            onClick={() => setPackQuantities(prev => ({ ...prev, [item.row]: Math.max(1, (prev[item.row] ?? (item.norm.quantity || 1)) - 1) }))}
+                                                            className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all"
+                                                        >
+                                                            -
+                                                        </button>
+                                                        <span className="text-xs font-black w-6 text-center tabular-nums">{packQuantities[item.row] ?? (item.norm.quantity || 1)}</span>
+                                                        <button 
+                                                            onClick={() => setPackQuantities(prev => ({ ...prev, [item.row]: Math.min(item.norm.quantity || 1, (prev[item.row] ?? (item.norm.quantity || 1)) + 1) }))}
+                                                            className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all disabled:opacity-20"
+                                                            disabled={(packQuantities[item.row] ?? (item.norm.quantity || 1)) >= (item.norm.quantity || 1)}
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mr-1">
+                                                        {item.norm.quantity || 1} Tot · {Math.max(0, (item.norm.quantity || 1) - (packQuantities[item.row] ?? (item.norm.quantity || 1)))} Left
+                                                    </span>
                                                 </div>
                                             </div>
                                         );
