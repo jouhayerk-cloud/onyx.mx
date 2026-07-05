@@ -388,7 +388,9 @@ export async function exportCrateManifesto(
             
             if (!isMultiCrate && meta.crateDims) {
                 doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
-                doc.text(`${meta.crateDims} · ${meta.crateType.toUpperCase()}`, textX, subY + 6);
+                doc.text(`${meta.crateDims}`, textX, subY + 6);
+                doc.setTextColor(...TEXT_MID); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+                doc.text(`${meta.crateType.toUpperCase()}`, textX, subY + 12);
             }
 
             // 3. Draw Centered Logo
@@ -412,7 +414,7 @@ export async function exportCrateManifesto(
             doc.setTextColor(...TEXT_HI); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
             doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, PW - MR, 14, { align: 'right' });
             doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
-            doc.text(`ONYX LOGISTICS · ${meta.exportedAt}`, PW - MR, 20, { align: 'right' });
+            doc.text(`ONYX.MX · ${meta.exportedAt}`, PW - MR, 20, { align: 'right' });
             
             const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
             const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'pallet').length;
