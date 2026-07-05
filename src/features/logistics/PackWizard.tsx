@@ -169,10 +169,23 @@ export const PackWizard: React.FC = () => {
             const existingIds = (selectedCrate.inventory_ids || '').split(',').filter(Boolean);
             const newIds = selectedItems.map(item => `${item.row}:${packQuantities[item.row] ?? (item.norm.quantity || 1)}`);
             const updatedIds = [...existingIds, ...newIds].join(',');
-            const { error } = await supabase.from('logistics').update({
+            
+            // 1. Update crate in logistics table
+            const { error: crateError } = await supabase.from('logistics').update({
                 inventory_ids: updatedIds, status: 'Packed', updated_at: new Date().toISOString()
             }).eq('id', selectedCrate.id);
-            if (error) throw error;
+            if (crateError) throw crateError;
+
+            // 2. Update packing_status and crate_id in inventory table for packed items
+            const inventoryRowsToUpdate = selectedItems.map(item => item.row ?? item.data.id);
+            if (inventoryRowsToUpdate.length > 0) {
+                const { error: invError } = await supabase.from('inventory')
+                    .update({ packing_status: 'Packed', crate_id: selectedCrate.id })
+                    .in('id', inventoryRowsToUpdate);
+                if (invError) throw invError;
+            }
+
+
             toast.success(`Packed ${selectedItems.length} items into ${selectedCrate.id}`, { id: tid });
             setIsOpen(false);
         } catch (e: any) {

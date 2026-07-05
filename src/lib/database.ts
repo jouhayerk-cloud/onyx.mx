@@ -123,7 +123,7 @@ const shipmentsSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 11,
+    version: 12,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -168,6 +168,7 @@ const inventorySchema = {
         shipped: { type: ['boolean', 'null'] },
         workbook: { type: ['string', 'null'] },
         crate_id: { type: ['string', 'null'] },
+        packing_status: { type: ['string', 'null'] },
         book_landed: { type: ['number', 'null'] },
         book_retail: { type: ['number', 'null'] },
         book_barcode: { type: ['string', 'null'] },
@@ -231,7 +232,7 @@ const createDatabase = async () => {
             inventory: {
                 schema: inventorySchema,
                 migrationStrategies: {
-                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null, 9: () => null, 10: () => null, 11: () => null,
+                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null, 9: () => null, 10: () => null, 11: () => null, 12: () => null,
                 }
             },
             finance: {
