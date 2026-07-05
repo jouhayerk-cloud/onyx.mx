@@ -382,12 +382,7 @@ export async function exportCrateManifesto(
                 doc.text(meta.subtitle.toUpperCase(), textX + 65, subY);
             }
             
-            if (!isMultiCrate && meta.crateDims) {
-                doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
-                doc.text(`${meta.crateDims}`, textX, subY + 6);
-                doc.setTextColor(...TEXT_MID); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-                doc.text(`${meta.crateType.toUpperCase()}`, textX, subY + 12);
-            }
+            // Left side crate dims moved to right side
 
             // 3. Draw Centered Logo
             if (meta.branding && meta.branding !== 'None') {
@@ -414,11 +409,21 @@ export async function exportCrateManifesto(
                 drawWireframeIcon(doc, PW - MR - 28, 8, 22, cw, cl, ch, meta.crateColor || '#D95A0A', typeForIcon);
             }
 
+            let ry = 10;
+            if (!isMultiCrate && meta.crateDims) {
+                doc.setTextColor(...TEXT_HI); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+                doc.text(`${meta.crateDims}  ·  ${meta.crateType.toUpperCase()}`, rightAlignX, ry, { align: 'right' });
+                ry += 6;
+            }
+
             doc.setTextColor(...TEXT_HI); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-            doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, rightAlignX, 14, { align: 'right' });
-            doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
-            doc.text(`ONYX.MX · ${meta.exportedAt}`, rightAlignX, 20, { align: 'right' });
+            doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, rightAlignX, ry, { align: 'right' });
             
+            ry += 6;
+            doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
+            doc.text(`ONYX.MX · ${meta.exportedAt}`, rightAlignX, ry, { align: 'right' });
+            
+            ry += 6;
             const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
             const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'pallet').length;
             const totalSkus = allManifestoItems.length;
@@ -429,7 +434,7 @@ export async function exportCrateManifesto(
             }
             parts.push(`${totalSkus} SKU(S)`);
             doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-            doc.text(parts.join('  ·  '), rightAlignX, 26, { align: 'right' });
+            doc.text(parts.join('  ·  '), rightAlignX, ry, { align: 'right' });
 
         } else {
             // ─── Continuation Header ───
