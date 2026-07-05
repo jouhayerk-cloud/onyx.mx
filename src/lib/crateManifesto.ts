@@ -409,6 +409,11 @@ export async function exportCrateManifesto(
             }
 
             let ry = 10;
+            
+            doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
+            doc.text(`ONYX.MX · ${meta.exportedAt}`, rightAlignX, ry, { align: 'right' });
+            ry += 6;
+            
             if (!isMultiCrate && meta.crateDims) {
                 doc.setTextColor(...TEXT_HI); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
                 doc.text(`${meta.crateDims}  ·  ${meta.crateType.toUpperCase()}`, rightAlignX, ry, { align: 'right' });
@@ -417,10 +422,6 @@ export async function exportCrateManifesto(
 
             doc.setTextColor(...TEXT_HI); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
             doc.text(`${summaryWeight.toUpperCase()}`, rightAlignX, ry, { align: 'right' });
-            
-            ry += 6;
-            doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
-            doc.text(`ONYX.MX · ${meta.exportedAt}`, rightAlignX, ry, { align: 'right' });
             
             ry += 6;
             const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
