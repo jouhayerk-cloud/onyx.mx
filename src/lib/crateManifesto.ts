@@ -941,9 +941,9 @@ export async function exportCrateManifesto(
             if (item.dims && item.dims !== '—') {
                 const parts = item.dims.replace(/[^0-9.×x]/gi, '').split(/×|x/i).map(Number);
                 if (parts.length >= 1) {
-                    dCm = parts[0] || 0;
-                    wCm = parts.length > 1 ? parts[1] : parts[0] || 0;
-                    hCm = parts[2] || 0;
+                    wCm = parts[0] || 0;
+                    hCm = parts.length > 1 ? parts[1] : wCm;
+                    dCm = parts[2] || 0;
                 }
             }
             
