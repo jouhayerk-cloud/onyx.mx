@@ -389,6 +389,17 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[13px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
                         <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[13px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
                         
+                        <div className="flex flex-col min-w-[110px] shrink-0 justify-center gap-1 border-l border-white/5 pl-4 ml-2">
+                            {norm.packingStatus === 'Packed' ? (
+                                <>
+                                    <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest leading-none flex items-center gap-1"><Package size={12} strokeWidth={3} /> PACKED</span>
+                                    <span className="text-[11px] font-mono font-bold text-orange-400/80">{norm.crateId || 'Unknown'}</span>
+                                </>
+                            ) : (
+                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-widest leading-none">UNPACKED</span>
+                            )}
+                        </div>
+                        
                         <div className="flex items-center gap-1 shrink-0 border-l border-white/5 pl-4 ml-2 opacity-10">
                              {/* Expanded via row click */}
                         </div>
@@ -766,6 +777,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 </span>
                             </div>
                         )}
+                        {norm.packingStatus === 'Packed' && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded">
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                                <span className="text-[8px] font-black uppercase tracking-widest text-orange-400 leading-none">
+                                    {norm.crateId || 'PACKED'}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
                 
@@ -870,6 +889,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
                                     : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}`
                                 }
+                            </span>
+                        </div>
+                    )}
+                    {norm.packingStatus === 'Packed' && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded">
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-orange-400 leading-none">
+                                {norm.crateId || 'PACKED'}
                             </span>
                         </div>
                     )}

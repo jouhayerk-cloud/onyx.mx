@@ -935,6 +935,8 @@ export const normalizeInventoryData = (data: any): any => {
     is_hidden: d.is_hidden ?? false,
     hidden_reason: d.hidden_reason || d.hiddenReason || '',
     dispersal_status: d.dispersal_status,
+    crateId: d.crate_id || d.crateId,
+    packingStatus: d.packing_status || d.packingStatus,
     book_barcode: d.book_barcode || d.bookBarcode || d.tag_id || d.item_id || d.itemId || d.item_number || '',
     book_aq_code: d.book_aq_code || d.bookAqCode || d.aq_code || '-',
     price: d.price_mxn || d.acquisition_price_mxn || d.acq_price_mxn || d.price_unit || d.price || d.cost_mxn || d.cost || 0,
