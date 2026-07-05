@@ -417,7 +417,7 @@ export async function exportCrateManifesto(
             }
 
             doc.setTextColor(...TEXT_HI); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-            doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, rightAlignX, ry, { align: 'right' });
+            doc.text(`${summaryWeight.toUpperCase()}`, rightAlignX, ry, { align: 'right' });
             
             ry += 6;
             doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
@@ -432,6 +432,7 @@ export async function exportCrateManifesto(
                 if (nCrates > 0) parts.push(`${nCrates} Crates`);
                 if (nPallets > 0) parts.push(`${nPallets} Pallets`);
             }
+            parts.push(`${totalUnits} UNITS`);
             parts.push(`${totalSkus} SKU(S)`);
             doc.setFontSize(12); doc.setFont('helvetica', 'bold');
             doc.text(parts.join('  ·  '), rightAlignX, ry, { align: 'right' });
