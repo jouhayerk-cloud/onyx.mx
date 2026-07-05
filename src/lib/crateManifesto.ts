@@ -212,16 +212,12 @@ function drawWireframeIcon(doc: jsPDF, x: number, y: number, sizePx: number, cw:
         const x0 = x, y0 = y + depth; 
         let [R, G, B] = hexToRgb(colorHex);
         doc.setDrawColor(R, G, B);
-        doc.setLineWidth(0.6);
+        doc.setLineWidth(1.0);
         
-        // Back face (dotted)
-        doc.setLineDashPattern([0.5, 0.5], 0);
         doc.line(x0 + dx, y0 + dy, x0 + dx, y0 + dh + dy);
         doc.line(x0 + dx, y0 + dy, x0 + dw + dx, y0 + dy);
-        doc.setLineDashPattern([], 0);
         
         // Perspective lines
-        doc.setLineWidth(0.3);
         doc.line(x0, y0, x0 + dx, y0 + dy);
         doc.line(x0 + dw, y0, x0 + dw + dx, y0 + dy);
         doc.line(x0 + dw + dx, y0 + dy, x0 + dw + dx, y0 + dh + dy);
@@ -229,6 +225,9 @@ function drawWireframeIcon(doc: jsPDF, x: number, y: number, sizePx: number, cw:
         
         // Front face
         doc.rect(x0, y0, dw, dh, 'S');
+
+        // Restore thin lines for remainder of document
+        doc.setLineWidth(0.05);
     } catch (e) { console.error('Wireframe draw error:', e); }
 }
 
@@ -917,7 +916,7 @@ export async function exportCrateManifesto(
         doc.text(nameLines[0], COL_NAME.x + 2 + xOffset, y + 10);
         
         // Color / Material plain text
-        doc.setFontSize(8.5);
+        doc.setFontSize(11);
         doc.setTextColor(110, 110, 110);
         doc.setFont('helvetica', 'normal');
         const mats = [item.color, item.material].filter(Boolean).map(s => s.toUpperCase()).join(' · ');
