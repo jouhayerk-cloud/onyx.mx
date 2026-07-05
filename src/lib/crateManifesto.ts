@@ -212,7 +212,7 @@ function drawWireframeIcon(doc: jsPDF, x: number, y: number, sizePx: number, cw:
         const x0 = x, y0 = y + depth; 
         let [R, G, B] = hexToRgb(colorHex);
         doc.setDrawColor(R, G, B);
-        doc.setLineWidth(0.15);
+        doc.setLineWidth(0.08);
         
         // Back face (dotted)
         doc.setLineDashPattern([0.5, 0.5], 0);
@@ -306,10 +306,10 @@ export async function exportCrateManifesto(
         console.log(`[PDF] Appending to existing doc. Pages: ${doc.getNumberOfPages()}`);
         doc.addPage('a4', 'landscape');
     }
-    const ML = 10; // margin left
-    const MR = 10; // margin right
-    const MT = 10; // margin top for continuation pages
-    const MB = 10; // margin bottom (including footer)
+    const ML = 15; // margin left
+    const MR = 15; // margin right
+    const MT = 15; // margin top for continuation pages
+    const MB = 15; // margin bottom (including footer)
     const HDR_H = 36; // Height of the primary header area
     const FOOTER_H = 15;
 
@@ -333,7 +333,7 @@ export async function exportCrateManifesto(
     const COL_DIMS    = { x: COL_NAME.x + COL_NAME.w, w: TABLE_END - (COL_NAME.x + COL_NAME.w) };
 
     const COL_HDR_H = 8;
-    const ROW_H = 28;
+    const ROW_H = 24;
     let y = 0;
 
     // ─── Helper: Draw Page Chrome ──────────────────────────────────────────
@@ -354,11 +354,7 @@ export async function exportCrateManifesto(
                     cw = parts[0]; cl = parts[1]; ch = parts[2];
                 }
             }
-            if (!meta.excludeHeaderWireframe) {
-                const typeForIcon = (meta.crateType || 'crate').toLowerCase();
-                drawWireframeIcon(doc, textX, 8, 22, cw, cl, ch, meta.crateColor || '#D95A0A', typeForIcon);
-                textX += 30; // offset for the icon
-            }
+
 
             // 2. Draw QR Code and Text
             if (!meta.excludeHeaderQr) {
@@ -397,7 +393,7 @@ export async function exportCrateManifesto(
             if (meta.branding && meta.branding !== 'None') {
                 const logoName = meta.branding === 'ArtOfDecor' ? 'ArtOfDecorLogo.png' : 'REG_Logo.png';
                 const logoUrl = `${import.meta.env.BASE_URL}${logoName}`;
-                const logoData = await loadLocalImageDataUrl(logoUrl, 200);
+                const logoData = await loadLocalImageDataUrl(logoUrl, 1200);
                 if (logoData) {
                     const logoH = meta.branding === 'ArtOfDecor' ? 10 : 16; // Adjusted for new HDR_H
                     const logoW = logoData.w * (logoH / logoData.h);
@@ -411,10 +407,17 @@ export async function exportCrateManifesto(
             let summaryWeight = `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
             if (meta.exportBruteWeight) summaryWeight += ` · ${meta.exportBruteWeight.trim()} BRUTE`;
 
+            const rightAlignX = meta.excludeHeaderWireframe ? (PW - MR) : (PW - MR - 32);
+
+            if (!meta.excludeHeaderWireframe) {
+                const typeForIcon = (meta.crateType || 'crate').toLowerCase();
+                drawWireframeIcon(doc, PW - MR - 28, 8, 22, cw, cl, ch, meta.crateColor || '#D95A0A', typeForIcon);
+            }
+
             doc.setTextColor(...TEXT_HI); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-            doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, PW - MR, 14, { align: 'right' });
+            doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, rightAlignX, 14, { align: 'right' });
             doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
-            doc.text(`ONYX.MX · ${meta.exportedAt}`, PW - MR, 20, { align: 'right' });
+            doc.text(`ONYX.MX · ${meta.exportedAt}`, rightAlignX, 20, { align: 'right' });
             
             const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
             const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'pallet').length;
@@ -428,7 +431,7 @@ export async function exportCrateManifesto(
             }
             parts.push(`${totalSkus} SKU(S)`);
             doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-            doc.text(parts.join('  ·  '), PW - MR, 26, { align: 'right' });
+            doc.text(parts.join('  ·  '), rightAlignX, 26, { align: 'right' });
 
         } else {
             // ─── Continuation Header ───
@@ -441,7 +444,7 @@ export async function exportCrateManifesto(
         doc.setFillColor(...SURFACE);
         doc.rect(0, PH - FOOTER_H, PW, FOOTER_H, 'F');
         doc.setDrawColor(...BORDER);
-        doc.setLineWidth(0.1);
+        doc.setLineWidth(0.05);
         doc.line(0, PH - FOOTER_H, PW, PH - FOOTER_H);
         doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
         const footerText = meta.branding === 'ArtOfDecor' ? 'Onyx.mx - Made In Mexico for Art Of Decor' 
@@ -471,7 +474,7 @@ export async function exportCrateManifesto(
         // 1. Dashboard Container
         doc.setFillColor(255, 255, 255);
         doc.setDrawColor(...BORDER);
-        doc.setLineWidth(0.1);
+        doc.setLineWidth(0.05);
         doc.rect(ML, sy, DASH_W, DASH_H, 'FD');
 
         // 2. Premium Header Bar (Orange)
@@ -845,7 +848,7 @@ export async function exportCrateManifesto(
         
         // Row Separator
         doc.setDrawColor(...BORDER);
-        doc.setLineWidth(0.1);
+        doc.setLineWidth(0.05);
         doc.line(ML, y + totalRowH, TABLE_END, y + totalRowH);
 
         // 1. SCAN (QR Code with Padding)
