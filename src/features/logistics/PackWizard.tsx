@@ -98,6 +98,7 @@ export const PackWizard: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCrate, setSelectedCrate] = useState<CrateRecord | null>(null);
     const [isPacking, setIsPacking] = useState(false);
+    const [packQuantities, setPackQuantities] = useState<Record<string, number>>({});
 
     const selectedItems = useMemo(() =>
         inventory.filter(item => selectedIds.includes(item.row)).map(item => {
@@ -122,7 +123,7 @@ export const PackWizard: React.FC = () => {
     };
 
     useEffect(() => {
-        if (isOpen) { fetchCrates(); setStep('SELECT_CRATE'); setSelectedCrate(null); }
+        if (isOpen) { fetchCrates(); setStep('SELECT_CRATE'); setSelectedCrate(null); setPackQuantities({}); }
     }, [isOpen]);
 
     const filteredCrates = useMemo(() => {
@@ -152,8 +153,8 @@ export const PackWizard: React.FC = () => {
                 existingWeight += (Number(normalizeInventoryData(inv.data).weightKg) || 0) * qty;
             }
         });
-        const newVol = selectedItems.reduce((acc, item) => acc + getItemPaddedVolume(item.data, 1), 0);
-        const newWeight = selectedItems.reduce((acc, item) => acc + (Number(item.norm.weightKg) || 0), 0);
+        const newVol = selectedItems.reduce((acc, item) => acc + getItemPaddedVolume(item.data, packQuantities[item.row] || 1), 0);
+        const newWeight = selectedItems.reduce((acc, item) => acc + (Number(item.norm.weightKg) || 0) * (packQuantities[item.row] || 1), 0);
         const totalVol = existingVol + newVol;
         const totalWeight = existingWeight + newWeight;
         const fillPct = internalVol > 0 ? (totalVol / internalVol) * 100 : 0;
@@ -166,7 +167,7 @@ export const PackWizard: React.FC = () => {
         const tid = toast.loading('Synchronizing container manifest...');
         try {
             const existingIds = (selectedCrate.inventory_ids || '').split(',').filter(Boolean);
-            const newIds = selectedItems.map(item => String(item.row));
+            const newIds = selectedItems.map(item => `${item.row}:${packQuantities[item.row] || 1}`);
             const updatedIds = [...existingIds, ...newIds].join(',');
             const { error } = await supabase.from('logistics').update({
                 inventory_ids: updatedIds, status: 'Packed', updated_at: new Date().toISOString()
@@ -184,7 +185,7 @@ export const PackWizard: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 z-[1000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
+        <div className="absolute inset-0 z-[2000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
             <div className="absolute inset-0 backdrop-blur-xl bg-black/40 pointer-events-auto" onClick={() => setIsOpen(false)} />
             <div className="relative w-full h-full flex flex-col pointer-events-auto overflow-hidden bg-black/10 backdrop-blur-3xl">
 
@@ -375,6 +376,23 @@ export const PackWizard: React.FC = () => {
                                                     <p className="text-[8px] font-bold text-white/25 uppercase tracking-tight mt-0.5">
                                                         {item.norm.widthCm}×{item.norm.lengthCm}×{item.norm.heightCm} CM · {item.norm.weightKg} KG
                                                     </p>
+                                                </div>
+                                                
+                                                {/* Quantity Selector */}
+                                                <div className="flex items-center gap-3 bg-white/5 rounded-lg px-2 py-1 shrink-0 ml-4">
+                                                    <button 
+                                                        onClick={() => setPackQuantities(prev => ({ ...prev, [item.row]: Math.max(1, (prev[item.row] || 1) - 1) }))}
+                                                        className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="text-xs font-black w-6 text-center tabular-nums">{packQuantities[item.row] || 1}</span>
+                                                    <button 
+                                                        onClick={() => setPackQuantities(prev => ({ ...prev, [item.row]: (prev[item.row] || 1) + 1 }))}
+                                                        className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all"
+                                                    >
+                                                        +
+                                                    </button>
                                                 </div>
                                             </div>
                                         );
