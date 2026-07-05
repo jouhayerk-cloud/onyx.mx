@@ -310,7 +310,7 @@ export async function exportCrateManifesto(
     const MR = 10; // margin right
     const MT = 10; // margin top for continuation pages
     const MB = 10; // margin bottom (including footer)
-    const HDR_H = 26; // Height of the primary header area
+    const HDR_H = 36; // Height of the primary header area
     const FOOTER_H = 15;
 
     // ─── Palette (light theme) ────────────────────────────────────────────────
@@ -356,39 +356,39 @@ export async function exportCrateManifesto(
             }
             if (!meta.excludeHeaderWireframe) {
                 const typeForIcon = (meta.crateType || 'crate').toLowerCase();
-                drawWireframeIcon(doc, textX, 6, 18, cw, cl, ch, meta.crateColor || '#D95A0A', typeForIcon);
-                textX += 24; // offset for the icon
+                drawWireframeIcon(doc, textX, 8, 22, cw, cl, ch, meta.crateColor || '#D95A0A', typeForIcon);
+                textX += 30; // offset for the icon
             }
 
             // 2. Draw QR Code and Text
             if (!meta.excludeHeaderQr) {
                 const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 300);
                 if (headerQrUrl) {
-                    const qrSize = 14;
+                    const qrSize = 18;
                     doc.setFillColor(255, 255, 255);
-                    doc.rect(textX, 6, qrSize, qrSize, 'F');
-                    doc.addImage(headerQrUrl, 'PNG', textX, 6, qrSize, qrSize);
+                    doc.rect(textX, 8, qrSize, qrSize, 'F');
+                    doc.addImage(headerQrUrl, 'PNG', textX, 8, qrSize, qrSize);
                     textX += qrSize + 6;
                 }
             }
 
-            let subY = 10;
+            let subY = 14;
             doc.setTextColor(...TEXT_HI);
-            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16); doc.setFont('helvetica', 'bold');
             doc.text(`${meta.dynamicId.toUpperCase()}`, textX, subY);
             
-            subY += 5;
-            doc.setTextColor(...TEXT_LO); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+            subY += 6;
+            doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
             doc.text((meta.customTitle || "LOGISTICS MANIFESTO").toUpperCase(), textX, subY);
 
             if (meta.subtitle) {
-                doc.setFontSize(9); doc.setTextColor(...TEXT_MID);
-                doc.text(meta.subtitle.toUpperCase(), textX + 60, subY);
+                doc.setFontSize(12); doc.setTextColor(...TEXT_MID); doc.setFont('helvetica', 'normal');
+                doc.text(meta.subtitle.toUpperCase(), textX + 65, subY);
             }
             
             if (!isMultiCrate && meta.crateDims) {
-                doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
-                doc.text(`${meta.crateDims} · ${meta.crateType.toUpperCase()}`, textX, subY + 5);
+                doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
+                doc.text(`${meta.crateDims} · ${meta.crateType.toUpperCase()}`, textX, subY + 6);
             }
 
             // 3. Draw Centered Logo
@@ -397,9 +397,9 @@ export async function exportCrateManifesto(
                 const logoUrl = `${import.meta.env.BASE_URL}${logoName}`;
                 const logoData = await loadLocalImageDataUrl(logoUrl, 200);
                 if (logoData) {
-                    const logoH = meta.branding === 'ArtOfDecor' ? 7 : 12; // Make AOD smaller
+                    const logoH = meta.branding === 'ArtOfDecor' ? 10 : 16; // Adjusted for new HDR_H
                     const logoW = logoData.w * (logoH / logoData.h);
-                    doc.addImage(logoData.dataUrl, 'PNG', (PW - logoW) / 2, 6, logoW, logoH);
+                    doc.addImage(logoData.dataUrl, 'PNG', (PW - logoW) / 2, 8, logoW, logoH);
                 }
             }
 
@@ -409,10 +409,10 @@ export async function exportCrateManifesto(
             let summaryWeight = `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
             if (meta.exportBruteWeight) summaryWeight += ` · ${meta.exportBruteWeight.trim()} BRUTE`;
 
-            doc.setTextColor(...TEXT_HI); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-            doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, PW - MR, 10, { align: 'right' });
-            doc.setTextColor(...TEXT_LO); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-            doc.text(`ONYX LOGISTICS · ${meta.exportedAt}`, PW - MR, 14, { align: 'right' });
+            doc.setTextColor(...TEXT_HI); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+            doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, PW - MR, 14, { align: 'right' });
+            doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
+            doc.text(`ONYX LOGISTICS · ${meta.exportedAt}`, PW - MR, 20, { align: 'right' });
             
             const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
             const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'pallet').length;
@@ -425,8 +425,8 @@ export async function exportCrateManifesto(
                 parts.push(meta.crateType.toUpperCase());
             }
             parts.push(`${totalSkus} SKU(S)`);
-            doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-            doc.text(parts.join('  ·  '), PW - MR, 19, { align: 'right' });
+            doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+            doc.text(parts.join('  ·  '), PW - MR, 26, { align: 'right' });
 
         } else {
             // ─── Continuation Header ───
@@ -441,12 +441,12 @@ export async function exportCrateManifesto(
         doc.setDrawColor(...BORDER);
         doc.setLineWidth(0.1);
         doc.line(0, PH - FOOTER_H, PW, PH - FOOTER_H);
-        doc.setTextColor(...TEXT_LO); doc.setFontSize(7);
+        doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
         const footerText = meta.branding === 'ArtOfDecor' ? 'Onyx.mx - Made In Mexico for Art Of Decor' 
                         : meta.branding === 'RareEarth' ? 'Onyx.mx - Made In Mexico for Rare Earth Gallery'
                         : 'ONYX MX - LOGISTICS MANIFESTO';
-        doc.text(footerText, ML, PH - 12);
-        doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 12, { align: 'right' });
+        doc.text(footerText, ML, PH - 10);
+        doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 10, { align: 'right' });
     }
 
     async function drawSummaryPage() {
@@ -455,12 +455,12 @@ export async function exportCrateManifesto(
         // Draw Footer manually for the summary page
         doc.setFillColor(...SURFACE);
         doc.rect(0, PH - FOOTER_H, PW, FOOTER_H, 'F');
-        doc.setTextColor(...TEXT_LO); doc.setFontSize(7);
+        doc.setTextColor(...TEXT_LO); doc.setFontSize(12); doc.setFont('helvetica', 'normal');
         const footerText = meta.branding === 'ArtOfDecor' ? 'Onyx.mx - Made In Mexico for Art Of Decor' 
                         : meta.branding === 'RareEarth' ? 'Onyx.mx - Made In Mexico for Rare Earth Gallery'
                         : 'ONYX MX - LOGISTICS MANIFESTO';
-        doc.text(footerText, ML, PH - 12);
-        doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 12, { align: 'right' });
+        doc.text(footerText, ML, PH - 10);
+        doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 10, { align: 'right' });
 
         let sy = 8;
         const DASH_W = PW - ML - MR;
