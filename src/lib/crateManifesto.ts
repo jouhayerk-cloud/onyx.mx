@@ -212,7 +212,7 @@ function drawWireframeIcon(doc: jsPDF, x: number, y: number, sizePx: number, cw:
         const x0 = x, y0 = y + depth; 
         let [R, G, B] = hexToRgb(colorHex);
         doc.setDrawColor(R, G, B);
-        doc.setLineWidth(1.0);
+        doc.setLineWidth(0.6);
         
         doc.line(x0 + dx, y0 + dy, x0 + dx, y0 + dh + dy);
         doc.line(x0 + dx, y0 + dy, x0 + dw + dx, y0 + dy);
