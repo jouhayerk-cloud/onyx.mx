@@ -637,6 +637,7 @@ export const PackingModule: React.FC = () => {
                 exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
                 exportNotes: cfg.notes?.trim() || `PACKING LIST — ${selectedIds.size} ITEMS`,
                 exportBruteWeight: cfg.bruteWeight?.trim() || undefined,
+                branding: cfg.branding,
                 excludeImages: !cfg.includeImages,
                 excludeHeader: true,
                 customTitle: cfg.title
