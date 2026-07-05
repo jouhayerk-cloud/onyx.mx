@@ -344,21 +344,23 @@ export async function exportCrateManifesto(
 
         if (isPrimaryHeader && !meta.excludeHeader) {
             let textX = ML;
-            let logoOffset = 0;
 
-            if (meta.branding && meta.branding !== 'None') {
-                const logoName = meta.branding === 'ArtOfDecor' ? 'ArtOfDecorLogo.png' : 'REG_Logo.png';
-                const logoUrl = `${import.meta.env.BASE_URL}${logoName}`;
-                const logoData = await loadLocalImageDataUrl(logoUrl, 200);
-                if (logoData) {
-                    const logoH = 14;
-                    const logoW = logoData.w * (logoH / logoData.h);
-                    doc.addImage(logoData.dataUrl, 'PNG', ML, 6, logoW, logoH);
-                    logoOffset = logoW + 8;
+            // 1. Draw Wireframe Icon
+            let cw = 60, cl = 60, ch = 60;
+            if (meta.crateDims) {
+                const dimsStr = meta.crateDims.split(' ')[0]; // "120×150×195"
+                const parts = dimsStr.split(/×|x/i).map(Number);
+                if (parts.length === 3) {
+                    cw = parts[0]; cl = parts[1]; ch = parts[2];
                 }
             }
-            textX += logoOffset;
+            if (!meta.excludeHeaderWireframe) {
+                const typeForIcon = (meta.crateType || 'crate').toLowerCase();
+                drawWireframeIcon(doc, textX, 6, 18, cw, cl, ch, meta.crateColor || '#D95A0A', typeForIcon);
+                textX += 24; // offset for the icon
+            }
 
+            // 2. Draw QR Code and Text
             if (!meta.excludeHeaderQr) {
                 const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 300);
                 if (headerQrUrl) {
@@ -389,7 +391,19 @@ export async function exportCrateManifesto(
                 doc.text(`${meta.crateDims} · ${meta.crateType.toUpperCase()}`, textX, subY + 5);
             }
 
-            // Right-side metrics
+            // 3. Draw Centered Logo
+            if (meta.branding && meta.branding !== 'None') {
+                const logoName = meta.branding === 'ArtOfDecor' ? 'ArtOfDecorLogo.png' : 'REG_Logo.png';
+                const logoUrl = `${import.meta.env.BASE_URL}${logoName}`;
+                const logoData = await loadLocalImageDataUrl(logoUrl, 200);
+                if (logoData) {
+                    const logoH = meta.branding === 'ArtOfDecor' ? 7 : 12; // Make AOD smaller
+                    const logoW = logoData.w * (logoH / logoData.h);
+                    doc.addImage(logoData.dataUrl, 'PNG', (PW - logoW) / 2, 6, logoW, logoH);
+                }
+            }
+
+            // 4. Right-side metrics
             const totalUnits = allManifestoItems.reduce((s, i) => s + (i.qty || 1), 0);
             const totalWeight = allManifestoItems.reduce((s, i) => s + (i.weightKg || 0) * (i.qty || 1), 0);
             let summaryWeight = `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
