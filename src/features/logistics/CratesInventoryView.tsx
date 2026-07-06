@@ -1282,7 +1282,7 @@ export const CratesInventoryView: React.FC = () => {
     const [isSavingNest, setIsSavingNest] = useState(false);
     const allInventory = useAtomValue(inventoryAtom);
     const isDummyMode = useAtomValue(isDummyModeAtom);
-    const activeTab = useMemo(() => (subTab === 'packed' || subTab === 'boxes' || subTab === 'deployed' || subTab === 'crates') ? subTab : 'empty', [subTab]);
+    const activeTab = useMemo(() => (subTab === 'packed' || subTab === 'deployed' || subTab === 'crates') ? subTab : 'empty', [subTab]);
     const isLibraryOrDeployed = activeTab === 'crates' || activeTab === 'deployed';
 
     useEffect(() => {
@@ -1401,8 +1401,7 @@ export const CratesInventoryView: React.FC = () => {
         return crates.filter(c => {
             const matchesTab =
                 activeTab === 'empty'    ? c.status === 'Empty' :
-                activeTab === 'packed'   ? (c.status === 'Packed' || c.status === 'Partial') && c.type !== 'cardboard' :
-                activeTab === 'boxes'    ? (c.status === 'Packed' || c.status === 'Partial') && c.type === 'cardboard' :
+                activeTab === 'packed'   ? (c.status === 'Packed' || c.status === 'Partial') :
                 /* deployed/crates */      (c.status === 'In Transit' || c.status === 'Deployed');
             const q = searchQuery.toLowerCase();
             const matchesSearch = !q
@@ -1410,14 +1409,13 @@ export const CratesInventoryView: React.FC = () => {
                 || c.contents_summary?.toLowerCase().includes(q)
                 || c.description?.toLowerCase().includes(q);
             
-            // Nested units (with parent_id) should NOT show up in the top-level list,
-            // EXCEPT for the Packed Boxes tab which should show all boxes regardless of containment.
-            return matchesTab && matchesSearch && (activeTab === 'boxes' || !c.parent_id);
+            // Nested units (with parent_id) should NOT show up in the top-level list
+            return matchesTab && matchesSearch && !c.parent_id;
         });
     }, [crates, activeTab, searchQuery]);
 
     const displayCrates = useMemo(() => {
-        if (activeTab === 'packed' || activeTab === 'boxes' || activeTab === 'crates' || activeTab === 'deployed') {
+        if (activeTab === 'packed' || activeTab === 'crates' || activeTab === 'deployed') {
             const getVendors = (c: CrateRecord) => {
                 if (!c.inventory_ids) return 'ZZZZ';
                 const vSet = new Set<string>();
@@ -1637,13 +1635,13 @@ export const CratesInventoryView: React.FC = () => {
             <div className="relative">
                 <div className="px-4 lg:px-8 py-4 lg:py-10">
                     {displayCrates.length > 0 ? (
-                        activeTab === 'packed' || activeTab === 'boxes' ? (
+                        activeTab === 'packed' ? (
                             <div className="flex flex-col gap-16">
                                 {displayCrates.length > 0 && (
                                     <div className="flex flex-col gap-6">
                                         <div className="flex items-center gap-4">
                                             <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">
-                                                {activeTab === 'packed' ? 'Logistics Units (Crates & Pallets)' : 'Cardboard Inventory (Boxes)'}
+                                                Logistics Units (Crates, Pallets & Boxes)
                                             </span>
                                             <div className="h-px flex-1 bg-white/5" />
                                         </div>
