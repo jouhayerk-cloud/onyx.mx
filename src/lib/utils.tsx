@@ -1268,3 +1268,47 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayId
   // 5. Default: BLUE (NEW) for items with no payment data
   return 'BLUE';
 };
+export function getDynamicCrateIdComponents(crate: any, allCrates: any[], allInventory: any[]) {
+    if (!crate.inventory_ids || crate.status === 'Empty') return { date: '', vendors: [], sequence: crate.id.slice(0, 8).toUpperCase() };
+    
+    const d = crate.updated_at ? new Date(crate.updated_at) : (crate.date ? new Date(crate.date) : new Date());
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const datePrefix = `${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
+    
+    const vSet = new Set<string>();
+    crate.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
+        const [id] = entry.split(':');
+        const inv = allInventory.find((i: any) => String(i.row) === id);
+        if (inv?.data) {
+            const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
+            if (p) vSet.add(p.toUpperCase());
+        }
+    });
+    const vendorsList = Array.from(vSet).sort();
+    const vendorsStr = vendorsList.join('');
+    
+    const matchingCrates = allCrates.filter((c: any) => {
+        if (c.status === 'Empty' || !c.inventory_ids) return false;
+        const cVSet = new Set<string>();
+        c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
+            const [id] = entry.split(':');
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (inv?.data) {
+                const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
+                if (p) cVSet.add(p.toUpperCase());
+            }
+        });
+        return Array.from(cVSet).sort().join('') === vendorsStr;
+    });
+
+    matchingCrates.sort((a: any, b: any) => {
+        const tA = (a.updated_at || a.date) ? new Date(a.updated_at || a.date!).getTime() : 0;
+        const tB = (b.updated_at || b.date) ? new Date(b.updated_at || b.date!).getTime() : 0;
+        return tA === tB ? a.id.localeCompare(b.id) : tA - tB;
+    });
+
+    const index = matchingCrates.findIndex((c: any) => c.id === crate.id);
+    const sequence = index >= 0 ? index + 1 : 1;
+
+    return { date: datePrefix, vendors: vendorsList, sequence: String(sequence) };
+}

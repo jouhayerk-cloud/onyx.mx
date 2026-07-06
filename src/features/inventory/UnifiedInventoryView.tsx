@@ -47,10 +47,12 @@ import {
     isPaymentWizardOpenAtom,
     inventoryStatusSetsAtom,
     isUploadWizardOpenAtom,
-    uploadItemDataAtom
+    uploadItemDataAtom,
+    logisticsDataAtom
 } from '../../lib/atoms';
+import { WireframeCrate } from '../../components/CrateVisuals';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass, getDynamicCrateIdComponents } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -150,7 +152,89 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs, deployedItemsMap }: any) => {
+function getTextContrast(hex: string): string {
+    if (!hex) return '#ffffff';
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 128 ? '#000000' : '#ffffff';
+}
+
+const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isCompact = false }: { crateId: string, itemId: string, logisticsDocs: any[], allInventory: any[], isCompact?: boolean }) => {
+    const crate = logisticsDocs?.find((c: any) => c.id === crateId);
+    
+    // Find vendor from itemId
+    const rawId = (itemId || '').toUpperCase();
+    const vendorKey = Object.keys(vendors).sort((a, b) => b.length - a.length).find(k => rawId.startsWith(k));
+    const vendorName = vendorKey ? (vendors as any)[vendorKey]?.name || vendorKey : 'Unknown';
+    const vendorColor = vendorKey ? (vendors as any)[vendorKey]?.color || '#555' : '#555';
+
+    if (!crate) {
+        if (isCompact) {
+            return (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded shadow-lg backdrop-blur-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-orange-400 leading-none shadow-[0_0_10px_rgba(249,115,22,0.3)]">
+                        {crateId || 'PACKED'}
+                    </span>
+                </div>
+            );
+        }
+        return (
+            <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest leading-none flex items-center gap-1"><Package size={12} strokeWidth={3} /> PACKED</span>
+                <span className="text-[11px] font-mono font-bold text-orange-400/80">{crateId || 'Unknown'}</span>
+            </div>
+        );
+    }
+
+    const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(crate, logisticsDocs || [], allInventory || []);
+
+    if (isCompact) {
+        return (
+            <div className="flex items-center rounded border border-white/20 shadow-lg overflow-hidden shrink-0 backdrop-blur-md" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+                <div className="px-1.5 py-0.5 bg-black/40 flex items-center border-r border-white/10">
+                   <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={14} vibrant />
+                </div>
+                {date && <div className="px-1 py-0.5"><span className="text-[8px] font-black text-white leading-none">{date}</span></div>}
+                {vList.map(v => (
+                    <div key={v} className="px-1 py-0.5" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}>
+                        <span className="text-[8px] font-black text-black leading-none">{v}</span>
+                    </div>
+                ))}
+                {sequence && <div className="px-1.5 py-0.5 bg-white/10"><span className="text-[8px] font-black text-white leading-none">{sequence}</span></div>}
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex items-center rounded-lg border border-white/10 relative overflow-hidden group hover:border-white/30 transition-colors bg-black/40 shadow-lg">
+            <div className="px-3 py-2 flex items-center justify-center shrink-0 border-r border-white/10 bg-black/20">
+                <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={28} vibrant />
+            </div>
+            <div className="flex items-center min-w-0">
+                {date && (
+                    <div className="px-2.5 py-2">
+                        <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-white/90">{date}</span>
+                    </div>
+                )}
+                {vList.map((v, idx) => (
+                    <div key={v} className="px-2.5 py-2" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}>
+                        <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-black">{v}</span>
+                    </div>
+                ))}
+                {sequence && (
+                    <div className="px-3 py-2 bg-white/10">
+                        <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-white">{sequence}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs, deployedItemsMap, logisticsDocs, allInventory }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const theme = useAtomValue(themeAtom);
@@ -391,10 +475,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         
                         <div className="flex flex-col min-w-[110px] shrink-0 justify-center gap-1 border-l border-white/5 pl-4 ml-2">
                             {norm.packingStatus === 'Packed' ? (
-                                <>
-                                    <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest leading-none flex items-center gap-1"><Package size={12} strokeWidth={3} /> PACKED</span>
-                                    <span className="text-[11px] font-mono font-bold text-orange-400/80">{norm.crateId || 'Unknown'}</span>
-                                </>
+                                <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} />
                             ) : (
                                 <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-widest leading-none">UNPACKED</span>
                             )}
@@ -778,12 +859,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             </div>
                         )}
                         {norm.packingStatus === 'Packed' && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded">
-                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
-                                <span className="text-[8px] font-black uppercase tracking-widest text-orange-400 leading-none">
-                                    {norm.crateId || 'PACKED'}
-                                </span>
-                            </div>
+                            <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
                         )}
                     </div>
                 </div>
@@ -893,12 +969,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         </div>
                     )}
                     {norm.packingStatus === 'Packed' && (
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded">
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
-                            <span className="text-[8px] font-black uppercase tracking-widest text-orange-400 leading-none">
-                                {norm.crateId || 'PACKED'}
-                            </span>
-                        </div>
+                        <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
                     )}
                 </div>
             </div>
@@ -918,6 +989,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
 export const UnifiedInventoryView = () => {
     const t = useTranslation(); const db = useDatabase(); const items = useAtomValue(inventoryAtom); const financeDocs = useAtomValue(financeDataAtom);
+    const logisticsDocs = useAtomValue(logisticsDataAtom);
     const [isLoading, setIsLoading] = useState(true); const [expandedCards, setExpandedCards] = useState<Record<string, number>>({});
     const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); 
     const viewSlider = useAtomValue(inventoryViewSliderAtom);
@@ -1350,6 +1422,8 @@ export const UnifiedInventoryView = () => {
                                                     onEdit={handleEditItem} 
                                                     financeDocs={financeDocs}
                                                     deployedItemsMap={deployedItemsMap}
+                                                    logisticsDocs={logisticsDocs}
+                                                    allInventory={items}
                                                 />
                                             </div>
                                         </div>
@@ -1381,6 +1455,8 @@ export const UnifiedInventoryView = () => {
                                             onEdit={handleEditItem} 
                                             financeDocs={financeDocs}
                                             deployedItemsMap={deployedItemsMap}
+                                            logisticsDocs={logisticsDocs}
+                                            allInventory={items}
                                         />
                                     </div>
                                 );
