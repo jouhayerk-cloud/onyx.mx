@@ -179,6 +179,7 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'boxes': Boxes,
     'package-open': PackageOpen,
     'package-plus': PackagePlus,
+    'archive': Archive,
     'truck': Truck,
     'map-pin': MapPin,
     'download': Download,
@@ -571,7 +572,7 @@ const LogisticsBar: React.FC = () => {
     const [isWarehouseSearchOpen, setIsWarehouseSearchOpen] = useState(false);
 
     useEffect(() => {
-        if (activeView === 'warehouse' && (subTab === 'crates' || !['empty', 'packed', 'packing'].includes(subTab))) {
+        if (activeView === 'warehouse' && (subTab === 'crates' || !['empty', 'packed', 'boxes', 'packing'].includes(subTab))) {
             setSubTab('empty');
         }
     }, [activeView, subTab, setSubTab]);
