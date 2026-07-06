@@ -1,4 +1,4 @@
-import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection } from 'rxdb';
+import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection, removeRxDatabase } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
 import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
@@ -223,8 +223,10 @@ const createDatabase = async () => {
         throw new Error('RxDB Initialization Failed: Insecure Context');
     }
 
+    let db: OnyxDatabase | undefined;
+
     try {
-        const db = await createRxDatabase<OnyxDatabase>({
+        db = await createRxDatabase<OnyxDatabase>({
             name: 'onyxdb18', // Forced clean start for mobile stability
             storage: getRxStorageDexie()
         });
@@ -351,6 +353,7 @@ const createDatabase = async () => {
         console.log('✅ [DB] Collections Created. Initiating Sync...');
         pullReplication().catch(e => console.error('🔥 [DB] Background Sync Failure:', e));
 
+        localStorage.removeItem('onyx_last_reload');
         return db;
     } catch (err) {
         console.error('❌ [DB] Creation failed:', err);
@@ -359,21 +362,14 @@ const createDatabase = async () => {
         const now = Date.now();
 
         if (now - lastReload > 15000) { // Increased to 15s for mobile stability
-            console.warn('⚠️ [DB] Wiping all onyxdb* stores and reloading...');
+            console.warn('⚠️ [DB] Wiping onyxdb18 store and reloading...');
             localStorage.setItem('onyx_last_reload', now.toString());
+            
             setTimeout(async () => {
                 try {
-                    const dbs = await window.indexedDB.databases();
-                    await Promise.all(
-                        dbs
-                            .filter(d => d.name?.startsWith('onyxdb'))
-                            .map(d => new Promise<void>(resolve => {
-                                const req = window.indexedDB.deleteDatabase(d.name!);
-                                req.onsuccess = () => resolve();
-                                req.onerror = () => resolve();
-                            }))
-                    );
-                } catch (_) { /* indexedDB.databases() not supported in all browsers */ }
+                    if (db) await db.destroy().catch(() => {});
+                    await removeRxDatabase('onyxdb18', getRxStorageDexie());
+                } catch (_) { /* Ignore wipe errors */ }
                 window.location.reload();
             }, 1000);
         } else {
