@@ -90,7 +90,11 @@ export function computeCrateWeight(crate: any, allInventory: any[], allCrates: a
     });
 
     if (hasData) return Math.round(total * 10) / 10;
-    return crate.weight_kg || Math.round((crate.width_cm * crate.length_cm * (crate.height_cm || crate.width_cm)) / 5000);
+    
+    const w = parseFloat(crate.width_cm) || 60;
+    const l = parseFloat(crate.length_cm) || 60;
+    const h = parseFloat(crate.height_cm) || w;
+    return crate.weight_kg || Math.round((w * l * h) / 5000);
 }
 
 // ─── CM Grid (LANDSCAPE: X=truck length 1615cm, Y=truck width 244cm) ──────────
@@ -659,17 +663,25 @@ const TruckCrate: React.FC<{
     onSelect: () => void; onUpdatePos: (x: number, y: number) => void;
     onRotate: () => void; onUnload: () => void; onNest?: () => void;
     isVertical?: boolean;
-}> = ({ crate, allCrates, allInventory, pos, truckSeq, isSelected, zoom, onSelect, onUpdatePos, onRotate, onUnload, onNest, isVertical }) => {
+}> = ({ crate, allCrates, allInventory, pos: rawPos, truckSeq, isSelected, zoom, onSelect, onUpdatePos, onRotate, onUnload, onNest, isVertical }) => {
     const { label, subtitle, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory, truckSeq), [crate, allCrates, allInventory, truckSeq]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
     const isDraggingRef = useRef(false);
+    const pos = {
+        x: parseFloat(rawPos?.x as any) || 0,
+        y: parseFloat(rawPos?.y as any) || 0,
+        r: rawPos?.r || 0,
+        z: rawPos?.z || 0
+    };
 
     const children = useMemo(() => allCrates.filter(c => c.parent_id === crate.id), [allCrates, crate.id]);
 
-    const pxX = (pos.r === 0 ? crate.length_cm : crate.width_cm) * BASE_SCALE;
-    const pxY = (pos.r === 0 ? crate.width_cm : crate.length_cm) * BASE_SCALE;
-    const dimX = pos.r === 0 ? crate.length_cm : crate.width_cm;
-    const dimY = pos.r === 0 ? crate.width_cm : crate.length_cm;
+    const cW = parseFloat(crate.width_cm) || 60;
+    const cL = parseFloat(crate.length_cm) || 60;
+    const pxX = (pos.r === 0 ? cL : cW) * BASE_SCALE;
+    const pxY = (pos.r === 0 ? cW : cL) * BASE_SCALE;
+    const dimX = pos.r === 0 ? cL : cW;
+    const dimY = pos.r === 0 ? cW : cL;
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         e.preventDefault(); e.stopPropagation(); onSelect();
@@ -857,11 +869,16 @@ const IsoView: React.FC<{
                     {sortedIds.map(id => {
                         const crate = allCrates.find(c => c.id === id);
                         if (!crate || crate.parent_id) return null;
-                        const p = positions[id];
+                        const p = {
+                            x: parseFloat(positions[id]?.x as any) || 0,
+                            y: parseFloat(positions[id]?.y as any) || 0,
+                            z: parseFloat(positions[id]?.z as any) || 0,
+                            r: positions[id]?.r || 0
+                        };
                         const rotated = p.r === 90;
-                        const w = crate.width_cm, l = crate.length_cm, h = crate.height_cm || 100;
+                        const w = parseFloat(crate.width_cm) || 60, l = parseFloat(crate.length_cm) || 60, h = parseFloat(crate.height_cm) || 100;
                         const dX = rotated ? w : l, dY = rotated ? l : w;
-                        const zOff = p.z || 0;
+                        const zOff = p.z;
                         const isSelected = id === selectedId;
                         const { vendorList, label } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[id]);
                         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
@@ -2427,16 +2444,22 @@ const InteractiveTruckViewer: React.FC<{
 
         // Add or Update crates
         truckCrates.forEach(c => {
-            const pos = positions[c.id];
-            if (!pos) return;
+            const rawPos = positions[c.id];
+            if (!rawPos) return;
+            const pos = {
+                x: parseFloat(rawPos.x as any) || 0,
+                y: parseFloat(rawPos.y as any) || 0,
+                z: parseFloat(rawPos.z as any) || 0,
+                r: rawPos.r || 0
+            };
             
-            const dw = c.width_cm / 100;
-            const dl = c.length_cm / 100;
-            const dh = (c.height_cm || 100) / 100;
+            const dw = (parseFloat(c.width_cm) || 60) / 100;
+            const dl = (parseFloat(c.length_cm) || 60) / 100;
+            const dh = (parseFloat(c.height_cm) || 100) / 100;
             const isRotated = pos.r === 90;
             
             const targetX = (pos.x / 100) - (16.15 / 2) + (isRotated ? dw : dl) / 2;
-            const targetY = (pos.z || 0)/100 + dh/2 + 0.01;
+            const targetY = (pos.z / 100) + dh/2 + 0.01;
             const targetZ = (pos.y / 100) - (2.44 / 2) + (isRotated ? dl : dw) / 2;
             
             let mesh = crates.get(c.id);
