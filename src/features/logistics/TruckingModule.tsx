@@ -186,12 +186,58 @@ export const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: 
 };
 
 // ─── Compact Data-Dense Card components ─────────────────────────────────────
+function getDynamicCrateIdComponents(crate: any, allCrates: any[], allInventory: any[]) {
+    if (!crate.inventory_ids || crate.status === 'Empty') return { date: '', vendors: [], sequence: crate.id.slice(0, 8).toUpperCase() };
+    
+    const d = crate.updated_at ? new Date(crate.updated_at) : (crate.date ? new Date(crate.date) : new Date());
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const datePrefix = `${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
+    
+    const vSet = new Set<string>();
+    crate.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
+        const [id] = entry.split(':');
+        const inv = allInventory.find((i: any) => String(i.row) === id);
+        if (inv?.data) {
+            const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
+            if (p) vSet.add(p.toUpperCase());
+        }
+    });
+    const vendorsList = Array.from(vSet).sort();
+    const vendorsStr = vendorsList.join('');
+    
+    const matchingCrates = allCrates.filter(c => {
+        if (c.status === 'Empty' || !c.inventory_ids) return false;
+        const cVSet = new Set<string>();
+        c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
+            const [id] = entry.split(':');
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (inv?.data) {
+                const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
+                if (p) cVSet.add(p.toUpperCase());
+            }
+        });
+        return Array.from(cVSet).sort().join('') === vendorsStr;
+    });
+
+    matchingCrates.sort((a, b) => {
+        const tA = (a.updated_at || a.date) ? new Date(a.updated_at || a.date!).getTime() : 0;
+        const tB = (b.updated_at || b.date) ? new Date(b.updated_at || b.date!).getTime() : 0;
+        return tA === tB ? a.id.localeCompare(b.id) : tA - tB;
+    });
+
+    const index = matchingCrates.findIndex(c => c.id === crate.id);
+    const sequence = index >= 0 ? index + 1 : 1;
+
+    return { date: datePrefix, vendors: vendorsList, sequence: String(sequence) };
+}
+
 export const CompactDockCard: React.FC<{ 
     crate: any; allCrates: any[]; allInventory: any[]; 
     onLoad: () => void; onNest?: () => void; isCompact: boolean
 }> = ({ crate, allCrates, allInventory, onLoad, onNest, isCompact }) => {
     const financeDocs = useAtomValue(financeDataAtom);
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
+    const dynamicId = useMemo(() => getDynamicCrateIdComponents(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#adb5bd') : '#adb5bd';
     const w = computeCrateWeight(crate, allInventory, allCrates);
     const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
@@ -228,7 +274,31 @@ export const CompactDockCard: React.FC<{
                 </div>
                 <div className="flex flex-col">
                     <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-1 mb-0' : 'gap-3 mb-1.5'}`}>
-                        <span className={`font-black uppercase tracking-tighter text-white transition-all ${isCompact ? 'text-[10px]' : 'text-[16px]'}`}>{label}</span>
+                        {(!dynamicId.date && !dynamicId.sequence) ? (
+                            <span className={`font-black uppercase tracking-tighter text-white transition-all ${isCompact ? 'text-[10px]' : 'text-[16px]'}`}>{label}</span>
+                        ) : (
+                            <div className="flex items-center gap-1">
+                                {dynamicId.date && (
+                                    <div className="bg-white/10 px-1.5 py-0.5">
+                                        <span className={`font-black text-white tracking-[0.1em] leading-none block ${isCompact ? 'text-[8px]' : 'text-[11px]'}`}>{dynamicId.date}</span>
+                                    </div>
+                                )}
+                                {dynamicId.vendors.map((v) => (
+                                    <div 
+                                        key={v} 
+                                        className="px-1.5 py-0.5"
+                                        style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}
+                                    >
+                                        <span className={`font-black tracking-[0.1em] leading-none block text-black ${isCompact ? 'text-[8px]' : 'text-[11px]'}`}>{v}</span>
+                                    </div>
+                                ))}
+                                {dynamicId.sequence && (
+                                    <div className="px-2 py-0.5 bg-white/5">
+                                        <span className={`font-black tracking-[0.1em] leading-none block text-white/90 ${isCompact ? 'text-[8px]' : 'text-[11px]'}`}>{dynamicId.sequence}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {!isCompact && (
                             <span className="font-black px-1.5 py-0.5 rounded-full border border-white/10 transition-all uppercase tracking-[0.2em] text-[8px]" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>{typeLabel}</span>
                         )}
@@ -685,7 +755,16 @@ const TruckCrate: React.FC<{
                     </div>
                 )}
 
-                <Box size={iconSize} strokeWidth={1} color="rgba(0,0,0,0.3)" className="pointer-events-none" />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none drop-shadow-xl overflow-hidden">
+                    <CrateWireframe 
+                        w={crate.width_cm} 
+                        l={crate.length_cm} 
+                        h={crate.height_cm || 50} 
+                        color="rgba(0,0,0,0.6)" 
+                        size={iconSize * 1.5} 
+                        solid={false}
+                    />
+                </div>
                 
                 <div className="flex flex-col items-center pointer-events-none w-full px-2 mt-1">
                     <span className="font-black uppercase text-center leading-[0.9] text-black/80 tracking-tighter"
@@ -753,6 +832,14 @@ const IsoView: React.FC<{
                         stroke="rgba(255,255,255,0.15)" 
                         strokeWidth={1} 
                     />
+                    
+                    {Array.from({ length: Math.floor(TRUCK_L_CM / 100) + 1 }).map((_, i) => (
+                        <path key={`x${i}`} d={`M ${iso(i * 100, 0, 0).join(',')} L ${iso(i * 100, TRUCK_W_CM, 0).join(',')}`} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+                    ))}
+                    {Array.from({ length: Math.floor(TRUCK_W_CM / 100) + 1 }).map((_, i) => (
+                        <path key={`y${i}`} d={`M ${iso(0, i * 100, 0).join(',')} L ${iso(TRUCK_L_CM, i * 100, 0).join(',')}`} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+                    ))}
+                    
                     
                     {sortedIds.map(id => {
                         const crate = allCrates.find(c => c.id === id);
@@ -973,6 +1060,14 @@ const SideView: React.FC<{
                                     stroke={cr.isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
                                     strokeWidth={cr.isSelected ? 2.5 : 1.5}
                                     rx={4} opacity={cr.isSelected ? 1 : 0.92} />
+
+                                {/* 3D Wireframe Icon Overlay */}
+                                <foreignObject x={cr.px} y={cr.py} width={cr.pw} height={cr.ph} style={{ pointerEvents: 'none' }}>
+                                    <div className="w-full h-full flex items-center justify-center opacity-30 overflow-hidden">
+                                        <CrateWireframe w={cr.crate.width_cm} l={cr.crate.length_cm} h={cr.crate.height_cm || 50} color="rgba(0,0,0,0.6)" size={Math.min(cr.pw, cr.ph) * 1.5} solid={false} />
+                                    </div>
+                                </foreignObject>
+
                                 {/* Selection ring */}
                                 {cr.isSelected && <rect x={cr.px - 2} y={cr.py - 2} width={cr.pw + 4} height={cr.ph + 4}
                                     fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1} rx={4} strokeDasharray="4,3" />}
@@ -2169,6 +2264,7 @@ const InteractiveTruckViewer: React.FC<{
         crates: Map<string, THREE.Mesh>;
     } | null>(null);
 
+    // 1. Initialize Scene (Run Once)
     useEffect(() => {
         if (!containerRef.current) return;
         const width = containerRef.current.clientWidth;
@@ -2216,48 +2312,7 @@ const InteractiveTruckViewer: React.FC<{
         bed.position.y = -0.05;
         scene.add(bed);
 
-        // Crates
         const cratesMap = new Map<string, THREE.Mesh>();
-        truckCrates.forEach(c => {
-            const pos = positions[c.id];
-            if (!pos) return;
-            const dw = c.width_cm / 100;
-            const dl = c.length_cm / 100;
-            const dh = (c.height_cm || 100) / 100;
-            const isRotated = pos.r === 90;
-
-            const geo = new THREE.BoxGeometry(isRotated ? dw : dl, dh, isRotated ? dl : dw);
-            const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#F97316';
-            const mat = new THREE.MeshStandardMaterial({ 
-                color: col, 
-                metalness: 0.1, 
-                roughness: 0.6,
-                transparent: true,
-                opacity: 0.95
-            });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            
-            mesh.position.set(
-                (pos.x / 100) - (16.15 / 2) + (isRotated ? dw : dl) / 2, 
-                (pos.z || 0)/100 + dh/2 + 0.01, 
-                (pos.y / 100) - (2.44 / 2) + (isRotated ? dl : dw) / 2
-            );
-            
-            scene.add(mesh);
-
-            // Edge highlighting
-            const edges = new THREE.LineSegments(
-                new THREE.EdgesGeometry(geo),
-                new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })
-            );
-            edges.position.copy(mesh.position);
-            scene.add(edges);
-
-            cratesMap.set(c.id, mesh);
-        });
-
         sceneRef.current = { scene, camera, renderer, controls, crates: cratesMap };
 
         const raycaster = new THREE.Raycaster();
@@ -2277,10 +2332,7 @@ const InteractiveTruckViewer: React.FC<{
                 const mesh = intersects[0].object as THREE.Mesh;
                 let foundId = null;
                 for (const [id, m] of sceneRef.current.crates.entries()) {
-                    if (m === mesh) {
-                        foundId = id;
-                        break;
-                    }
+                    if (m === mesh) { foundId = id; break; }
                 }
                 if (foundId) {
                     onSelect(foundId);
@@ -2297,36 +2349,21 @@ const InteractiveTruckViewer: React.FC<{
                         x: targetCam.x, y: targetCam.y, z: targetCam.z,
                         duration: 1.2, ease: "power3.inOut"
                     });
-
-                    // Deploy sidebar
-                    const sel = allCrates.find(c => c.id === foundId);
-                    if (sel) {
-                        const itemIds = sel.inventory_ids 
-                            ? sel.inventory_ids.split(',').filter(Boolean).map((e: string) => e.split(':')[0])
-                            : (sel.inventoryItems || []).map((i: any) => i.row);
-
-                        setInventoryArtifactConfig({
-                            isOpen: true,
-                            itemIds,
-                            title: `Crate: ${getCrateDisplayName(sel, allCrates, allInventory).label || sel.id}`,
-                            viewMode: 'sidebar'
-                        });
-                    }
                 }
             } else {
                 onSelect(null);
-                // Reset camera?
+                // Reset camera
                 gsap.to(sceneRef.current.controls.target, { x: 0, y: 0, z: 0, duration: 1.2, ease: "power3.inOut" });
                 gsap.to(sceneRef.current.camera.position, { x: 30, y: 20, z: 30, duration: 1.2, ease: "power3.inOut" });
-                setInventoryArtifactConfig(prev => ({ ...prev, isOpen: false }));
             }
         };
 
         containerRef.current.addEventListener('click', handleClick);
 
+        let animationId: number;
         const animate = () => {
             if (!sceneRef.current) return;
-            requestAnimationFrame(animate);
+            animationId = requestAnimationFrame(animate);
             sceneRef.current.controls.update();
             sceneRef.current.renderer.render(sceneRef.current.scene, sceneRef.current.camera);
         };
@@ -2349,6 +2386,7 @@ const InteractiveTruckViewer: React.FC<{
         return () => {
             window.removeEventListener('resize', handleResize);
             clearTimeout(timeoutId);
+            cancelAnimationFrame(animationId);
             if (containerRef.current) {
                 containerRef.current.removeEventListener('click', handleClick);
                 if (renderer.domElement && containerRef.current.contains(renderer.domElement)) {
@@ -2358,7 +2396,91 @@ const InteractiveTruckViewer: React.FC<{
             renderer.dispose();
             sceneRef.current = null;
         };
+    }, [onSelect]);
+
+    // 2. Sync Meshes (Run on data change)
+    useEffect(() => {
+        if (!sceneRef.current) return;
+        const { scene, crates } = sceneRef.current;
+
+        // Remove deleted crates
+        const currentIds = new Set(truckCrates.map(c => c.id));
+        for (const [id, mesh] of Array.from(crates.entries())) {
+            if (!currentIds.has(id)) {
+                scene.remove(mesh);
+                crates.delete(id);
+            }
+        }
+
+        // Add or Update crates
+        truckCrates.forEach(c => {
+            const pos = positions[c.id];
+            if (!pos) return;
+            
+            const dw = c.width_cm / 100;
+            const dl = c.length_cm / 100;
+            const dh = (c.height_cm || 100) / 100;
+            const isRotated = pos.r === 90;
+            
+            const targetX = (pos.x / 100) - (16.15 / 2) + (isRotated ? dw : dl) / 2;
+            const targetY = (pos.z || 0)/100 + dh/2 + 0.01;
+            const targetZ = (pos.y / 100) - (2.44 / 2) + (isRotated ? dl : dw) / 2;
+            
+            let mesh = crates.get(c.id);
+            
+            if (!mesh) {
+                const geo = new THREE.BoxGeometry(isRotated ? dw : dl, dh, isRotated ? dl : dw);
+                const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#F97316';
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: col, metalness: 0.1, roughness: 0.6, transparent: true, opacity: 0.95 
+                });
+                mesh = new THREE.Mesh(geo, mat);
+                mesh.castShadow = true; mesh.receiveShadow = true;
+                
+                const edges = new THREE.LineSegments(
+                    new THREE.EdgesGeometry(geo),
+                    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })
+                );
+                mesh.add(edges);
+                
+                mesh.position.set(targetX, targetY, targetZ);
+                scene.add(mesh);
+                crates.set(c.id, mesh);
+            } else {
+                // Update position with GSAP for smooth drag
+                gsap.to(mesh.position, { x: targetX, y: targetY, z: targetZ, duration: 0.3, ease: 'power2.out' });
+                
+                // Update geometry if rotated (simple approach: swap scale)
+                if (isRotated) {
+                    mesh.scale.set(dl / dw, 1, dw / dl);
+                } else {
+                    mesh.scale.set(1, 1, 1);
+                }
+            }
+        });
     }, [truckCrates, positions]);
+
+    // 3. Sync UI selected state
+    useEffect(() => {
+        if (!sceneRef.current) return;
+        if (selectedId) {
+            const sel = allCrates.find(c => c.id === selectedId);
+            if (sel) {
+                const itemIds = sel.inventory_ids 
+                    ? sel.inventory_ids.split(',').filter(Boolean).map((e: string) => e.split(':')[0])
+                    : (sel.inventoryItems || []).map((i: any) => i.row);
+
+                setInventoryArtifactConfig({
+                    isOpen: true,
+                    itemIds,
+                    title: `Crate: ${getCrateDisplayName(sel, allCrates, allInventory).label || sel.id}`,
+                    viewMode: 'sidebar'
+                });
+            }
+        } else {
+            setInventoryArtifactConfig(prev => ({ ...prev, isOpen: false }));
+        }
+    }, [selectedId, allCrates, allInventory, setInventoryArtifactConfig]);
 
     return <div ref={containerRef} className="w-full h-full cursor-pointer" />;
 };
@@ -3410,22 +3532,108 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         };
     }, [setIsCompact]);
 
+    const lastSyncedPositionsRef = useRef<string>('{}');
+    const userDirtyRef = useRef(false); // Set true on user actions, prevents DB-read from overwriting
+
+    // ── Load positions from DB on initial mount only ──────────────────────────
     useEffect(() => {
-        // Guard: Do not overwrite positions if we are in a "Recall" state
         if (recalledShipment) return;
+        // If user has made local changes, don't overwrite from DB
+        if (userDirtyRef.current) return;
 
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
         docs.forEach(d => {
+            // NEVER auto-load shipped or deployed crates onto the trailer
+            if (['In Transit', 'Deployed'].includes(d.status)) return;
+
+            // Priority 1: Read from truck_position JSON field (live sync)
+            if (d.truck_id === 'active' && d.truck_position) {
+                try {
+                    const parsed = JSON.parse(d.truck_position);
+                    if (parsed && typeof parsed.x === 'number') {
+                        map[d.id] = parsed;
+                        return;
+                    }
+                } catch (e) { /* fall through */ }
+            }
+            // Priority 2: Legacy fallback — parse from description string
             if (d.description?.includes('POS:')) {
                 const m = d.description.match(/POS:(\d+),(\d+),(\d+)(?:,Z(\d+))?/);
                 if (m) map[d.id] = { x: +m[1], y: +m[2], r: +m[3], z: m[4] ? +m[4] : 0 };
             }
         });
-        setPositions(map);
+        const mapStr = JSON.stringify(map);
+        // Only update state if the resolved map actually changed
+        if (mapStr !== lastSyncedPositionsRef.current) {
+            lastSyncedPositionsRef.current = mapStr;
+            setPositions(map);
+        }
     }, [docs, recalledShipment]);
 
+    // ── Cleanup stale truck_position from shipped/deployed crates on mount ───
+    useEffect(() => {
+        if (!db) return;
+        const cleanup = async () => {
+            try {
+                const allDocs = await db.logistics.find().exec();
+                for (const doc of allDocs) {
+                    const d = doc.toJSON();
+                    if (['In Transit', 'Deployed'].includes(d.status) && (d.truck_id === 'active' || d.truck_position)) {
+                        await doc.patch({ truck_id: null, truck_position: null });
+                    }
+                }
+            } catch (e) { console.warn('[TruckSync] Cleanup error:', e); }
+        };
+        cleanup();
+    }, [db]);
+
+    // ── Live Sync TO DB (Debounced 400ms) ──────────────────────────────────────
+    useEffect(() => {
+        if (recalledShipment || !db) return;
+        const currentStr = JSON.stringify(positions);
+        if (currentStr === lastSyncedPositionsRef.current) return;
+
+        const timeout = setTimeout(async () => {
+            try {
+                const current: Record<string, any> = JSON.parse(currentStr);
+                const prev: Record<string, any> = JSON.parse(lastSyncedPositionsRef.current);
+
+                // Detect changes and removals
+                const changed: Record<string, any> = {};
+                const removed: string[] = [];
+                for (const k of Object.keys(current)) {
+                    if (JSON.stringify(current[k]) !== JSON.stringify(prev[k])) changed[k] = current[k];
+                }
+                for (const k of Object.keys(prev)) {
+                    if (!(k in current)) removed.push(k);
+                }
+
+                if (Object.keys(changed).length > 0 || removed.length > 0) {
+                    lastSyncedPositionsRef.current = currentStr;
+
+                    for (const [id, pos] of Object.entries(changed)) {
+                        const doc = await db.logistics.findOne(id).exec();
+                        if (doc) await doc.patch({ truck_id: 'active', truck_position: JSON.stringify(pos) });
+                    }
+                    for (const id of removed) {
+                        const doc = await db.logistics.findOne(id).exec();
+                        if (doc) await doc.patch({ truck_id: null, truck_position: null });
+                    }
+                }
+                // Mark as clean after successful write
+                userDirtyRef.current = false;
+            } catch (e) { console.warn('[TruckSync] DB write error:', e); }
+        }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [positions, db, recalledShipment]);
+
     const allCrates = useMemo(() => {
-        const live = docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit', 'Deployed'].includes(d.status));
+        // Exclude 'Deployed' — deployed crates have been shipped and are not part of active trucking
+        const live = docs.filter(d => {
+            const s = (d.status || '').toLowerCase().trim();
+            return ['packed', 'partial', 'in transit', 'deployed'].includes(s);
+        });
         
         // If we have a recalled shipment, we might need to inject "virtual" crates 
         // for IDs that are in positions but NOT in the live docs (e.g. because status changed or record missing)
@@ -3451,14 +3659,21 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         
         return live;
     }, [docs, recalledShipment]);
-    // Deployed (In Transit) crates are locked — excluded from dock, cannot be re-loaded
-    const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id && !['In Transit', 'Deployed'].includes(c.status)), [allCrates, positions]);
-    const deployedCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id && ['In Transit', 'Deployed'].includes(c.status)), [allCrates, positions]);
+    // Dock: show ONLY crates not currently loaded on the trailer that are Packed or Partial.
+    // Crates that are 'In Transit' or 'Deployed' are excluded from the dock.
+    const dockCrates = useMemo(() => allCrates.filter(c => 
+        !positions[c.id] && !c.parent_id && ['packed', 'partial'].includes((c.status || '').toLowerCase().trim())
+    ), [allCrates, positions]);
+    
+    // Deployed: show crates that are 'In Transit' or 'Deployed'
+    const deployedCrates = useMemo(() => allCrates.filter(c => 
+        !positions[c.id] && !c.parent_id && ['deployed', 'in transit'].includes((c.status || '').toLowerCase().trim())
+    ), [allCrates, positions]);
     const truckCrates = useMemo(() => allCrates.filter(c => !!positions[c.id]), [allCrates, positions]);
     const truckNumbering = useMemo(() => getTruckCrateNumbering(truckCrates, positions), [truckCrates, positions]);
 
-    const dockUnits = useMemo(() => dockCrates.filter(c => c.type !== 'cardboard'), [dockCrates]);
-    const dockBoxes = useMemo(() => dockCrates.filter(c => c.type === 'cardboard'), [dockCrates]);
+    const dockUnits = useMemo(() => dockCrates.filter(c => (c.type || '').toLowerCase().trim() !== 'cardboard'), [dockCrates]);
+    const dockBoxes = useMemo(() => dockCrates.filter(c => (c.type || '').toLowerCase().trim() === 'cardboard'), [dockCrates]);
     const totalWeight = useMemo(() => truckCrates.reduce((s, c) => s + computeCrateWeight(c, allInventory, allCrates), 0), [truckCrates, allInventory, allCrates]);
     const floorPct = useMemo(() => Math.min(100, Math.round(truckCrates.reduce((s, c) => s + c.width_cm * c.length_cm, 0) / (TRUCK_W_CM * TRUCK_L_CM) * 100)), [truckCrates]);
     const inventoryArtifactConfig = useAtomValue(inventoryArtifactConfigAtom);
@@ -3493,9 +3708,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         const payloadPct = Math.min(100, Math.round(totalWeight / MAX_KG * 100));
         const remaining = Math.max(0, MAX_KG - totalWeight);
         const avgW = truckCrates.length ? Math.round(totalWeight / truckCrates.length) : 0;
-        const nCrates = truckCrates.filter(c => c.type === 'crate').length;
-        const nPallets = truckCrates.filter(c => c.type === 'pallet').length;
-        const nBoxes = truckCrates.filter(c => c.type === 'cardboard').length;
+        const nCrates = truckCrates.filter(c => (c.type || '').toLowerCase().trim() === 'crate').length;
+        const nPallets = truckCrates.filter(c => (c.type || '').toLowerCase().trim() === 'pallet').length;
+        const nBoxes = truckCrates.filter(c => (c.type || '').toLowerCase().trim() === 'cardboard').length;
         const th = TRUCK_L_CM / 3;
         const rear  = truckCrates.filter(c => (positions[c.id]?.x || 0) < th).length;
         const mid   = truckCrates.filter(c => { const x = positions[c.id]?.x || 0; return x >= th && x < 2*th; }).length;
@@ -3539,6 +3754,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, []);
 
     const handleLoad = useCallback((id: string) => {
+        userDirtyRef.current = true;
         setPositions(p => {
             const crate = allCrates.find(c => c.id === id);
             if (!crate) return p;
@@ -3558,6 +3774,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates, computeAutoPosition]);
 
     const handleUnload = useCallback((id: string) => {
+        userDirtyRef.current = true;
         setPositions(p => {
             const n = { ...p };
             const idsToUnload = [id];
@@ -3579,6 +3796,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates]);
 
     const handleUpdatePos = useCallback((id: string, x: number, y: number) => {
+        userDirtyRef.current = true;
         setPositions(p => {
             if (!p[id]) return p;
             const dx = x - p[id].x;
@@ -3600,6 +3818,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates]);
 
     const handleUpdateXZ = useCallback((id: string, x: number, z: number) => {
+        userDirtyRef.current = true;
         setPositions(p => {
             if (!p[id]) return p;
             const crate = allCrates.find(c => c.id === id);
@@ -3625,6 +3844,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates]);
 
     const handleStack = useCallback((id: string) => {
+        userDirtyRef.current = true;
         setPositions(p => {
             const current = p[id];
             if (!current) return p;
@@ -3653,6 +3873,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates]);
 
     const handleRotate = useCallback((id: string) => {
+        userDirtyRef.current = true;
         setPositions(p => {
             if (!p[id]) return p;
             return { ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } };
@@ -3755,15 +3976,29 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     };
 
-    const handleClearTrailer = useCallback(() => {
+    const handleClearTrailer = useCallback(async () => {
         if (Object.keys(positions).length === 0) return;
         if (confirm('Are you sure you want to clear all loaded units from the trailer?')) {
+            // Immediately mark as dirty so position-loading can't overwrite
+            userDirtyRef.current = true;
+            lastSyncedPositionsRef.current = '{}';
             setPositions({});
             setSelectedId(null);
             setRecalledShipment(null);
+
+            // Immediately flush DB clears (don't wait for debounce)
+            if (db) {
+                try {
+                    for (const id of Object.keys(positions)) {
+                        const doc = await db.logistics.findOne(id).exec();
+                        if (doc) await doc.patch({ truck_id: null, truck_position: null });
+                    }
+                } catch (e) { console.warn('[TruckSync] Clear error:', e); }
+            }
+
             notify.success('Trailer cleared');
         }
-    }, [positions]);
+    }, [positions, db]);
 
     const handleLoadDraft = (draft: TruckDraft) => {
         setPositions(draft.positions);
@@ -3830,10 +4065,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     const { error } = await supabase.from('logistics').update({ 
                         status: newStatus, 
                         description: finalDesc, 
-                        updated_at: dispatchTs 
+                        updated_at: dispatchTs,
+                        // Clear live trailer fields — position is now stored in shipment payload
+                        truck_id: null,
+                        truck_position: null
                     }).eq('id', c.id);
                     if (error) throw error;
-                    if (db) { const lDoc = await db.logistics.findOne({ selector: { id: c.id } }).exec(); if (lDoc) await lDoc.patch({ status: newStatus, description: finalDesc }); }
+                    if (db) { const lDoc = await db.logistics.findOne({ selector: { id: c.id } }).exec(); if (lDoc) await lDoc.patch({ status: newStatus, description: finalDesc, truck_id: null, truck_position: null }); }
                 }
 
                 // 1b. Stamp sent_date + manifest on all inventory items in dispatched crates
@@ -3982,9 +4220,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     useEffect(() => {
         if (truckReadyTrigger > 0 && truckReadyTrigger !== prevTriggerRef.current) {
             prevTriggerRef.current = truckReadyTrigger;
-            handleReadyTruck();
+            setShowReadyWizard(true);
         }
-    }, [truckReadyTrigger]);
+    }, [truckReadyTrigger, setShowReadyWizard]);
 
     // ── Draft handlers ──
     const buildDraft = useCallback((name: string, fields?: any): TruckDraft => {
