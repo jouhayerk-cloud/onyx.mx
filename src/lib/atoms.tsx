@@ -510,6 +510,7 @@ export const isPackingPrintWizardOpenAtom = atom<boolean>(false);
 export const packingExportPDFTriggerAtom = atom<number>(0);
 export const packingExportXLSXTriggerAtom = atom<number>(0);
 export const packingExportJSONTriggerAtom = atom<number>(0);
+export const inventoryExportSelectedXLSXTriggerAtom = atom<number>(0);
 export const isPackingFiltersOpenAtom = atom<boolean>(false);
 export const isPackingNFCWizardOpenAtom = atom<boolean>(false);
 export const isPackingCrateWizardOpenAtom = atom<boolean>(false);

@@ -61,6 +61,7 @@ import {
     inventoryViewSliderAtom,
     isInventorySearchOpenAtom,
     isInventorySortMenuOpenAtom,
+    inventoryExportSelectedXLSXTriggerAtom,
     financeSearchTermAtom,
     paymentVendorFilterAtom,
     isPaymentVendorFilterOpenAtom,
@@ -873,11 +874,19 @@ export function MainHeader() {
     const isSearchOpen = useAtomValue(isInventorySearchOpenAtom);
     const isFiltersOpen = useAtomValue(isInventoryFiltersPanelOpenAtom);
     const isViewSliderOpen = useAtomValue(isInventoryViewSliderOpenAtom);
+    const selectedIds = useAtomValue(selectedInventoryIdsAtom);
+    const exportSelectedTrigger = useAtomValue(inventoryExportSelectedXLSXTriggerAtom);
+
+    useEffect(() => {
+        if (exportSelectedTrigger > 0) {
+            handleMasterExportXLSX(true);
+        }
+    }, [exportSelectedTrigger]);
 
     // Statuses that are store/catalog items — excluded from the export
     const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
 
-    const handleMasterExportXLSX = async () => {
+    const handleMasterExportXLSX = async (exportOnlySelected: boolean = false) => {
         setIsExporting(true);
         try {
             const workbook = new ExcelJS.Workbook();
@@ -1007,12 +1016,15 @@ export function MainHeader() {
             }
 
             const exportItems = inventory.filter(item => {
+                if (exportOnlySelected) {
+                    return selectedIds.includes(item.row);
+                }
                 const status = (item.data.status || '').toLowerCase().trim();
                 return !EXCLUDED_STATUSES.has(status);
             });
 
             // --- CRATE CATEGORIZATION ---
-            const allCrates = (logisticsDocs || []).filter(d => 
+            const allCrates = exportOnlySelected ? [] : (logisticsDocs || []).filter(d => 
                 ['crate', 'pallet', 'cardboard'].includes((d.type || '').toLowerCase())
             );
             
