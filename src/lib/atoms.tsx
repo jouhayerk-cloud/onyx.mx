@@ -555,7 +555,10 @@ export const truckingZoomAtom = atom<number>(1);
 export const truckingAllCratesAtom = atom((get) => {
     const docs = get(logisticsDocsAtom);
     const recalled = get(truckingRecalledShipmentAtom);
-    const live = docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status));
+    const live = docs.filter(d => {
+        const s = (d.status || '').toLowerCase().trim();
+        return ['packed', 'partial', 'in transit', 'deployed'].includes(s);
+    });
     
     if (recalled) {
         const payload = typeof recalled.payload === 'string' ? JSON.parse(recalled.payload) : recalled.payload;
@@ -579,7 +582,7 @@ export const truckingAllCratesAtom = atom((get) => {
 export const truckingDockCratesAtom = atom((get) => {
     const all = get(truckingAllCratesAtom);
     const pos = get(truckingPositionsAtom);
-    return all.filter(c => !pos[c.id] && !c.parent_id && c.status !== 'In Transit');
+    return all.filter(c => !pos[c.id] && !c.parent_id && ['packed', 'partial'].includes((c.status || '').toLowerCase().trim()));
 });
 
 export const truckingTruckCratesAtom = atom((get) => {

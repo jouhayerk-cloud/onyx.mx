@@ -558,8 +558,6 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                                 if (isNaN(val)) return;
                                                 const tid = toast.loading('Saving weight...');
                                                 try {
-                                                    // brute_weight_kg does NOT exist as a Supabase column.
-                                                    // Persist locally in RxDB only; embed in contents_summary for cloud backup.
                                                     const db = (window as any).onyxDb;
                                                     if (db) {
                                                         const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
