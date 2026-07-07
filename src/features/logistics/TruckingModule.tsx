@@ -30,7 +30,7 @@ import ExcelJS from 'exceljs';
 import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto, ManifestoMeta } from '../../lib/crateManifesto';
 
 import * as THREE from 'three';
-import { CrateEditPanel } from './CratesInventoryView';
+import { CrateEditPanel, WireframeCrate } from './CratesInventoryView';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import gsap from 'gsap';
 
@@ -263,14 +263,17 @@ export const CompactDockCard: React.FC<{
                 style={{ '--main-color': primaryColor } as React.CSSProperties}
             >
                 <div className={`flex items-center justify-center transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] ${isCompact ? 'w-6 h-6' : 'w-16 h-16'}`}>
-                    <CrateWireframe 
-                        w={crate.width_cm} 
-                        l={crate.length_cm} 
-                        h={crate.height_cm || 50} 
-                        color={primaryColor} 
-                        size={isCompact ? 40 : 64} 
-                        solid={true}
-                    />
+                    <div style={{ transform: `scale(${isCompact ? 0.7 : 1.2})`, pointerEvents: 'none' }}>
+                        <WireframeCrate 
+                            w={crate.width_cm || 60} 
+                            l={crate.length_cm || 60} 
+                            h={crate.height_cm || 60} 
+                            status={crate.status}
+                            type={crate.type}
+                            count={1}
+                            fillPct={100}
+                        />
+                    </div>
                 </div>
                 <div className="flex flex-col">
                     <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-1 mb-0' : 'gap-3 mb-1.5'}`}>
@@ -582,7 +585,17 @@ const DockCard: React.FC<{
             
             {/* Top row: wireframe + type badge + Edit */}
             <div className="flex items-start justify-between w-full mb-0 relative z-10 pointer-events-none">
-                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={60} solid={true} />
+                <div style={{ transform: 'scale(1.1)', transformOrigin: 'top left' }}>
+                    <WireframeCrate 
+                        w={crate.width_cm || 60} 
+                        l={crate.length_cm || 60} 
+                        h={crate.height_cm || 60} 
+                        status={crate.status}
+                        type={crate.type}
+                        count={1}
+                        fillPct={100} 
+                    />
+                </div>
                 <div className="flex flex-col items-end gap-2">
                     <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-black/40 text-white border border-white/10">
                         {typeLabel}
@@ -3725,8 +3738,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     // Smart auto-position: pack from FRONT (cab, right side x≈TRUCK_L_CM) toward rear, row-by-row
     const computeAutoPosition = useCallback((crate: any, currentPositions: Record<string, {x:number;y:number;r:number}>, allCrates: any[]) => {
-        const W = crate.width_cm;
-        const D = crate.length_cm;
+        const W = parseFloat(crate.width_cm) || 60;
+        const D = parseFloat(crate.length_cm) || 60;
         const PAD = 5; // 5cm padding between crates
         const MARGIN = 10;
         // Collect occupied rects [{x,y,w,d}] in canvas space
@@ -3735,7 +3748,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             .map(c => {
                 const p = currentPositions[c.id];
                 const rotated = p.r === 90;
-                return { x: p.x, y: p.y, w: rotated ? c.length_cm : c.width_cm, d: rotated ? c.width_cm : c.length_cm };
+                const cw = parseFloat(c.width_cm) || 60;
+                const cl = parseFloat(c.length_cm) || 60;
+                return { x: p.x, y: p.y, w: rotated ? cl : cw, d: rotated ? cw : cl };
             });
         // Scan from front (high x) to rear (low x), left-to-right in y
         const stepX = Math.max(10, Math.floor(W / 2));
