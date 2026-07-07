@@ -10,10 +10,11 @@ import {
     exchangeRateAtom,
     workbookVersionAtom,
     isBatchActionsModalOpenAtom,
-    batchActionItemsDataAtom
+    batchActionItemsDataAtom,
+    inventoryExportSelectedXLSXTriggerAtom
 } from '../../lib/atoms';
 import { 
-    Printer, Nfc, Package, DollarSign, Tag, Copy, X 
+    Printer, Nfc, Package, DollarSign, Tag, Copy, X, FileSpreadsheet 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { calculateCodesAndPrices } from '../../lib/utils';
@@ -31,6 +32,7 @@ export const InventorySelectionDock: React.FC = () => {
     
     const setIsBatchModalOpen = useSetAtom(isBatchActionsModalOpenAtom);
     const setBatchItemsData = useSetAtom(batchActionItemsDataAtom);
+    const setExportSelectedXLSX = useSetAtom(inventoryExportSelectedXLSXTriggerAtom);
 
     if (selectedIds.length === 0) return null;
 
@@ -131,6 +133,14 @@ export const InventorySelectionDock: React.FC = () => {
                     >
                         <Copy size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
                         <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">COPY</span>
+                    </button>
+                    <button 
+                        onClick={() => setExportSelectedXLSX(Date.now())}
+                        className="text-white/40 hover:text-green-500 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
+                        title="Export XLSX"
+                    >
+                        <FileSpreadsheet size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">EXPORT</span>
                     </button>
                     
                     <div className="w-px h-8 md:h-12 bg-white/10 mx-2 flex-shrink-0" />
