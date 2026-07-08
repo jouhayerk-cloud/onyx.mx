@@ -1,14 +1,15 @@
 import React, { useState, useMemo, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield } from 'lucide-react';
+import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield, Check, FolderUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase, useNotify } from '../../lib/hooks';
-import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom } from '../../lib/atoms';
+import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom, isWarehouseSelectionModeAtom, warehouseSelectedIdsAtom, showWarehouseExportWizardAtom } from '../../lib/atoms';
 import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices, getCrateDisplayName } from '../../lib/utils';
 import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
 import { ExportWizard } from '../../components/ExportWizard';
+import { ExportCratesWizard } from './ExportCratesWizard';
 import { vendors } from '../../lib/consts';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
@@ -220,7 +221,7 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
 };
 
 // --- Crate Card ---
-const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, onEdit, isDeployedView = false, isPackedView = false }: { 
+const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, onEdit, isDeployedView = false, isPackedView = false, selectionMode = false, isSelected = false, onSelect }: { 
     crate: CrateRecord; 
     allCrates: CrateRecord[]; 
     allInventory: any[]; 
@@ -229,8 +230,10 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
     onNest: (c: CrateRecord) => void;
     onEdit: (c: CrateRecord) => void;
     isDeployedView?: boolean; 
-    isDeployedView?: boolean; 
-    isPackedView?: boolean 
+    isPackedView?: boolean;
+    selectionMode?: boolean;
+    isSelected?: boolean;
+    onSelect?: () => void;
 }) => {
     const financeDocs = useAtomValue(financeDataAtom);
     const [isExpanded, setIsExpanded] = useState(false);
@@ -424,7 +427,20 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
     };
 
     return (
-        <div className="group relative transition-all duration-500 w-full flex flex-col py-6 px-6 bg-white/[0.03] border border-white/10 backdrop-blur-xl rounded-3xl mb-4 hover:border-(--main-color)/40">
+        <div 
+            onClick={() => {
+                if (selectionMode && onSelect) {
+                    onSelect();
+                }
+            }}
+            className={`group relative transition-all duration-500 w-full flex flex-col py-6 px-6 bg-white/[0.03] border backdrop-blur-xl rounded-3xl mb-4 ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.15)] bg-amber-500/5 scale-[1.01] z-10' : 'border-white/10 hover:border-(--main-color)/40'}`}
+        >
+            {/* Selection Checkbox Overlay */}
+            {selectionMode && (
+                <div className={`absolute top-6 right-6 z-20 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-amber-500 border-amber-500 text-black' : 'border-white/20 bg-black/20 group-hover:border-amber-500/50'}`}>
+                    {isSelected && <Check size={20} strokeWidth={4} />}
+                </div>
+            )}
 
             {/* Main Row */}
             <div className="p-4 flex flex-col xl:flex-row items-stretch xl:items-center gap-4 xl:gap-6 relative">
@@ -1280,6 +1296,20 @@ export const CratesInventoryView: React.FC = () => {
     const [isSavingNest, setIsSavingNest] = useState(false);
     const allInventory = useAtomValue(inventoryAtom);
     const isDummyMode = useAtomValue(isDummyModeAtom);
+    
+    const isWarehouseSelectionMode = useAtomValue(isWarehouseSelectionModeAtom);
+    const [warehouseSelectedIds, setWarehouseSelectedIds] = useAtom(warehouseSelectedIdsAtom);
+    const [showWarehouseExportWizard, setShowWarehouseExportWizard] = useAtom(showWarehouseExportWizardAtom);
+
+    const handleToggleSelection = (crateId: string) => {
+        setWarehouseSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(crateId)) next.delete(crateId);
+            else next.add(crateId);
+            return next;
+        });
+    };
+
     const activeTab = useMemo(() => (subTab === 'packed' || subTab === 'deployed' || subTab === 'crates') ? subTab : 'empty', [subTab]);
     const isLibraryOrDeployed = activeTab === 'crates' || activeTab === 'deployed';
 
@@ -1655,6 +1685,9 @@ export const CratesInventoryView: React.FC = () => {
                                                     onNest={(c) => setNestingUnit(c)}
                                                     onEdit={(c) => setEditingCrate(c)}
                                                     isPackedView={true}
+                                                    selectionMode={isWarehouseSelectionMode}
+                                                    isSelected={warehouseSelectedIds.has(crate.id)}
+                                                    onSelect={() => handleToggleSelection(crate.id)}
                                                 />
                                             ))}
                                         </div>
@@ -1809,6 +1842,15 @@ export const CratesInventoryView: React.FC = () => {
                     onClose={() => setEditingCrate(null)}
                     onSave={handleSaveCrate}
                     onDeleteGroup={handleDeleteCratesGroup}
+                />
+            )}
+
+            {showWarehouseExportWizard && (
+                <ExportCratesWizard 
+                    selectedCrates={crates.filter(c => warehouseSelectedIds.has(c.id))}
+                    allCrates={crates}
+                    allInventory={allInventory}
+                    onClose={() => setShowWarehouseExportWizard(false)}
                 />
             )}
 

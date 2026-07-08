@@ -299,6 +299,9 @@ export const isInventorySelectionModeAtom = atom<boolean>(false);
 export const selectedInventoryIdsAtom = atom<(string | number)[]>([]);
 export const isStoreSelectionModeAtom = atom<boolean>(false);
 export const selectedStoreIdsAtom = atom<string[]>([]);
+export const isWarehouseSelectionModeAtom = atom<boolean>(false);
+export const warehouseSelectedIdsAtom = atom<Set<string>>(new Set<string>());
+export const showWarehouseExportWizardAtom = atom<boolean>(false);
 export const activeVendorsAtom = atom<string[]>([]);
 
 export const storeInventoryAtom = atom<any[]>([]);

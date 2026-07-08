@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { 
     Truck, RotateCcw, Trash2, Box, Layers, Grid3x3, 
@@ -488,9 +488,10 @@ export const DeployedTrailerCard: React.FC<{
     shipment: any; 
     onRecall: () => void;
     onDelete: () => void;
+    onView: () => void;
     allCrates: any[];
     allInventory: any[];
-}> = ({ shipment, onRecall, onDelete, allCrates, allInventory }) => {
+}> = ({ shipment, onRecall, onDelete, onView, allCrates, allInventory }) => {
     const date = new Date(shipment.timestamp);
     const dateStr = date.toISOString().split('T')[0];
     const trkDate = `TRK-${dateStr}`;
@@ -507,7 +508,7 @@ export const DeployedTrailerCard: React.FC<{
     return (
         <div className="flex items-center gap-6 group shrink-0 transition-all select-none">
             {/* Larger SVG Crate Map Indicator */}
-            <div className="relative w-36 h-28 flex items-center justify-center transition-all duration-700 group-hover:scale-110 cursor-pointer active:scale-95" onClick={onRecall}>
+            <div className="relative w-36 h-28 flex items-center justify-center transition-all duration-700 group-hover:scale-110 cursor-pointer active:scale-95" onClick={onView}>
                 <div className="absolute inset-0 bg-white/5 rounded-full scale-0 group-hover:scale-150 transition-all duration-1000 blur-[40px] opacity-20 transform-gpu will-change-transform" />
                 {truckCrates.length > 0 ? (
                     <MiniIsoView 
@@ -1094,7 +1095,14 @@ const SideView: React.FC<{
                                 {/* 3D Wireframe Icon Overlay */}
                                 <foreignObject x={cr.px} y={cr.py} width={cr.pw} height={cr.ph} style={{ pointerEvents: 'none' }}>
                                     <div className="w-full h-full flex items-center justify-center opacity-30 overflow-hidden">
-                                        <CrateWireframe w={cr.crate.width_cm} l={cr.crate.length_cm} h={cr.crate.height_cm || 50} color="rgba(0,0,0,0.6)" size={Math.min(cr.pw, cr.ph) * 1.5} solid={false} />
+                                        <CrateWireframe 
+                                            w={parseFloat(cr.crate.width_cm as any) || 60} 
+                                            l={parseFloat(cr.crate.length_cm as any) || 60} 
+                                            h={parseFloat(cr.crate.height_cm as any) || 50} 
+                                            color="rgba(0,0,0,0.6)" 
+                                            size={Math.min(cr.pw, cr.ph) * 1.5} 
+                                            solid={false} 
+                                        />
                                     </div>
                                 </foreignObject>
 
@@ -3570,7 +3578,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         // Exclude 'Deployed' Ã¢â‚¬â€ deployed crates have been shipped and are not part of active trucking
         const live = docs.filter(d => {
             const s = (d.status || '').toLowerCase().trim();
-            return ['packed', 'partial', 'in transit', 'deployed'].includes(s);
+            return ['packed', 'partial', 'in transit'].includes(s);
         });
         
         // If we have a recalled shipment, we might need to inject "virtual" crates 
@@ -3712,14 +3720,20 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         // Auto scroll to newly loaded crate
         setTimeout(() => {
             const el = canvasRef.current;
+            const trailer = document.getElementById('trailer-main-map');
             const crate = allCrates.find(c => c.id === id);
-            if (el && crate) {
+            if (el && trailer && crate) {
                 const isMobile = window.innerWidth < 768;
                 const pos = computeAutoPosition(crate, positions, allCrates);
-                const visualX = (isMobile ? pos.y : pos.x) * 1.5;
-                const visualY = (isMobile ? (1615 - pos.x - (pos.r === 0 ? parseFloat(crate.length_cm as any)||60 : parseFloat(crate.width_cm as any)||60)) : pos.y) * 1.5;
-                const centerX = visualX - el.clientWidth / 2 + 100;
-                const centerY = visualY - el.clientHeight / 2 + 100;
+                const visualX = (isMobile ? pos.y : pos.x) * BASE_SCALE * zoom;
+                const visualY = (isMobile ? (TRUCK_L_CM - pos.x - (pos.r === 0 ? parseFloat(crate.length_cm as any)||60 : parseFloat(crate.width_cm as any)||60)) : pos.y) * BASE_SCALE * zoom;
+                
+                // Add the trailer's offset to the visual coordinates to get the absolute position in the scroll container
+                const absoluteX = trailer.offsetLeft + visualX;
+                const absoluteY = trailer.offsetTop + visualY;
+                
+                const centerX = absoluteX - el.clientWidth / 2;
+                const centerY = absoluteY - el.clientHeight / 2;
                 el.scrollTo({ left: Math.max(0, centerX), top: Math.max(0, centerY), behavior: 'smooth' });
             }
         }, 100);
@@ -3926,12 +3940,21 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     };
 
-    const handleClearTrailer = useCallback(() => {
+    const handleClearTrailer = useCallback(async () => {
         if (Object.keys(positions).length === 0) return;
         if (confirm('Are you sure you want to clear all loaded units from the trailer?')) {
+            const idsToClear = Object.keys(positions);
             setPositions({});
             setSelectedId(null);
             setRecalledShipment(null);
+            
+            // Clear from database as per user request
+            try {
+                await supabase.from('logistics').update({ truck_id: null, truck_position: null }).in('id', idsToClear);
+            } catch (err) {
+                console.error("Error clearing trailer from DB", err);
+            }
+            
             notify.success('Trailer cleared');
         }
     }, [positions]);
@@ -4407,6 +4430,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             shipment={s} 
                                             onRecall={() => handleRecall(s)} 
                                             onDelete={() => handleDeleteShipment(s.manifest_id)}
+                                            onView={() => { setSentTruckId(s.manifest_id); setView('truck'); }}
                                             allCrates={allCrates}
                                             allInventory={allInventory}
                                         />
