@@ -293,7 +293,8 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                             id, qty, norm, packetIn: parentLabel,
                             mainImage: getCleanImageUrl(norm.generatedPngUrl || (urls.length > 0 ? urls[0] : null)),
                             barcode,
-                            weight
+                            weight,
+                            source: inv.source || inv.data.source || 'inventory'
                         });
                     }
                 });
@@ -518,7 +519,25 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                             )}
 
                             <button
-                                onClick={() => onPack(crate)}
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (isPackedView) {
+                                        const tid = toast.loading('Marking as Partial...');
+                                        try {
+                                            const db = (window as any).onyxDb;
+                                            if (db) {
+                                                const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
+                                                if (lDoc) await lDoc.patch({ status: 'Partial', updated_at: new Date().toISOString() });
+                                            }
+                                            await supabase.from('logistics').update({ status: 'Partial', updated_at: new Date().toISOString() }).eq('id', crate.id);
+                                            toast.success('Marked as Partial', { id: tid });
+                                        } catch (err) {
+                                            toast.error('Failed to update status', { id: tid });
+                                        }
+                                    } else {
+                                        onPack(crate);
+                                    }
+                                }}
                                 className={`p-2 transition-all duration-300 cursor-pointer hover:scale-125 ${
                                     isDeployedView
                                         ? 'text-blue-400 hover:text-blue-300'
@@ -526,7 +545,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                         ? 'text-amber-400 hover:text-amber-300'
                                         : 'text-white/40 hover:text-white'
                                 }`}
-                                title={isDeployedView ? 'Return to Packing' : isPackedView ? 'Re-open & Pack More' : 'Pack Items'}
+                                title={isDeployedView ? 'Return to Packing' : isPackedView ? 'Mark as Partial' : 'Pack Items'}
                             >
                                 {isDeployedView || isPackedView ? (
                                     <RotateCcw size={22} />
@@ -696,27 +715,81 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                 <div className="border-t border-white/5 bg-black/20 p-6 max-h-[500px] overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-300">
                     <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40 mb-6 px-1">{dynamicId} — Packing List</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {packedItems.map((item, idx) => (
-                            <div key={`${item.id}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/8 hover:border-white/20 transition-all duration-300">
-                                <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-black/50 border border-white/10">
+                        {packedItems.map((item, idx) => {
+                            const dims = [item.norm.lengthCm, item.norm.widthCm, item.norm.heightCm].filter(v => v && v > 0);
+                            const dimsStr = dims.length === 3 ? `${dims[0]}x${dims[1]}x${dims[2]} CM` : '';
+                            const vId = (item.norm.vendor_id || item.norm.itemId || '').split('-')[0].toUpperCase();
+                            const vColor = (vendors as any)[vId]?.color || '#555';
+                            
+                            return (
+                            <div key={`${item.id}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/8 hover:border-white/20 transition-all duration-300 relative group/item">
+                                <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-black/50 border border-white/10">
                                     {item.mainImage ? <img src={item.mainImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/5" />}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-black text-white truncate uppercase tracking-tight">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
-                                    <div className="flex items-center gap-3 mt-1">
+                                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                    <p className="text-[14px] font-black text-white truncate uppercase tracking-tight">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <div className="px-1.5 py-0.5 rounded text-[9px] font-black tracking-widest uppercase" style={{ backgroundColor: vColor, color: '#000' }}>
+                                            {vId || 'UNK'}
+                                        </div>
                                         <p className="text-[10px] font-mono text-white/40 uppercase tracking-[0.1em]">{item.barcode}</p>
+                                        <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">{[item.norm.color, item.norm.material].filter(Boolean).join(' ')}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {dimsStr && <p className="text-[10px] font-mono text-white/50">{dimsStr}</p>}
                                         {item.weight > 0 && (
-                                            <p className="text-[10px] font-black text-(--main-color) uppercase tracking-tighter bg-(--main-color)/10 px-2 py-0.5 rounded-md">
+                                            <p className="text-[10px] font-black text-(--main-color) uppercase tracking-tighter bg-(--main-color)/10 px-1.5 py-0.5 rounded">
                                                 {item.weight.toFixed(1)} KG
                                             </p>
                                         )}
                                     </div>
                                 </div>
-                                <div className="w-auto px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[12px] font-black font-mono text-(--main-color)">
-                                    x{item.qty}
+                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                    <div className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[13px] font-black font-mono text-(--main-color)">
+                                        x{item.qty}
+                                    </div>
+                                    <button 
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (!window.confirm('Remove item from this unit?')) return;
+                                            const tid = toast.loading('Removing item...');
+                                            try {
+                                                const db = (window as any).onyxDb;
+                                                const invTbl = item.source === 'production' ? 'production' : 'inventory';
+                                                
+                                                if (db) {
+                                                    const iDoc = await db[invTbl].findOne({ selector: { id: item.id } }).exec();
+                                                    if (iDoc) await iDoc.patch({ crate_id: '', packing_status: 'Unpacked', updated_at: new Date().toISOString() });
+                                                }
+                                                await supabase.from(invTbl).update({ crate_id: null, packing_status: 'Unpacked', updated_at: new Date().toISOString() }).eq('id', item.id);
+                                                
+                                                let newIds = '';
+                                                if (crate.inventory_ids) {
+                                                    const entries = crate.inventory_ids.split(',').filter(Boolean);
+                                                    const updatedEntries = entries.filter(entry => !entry.startsWith(`${item.id}:`));
+                                                    newIds = updatedEntries.join(',');
+                                                }
+                                                
+                                                if (db) {
+                                                    const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
+                                                    if (lDoc) await lDoc.patch({ inventory_ids: newIds, updated_at: new Date().toISOString() });
+                                                }
+                                                await supabase.from('logistics').update({ inventory_ids: newIds, updated_at: new Date().toISOString() }).eq('id', crate.id);
+                                                
+                                                toast.success('Removed', { id: tid });
+                                            } catch (err) {
+                                                toast.error('Failed to remove', { id: tid });
+                                            }
+                                        }}
+                                        className="p-1.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all opacity-0 group-hover/item:opacity-100"
+                                        title="Remove from unit"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
