@@ -83,7 +83,8 @@ export const ONYX_CONTEXT = {
         BT: { name: "BERNARDO", firstName: "Bernardo", color: "#603913", bio: "Logistics support" },
         RF: { name: "ROBERTO FLORITA", firstName: "Roberto", color: "#00A591", bio: "Export specialist" },
         GS: { name: "GIFT STORE", firstName: "Gift", color: "#D11C7E", bio: "Retail channel" },
-        CP: { name: "CANTERA PUEBLA", firstName: "Cantera", color: "#A01E5D", bio: "Quarry source" }
+        CP: { name: "CANTERA PUEBLA", firstName: "Cantera", color: "#A01E5D", bio: "Quarry source" },
+        IH: { name: "ISMAEL HUERTA", firstName: "Ismael", color: "#E8A020", bio: "New vendor" }
     }
 };
 

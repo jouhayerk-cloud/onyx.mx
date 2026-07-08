@@ -98,7 +98,10 @@ import {
     isCrateCreationModalOpenAtom,
     isBotOrbOpenAtom,
     sentTruckIdAtom,
-    onyxApiKeyAtom
+    onyxApiKeyAtom,
+    isWarehouseSelectionModeAtom,
+    warehouseSelectedIdsAtom,
+    showWarehouseExportWizardAtom
 } from '../../lib/atoms';
 // Consolidated imports to prevent duplicates
 
@@ -129,7 +132,7 @@ import {
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
-    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary
+    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -571,6 +574,10 @@ const LogisticsBar: React.FC = () => {
 
     const setIsCrateModalOpen = useSetAtom(isCrateCreationModalOpenAtom);
     const [isWarehouseSearchOpen, setIsWarehouseSearchOpen] = useState(false);
+    
+    const [isWarehouseSelectionMode, setIsWarehouseSelectionMode] = useAtom(isWarehouseSelectionModeAtom);
+    const warehouseSelectedIds = useAtomValue(warehouseSelectedIdsAtom);
+    const setShowWarehouseExportWizard = useSetAtom(showWarehouseExportWizardAtom);
 
     useEffect(() => {
         if (activeView === 'warehouse' && (subTab === 'crates' || !['empty', 'packed', 'boxes', 'packing'].includes(subTab))) {
@@ -634,6 +641,39 @@ const LogisticsBar: React.FC = () => {
                                 <span className="text-[8px] font-black uppercase tracking-widest leading-none">Search</span>
                             </button>
 
+                            {subTab === 'packed' && (
+                                <>
+                                    <div className="w-px h-6 bg-white/5 mx-1" />
+                                    <button 
+                                        onClick={() => {
+                                            if (isWarehouseSelectionMode) {
+                                                // Clear selection when disabling
+                                                setIsWarehouseSelectionMode(false);
+                                                // In a real app we'd also clear the selected ids, but we only have a read-only view of it here.
+                                                // Actually, let's just let the CratesInventoryView clear it if needed, or we can just hide it.
+                                            } else {
+                                                setIsWarehouseSelectionMode(true);
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center justify-center w-16 h-16 transition-all cursor-pointer hover:bg-white/5 rounded-2xl group/select ${isWarehouseSelectionMode ? 'text-amber-500' : 'text-white/20 hover:text-white'}`}
+                                        title={isWarehouseSelectionMode ? 'Cancel Selection' : 'Select Crates'}
+                                    >
+                                        <FolderUp size={22} strokeWidth={2} className="group-hover/select:scale-110 transition-transform mb-1" />
+                                        <span className="text-[8px] font-black uppercase tracking-widest leading-none">Select</span>
+                                    </button>
+
+                                    {isWarehouseSelectionMode && warehouseSelectedIds.size > 0 && (
+                                        <button 
+                                            onClick={() => setShowWarehouseExportWizard(true)}
+                                            className="ml-2 flex items-center gap-2 px-6 py-2 rounded-xl transition-all font-black text-[10px] tracking-widest uppercase shadow-xl bg-amber-500 text-black hover:scale-105 active:scale-95 animate-in slide-in-from-left-4"
+                                        >
+                                            <Download size={16} strokeWidth={3} />
+                                            <span>Start Exportation ({warehouseSelectedIds.size})</span>
+                                        </button>
+                                    )}
+                                </>
+                            )}
+
                             {isWarehouseSearchOpen && (
                                 <div className="animate-in slide-in-from-left duration-300">
                                     <DeployableSearch 
@@ -677,6 +717,30 @@ const LogisticsBar: React.FC = () => {
 
                     {activeView === 'trucking' && (
                         <>
+                            <div className="flex items-center gap-2 px-4 border-l border-white/5">
+                                <button onClick={() => setShowOpenDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group" title="Load Draft">
+                                    <Archive size={14} className="group-hover:scale-110 transition-transform" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">Drafts</span>
+                                </button>
+                                <button onClick={() => setShowSaveDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group px-2" title="Save Draft">
+                                    <Save size={14} className="group-hover:scale-110 transition-transform" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">Save</span>
+                                </button>
+                                <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 text-white/30 hover:text-(--main-color) transition-all group pr-2" title="Export Manifest">
+                                    <SlidersHorizontal size={14} className="group-hover:scale-110 transition-transform" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">Export</span>
+                                </button>
+                                <button 
+                                    disabled={truckBusy} 
+                                    onClick={() => setShowReadyWizard(true)} 
+                                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all font-black text-[9px] tracking-widest uppercase shadow-xl
+                                        ${truckBusy ? 'bg-white/5 text-white/20' : 'bg-(--main-color) text-black hover:scale-105 active:scale-95'}`}
+                                >
+                                    {truckBusy ? <Activity size={14} className="animate-spin" /> : <Truck size={14} strokeWidth={3} />}
+                                    <span className="hidden sm:block">{truckBusy ? 'Processing...' : 'Ready Truck'}</span>
+                                </button>
+                            </div>
+
                             <div className="w-px h-6 bg-white/5 mx-1" />
                             <button
                                 onClick={() => setSubTab('crates')}
