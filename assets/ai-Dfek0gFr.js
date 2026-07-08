@@ -1,0 +1,1 @@
+import{G as n}from"./vendor-ai-D5849BJ1.js";const o=()=>{const e=typeof window<"u"?localStorage.getItem("onyxApiKey"):null;return e?e.replace(/['"]/g,"").trim():"".replace(/['"]/g,"").trim()},t=o();!t&&typeof window<"u"&&console.warn("⚠️ Neural Core: Missing API credentials. AI features disabled.");const i=new n({apiKey:t});export{i as a};
