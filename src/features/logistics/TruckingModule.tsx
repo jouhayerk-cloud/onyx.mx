@@ -3393,14 +3393,6 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[12px] font-black text-white truncate">{draft.name}</p>
-                                            <div className="flex items-center gap-3 mt-0.5">
-                                                <span className="text-[9px] text-white/30 font-black">{draft.crateCount} crates</span>
-                                                <span className="text-[9px] text-white/20">{new Date(draft.savedAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
-                                                {draft.thumbnail && <span className="text-[8px] text-emerald-500/60 font-black uppercase tracking-widest">Ã°Å¸â€œÂ· thumb</span>}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <button onClick={() => exportDraftFile(draft)} className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-white transition-all cursor-pointer" title="Export .truckload"><Download size={13} /></button>
                                             <button onClick={() => handleDelete(draft.id)} className="opacity-0 group-hover:opacity-100 text-rose-400/60 hover:text-rose-400 transition-all cursor-pointer" title="Delete"><Trash2 size={13} /></button>
                                             <button onClick={() => { onLoad(draft); onClose(); }} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all" style={{ backgroundColor: 'var(--main-color)', color: '#000' }}>Load</button>
                                         </div>
@@ -3417,7 +3409,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
 
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Main Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ————————————————— Main ——————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
     const db = useDatabase();
     const notify = useNotify();
@@ -3472,6 +3464,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             return !parentId && !positions[String(item.row)];
         });
     }, [allInventory, positions]);
+
+    // ─── TRAILER POSITIONS ARE LOCAL ONLY ────────────────────────────────────
+    // Positions are pure React state (useState). They are NEVER read from or
+    // written to the database. The DB only stores crate status (Packed/Deployed)
+    // which is set exclusively by the Ready Truck / finalize shipment flow.
+    // Draft trailer layouts are saved to localStorage via the TruckDraft system.
 
     useEffect(() => {
         if (topBarState === 'trailers') {
@@ -3788,19 +3786,18 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, []);
 
     const handleLoad = useCallback((id: string) => {
-        userDirtyRef.current = true;
         setPositions(p => {
             const crate = allCrates.find(c => c.id === id);
             if (!crate) return p;
             const pos = computeAutoPosition(crate, p, allCrates);
             const newPos = { ...p, [id]: { ...pos, z: 0 } };
-            
+
             // Auto-load children
             const children = allCrates.filter(c => c.parent_id === id);
             children.forEach(child => {
                 newPos[child.id] = { ...pos, z: 0 };
             });
-            
+
             return newPos;
         });
         
@@ -3824,11 +3821,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates, computeAutoPosition, positions]);
 
     const handleUnload = useCallback((id: string) => {
-        userDirtyRef.current = true;
         setPositions(p => {
             const n = { ...p };
             const idsToUnload = [id];
-            
+
             // Recursively find all children to unload
             const findChildren = (parentId: string) => {
                 allCrates.filter(c => c.parent_id === parentId).forEach(child => {
@@ -3837,23 +3833,21 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 });
             };
             findChildren(id);
-            
+
             idsToUnload.forEach(unId => delete n[unId]);
-            
             return n;
         });
         setSelectedId(null);
         setRecalledShipment(null);
-    }, [allCrates, onRefresh]);
+    }, [allCrates]);
 
     const handleUpdatePos = useCallback((id: string, x: number, y: number) => {
-        userDirtyRef.current = true;
         setPositions(p => {
             if (!p[id]) return p;
             const dx = x - p[id].x;
             const dy = y - p[id].y;
             const n = { ...p, [id]: { ...p[id], x, y } };
-            
+
             // Move children too
             const moveChildren = (parentId: string) => {
                 allCrates.filter(c => c.parent_id === parentId).forEach(child => {
@@ -3869,7 +3863,6 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates]);
 
     const handleUpdateXZ = useCallback((id: string, x: number, z: number) => {
-        userDirtyRef.current = true;
         setPositions(p => {
             if (!p[id]) return p;
             const crate = allCrates.find(c => c.id === id);
@@ -4027,19 +4020,15 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     };
 
-    const handleClearTrailer = useCallback(async () => {
+    const handleClearTrailer = useCallback(() => {
         if (Object.keys(positions).length === 0) return;
         if (confirm('Are you sure you want to clear all loaded units from the trailer?')) {
-            // Immediately mark as dirty so position-loading can't overwrite
-            userDirtyRef.current = true;
-            lastSyncedPositionsRef.current = '{}';
             setPositions({});
             setSelectedId(null);
             setRecalledShipment(null);
-
             notify.success('Trailer cleared');
         }
-    }, [positions, db, allCrates, onRefresh]);
+    }, [positions]);
 
     const handleLoadDraft = (draft: TruckDraft) => {
         setPositions(draft.positions);
