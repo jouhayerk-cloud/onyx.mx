@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { 
     Truck, RotateCcw, Trash2, Box, Layers, Grid3x3, 
@@ -3562,101 +3562,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         };
     }, [setIsCompact]);
 
-    const lastSyncedPositionsRef = useRef<string>('{}');
-    const userDirtyRef = useRef(false); // Set true on user actions, prevents DB-read from overwriting
-
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Load positions from DB on initial mount only Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    useEffect(() => {
-        if (recalledShipment) return;
-        // If user has made local changes, don't overwrite from DB
-        if (userDirtyRef.current) return;
-
-        const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
-        docs.forEach(d => {
-            // NEVER auto-load shipped or deployed crates onto the trailer
-            if (['In Transit', 'Deployed'].includes(d.status)) return;
-
-            // Priority 1: Read from truck_position JSON field (live sync)
-            if (d.truck_id === 'active' && d.truck_position) {
-                try {
-                    const parsed = JSON.parse(d.truck_position);
-                    if (parsed && typeof parsed.x === 'number') {
-                        map[d.id] = parsed;
-                        return;
-                    }
-                } catch (e) { /* fall through */ }
-            }
-            // Priority 2: Legacy fallback Ã¢â‚¬â€ parse from description string
-            if (d.description?.includes('POS:')) {
-                const m = d.description.match(/POS:(\d+),(\d+),(\d+)(?:,Z(\d+))?/);
-                if (m) map[d.id] = { x: +m[1], y: +m[2], r: +m[3], z: m[4] ? +m[4] : 0 };
-            }
-        });
-        const mapStr = JSON.stringify(map);
-        // Only update state if the resolved map actually changed
-        if (mapStr !== lastSyncedPositionsRef.current) {
-            lastSyncedPositionsRef.current = mapStr;
-            setPositions(map);
-        }
-    }, [docs, recalledShipment]);
-
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Cleanup stale truck_position from shipped/deployed crates on mount Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    useEffect(() => {
-        if (!db) return;
-        const cleanup = async () => {
-            try {
-                const allDocs = await db.logistics.find().exec();
-                for (const doc of allDocs) {
-                    const d = doc.toJSON();
-                    if (['In Transit', 'Deployed'].includes(d.status) && (d.truck_id === 'active' || d.truck_position)) {
-                        await doc.patch({ truck_id: null, truck_position: null });
-                    }
-                }
-            } catch (e) { console.warn('[TruckSync] Cleanup error:', e); }
-        };
-        cleanup();
-    }, [db]);
-
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Live Sync TO DB (Debounced 400ms) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    useEffect(() => {
-        if (recalledShipment || !db) return;
-        const currentStr = JSON.stringify(positions);
-        if (currentStr === lastSyncedPositionsRef.current) return;
-
-        const timeout = setTimeout(async () => {
-            try {
-                const current: Record<string, any> = JSON.parse(currentStr);
-                const prev: Record<string, any> = JSON.parse(lastSyncedPositionsRef.current);
-
-                // Detect changes and removals
-                const changed: Record<string, any> = {};
-                const removed: string[] = [];
-                for (const k of Object.keys(current)) {
-                    if (JSON.stringify(current[k]) !== JSON.stringify(prev[k])) changed[k] = current[k];
-                }
-                for (const k of Object.keys(prev)) {
-                    if (!(k in current)) removed.push(k);
-                }
-
-                if (Object.keys(changed).length > 0 || removed.length > 0) {
-                    lastSyncedPositionsRef.current = currentStr;
-
-                    for (const [id, pos] of Object.entries(changed)) {
-                        const doc = await db.logistics.findOne(id).exec();
-                        if (doc) await doc.patch({ truck_id: 'active', truck_position: JSON.stringify(pos) });
-                    }
-                    for (const id of removed) {
-                        const doc = await db.logistics.findOne(id).exec();
-                        if (doc) await doc.patch({ truck_id: null, truck_position: null });
-                    }
-                }
-                // Mark as clean after successful write
-                userDirtyRef.current = false;
-            } catch (e) { console.warn('[TruckSync] DB write error:', e); }
-        }, 400);
-
-        return () => clearTimeout(timeout);
-    }, [positions, db, recalledShipment]);
+    // Trailer positions are LOCAL ONLY — never synced to DB.
+    // Use the TruckDraft (localStorage) system to persist layouts.
+    // The DB only stores crate status (Packed/Deployed) set by Ready Truck.
 
     const allCrates = useMemo(() => {
         // Exclude 'Deployed' Ã¢â‚¬â€ deployed crates have been shipped and are not part of active trucking
@@ -3888,7 +3796,6 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates]);
 
     const handleStack = useCallback((id: string) => {
-        userDirtyRef.current = true;
         setPositions(p => {
             const current = p[id];
             if (!current) return p;
@@ -3917,7 +3824,6 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [allCrates]);
 
     const handleRotate = useCallback((id: string) => {
-        userDirtyRef.current = true;
         setPositions(p => {
             if (!p[id]) return p;
             return { ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } };
