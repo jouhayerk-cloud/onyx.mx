@@ -879,14 +879,203 @@ export function MainHeader() {
 
     useEffect(() => {
         if (exportSelectedTrigger > 0) {
-            handleMasterExportXLSX(true);
+            handleExportSelectedXLSX();
         }
     }, [exportSelectedTrigger]);
 
     // Statuses that are store/catalog items — excluded from the export
     const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
 
-    const handleMasterExportXLSX = async (exportOnlySelected: boolean = false) => {
+    // ─── SELECTED ITEMS EXPORT (Single Sheet) ─────────────────────────────────
+    const handleExportSelectedXLSX = async () => {
+        if (selectedIds.length === 0) {
+            toast.error('No items selected');
+            return;
+        }
+        setIsExporting(true);
+        try {
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'Onyx.mx Studio';
+            workbook.lastModifiedBy = 'Onyx.mx Studio';
+            workbook.created = new Date();
+
+            const partialPayIds = new Set(statusSets.partialPayIds);
+            const fullPayIds = new Set(statusSets.fullPayIds);
+            const requestedAcqIds = new Set(statusSets.requestedAcqIds);
+            const paymentDateMap = new Map<string, string>();
+            const paidMap = new Map<string, number>();
+            const requestedMap = new Map<string, number>();
+
+            financeDocs.forEach(d => {
+                const rel = d.related_ids || d.related_inventory_ids || '';
+                let ids: string[] = [];
+                if (Array.isArray(rel)) ids = rel.map((id: any) => String(id));
+                else if (typeof rel === 'string') ids = rel.split(',').map(s => s.trim()).filter(Boolean);
+                const amount = Number(d.amount || 0);
+                if (amount <= 0) return;
+                if (d.status === 'Paid') {
+                    ids.forEach(id => paidMap.set(id, (paidMap.get(id) || 0) + amount));
+                    const pDate = d.date || d.pay_date || d.created_at;
+                    if (pDate) ids.forEach(id => paymentDateMap.set(id, pDate));
+                } else if (d.status === 'Requested') {
+                    ids.forEach(id => requestedMap.set(id, (requestedMap.get(id) || 0) + amount));
+                }
+            });
+
+            const bookRate = exchangeRate || 20;
+
+            const exportItems = inventory.filter(item => selectedIds.includes(item.row));
+
+            // Build vendorGroups for selected items
+            const vendorGroups: Record<string, any[]> = {};
+            exportItems.forEach(item => {
+                const d = item.data as any;
+                const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
+                const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
+                const vid = prefixId || 'Unknown';
+                if (!vendorGroups[vid]) vendorGroups[vid] = [];
+                vendorGroups[vid].push(item);
+            });
+
+            const sheetName = 'Selected Items';
+            const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: 'FF4F46E5' } } });
+
+            vSheet.columns = [
+                { header: 'VENDOR', key: 'vendor', width: 15 },
+                { header: '#', key: 'item_number', width: 8 },
+                { header: 'PAY DATE', key: 'pay_date', width: 12 },
+                { header: 'BOOK BARCODE', key: 'tag_id', width: 22 },
+                { header: 'AQ CODE', key: 'aq_code', width: 12 },
+                { header: 'LD CODE', key: 'ld_code', width: 12 },
+                { header: 'DESCRIPTION', key: 'description', width: 45 },
+                { header: 'COLOR + MATERIAL', key: 'color_material', width: 35 },
+                { header: 'SIZES (CM)', key: 'sizes_metric', width: 20 },
+                { header: 'SIZES (IN)', key: 'sizes_imperial', width: 20 },
+                { header: 'WEIGHT (KG)', key: 'weight_metric', width: 15 },
+                { header: 'WEIGHT (LB)', key: 'weight_imperial', width: 15 },
+                { header: 'QTY', key: 'quantity', width: 8 },
+                { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'ACQ $ (USD)', key: 'acq_usd', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'TOTAL MXN', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'LD $ (USD)', key: 'ld_usd', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'PAY STATUS', key: 'pay_status', width: 18 }
+            ];
+
+            vSheet.getRow(1).eachCell(cell => {
+                cell.font = EXCEL_STYLES.fonts.header;
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+                cell.font = { ...EXCEL_STYLES.fonts.header, color: { argb: 'FFFFFFFF' } };
+                cell.alignment = { horizontal: 'center' };
+            });
+
+            const allSelectedItems: { vid: string, item: any }[] = [];
+            Object.entries(vendorGroups).forEach(([vid, items]) => {
+                items.forEach(item => allSelectedItems.push({ vid, item }));
+            });
+            allSelectedItems.sort((a, b) => {
+                if (a.vid !== b.vid) return a.vid.localeCompare(b.vid);
+                const numA = parseInt(a.item.data?.itemNumber || a.item.data?.item_number || '0', 10);
+                const numB = parseInt(b.item.data?.itemNumber || b.item.data?.item_number || '0', 10);
+                return numA - numB;
+            });
+
+            allSelectedItems.forEach(({ vid, item }, iIdx: number) => {
+                const itemData = item.data;
+                const qty = parseInt(itemData.quantity || '1', 10) || 1;
+                const costMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
+
+                const onyxRound = (n: number) => {
+                    const floor = Math.floor(n);
+                    return (n - floor >= 0.4) ? floor + 1 : floor;
+                };
+
+                const costUsd = onyxRound(costMxn / bookRate);
+                const totalMxn = Math.round(costMxn * qty);
+                const landedUsd = onyxRound((costMxn / bookRate) * 1.4);
+                const landedMxn = Math.round(costMxn * 1.4);
+                const retailUsd = onyxRound(landedUsd * 12);
+
+                const norm = normalizeInventoryData(itemData);
+                const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                const payStatusClass = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
+
+                const isProd = String(norm.status || item.status || '').toLowerCase().includes('production');
+                const payStatusText = payStatusClass === 'GREEN' ? 'PAID' :
+                                     payStatusClass === 'YELLOW' ? 'REQUESTED' :
+                                     payStatusClass === 'RED' ? (isProd ? 'ADVANCE' : 'PARTIAL') : 'NEW';
+                const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' :
+                                      payStatusClass === 'YELLOW' ? 'FFFACC15' :
+                                      payStatusClass === 'RED' ? 'FFEF4444' : 'FF38BDF8';
+
+                let formattedPayDate = 'N/A';
+                try {
+                    const pDateVal = paymentDateMap.get(String(itemData.id)) || itemData.pay_date || itemData.payDate;
+                    if (pDateVal) {
+                        const d = new Date(pDateVal);
+                        if (!isNaN(d.getTime())) formattedPayDate = d.toISOString().split('T')[0];
+                    }
+                } catch (e) { console.error('Date error:', e); }
+
+                const itemNum = itemData.itemNumber || itemData.item_number || iIdx + 1;
+
+                const row = vSheet.addRow({
+                    vendor: (vendors as any)[vid]?.name || vid,
+                    item_number: itemNum,
+                    pay_date: formattedPayDate,
+                    tag_id: calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || itemData.tag_id || item.label || '',
+                    aq_code: calculated.bookAqCode || '-',
+                    ld_code: calculated.bookLandCode || '-',
+                    description: `${itemData.shape || ''} ${itemData.shortDescription || itemData.description || ''}`.trim(),
+                    color_material: `${itemData.color || ''} ${itemData.material || ''}`.trim(),
+                    sizes_metric: formatDimensionsMetricOnly(itemData.widthCm || itemData.width_cm, itemData.heightCm || itemData.height_cm, itemData.lengthCm || itemData.length_cm),
+                    sizes_imperial: formatDimensionsImperialOnly(itemData.widthCm || itemData.width_cm, itemData.heightCm || itemData.height_cm, itemData.lengthCm || itemData.length_cm),
+                    weight_metric: formatWeightMetricOnly(itemData.weightKg || itemData.weight_kg),
+                    weight_imperial: formatWeightImperialOnly(itemData.weightKg || itemData.weight_kg),
+                    quantity: qty,
+                    cost_mxn: costMxn,
+                    acq_usd: costUsd,
+                    total_mxn: totalMxn,
+                    landed_mxn: landedMxn,
+                    ld_usd: landedUsd,
+                    retail_usd: retailUsd,
+                    pay_status: payStatusText
+                });
+
+                const tagIdVal = calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || itemData.tag_id || item.label || '';
+                const vColorRow = getVendorColor(tagIdVal);
+                const contrastColorRow = getContrastColor(vColorRow);
+
+                const vendorCell = row.getCell('vendor');
+                vendorCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColorRow } };
+                vendorCell.font = { bold: true, color: { argb: contrastColorRow } };
+
+                const tagCell = row.getCell('tag_id');
+                tagCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColorRow } };
+                tagCell.font = { bold: true, color: { argb: contrastColorRow } };
+
+                const payCell = row.getCell('pay_status');
+                payCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: payStatusColor } };
+                payCell.font = { bold: true, color: { argb: getContrastColor(payStatusColor) } };
+
+                if (iIdx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
+            });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
+            saveAs(new Blob([buffer]), `Onyx-mx_Selected_Items_${dateStr}.xlsx`);
+            toast.success('Selected Items WorkBook Ready', { icon: '📦' });
+        } catch (error) {
+            console.error('Selected export failed:', error);
+            toast.error('Selected Items Export Failed');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // ─── FULL WORKBOOK EXPORT (All Vendors, All Content) ─────────────────────
+    const handleMasterExportXLSX = async () => {
         setIsExporting(true);
         try {
             const workbook = new ExcelJS.Workbook();
@@ -1016,15 +1205,12 @@ export function MainHeader() {
             }
 
             const exportItems = inventory.filter(item => {
-                if (exportOnlySelected) {
-                    return selectedIds.includes(item.row);
-                }
                 const status = (item.data.status || '').toLowerCase().trim();
                 return !EXCLUDED_STATUSES.has(status);
             });
 
             // --- CRATE CATEGORIZATION ---
-            const allCrates = exportOnlySelected ? [] : (logisticsDocs || []).filter(d => 
+            const allCrates = (logisticsDocs || []).filter(d =>
                 ['crate', 'pallet', 'cardboard'].includes((d.type || '').toLowerCase())
             );
             
@@ -1073,146 +1259,6 @@ export function MainHeader() {
                     }
                 });
             });
-
-            if (exportOnlySelected) {
-                const sheetName = "Selected Items";
-                const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: 'FF4F46E5' } } });
-                
-                vSheet.columns = [
-                    { header: 'VENDOR', key: 'vendor', width: 15 },
-                    { header: '#', key: 'item_number', width: 8 },
-                    { header: 'PAY DATE', key: 'pay_date', width: 12 },
-                    { header: 'BOOK BARCODE', key: 'tag_id', width: 22 },
-                    { header: 'AQ CODE', key: 'aq_code', width: 12 },
-                    { header: 'LD CODE', key: 'ld_code', width: 12 },
-                    { header: 'DESCRIPTION', key: 'description', width: 45 },
-                    { header: 'COLOR + MATERIAL', key: 'color_material', width: 35 },
-                    { header: 'SIZES (CM)', key: 'sizes_metric', width: 20 },
-                    { header: 'SIZES (IN)', key: 'sizes_imperial', width: 20 },
-                    { header: 'WEIGHT (KG)', key: 'weight_metric', width: 15 },
-                    { header: 'WEIGHT (LB)', key: 'weight_imperial', width: 15 },
-                    { header: 'QTY', key: 'quantity', width: 8 },
-                    { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0' } },
-                    { header: 'ACQ $ (USD)', key: 'acq_usd', width: 18, style: { numFmt: '#,##0' } },
-                    { header: 'TOTAL MXN', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
-                    { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0' } },
-                    { header: 'LD $ (USD)', key: 'ld_usd', width: 18, style: { numFmt: '#,##0' } },
-                    { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0' } },
-                    { header: 'PAY STATUS', key: 'pay_status', width: 18 }
-                ];
-
-                vSheet.getRow(1).eachCell(cell => {
-                    cell.font = EXCEL_STYLES.fonts.header;
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
-                    cell.font = { ...EXCEL_STYLES.fonts.header, color: { argb: 'FFFFFFFF' } };
-                    cell.alignment = { horizontal: 'center' };
-                });
-
-                const allSelectedItems: { vid: string, item: any }[] = [];
-                Object.entries(vendorGroups).forEach(([vid, items]) => {
-                    items.forEach(item => {
-                        allSelectedItems.push({ vid, item });
-                    });
-                });
-                
-                allSelectedItems.sort((a, b) => {
-                    if (a.vid !== b.vid) return a.vid.localeCompare(b.vid);
-                    const numA = parseInt(a.item.data?.itemNumber || a.item.data?.item_number || '0', 10);
-                    const numB = parseInt(b.item.data?.itemNumber || b.item.data?.item_number || '0', 10);
-                    return numA - numB;
-                });
-
-                allSelectedItems.forEach(({vid, item}, iIdx: number) => {
-                    const itemData = item.data;
-                    const qty = parseInt(itemData.quantity || '1', 10) || 1;
-                    const costMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
-                    
-                    const onyxRound = (n: number) => {
-                        const floor = Math.floor(n);
-                        return (n - floor >= 0.4) ? floor + 1 : floor;
-                    };
-
-                    const costUsd = onyxRound(costMxn / bookRate);
-                    const totalMxn = Math.round(costMxn * qty);
-                    const landedUsd = onyxRound((costMxn / bookRate) * 1.4);
-                    const landedMxn = Math.round(costMxn * 1.4);
-                    const retailUsd = onyxRound(landedUsd * 12);
-
-                    const norm = normalizeInventoryData(itemData);
-                    const calculated = calculateCodesAndPrices(norm, bookRate, '326');
-                    const payStatusClass = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
-                    
-                    const isProd = String(norm.status || item.status || '').toLowerCase().includes('production');
-                    const payStatusText = payStatusClass === 'GREEN' ? 'PAID' : 
-                                        payStatusClass === 'YELLOW' ? 'REQUESTED' : 
-                                        payStatusClass === 'RED' ? (isProd ? 'ADVANCE' : 'PARTIAL') : 'NEW';
-
-                    const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' : 
-                                         payStatusClass === 'YELLOW' ? 'FFFACC15' : 
-                                         payStatusClass === 'RED' ? 'FFEF4444' : 'FF38BDF8';
-
-                    let formattedPayDate = 'N/A';
-                    try {
-                        const pDateVal = paymentDateMap.get(String(itemData.id)) || itemData.pay_date || itemData.payDate;
-                        if (pDateVal) {
-                            const d = new Date(pDateVal);
-                            if (!isNaN(d.getTime())) {
-                                formattedPayDate = d.toISOString().split('T')[0];
-                            }
-                        }
-                    } catch (e) { console.error('Date error:', e); }
-
-                    const itemNum = itemData.itemNumber || itemData.item_number || iIdx + 1;
-
-                    const row = vSheet.addRow({
-                        vendor: (vendors as any)[vid]?.name || vid,
-                        item_number: itemNum,
-                        pay_date: formattedPayDate,
-                        tag_id: calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || itemData.tag_id || item.label || '',
-                        aq_code: calculated.bookAqCode || '-',
-                        ld_code: calculated.bookLandCode || '-',
-                        description: `${itemData.shape || ''} ${itemData.shortDescription || itemData.description || ''}`.trim(),
-                        color_material: `${itemData.color || ''} ${itemData.material || ''}`.trim(),
-                        sizes_metric: formatDimensionsMetricOnly(itemData.widthCm || itemData.width_cm, itemData.heightCm || itemData.height_cm, itemData.lengthCm || itemData.length_cm),
-                        sizes_imperial: formatDimensionsImperialOnly(itemData.widthCm || itemData.width_cm, itemData.heightCm || itemData.height_cm, itemData.lengthCm || itemData.length_cm),
-                        weight_metric: formatWeightMetricOnly(itemData.weightKg || itemData.weight_kg),
-                        weight_imperial: formatWeightImperialOnly(itemData.weightKg || itemData.weight_kg),
-                        quantity: qty,
-                        cost_mxn: costMxn,
-                        acq_usd: costUsd,
-                        total_mxn: totalMxn,
-                        landed_mxn: landedMxn,
-                        ld_usd: landedUsd,
-                        retail_usd: retailUsd,
-                        pay_status: payStatusText
-                    });
-
-                    const tagIdVal = calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || itemData.tag_id || item.label || '';
-                    const vColorRow = getVendorColor(tagIdVal);
-                    const contrastColorRow = getContrastColor(vColorRow);
-                    
-                    const vendorCell = row.getCell('vendor');
-                    vendorCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColorRow } };
-                    vendorCell.font = { bold: true, color: { argb: contrastColorRow } };
-
-                    const tagCell = row.getCell('tag_id');
-                    tagCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColorRow } };
-                    tagCell.font = { bold: true, color: { argb: contrastColorRow } };
-
-                    const payCell = row.getCell('pay_status');
-                    payCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: payStatusColor } };
-                    payCell.font = { bold: true, color: { argb: getContrastColor(payStatusColor) } };
-
-                    if (iIdx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
-                });
-
-                const buffer = await workbook.xlsx.writeBuffer();
-                const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-                saveAs(new Blob([buffer]), `Onyx-mx_Selected_Items_${dateStr}.xlsx`);
-                toast.success('Selected Items WorkBook Ready', { icon: '📦' });
-                setIsExporting(false);
-                return;
-            }
 
             // 1. SUMMARY SHEET DASHBOARD
             const summarySheet = workbook.addWorksheet('Summary');

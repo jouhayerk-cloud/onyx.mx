@@ -37,7 +37,7 @@ import gsap from 'gsap';
 export const TRUCK_L_CM = 1615;
 export const TRUCK_W_CM = 244;
 export const TRUCK_H_CM = 279;
-export const BASE_SCALE = 1.5; // px/cm — canvas is 2422 × 366 px at zoom=1
+export const BASE_SCALE = 1.5; // px/cm Ã¢â‚¬â€ canvas is 2422 Ãƒâ€” 366 px at zoom=1
 
 // getCrateDisplayName moved to utils.tsx
 
@@ -60,7 +60,7 @@ export function getTruckCrateNumbering(truckCrates: any[], positions: Record<str
     return map;
 }
 
-// ─── Weight: sum item.weight_kg × qty from inventory_ids ─────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Weight: sum item.weight_kg Ãƒâ€” qty from inventory_ids Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 export function computeCrateWeight(crate: any, allInventory: any[], allCrates: any[], visited = new Set<string>()): number {
     if (!crate || visited.has(crate.id)) return 0;
     visited.add(crate.id);
@@ -97,7 +97,7 @@ export function computeCrateWeight(crate: any, allInventory: any[], allCrates: a
     return crate.weight_kg || Math.round((w * l * h) / 5000);
 }
 
-// ─── CM Grid (LANDSCAPE: X=truck length 1615cm, Y=truck width 244cm) ──────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ CM Grid (LANDSCAPE: X=truck length 1615cm, Y=truck width 244cm) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const CmGrid: React.FC<{ isVertical?: boolean }> = ({ isVertical }) => {
     const minor = 50; const major = 100;
     const xLines: number[] = []; const yLines: number[] = [];
@@ -152,8 +152,8 @@ const CmGrid: React.FC<{ isVertical?: boolean }> = ({ isVertical }) => {
     );
 };
 
-// ─── Dock Card ────────────────────────────────────────────────────────────────
-// ─── Isometric Wireframe Icon ────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Dock Card Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Isometric Wireframe Icon Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 export const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string; size?: number; solid?: boolean }> = ({ w, l, h, color, size = 44, solid = false }) => {
     const maxDim = Math.max(w, l, h, 1);
     const W = w / maxDim; const L = l / maxDim; const H = h / maxDim;
@@ -189,7 +189,7 @@ export const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: 
     );
 };
 
-// ─── Compact Data-Dense Card components ─────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Compact Data-Dense Card components Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function getDynamicCrateIdComponents(crate: any, allCrates: any[], allInventory: any[]) {
     if (!crate.inventory_ids || crate.status === 'Empty') return { date: '', vendors: [], sequence: crate.id.slice(0, 8).toUpperCase() };
     
@@ -321,7 +321,7 @@ export const CompactDockCard: React.FC<{
                     </div>
                     {!isCompact && (
                         <div className="flex items-center gap-4 leading-none">
-                            <span className="font-black text-white/80 uppercase tracking-widest text-[12px]">{crate.width_cm}×{crate.length_cm}</span>
+                            <span className="font-black text-white/80 uppercase tracking-widest text-[12px]">{crate.width_cm}Ãƒâ€”{crate.length_cm}</span>
                             <div className="w-1 h-1 rounded-full bg-white/20" />
                             <span className="font-black tracking-tighter text-[13px]" style={{ color: 'var(--main-color)' }}>{w}KG</span>
                         </div>
@@ -393,7 +393,7 @@ export const CompactItemCard: React.FC<{
                         {data.width_cm && (
                             <div className="flex items-center gap-1">
                                 <Maximize2 size={8} />
-                                <span className="text-[7px] font-black">{data.width_cm}×{data.length_cm}</span>
+                                <span className="text-[7px] font-black">{data.width_cm}Ãƒâ€”{data.length_cm}</span>
                             </div>
                         )}
                         {data.material && (
@@ -409,7 +409,7 @@ export const CompactItemCard: React.FC<{
     );
 };
 
-// ─── Mini Iso View for Deployed Trailers (SVG based) ──────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Mini Iso View for Deployed Trailers (SVG based) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const MiniIsoView: React.FC<{
     truckCrates: any[];
     positions: Record<string, any>;
@@ -455,17 +455,17 @@ const MiniIsoView: React.FC<{
                 if (!crate || crate.parent_id) return null;
                 const p = effectivePositions[id];
                 const rotated = p.r === 90;
-                const w = crate.width_cm || crate.w || 120;
-                const l = crate.length_cm || crate.l || 80;
-                const h = crate.height_cm || crate.h || 100;
+                const w = parseFloat(crate.width_cm as any) || parseFloat(crate.w as any) || 120;
+                const l = parseFloat(crate.length_cm as any) || parseFloat(crate.l as any) || 80;
+                const h = parseFloat(crate.height_cm as any) || parseFloat(crate.h as any) || 100;
                 const dX = rotated ? w : l, dY = rotated ? l : w;
                 const zOff = p.z || 0;
 
                 const col = crate.color || (vendors[getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[id]).vendorList[0] as keyof typeof vendors]?.color || '#F97316');
 
                 const pts = [
-                    iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
-                    iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
+                    iso(parseFloat(p.x as any)||0, parseFloat(p.y as any)||0, parseFloat(zOff as any)||0), iso((parseFloat(p.x as any)||0) + dX, parseFloat(p.y as any)||0, parseFloat(zOff as any)||0), iso((parseFloat(p.x as any)||0) + dX, (parseFloat(p.y as any)||0) + dY, parseFloat(zOff as any)||0), iso(parseFloat(p.x as any)||0, (parseFloat(p.y as any)||0) + dY, parseFloat(zOff as any)||0),
+                    iso(parseFloat(p.x as any)||0, parseFloat(p.y as any)||0, (parseFloat(zOff as any)||0) + h), iso((parseFloat(p.x as any)||0) + dX, parseFloat(p.y as any)||0, (parseFloat(zOff as any)||0) + h), iso((parseFloat(p.x as any)||0) + dX, (parseFloat(p.y as any)||0) + dY, (parseFloat(zOff as any)||0) + h), iso(parseFloat(p.x as any)||0, (parseFloat(p.y as any)||0) + dY, (parseFloat(zOff as any)||0) + h)
                 ];
                 const ptStr = (indices: number[]) => indices.map(i => `${pts[i][0].toFixed(1)},${pts[i][1].toFixed(1)}`).join(' ');
 
@@ -627,7 +627,7 @@ const DockCard: React.FC<{
             {/* Dims & Vol */}
             <div className="flex flex-col gap-0.5">
                 <span className="text-[11px] font-black uppercase tracking-widest text-white/80">
-                    {crate.width_cm}×{crate.length_cm}×{crate.height_cm || '?'} CM
+                    {crate.width_cm}Ãƒâ€”{crate.length_cm}Ãƒâ€”{crate.height_cm || '?'} CM
                 </span>
                 <span className="text-[9px] font-bold text-white/20 uppercase">
                     Vol: {Math.round((crate.width_cm * crate.length_cm * (crate.height_cm||100))/1000)} Liters
@@ -650,11 +650,11 @@ const DockCard: React.FC<{
 
 
 
-// ─── Truck Crate ──────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Truck Crate Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 // IMPORTANT: items live in the UNSCALED canvas coordinate space.
 // CSS transform(zoom) is applied to the parent; layout uses BASE_SCALE only.
-// Drag delta must divide by zoom to convert screen-px → canvas-px.
+// Drag delta must divide by zoom to convert screen-px Ã¢â€ â€™ canvas-px.
 const TruckCrate: React.FC<{
     crate: any; allCrates: any[]; allInventory: any[];
     pos: { x: number; y: number; r: number };
@@ -815,7 +815,7 @@ const TruckCrate: React.FC<{
     );
 };
 
-// ─── Isometric View (interactive 3-D perspective view) ─────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Isometric View (interactive 3-D perspective view) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const IsoView: React.FC<{
     truckCrates: any[];
     positions: Record<string, { x: number; y: number; r: number; z?: number }>;
@@ -884,8 +884,8 @@ const IsoView: React.FC<{
                         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
 
                         const pts = [
-                            iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
-                            iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
+                            iso(parseFloat(p.x as any)||0, parseFloat(p.y as any)||0, parseFloat(zOff as any)||0), iso((parseFloat(p.x as any)||0) + dX, parseFloat(p.y as any)||0, parseFloat(zOff as any)||0), iso((parseFloat(p.x as any)||0) + dX, (parseFloat(p.y as any)||0) + dY, parseFloat(zOff as any)||0), iso(parseFloat(p.x as any)||0, (parseFloat(p.y as any)||0) + dY, parseFloat(zOff as any)||0),
+                            iso(parseFloat(p.x as any)||0, parseFloat(p.y as any)||0, (parseFloat(zOff as any)||0) + h), iso((parseFloat(p.x as any)||0) + dX, parseFloat(p.y as any)||0, (parseFloat(zOff as any)||0) + h), iso((parseFloat(p.x as any)||0) + dX, (parseFloat(p.y as any)||0) + dY, (parseFloat(zOff as any)||0) + h), iso(parseFloat(p.x as any)||0, (parseFloat(p.y as any)||0) + dY, (parseFloat(zOff as any)||0) + h)
                         ];
 
                         const ptsStr = (indices: number[]) => indices.map(i => pts[i].join(',')).join(' ');
@@ -927,7 +927,7 @@ const IsoView: React.FC<{
     );
 };
 
-// ─── Side View (interactive 2-D lateral view) ────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Side View (interactive 2-D lateral view) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const SideView: React.FC<{
     truckCrates: any[];
     positions: Record<string, {x:number;y:number;r:number;z?:number}>;
@@ -1007,15 +1007,15 @@ const SideView: React.FC<{
                 {/* Header bar */}
                 <div className="flex items-center gap-6 mb-6 px-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
-                        <span className="w-1 h-1 rounded-full bg-white/20" /> ◀ Rear
+                        <span className="w-1 h-1 rounded-full bg-white/20" /> Ã¢â€”â‚¬ Rear
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
                     <span className="text-[9px] font-black text-white/70 uppercase tracking-[0.6em] italic">
-                        Trailer Matrix — {TRUCK_L_CM}cm × {TRUCK_H_CM}cm H
+                        Trailer Matrix Ã¢â‚¬â€ {TRUCK_L_CM}cm Ãƒâ€” {TRUCK_H_CM}cm H
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
-                        Front ▶ <span className="w-1 h-1 rounded-full bg-white/20" />
+                        Front Ã¢â€“Â¶ <span className="w-1 h-1 rounded-full bg-white/20" />
                     </span>
                 </div>
                 {/* Selected crate toolbar */}
@@ -1074,7 +1074,7 @@ const SideView: React.FC<{
                             <line key={f} x1={f * SVG_W} y1={0} x2={f * SVG_W} y2={SVG_H}
                                 stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="5,4" />
                         ))}
-                        {/* Crates — non-selected first, selected on top */}
+                        {/* Crates Ã¢â‚¬â€ non-selected first, selected on top */}
                         {[...crateItems.filter(cr => !cr.isSelected), ...crateItems.filter(cr => cr.isSelected)].map(cr => (
                             <g key={cr.id} style={{ cursor: 'grab' }} onMouseDown={e => handleCrateMouseDown(e, cr)}>
                                 {/* Selection Glow & Shadow */}
@@ -1084,7 +1084,7 @@ const SideView: React.FC<{
                                         <rect x={cr.px + 4} y={cr.py + 4} width={cr.pw} height={cr.ph} fill="rgba(0,0,0,0.5)" rx={4} />
                                     </>
                                 )}
-                                {/* Body — full solid color */}
+                                {/* Body Ã¢â‚¬â€ full solid color */}
                                 <rect x={cr.px} y={cr.py} width={cr.pw} height={cr.ph}
                                     fill={cr.col}
                                     stroke={cr.isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
@@ -1101,7 +1101,7 @@ const SideView: React.FC<{
                                 {/* Selection ring */}
                                 {cr.isSelected && <rect x={cr.px - 2} y={cr.py - 2} width={cr.pw + 4} height={cr.ph + 4}
                                     fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1} rx={4} strokeDasharray="4,3" />}
-                                {/* Label — dark text over solid fill for contrast */}
+                                {/* Label Ã¢â‚¬â€ dark text over solid fill for contrast */}
                                 {cr.pw > 18 && cr.ph > 16 && (
                                     <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 3}
                                         textAnchor="middle" fontSize={Math.min(10, cr.pw / 4.2)} fill="rgba(0,0,0,0.85)"
@@ -1139,7 +1139,7 @@ const SideView: React.FC<{
     );
 };
 
-// ─── Draft Save / Load / Export / Import System ───────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Draft Save / Load / Export / Import System Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const DRAFTS_KEY = 'onyx_truck_drafts';
 const TRUCKLOAD_EXT = '.truckload';
 const TRUCKLOAD_MIME = 'application/json';
@@ -1175,7 +1175,7 @@ interface TruckloadFile {
     shipmentData?: TruckDraft['shipmentData'];
 }
 
-// ── Thumbnail generator — draws exact trailer map without padding ─────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Thumbnail generator Ã¢â‚¬â€ draws exact trailer map without padding Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function generateTrailerThumbnail(
     truckCrates: any[],
     positions: Record<string, { x: number; y: number; r: number; z?: number }>,
@@ -1215,18 +1215,18 @@ function generateTrailerThumbnail(
         
         // Solid Fill
         ctx.fillStyle = primaryColor + 'D0'; // ~80% opacity solid
-        ctx.fillRect(pos.x * scale, pos.y * scale, lenX, lenY);
+        ctx.fillRect((parseFloat(pos.x as any)||0) * scale, (parseFloat(pos.y as any)||0) * scale, lenX, lenY);
 
         // Border
         ctx.strokeStyle = '#00000033';
         ctx.lineWidth = 2;
-        ctx.strokeRect(pos.x * scale, pos.y * scale, lenX, lenY);
+        ctx.strokeRect((parseFloat(pos.x as any)||0) * scale, (parseFloat(pos.y as any)||0) * scale, lenX, lenY);
     }
     
     // Watermark
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 36px monospace';
-    ctx.fillText('ONYX · TRUCKLOAD TOP VIEW', 40, H - 40);
+    ctx.fillText('ONYX Ã‚Â· TRUCKLOAD TOP VIEW', 40, H - 40);
     
     // Cab end marker (at front)
     ctx.fillStyle = 'rgba(0,0,0,0.1)';
@@ -1247,9 +1247,9 @@ function generateTrailerThumbnail(
         ctx.textAlign = 'center';
         if (lenX > 60) {
             ctx.font = 'bold 28px monospace';
-            ctx.fillText(label, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 10);
+            ctx.fillText(label, (parseFloat(pos.x as any)||0) * scale + lenX / 2, (parseFloat(pos.y as any)||0) * scale + lenY / 2 + 10);
             ctx.font = 'bold 18px monospace';
-            ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 32);
+            ctx.fillText(`${w} KG`, (parseFloat(pos.x as any)||0) * scale + lenX / 2, (parseFloat(pos.y as any)||0) * scale + lenY / 2 + 32);
         }
     }
     
@@ -1296,18 +1296,18 @@ function generateSideViewThumbnail(
         
         // Solid Fill
         ctx.fillStyle = primaryColor + 'D0';
-        ctx.fillRect(pos.x * scale, H - zOff - h, lenX, h);
+        ctx.fillRect((parseFloat(pos.x as any)||0) * scale, H - zOff - h, lenX, h);
 
         // Border
         ctx.strokeStyle = '#00000033';
         ctx.lineWidth = 2;
-        ctx.strokeRect(pos.x * scale, H - zOff - h, lenX, h);
+        ctx.strokeRect((parseFloat(pos.x as any)||0) * scale, H - zOff - h, lenX, h);
     }
     
     // Watermark
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 36px monospace';
-    ctx.fillText('ONYX · TRUCKLOAD SIDEVIEW', 40, H - 40);
+    ctx.fillText('ONYX Ã‚Â· TRUCKLOAD SIDEVIEW', 40, H - 40);
 
     // Labels & Weights
     for (const [id, pos] of Object.entries(positions)) {
@@ -1325,9 +1325,9 @@ function generateSideViewThumbnail(
         ctx.textAlign = 'center';
         if (lenX > 60) {
             ctx.font = 'bold 28px monospace';
-            ctx.fillText(label, pos.x * scale + lenX / 2, H - zOff - h / 2 + 10);
+            ctx.fillText(label, (parseFloat(pos.x as any)||0) * scale + lenX / 2, H - zOff - h / 2 + 10);
             ctx.font = 'bold 18px monospace';
-            ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, H - zOff - h / 2 + 32);
+            ctx.fillText(`${w} KG`, (parseFloat(pos.x as any)||0) * scale + lenX / 2, H - zOff - h / 2 + 32);
         }
     }
     
@@ -1396,9 +1396,9 @@ function generateIsoViewThumbnail(
         if (!crate || crate.parent_id) continue; 
         const p = effectivePositions[id];
         const rotated = p.r === 90;
-        const w = crate.width_cm || crate.w || 120;
-        const l = crate.length_cm || crate.l || 80;
-        const h = crate.height_cm || crate.h || 100;
+        const w = parseFloat(crate.width_cm as any) || parseFloat(crate.w as any) || 120;
+        const l = parseFloat(crate.length_cm as any) || parseFloat(crate.l as any) || 80;
+        const h = parseFloat(crate.height_cm as any) || parseFloat(crate.h as any) || 100;
         const dX = rotated ? w : l, dY = rotated ? l : w;
         const zOff = p.z || 0;
         
@@ -1406,8 +1406,8 @@ function generateIsoViewThumbnail(
         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         
         const pts = [
-            iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
-            iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
+            iso(parseFloat(p.x as any)||0, parseFloat(p.y as any)||0, parseFloat(zOff as any)||0), iso((parseFloat(p.x as any)||0) + dX, parseFloat(p.y as any)||0, parseFloat(zOff as any)||0), iso((parseFloat(p.x as any)||0) + dX, (parseFloat(p.y as any)||0) + dY, parseFloat(zOff as any)||0), iso(parseFloat(p.x as any)||0, (parseFloat(p.y as any)||0) + dY, parseFloat(zOff as any)||0),
+            iso(parseFloat(p.x as any)||0, parseFloat(p.y as any)||0, (parseFloat(zOff as any)||0) + h), iso((parseFloat(p.x as any)||0) + dX, parseFloat(p.y as any)||0, (parseFloat(zOff as any)||0) + h), iso((parseFloat(p.x as any)||0) + dX, (parseFloat(p.y as any)||0) + dY, (parseFloat(zOff as any)||0) + h), iso(parseFloat(p.x as any)||0, (parseFloat(p.y as any)||0) + dY, (parseFloat(zOff as any)||0) + h)
         ];
 
         // Draw faces as solid 3D boxes
@@ -1451,7 +1451,7 @@ function generateIsoViewThumbnail(
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.font = 'bold 36px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('ONYX · TRUCKLOAD ISOMETRIC VIEW', 40, H - 40);
+        ctx.fillText('ONYX Ã‚Â· TRUCKLOAD ISOMETRIC VIEW', 40, H - 40);
     }
 
     return canvas.toDataURL('image/png', 0.85);
@@ -1471,11 +1471,11 @@ function generateMasterThumbnail(
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
     
-    // ── Background ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Background Ã¢â€â‚¬Ã¢â€â‚¬
     ctx.fillStyle = '#0F111A'; // Deep midnight
     ctx.fillRect(0, 0, W, H);
     
-    // ── Layout Dividers ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Layout Dividers Ã¢â€â‚¬Ã¢â€â‚¬
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1486,7 +1486,7 @@ function generateMasterThumbnail(
     const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
 
-    // ── 1. ISOMETRIC VIEW (Top Half) ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ 1. ISOMETRIC VIEW (Top Half) Ã¢â€â‚¬Ã¢â€â‚¬
     const drawIso = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
         const scale = rect.w / (TRUCK_L_CM + TRUCK_W_CM) * 0.8;
         const S = scale * 0.85;
@@ -1506,15 +1506,15 @@ function generateMasterThumbnail(
             if (!crate || crate.parent_id) continue;
             const p = positions[id];
             const rotated = p.r === 90;
-            const w = crate.width_cm, l = crate.length_cm, h = crate.height_cm || 100;
+            const w = parseFloat(crate.width_cm as any)||120, l = parseFloat(crate.length_cm as any)||80, h = parseFloat(crate.height_cm as any) || 100;
             const dX = rotated ? w : l, dY = rotated ? l : w;
             const zOff = p.z || 0;
             const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
             
             const pts = [
-                iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
-                iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
+                iso(parseFloat(p.x as any)||0, parseFloat(p.y as any)||0, parseFloat(zOff as any)||0), iso((parseFloat(p.x as any)||0) + dX, parseFloat(p.y as any)||0, parseFloat(zOff as any)||0), iso((parseFloat(p.x as any)||0) + dX, (parseFloat(p.y as any)||0) + dY, parseFloat(zOff as any)||0), iso(parseFloat(p.x as any)||0, (parseFloat(p.y as any)||0) + dY, parseFloat(zOff as any)||0),
+                iso(parseFloat(p.x as any)||0, parseFloat(p.y as any)||0, (parseFloat(zOff as any)||0) + h), iso((parseFloat(p.x as any)||0) + dX, parseFloat(p.y as any)||0, (parseFloat(zOff as any)||0) + h), iso((parseFloat(p.x as any)||0) + dX, (parseFloat(p.y as any)||0) + dY, (parseFloat(zOff as any)||0) + h), iso(parseFloat(p.x as any)||0, (parseFloat(p.y as any)||0) + dY, (parseFloat(zOff as any)||0) + h)
             ];
 
             ctx.lineWidth = 1;
@@ -1541,10 +1541,10 @@ function generateMasterThumbnail(
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('ISOMETRIC LOAD VIEW · SOLID MATRIX', rect.x + 40, rect.y + rect.h - 40);
+        ctx.fillText('ISOMETRIC LOAD VIEW Ã‚Â· SOLID MATRIX', rect.x + 40, rect.y + rect.h - 40);
     };
 
-    // ── 2. TOP VIEW (Bottom Left) ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ 2. TOP VIEW (Bottom Left) Ã¢â€â‚¬Ã¢â€â‚¬
     const drawTop = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
         const padding = 60;
         const availW = rect.w - padding * 2;
@@ -1568,19 +1568,19 @@ function generateMasterThumbnail(
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
             
             ctx.fillStyle = col;
-            ctx.fillRect(ox + pos.x * scale, oy + pos.y * scale, lenX, lenY);
+            ctx.fillRect(ox + (parseFloat(pos.x as any)||0) * scale, oy + (parseFloat(pos.y as any)||0) * scale, lenX, lenY);
             ctx.strokeStyle = 'rgba(0,0,0,0.3)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(ox + pos.x * scale, oy + pos.y * scale, lenX, lenY);
+            ctx.strokeRect(ox + (parseFloat(pos.x as any)||0) * scale, oy + (parseFloat(pos.y as any)||0) * scale, lenX, lenY);
         }
         
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('TOP VIEW · DISTRIBUTION MAP', rect.x + 40, rect.y + rect.h - 40);
+        ctx.fillText('TOP VIEW Ã‚Â· DISTRIBUTION MAP', rect.x + 40, rect.y + rect.h - 40);
     };
 
-    // ── 3. SIDE VIEW (Bottom Right) ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ 3. SIDE VIEW (Bottom Right) Ã¢â€â‚¬Ã¢â€â‚¬
     const drawSide = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
         const padding = 60;
         const availW = rect.w - padding * 2;
@@ -1605,31 +1605,31 @@ function generateMasterThumbnail(
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
             
             ctx.fillStyle = col;
-            ctx.fillRect(ox + pos.x * scale, oy + (TRUCK_H_CM * scale) - zOff - h, lenX, h);
+            ctx.fillRect(ox + (parseFloat(pos.x as any)||0) * scale, oy + (TRUCK_H_CM * scale) - zOff - h, lenX, h);
             ctx.strokeStyle = 'rgba(0,0,0,0.3)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(ox + pos.x * scale, oy + (TRUCK_H_CM * scale) - zOff - h, lenX, h);
+            ctx.strokeRect(ox + (parseFloat(pos.x as any)||0) * scale, oy + (TRUCK_H_CM * scale) - zOff - h, lenX, h);
         }
 
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('SIDE VIEW · STACKING PROFILE', rect.x + 40, rect.y + rect.h - 40);
+        ctx.fillText('SIDE VIEW Ã‚Â· STACKING PROFILE', rect.x + 40, rect.y + rect.h - 40);
     };
 
     drawIso(ctx, {x:0, y:0, w:W, h:H/2});
     drawTop(ctx, {x:0, y:H/2, w:W/2, h:H/2});
     drawSide(ctx, {x:W/2, y:H/2, w:W/2, h:H/2});
 
-    // ── Master Branding ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Master Branding Ã¢â€â‚¬Ã¢â€â‚¬
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '900 24px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`ONYX LOGISTICS · MASTER LOAD ARCHIVE · ${draftName?.toUpperCase() || 'UNTITLED LOAD'}`, W/2, 50);
+    ctx.fillText(`ONYX LOGISTICS Ã‚Â· MASTER LOAD ARCHIVE Ã‚Â· ${draftName?.toUpperCase() || 'UNTITLED LOAD'}`, W/2, 50);
     
     ctx.font = 'bold 12px monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillText(`GENERATED: ${new Date().toLocaleString()} · v${TRUCKLOAD_VERSION} HYBRID ENGINE`, W/2, 75);
+    ctx.fillText(`GENERATED: ${new Date().toLocaleString()} Ã‚Â· v${TRUCKLOAD_VERSION} HYBRID ENGINE`, W/2, 75);
 
     return canvas.toDataURL('image/jpeg', 0.90);
 }
@@ -1645,7 +1645,7 @@ function deleteDraft(id: string) {
     localStorage.setItem(DRAFTS_KEY, JSON.stringify(getDrafts().filter(d => d.id !== id)));
 }
 
-// ─── Nesting Target Selector ──────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Nesting Target Selector Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const NestingTargetModal: React.FC<{
     boxId: string;
     allCrates: any[];
@@ -1700,7 +1700,7 @@ const NestingTargetModal: React.FC<{
                     ))}
                 </div>
                 <div className="p-6 border-t border-white/5 bg-black/20 flex justify-center">
-                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Onyx Logistics Protocol · Nesting v1.2</p>
+                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Onyx Logistics Protocol Ã‚Â· Nesting v1.2</p>
                 </div>
             </div>
         </div>
@@ -1793,7 +1793,7 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
     } catch (e) { console.error('Draft import failed', e); return null; }
 }
 
-// ─── Export Card Component ──────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Export Card Component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const ExportCard: React.FC<{
     id: string;
     title: string;
@@ -1848,7 +1848,7 @@ const ExportCard: React.FC<{
     );
 };
 
-// ─── Export Modal ────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Export Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const TruckExportModal: React.FC<{
     truckCrates: any[];
     allCrates: any[];
@@ -1936,7 +1936,7 @@ const TruckExportModal: React.FC<{
             const calculated = calculateCodesAndPrices(norm, bookRate, '326');
             const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
             const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
-            const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
+            const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : '');
             const cost = calculated.acquisitionCostMxn || 0;
             ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims, cost });
         });
@@ -1974,7 +1974,7 @@ const TruckExportModal: React.FC<{
                     index: idx, vendorPrefix, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
                     name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
                     material: data.material || data.Material || '', color: data.color || data.Color || '',
-                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : ''),
                     weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                     costMxn: 0, costUsd: 0,
                     imageUrls: [], 
@@ -2004,7 +2004,7 @@ const TruckExportModal: React.FC<{
                 }
 
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}Ãƒâ€”${c.length_cm}Ãƒâ€”${c.height_cm||'?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100,
                     parentLabel
@@ -2012,7 +2012,7 @@ const TruckExportModal: React.FC<{
             });
 
             const meta = {
-                dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+                dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}Ãƒâ€”${TRUCK_W_CM} cm`,
                 crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
                 allTruckCrates: allTruckCratesMeta,
@@ -2069,7 +2069,7 @@ const TruckExportModal: React.FC<{
                     index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(inv.row),
                     name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
                     material: data.material || '', color: data.color || '',
-                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : ''),
                     weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                     costMxn: 0, costUsd: 0,
                     imageUrls: photos,
@@ -2079,7 +2079,7 @@ const TruckExportModal: React.FC<{
                 };
             });
             const meta = {
-                dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm||'?'} cm`,
+                dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}Ãƒâ€”${crate.length_cm}Ãƒâ€”${crate.height_cm||'?'} cm`,
                 crateType: crate.type, fillPct: 100, exportedAt: new Date().toLocaleString(),
                 excludeImages: !withImages, crateColor: vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280',
                 excludeHeaderQr: false, excludeHeaderWireframe: false,
@@ -2097,14 +2097,14 @@ const TruckExportModal: React.FC<{
             const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
             return {
-                id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                id: c.id, label, type: c.type, dims: `${c.width_cm}Ãƒâ€”${c.length_cm}Ãƒâ€”${c.height_cm||'?'} cm`,
                 weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                 l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
             };
         });
 
         const trailerMeta = {
-            dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+            dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}Ãƒâ€”${TRUCK_W_CM} cm`,
             crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
             topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
             allTruckCrates: allTruckCratesMeta,
@@ -2153,7 +2153,7 @@ const TruckExportModal: React.FC<{
                 const calculated = calculateCodesAndPrices(norm, bookRate, '326');
                 const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
                 const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
-                const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
+                const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : '');
                 ws.addRow({ 
                     tag, 
                     qty: item.qty, 
@@ -2273,8 +2273,8 @@ const TruckExportModal: React.FC<{
     );
 };
 
-// ── Interactive Truck Viewer (Local Preview) ──────────────────────────────────
-// ── Interactive Truck Viewer (Local Preview) ──────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Interactive Truck Viewer (Local Preview) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€â‚¬Ã¢â€â‚¬ Interactive Truck Viewer (Local Preview) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const InteractiveTruckViewer: React.FC<{
     truckCrates: any[];
     positions: Record<string, any>;
@@ -2462,37 +2462,33 @@ const InteractiveTruckViewer: React.FC<{
             const targetY = (pos.z / 100) + dh/2 + 0.01;
             const targetZ = (pos.y / 100) - (2.44 / 2) + (isRotated ? dl : dw) / 2;
             
-            let mesh = crates.get(c.id);
+            const mesh = crates.get(c.id);
             
             if (!mesh) {
-                const geo = new THREE.BoxGeometry(isRotated ? dw : dl, dh, isRotated ? dl : dw);
+                const geo = new THREE.BoxGeometry(dl, dh, dw);
                 const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#F97316';
                 const mat = new THREE.MeshStandardMaterial({ 
                     color: col, metalness: 0.1, roughness: 0.6, transparent: true, opacity: 0.95 
                 });
-                mesh = new THREE.Mesh(geo, mat);
-                mesh.castShadow = true; mesh.receiveShadow = true;
+                const newMesh = new THREE.Mesh(geo, mat);
+                newMesh.castShadow = true; newMesh.receiveShadow = true;
                 
                 const edges = new THREE.LineSegments(
                     new THREE.EdgesGeometry(geo),
                     new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })
                 );
-                mesh.add(edges);
+                newMesh.add(edges);
                 
-                mesh.position.set(targetX, targetY, targetZ);
-                scene.add(mesh);
-                crates.set(c.id, mesh);
+                newMesh.position.set(targetX, targetY, targetZ);
+                newMesh.rotation.y = isRotated ? Math.PI / 2 : 0;
+                scene.add(newMesh);
+                crates.set(c.id, newMesh);
             } else {
                 // Update position with GSAP for smooth drag
                 gsap.to(mesh.position, { x: targetX, y: targetY, z: targetZ, duration: 0.3, ease: 'power2.out' });
-                
-                // Update geometry if rotated (simple approach: swap scale)
-                if (isRotated) {
-                    mesh.scale.set(dl / dw, 1, dw / dl);
-                } else {
-                    mesh.scale.set(1, 1, 1);
-                }
+                gsap.to(mesh.rotation, { y: isRotated ? Math.PI / 2 : 0, duration: 0.3, ease: 'power2.out' });
             }
+
         });
     }, [truckCrates, positions]);
 
@@ -2521,7 +2517,7 @@ const InteractiveTruckViewer: React.FC<{
     return <div ref={containerRef} className="w-full h-full cursor-pointer" />;
 };
 
-// ─── Ready Truck Wizard ──────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Ready Truck Wizard Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const ReadyTruckWizard: React.FC<{
     truckCrates: any[];
     allCrates: any[];
@@ -2595,7 +2591,7 @@ const ReadyTruckWizard: React.FC<{
                     index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
                     name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
                     material: data.material || '', color: data.color || '',
-                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : ''),
                     weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                     costMxn: 0, costUsd: 0, imageUrls: [], tagColor: (vendors as any)[vP]?.color || '#6b7280', dbItemCount: data.quantity || 1,
                     packetIn: Array.from(item.crates).join(', ')
@@ -2617,14 +2613,14 @@ const ReadyTruckWizard: React.FC<{
                     if (parent) parentLabel = getCrateDisplayName(parent, allCrates, allInventory, truckNumbering[parent.id]).label;
                 }
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}Ãƒâ€”${c.length_cm}Ãƒâ€”${c.height_cm||'?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100, parentLabel
                 };
             });
 
             const meta: ManifestoMeta = {
-                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}Ãƒâ€”${TRUCK_W_CM} cm`,
                 crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
                 allTruckCrates: allTruckCratesMeta,
@@ -2657,7 +2653,7 @@ const ReadyTruckWizard: React.FC<{
             const textWhite: any = { color: { argb: 'FFFFFFFF' }, bold: true };
 
             // 1. Shipment Info
-            ws.addRow(['ONYX LOGISTICS · TRAILER PACKING LIST']);
+            ws.addRow(['ONYX LOGISTICS Ã‚Â· TRAILER PACKING LIST']);
             ws.getCell('A1').font = { size: 16, bold: true, color: { argb: 'FFF97316' } };
             ws.addRow([`Exported At: ${new Date().toLocaleString()}`]);
             ws.addRow([]);
@@ -2708,7 +2704,7 @@ const ReadyTruckWizard: React.FC<{
                     const calculated = calculateCodesAndPrices(norm, bookRate, '326');
                     const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
                     const desc = [data.color, data.material, data.shape, data.shortDescription].filter(Boolean).join(' - ');
-                    const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×');
+                    const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”');
                     
                     const row = ws.addRow({
                         crate: label,
@@ -2774,14 +2770,14 @@ const ReadyTruckWizard: React.FC<{
                         index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(inv.row),
                         name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
                         material: data.material || '', color: data.color || '',
-                        dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                        dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : ''),
                         weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                         costMxn: 0, costUsd: 0, imageUrls: [], tagColor: (vendors as any)[vP]?.color || '#6b7280', dbItemCount: data.quantity || 1,
                         packetIn: item.packetIn || '', boxLabel: item.boxLabel || ''
                     };
                 });
                 const meta = {
-                    dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm||'?'} cm`,
+                    dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}Ãƒâ€”${crate.length_cm}Ãƒâ€”${crate.height_cm||'?'} cm`,
                     crateType: crate.type, fillPct: 100, exportedAt: new Date().toLocaleString(),
                     excludeImages: true, crateColor: (vendors as any)[vendorList[0]]?.color || '#6b7280',
                     excludeHeaderQr: false, excludeHeaderWireframe: false, exportBruteWeight: crate.brute_weight_kg
@@ -2795,13 +2791,13 @@ const ReadyTruckWizard: React.FC<{
             const allTruckCratesMeta = truckCrates.map(c => {
                 const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}Ãƒâ€”${c.length_cm}Ãƒâ€”${c.height_cm||'?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: (vendors as any)[vendorList[0]]?.color || '#6b7280',
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
                 };
             });
             const trailerMeta: ManifestoMeta = {
-                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}Ãƒâ€”${TRUCK_W_CM} cm`,
                 crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView, allTruckCrates: allTruckCratesMeta,
                 truckStats: {
@@ -2923,7 +2919,7 @@ const ReadyTruckWizard: React.FC<{
                     <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-6 flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black font-black">✓</div>
+                                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black font-black">Ã¢Å“â€œ</div>
                                 <div>
                                     <h4 className="text-sm font-black text-white uppercase tracking-tight">Shipment Live in Registry</h4>
                                     <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">3D Digital Mirror Created</p>
@@ -3050,7 +3046,7 @@ const ReadyTruckWizard: React.FC<{
                                         <div>
                                             <h4 className={`text-lg font-black uppercase tracking-tighter ${publicUrl ? 'text-white' : 'text-white/20'}`}>Cloud Registry Link</h4>
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
-                                                {publicUrl ? 'Sync Active · Publicly Accessible' : 'Pending Dispatch · Registry Offline'}
+                                                {publicUrl ? 'Sync Active Ã‚Â· Publicly Accessible' : 'Pending Dispatch Ã‚Â· Registry Offline'}
                                             </p>
                                         </div>
                                     </div>
@@ -3284,7 +3280,7 @@ const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProp
     );
 };
 
-// ── Floating Ready Truck HUD ──────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Floating Ready Truck HUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const ReadyTruckHUD: React.FC<{ metadata: any, stats: any }> = ({ metadata, stats }) => {
     return (
         <div className="absolute top-40 left-10 z-[50] p-8 rounded-[2.5rem] bg-black/40 backdrop-blur-[40px] border border-white/5 flex flex-col gap-6 shadow-2xl animate-in slide-in-from-left-10 duration-1000">
@@ -3301,11 +3297,11 @@ const ReadyTruckHUD: React.FC<{ metadata: any, stats: any }> = ({ metadata, stat
             <div className="grid grid-cols-2 gap-x-10 gap-y-4">
                 <div className="flex flex-col gap-1">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Tractor</span>
-                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.tractorNumber || '—'}</span>
+                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.tractorNumber || 'Ã¢â‚¬â€'}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Trailer</span>
-                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.trailerNumber || '—'}</span>
+                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.trailerNumber || 'Ã¢â‚¬â€'}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Load Weight</span>
@@ -3352,7 +3348,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                 <div className="sticky top-0 z-[60] flex items-center justify-between px-6 py-4 border-b border-white/8 bg-[rgba(12,12,18,0.95)]">
                     <div>
                         <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Load Drafts</h3>
-                        <p className="text-[10px] text-white/40">{drafts.length} saved · <span className="text-white/20">.truckload</span></p>
+                        <p className="text-[10px] text-white/40">{drafts.length} saved Ã‚Â· <span className="text-white/20">.truckload</span></p>
                     </div>
                     <div className="flex items-center gap-3">
                         <input ref={importRef} type="file" accept={`${TRUCKLOAD_EXT},.json`} className="hidden" onChange={handleImport} />
@@ -3380,7 +3376,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                                     onMouseEnter={() => draft.thumbnail ? setPreview(draft.thumbnail) : setPreview(null)}
                                     onMouseLeave={() => setPreview(null)}
                                 >
-                                    {/* Thumbnail strip — shown on hover if available */}
+                                    {/* Thumbnail strip Ã¢â‚¬â€ shown on hover if available */}
                                     {draft.thumbnail && (
                                         <div className="overflow-hidden transition-all" style={{ maxHeight: preview === draft.thumbnail ? '90px' : '0', opacity: preview === draft.thumbnail ? 1 : 0 }}>
                                             <img src={draft.thumbnail} alt={draft.name} className="w-full object-cover" style={{ height: '88px', filter: 'brightness(0.9)' }} />
@@ -3400,7 +3396,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                                             <div className="flex items-center gap-3 mt-0.5">
                                                 <span className="text-[9px] text-white/30 font-black">{draft.crateCount} crates</span>
                                                 <span className="text-[9px] text-white/20">{new Date(draft.savedAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
-                                                {draft.thumbnail && <span className="text-[8px] text-emerald-500/60 font-black uppercase tracking-widest">📷 thumb</span>}
+                                                {draft.thumbnail && <span className="text-[8px] text-emerald-500/60 font-black uppercase tracking-widest">Ã°Å¸â€œÂ· thumb</span>}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
@@ -3421,7 +3417,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
 
 
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Main Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
     const db = useDatabase();
     const notify = useNotify();
@@ -3571,7 +3567,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const lastSyncedPositionsRef = useRef<string>('{}');
     const userDirtyRef = useRef(false); // Set true on user actions, prevents DB-read from overwriting
 
-    // ── Load positions from DB on initial mount only ──────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Load positions from DB on initial mount only Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     useEffect(() => {
         if (recalledShipment) return;
         // If user has made local changes, don't overwrite from DB
@@ -3592,7 +3588,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     }
                 } catch (e) { /* fall through */ }
             }
-            // Priority 2: Legacy fallback — parse from description string
+            // Priority 2: Legacy fallback Ã¢â‚¬â€ parse from description string
             if (d.description?.includes('POS:')) {
                 const m = d.description.match(/POS:(\d+),(\d+),(\d+)(?:,Z(\d+))?/);
                 if (m) map[d.id] = { x: +m[1], y: +m[2], r: +m[3], z: m[4] ? +m[4] : 0 };
@@ -3606,7 +3602,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     }, [docs, recalledShipment]);
 
-    // ── Cleanup stale truck_position from shipped/deployed crates on mount ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Cleanup stale truck_position from shipped/deployed crates on mount Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     useEffect(() => {
         if (!db) return;
         const cleanup = async () => {
@@ -3623,7 +3619,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         cleanup();
     }, [db]);
 
-    // ── Live Sync TO DB (Debounced 400ms) ──────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Live Sync TO DB (Debounced 400ms) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     useEffect(() => {
         if (recalledShipment || !db) return;
         const currentStr = JSON.stringify(positions);
@@ -3665,7 +3661,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [positions, db, recalledShipment]);
 
     const allCrates = useMemo(() => {
-        // Exclude 'Deployed' — deployed crates have been shipped and are not part of active trucking
+        // Exclude 'Deployed' Ã¢â‚¬â€ deployed crates have been shipped and are not part of active trucking
         const live = docs.filter(d => {
             const s = (d.status || '').toLowerCase().trim();
             return ['packed', 'partial', 'in transit', 'deployed'].includes(s);
@@ -3735,7 +3731,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     }, [selectedId, inventoryArtifactConfig.isOpen, allCrates, allInventory, setInventoryArtifactConfig]);
 
-    // ── Memoized panel stats — independent of zoom ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Memoized panel stats Ã¢â‚¬â€ independent of zoom Ã¢â€â‚¬Ã¢â€â‚¬
     const panelStats = useMemo(() => {
         const MAX_KG = 20411;
         const TRUCK_VOL_M3 = (TRUCK_L_CM * TRUCK_W_CM * 279) / 1e6;
@@ -3759,7 +3755,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         return { MAX_KG, TRUCK_VOL_M3, usedVol, volPct, payloadPct, remaining, avgW, nCrates, nPallets, nBoxes, rPct, mPct, fPct, status, statusColor };
     }, [truckCrates, totalWeight, positions]);
 
-    // Smart auto-position: pack from FRONT (cab, right side x≈TRUCK_L_CM) toward rear, row-by-row
+    // Smart auto-position: pack from FRONT (cab, right side xÃ¢â€°Ë†TRUCK_L_CM) toward rear, row-by-row
     const computeAutoPosition = useCallback((crate: any, currentPositions: Record<string, {x:number;y:number;r:number}>, allCrates: any[]) => {
         const W = parseFloat(crate.width_cm) || 60;
         const D = parseFloat(crate.length_cm) || 60;
@@ -3807,9 +3803,25 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             
             return newPos;
         });
+        
+        // Auto scroll to newly loaded crate
+        setTimeout(() => {
+            const el = canvasRef.current;
+            const crate = allCrates.find(c => c.id === id);
+            if (el && crate) {
+                const isMobile = window.innerWidth < 768;
+                const pos = computeAutoPosition(crate, positions, allCrates);
+                const visualX = (isMobile ? pos.y : pos.x) * 1.5;
+                const visualY = (isMobile ? (1615 - pos.x - (pos.r === 0 ? parseFloat(crate.length_cm as any)||60 : parseFloat(crate.width_cm as any)||60)) : pos.y) * 1.5;
+                const centerX = visualX - el.clientWidth / 2 + 100;
+                const centerY = visualY - el.clientHeight / 2 + 100;
+                el.scrollTo({ left: Math.max(0, centerX), top: Math.max(0, centerY), behavior: 'smooth' });
+            }
+        }, 100);
+
         setSelectedId(id);
         setRecalledShipment(null);
-    }, [allCrates, computeAutoPosition]);
+    }, [allCrates, computeAutoPosition, positions]);
 
     const handleUnload = useCallback((id: string) => {
         userDirtyRef.current = true;
@@ -3827,11 +3839,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             findChildren(id);
             
             idsToUnload.forEach(unId => delete n[unId]);
+            
             return n;
         });
         setSelectedId(null);
         setRecalledShipment(null);
-    }, [allCrates]);
+    }, [allCrates, onRefresh]);
 
     const handleUpdatePos = useCallback((id: string, x: number, y: number) => {
         userDirtyRef.current = true;
@@ -3918,7 +3931,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         });
     }, []);
 
-    // ── Interaction Handlers ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Interaction Handlers Ã¢â€â‚¬Ã¢â€â‚¬
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (e.button === 1) { // Middle click
@@ -4024,19 +4037,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             setSelectedId(null);
             setRecalledShipment(null);
 
-            // Immediately flush DB clears (don't wait for debounce)
-            if (db) {
-                try {
-                    for (const id of Object.keys(positions)) {
-                        const doc = await db.logistics.findOne(id).exec();
-                        if (doc) await doc.patch({ truck_id: null, truck_position: null });
-                    }
-                } catch (e) { console.warn('[TruckSync] Clear error:', e); }
-            }
-
             notify.success('Trailer cleared');
         }
-    }, [positions, db]);
+    }, [positions, db, allCrates, onRefresh]);
 
     const handleLoadDraft = (draft: TruckDraft) => {
         setPositions(draft.positions);
@@ -4047,7 +4050,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         setTopBarState('crates');
     };
 
-    // ── Ready Truck — sync DB + PDF + XLSX ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Ready Truck Ã¢â‚¬â€ sync DB + PDF + XLSX Ã¢â€â‚¬Ã¢â€â‚¬
     const handleReadyTruck = async (f = readyTruckFields) => {
         if (!confirm('Are you sure you want to finalize this shipment and synchronize with the cloud?')) return;
         setIsSaving(true);
@@ -4104,7 +4107,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         status: newStatus, 
                         description: finalDesc, 
                         updated_at: dispatchTs,
-                        // Clear live trailer fields — position is now stored in shipment payload
+                        // Clear live trailer fields Ã¢â‚¬â€ position is now stored in shipment payload
                         truck_id: null,
                         truck_position: null
                     }).eq('id', c.id);
@@ -4243,7 +4246,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const shareUrl = `${window.location.origin}${window.location.pathname}?truckid=${manifestId}`;
             setPublicUrl(shareUrl);
 
-            notify.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: '🚚', duration: 10000 });
+            notify.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: 'Ã°Å¸Å¡Å¡', duration: 10000 });
             // Wizard stays open to show the public link
         } catch (err: any) { 
             notify.error(err.message || 'Synchronization failed', { id: tid }); 
@@ -4262,7 +4265,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     }, [truckReadyTrigger, setShowReadyWizard]);
 
-    // ── Draft handlers ──
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Draft handlers Ã¢â€â‚¬Ã¢â€â‚¬
     const buildDraft = useCallback((name: string, fields?: any): TruckDraft => {
         const payload = {
             id: `draft_${Date.now()}`,
@@ -4281,14 +4284,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const handleSaveDraft = (name: string) => {
         const draft = buildDraft(name);
         saveDraft(draft);
-        notify.success(`Draft "${name}" saved to local storage`, { icon: '💾' });
+        notify.success(`Draft "${name}" saved to local storage`, { icon: 'Ã°Å¸â€™Â¾' });
         setShowSaveDraft(false);
     };
 
     const handleExportDraft = (name: string) => {
         const draft = buildDraft(name);
         exportDraftFile(draft);
-        notify.success(`Draft "${name}" exported as file`, { icon: '📤' });
+        notify.success(`Draft "${name}" exported as file`, { icon: 'Ã°Å¸â€œÂ¤' });
         setShowSaveDraft(false);
     };
 
@@ -4415,9 +4418,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     return (
         <div className="absolute inset-0 flex flex-col overflow-hidden bg-transparent select-none">
-            {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬ FLOATING STUDIO HUB (Persistent Glassmorphic Panel) Ã¢â€â‚¬Ã¢â€â‚¬ */}
             {showPanels && (
-            <div className="absolute top-0 left-0 right-0 z-[40] p-6 pointer-events-none">
+            <div className="relative z-[60] p-6 pb-0 pointer-events-none shrink-0">
                 <div 
                     className={`pointer-events-auto flex flex-col backdrop-blur-3xl bg-black/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 hover:bg-black/10 ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
                     onWheel={e => e.stopPropagation()}
@@ -4529,7 +4532,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
 
 
-                {/* ══ CONSOLIDATED HIGH-DENSITY DETAILS PANEL ══ */}
+                {/* Ã¢â€¢ÂÃ¢â€¢Â CONSOLIDATED HIGH-DENSITY DETAILS PANEL Ã¢â€¢ÂÃ¢â€¢Â */}
                 <div className={`px-4 transition-all duration-500 flex items-center backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-5'}`}>
                     <div className={`flex items-center w-full ${isCompact ? 'gap-8 justify-between' : 'gap-1 justify-start'}`}>
                         <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-2' : 'gap-4 flex-1 min-w-0'}`}>
@@ -4538,7 +4541,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <h2 className="font-black uppercase tracking-tighter text-white leading-none text-4xl">53&apos;</h2>
                                     <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 leading-none opacity-20">
                                         <span className="text-[5px] font-black tracking-widest uppercase">1615</span>
-                                        <span className="text-[5px] font-black tracking-widest uppercase">×</span>
+                                        <span className="text-[5px] font-black tracking-widest uppercase">Ãƒâ€”</span>
                                         <span className="text-[5px] font-black tracking-widest uppercase">244</span>
                                         <span className="text-[5px] font-black tracking-widest uppercase">CM</span>
                                     </div>
@@ -4548,7 +4551,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 {isCompact ? (
                                     <div className="flex items-center gap-3">
                                         <span className="font-black text-white/40 text-[9px] uppercase tracking-widest">53FT</span>
-                                        <span className="font-mono font-black text-white/60 uppercase tracking-widest text-[9px]">{TRUCK_L_CM}×{TRUCK_W_CM}</span>
+                                        <span className="font-mono font-black text-white/60 uppercase tracking-widest text-[9px]">{TRUCK_L_CM}Ãƒâ€”{TRUCK_W_CM}</span>
                                         <div className="w-1 h-1 rounded-full bg-white/10" />
                                         <span className="font-black tracking-tighter text-white text-[14px] leading-none">{truckCrates.length}</span>
                                         <span className="text-white/30 font-black uppercase tracking-widest text-[7px] leading-none">UNITS</span>
@@ -4622,7 +4625,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             <Shield size={10} className="text-emerald-400 opacity-60" />
                                             <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Tractor</span>
                                         </div>
-                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.tractorNumber || '—'}</span>
+                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.tractorNumber || 'Ã¢â‚¬â€'}</span>
                                         {!isCompact && (
                                             <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.truckPlates || 'NO PLATES'}</span>
                                         )}
@@ -4634,7 +4637,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             <Truck size={10} className="text-white/40" />
                                             <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Trailer</span>
                                         </div>
-                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.trailerNumber || '—'}</span>
+                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.trailerNumber || 'Ã¢â‚¬â€'}</span>
                                         {!isCompact && (
                                             <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.trailerPlates || 'NO PLATES'}</span>
                                         )}
@@ -4699,7 +4702,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         </div>
     )}
 
-            {/* ── FULL-SCREEN WORKSPACE (Scrolls Behind Hub) ── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬ FULL-SCREEN WORKSPACE (Scrolls Behind Hub) Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <div 
                 ref={canvasRef}
                 className="flex-1 overflow-auto custom-scrollbar relative bg-white/[0.02] backdrop-blur-3xl"
@@ -4936,7 +4939,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 />
             )}
 
-            {/* ── FIXED BOTTOM CONTROL BAR (Glassmorphic) ── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬ FIXED BOTTOM CONTROL BAR (Glassmorphic) Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
                 <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <button
