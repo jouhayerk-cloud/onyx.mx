@@ -60,7 +60,7 @@ import {
     inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import { 
-    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -723,7 +723,10 @@ export const UniversalToolsBar: React.FC = () => {
                                 { id: 'All', icon: LayoutGrid, color: '#FFFFFF' },
                                 { id: 'New', icon: Plus, color: '#38bdf8' },
                                 { id: 'Production', icon: Hammer, color: '#6366f1' },
+                                { id: 'Packed', icon: PackageCheck, color: '#eab308' },
+                                { id: 'Not Packed', icon: PackageOpen, color: '#a1a1aa' },
                                 { id: 'Shipped', icon: Send, color: '#06b6d4' },
+                                { id: 'Not Shipped', icon: PackageX, color: '#f43f5e' },
                                 { id: 'Acquired', icon: Tag, color: '#10b981' },
                                 { id: 'Partial', icon: FlaskConical, color: '#a855f7' },
                                 { id: 'Requested', icon: Activity, color: '#f59e0b' },

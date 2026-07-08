@@ -728,6 +728,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
 const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: () => void; onRefresh: () => void }) => {
     const db = useDatabase();
     const isDummyMode = useAtomValue(isDummyModeAtom);
+    const notify = useNotify();
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({ 
         type: 'crate', 
