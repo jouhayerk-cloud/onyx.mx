@@ -60,7 +60,7 @@ import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeIcon } from './InventoryArtifact';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, CreditCard, Link } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, Truck, CreditCard, Link } from 'lucide-react';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -173,18 +173,18 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
     if (!crate) {
         if (isCompact) {
             return (
-                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded shadow-lg backdrop-blur-md">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
-                    <span className="text-[8px] font-black uppercase tracking-widest text-orange-400 leading-none shadow-[0_0_10px_rgba(249,115,22,0.3)]">
-                        {crateId || 'PACKED'}
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded shadow-lg backdrop-blur-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none shadow-[0_0_10px_rgba(45,212,191,0.3)]">
+                        {crateId || 'DEPLOYED'}
                     </span>
                 </div>
             );
         }
         return (
             <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest leading-none flex items-center gap-1"><Package size={12} strokeWidth={3} /> PACKED</span>
-                <span className="text-[11px] font-mono font-bold text-orange-400/80">{crateId || 'Unknown'}</span>
+                <span className="text-[10px] font-black text-teal-400 uppercase tracking-widest leading-none flex items-center gap-1"><Truck size={12} strokeWidth={3} /> DEPLOYED</span>
+                <span className="text-[11px] font-mono font-bold text-teal-400/80">{crateId || 'Unknown'}</span>
             </div>
         );
     }
@@ -289,7 +289,15 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
     // Derive deployed status from crates data (independent of payment)
     const itemKey = String(item.row ?? item.data?.id ?? '');
-    const deployedInfo = deployedItemsMap?.get(itemKey) || null;
+    let deployedInfo = deployedItemsMap?.get(itemKey) || null;
+    if (!deployedInfo) {
+        const crateId = item.data.crate_id || item.data.crateId;
+        const isPacked = item.data.packing_status === 'Packed' || item.data.packingStatus === 'Packed';
+        const crate = logisticsDocs?.find((c: any) => c.id === crateId);
+        if (isPacked && crateId && (!crate || crate.status === 'Deployed')) {
+            deployedInfo = { manifestId: crate?.name || 'Deployed', crateId };
+        }
+    }
 
     const itemPriceMXN = Math.round(Number(norm.price || 0));
     const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
@@ -1157,15 +1165,23 @@ export const UnifiedInventoryView = () => {
             
             const status = getStatusClass(item.data, partialPayIds, fullPayIds);
             if (statusFilter !== 'All') {
-                if (statusFilter === 'Shipped') {
-                    const itemKey = String(item.row ?? item.data?.id ?? '');
-                    if (!deployedItemsMap.has(itemKey)) return false;
-                } else {
-                    if (statusFilter === 'Partial' && status !== 'RED') return false;
-                    if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
-                    if (statusFilter === 'Paid' && status !== 'GREEN') return false;
-                    if (statusFilter === 'New' && status !== 'BLUE') return false;
-                }
+                const crateId = item.data.crate_id || item.data.crateId;
+                const isPacked = item.data.packing_status === 'Packed' || item.data.packingStatus === 'Packed';
+                const crate = logisticsDocs?.find((c: any) => c.id === crateId);
+                const isDeployed = isPacked && crateId && (!crate || crate.status === 'Deployed');
+
+                const itemKey = String(item.row ?? item.data?.id ?? '');
+                const isShipped = deployedItemsMap.has(itemKey) || isDeployed;
+
+                if (statusFilter === 'Shipped' && !isShipped) return false;
+                if (statusFilter === 'Not Shipped' && isShipped) return false;
+                if (statusFilter === 'Packed' && !isPacked) return false;
+                if (statusFilter === 'Not Packed' && isPacked) return false;
+                
+                if (statusFilter === 'Partial' && status !== 'RED') return false;
+                if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
+                if (statusFilter === 'Paid' && status !== 'GREEN') return false;
+                if (statusFilter === 'New' && status !== 'BLUE') return false;
             }
             const itemIdStr = String(item.data.itemId || item.data.item_id || '');
             let vPre = item.data.vendor_id || item.data.vendorId || '';
@@ -1255,9 +1271,7 @@ export const UnifiedInventoryView = () => {
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter, materialFilter]);
-
-
+    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter, materialFilter, deployedItemsMap, logisticsDocs]);
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);
