@@ -1385,7 +1385,7 @@ export const CratesInventoryView: React.FC = () => {
     };
 
     const activeTab = useMemo(() => (subTab === 'packed' || subTab === 'deployed' || subTab === 'crates') ? subTab : 'empty', [subTab]);
-    const isLibraryOrDeployed = activeTab === 'crates' || activeTab === 'deployed';
+    const isLibraryOrDeployed = activeTab === 'deployed';
 
     useEffect(() => {
         if (!db) return;
@@ -1504,7 +1504,8 @@ export const CratesInventoryView: React.FC = () => {
             const matchesTab =
                 activeTab === 'empty'    ? c.status === 'Empty' :
                 activeTab === 'packed'   ? (c.status === 'Packed' || c.status === 'Partial') :
-                /* deployed/crates */      (c.status === 'In Transit' || c.status === 'Deployed');
+                activeTab === 'crates'   ? true :
+                /* deployed */             (c.status === 'In Transit' || c.status === 'Deployed');
             const q = searchQuery.toLowerCase();
             const matchesSearch = !q
                 || c.id?.toLowerCase().includes(q)
@@ -1803,8 +1804,10 @@ export const CratesInventoryView: React.FC = () => {
                                 <p className="text-[10px] font-black text-white/25 uppercase tracking-[0.3em] font-mono max-w-xs">
                                     {(subTab === 'empty')
                                         ? 'No empty units available. Create new storage to begin packing.'
-                                        : (subTab === 'deployed' || subTab === 'crates')
+                                        : (subTab === 'deployed')
                                         ? 'No deployed units found in the shipping registry.'
+                                        : (subTab === 'crates')
+                                        ? 'No units found in the registry.'
                                         : 'No units found matching this criteria.'}
                                 </p>
                             </div>
