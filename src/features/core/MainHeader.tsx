@@ -2361,6 +2361,11 @@ export function MainHeader() {
                         right: { style: 'thin' }
                     };
                 });
+                
+                vSheet.autoFilter = {
+                    from: 'A5',
+                    to: 'S5',
+                };
 
                 let startRow = 6;
                 
@@ -2443,9 +2448,22 @@ export function MainHeader() {
                         landed_code: calculated.bookLandCode || '-'
                     });
                     
-                    // Style item row (grayscale pink replacement)
-                    row.eachCell(cell => {
-                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+                    // Style item row
+                    const isOdd = startRow % 2 !== 0;
+                    row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                        if (colNum <= 19) {
+                            if (isOdd) {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } }; // Darker grey for better contrast
+                            } else {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                            }
+                            cell.border = {
+                                top: { style: 'thin' },
+                                left: { style: 'thin' },
+                                bottom: { style: 'thin' },
+                                right: { style: 'thin' }
+                            };
+                        }
                     });
                     startRow++;
                 });
@@ -2457,9 +2475,17 @@ export function MainHeader() {
                     total_mxn: { formula: `SUM(O6:O${startRow-1})` },
                     total_usd: { formula: `SUM(Q6:Q${startRow-1})` }
                 });
-                subTotalRow.eachCell(cell => {
-                    cell.font = { bold: true };
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+                subTotalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                    if (colNum <= 19) {
+                        cell.font = { bold: true };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } };
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' }
+                        };
+                    }
                 });
                 startRow++;
 
@@ -2478,14 +2504,24 @@ export function MainHeader() {
 
                 let totPayMXN = 0;
                 let totPayUSD = 0;
+                let totChargesMXN = 0;
+                let totChargesUSD = 0;
                 
                 vendorPayments.forEach(pay => {
                     const amt = parseFloat(pay.total || pay.amount || 0);
+                    const comm = parseFloat(pay.commission || pay.fee || pay.tax || pay.iva || 0);
                     const isUSD = pay.currency === 'USD';
-                    const mxnAmt = isUSD ? amt * bookRate : amt;
-                    const usdAmt = isUSD ? amt : amt / bookRate;
+                    
+                    const mxnAmt = isUSD ? (amt + comm) * bookRate : (amt + comm);
+                    const usdAmt = isUSD ? (amt + comm) : (amt + comm) / bookRate;
+                    
+                    const mxnComm = isUSD ? comm * bookRate : comm;
+                    const usdComm = isUSD ? comm : comm / bookRate;
+                    
                     totPayMXN += mxnAmt;
                     totPayUSD += usdAmt;
+                    totChargesMXN += mxnComm;
+                    totChargesUSD += usdComm;
                 });
 
                 // Payments Details Section
@@ -2500,19 +2536,22 @@ export function MainHeader() {
                 payHeader.eachCell({ includeEmpty: true }, (cell, colNum) => {
                     if (colNum <= 19) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
+                        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
                     }
                     if ([1, 2, 3, 4, 15, 17].includes(colNum)) { // Matches columns based on keys mapped in addRow
                         cell.font = { bold: true };
                         cell.alignment = { horizontal: 'center' };
-                        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
                     }
                 });
 
                 vendorPayments.forEach(pay => {
                     const amt = parseFloat(pay.total || pay.amount || 0);
+                    const comm = parseFloat(pay.commission || pay.fee || pay.tax || pay.iva || 0);
                     const isUSD = pay.currency === 'USD';
-                    const mxnAmt = isUSD ? amt * bookRate : amt;
-                    const usdAmt = isUSD ? amt : amt / bookRate;
+                    
+                    // The net payment row shows the total out-of-pocket (amount + commission)
+                    const mxnAmt = isUSD ? (amt + comm) * bookRate : (amt + comm);
+                    const usdAmt = isUSD ? (amt + comm) : (amt + comm) / bookRate;
                     
                     const d = new Date(pay.pay_date || pay.date || pay.created_at || Date.now());
                     
@@ -2523,7 +2562,12 @@ export function MainHeader() {
 
                     const tagIds = ids.map(id => idToTagMap.get(id)).filter(Boolean);
                     const tagIdsStr = tagIds.length > 0 ? ` (Items: ${tagIds.join(', ')})` : '';
-                    const desc = `${pay.description || pay.note || ''}${tagIdsStr}`.trim();
+                    let desc = `${pay.description || pay.note || ''}${tagIdsStr}`.trim();
+                    
+                    if (comm > 0) {
+                        const feeStr = isUSD ? `$${comm.toFixed(2)} USD` : `$${comm.toFixed(2)} MXN`;
+                        desc += ` (Includes ${feeStr} Tax/Fee)`;
+                    }
 
                     const payRow = vSheet.addRow({
                         date: !isNaN(d.getTime()) ? d.toLocaleDateString('en-US') : '',
@@ -2536,15 +2580,37 @@ export function MainHeader() {
                     
                     payRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
                         if (colNum <= 19) {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }; // Greyscale color
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; // White background for payments
+                            cell.border = {
+                                top: { style: 'thin' },
+                                left: { style: 'thin' },
+                                bottom: { style: 'thin' },
+                                right: { style: 'thin' }
+                            };
                         }
                     });
                 });
 
+                const addBorders = (r: any) => {
+                    r.eachCell({ includeEmpty: true }, (cell: any, colNum: number) => {
+                        if (colNum <= 19) {
+                            cell.border = {
+                                top: { style: 'thin' },
+                                left: { style: 'thin' },
+                                bottom: { style: 'thin' },
+                                right: { style: 'thin' }
+                            };
+                        }
+                    });
+                };
+
                 // Charges
                 const chargesRow = vSheet.addRow({});
-                chargesRow.getCell(14).value = 'CHARGES';
+                chargesRow.getCell(14).value = 'CHARGES (Taxes/Fees)';
                 chargesRow.getCell(14).alignment = { horizontal: 'right' };
+                chargesRow.getCell(15).value = totChargesMXN;
+                chargesRow.getCell(17).value = totChargesUSD;
+                addBorders(chargesRow);
 
                 // Totals
                 const tpRow = vSheet.addRow({});
@@ -2552,12 +2618,14 @@ export function MainHeader() {
                 tpRow.getCell(14).alignment = { horizontal: 'right' };
                 tpRow.getCell(15).value = totPayMXN;
                 tpRow.getCell(17).value = totPayUSD;
+                addBorders(tpRow);
 
                 const balRow = vSheet.addRow({});
                 balRow.getCell(14).value = 'Balance';
                 balRow.getCell(14).alignment = { horizontal: 'right' };
                 balRow.getCell(15).value = { formula: `O${subTotalRow.number}-O${tpRow.number}+O${chargesRow.number}` };
                 balRow.getCell(17).value = { formula: `Q${subTotalRow.number}-Q${tpRow.number}+Q${chargesRow.number}` };
+                addBorders(balRow);
             });
 
             const buffer = await workbook.xlsx.writeBuffer();
