@@ -2492,8 +2492,6 @@ export function MainHeader() {
                     }
 
                     const row = vSheet.addRow(rowData);
-                    
-                    row.height = 30;
 
                     // Style item row
                     const isOdd = startRow % 2 !== 0;
