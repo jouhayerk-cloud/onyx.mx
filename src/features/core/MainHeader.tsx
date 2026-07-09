@@ -108,7 +108,7 @@ import {
 const OnyxBar: React.FC = () => null;
 
 import { vendors } from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl } from '../../lib/utils';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -2323,7 +2323,8 @@ export function MainHeader() {
                     { header: 'Per Piece US$', key: 'price_usd', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'Total in US$ Dollars', key: 'total_usd', width: 20, style: { numFmt: '#,##0.00' } },
                     { header: 'ACQ Code', key: 'acq_code', width: 12 },
-                    { header: 'LND Code', key: 'landed_code', width: 12 }
+                    { header: 'LND Code', key: 'landed_code', width: 12 },
+                    { header: 'Image', key: 'image', width: 15 }
                 ];
 
                 const headers = vSheet.getRow(1).values; // save headers
@@ -2332,7 +2333,7 @@ export function MainHeader() {
                 // Top Section (Rows 1-4)
                 for (let i = 1; i <= 4; i++) {
                     const row = vSheet.getRow(i);
-                    for (let col = 1; col <= 19; col++) {
+                    for (let col = 1; col <= 20; col++) {
                         if (col <= 2 && (i === 1 || i === 2)) {
                             row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
                         } else {
@@ -2364,7 +2365,7 @@ export function MainHeader() {
                 
                 vSheet.autoFilter = {
                     from: 'A5',
-                    to: 'S5',
+                    to: 'T5',
                 };
 
                 let startRow = 6;
@@ -2426,6 +2427,13 @@ export function MainHeader() {
                         return isNaN(val) ? '' : (val * 2.20462).toFixed(2);
                     };
                     
+                    const mainImageUrl = itemData.generatedPngUrl || itemData.generated_png_url || itemData.image_url || itemData.item_image || (itemData.mediaUrls && String(itemData.mediaUrls).split(',')[0]);
+                    let imageValue: any = '';
+                    if (mainImageUrl) {
+                        const cleanUrl = getCleanImageUrl(mainImageUrl);
+                        imageValue = { formula: `_xlfn.IMAGE("${cleanUrl}")` };
+                    }
+
                     const row = vSheet.addRow({
                         date: formattedDate,
                         shape_type: ((itemData.shape || '') + ' ' + (itemData.type || itemData.shortDescription || '')).trim().toUpperCase(),
@@ -2445,13 +2453,16 @@ export function MainHeader() {
                         price_usd: priceUsd,
                         total_usd: totalUsd,
                         acq_code: calculated.bookAqCode || '-',
-                        landed_code: calculated.bookLandCode || '-'
+                        landed_code: calculated.bookLandCode || '-',
+                        image: imageValue
                     });
                     
+                    row.height = 40;
+
                     // Style item row
                     const isOdd = startRow % 2 !== 0;
                     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                        if (colNum <= 19) {
+                        if (colNum <= 20) {
                             if (isOdd) {
                                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } }; // Darker grey for better contrast
                             } else {
@@ -2463,6 +2474,9 @@ export function MainHeader() {
                                 bottom: { style: 'thin' },
                                 right: { style: 'thin' }
                             };
+                            if (colNum === 20) { // image column
+                                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                            }
                         }
                     });
                     startRow++;
@@ -2476,7 +2490,7 @@ export function MainHeader() {
                     total_usd: { formula: `SUM(Q6:Q${startRow-1})` }
                 });
                 subTotalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                    if (colNum <= 19) {
+                    if (colNum <= 20) {
                         cell.font = { bold: true };
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } };
                         cell.border = {
@@ -2534,7 +2548,7 @@ export function MainHeader() {
                     total_usd: 'AMOUNT USD'
                 });
                 payHeader.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                    if (colNum <= 19) {
+                    if (colNum <= 20) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
                         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
                     }
@@ -2579,7 +2593,7 @@ export function MainHeader() {
                     });
                     
                     payRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                        if (colNum <= 19) {
+                        if (colNum <= 20) {
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; // White background for payments
                             cell.border = {
                                 top: { style: 'thin' },
@@ -2593,7 +2607,7 @@ export function MainHeader() {
 
                 const addBorders = (r: any) => {
                     r.eachCell({ includeEmpty: true }, (cell: any, colNum: number) => {
-                        if (colNum <= 19) {
+                        if (colNum <= 20) {
                             cell.border = {
                                 top: { style: 'thin' },
                                 left: { style: 'thin' },
