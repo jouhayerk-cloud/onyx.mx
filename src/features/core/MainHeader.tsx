@@ -2306,14 +2306,12 @@ export function MainHeader() {
                 // Define columns first (this puts headers in row 1 by default)
                 vSheet.columns = [
                     { header: 'Date', key: 'date', width: 12 },
-                    { header: 'Shape', key: 'shape', width: 12 },
-                    { header: 'Type', key: 'type', width: 12 },
-                    { header: 'Color', key: 'color', width: 12 },
-                    { header: 'Material', key: 'material', width: 15 },
+                    { header: 'Shape Type', key: 'shape_type', width: 20 },
+                    { header: 'Colo Material', key: 'color_material', width: 20 },
                     { header: 'Tag - ID with LC', key: 'tag_id', width: 22 },
                     { header: 'Quantity', key: 'quantity', width: 10 },
                     { header: 'Weight', key: 'weight', width: 10 },
-                    { header: 'L Cm', key: 'height_cm', width: 12 },
+                    { header: 'H Cm', key: 'height_cm', width: 12 },
                     { header: 'W cm', key: 'width_cm', width: 12 },
                     { header: 'D cm', key: 'depth_cm', width: 12 },
                     { header: 'Pounds', key: 'pounds', width: 10 },
@@ -2334,7 +2332,7 @@ export function MainHeader() {
                 // Top Section (Rows 1-4)
                 for (let i = 1; i <= 4; i++) {
                     const row = vSheet.getRow(i);
-                    for (let col = 1; col <= 21; col++) {
+                    for (let col = 1; col <= 19; col++) {
                         if (col <= 2 && (i === 1 || i === 2)) {
                             row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
                         } else {
@@ -2425,20 +2423,18 @@ export function MainHeader() {
                     
                     const row = vSheet.addRow({
                         date: formattedDate,
-                        shape: itemData.shape || '',
-                        type: itemData.type || itemData.shortDescription || '',
-                        color: itemData.color || '',
-                        material: itemData.material || '',
+                        shape_type: ((itemData.shape || '') + ' ' + (itemData.type || itemData.shortDescription || '')).trim().toUpperCase(),
+                        color_material: ((itemData.color || '') + ' ' + (itemData.material || '')).trim().toUpperCase(),
                         tag_id: calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '',
                         quantity: qty,
-                        weight: itemData.weightKg || itemData.weight_kg || itemData.weight || '',
-                        height_cm: itemData.heightCm || itemData.height_cm || itemData.lengthCm || itemData.length_cm || '',
-                        width_cm: itemData.widthCm || itemData.width_cm || '',
-                        depth_cm: itemData.depthCm || itemData.depth_cm || '',
-                        pounds: itemData.weightLbs || itemData.weight_lbs || kgToLbs(itemData.weightKg || itemData.weight_kg || itemData.weight),
-                        height_in: itemData.heightIn || itemData.height_in || cmToIn(itemData.heightCm || itemData.height_cm || itemData.lengthCm || itemData.length_cm),
-                        width_in: itemData.widthIn || itemData.width_in || cmToIn(itemData.widthCm || itemData.width_cm),
-                        depth_in: itemData.depthIn || itemData.depth_in || cmToIn(itemData.depthCm || itemData.depth_cm),
+                        weight: itemData.WEIGHT || itemData.weightKg || itemData.weight_kg || itemData.weight || '',
+                        height_cm: itemData.Height || itemData.height || itemData.heightCm || itemData.height_cm || '',
+                        width_cm: itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm || '',
+                        depth_cm: itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || itemData.Length || itemData.length || '',
+                        pounds: itemData.weightLbs || itemData.weight_lbs || kgToLbs(itemData.WEIGHT || itemData.weightKg || itemData.weight_kg || itemData.weight),
+                        height_in: itemData.heightIn || itemData.height_in || cmToIn(itemData.Height || itemData.height || itemData.heightCm || itemData.height_cm),
+                        width_in: itemData.widthIn || itemData.width_in || cmToIn(itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm),
+                        depth_in: itemData.depthIn || itemData.depth_in || cmToIn(itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || itemData.Length || itemData.length),
                         price_mxn: priceMxn,
                         total_mxn: totalMxn,
                         price_usd: priceUsd,
@@ -2457,9 +2453,9 @@ export function MainHeader() {
                 // Sub-Total
                 const subTotalRow = vSheet.addRow({
                     tag_id: 'Sub-Total',
-                    quantity: { formula: `SUM(G6:G${startRow-1})` },
-                    total_mxn: { formula: `SUM(Q6:Q${startRow-1})` },
-                    total_usd: { formula: `SUM(S6:S${startRow-1})` }
+                    quantity: { formula: `SUM(E6:E${startRow-1})` },
+                    total_mxn: { formula: `SUM(O6:O${startRow-1})` },
+                    total_usd: { formula: `SUM(Q6:Q${startRow-1})` }
                 });
                 subTotalRow.eachCell(cell => {
                     cell.font = { bold: true };
@@ -2495,17 +2491,17 @@ export function MainHeader() {
                 // Payments Details Section
                 const payHeader = vSheet.addRow({
                     date: 'PAY DATE',
-                    type: 'CATEGORY',
-                    material: 'CURRENCY',
+                    shape_type: 'CATEGORY',
+                    color_material: 'CURRENCY',
                     tag_id: 'DESCRIPTION',
                     total_mxn: 'AMOUNT MXN',
                     total_usd: 'AMOUNT USD'
                 });
                 payHeader.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                    if (colNum <= 21) {
+                    if (colNum <= 19) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
                     }
-                    if ([1, 3, 5, 6, 17, 19].includes(colNum)) { // Matches columns based on keys mapped in addRow
+                    if ([1, 2, 3, 4, 15, 17].includes(colNum)) { // Matches columns based on keys mapped in addRow
                         cell.font = { bold: true };
                         cell.alignment = { horizontal: 'center' };
                         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -2531,15 +2527,15 @@ export function MainHeader() {
 
                     const payRow = vSheet.addRow({
                         date: !isNaN(d.getTime()) ? d.toLocaleDateString('en-US') : '',
-                        type: pay.subcategory || pay.category || '',
-                        material: pay.currency || '',
+                        shape_type: pay.subcategory || pay.category || '',
+                        color_material: pay.currency || '',
                         tag_id: desc,
                         total_mxn: mxnAmt,
                         total_usd: usdAmt
                     });
                     
                     payRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                        if (colNum <= 21) {
+                        if (colNum <= 19) {
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }; // Greyscale color
                         }
                     });
@@ -2547,21 +2543,21 @@ export function MainHeader() {
 
                 // Charges
                 const chargesRow = vSheet.addRow({});
-                chargesRow.getCell(16).value = 'CHARGES';
-                chargesRow.getCell(16).alignment = { horizontal: 'right' };
+                chargesRow.getCell(14).value = 'CHARGES';
+                chargesRow.getCell(14).alignment = { horizontal: 'right' };
 
                 // Totals
                 const tpRow = vSheet.addRow({});
-                tpRow.getCell(16).value = 'Total Payments';
-                tpRow.getCell(16).alignment = { horizontal: 'right' };
-                tpRow.getCell(17).value = totPayMXN;
-                tpRow.getCell(19).value = totPayUSD;
+                tpRow.getCell(14).value = 'Total Payments';
+                tpRow.getCell(14).alignment = { horizontal: 'right' };
+                tpRow.getCell(15).value = totPayMXN;
+                tpRow.getCell(17).value = totPayUSD;
 
                 const balRow = vSheet.addRow({});
-                balRow.getCell(16).value = 'Balance';
-                balRow.getCell(16).alignment = { horizontal: 'right' };
+                balRow.getCell(14).value = 'Balance';
+                balRow.getCell(14).alignment = { horizontal: 'right' };
+                balRow.getCell(15).value = { formula: `O${subTotalRow.number}-O${tpRow.number}+O${chargesRow.number}` };
                 balRow.getCell(17).value = { formula: `Q${subTotalRow.number}-Q${tpRow.number}+Q${chargesRow.number}` };
-                balRow.getCell(19).value = { formula: `S${subTotalRow.number}-S${tpRow.number}+S${chargesRow.number}` };
             });
 
             const buffer = await workbook.xlsx.writeBuffer();
