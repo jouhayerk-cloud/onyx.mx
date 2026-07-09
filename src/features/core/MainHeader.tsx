@@ -2297,14 +2297,31 @@ export function MainHeader() {
             });
 
             Object.entries(vendorGroups).forEach(([vid, items]) => {
+                // Find max images
+                let maxImages = 1;
+                items.forEach((item: any) => {
+                    const itemData = item.data;
+                    let allUrls: string[] = [];
+                    if (itemData.generatedPngUrl) allUrls.push(itemData.generatedPngUrl);
+                    if (itemData.generated_png_url) allUrls.push(itemData.generated_png_url);
+                    if (itemData.image_url) allUrls.push(itemData.image_url);
+                    if (itemData.item_image) allUrls.push(itemData.item_image);
+                    if (itemData.mediaUrls) {
+                        const arr = String(itemData.mediaUrls).split(',').map(s => s.trim()).filter(Boolean);
+                        allUrls.push(...arr);
+                    }
+                    allUrls = Array.from(new Set(allUrls));
+                    if (allUrls.length > maxImages) maxImages = allUrls.length;
+                });
+                if (maxImages > 10) maxImages = 10; // Cap at 10
+
                 const vMeta = (vendors as any)[vid];
                 const sheetName = (vMeta?.name || vid).substring(0, 25);
                 const vendorColor = getVendorColor(vid);
 
                 const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: vendorColor } } });
 
-                // Define columns first (this puts headers in row 1 by default)
-                vSheet.columns = [
+                const baseCols = [
                     { header: 'Date', key: 'date', width: 12 },
                     { header: 'Shape Type', key: 'shape_type', width: 20 },
                     { header: 'Colo Material', key: 'color_material', width: 20 },
@@ -2323,17 +2340,23 @@ export function MainHeader() {
                     { header: 'Per Piece US$', key: 'price_usd', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'Total in US$ Dollars', key: 'total_usd', width: 20, style: { numFmt: '#,##0.00' } },
                     { header: 'ACQ Code', key: 'acq_code', width: 12 },
-                    { header: 'LND Code', key: 'landed_code', width: 12 },
-                    { header: 'Image', key: 'image', width: 15 }
+                    { header: 'LND Code', key: 'landed_code', width: 12 }
                 ];
+                for (let k = 1; k <= maxImages; k++) {
+                    baseCols.push({ header: `Image ${k}`, key: `image_${k}`, width: 15 });
+                }
+                vSheet.columns = baseCols;
+                const totalCols = baseCols.length; // 19 + maxImages
 
                 const headers = vSheet.getRow(1).values; // save headers
                 vSheet.getRow(1).values = []; // clear row 1
 
+                const getColLetter = (c: number) => { let s = '', t; while (c > 0) { t = (c - 1) % 26; s = String.fromCharCode(65 + t) + s; c = (c - t) / 26 | 0; } return s || 'A'; };
+
                 // Top Section (Rows 1-4)
                 for (let i = 1; i <= 4; i++) {
                     const row = vSheet.getRow(i);
-                    for (let col = 1; col <= 20; col++) {
+                    for (let col = 1; col <= totalCols; col++) {
                         if (col <= 2 && (i === 1 || i === 2)) {
                             row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
                         } else {
@@ -2365,7 +2388,7 @@ export function MainHeader() {
                 
                 vSheet.autoFilter = {
                     from: 'A5',
-                    to: 'T5',
+                    to: `${getColLetter(totalCols)}5`,
                 };
 
                 let startRow = 6;
@@ -2427,14 +2450,18 @@ export function MainHeader() {
                         return isNaN(val) ? '' : (val * 2.20462).toFixed(2);
                     };
                     
-                    const mainImageUrl = itemData.generatedPngUrl || itemData.generated_png_url || itemData.image_url || itemData.item_image || (itemData.mediaUrls && String(itemData.mediaUrls).split(',')[0]);
-                    let imageValue: any = '';
-                    if (mainImageUrl) {
-                        const cleanUrl = getCleanImageUrl(mainImageUrl);
-                        imageValue = { formula: `HYPERLINK("${cleanUrl}", "View Image")` };
+                    let allUrls: string[] = [];
+                    if (itemData.generatedPngUrl) allUrls.push(itemData.generatedPngUrl);
+                    if (itemData.generated_png_url) allUrls.push(itemData.generated_png_url);
+                    if (itemData.image_url) allUrls.push(itemData.image_url);
+                    if (itemData.item_image) allUrls.push(itemData.item_image);
+                    if (itemData.mediaUrls) {
+                        const arr = String(itemData.mediaUrls).split(',').map(s => s.trim()).filter(Boolean);
+                        allUrls.push(...arr);
                     }
+                    allUrls = Array.from(new Set(allUrls)).map(u => getCleanImageUrl(u));
 
-                    const row = vSheet.addRow({
+                    const rowData: any = {
                         date: formattedDate,
                         shape_type: ((itemData.shape || '') + ' ' + (itemData.type || itemData.shortDescription || '')).trim().toUpperCase(),
                         color_material: ((itemData.color || '') + ' ' + (itemData.material || '')).trim().toUpperCase(),
@@ -2453,16 +2480,25 @@ export function MainHeader() {
                         price_usd: priceUsd,
                         total_usd: totalUsd,
                         acq_code: calculated.bookAqCode || '-',
-                        landed_code: calculated.bookLandCode || '-',
-                        image: imageValue
-                    });
+                        landed_code: calculated.bookLandCode || '-'
+                    };
+
+                    for (let k = 0; k < maxImages; k++) {
+                        if (k < allUrls.length) {
+                            rowData[`image_${k+1}`] = { formula: `HYPERLINK("${allUrls[k]}", "View Image ${k+1}")` };
+                        } else {
+                            rowData[`image_${k+1}`] = '';
+                        }
+                    }
+
+                    const row = vSheet.addRow(rowData);
                     
                     row.height = 30;
 
                     // Style item row
                     const isOdd = startRow % 2 !== 0;
                     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                        if (colNum <= 20) {
+                        if (colNum <= totalCols) {
                             if (isOdd) {
                                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } }; // Darker grey for better contrast
                             } else {
@@ -2474,7 +2510,7 @@ export function MainHeader() {
                                 bottom: { style: 'thin' },
                                 right: { style: 'thin' }
                             };
-                            if (colNum === 20) { // image column
+                            if (colNum > 19) { // image column
                                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
                             }
                         }
@@ -2490,7 +2526,7 @@ export function MainHeader() {
                     total_usd: { formula: `SUM(Q6:Q${startRow-1})` }
                 });
                 subTotalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                    if (colNum <= 20) {
+                    if (colNum <= totalCols) {
                         cell.font = { bold: true };
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } };
                         cell.border = {
