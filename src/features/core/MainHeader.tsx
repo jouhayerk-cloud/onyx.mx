@@ -2431,7 +2431,7 @@ export function MainHeader() {
                     let imageValue: any = '';
                     if (mainImageUrl) {
                         const cleanUrl = getCleanImageUrl(mainImageUrl);
-                        imageValue = { formula: `_xlfn.IMAGE("${cleanUrl}")` };
+                        imageValue = { formula: `HYPERLINK("${cleanUrl}", "View Image")` };
                     }
 
                     const row = vSheet.addRow({
@@ -2457,7 +2457,7 @@ export function MainHeader() {
                         image: imageValue
                     });
                     
-                    row.height = 40;
+                    row.height = 30;
 
                     // Style item row
                     const isOdd = startRow % 2 !== 0;
