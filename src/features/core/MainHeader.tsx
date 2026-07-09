@@ -132,7 +132,7 @@ import {
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
-    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp
+    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -2239,6 +2239,343 @@ export function MainHeader() {
         }
     };
 
+    // ─── WORKBOOK V2 EXPORT (Rare Earth Format) ──────────────────────────
+    const handleMasterExportXLSX_V2 = async () => {
+        setIsExporting(true);
+        try {
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'Onyx.mx Studio';
+            workbook.lastModifiedBy = 'Onyx.mx Studio';
+            workbook.created = new Date();
+
+            const bookRate = exchangeRate || 20;
+
+            const exportItems = inventory.filter(item => {
+                const status = (item.data.status || '').toLowerCase().trim();
+                return !EXCLUDED_STATUSES.has(status);
+            });
+
+            const paymentDateMap = new Map<string, string>();
+            financeDocs.forEach(d => {
+                const rel = d.related_ids || d.related_inventory_ids || '';
+                let ids: string[] = [];
+                if (Array.isArray(rel)) ids = rel.map((id: any) => String(id));
+                else if (typeof rel === 'string') ids = rel.split(',').map(s => s.trim()).filter(Boolean);
+                
+                if (d.status === 'Paid') {
+                    // map pay dates
+                    const pDate = d.pay_date || d.created_at || d.date;
+                    ids.forEach(id => {
+                        if (!paymentDateMap.has(id) || new Date(pDate) > new Date(paymentDateMap.get(id)!)) {
+                            paymentDateMap.set(id, pDate);
+                        }
+                    });
+                }
+            });
+
+            const idToTagMap = new Map<string, string>();
+            inventory.forEach(item => {
+                const itemData = item.data as any;
+                const norm = normalizeInventoryData(itemData);
+                const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                const tagId = calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '';
+                if (tagId) {
+                    idToTagMap.set(String(item.id), tagId);
+                    if (itemData.id) idToTagMap.set(String(itemData.id), tagId);
+                }
+            });
+
+            // Replicate vendorGroups logic
+            const vendorGroups: Record<string, any[]> = {};
+            exportItems.forEach(item => {
+                const d = item.data as any;
+                const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
+                const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
+                let vid = prefixId || 'Unknown';
+                if (!vendorGroups[vid]) vendorGroups[vid] = [];
+                vendorGroups[vid].push(item);
+            });
+
+            Object.entries(vendorGroups).forEach(([vid, items]) => {
+                const vMeta = (vendors as any)[vid];
+                const sheetName = (vMeta?.name || vid).substring(0, 25);
+                const vendorColor = getVendorColor(vid);
+
+                const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: vendorColor } } });
+
+                // Define columns first (this puts headers in row 1 by default)
+                vSheet.columns = [
+                    { header: 'Date', key: 'date', width: 12 },
+                    { header: 'Shape', key: 'shape', width: 12 },
+                    { header: 'Type', key: 'type', width: 12 },
+                    { header: 'Color', key: 'color', width: 12 },
+                    { header: 'Material', key: 'material', width: 15 },
+                    { header: 'Tag - ID with LC', key: 'tag_id', width: 22 },
+                    { header: 'Quantity', key: 'quantity', width: 10 },
+                    { header: 'Weight', key: 'weight', width: 10 },
+                    { header: 'L Cm', key: 'height_cm', width: 12 },
+                    { header: 'W cm', key: 'width_cm', width: 12 },
+                    { header: 'D cm', key: 'depth_cm', width: 12 },
+                    { header: 'Pounds', key: 'pounds', width: 10 },
+                    { header: 'L inch', key: 'height_in', width: 12 },
+                    { header: 'W Inch', key: 'width_in', width: 12 },
+                    { header: 'D Inch', key: 'depth_in', width: 12 },
+                    { header: 'Per Piece Pesos', key: 'price_mxn', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'Total in Pesos', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'Per Piece US$', key: 'price_usd', width: 18, style: { numFmt: '#,##0.00' } },
+                    { header: 'Total in US$ Dollars', key: 'total_usd', width: 20, style: { numFmt: '#,##0.00' } },
+                    { header: 'ACQ Code', key: 'acq_code', width: 12 },
+                    { header: 'LND Code', key: 'landed_code', width: 12 }
+                ];
+
+                const headers = vSheet.getRow(1).values; // save headers
+                vSheet.getRow(1).values = []; // clear row 1
+
+                // Top Section (Rows 1-4)
+                for (let i = 1; i <= 4; i++) {
+                    const row = vSheet.getRow(i);
+                    for (let col = 1; col <= 21; col++) {
+                        if (col <= 2 && (i === 1 || i === 2)) {
+                            row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
+                        } else {
+                            row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' } }; // Gray
+                        }
+                    }
+                }
+                
+                vSheet.getRow(1).getCell(1).value = vMeta?.name || vid;
+                vSheet.getRow(1).getCell(1).font = { bold: true };
+                vSheet.getRow(2).getCell(1).value = vid;
+                vSheet.getRow(2).getCell(1).font = { bold: true };
+
+                // Row 5: Headers
+                vSheet.getRow(5).values = headers;
+                
+                // Style Headers
+                vSheet.getRow(5).eachCell(cell => {
+                    cell.font = { bold: true };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
+                    cell.alignment = { horizontal: 'center' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+
+                let startRow = 6;
+                
+                // Sort items by workbook (825 then 326) and tag id
+                items.sort((a: any, b: any) => {
+                    const getWbAndTag = (i: any) => {
+                        const d = i.data || {};
+                        const n = normalizeInventoryData(d);
+                        const calc = calculateCodesAndPrices(n, bookRate, '326');
+                        const tag = (calc.bookBarcode || d.book_barcode || d.itemId || d.item_id || i.label || '').toUpperCase();
+                        let wb = d.workbook ? parseInt(d.workbook, 10) : 0;
+                        if (!wb) {
+                            const match = tag.match(/^[A-Z]+(\d+)/);
+                            if (match) wb = parseInt(match[1], 10) || 0;
+                        }
+                        const wbScore = wb === 825 ? 2 : (wb === 326 ? 1 : 0);
+                        return { wbScore, wb, tag };
+                    };
+                    const ka = getWbAndTag(a);
+                    const kb = getWbAndTag(b);
+                    if (ka.wbScore !== kb.wbScore) return kb.wbScore - ka.wbScore;
+                    if (ka.wb !== kb.wb) return kb.wb - ka.wb;
+                    return ka.tag.localeCompare(kb.tag);
+                });
+
+                // Add Items
+                items.forEach((item: any) => {
+                    const itemData = item.data;
+                    const norm = normalizeInventoryData(itemData);
+                    const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                    
+                    const qty = parseInt(itemData.quantity || '1', 10) || 1;
+                    const priceMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
+                    const totalMxn = Math.round(priceMxn * qty);
+                    const priceUsd = priceMxn / bookRate;
+                    const totalUsd = totalMxn / bookRate;
+                    
+                    let formattedDate = '';
+                    const pDateVal = paymentDateMap.get(String(itemData.id || item.id)) || itemData.pay_date || itemData.payDate;
+                    if (pDateVal) {
+                        const d = new Date(pDateVal);
+                        if (!isNaN(d.getTime())) {
+                            formattedDate = d.toLocaleDateString('en-US');
+                        }
+                    }
+                    if (!formattedDate) {
+                        const dateVal = itemData.createdAt || item.createdAt || Date.now();
+                        formattedDate = new Date(dateVal).toLocaleDateString('en-US');
+                    }
+
+                    const cmToIn = (cm: any) => {
+                        const val = parseFloat(cm);
+                        return isNaN(val) ? '' : (val / 2.54).toFixed(2);
+                    };
+
+                    const kgToLbs = (kg: any) => {
+                        const val = parseFloat(kg);
+                        return isNaN(val) ? '' : (val * 2.20462).toFixed(2);
+                    };
+                    
+                    const row = vSheet.addRow({
+                        date: formattedDate,
+                        shape: itemData.shape || '',
+                        type: itemData.type || itemData.shortDescription || '',
+                        color: itemData.color || '',
+                        material: itemData.material || '',
+                        tag_id: calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '',
+                        quantity: qty,
+                        weight: itemData.weightKg || itemData.weight_kg || itemData.weight || '',
+                        height_cm: itemData.heightCm || itemData.height_cm || itemData.lengthCm || itemData.length_cm || '',
+                        width_cm: itemData.widthCm || itemData.width_cm || '',
+                        depth_cm: itemData.depthCm || itemData.depth_cm || '',
+                        pounds: itemData.weightLbs || itemData.weight_lbs || kgToLbs(itemData.weightKg || itemData.weight_kg || itemData.weight),
+                        height_in: itemData.heightIn || itemData.height_in || cmToIn(itemData.heightCm || itemData.height_cm || itemData.lengthCm || itemData.length_cm),
+                        width_in: itemData.widthIn || itemData.width_in || cmToIn(itemData.widthCm || itemData.width_cm),
+                        depth_in: itemData.depthIn || itemData.depth_in || cmToIn(itemData.depthCm || itemData.depth_cm),
+                        price_mxn: priceMxn,
+                        total_mxn: totalMxn,
+                        price_usd: priceUsd,
+                        total_usd: totalUsd,
+                        acq_code: calculated.bookAqCode || '-',
+                        landed_code: calculated.bookLandCode || '-'
+                    });
+                    
+                    // Style item row (grayscale pink replacement)
+                    row.eachCell(cell => {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+                    });
+                    startRow++;
+                });
+
+                // Sub-Total
+                const subTotalRow = vSheet.addRow({
+                    tag_id: 'Sub-Total',
+                    quantity: { formula: `SUM(G6:G${startRow-1})` },
+                    total_mxn: { formula: `SUM(Q6:Q${startRow-1})` },
+                    total_usd: { formula: `SUM(S6:S${startRow-1})` }
+                });
+                subTotalRow.eachCell(cell => {
+                    cell.font = { bold: true };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+                });
+                startRow++;
+
+
+                // Fetch Vendor Payments
+                const vendorPayments = financeDocs.filter(pay => {
+                    const pVid = pay.vendor_id || pay.vendor;
+                    return pVid === vid;
+                });
+                
+                vendorPayments.sort((a, b) => {
+                    const dateA = new Date(a.date || a.pay_date || a.created_at || 0).getTime();
+                    const dateB = new Date(b.date || b.pay_date || b.created_at || 0).getTime();
+                    return dateA - dateB;
+                });
+
+                let totPayMXN = 0;
+                let totPayUSD = 0;
+                
+                vendorPayments.forEach(pay => {
+                    const amt = parseFloat(pay.total || pay.amount || 0);
+                    const isUSD = pay.currency === 'USD';
+                    const mxnAmt = isUSD ? amt * bookRate : amt;
+                    const usdAmt = isUSD ? amt : amt / bookRate;
+                    totPayMXN += mxnAmt;
+                    totPayUSD += usdAmt;
+                });
+
+                // Payments Details Section
+                const payHeader = vSheet.addRow({
+                    date: 'PAY DATE',
+                    type: 'CATEGORY',
+                    material: 'CURRENCY',
+                    tag_id: 'DESCRIPTION',
+                    total_mxn: 'AMOUNT MXN',
+                    total_usd: 'AMOUNT USD'
+                });
+                payHeader.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                    if (colNum <= 21) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
+                    }
+                    if ([1, 3, 5, 6, 17, 19].includes(colNum)) { // Matches columns based on keys mapped in addRow
+                        cell.font = { bold: true };
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                    }
+                });
+
+                vendorPayments.forEach(pay => {
+                    const amt = parseFloat(pay.total || pay.amount || 0);
+                    const isUSD = pay.currency === 'USD';
+                    const mxnAmt = isUSD ? amt * bookRate : amt;
+                    const usdAmt = isUSD ? amt : amt / bookRate;
+                    
+                    const d = new Date(pay.pay_date || pay.date || pay.created_at || Date.now());
+                    
+                    const rel = pay.related_ids || pay.related_inventory_ids || '';
+                    let ids: string[] = [];
+                    if (Array.isArray(rel)) ids = rel.map((id: any) => String(id));
+                    else if (typeof rel === 'string') ids = rel.split(',').map(s => s.trim()).filter(Boolean);
+
+                    const tagIds = ids.map(id => idToTagMap.get(id)).filter(Boolean);
+                    const tagIdsStr = tagIds.length > 0 ? ` (Items: ${tagIds.join(', ')})` : '';
+                    const desc = `${pay.description || pay.note || ''}${tagIdsStr}`.trim();
+
+                    const payRow = vSheet.addRow({
+                        date: !isNaN(d.getTime()) ? d.toLocaleDateString('en-US') : '',
+                        type: pay.subcategory || pay.category || '',
+                        material: pay.currency || '',
+                        tag_id: desc,
+                        total_mxn: mxnAmt,
+                        total_usd: usdAmt
+                    });
+                    
+                    payRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                        if (colNum <= 21) {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }; // Greyscale color
+                        }
+                    });
+                });
+
+                // Charges
+                const chargesRow = vSheet.addRow({});
+                chargesRow.getCell(16).value = 'CHARGES';
+                chargesRow.getCell(16).alignment = { horizontal: 'right' };
+
+                // Totals
+                const tpRow = vSheet.addRow({});
+                tpRow.getCell(16).value = 'Total Payments';
+                tpRow.getCell(16).alignment = { horizontal: 'right' };
+                tpRow.getCell(17).value = totPayMXN;
+                tpRow.getCell(19).value = totPayUSD;
+
+                const balRow = vSheet.addRow({});
+                balRow.getCell(16).value = 'Balance';
+                balRow.getCell(16).alignment = { horizontal: 'right' };
+                balRow.getCell(17).value = { formula: `Q${subTotalRow.number}-Q${tpRow.number}+Q${chargesRow.number}` };
+                balRow.getCell(19).value = { formula: `S${subTotalRow.number}-S${tpRow.number}+S${chargesRow.number}` };
+            });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
+            saveAs(new Blob([buffer]), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
+            toast.success('Workbook V2 Ready', { icon: '📊' });
+        } catch (error) {
+            console.error('Export failed:', error);
+            toast.error('V2 Export Failed');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const handleRefresh = () => {
         window.location.reload();
     };
@@ -2373,18 +2710,31 @@ export function MainHeader() {
                     </div>
 
                     {/* Full Color XLSX Download Button */}
-                    <button
-                        onClick={handleMasterExportXLSX}
-                        disabled={isExporting}
-                        className={`flex items-center gap-3 px-4 sm:px-6 h-12 rounded-xl transition-all active:scale-95 shadow-xl hover:shadow-(--main-color)/20 group/xlsx ${
-                            isExporting ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                        style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
-                        title="Download Full Workbook XLSX"
-                    >
-                        <FileSpreadsheet size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
-                        <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Workbook</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={handleMasterExportXLSX_V2}
+                            disabled={isExporting}
+                            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 bg-white/5 border border-white/5 hover:bg-white/10 group/v2 ${
+                                isExporting ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            title="Download Workbook V2 (Rare Earth Format)"
+                        >
+                            <DatabaseBackup size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/v2:scale-110 transition-transform text-white/60 group-hover/v2:text-white'} />
+                        </button>
+
+                        <button
+                            onClick={handleMasterExportXLSX}
+                            disabled={isExporting}
+                            className={`flex items-center gap-3 px-4 sm:px-6 h-12 rounded-xl transition-all active:scale-95 shadow-xl hover:shadow-(--main-color)/20 group/xlsx ${
+                                isExporting ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
+                            title="Download Full Workbook XLSX"
+                        >
+                            <FileSpreadsheet size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
+                            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Workbook</span>
+                        </button>
+                    </div>
 
                     <div
                         className="flex flex-col items-end border-l border-white/5 pl-4 sm:pl-6 cursor-pointer shrink-0 transition-all active:scale-95"
