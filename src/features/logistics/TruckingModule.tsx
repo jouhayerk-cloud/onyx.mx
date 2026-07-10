@@ -4399,14 +4399,41 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     </div>
                                 ) : (
                                     deployedCrates.map(c => (
-                                        <div key={c.id} onClick={() => setEditingCrate(c)} className="cursor-pointer">
-                                            <CompactDockCard 
-                                                crate={c} 
-                                                allCrates={allCrates} 
-                                                allInventory={allInventory} 
-                                                onLoad={() => {}} 
-                                                isCompact={isCompact}
-                                            />
+                                        <div key={c.id} className="relative group cursor-pointer flex flex-col gap-2 min-w-[200px]">
+                                            <div onClick={() => setEditingCrate(c)}>
+                                                <CompactDockCard 
+                                                    crate={c} 
+                                                    allCrates={allCrates} 
+                                                    allInventory={allInventory} 
+                                                    onLoad={() => {}} 
+                                                    isCompact={isCompact}
+                                                />
+                                            </div>
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity w-full mt-1 px-2">
+                                                <button onClick={(e) => { e.stopPropagation(); setEditingCrate(c); }} className="flex-1 py-1.5 px-2 text-[8px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 flex items-center justify-center gap-1.5 whitespace-nowrap">
+                                                    <Eye size={12} /> View Deployment
+                                                </button>
+                                                <button onClick={async (e) => { 
+                                                    e.stopPropagation(); 
+                                                    const tid = notify.loading('Reverting to Warehouse...');
+                                                    const { error } = await supabase.from('logistics').update({ 
+                                                        status: c.inventory_ids ? 'Packed' : 'Empty', 
+                                                        sent_date: null, 
+                                                        truck_plates: null, 
+                                                        senders: null,
+                                                        truck_id: null,
+                                                        truck_position: null
+                                                    }).eq('id', c.id);
+                                                    if (!error) { 
+                                                        notify.success('Reverted to Warehouse', { id: tid }); 
+                                                        onRefresh(); 
+                                                    } else { 
+                                                        notify.error('Failed to revert', { id: tid }); 
+                                                    }
+                                                }} className="flex-1 py-1.5 px-2 text-[8px] font-black uppercase tracking-widest bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-all border border-rose-500/10 flex items-center justify-center gap-1.5 whitespace-nowrap">
+                                                    <ArrowLeft size={12} /> Back to Warehouse
+                                                </button>
+                                            </div>
                                         </div>
                                     ))
                                 )}

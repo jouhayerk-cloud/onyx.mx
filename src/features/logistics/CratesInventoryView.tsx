@@ -1134,7 +1134,10 @@ export const CrateEditPanel: React.FC<{
         status: crate.status || 'Packed',
         vendors: (crate as any).vendors || '',
         quantity: String(crate.groupedCount || 1),
-        type: crate.type || 'crate'
+        type: crate.type || 'crate',
+        sent_date: crate.sent_date || '',
+        truck_plates: crate.truck_plates || '',
+        senders: crate.senders || ''
     });
 
     const [sourceType, setSourceType] = useState(() => {
@@ -1155,7 +1158,10 @@ export const CrateEditPanel: React.FC<{
             weight_kg: parseFloat(formData.weight_kg) || 0,
             brute_weight_kg: parseFloat(formData.brute_weight_kg) || 0,
             cost_mxn: parseFloat(formData.cost_mxn) || 0,
-            quantity: parseInt(formData.quantity) || 1
+            quantity: parseInt(formData.quantity) || 1,
+            sent_date: formData.sent_date,
+            truck_plates: formData.truck_plates,
+            senders: formData.senders
         };
         if (sourceType === 'SIMONA') updates.vendors = 'SIMONA';
         else if (sourceType === 'JUAN') updates.vendors = 'JUAN';
@@ -1321,6 +1327,15 @@ export const CrateEditPanel: React.FC<{
                             <SmartInput label="Acquisition Price (MXN)" field="cost_mxn" value={formData.cost_mxn} icon={Hash} type="number" onSet={set} />
                             <SmartInput label="Label / Notes" field="description" value={formData.description} icon={FileText} onSet={set} />
                         </div>
+
+                        {/* Deployment Data (if applicable) */}
+                        {(formData.status === 'Deployed' || formData.status === 'In Transit' || formData.sent_date) && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4 border-t border-white/5 mt-4">
+                                <SmartInput label="Deployment Date" field="sent_date" value={formData.sent_date} icon={FileText} type="text" onSet={set} />
+                                <SmartInput label="Truck Plates" field="truck_plates" value={formData.truck_plates} icon={FileText} type="text" onSet={set} />
+                                <SmartInput label="Senders" field="senders" value={formData.senders} icon={FileText} type="text" onSet={set} />
+                            </div>
+                        )}
 
                         {/* Save Action */}
                         <div className="flex flex-col items-center gap-6 pt-12 border-t border-white/5">
