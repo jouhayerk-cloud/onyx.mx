@@ -2256,6 +2256,9 @@ export function MainHeader() {
             });
 
             const paymentDateMap = new Map<string, string>();
+            const paidItemsSet = new Set<string>();
+            const pendingItemsSet = new Set<string>();
+            
             financeDocs.forEach(d => {
                 const rel = d.related_ids || d.related_inventory_ids || '';
                 let ids: string[] = [];
@@ -2263,6 +2266,7 @@ export function MainHeader() {
                 else if (typeof rel === 'string') ids = rel.split(',').map(s => s.trim()).filter(Boolean);
                 
                 if (d.status === 'Paid') {
+                    ids.forEach(id => paidItemsSet.add(id));
                     // map pay dates
                     const pDate = d.pay_date || d.created_at || d.date;
                     ids.forEach(id => {
@@ -2270,6 +2274,9 @@ export function MainHeader() {
                             paymentDateMap.set(id, pDate);
                         }
                     });
+                } else if (d.status === 'Pending' || d.status === 'Requested' || d.status === 'Draft' || !d.status) {
+                    // For legacy support or explicit Requested/Pending statuses
+                    ids.forEach(id => pendingItemsSet.add(id));
                 }
             });
 
@@ -2495,12 +2502,30 @@ export function MainHeader() {
 
                     // Style item row
                     const isOdd = startRow % 2 !== 0;
+                    const itemDbId = String(itemData.id || item.id);
+                    const isPaidItem = paidItemsSet.has(itemDbId);
+                    const isPendingItem = pendingItemsSet.has(itemDbId);
+
                     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
                         if (colNum <= totalCols) {
-                            if (isOdd) {
-                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } }; // Darker grey for better contrast
+                            if (colNum === 4) { // Tag ID column
+                                if (isPaidItem) {
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } }; // Light Green
+                                } else if (isPendingItem) {
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; // Yellow
+                                } else {
+                                    if (isOdd) {
+                                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } };
+                                    } else {
+                                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                                    }
+                                }
                             } else {
-                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                                if (isOdd) {
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } }; // Darker grey for better contrast
+                                } else {
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                                }
                             }
                             cell.border = {
                                 top: { style: 'thin' },
@@ -2626,9 +2651,18 @@ export function MainHeader() {
                         total_usd: usdAmt
                     });
                     
+                    const isPayPaid = pay.status === 'Paid';
+                    const isPayPending = pay.status === 'Pending' || pay.status === 'Requested' || pay.status === 'Draft' || !pay.status;
+
                     payRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
                         if (colNum <= 20) {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; // White background for payments
+                            if (isPayPaid) {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
+                            } else if (isPayPending) {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+                            } else {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; // White background for payments
+                            }
                             cell.border = {
                                 top: { style: 'thin' },
                                 left: { style: 'thin' },
