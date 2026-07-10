@@ -1348,6 +1348,39 @@ export const CrateEditPanel: React.FC<{
                                     Sync Unit Changes
                                 </button>
 
+                                {(formData.status === 'Deployed' || formData.status === 'In Transit' || crate.status === 'Deployed' || crate.status === 'In Transit') && (
+                                    <button 
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            if (window.confirm('WARNING: Are you sure you want to SEND THIS UNIT BACK TO THE WAREHOUSE? This will reset its deployment status to PACKED and clear its truck and dispatch data.')) {
+                                                const updates = {
+                                                    ...formData,
+                                                    width_cm: parseFloat(formData.width_cm) || 0,
+                                                    length_cm: parseFloat(formData.length_cm) || 0,
+                                                    height_cm: parseFloat(formData.height_cm) || 0,
+                                                    weight_kg: parseFloat(formData.weight_kg) || 0,
+                                                    brute_weight_kg: parseFloat(formData.brute_weight_kg) || 0,
+                                                    cost_mxn: parseFloat(formData.cost_mxn) || 0,
+                                                    quantity: parseInt(formData.quantity) || 1,
+                                                    status: 'Packed',
+                                                    sent_date: null,
+                                                    truck_plates: null,
+                                                    senders: null,
+                                                    truck_id: null,
+                                                    truck_position: null
+                                                };
+                                                if (sourceType === 'SIMONA') updates.vendors = 'SIMONA';
+                                                else if (sourceType === 'JUAN') updates.vendors = 'JUAN';
+                                                onSave(crate.id, updates);
+                                            }
+                                        }}
+                                        className="w-full md:w-auto px-8 py-6 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] hover:bg-amber-500 hover:text-black transition-all flex items-center justify-center gap-4 group"
+                                    >
+                                        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                                        Send to Warehouse
+                                    </button>
+                                )}
+
                                 {onDeleteGroup && crate.groupedIds && crate.groupedIds.length > 0 && (
                                     <button 
                                         onClick={() => {
@@ -1519,7 +1552,7 @@ export const CratesInventoryView: React.FC = () => {
             const matchesTab =
                 activeTab === 'empty'    ? c.status === 'Empty' :
                 activeTab === 'packed'   ? (c.status === 'Packed' || c.status === 'Partial') :
-                activeTab === 'crates'   ? true :
+                activeTab === 'crates'   ? (c.status === 'In Transit' || c.status === 'Deployed') :
                 /* deployed */             (c.status === 'In Transit' || c.status === 'Deployed');
             const q = searchQuery.toLowerCase();
             const matchesSearch = !q
@@ -1822,7 +1855,7 @@ export const CratesInventoryView: React.FC = () => {
                                         : (subTab === 'deployed')
                                         ? 'No deployed units found in the shipping registry.'
                                         : (subTab === 'crates')
-                                        ? 'No units found in the registry.'
+                                        ? 'No deployed units found in the registry.'
                                         : 'No units found matching this criteria.'}
                                 </p>
                             </div>
