@@ -846,8 +846,8 @@ const IsoView: React.FC<{
     }, [positions]);
 
     return (
-        <div className="w-full h-full backdrop-blur-3xl bg-white/[0.02] border-t border-white/10 shadow-inner relative">
-            <div className="py-[100vh] pl-[300vw] pr-[100vw]" style={{ minWidth: W * zoom + 12000, minHeight: H * zoom + 4000 }}>
+        <div className="w-full h-full backdrop-blur-3xl bg-white/[0.02] border-t border-white/10 shadow-inner relative overflow-auto flex items-center justify-center">
+            <div className="p-10 lg:p-20" style={{ minWidth: W * zoom + 200, minHeight: H * zoom + 200 }}>
                 <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} 
                     style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible' }}
                     onClick={() => onSelect('')}
@@ -1004,7 +1004,7 @@ const SideView: React.FC<{
         <div 
             className="w-full h-full backdrop-blur-3xl bg-white/[0.02] border-t border-white/10 shadow-inner relative"
         >
-            <div className="py-[40vh] px-[40vw]" style={{ minWidth: SVG_W * zoom + 800, minHeight: SVG_H * zoom + 800 }}>
+            <div className="p-10 lg:p-20 flex flex-col items-center" style={{ minWidth: SVG_W * zoom + 200, minHeight: SVG_H * zoom + 200 }}>
                 {/* Header bar */}
                 <div className="flex items-center gap-6 mb-6 px-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
@@ -4335,7 +4335,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [zoom, viewMode]);
 
     return (
-        <div className="absolute inset-0 flex flex-col overflow-hidden bg-transparent select-none">
+        <div className="relative flex-1 w-full h-full flex flex-col overflow-hidden bg-transparent select-none">
             {/* Ã¢â€â‚¬Ã¢â€â‚¬ FLOATING STUDIO HUB (Persistent Glassmorphic Panel) Ã¢â€â‚¬Ã¢â€â‚¬ */}
             {showPanels && (
             <div className="relative z-[60] p-6 pb-0 pointer-events-none shrink-0">
@@ -4685,27 +4685,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             onSelect={setSelectedId}
                         />
                     </div>
-                ) : viewMode === '3d' ? (
-                    <div className="w-full h-full relative group">
-                        <InteractiveTruckViewer
-                            truckCrates={truckCrates}
-                            positions={positions}
-                            allCrates={allCrates}
-                            allInventory={allInventory}
-                            truckNumbering={truckNumbering}
-                            selectedId={selectedId}
-                            onSelect={setSelectedId}
-                        />
-                        <div className="absolute top-10 right-10 pointer-events-none group-hover:opacity-100 opacity-0 transition-opacity">
-                            <div className="px-6 py-3 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center gap-3">
-                                <Globe size={16} className="text-emerald-500 animate-spin-slow" />
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Interactive Orbit Active</span>
-                            </div>
-                        </div>
-                    </div>
                 ) : (
                 <div 
-                    className="min-w-full min-h-full flex flex-col items-center justify-center p-[1500px] lg:p-[2500px]"
+                    className="min-w-full min-h-full flex flex-col items-center justify-center p-10 lg:p-20"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {
                             setSelectedId(null);
@@ -4889,12 +4871,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
                 <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <button
-                        onClick={() => setViewMode(v => v === 'top' ? 'side' : v === 'side' ? 'iso' : v === 'iso' ? '3d' : 'top')}
-                        title={viewMode === 'top' ? 'Lateral View' : viewMode === 'side' ? 'Isometric View' : viewMode === 'iso' ? '3D Orbit View' : 'Overhead View'}
+                        onClick={() => setViewMode(v => v === 'top' ? 'side' : v === 'side' ? 'iso' : 'top')}
+                        title={viewMode === 'top' ? 'Lateral View' : viewMode === 'side' ? 'Axonometric View' : 'Overhead View'}
                         className={`p-3 rounded-xl transition-all duration-300 ${viewMode !== 'top' ? 'bg-white text-black shadow-xl' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
                         style={viewMode !== 'top' ? { backgroundColor: 'var(--main-color)', color: 'black' } : {}}
                     >
-                        {viewMode === 'top' ? <Layers size={22} /> : viewMode === 'side' ? <Maximize2 size={22} /> : viewMode === 'iso' ? <Box size={22} /> : <Globe size={22} />}
+                        {viewMode === 'top' ? <Layers size={22} /> : viewMode === 'side' ? <Maximize2 size={22} /> : <Box size={22} />}
                     </button>
                     
                     <div className="w-px h-8 bg-white/10 mx-2" />

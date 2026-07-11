@@ -524,7 +524,7 @@ export const isPaymentWizardOpenAtom = atom<boolean>(false);
 // Trucking Module Atoms
 export const truckReadyTriggerAtom = atom<number>(0); // increment to fire Ready Truck workflow
 export const truckIsBusyAtom = atom<boolean>(false);  // true while handleReadyTruck is running
-export const truckViewModeAtom = atom<'top' | 'side' | 'iso' | '3d'>('top'); // trailer view: top-down, lateral, iso or 3d
+export const truckViewModeAtom = atom<'top' | 'side' | 'iso'>('top'); // trailer view: top-down, lateral, or iso
 export const truckIsCompactAtom = atom<boolean>(false);       // compact dock/info panels
 export const truckShowSaveDraftAtom = atom<boolean>(false);   // open Save Draft modal
 export const truckShowOpenDraftAtom = atom<boolean>(false);   // open Load Drafts modal
