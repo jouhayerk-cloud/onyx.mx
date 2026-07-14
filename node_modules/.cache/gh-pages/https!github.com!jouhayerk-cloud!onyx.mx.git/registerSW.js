@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('https://jouhayerk-cloud.github.io/onyx.mx/sw.js', { scope: 'https://jouhayerk-cloud.github.io/onyx.mx/' })})}

@@ -1,0 +1,34 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    /* Default: AQUA (Light Coastal Stone) */
+    .bg { fill: #fdfcf0; }
+    .main { fill: #00bcd4; }
+    .secondary { fill: #c17e61; }
+    .stroke { stroke: #00bcd4; }
+
+    /* Dark Mode: TALAN (Dark Stone) */
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d0b0a; }
+      .main { fill: #8da388; }
+      .secondary { fill: #b8860b; }
+      .stroke { stroke: #8da388; }
+    }
+  </style>
+
+  <!-- Dynamic Theme-Aware Background -->
+  <rect class="bg" width="256" height="256" rx="48"/>
+  
+  <!-- Official Onyx Mini Logo Geometry (v1.75.1 Universal Theme-Aware) -->
+  <g transform="translate(42, 28) scale(0.095)">
+    <!-- Lower Base (Dynamic Secondary) -->
+    <path class="secondary" d="M-0,1609.06l900.137,486.336l907.485,-496.323l-900.137,-486.336l-907.485,496.323Z" fill-opacity="0.3" />
+    <!-- Left Column (Dynamic Main) -->
+    <path class="main" d="M890.8,887.045l0,903.041l-797.05,-435.924l-0,-903.041l797.05,435.924Z" fill-opacity="0.5" />
+    <!-- Right Column (Dynamic Main - Focus) -->
+    <path class="main" d="M890.8,878.436l0,925.882l823.072,-450.156l0,-925.881l-823.072,450.155Z" fill-opacity="0.75" />
+    <!-- Top Cap Outer (Dynamic Main) -->
+    <path class="main" d="M81.042,441.337l812.569,439.024l806.948,-441.337l-812.569,-439.024l-806.948,441.337Z" fill-opacity="0.5" />
+    <!-- Top Cap Inner (Dynamic Main Accent) -->
+    <path class="main" d="M215.715,439.546l668.333,361.094l679.915,-371.86l-668.333,-361.094l-679.915,371.86Z" fill-opacity="0.5" />
+  </g>
+</svg>
