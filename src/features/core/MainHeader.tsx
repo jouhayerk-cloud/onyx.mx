@@ -2737,8 +2737,6 @@ export function MainHeader() {
             });
 
             // --- CONSOLIDATED TRK SHEETS ---
-            const monthsShort = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-            
             // Build rowMap for fast lookups
             const rowMap = new Map<string, any>();
             inventory.forEach(item => {
