@@ -2710,6 +2710,203 @@ export function MainHeader() {
                 addBorders(balRow);
             });
 
+            // --- CONSOLIDATED TRK SHEETS ---
+            const monthsShort = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            
+            // Build rowMap for fast lookups
+            const rowMap = new Map<string, any>();
+            inventory.forEach(item => {
+                rowMap.set(String(item.row), item);
+                const d = item.data as any;
+                [d.itemId, d.item_id, d.tag_id, d.book_barcode, d.bookBarcode].forEach(k => {
+                    if (k && k !== '-' && k !== '') rowMap.set(String(k).toUpperCase(), item);
+                });
+                const norm = normalizeInventoryData(d);
+                const calc = calculateCodesAndPrices(norm, bookRate, '326');
+                if (calc.bookBarcode && calc.bookBarcode !== '-') {
+                    rowMap.set(calc.bookBarcode.toUpperCase(), item);
+                }
+            });
+
+            for (const ship of (shipments || [])) {
+                try {
+                    if (!ship.manifest_id) continue;
+                    const p = typeof ship.payload === 'string' ? JSON.parse(ship.payload) : ship.payload;
+                    if (!p || !p.crates || p.crates.length === 0) continue;
+
+                    const date = new Date(ship.timestamp || ship.updated_at || Date.now());
+                    const fallbackName = `TRK-${monthsShort[date.getMonth()]}${date.getDate()}`;
+                    const sheetName = ship.manifest_id || fallbackName;
+                    
+                    let finalSheetName = sheetName;
+                    let counter = 1;
+                    while (workbook.getWorksheet(finalSheetName)) {
+                        finalSheetName = `${sheetName}_${counter++}`;
+                    }
+
+                    const truckItems: any[] = [];
+                    p.crates.forEach((c: any) => {
+                        if (c.status === 'Draft' || !c.items || c.items.length === 0) return;
+                        (c.items || []).forEach((pItem: any) => {
+                            let atomItem = rowMap.get(String(pItem.row));
+                            if (!atomItem) atomItem = rowMap.get(String(pItem.itemId || '').toUpperCase());
+                            
+                            if (atomItem) {
+                                truckItems.push({ ...atomItem, _pItem: pItem });
+                            }
+                        });
+                    });
+
+                    if (truckItems.length === 0) continue;
+
+                    let maxImages = 1;
+                    truckItems.forEach((item: any) => {
+                        const itemData = item.data;
+                        let allUrls: string[] = [];
+                        if (itemData.generatedPngUrl) allUrls.push(itemData.generatedPngUrl);
+                        if (itemData.generated_png_url) allUrls.push(itemData.generated_png_url);
+                        if (itemData.image_url) allUrls.push(itemData.image_url);
+                        if (itemData.item_image) allUrls.push(itemData.item_image);
+                        if (itemData.mediaUrls) {
+                            const arr = String(itemData.mediaUrls).split(',').map((s: string) => s.trim()).filter(Boolean);
+                            allUrls.push(...arr);
+                        }
+                        allUrls = Array.from(new Set(allUrls));
+                        if (allUrls.length > maxImages) maxImages = allUrls.length;
+                    });
+                    if (maxImages > 10) maxImages = 10;
+
+                    const tSheet = workbook.addWorksheet(finalSheetName, { properties: { tabColor: { argb: 'FF10B981' } } });
+                    
+                    const baseCols = [
+                        { header: 'Date', key: 'date', width: 12 },
+                        { header: 'Shape Type', key: 'shape_type', width: 20 },
+                        { header: 'Colo Material', key: 'color_material', width: 20 },
+                        { header: 'Tag - ID with LC', key: 'tag_id', width: 22 },
+                        { header: 'Quantity', key: 'quantity', width: 10 },
+                        { header: 'Weight', key: 'weight', width: 10 },
+                        { header: 'H Cm', key: 'height_cm', width: 12 },
+                        { header: 'W cm', key: 'width_cm', width: 12 },
+                        { header: 'D cm', key: 'depth_cm', width: 12 },
+                        { header: 'Pounds', key: 'pounds', width: 10 },
+                        { header: 'L inch', key: 'height_in', width: 12 },
+                        { header: 'W Inch', key: 'width_in', width: 12 },
+                        { header: 'D Inch', key: 'depth_in', width: 12 },
+                        { header: 'Per Piece Pesos', key: 'price_mxn', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'Total in Pesos', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'Per Piece US$', key: 'price_usd', width: 18, style: { numFmt: '#,##0.00' } },
+                        { header: 'Total in US$ Dollars', key: 'total_usd', width: 20, style: { numFmt: '#,##0.00' } },
+                        { header: 'ACQ Code', key: 'acq_code', width: 12 },
+                        { header: 'LND Code', key: 'landed_code', width: 12 }
+                    ];
+                    for (let k = 1; k <= maxImages; k++) {
+                        baseCols.push({ header: `Image ${k}`, key: `image_${k}`, width: 15 });
+                    }
+                    tSheet.columns = baseCols;
+                    const totalCols = baseCols.length;
+
+                    const headers = tSheet.getRow(1).values;
+                    tSheet.getRow(1).values = [];
+                    const getColLetter = (c: number) => { let s = '', t; while (c > 0) { t = (c - 1) % 26; s = String.fromCharCode(65 + t) + s; c = (c - t) / 26 | 0; } return s || 'A'; };
+
+                    for (let i = 1; i <= 4; i++) {
+                        const row = tSheet.getRow(i);
+                        for (let col = 1; col <= totalCols; col++) {
+                            if (col <= 2 && (i === 1 || i === 2)) {
+                                row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+                            } else {
+                                row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' } };
+                            }
+                        }
+                    }
+                    tSheet.getRow(1).getCell(1).value = `TRK ${finalSheetName}`;
+                    tSheet.getRow(1).getCell(1).font = { bold: true };
+                    tSheet.getRow(2).getCell(1).value = 'CONSOLIDATED';
+                    tSheet.getRow(2).getCell(1).font = { bold: true };
+
+                    tSheet.getRow(5).values = headers;
+                    tSheet.getRow(5).eachCell(cell => {
+                        cell.font = { bold: true };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+                        cell.alignment = { horizontal: 'center' };
+                        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                    });
+                    tSheet.autoFilter = { from: 'A5', to: `${getColLetter(totalCols)}5` };
+
+                    truckItems.forEach((item: any, idx: number) => {
+                        const itemData = item.data;
+                        const pItem = item._pItem;
+                        const norm = normalizeInventoryData(itemData);
+                        const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                        
+                        const qty = parseInt(String(pItem.qty || pItem.quantity || itemData.quantity || '1'), 10) || 1;
+                        const priceMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
+                        const totalMxn = Math.round(priceMxn * qty);
+                        const priceUsd = priceMxn / bookRate;
+                        const totalUsd = totalMxn / bookRate;
+
+                        let formattedDate = '';
+                        const pDateVal = paymentDateMap.get(String(itemData.id || item.id)) || itemData.pay_date || itemData.payDate;
+                        if (pDateVal) {
+                            const d = new Date(pDateVal);
+                            if (!isNaN(d.getTime())) formattedDate = d.toLocaleDateString('en-US');
+                        }
+                        if (!formattedDate) {
+                            const dateVal = itemData.createdAt || item.createdAt || Date.now();
+                            formattedDate = new Date(dateVal).toLocaleDateString('en-US');
+                        }
+
+                        const cmToIn = (cm: any) => { const val = parseFloat(cm); return isNaN(val) ? '' : (val / 2.54).toFixed(2); };
+                        const kgToLbs = (kg: any) => { const val = parseFloat(kg); return isNaN(val) ? '' : (val * 2.20462).toFixed(2); };
+                        
+                        let allUrls: string[] = [];
+                        if (itemData.generatedPngUrl) allUrls.push(itemData.generatedPngUrl);
+                        if (itemData.generated_png_url) allUrls.push(itemData.generated_png_url);
+                        if (itemData.image_url) allUrls.push(itemData.image_url);
+                        if (itemData.item_image) allUrls.push(itemData.item_image);
+                        if (itemData.mediaUrls) {
+                            const arr = String(itemData.mediaUrls).split(',').map((s: string) => s.trim()).filter(Boolean);
+                            allUrls.push(...arr);
+                        }
+                        allUrls = Array.from(new Set(allUrls)).map((u: string) => getCleanImageUrl(u));
+
+                        const rowData: any = {
+                            date: formattedDate,
+                            shape_type: ((itemData.shape || '') + ' ' + (itemData.type || itemData.shortDescription || '')).trim().toUpperCase(),
+                            color_material: ((itemData.color || '') + ' ' + (itemData.material || '')).trim().toUpperCase(),
+                            tag_id: calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '',
+                            quantity: qty,
+                            weight: itemData.WEIGHT || itemData.weightKg || itemData.weight_kg || itemData.weight || '',
+                            height_cm: itemData.Height || itemData.height || itemData.heightCm || itemData.height_cm || '',
+                            width_cm: itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm || '',
+                            depth_cm: itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || itemData.Length || itemData.length || '',
+                            pounds: itemData.weightLbs || itemData.weight_lbs || kgToLbs(itemData.WEIGHT || itemData.weightKg || itemData.weight_kg || itemData.weight),
+                            height_in: itemData.heightIn || itemData.height_in || cmToIn(itemData.Height || itemData.height || itemData.heightCm || itemData.height_cm),
+                            width_in: itemData.widthIn || itemData.width_in || cmToIn(itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm),
+                            depth_in: itemData.depthIn || itemData.depth_in || cmToIn(itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || itemData.Length || itemData.length),
+                            price_mxn: priceMxn,
+                            total_mxn: totalMxn,
+                            price_usd: priceUsd,
+                            total_usd: totalUsd,
+                            acq_code: calculated.bookAqCode || '-',
+                            landed_code: calculated.bookLandCode || '-'
+                        };
+
+                        for (let k = 0; k < maxImages; k++) {
+                            if (k < allUrls.length) {
+                                rowData[`image_${k+1}`] = { formula: `HYPERLINK("${allUrls[k]}", "View Image ${k+1}")` };
+                            } else {
+                                rowData[`image_${k+1}`] = '';
+                            }
+                        }
+
+                        const r = tSheet.addRow(rowData);
+                        if (idx % 2 === 0) r.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }; });
+                    });
+                } catch (e) { console.error('Error TRK sheet V2:', e); }
+            }
+
+
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveAs(new Blob([buffer]), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
