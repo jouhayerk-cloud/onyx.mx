@@ -2264,8 +2264,8 @@ export function MainHeader() {
                 
                 p.crates.forEach((crate: any) => {
                     (crate.items || []).forEach((cItem: any) => {
-                        const iId = String(cItem?.data?.id || cItem?.id || '');
-                        if (iId) itemTrkMap.set(iId, trkDateName);
+                        if (cItem.row) itemTrkMap.set(String(cItem.row), trkDateName);
+                        if (cItem.itemId) itemTrkMap.set(String(cItem.itemId).toUpperCase(), trkDateName);
                     });
                 });
             }
@@ -2513,7 +2513,7 @@ export function MainHeader() {
                         acq_code: calculated.bookAqCode || '-',
                         landed_code: calculated.bookLandCode || '-',
                         retail: calculated.bookRetail || 0,
-                        trk: itemTrkMap.get(String(itemData.id || item.id)) || ''
+                        trk: itemTrkMap.get(String(item.row)) || itemTrkMap.get(String(itemData.itemId || itemData.item_id || itemData.tag_id || '').toUpperCase()) || ''
                     };
 
                     for (let k = 0; k < maxImages; k++) {
@@ -2591,8 +2591,9 @@ export function MainHeader() {
 
                 // Fetch Vendor Payments
                 const vendorPayments = financeDocs.filter(pay => {
-                    const pVid = pay.vendor_id || pay.vendor;
-                    return pVid === vid;
+                    const pVid = String(pay.vendor_id || pay.vendor || '').trim();
+                    const pVidPrefix = pVid.length >= 2 ? pVid.substring(0, 2).toUpperCase() : '';
+                    return pVidPrefix === vid || pVid === vid;
                 });
                 
                 vendorPayments.sort((a, b) => {
@@ -2633,7 +2634,7 @@ export function MainHeader() {
                     total_usd: 'AMOUNT USD'
                 });
                 payHeader.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                    if (colNum <= 20) {
+                    if (colNum <= 21) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
                         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
                     }
@@ -2681,7 +2682,7 @@ export function MainHeader() {
                     const isPayPending = pay.status === 'Pending' || pay.status === 'Requested' || pay.status === 'Draft' || !pay.status;
 
                     payRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
-                        if (colNum <= 20) {
+                        if (colNum <= 21) {
                             if (isPayPaid) {
                                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
                             } else if (isPayPending) {
@@ -2701,7 +2702,7 @@ export function MainHeader() {
 
                 const addBorders = (r: any) => {
                     r.eachCell({ includeEmpty: true }, (cell: any, colNum: number) => {
-                        if (colNum <= 20) {
+                        if (colNum <= 21) {
                             cell.border = {
                                 top: { style: 'thin' },
                                 left: { style: 'thin' },
