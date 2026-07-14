@@ -2247,6 +2247,10 @@ export function MainHeader() {
             workbook.creator = 'Onyx.mx Studio';
             workbook.lastModifiedBy = 'Onyx.mx Studio';
             workbook.created = new Date();
+            
+            let shipments: any[] = [];
+            const shipRes = await supabase.from('shipments').select('*').order('timestamp', { ascending: true });
+            if (shipRes.data) shipments = shipRes.data;
 
             const bookRate = exchangeRate || 20;
 
