@@ -2458,18 +2458,8 @@ export function MainHeader() {
                     const priceUsd = priceMxn / bookRate;
                     const totalUsd = totalMxn / bookRate;
                     
-                    let formattedDate = '';
-                    const pDateVal = paymentDateMap.get(String(itemData.id || item.id)) || itemData.pay_date || itemData.payDate;
-                    if (pDateVal) {
-                        const d = new Date(pDateVal);
-                        if (!isNaN(d.getTime())) {
-                            formattedDate = d.toLocaleDateString('en-US');
-                        }
-                    }
-                    if (!formattedDate) {
-                        const dateVal = itemData.createdAt || item.createdAt || Date.now();
-                        formattedDate = new Date(dateVal).toLocaleDateString('en-US');
-                    }
+                    const rawDateVal = itemData.created_at || itemData.createdAt || item.created_at || item.createdAt || Date.now();
+                    const formattedDate = new Date(rawDateVal).toLocaleDateString('en-US');
 
                     const cmToIn = (cm: any) => {
                         const val = parseFloat(cm);
@@ -2886,16 +2876,8 @@ export function MainHeader() {
                         const priceUsd = priceMxn / bookRate;
                         const totalUsd = totalMxn / bookRate;
 
-                        let formattedDate = '';
-                        const pDateVal = paymentDateMap.get(String(itemData.id || item.id)) || itemData.pay_date || itemData.payDate;
-                        if (pDateVal) {
-                            const d = new Date(pDateVal);
-                            if (!isNaN(d.getTime())) formattedDate = d.toLocaleDateString('en-US');
-                        }
-                        if (!formattedDate) {
-                            const dateVal = itemData.createdAt || item.createdAt || Date.now();
-                            formattedDate = new Date(dateVal).toLocaleDateString('en-US');
-                        }
+                        const rawDateVal = itemData.created_at || itemData.createdAt || item.created_at || item.createdAt || Date.now();
+                        const formattedDate = new Date(rawDateVal).toLocaleDateString('en-US');
 
                         const cmToIn = (cm: any) => { const val = parseFloat(cm); return isNaN(val) ? '' : (val / 2.54).toFixed(2); };
                         const kgToLbs = (kg: any) => { const val = parseFloat(kg); return isNaN(val) ? '' : (val * 2.20462).toFixed(2); };
