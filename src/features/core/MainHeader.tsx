@@ -2252,6 +2252,24 @@ export function MainHeader() {
             const shipRes = await supabase.from('shipments').select('*').order('timestamp', { ascending: true });
             if (shipRes.data) shipments = shipRes.data;
 
+            const itemTrkMap = new Map<string, string>();
+            const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            for (const ship of shipments) {
+                const p = typeof ship.payload === 'string' ? JSON.parse(ship.payload) : ship.payload;
+                if (!p || !p.crates || p.crates.length === 0) continue;
+
+                const date = new Date(ship.timestamp || ship.updated_at || Date.now());
+                const trkDateName = `TRK-${monthsShort[date.getMonth()]}${date.getDate()}`;
+                
+                p.crates.forEach((crate: any) => {
+                    (crate.items || []).forEach((cItem: any) => {
+                        const iId = String(cItem?.data?.id || cItem?.id || '');
+                        if (iId) itemTrkMap.set(iId, trkDateName);
+                    });
+                });
+            }
+
             const bookRate = exchangeRate || 20;
 
             const exportItems = inventory.filter(item => {
@@ -2351,7 +2369,9 @@ export function MainHeader() {
                     { header: 'Per Piece US$', key: 'price_usd', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'Total in US$ Dollars', key: 'total_usd', width: 20, style: { numFmt: '#,##0.00' } },
                     { header: 'ACQ Code', key: 'acq_code', width: 12 },
-                    { header: 'LND Code', key: 'landed_code', width: 12 }
+                    { header: 'LND Code', key: 'landed_code', width: 12 },
+                    { header: 'RETAIL', key: 'retail', width: 15, style: { numFmt: '#,##0.00' } },
+                    { header: 'TRK', key: 'trk', width: 15 }
                 ];
                 for (let k = 1; k <= maxImages; k++) {
                     baseCols.push({ header: `Image ${k}`, key: `image_${k}`, width: 15 });
@@ -2491,7 +2511,9 @@ export function MainHeader() {
                         price_usd: priceUsd,
                         total_usd: totalUsd,
                         acq_code: calculated.bookAqCode || '-',
-                        landed_code: calculated.bookLandCode || '-'
+                        landed_code: calculated.bookLandCode || '-',
+                        retail: calculated.bookRetail || 0,
+                        trk: itemTrkMap.get(String(itemData.id || item.id)) || ''
                     };
 
                     for (let k = 0; k < maxImages; k++) {
@@ -2739,13 +2761,12 @@ export function MainHeader() {
                     if (!p || !p.crates || p.crates.length === 0) continue;
 
                     const date = new Date(ship.timestamp || ship.updated_at || Date.now());
-                    const fallbackName = `TRK-${monthsShort[date.getMonth()]}${date.getDate()}`;
-                    const sheetName = ship.manifest_id || fallbackName;
+                    const trkDateName = `TRK-${monthsShort[date.getMonth()]}${date.getDate()}`;
                     
-                    let finalSheetName = sheetName;
+                    let finalSheetName = trkDateName;
                     let counter = 1;
                     while (workbook.getWorksheet(finalSheetName)) {
-                        finalSheetName = `${sheetName}_${counter++}`;
+                        finalSheetName = `${trkDateName}_${counter++}`;
                     }
 
                     const truckItems: any[] = [];
@@ -2762,6 +2783,23 @@ export function MainHeader() {
                     });
 
                     if (truckItems.length === 0) continue;
+
+                    truckItems.sort((a, b) => {
+                        const dA = a.data || {};
+                        const dB = b.data || {};
+                        const vidA = (dA.vendor_id || dA.vendorId || a.label || dA.itemId || dA.item_id || '').substring(0, 2).toUpperCase();
+                        const vidB = (dB.vendor_id || dB.vendorId || b.label || dB.itemId || dB.item_id || '').substring(0, 2).toUpperCase();
+                        if (vidA !== vidB) return vidA.localeCompare(vidB);
+                        
+                        const getTagNum = (i: any) => {
+                            const d = i.data || {};
+                            const calc = calculateCodesAndPrices(normalizeInventoryData(d), bookRate, '326');
+                            const tag = (calc.bookBarcode || d.book_barcode || d.itemId || d.item_id || i.label || '').toUpperCase();
+                            const m = tag.match(/\d+/);
+                            return m ? parseInt(m[0], 10) : 0;
+                        };
+                        return getTagNum(b) - getTagNum(a);
+                    });
 
                     let maxImages = 1;
                     truckItems.forEach((item: any) => {
@@ -2893,7 +2931,9 @@ export function MainHeader() {
                             price_usd: priceUsd,
                             total_usd: totalUsd,
                             acq_code: calculated.bookAqCode || '-',
-                            landed_code: calculated.bookLandCode || '-'
+                            landed_code: calculated.bookLandCode || '-',
+                            retail: calculated.bookRetail || 0,
+                            trk: trkDateName
                         };
 
                         for (let k = 0; k < maxImages; k++) {
@@ -2905,11 +2945,71 @@ export function MainHeader() {
                         }
 
                         const r = tSheet.addRow(rowData);
-                        if (idx % 2 === 0) r.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }; });
+                        const vid = (itemData.vendor_id || itemData.vendorId || item.label || itemData.itemId || itemData.item_id || '').substring(0, 2).toUpperCase();
+                        const vendorColor = getVendorColor(vid);
+
+                        r.eachCell((cell, colNum) => {
+                            const key = tSheet.getColumn(colNum).key;
+                            if (key === 'tag_id') {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
+                            } else if (idx % 2 === 0) {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+                            }
+                        });
                     });
                 } catch (e) { console.error('Error TRK sheet V2:', e); }
             }
 
+            // FINANCE LEDGER
+            try {
+                if (financeDocs && financeDocs.length > 0) {
+                    const ledgerSheet = workbook.addWorksheet('Finance Ledger');
+                    const ledgerCols = [
+                        { header: 'DATE', key: 'date', width: 12 },
+                        { header: 'DESCRIPTION', key: 'description', width: 35 },
+                        { header: 'CATEGORY', key: 'category', width: 15 },
+                        { header: 'VENDOR', key: 'vendor', width: 10 },
+                        { header: 'DESTINATION', key: 'destination', width: 18 },
+                        { header: 'AMOUNT (MXN)', key: 'amount', width: 15, style: { numFmt: '#,##0' } },
+                        { header: 'FEES (MXN)', key: 'commission', width: 15, style: { numFmt: '#,##0' } },
+                        { header: 'TOTAL (MXN)', key: 'total', width: 15, style: { numFmt: '#,##0' } },
+                        { header: 'STATUS', key: 'status', width: 12 },
+                        { header: 'PAY DATE', key: 'pay_date', width: 12 },
+                        { header: 'REFERENCE', key: 'reference', width: 20 }
+                    ];
+                    ledgerSheet.columns = ledgerCols;
+
+                    ledgerSheet.addTable({
+                        name: 'FinanceLedgerTable',
+                        ref: 'A1',
+                        headerRow: true,
+                        style: {
+                            theme: 'TableStyleMedium2',
+                            showRowStripes: true,
+                        },
+                        columns: ledgerCols.map(c => ({ name: c.header })),
+                        rows: financeDocs.map(r => [
+                            r.date ? new Date(r.date).toLocaleDateString() : '',
+                            r.description || '',
+                            r.subcategory || r.category || '',
+                            r.vendor_id || '',
+                            destinationsConfig[r.destination as keyof typeof destinationsConfig]?.name || r.destination || '',
+                            r.amount ?? 0,
+                            r.commission ?? 0,
+                            (r.amount ?? 0) + (r.commission ?? 0),
+                            r.status || 'Requested',
+                            r.pay_date ? new Date(r.pay_date).toLocaleDateString() : '',
+                            r.reference || ''
+                        ])
+                    });
+                    
+                    ledgerSheet.getColumn('amount').numFmt = '#,##0';
+                    ledgerSheet.getColumn('commission').numFmt = '#,##0';
+                    ledgerSheet.getColumn('total').numFmt = '#,##0';
+                }
+            } catch (e) {
+                console.error('Error adding Finance Ledger to V2:', e);
+            }
 
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
