@@ -934,6 +934,7 @@ export function MainHeader() {
     const liveExchangeRateValue = useAtomValue(liveExchangeRateAtom);
     const [isExporting, setIsExporting] = useState(false);
     const [isShopifyExporting, setIsShopifyExporting] = useState(false);
+    const activeVendors = useAtomValue(activeVendorsAtom);
     const logout = useLogout();
     const user = useAtomValue(userAtom);
     const isSearchOpen = useAtomValue(isInventorySearchOpenAtom);
@@ -3073,9 +3074,15 @@ export function MainHeader() {
             const rowMap = new Map<string, any>();
             inventory.forEach((item: any) => {
                 rowMap.set(String(item.row), item);
-                const itemData = item.data || item;
-                if (itemData.tag_id) rowMap.set(String(itemData.tag_id).toUpperCase(), item);
-                if (itemData.id) rowMap.set(String(itemData.id).toUpperCase(), item);
+                const d = item.data || {};
+                [d.itemId, d.item_id, d.tag_id, d.book_barcode, d.bookBarcode].forEach(k => {
+                    if (k && k !== '-' && k !== '') rowMap.set(String(k).toUpperCase(), item);
+                });
+                const norm = normalizeInventoryData(d);
+                const calc = calculateCodesAndPrices(norm, 20, '326'); // Using default bookRate 20 since it's just for matching barcode
+                if (calc.bookBarcode && calc.bookBarcode !== '-') {
+                    rowMap.set(calc.bookBarcode.toUpperCase(), item);
+                }
                 if (item.label) rowMap.set(String(item.label).toUpperCase(), item);
             });
 
