@@ -132,7 +132,7 @@ import {
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
-    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup
+    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup, ShoppingBag
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -933,6 +933,7 @@ export function MainHeader() {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const liveExchangeRateValue = useAtomValue(liveExchangeRateAtom);
     const [isExporting, setIsExporting] = useState(false);
+    const [isShopifyExporting, setIsShopifyExporting] = useState(false);
     const logout = useLogout();
     const user = useAtomValue(userAtom);
     const isSearchOpen = useAtomValue(isInventorySearchOpenAtom);
@@ -3004,6 +3005,153 @@ export function MainHeader() {
         }
     };
 
+    // 🛍️ SHOPIFY EXPORT 🛍️
+    const handleShopifyExportXLSX = async () => {
+        setIsShopifyExporting(true);
+        try {
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'Onyx Dashboard';
+            workbook.lastModifiedBy = 'Onyx System';
+            workbook.created = new Date();
+            workbook.modified = new Date();
+
+            const sheetName = `Shopify Export`;
+            const sheet = workbook.addWorksheet(sheetName);
+
+            // Shopify Headers
+            const headers = [
+                'Title', 'Vendor', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
+                'Variant Price', 'Variant Grams', 'Image Src', 'Image Position', 
+                'Metafield: custom.product_weight [single_line_text_field]', 
+                'Variant Metafield: Vendor_SKU', 'Variant Weight Unit', 
+                'Variant Metafield: reg.variant_depth', 'Variant Metafield: reg.variant_width', 
+                'Variant Metafield: reg.variant_height', 'Variant Metafield: reg.variant_measurements', 
+                'Metafield: Measurements', 'Metafield: shopify.material [list.metaobject_reference]', 
+                'Metafield: custom.variety [list.single_line_text_field]', 'Variant Country of Origin', 
+                'Tags', 'Product Category', 'Metafield: shopify.color-pattern [list.metaobject_reference]', 
+                'Metafield: custom.polish_type [list.single_line_text_field]', 
+                'Metafield: custom.cut_type [list.single_line_text_field]', 
+                'Metafield: shopify.age-group [list.metaobject_reference]', 
+                'Metafield: shopify.target-gender [list.metaobject_reference]', 
+                'Variant Metafield: mm-google-shopping.custom_label_1', 
+                'Metafield: reg.designer', 'Status', 'Published', 'Published Scope', 
+                'Variant Taxable', 'Variant Inventory Tracker', 'Variant Inventory Policy', 
+                'Variant Fulfillment Service', 'Variant Requires Shipping'
+            ];
+
+            sheet.addRow(headers);
+            sheet.getRow(1).font = { bold: true };
+
+            // Helper for numbers
+            const parseNum = (val: any) => {
+                const num = parseFloat(val);
+                return isNaN(num) ? 0 : num;
+            };
+            const cmToIn = (cm: any) => (parseNum(cm) / 2.54).toFixed(2);
+            const kgToLbs = (kg: any) => (parseNum(kg) * 2.20462).toFixed(2);
+
+            // Filter shipped items
+            const shippedItems = items.filter(i => i.status === 'shipped' || i.truck_id);
+
+            shippedItems.forEach(item => {
+                const itemData = item.item_data || item;
+                
+                const shape = itemData.shape || '';
+                const type = itemData.type || '';
+                const color = itemData.color || '';
+                const material = itemData.material || '';
+                
+                const title = `${shape} ${type} ${color} ${material}`.trim().replace(/\s+/g, ' ');
+                const vendorName = activeVendors.find(v => String(v.id) === String(itemData.vendor_id))?.name || itemData.vendor_id || '';
+                const tagId = itemData.tag_id || '';
+                const cost = parseNum(itemData.total_usd); // landed usd
+                const price = parseNum(itemData.retail); // retail usd
+                
+                const weightKg = parseNum(itemData.weight);
+                const weightGrams = Math.round(weightKg * 1000);
+                const weightLbs = kgToLbs(weightKg);
+                
+                const depthIn = cmToIn(itemData.depth_cm);
+                const widthIn = cmToIn(itemData.width_cm);
+                const heightIn = cmToIn(itemData.height_cm);
+                
+                // Get primary image
+                let imageSrc = '';
+                if (itemData.images && Array.isArray(itemData.images) && itemData.images.length > 0) {
+                    imageSrc = itemData.images[0].url || itemData.images[0];
+                }
+                
+                // Vendor SKU
+                const vendorSku = `${item.id || itemData.id}${itemData.acq_code ? '-' + itemData.acq_code : ''}`;
+                
+                const measurementsStr = `D${depthIn}xW${widthIn}xH${heightIn}`;
+                
+                const createdAtDate = itemData.created_at || itemData.createdAt || item.created_at || item.createdAt;
+                let monthYear = '';
+                if (createdAtDate) {
+                    const d = new Date(createdAtDate);
+                    monthYear = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                }
+                
+                const heightCm = parseNum(itemData.height_cm);
+                const widthCm = parseNum(itemData.width_cm);
+                const tagsList = [tagId, monthYear, `${shape} ${type}`.trim(), `${heightCm}cm ${widthCm}cm`].filter(Boolean).join(', ');
+
+                const rowData = [
+                    title, // A
+                    vendorName, // B
+                    tagId, // C
+                    '', // D Variant Barcode
+                    cost, // E Variant Cost
+                    price, // F Variant Price
+                    weightGrams, // G Variant Grams
+                    imageSrc, // H Image Src
+                    1, // I Image Position
+                    weightLbs, // J custom.product_weight
+                    vendorSku, // K Vendor_SKU
+                    '', // L Variant Weight Unit
+                    depthIn, // M reg.variant_depth
+                    widthIn, // N reg.variant_width
+                    heightIn, // O reg.variant_height
+                    measurementsStr, // P reg.variant_measurements
+                    '', // Q Metafield: Measurements
+                    material, // R shopify.material
+                    'Mexican Onyx', // S custom.variety
+                    'MX', // T Variant Country of Origin
+                    tagsList, // U Tags
+                    type, // V Product Category
+                    '', // W shopify.color-pattern
+                    'loremipsum', // X custom.polish_type
+                    '', // Y custom.cut_type
+                    'Adults', // Z shopify.age-group
+                    'Unisex', // AA shopify.target-gender
+                    'Rare Earth Gallery', // AB mm-google-shopping.custom_label_1
+                    'Rare Earth Gallery', // AC reg.designer
+                    'Active', // AD Status
+                    'FALSE', // AE Published
+                    'GLOBAL', // AF Published Scope
+                    'TRUE', // AG Variant Taxable
+                    'shopify', // AH Variant Inventory Tracker
+                    'deny', // AI Variant Inventory Policy
+                    'manual', // AJ Variant Fulfillment Service
+                    'TRUE' // AK Variant Requires Shipping
+                ];
+
+                sheet.addRow(rowData);
+            });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
+            saveAs(new Blob([buffer]), `Shopify_Export_${dateStr}.xlsx`);
+            toast.success('Shopify Export Ready', { icon: '🛍️' });
+        } catch (error) {
+            console.error('Shopify Export failed:', error);
+            toast.error('Shopify Export Failed');
+        } finally {
+            setIsShopifyExporting(false);
+        }
+    };
+
     const handleRefresh = () => {
         window.location.reload();
     };
@@ -3148,6 +3296,17 @@ export function MainHeader() {
                             title="Download Workbook V2 (Rare Earth Format)"
                         >
                             <DatabaseBackup size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/v2:scale-110 transition-transform text-white/60 group-hover/v2:text-white'} />
+                        </button>
+
+                        <button
+                            onClick={handleShopifyExportXLSX}
+                            disabled={isShopifyExporting}
+                            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 bg-[#96bf48]/10 border border-[#96bf48]/20 hover:bg-[#96bf48]/20 group/shopify ${
+                                isShopifyExporting ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            title="Download Shopify XLSX"
+                        >
+                            <ShoppingBag size={20} strokeWidth={2.5} className={isShopifyExporting ? 'animate-bounce text-[#96bf48]' : 'group-hover/shopify:scale-110 transition-transform text-[#96bf48]/70 group-hover/shopify:text-[#96bf48]'} />
                         </button>
 
                         <button
