@@ -3073,6 +3073,15 @@ export function MainHeader() {
                 return 'Home & Garden > Decor > Artwork > Sculptures & Statues';
             };
 
+            const toTitleCase = (str: string) => {
+                return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+            };
+            
+            const onyxRound = (n: number) => {
+                const floor = Math.floor(n);
+                return (n - floor >= 0.4) ? floor + 1 : floor;
+            };
+
             // Export ONLY selected items
             if (selectedIds.length === 0) {
                 toast.error('No items selected');
@@ -3093,17 +3102,18 @@ export function MainHeader() {
                 const color = norm.color || '';
                 const material = norm.material || '';
                 
-                const title = `${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' ');
+                const title = toTitleCase(`${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' '));
                 const vendorFullName = activeVendors.find(v => String(v.id) === String(norm.vendor_id))?.name || norm.vendor_id || '';
                 const vendorName = vendorFullName.split(' ')[0] || vendorFullName;
                 const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(item.row) || '';
+                
+                const cost = calc.bookLandCode || ''; // E) Variant Cost
                 
                 const costMxn = parseFloat(norm.price || norm.acquisition_price_mxn || '0') || 0;
                 const landedUsd = ((costMxn / bookRate) * 1.4) || 0;
                 const retailUsd = (landedUsd * 12) || 0;
                 
-                const cost = parseNum(landedUsd); // landed usd
-                const price = parseNum(retailUsd); // retail usd
+                const price = onyxRound(retailUsd); // F) Variant Price
                 
                 const weightKg = parseNum(norm.weightKg);
                 const weightGrams = Math.round(weightKg * 1000);
@@ -3134,7 +3144,7 @@ export function MainHeader() {
                 }
                 
                 // Vendor SKU
-                const vendorSku = `${item.id || norm.id || ''}${norm.acq_code ? '-' + norm.acq_code : ''}`;
+                const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
                 
                 const measurementsStr = `D${depthIn}xW${widthIn}xH${heightIn}`;
                 
@@ -3147,9 +3157,14 @@ export function MainHeader() {
                 
                 const heightCm = parseNum(norm.heightCm);
                 const widthCm = parseNum(norm.widthCm);
-                const tagsList = [tagId, monthYear, `${shape} ${shortDesc}`.trim(), `${heightCm}cm ${widthCm}cm`].filter(Boolean).join(', ');
+                const tagsList = [tagId, monthYear, toTitleCase(`${shape} ${shortDesc}`.trim()), `${heightCm}cm ${widthCm}cm`].filter(Boolean).join(', ');
                 
                 const productCategory = getProductCategory(shape, shortDesc);
+                
+                let polishType = 'matte';
+                const vId = String(norm.vendor_id).toUpperCase();
+                if (vId === 'JM') polishType = 'high-polish';
+                else if (['EM', 'ML', 'TE'].includes(vId)) polishType = 'polish';
 
                 const rowData = [
                     title, // A
@@ -3169,13 +3184,13 @@ export function MainHeader() {
                     heightIn, // O reg.variant_height
                     measurementsStr, // P reg.variant_measurements
                     '', // Q Metafield: Measurements
-                    material, // R shopify.material
+                    toTitleCase(material), // R shopify.material
                     'Mexican Onyx', // S custom.variety
                     'MX', // T Variant Country of Origin
                     tagsList, // U Tags
                     productCategory, // V Product Category
                     '', // W shopify.color-pattern
-                    'loremipsum', // X custom.polish_type
+                    polishType, // X custom.polish_type
                     '', // Y custom.cut_type
                     'Adults', // Z shopify.age-group
                     'Unisex', // AA shopify.target-gender
