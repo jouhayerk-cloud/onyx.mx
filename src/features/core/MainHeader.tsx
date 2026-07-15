@@ -2426,7 +2426,7 @@ export function MainHeader() {
 
                 let startRow = 6;
                 
-                // Sort items by workbook (825 then 326) and tag id
+                // Sort items by workbook (825 then 326) and tag id descending
                 items.sort((a: any, b: any) => {
                     const getWbAndTag = (i: any) => {
                         const d = i.data || {};
@@ -2445,7 +2445,19 @@ export function MainHeader() {
                     const kb = getWbAndTag(b);
                     if (ka.wbScore !== kb.wbScore) return kb.wbScore - ka.wbScore;
                     if (ka.wb !== kb.wb) return kb.wb - ka.wb;
-                    return ka.tag.localeCompare(kb.tag);
+                    return kb.tag.localeCompare(ka.tag); // DESCENDING tag id
+                });
+
+                let first326Row = 6;
+                items.forEach((i: any) => {
+                    const d = i.data || {};
+                    let wb = d.workbook ? parseInt(d.workbook, 10) : 0;
+                    if (!wb) {
+                        const tag = (d.book_barcode || d.itemId || d.item_id || i.label || '').toUpperCase();
+                        const match = tag.match(/^[A-Z]+(\d+)/);
+                        if (match) wb = parseInt(match[1], 10) || 0;
+                    }
+                    if (wb === 825) first326Row++;
                 });
 
                 // Add Items
@@ -2560,11 +2572,14 @@ export function MainHeader() {
                 });
 
                 // Sub-Total
+                const sumStart = Math.min(first326Row, Math.max(startRow - 1, 6));
+                const sumRangeAvailable = sumStart <= startRow - 1;
+                
                 const subTotalRow = vSheet.addRow({
-                    tag_id: 'Sub-Total',
-                    quantity: { formula: `SUM(E6:E${startRow-1})` },
-                    total_mxn: { formula: `SUM(O6:O${startRow-1})` },
-                    total_usd: { formula: `SUM(Q6:Q${startRow-1})` }
+                    tag_id: 'Sub-Total (326 Items Only)',
+                    quantity: { formula: sumRangeAvailable ? `SUM(E${sumStart}:E${startRow-1})` : '0' },
+                    total_mxn: { formula: sumRangeAvailable ? `SUM(O${sumStart}:O${startRow-1})` : '0' },
+                    total_usd: { formula: sumRangeAvailable ? `SUM(Q${sumStart}:Q${startRow-1})` : '0' }
                 });
                 subTotalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
                     if (colNum <= totalCols) {
