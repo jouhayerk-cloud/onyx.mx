@@ -3080,35 +3080,43 @@ export function MainHeader() {
                 return;
             }
             
+            const bookRate = exchangeRate || 20;
             const shippedItems = inventory.filter((item: any) => selectedIds.includes(item.row));
 
             shippedItems.forEach((item: any) => {
-                const itemData = item.data || item;
+                const rawData = item.data || item;
+                const norm = normalizeInventoryData(rawData);
+                const calc = calculateCodesAndPrices(norm, bookRate, '326');
                 
-                const shape = itemData.shape || '';
-                const shortDesc = itemData.short_description || itemData.type || '';
-                const color = itemData.color || '';
-                const material = itemData.material || '';
+                const shape = norm.shape || '';
+                const shortDesc = norm.shortDescription || norm.type || '';
+                const color = norm.color || '';
+                const material = norm.material || '';
                 
                 const title = `${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' ');
-                const vendorFullName = activeVendors.find(v => String(v.id) === String(itemData.vendor_id))?.name || itemData.vendor_id || '';
+                const vendorFullName = activeVendors.find(v => String(v.id) === String(norm.vendor_id))?.name || norm.vendor_id || '';
                 const vendorName = vendorFullName.split(' ')[0] || vendorFullName;
-                const tagId = itemData.tag_id || '';
-                const cost = parseNum(itemData.total_usd); // landed usd
-                const price = parseNum(itemData.retail); // retail usd
+                const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(item.row) || '';
                 
-                const weightKg = parseNum(itemData.weight);
+                const costMxn = parseFloat(norm.price || norm.acquisition_price_mxn || '0') || 0;
+                const landedUsd = ((costMxn / bookRate) * 1.4) || 0;
+                const retailUsd = (landedUsd * 12) || 0;
+                
+                const cost = parseNum(landedUsd); // landed usd
+                const price = parseNum(retailUsd); // retail usd
+                
+                const weightKg = parseNum(norm.weightKg);
                 const weightGrams = Math.round(weightKg * 1000);
                 const weightLbs = kgToLbs(weightKg);
                 
-                const depthIn = cmToIn(itemData.depth_cm);
-                const widthIn = cmToIn(itemData.width_cm);
-                const heightIn = cmToIn(itemData.height_cm);
+                const depthIn = cmToIn(norm.lengthCm);
+                const widthIn = cmToIn(norm.widthCm);
+                const heightIn = cmToIn(norm.heightCm);
                 
                 // Get primary image
                 let imageSrc = '';
-                if (itemData.images && Array.isArray(itemData.images) && itemData.images.length > 0) {
-                    const rawSrc = itemData.images[0].url || itemData.images[0];
+                if (norm.mediaUrls && Array.isArray(norm.mediaUrls) && norm.mediaUrls.length > 0) {
+                    const rawSrc = norm.mediaUrls[0].url || norm.mediaUrls[0];
                     const clean = getCleanImageUrl(rawSrc);
                     if (clean && clean.includes('lh3.googleusercontent.com/d/')) {
                         const fileId = clean.split('/d/')[1];
@@ -3126,19 +3134,19 @@ export function MainHeader() {
                 }
                 
                 // Vendor SKU
-                const vendorSku = `${item.id || itemData.id}${itemData.acq_code ? '-' + itemData.acq_code : ''}`;
+                const vendorSku = `${item.id || norm.id || ''}${norm.acq_code ? '-' + norm.acq_code : ''}`;
                 
                 const measurementsStr = `D${depthIn}xW${widthIn}xH${heightIn}`;
                 
-                const createdAtDate = itemData.created_at || itemData.createdAt || item.created_at || item.createdAt;
+                const createdAtDate = norm.createdAt || item.created_at || item.createdAt;
                 let monthYear = '';
                 if (createdAtDate) {
                     const d = new Date(createdAtDate);
                     monthYear = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
                 }
                 
-                const heightCm = parseNum(itemData.height_cm);
-                const widthCm = parseNum(itemData.width_cm);
+                const heightCm = parseNum(norm.heightCm);
+                const widthCm = parseNum(norm.widthCm);
                 const tagsList = [tagId, monthYear, `${shape} ${shortDesc}`.trim(), `${heightCm}cm ${widthCm}cm`].filter(Boolean).join(', ');
                 
                 const productCategory = getProductCategory(shape, shortDesc);
