@@ -3050,13 +3050,57 @@ export function MainHeader() {
             const cmToIn = (cm: any) => (parseNum(cm) / 2.54).toFixed(2);
             const kgToLbs = (kg: any) => (parseNum(kg) * 2.20462).toFixed(2);
 
-            // Filter shipped items
-            const shippedItems = inventory.filter(i => {
-                const status = (i.data.status || '').toLowerCase().trim();
-                return status === 'shipped' || i.data.truck_id;
+            // 1. Fetch shipments to find items in trucks
+            let shipments: any[] = [];
+            const shipRes = await supabase.from('shipments').select('*').order('timestamp', { ascending: true });
+            if (shipRes.data) shipments = shipRes.data;
+
+            const itemsInTrucks = new Map<string, boolean>();
+            for (const ship of shipments) {
+                const p = typeof ship.payload === 'string' ? JSON.parse(ship.payload) : ship.payload;
+                if (!p || !p.crates || p.crates.length === 0) continue;
+                
+                p.crates.forEach((crate: any) => {
+                    if (crate.status === 'Draft' || !crate.items || crate.items.length === 0) return;
+                    crate.items.forEach((cItem: any) => {
+                        if (cItem.row) itemsInTrucks.set(String(cItem.row), true);
+                        if (cItem.itemId) itemsInTrucks.set(String(cItem.itemId).toUpperCase(), true);
+                    });
+                });
+            }
+
+            // 2. Create rowMap from inventory
+            const rowMap = new Map<string, any>();
+            inventory.forEach((item: any) => {
+                rowMap.set(String(item.row), item);
+                const itemData = item.data || item;
+                if (itemData.tag_id) rowMap.set(String(itemData.tag_id).toUpperCase(), item);
+                if (itemData.id) rowMap.set(String(itemData.id).toUpperCase(), item);
+                if (item.label) rowMap.set(String(item.label).toUpperCase(), item);
             });
 
-            shippedItems.forEach(item => {
+            // 3. Gather all shipped items
+            const finalShipped = new Map<string, any>();
+            
+            // Add items marked as shipped in inventory
+            inventory.forEach((item: any) => {
+                const status = (item.data?.status || '').toLowerCase().trim();
+                if (status === 'shipped' || item.data?.truck_id) {
+                    finalShipped.set(String(item.row), item);
+                }
+            });
+
+            // Add items found in truck shipments
+            itemsInTrucks.forEach((_, key) => {
+                const atomItem = rowMap.get(key);
+                if (atomItem) {
+                    finalShipped.set(String(atomItem.row), atomItem);
+                }
+            });
+
+            const shippedItems = Array.from(finalShipped.values());
+
+            shippedItems.forEach((item: any) => {
                 const itemData = item.data || item;
                 
                 const shape = itemData.shape || '';
