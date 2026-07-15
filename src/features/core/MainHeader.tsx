@@ -108,7 +108,7 @@ import {
 const OnyxBar: React.FC = () => null;
 
 import { vendors } from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl } from '../../lib/utils';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -3125,21 +3125,28 @@ export function MainHeader() {
                 
                 // Get primary image
                 let imageSrc = '';
-                if (norm.mediaUrls && Array.isArray(norm.mediaUrls) && norm.mediaUrls.length > 0) {
-                    const rawSrc = norm.mediaUrls[0].url || norm.mediaUrls[0];
-                    const clean = getCleanImageUrl(rawSrc);
+                const allImages = collectAllImages(norm);
+                if (allImages && allImages.length > 0) {
+                    const clean = allImages[0];
                     if (clean && clean.includes('lh3.googleusercontent.com/d/')) {
                         const fileId = clean.split('/d/')[1];
                         imageSrc = `https://drive.google.com/uc?export=download&id=${fileId}`;
-                    } else {
-                        imageSrc = clean || rawSrc;
-                        // Just in case it's still drive.google.com
-                        if (imageSrc && imageSrc.includes('drive.google.com')) {
-                            const match = imageSrc.match(/\/d\/([a-zA-Z0-9_-]+)/) || imageSrc.match(/id=([a-zA-Z0-9_-]+)/);
-                            if (match && match[1]) {
-                                imageSrc = `https://drive.google.com/uc?export=download&id=${match[1]}`;
-                            }
+                    } else if (clean && clean.includes('drive.google.com/file/d/')) {
+                        const match = clean.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                        if (match && match[1]) {
+                            imageSrc = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+                        } else {
+                            imageSrc = clean;
                         }
+                    } else if (clean && clean.includes('id=')) {
+                        const match = clean.match(/id=([a-zA-Z0-9_-]+)/);
+                        if (match && match[1]) {
+                            imageSrc = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+                        } else {
+                            imageSrc = clean;
+                        }
+                    } else {
+                        imageSrc = clean;
                     }
                 }
                 
