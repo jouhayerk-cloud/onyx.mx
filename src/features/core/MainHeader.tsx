@@ -3091,6 +3091,8 @@ export function MainHeader() {
             
             const bookRate = exchangeRate || 20;
             const shippedItems = inventory.filter((item: any) => selectedIds.includes(item.row));
+            
+            const allExportRows: any[][] = [];
 
             shippedItems.forEach((item: any) => {
                 const rawData = item.data || item;
@@ -3121,12 +3123,16 @@ export function MainHeader() {
                     'FR': 'Fountain Rock Mine',
                     'BT': 'Bernardo'
                 };
-                const rawVendorId = String(norm.vendor_id || '').toUpperCase();
+                const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(item.row) || '';
+                
+                const matchPrefix = tagId.match(/^[A-Za-z]+/);
+                const extractedPrefix = matchPrefix ? matchPrefix[0] : '';
+                
+                const rawVendorId = String(norm.vendor_id || extractedPrefix || '').toUpperCase();
+                
                 const vendorName = vendorMapping[rawVendorId] || 
                                    (activeVendors.find(v => String(v.id).toUpperCase() === rawVendorId)?.name) || 
                                    rawVendorId;
-                                   
-                const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(item.row) || '';
                 
                 const cost = calc.bookLandCode || ''; // E) Variant Cost
                 
@@ -3190,7 +3196,7 @@ export function MainHeader() {
                 const productCategory = getProductCategory(shape, shortDesc);
                 
                 let polishType = 'matte';
-                const vId = String(norm.vendor_id).toUpperCase();
+                const vId = rawVendorId;
                 if (vId === 'JM') polishType = 'high-polish';
                 else if (['EM', 'ML', 'TE'].includes(vId)) polishType = 'polish';
 
@@ -3234,8 +3240,25 @@ export function MainHeader() {
                     'TRUE' // AK Variant Requires Shipping
                 ];
 
-                sheet.addRow(rowData);
+                allExportRows.push(rowData);
             });
+            
+            // Sort by Vendor (Index 1) then by Category (Index 21)
+            allExportRows.sort((a, b) => {
+                const vendorA = String(a[1] || '').toLowerCase();
+                const vendorB = String(b[1] || '').toLowerCase();
+                if (vendorA < vendorB) return -1;
+                if (vendorA > vendorB) return 1;
+                
+                const catA = String(a[21] || '').toLowerCase();
+                const catB = String(b[21] || '').toLowerCase();
+                if (catA < catB) return -1;
+                if (catA > catB) return 1;
+                
+                return 0;
+            });
+            
+            allExportRows.forEach(r => sheet.addRow(r));
 
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
