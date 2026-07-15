@@ -3051,61 +3051,14 @@ export function MainHeader() {
             const cmToIn = (cm: any) => (parseNum(cm) / 2.54).toFixed(2);
             const kgToLbs = (kg: any) => (parseNum(kg) * 2.20462).toFixed(2);
 
-            // 1. Fetch shipments to find items in trucks
-            let shipments: any[] = [];
-            const shipRes = await supabase.from('shipments').select('*').order('timestamp', { ascending: true });
-            if (shipRes.data) shipments = shipRes.data;
-
-            const itemsInTrucks = new Map<string, boolean>();
-            for (const ship of shipments) {
-                const p = typeof ship.payload === 'string' ? JSON.parse(ship.payload) : ship.payload;
-                if (!p || !p.crates || p.crates.length === 0) continue;
-                
-                p.crates.forEach((crate: any) => {
-                    if (crate.status === 'Draft' || !crate.items || crate.items.length === 0) return;
-                    crate.items.forEach((cItem: any) => {
-                        if (cItem.row) itemsInTrucks.set(String(cItem.row), true);
-                        if (cItem.itemId) itemsInTrucks.set(String(cItem.itemId).toUpperCase(), true);
-                    });
-                });
+            // Export ONLY selected items
+            if (selectedIds.length === 0) {
+                toast.error('No items selected');
+                setIsShopifyExporting(false);
+                return;
             }
-
-            // 2. Create rowMap from inventory
-            const rowMap = new Map<string, any>();
-            inventory.forEach((item: any) => {
-                rowMap.set(String(item.row), item);
-                const d = item.data || {};
-                [d.itemId, d.item_id, d.tag_id, d.book_barcode, d.bookBarcode].forEach(k => {
-                    if (k && k !== '-' && k !== '') rowMap.set(String(k).toUpperCase(), item);
-                });
-                const norm = normalizeInventoryData(d);
-                const calc = calculateCodesAndPrices(norm, 20, '326'); // Using default bookRate 20 since it's just for matching barcode
-                if (calc.bookBarcode && calc.bookBarcode !== '-') {
-                    rowMap.set(calc.bookBarcode.toUpperCase(), item);
-                }
-                if (item.label) rowMap.set(String(item.label).toUpperCase(), item);
-            });
-
-            // 3. Gather all shipped items
-            const finalShipped = new Map<string, any>();
             
-            // Add items marked as shipped in inventory
-            inventory.forEach((item: any) => {
-                const status = (item.data?.status || '').toLowerCase().trim();
-                if (status === 'shipped' || item.data?.truck_id) {
-                    finalShipped.set(String(item.row), item);
-                }
-            });
-
-            // Add items found in truck shipments
-            itemsInTrucks.forEach((_, key) => {
-                const atomItem = rowMap.get(key);
-                if (atomItem) {
-                    finalShipped.set(String(atomItem.row), atomItem);
-                }
-            });
-
-            const shippedItems = Array.from(finalShipped.values());
+            const shippedItems = inventory.filter((item: any) => selectedIds.includes(item.row));
 
             shippedItems.forEach((item: any) => {
                 const itemData = item.data || item;
@@ -3116,7 +3069,8 @@ export function MainHeader() {
                 const material = itemData.material || '';
                 
                 const title = `${shape} ${type} ${color} ${material}`.trim().replace(/\s+/g, ' ');
-                const vendorName = activeVendors.find(v => String(v.id) === String(itemData.vendor_id))?.name || itemData.vendor_id || '';
+                const vendorFullName = activeVendors.find(v => String(v.id) === String(itemData.vendor_id))?.name || itemData.vendor_id || '';
+                const vendorName = vendorFullName.split(' ')[0] || vendorFullName;
                 const tagId = itemData.tag_id || '';
                 const cost = parseNum(itemData.total_usd); // landed usd
                 const price = parseNum(itemData.retail); // retail usd
@@ -3132,7 +3086,21 @@ export function MainHeader() {
                 // Get primary image
                 let imageSrc = '';
                 if (itemData.images && Array.isArray(itemData.images) && itemData.images.length > 0) {
-                    imageSrc = itemData.images[0].url || itemData.images[0];
+                    const rawSrc = itemData.images[0].url || itemData.images[0];
+                    const clean = getCleanImageUrl(rawSrc);
+                    if (clean && clean.includes('lh3.googleusercontent.com/d/')) {
+                        const fileId = clean.split('/d/')[1];
+                        imageSrc = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                    } else {
+                        imageSrc = clean || rawSrc;
+                        // Just in case it's still drive.google.com
+                        if (imageSrc && imageSrc.includes('drive.google.com')) {
+                            const match = imageSrc.match(/\/d\/([a-zA-Z0-9_-]+)/) || imageSrc.match(/id=([a-zA-Z0-9_-]+)/);
+                            if (match && match[1]) {
+                                imageSrc = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+                            }
+                        }
+                    }
                 }
                 
                 // Vendor SKU
@@ -3352,16 +3320,18 @@ export function MainHeader() {
                             <DatabaseBackup size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/v2:scale-110 transition-transform text-white/60 group-hover/v2:text-white'} />
                         </button>
 
-                        <button
-                            onClick={handleShopifyExportXLSX}
-                            disabled={isShopifyExporting}
-                            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 bg-[#96bf48]/10 border border-[#96bf48]/20 hover:bg-[#96bf48]/20 group/shopify ${
-                                isShopifyExporting ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                            title="Download Shopify XLSX"
-                        >
-                            <ShoppingBag size={20} strokeWidth={2.5} className={isShopifyExporting ? 'animate-bounce text-[#96bf48]' : 'group-hover/shopify:scale-110 transition-transform text-[#96bf48]/70 group-hover/shopify:text-[#96bf48]'} />
-                        </button>
+                        {selectedIds.length > 0 && (
+                            <button
+                                onClick={handleShopifyExportXLSX}
+                                disabled={isShopifyExporting}
+                                className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 bg-[#96bf48]/10 border border-[#96bf48]/20 hover:bg-[#96bf48]/20 group/shopify ${
+                                    isShopifyExporting ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                                title="Download Shopify XLSX"
+                            >
+                                <ShoppingBag size={20} strokeWidth={2.5} className={isShopifyExporting ? 'animate-bounce text-[#96bf48]' : 'group-hover/shopify:scale-110 transition-transform text-[#96bf48]/70 group-hover/shopify:text-[#96bf48]'} />
+                            </button>
+                        )}
 
                         <button
                             onClick={handleMasterExportXLSX}
