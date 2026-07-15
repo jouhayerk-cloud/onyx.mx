@@ -3103,8 +3103,29 @@ export function MainHeader() {
                 const material = norm.material || '';
                 
                 const title = toTitleCase(`${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' '));
-                const vendorFullName = activeVendors.find(v => String(v.id) === String(norm.vendor_id))?.name || norm.vendor_id || '';
-                const vendorName = vendorFullName.split(' ')[0] || vendorFullName;
+                
+                const vendorMapping: Record<string, string> = {
+                    'ET': 'Betoeduardo',
+                    'DH': 'Delfino',
+                    'EM': 'Emmanuel',
+                    'GE': 'Geraldo',
+                    'JM': 'Jose',
+                    'ML': 'Maria Luisa',
+                    'MM': 'Mariam',
+                    'SU': 'Susana',
+                    'TE': 'Tellez',
+                    'CA': 'Carlos',
+                    'AM': 'Alejandro',
+                    'CP': 'Cantera Puebla',
+                    'AN': 'Angel',
+                    'FR': 'Fountain Rock Mine',
+                    'BT': 'Bernardo'
+                };
+                const rawVendorId = String(norm.vendor_id || '').toUpperCase();
+                const vendorName = vendorMapping[rawVendorId] || 
+                                   (activeVendors.find(v => String(v.id).toUpperCase() === rawVendorId)?.name) || 
+                                   rawVendorId;
+                                   
                 const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(item.row) || '';
                 
                 const cost = calc.bookLandCode || ''; // E) Variant Cost
