@@ -3051,6 +3051,28 @@ export function MainHeader() {
             const cmToIn = (cm: any) => (parseNum(cm) / 2.54).toFixed(2);
             const kgToLbs = (kg: any) => (parseNum(kg) * 2.20462).toFixed(2);
 
+            // Helper for Product Category mapping
+            const getProductCategory = (shape: string, shortDesc: string) => {
+                const combined = `${shape} ${shortDesc}`.toLowerCase();
+                if (combined.includes('wine rack')) return 'Furniture > Cabinets & Storage > Wine Racks';
+                if (combined.includes('pendant')) return 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures';
+                if (combined.includes('tower lamp') || combined.includes('floor lamp') || combined.includes('pillar')) return 'Home & Garden > Lighting > Lamps > Floor Lamps';
+                if (combined.includes('table lamp') || combined.includes('desk lamp') || combined.includes('lamp')) return 'Home & Garden > Lighting > Lamps > Desk Lamps';
+                if (combined.includes('wall panel') || combined.includes('luminarie') || combined.includes('panel pair') || combined.includes('onyx panel')) return 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures';
+                if (combined.includes('bowl')) return 'Home & Garden > Decor > Decorative Bowls';
+                if (combined.includes('canoe')) return 'Home & Garden > Decor > Decorative Trays';
+                if (combined.includes('fountain')) return 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains';
+                if (combined.includes('mirror')) return 'Home & Garden > Decor > Mirrors';
+                if (combined.includes('basin') || combined.includes('sink')) return 'Hardware > Plumbing > Plumbing Fixtures > Sinks';
+                if (combined.includes('bathtub')) return 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs';
+                if (combined.includes('plate')) return 'Home & Garden > Decor > Decorative Plates';
+                if (combined.includes('chess')) return 'Toys & Games > Games > Board Games';
+                if (combined.includes('coaster')) return 'Home & Garden > Kitchen & Dining > Barware > Coasters';
+                if (combined.includes('shot glass')) return 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses';
+                
+                return 'Home & Garden > Decor > Artwork > Sculptures & Statues';
+            };
+
             // Export ONLY selected items
             if (selectedIds.length === 0) {
                 toast.error('No items selected');
@@ -3064,11 +3086,11 @@ export function MainHeader() {
                 const itemData = item.data || item;
                 
                 const shape = itemData.shape || '';
-                const type = itemData.type || '';
+                const shortDesc = itemData.short_description || itemData.type || '';
                 const color = itemData.color || '';
                 const material = itemData.material || '';
                 
-                const title = `${shape} ${type} ${color} ${material}`.trim().replace(/\s+/g, ' ');
+                const title = `${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' ');
                 const vendorFullName = activeVendors.find(v => String(v.id) === String(itemData.vendor_id))?.name || itemData.vendor_id || '';
                 const vendorName = vendorFullName.split(' ')[0] || vendorFullName;
                 const tagId = itemData.tag_id || '';
@@ -3117,7 +3139,9 @@ export function MainHeader() {
                 
                 const heightCm = parseNum(itemData.height_cm);
                 const widthCm = parseNum(itemData.width_cm);
-                const tagsList = [tagId, monthYear, `${shape} ${type}`.trim(), `${heightCm}cm ${widthCm}cm`].filter(Boolean).join(', ');
+                const tagsList = [tagId, monthYear, `${shape} ${shortDesc}`.trim(), `${heightCm}cm ${widthCm}cm`].filter(Boolean).join(', ');
+                
+                const productCategory = getProductCategory(shape, shortDesc);
 
                 const rowData = [
                     title, // A
@@ -3141,7 +3165,7 @@ export function MainHeader() {
                     'Mexican Onyx', // S custom.variety
                     'MX', // T Variant Country of Origin
                     tagsList, // U Tags
-                    type, // V Product Category
+                    productCategory, // V Product Category
                     '', // W shopify.color-pattern
                     'loremipsum', // X custom.polish_type
                     '', // Y custom.cut_type
