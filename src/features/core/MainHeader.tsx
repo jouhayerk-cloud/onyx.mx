@@ -2435,7 +2435,7 @@ export function MainHeader() {
                         const tag = (calc.bookBarcode || d.book_barcode || d.itemId || d.item_id || i.label || '').toUpperCase();
                         let wb = d.workbook ? parseInt(d.workbook, 10) : 0;
                         if (!wb) {
-                            const match = tag.match(/^[A-Z]+(\d+)/);
+                            const match = tag.match(/^[A-Z]+(\d{3})/);
                             if (match) wb = parseInt(match[1], 10) || 0;
                         }
                         const wbScore = wb === 825 ? 2 : (wb === 326 ? 1 : 0);
@@ -2454,7 +2454,7 @@ export function MainHeader() {
                     let wb = d.workbook ? parseInt(d.workbook, 10) : 0;
                     if (!wb) {
                         const tag = (d.book_barcode || d.itemId || d.item_id || i.label || '').toUpperCase();
-                        const match = tag.match(/^[A-Z]+(\d+)/);
+                        const match = tag.match(/^[A-Z]+(\d{3})/);
                         if (match) wb = parseInt(match[1], 10) || 0;
                     }
                     if (wb === 825) first326Row++;
@@ -2537,7 +2537,7 @@ export function MainHeader() {
                     let wb = itemData.workbook ? parseInt(itemData.workbook, 10) : 0;
                     if (!wb) {
                         const tag = (calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '').toUpperCase();
-                        const match = tag.match(/^[A-Z]+(\d+)/);
+                        const match = tag.match(/^[A-Z]+(\d{3})/);
                         if (match) wb = parseInt(match[1], 10) || 0;
                     }
                     const is825 = wb === 825;
