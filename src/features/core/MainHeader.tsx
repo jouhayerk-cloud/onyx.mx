@@ -2533,13 +2533,24 @@ export function MainHeader() {
                     // Style item row
                     const isOdd = startRow % 2 !== 0;
                     const itemDbId = String(itemData.id || item.id);
+                    
+                    let wb = itemData.workbook ? parseInt(itemData.workbook, 10) : 0;
+                    if (!wb) {
+                        const tag = (calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '').toUpperCase();
+                        const match = tag.match(/^[A-Z]+(\d+)/);
+                        if (match) wb = parseInt(match[1], 10) || 0;
+                    }
+                    const is825 = wb === 825;
+                    
                     const isPaidItem = paidItemsSet.has(itemDbId);
                     const isPendingItem = pendingItemsSet.has(itemDbId);
 
                     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
                         if (colNum <= totalCols) {
                             if (colNum === 4) { // Tag ID column
-                                if (isPaidItem) {
+                                if (is825) {
+                                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF38BDF8' } }; // Blue (Prepaid)
+                                } else if (isPaidItem) {
                                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } }; // Light Green
                                 } else if (isPendingItem) {
                                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; // Yellow
