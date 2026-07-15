@@ -3051,10 +3051,13 @@ export function MainHeader() {
             const kgToLbs = (kg: any) => (parseNum(kg) * 2.20462).toFixed(2);
 
             // Filter shipped items
-            const shippedItems = items.filter(i => i.status === 'shipped' || i.truck_id);
+            const shippedItems = inventory.filter(i => {
+                const status = (i.data.status || '').toLowerCase().trim();
+                return status === 'shipped' || i.data.truck_id;
+            });
 
             shippedItems.forEach(item => {
-                const itemData = item.item_data || item;
+                const itemData = item.data || item;
                 
                 const shape = itemData.shape || '';
                 const type = itemData.type || '';
