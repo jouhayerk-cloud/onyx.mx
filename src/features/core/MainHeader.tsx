@@ -2445,7 +2445,7 @@ export function MainHeader() {
                     const kb = getWbAndTag(b);
                     if (ka.wbScore !== kb.wbScore) return kb.wbScore - ka.wbScore;
                     if (ka.wb !== kb.wb) return kb.wb - ka.wb;
-                    return kb.tag.localeCompare(ka.tag); // DESCENDING tag id
+                    return kb.tag.localeCompare(ka.tag, undefined, { numeric: true, sensitivity: 'base' }); // DESCENDING tag id with natural sort
                 });
 
                 let first326Row = 6;
