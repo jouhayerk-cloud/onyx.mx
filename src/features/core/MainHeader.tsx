@@ -2515,9 +2515,9 @@ export function MainHeader() {
                         width_in: itemData.widthIn || itemData.width_in || cmToIn(itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm),
                         depth_in: itemData.depthIn || itemData.depth_in || cmToIn(itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || itemData.Length || itemData.length),
                         price_mxn: priceMxn,
-                        total_mxn: is825 ? '' : totalMxn,
+                        total_mxn: totalMxn,
                         price_usd: priceUsd,
-                        total_usd: is825 ? '' : totalUsd,
+                        total_usd: totalUsd,
                         acq_code: calculated.bookAqCode || '-',
                         landed_code: calculated.bookLandCode || '-',
                         retail: calculated.bookRetail || 0,
@@ -2608,7 +2608,29 @@ export function MainHeader() {
                 const vendorPayments = financeDocs.filter(pay => {
                     const pVid = String(pay.vendor_id || pay.vendor || '').trim();
                     const pVidPrefix = pVid.length >= 2 ? pVid.substring(0, 2).toUpperCase() : '';
-                    return pVidPrefix === vid || pVid === vid;
+                    if (pVidPrefix !== vid && pVid !== vid) return false;
+                    
+                    // Exclude payments that are strictly for 825 items
+                    const rel = pay.related_ids || pay.related_inventory_ids || '';
+                    let ids: string[] = [];
+                    if (Array.isArray(rel)) ids = rel.map((id: any) => String(id));
+                    else if (typeof rel === 'string') ids = rel.split(',').map(s => s.trim()).filter(Boolean);
+                    
+                    if (ids.length > 0) {
+                        const relatedInThisExport = items.filter((it: any) => ids.includes(String(it.id || it.data?.id)));
+                        if (relatedInThisExport.length > 0) {
+                            const all825 = relatedInThisExport.every((it: any) => {
+                                const tag = (it.data?.book_barcode || it.data?.itemId || it.data?.item_id || it.label || '').toUpperCase();
+                                const match = tag.match(/^[A-Z]+(\d{3})/);
+                                return match && parseInt(match[1], 10) === 825;
+                            });
+                            if (all825) return false;
+                        }
+                    } else if (pay.description && pay.description.match(/[A-Z]+825/)) {
+                        return false;
+                    }
+                    
+                    return true;
                 });
                 
                 vendorPayments.sort((a, b) => {
