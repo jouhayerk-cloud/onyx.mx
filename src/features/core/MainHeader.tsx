@@ -2465,6 +2465,7 @@ export function MainHeader() {
                     const itemData = item.data;
                     const norm = normalizeInventoryData(itemData);
                     const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                    const is825 = getWbAndTag(item).wb === 825;
                     
                     const qty = parseInt(itemData.quantity || '1', 10) || 1;
                     const priceMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
@@ -2511,9 +2512,9 @@ export function MainHeader() {
                         width_in: itemData.widthIn || itemData.width_in || cmToIn(itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm),
                         depth_in: itemData.depthIn || itemData.depth_in || cmToIn(itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || itemData.Length || itemData.length),
                         price_mxn: priceMxn,
-                        total_mxn: totalMxn,
+                        total_mxn: is825 ? '' : totalMxn,
                         price_usd: priceUsd,
-                        total_usd: totalUsd,
+                        total_usd: is825 ? '' : totalUsd,
                         acq_code: calculated.bookAqCode || '-',
                         landed_code: calculated.bookLandCode || '-',
                         retail: calculated.bookRetail || 0,
