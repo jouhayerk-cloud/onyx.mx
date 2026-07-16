@@ -2535,14 +2535,7 @@ export function MainHeader() {
                     const isOdd = startRow % 2 !== 0;
                     const itemDbId = String(itemData.id || item.id);
                     
-                    let wb = itemData.workbook ? parseInt(itemData.workbook, 10) : 0;
-                    if (!wb) {
-                        const tag = (calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '').toUpperCase();
-                        const match = tag.match(/^[A-Z]+(\d{3})/);
-                        if (match) wb = parseInt(match[1], 10) || 0;
-                    }
-                    const is825 = wb === 825;
-                    
+
                     const isPaidItem = paidItemsSet.has(itemDbId);
                     const isPendingItem = pendingItemsSet.has(itemDbId);
 
