@@ -111,11 +111,18 @@ export const DataSyncProvider: React.FC = () => {
         let currentFinanceData: any[] = [];
         const fetchInitialFinance = async () => {
             try {
-                const { data, error } = await supabase.from('finance').select('*').limit(50);
-                if (!error && data) {
-                    currentFinanceData = data;
-                    setFinance(currentFinanceData);
+                let page = 0;
+                const pageSize = 1000;
+                let allFinance: any[] = [];
+                while (true) {
+                    const { data, error } = await supabase.from('finance').select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+                    if (error || !data || data.length === 0) break;
+                    allFinance = [...allFinance, ...data];
+                    if (data.length < pageSize) break;
+                    page++;
                 }
+                currentFinanceData = allFinance;
+                setFinance(currentFinanceData);
             } catch (err) {
                 console.error('[DataSync] Failed to fetch initial finance data:', err);
             }
