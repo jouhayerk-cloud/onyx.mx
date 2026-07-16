@@ -2465,7 +2465,10 @@ export function MainHeader() {
                     const itemData = item.data;
                     const norm = normalizeInventoryData(itemData);
                     const calculated = calculateCodesAndPrices(norm, bookRate, '326');
-                    const is825 = getWbAndTag(item).wb === 825;
+                    const tag = (calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '').toUpperCase();
+                    const match = tag.match(/^[A-Z]+(\d{3})/);
+                    const wb = match ? parseInt(match[1], 10) : 0;
+                    const is825 = wb === 825;
                     
                     const qty = parseInt(itemData.quantity || '1', 10) || 1;
                     const priceMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
