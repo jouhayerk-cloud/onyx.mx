@@ -3179,7 +3179,7 @@ export function MainHeader() {
                                    (activeVendors.find(v => String(v.id).toUpperCase() === rawVendorId)?.name) || 
                                    rawVendorId;
                 
-                const cost = calc.bookLandCode || ''; // E) Variant Cost
+                const cost = calc.bookLanded || ''; // E) Variant Cost
                 
                 const costMxn = parseFloat(norm.price || norm.acquisition_price_mxn || '0') || 0;
                 const landedUsd = ((costMxn / bookRate) * 1.4) || 0;
