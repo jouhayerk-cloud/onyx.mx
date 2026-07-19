@@ -24,7 +24,7 @@ export interface CatalogArtifact {
 
 interface ImgData { dataUrl: string; w: number; h: number; }
 
-async function loadImgData(url: string, maxSize = 900, keepPng = false): Promise<ImgData | null> {
+async function loadImgData(url: string, maxSize = 900, keepPng?: boolean): Promise<ImgData | null> {
     try {
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
             const el = new Image(); el.crossOrigin = 'anonymous'; el.onload = () => resolve(el); el.onerror = reject; el.src = url; setTimeout(() => reject(new Error('timeout')), 8000);
@@ -33,7 +33,8 @@ async function loadImgData(url: string, maxSize = 900, keepPng = false): Promise
         const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
         const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
         canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
-        return { dataUrl: canvas.toDataURL(keepPng ? 'image/png' : 'image/jpeg', 0.88), w, h };
+        const isPng = keepPng ?? (url.startsWith('data:image/png') || url.toLowerCase().includes('.png'));
+        return { dataUrl: canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.88), w, h };
     } catch { return null; }
 }
 
@@ -43,7 +44,8 @@ function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number,
     let dw: number, dh: number;
     if (ir > cr) { dw = cw; dh = cw / ir; } else { dh = ch; dw = ch * ir; }
     dw *= scale; dh *= scale;
-    doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
+    const format = img.dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+    doc.addImage(img.dataUrl, format, cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
 }
 
 const toImp = (val: any, type: 'in' | 'lbs' | 'ft' = 'in') => {
