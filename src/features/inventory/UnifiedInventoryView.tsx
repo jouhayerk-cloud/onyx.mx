@@ -660,6 +660,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         <div><p className={lbl}>Retail USD</p><p className="text-2xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
                         <div><p className={lbl}>Dimensions</p><p className="text-[15px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
                         <div><p className={lbl}>Weight</p><p className="text-[15px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
+                        
+                        {norm.detailedDescription && (
+                            <div className="col-span-full border-t border-white/5 pt-6 mt-2">
+                                <p className={lbl}>AI Visual Analysis</p>
+                                <p className="text-sm font-mono text-white/70 leading-relaxed mt-2 whitespace-pre-wrap">{norm.detailedDescription}</p>
+                            </div>
+                        )}
+
                         <div className="col-span-full border-t border-white/5 pt-6 flex items-center justify-between">
                             <button 
                                 onClick={(e) => {

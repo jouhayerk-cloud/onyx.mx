@@ -11,10 +11,12 @@ import {
     workbookVersionAtom,
     isBatchActionsModalOpenAtom,
     batchActionItemsDataAtom,
-    inventoryExportSelectedXLSXTriggerAtom
+    inventoryExportSelectedXLSXTriggerAtom,
+    isBatchWizardOpenAtom,
+    batchWizardItemsAtom
 } from '../../lib/atoms';
 import { 
-    Printer, Nfc, Package, DollarSign, Tag, Copy, X, FileSpreadsheet 
+    Printer, Nfc, Package, DollarSign, Tag, Copy, X, FileSpreadsheet, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { calculateCodesAndPrices } from '../../lib/utils';
@@ -33,6 +35,9 @@ export const InventorySelectionDock: React.FC = () => {
     const setIsBatchModalOpen = useSetAtom(isBatchActionsModalOpenAtom);
     const setBatchItemsData = useSetAtom(batchActionItemsDataAtom);
     const setExportSelectedXLSX = useSetAtom(inventoryExportSelectedXLSXTriggerAtom);
+    
+    const setIsBatchWizardOpen = useSetAtom(isBatchWizardOpenAtom);
+    const setBatchWizardItems = useSetAtom(batchWizardItemsAtom);
 
     if (selectedIds.length === 0) return null;
 
@@ -67,6 +72,12 @@ export const InventorySelectionDock: React.FC = () => {
         const selectedItems = getSelectedItems();
         setBatchItemsData(selectedItems);
         setIsBatchModalOpen(true);
+    };
+
+    const handleOpenAIWizard = () => {
+        const selectedItems = getSelectedItems();
+        setBatchWizardItems(selectedItems);
+        setIsBatchWizardOpen(true);
     };
 
     const handleClearSelection = () => {
@@ -141,6 +152,14 @@ export const InventorySelectionDock: React.FC = () => {
                     >
                         <FileSpreadsheet size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
                         <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">EXPORT</span>
+                    </button>
+                    <button 
+                        onClick={handleOpenAIWizard}
+                        className="text-white/40 hover:text-purple-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
+                        title="AI Batch Process"
+                    >
+                        <Sparkles size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-purple-900/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-purple-500/50 text-white">AI GEN</span>
                     </button>
                     
                     <div className="w-px h-8 md:h-12 bg-white/10 mx-2 flex-shrink-0" />

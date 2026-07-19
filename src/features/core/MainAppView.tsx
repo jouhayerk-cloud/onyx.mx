@@ -71,6 +71,7 @@ const InventoryArtifact  = React.lazy(() => import('../inventory/InventoryArtifa
 const PaymentsArtifact   = React.lazy(() => import('../finance/PaymentsArtifact').then(m => ({ default: m.PaymentsArtifact })));
 const BatchActionsModal  = React.lazy(() => import('../catalog/BatchActionsModal').then(m => ({ default: m.BatchActionsModal })));
 const UploadWizard       = React.lazy(() => import('../inventory/UploadWizard').then(m => ({ default: m.UploadWizard })));
+const BatchProcessingWizard = React.lazy(() => import('../inventory/BatchProcessingWizard').then(m => ({ default: m.BatchProcessingWizard })));
 const LabelWizard        = React.lazy(() => import('../logistics/LabelWizard').then(m => ({ default: m.LabelWizard })));
 const NFCWizard          = React.lazy(() => import('../logistics/LabelWizard').then(m => ({ default: m.NFCWizard })));
 const PackWizard         = React.lazy(() => import('../logistics/PackWizard').then(m => ({ default: m.PackWizard })));
@@ -511,6 +512,7 @@ export function MainAppView() {
                     <Suspense fallback={null}>
                         <BatchActionsModal />
                         <UploadWizard />
+                        <BatchProcessingWizard />
                         <LabelWizard />
                         <NFCWizard />
                         <PackWizard />

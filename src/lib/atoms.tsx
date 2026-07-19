@@ -622,3 +622,5 @@ export const truckingFloorPctAtom = atom((get) => {
 
 export const onyxRequestSendAtom = atom(0);
 
+export const isBatchWizardOpenAtom = atom<boolean>(false);
+export const batchWizardItemsAtom = atom<any[]>([]);

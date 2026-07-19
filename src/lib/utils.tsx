@@ -138,6 +138,7 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
           }),
         });
 
+
         if (!response.ok) throw new Error(`Network response error: ${response.status}`);
 
         const result = await response.json();
@@ -158,6 +159,51 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
     };
     reader.onerror = (error) => reject(error);
   });
+}
+
+export async function handleProcessedFileUpload(base64Data: string, fileName: string, user: any): Promise<{ fileId: string; thumbnailUrl: string } | null> {
+  try {
+    console.log(`[Drive] Uploading PROCESSED MEDIA ${fileName} using action: uploadMedia...`);
+    // Ensure base64 doesn't have the data URL prefix if it does
+    let cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    
+    // Google APIs often return web-safe base64 (- and _), but Apps Script base64Decode expects standard (+ and /)
+    // We also remove any whitespace and ensure proper padding.
+    cleanBase64 = cleanBase64.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '');
+    while (cleanBase64.length % 4 !== 0) {
+      cleanBase64 += '=';
+    }
+    
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      body: JSON.stringify({
+        action: 'uploadMedia',
+        fileName: fileName,
+        mimeType: 'image/png',
+        base64: cleanBase64,
+        folderType: 'processed',
+        user
+      }),
+    });
+
+    if (!response.ok) throw new Error(`Network response error: ${response.status}`);
+
+    const result = await response.json();
+    if (result.status === 'success') {
+      console.log(`[Drive] Successfully uploaded processed media: ${result.fileId}`);
+      return {
+        fileId: result.fileId,
+        thumbnailUrl: result.url || `https://drive.google.com/uc?export=view&id=${result.fileId}`
+      };
+    } else {
+      throw new Error(result.message || 'Drive Upload failed');
+    }
+  } catch (error) {
+    console.error('Drive processed media upload error:', error);
+    throw error;
+  }
 }
 
 export function extractFileId(url: string | null | undefined): string | null {
@@ -615,25 +661,83 @@ export function simplifyContour(
 }
 
 export function createCurvePath(points: { x: number; y: number }[]): string {
-  if (points.length < 3) {
     if (points.length < 1) return '';
-    let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+    let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
     for (let i = 1; i < points.length; i++) {
-      d += ` L ${points[i].x.toFixed(2)} ${points[i].y.toFixed(2)}`;
+        path += ` L ${points[i].x.toFixed(2)} ${points[i].y.toFixed(2)}`;
     }
-    return d + ' Z';
-  }
+    path += ' Z';
+    return path;
+}
 
-  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+export async function preprocessForMasking(dataUrl: string): Promise<string> {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d')!;
+            
+            // Draw original image
+            ctx.drawImage(img, 0, 0);
+            
+            // Get pixel data
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Apply grayscale and contrast boost for HDR compensation
+            const contrast = 1.5; // 50% contrast boost
+            const intercept = 128 * (1 - contrast);
+            
+            for (let i = 0; i < data.length; i += 4) {
+                // Grayscale
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const gray = (0.299 * r + 0.587 * g + 0.114 * b);
+                
+                // Contrast boost
+                let finalVal = gray * contrast + intercept;
+                finalVal = Math.max(0, Math.min(255, finalVal));
+                
+                data[i] = finalVal;
+                data[i + 1] = finalVal;
+                data[i + 2] = finalVal;
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas.toDataURL('image/jpeg', 0.9));
+        };
+        img.src = dataUrl;
+    });
+}
 
-  for (let i = 0; i < points.length; i++) {
-    const p1 = points[i];
-    const p2 = points[(i + 1) % points.length];
-    const midPoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-    path += ` Q ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}, ${midPoint.x.toFixed(2)} ${midPoint.y.toFixed(2)}`;
-  }
-  path += ' Z';
-  return path;
+export async function applyAlphaMask(originalUrl: string, maskBlob: Blob): Promise<string> {
+    return new Promise(async (resolve) => {
+        const origImg = await loadImage(originalUrl);
+        
+        const maskReader = new FileReader();
+        const maskDataUrl = await new Promise<string>((r) => {
+            maskReader.onloadend = () => r(maskReader.result as string);
+            maskReader.readAsDataURL(maskBlob);
+        });
+        const maskImg = await loadImage(maskDataUrl);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = origImg.width;
+        canvas.height = origImg.height;
+        const ctx = canvas.getContext('2d')!;
+
+        // Draw original
+        ctx.drawImage(origImg, 0, 0);
+        
+        // Mask it out based on the alpha channel of the mask image
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.drawImage(maskImg, 0, 0, origImg.width, origImg.height);
+
+        resolve(canvas.toDataURL('image/png'));
+    });
 }
 
 export const readFileAsDataURL = (file: File, type: 'image' | 'video', forAI = false) =>
@@ -920,6 +1024,7 @@ export const normalizeInventoryData = (data: any): any => {
     spatialBoxes2d: d.spatial_boxes_2d || d.spatialBoxes2d,
     spatialPoints: d.spatial_points || d.spatialPoints,
     generatedDescription: d.generated_description || d.generatedDescription,
+    detailedDescription: d.detailed_description || d.detailedDescription,
     generatedImageUrls: d.generated_image_urls || d.generatedImageUrls,
     mediaUrls: d.media_urls || d.mediaUrls,
     imageUrl: d.image_url || d.imageUrl,
