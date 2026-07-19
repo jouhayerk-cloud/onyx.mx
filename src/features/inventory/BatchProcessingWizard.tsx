@@ -445,6 +445,43 @@ CRITICAL RULES:
         setIsExported(false);
     };
 
+    const handleUploadMask = (op: BatchOp) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/png,image/jpeg';
+        input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (re: any) => {
+                updateOp(op.id, {
+                    result: {
+                        ...(op.result || { description: '' }),
+                        maskUrl: re.target.result
+                    }
+                });
+                setIsExported(false);
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    };
+
+    const handleSaveDescription = async (op: BatchOp) => {
+        if (!op.result?.description) return;
+        const toastId = toast.loading('Saving description...');
+        try {
+            const itemId = op.item.data?.id || op.item.id || op.item.row;
+            await supabase.from('inventory').update({
+                detailed_description: op.result.description
+            }).eq('id', itemId);
+            toast.success('Description saved!', { id: toastId });
+            setInventoryVersion(Date.now());
+        } catch (e: any) {
+            toast.error('Failed to save description', { id: toastId });
+        }
+    };
+
     const handleExportDatabase = async () => {
         const completedOps = queue.filter(op => op.status === 'completed');
         if (completedOps.length === 0) {
@@ -499,7 +536,8 @@ CRITICAL RULES:
                 await supabase.from('inventory').update({ 
                     detailed_description: lastDescription,
                     spatial_masks: updatedMasks,
-                    processed_media_urls: combinedMaskUrls.join(',')
+                    processed_media_urls: combinedMaskUrls.join(','),
+                    generated_png_url: combinedMaskUrls[0] || null
                 }).eq('id', itemId);
             }
             
