@@ -355,12 +355,13 @@ CRITICAL RULES:
                 } catch (e: any) {
                     logOp(op.id, `[ FAIL ] Cloud Mask failed: ${e.message}`);
                     console.error(e);
-                            } else {
-                    if (op.processingMode === 'cloud') {
-                        logOp(op.id, '[ WAIT ] Cloud selected, but Gemini cannot output binary PNGs. Falling back to robust local ISNET segmentation...');
-                    } else {
-                        logOp(op.id, '[ WAIT ] Running local AI for background removal...');
-                    }
+                }
+            } else {
+                if (op.processingMode === 'cloud') {
+                    logOp(op.id, '[ WAIT ] Cloud selected, but Gemini cannot output binary PNGs. Falling back to robust local ISNET segmentation...');
+                } else {
+                    logOp(op.id, '[ WAIT ] Running local AI for background removal...');
+                }
                 try {
                     updateOp(op.id, { progress: 15, stepLabel: 'Preparing Full-Res SDR Image...' });
                     
