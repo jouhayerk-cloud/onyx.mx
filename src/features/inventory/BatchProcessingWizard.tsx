@@ -718,8 +718,18 @@ CRITICAL RULES:
 
                 const combinedVendorSku = `${tagId}-${vendorSku}${costMxn}`;
 
+                const tagsArray = [
+                    tagId,
+                    color,
+                    formattedMaterial,
+                    shape,
+                    shortDesc,
+                    norm.heightCm ? `${norm.heightCm} cm` : '',
+                    norm.widthCm ? `${norm.widthCm} cm` : ''
+                ].filter(Boolean).join(', ');
+
                 sheet.addRow([
-                    title, vendorName, tagId, '', cost, price, weightGrams, imageSrc, 1, weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn, measurementsStr, '', formattedMaterial, variety, 'MX', `${formattedMaterial}, ${shape}, ${shortDesc}`.replace(/,\s*$/, ''), category, '', polishType, '', 'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'true', 'web', 'true', 'shopify', 'deny', 'manual', 'true'
+                    title, vendorName, tagId, '', cost, price, weightGrams, imageSrc, 1, weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn, measurementsStr, '', formattedMaterial, variety, 'MX', tagsArray, category, '', polishType, '', 'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'true', 'web', 'true', 'shopify', 'deny', 'manual', 'true'
                 ]);
             });
 
