@@ -17,13 +17,18 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
 import { collectAllImages, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { vendors } from '../../lib/consts';
 
-const resolveVendorColor = (vendor: string | undefined | null) => {
-    if (!vendor) return '#ffffff';
-    let hash = 0;
-    for (let i = 0; i < vendor.length; i++) hash = vendor.charCodeAt(i) + ((hash << 5) - hash);
-    const h = Math.abs(hash) % 360;
-    return `hsl(${h}, 80%, 75%)`;
+const resolveVendorColor = (inputStr: string | undefined | null) => {
+    if (!inputStr) return '#ffffff';
+    const upper = inputStr.toUpperCase();
+    const vKeys = Object.keys(vendors).sort((a,b) => b.length - a.length);
+    // Try matching by exact name first
+    const nameMatch = vKeys.find(k => (vendors as any)[k].name.toUpperCase() === upper);
+    if (nameMatch) return (vendors as any)[nameMatch].color;
+    // Then try matching by prefix (for Tag IDs)
+    const vPre = vKeys.find(k => upper.startsWith(k));
+    return vPre ? (vendors as any)[vPre].color : '#ffffff';
 };
 
 interface BatchOp {
@@ -238,7 +243,7 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
 
             let localMaskUrl = null;
             if (!op.skipImageProcessing) {
-                if (op.processingMode === 'cloud') {
+                if (false && op.processingMode === 'cloud') {
                     logOp(op.id, '[ WAIT ] Running Cloud AI for background removal...');
                 const itemData = op.item.data || op.item;
                 const shape = itemData.shape || 'object';
@@ -350,9 +355,12 @@ CRITICAL RULES:
                 } catch (e: any) {
                     logOp(op.id, `[ FAIL ] Cloud Mask failed: ${e.message}`);
                     console.error(e);
-                }
-            } else {
-                logOp(op.id, '[ WAIT ] Running local AI for background removal...');
+                            } else {
+                    if (op.processingMode === 'cloud') {
+                        logOp(op.id, '[ WAIT ] Cloud selected, but Gemini cannot output binary PNGs. Falling back to robust local ISNET segmentation...');
+                    } else {
+                        logOp(op.id, '[ WAIT ] Running local AI for background removal...');
+                    }
                 try {
                     updateOp(op.id, { progress: 15, stepLabel: 'Preparing Full-Res SDR Image...' });
                     
@@ -848,12 +856,16 @@ CRITICAL RULES:
                                     <div>
                                         <h4 
                                             className="text-xl md:text-2xl font-black uppercase tracking-tight"
-                                            style={{ color: resolveVendorColor((op.item.data || op.item).vendor || (op.item.data || op.item).supplier) }}
                                         >
                                             {(() => {
                                                 const norm = normalizeInventoryData(op.item.data || op.item);
                                                 const calc = calculateCodesAndPrices(norm, 20, '326');
-                                                return calc?.printCode || calc?.bookBarcode || norm.book_barcode || norm.itemId || `Item ${norm.itemNumber}`;
+                                                const tagId = calc?.printCode || calc?.bookBarcode || norm.book_barcode || norm.itemId || `Item ${norm.itemNumber}`;
+                                                return (
+                                                    <span style={{ color: resolveVendorColor(tagId) }}>
+                                                        {tagId}
+                                                    </span>
+                                                );
                                             })()}
                                         </h4>
                                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] font-black uppercase tracking-widest text-white/50">
