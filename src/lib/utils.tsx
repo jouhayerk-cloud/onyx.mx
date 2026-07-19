@@ -261,12 +261,10 @@ export function collectAllImages(normData: any): string[] {
 
   const rawUrls = [
     ...collect(normData.mediaUrls),
-    ...collect(normData.generatedImageUrls),
     ...collect(normData.image_url),
     ...collect(normData.item_image),
     ...collect(normData.imageUrl),
-    ...collect(normData.itemImage),
-    normData.generatedPngUrl
+    ...collect(normData.itemImage)
   ].filter(Boolean).map(u => String(u).trim()).filter(Boolean);
   
   // Deduplicate AFTER cleaning to catch identical visuals with different tracking tags

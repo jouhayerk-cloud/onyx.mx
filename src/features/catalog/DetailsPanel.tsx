@@ -299,9 +299,9 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
         )}
       </div>
 
-      {mediaUrls.length > 1 && (
+      {fullGallery.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {mediaUrls.map((url, idx) => {
+          {fullGallery.map((url, idx) => {
             const fid = extractFileId(url);
             const cached = fid ? imageCache.get(fid) : null;
             return (

@@ -268,10 +268,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
 
     const mediaUrls = useMemo(() => {
-        const raw = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-        const main = norm.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
-        return [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
-    }, [norm.mediaUrls, norm.generatedPngUrl]);
+        if (norm.processed_media_urls) {
+            return String(norm.processed_media_urls).split(',').map(u => u.trim()).filter(Boolean);
+        }
+        if (norm.generatedPngUrl) {
+            return [norm.generatedPngUrl];
+        }
+        return norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+    }, [norm.mediaUrls, norm.generatedPngUrl, norm.processed_media_urls]);
 
 
     const activeIdx = 0;
