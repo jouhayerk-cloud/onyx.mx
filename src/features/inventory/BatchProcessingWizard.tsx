@@ -590,14 +590,21 @@ CRITICAL RULES:
                 const formattedMaterial = material ? material.charAt(0).toUpperCase() + material.slice(1) : 'Onyx';
 
                 // Determine 'image src' to use
-                // 1. newly uploaded thumbnail
-                // 2. original item URL if image processing was skipped
-                let imageSrc = getCleanImageUrl(thumbnailUrl) || getCleanImageUrl(norm.generatedPngUrl || norm.imageUrl || norm.mediaUrls?.split(',')[0]) || '';
+                let imageSrc = '';
+                if (op.skipImageProcessing) {
+                    // Use original uploaded image if processing was skipped
+                    imageSrc = getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]) || '';
+                } else {
+                    // Use newly generated thumbnail or previously generated png
+                    imageSrc = getCleanImageUrl(thumbnailUrl) || getCleanImageUrl(norm.generatedPngUrl) || getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]) || '';
+                }
                 
                 // Shopify often requires image URLs to end with a valid image extension to process them successfully.
                 if (imageSrc && imageSrc.includes('google') && !imageSrc.toLowerCase().endsWith('.png') && !imageSrc.toLowerCase().endsWith('.jpg')) {
                     imageSrc = imageSrc.includes('?') ? `${imageSrc}&ext=.png` : `${imageSrc}?.png`;
                 }
+
+                const combinedVendorSku = `${tagId}-${vendorSku}${costMxn}`;
 
                 sheet.addRow([
                     title, // A
@@ -610,7 +617,7 @@ CRITICAL RULES:
                     imageSrc, // H Image Src
                     1, // I Image Position
                     weightLbs, // J custom.product_weight
-                    vendorSku, // K Vendor_SKU
+                    combinedVendorSku, // K Vendor_SKU
                     '', // L Variant Weight Unit
                     depthIn, // M reg.variant_depth
                     widthIn, // N reg.variant_width
