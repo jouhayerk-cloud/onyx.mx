@@ -10,7 +10,7 @@ import {
 } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { getCleanImageUrl, resizeImage, handleProcessedFileUpload, loadImage, cropImage, findContour, simplifyContour, createCurvePath, generatePngAndSvgFromMasks, preprocessForMasking, applyAlphaMask } from '../../lib/utils';
-import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save } from 'lucide-react';
+import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, FileText, Table2, Download, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { removeBackground } from '@imgly/background-removal';
 import ExcelJS from 'exceljs';
@@ -71,22 +71,44 @@ export const BatchProcessingWizard: React.FC = () => {
         }
     };
 
+    const [isExported, setIsExported] = useState(false);
+    const [xlsxUrl, setXlsxUrl] = useState<string | null>(null);
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const [isGeneratingXlsx, setIsGeneratingXlsx] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [pdfBrand, setPdfBrand] = useState<'ArtOfDecor' | 'RareEarth'>('ArtOfDecor');
+
     useEffect(() => {
         if (isOpen && batchItems.length > 0) {
-            setQueue(batchItems.map(item => ({
-                id: item.id || item.row,
-                item,
-                status: 'idle',
-                progress: 0,
-                logs: ['[ WAIT ] Ready for AI processing'],
-                processingMode: 'local',
-                skipImageProcessing: false
-            })));
+            setQueue(batchItems.map(item => {
+                const norm = normalizeInventoryData(item.data || item);
+                const hasAI = !!(norm.detailed_description || norm.processed_media_urls);
+                return {
+                    id: item.id || item.row,
+                    item,
+                    status: hasAI ? 'completed' : 'idle',
+                    progress: hasAI ? 100 : 0,
+                    logs: hasAI ? ['[  OK  ] Loaded saved AI content'] : ['[ WAIT ] Ready for AI processing'],
+                    processingMode: 'local',
+                    skipImageProcessing: false,
+                    result: hasAI ? {
+                        description: norm.detailed_description,
+                        maskUrl: norm.processed_media_urls
+                    } : undefined
+                };
+            }));
         } else if (!isOpen) {
             setQueue([]);
             setIsProcessing(false);
             setIsAborted(false);
             setOverallProgress(0);
+            setIsExported(false);
+            if (xlsxUrl) URL.revokeObjectURL(xlsxUrl);
+            if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+            setXlsxUrl(null);
+            setPdfUrl(null);
+            setIsGeneratingXlsx(false);
+            setIsGeneratingPdf(false);
         }
     }, [isOpen, batchItems]);
 
@@ -94,355 +116,21 @@ export const BatchProcessingWizard: React.FC = () => {
         setQueue(prev => prev.map(op => op.id === id ? { ...op, ...(typeof updates === 'function' ? updates(op) : updates) } : op));
     };
 
-    const logOp = (id: string, text: string) => {
-        updateOp(id, prev => ({ logs: [...prev.logs, text] }));
-    };
-
-    const callGemini = async (prompt: string, imgData: string, timeoutMs: number = 40000, modelId: string = "gemini-2.5-flash") => {
-        const API_KEY = getApiKey();
-        if (!API_KEY) throw new Error("API Key missing");
-        
-        // Use v1beta endpoint for 1.5-flash since some accounts might not have it exposed on v1
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${API_KEY}`;
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                contents: [{ 
-                    parts: [
-                        { text: prompt }, 
-                        { inlineData: { mimeType: 'image/jpeg', data: imgData } }
-                    ] 
-                }] 
-            })
-        });
-        
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            if (res.status === 400 && err?.error?.message?.includes('API key not valid')) {
-                localStorage.removeItem('ONYX_GEMINI_KEY');
-                throw new Error("Invalid API Key! Please click the Settings icon above to provide a valid key.");
-            }
-            throw new Error(`API Error: ${res.status} ${err?.error?.message || ''}`);
-        }
-        return await res.json();
-    };
-
-    const processSingleItem = async (op: BatchOp) => {
-        updateOp(op.id, { status: 'processing', progress: 10 });
-        logOp(op.id, '[ WAIT ] Resizing image...');
-        try {
-            const itemData = op.item.data || op.item;
-            const imageUrl = getCleanImageUrl(op.item.generatedPngUrl || itemData.generatedPngUrl || op.item.imageUrl || itemData.mediaUrls?.split(',')[0]);
-            if (!imageUrl) throw new Error("No image found for item");
-
-            const aiDataUrl = await resizeImage(imageUrl, 1024);
-            const base64 = aiDataUrl.split(',')[1];
-            logOp(op.id, '[  OK  ] Image resized successfully');
-
-            updateOp(op.id, { progress: 30 });
-            logOp(op.id, '[ WAIT ] Analyzing via Gemini...');
-            
-            const shape = itemData.shape || 'Artifact';
-            const type = itemData.shortDescription || itemData.type || 'Object';
-            const material = itemData.material || 'Onyx';
-            
-            const prompt = `FIND the ${material} ${shape} ${type}. 
-Generate a short, title-style description (maximum 1 sentence) of the item.
-
-CRITICAL RULES for the description:
-- Keep it concise, like a product title.
-- Do NOT use the word 'lamp'. ALL lamps MUST be described as 'Luminarie' or 'Luminaries'.
-
-Examples of the desired style:
-- Rectangular White Onyx Wall Luminarie pair with green banding running in the center.
-- Aqua Onyx Cylinder Luminarie with Rustic open top aqua band in center.
-- Round Pink Onyx mirror with brown banding.
-
-Return ONLY valid JSON in this exact structure, with no markdown formatting:
-{
-  "description": "Your short title-style description here..."
-}`;
-
-            const data = await callGemini(prompt, base64);
-            logOp(op.id, '[  OK  ] Received Gemini response');
-            
-            let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!resultText) throw new Error("Empty response from AI");
-            
-            updateOp(op.id, { progress: 70 });
-            logOp(op.id, '[ WAIT ] Parsing results...');
-            
-            if (resultText.includes('```')) {
-                const match = resultText.match(/```(?:json)?([\s\S]*?)```/);
-                if (match) resultText = match[1].trim();
-                else resultText = resultText.replace(/```(json)?|```/g, '').trim();
-            }
-            
-            const processed = JSON.parse(resultText);
-            if (!processed.description) {
-                throw new Error("Invalid output format from AI");
-            }
-            logOp(op.id, '[  OK  ] Parsing complete');
-
-            let localMaskUrl = null;
-            if (!op.skipImageProcessing) {
-                if (op.processingMode === 'cloud') {
-                    logOp(op.id, '[ WAIT ] Running Cloud AI for background removal...');
-                const itemData = op.item.data || op.item;
-                const shape = itemData.shape || 'object';
-                // Pass 1: Only ask for bounding boxes, NOT masks! Asking for multiple base64 masks in one pass blows past the 8192 token limit!
-                const instruction = `Find all discrete objects/panels of this ${shape} Onyx artifact. Instructions: If it is a bowl or basin, strictly extract and separate the 'rim', 'interior', and 'exterior'. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string"}].`;
-
-                try {
-                    // Use the latest 2.5 model for unparalleled detection logic
-                    const data = await callGemini(instruction, base64, 40000, "gemini-2.5-flash");
-                    let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (!resultText) throw new Error("Empty response from Engine");
-                    
-                    if (resultText.includes('```')) {
-                        const match = resultText.match(/```(?:json)?([\s\S]*?)```/);
-                        if (match) resultText = match[1].trim();
-                        else resultText = resultText.replace(/```(json)?|```/g, '').trim();
-                    }
-                    
-                    const processed = JSON.parse(resultText);
-                    logOp(op.id, `[  OK  ] Found ${processed.length} layers. Refining...`);
-
-                    const img = await loadImage(imageUrl);
-                    const originalWidth = img.width;
-                    const originalHeight = img.height;
-                    const targetSize = 1024;
-                    
-                    let drawW, drawH;
-                    if (originalWidth > originalHeight) { drawW = targetSize; drawH = Math.round(originalHeight * (targetSize / originalWidth)); } 
-                    else { drawH = targetSize; drawW = Math.round(originalWidth * (targetSize / originalHeight)); }
-                    const offsetX = (targetSize - drawW) / 2;
-                    const offsetY = (targetSize - drawH) / 2;
-
-                    const masks: any[] = [];
-                    for (let idx = 0; idx < processed.length; idx++) {
-                        const m = processed[idx];
-                        updateOp(op.id, { progress: 15 + ((idx/processed.length) * 75), stepLabel: `Extracting Mask ${idx+1}/${processed.length}...` });
-                        
-                        const box = m.box_2d;
-                        const bx_x = box[1] / 1000; const bx_y = box[0] / 1000;
-                        const bx_w = (box[3] - box[1]) / 1000; const bx_h = (box[2] - box[0]) / 1000;
-                        
-                        // Crop to 512x512 for Gemini analysis
-                        const cropUrl = await cropImage(imageUrl, bx_x, bx_y, bx_w, bx_h, 512);
-                        const processedCropUrl = await preprocessForMasking(cropUrl);
-                        const cropBase64 = processedCropUrl.split(',')[1];
-                        
-                        const refInstruction = `Edge Segmenter: Trace the precise outer silhouette boundary of the artifact in this crop and generate a 1-bit monochrome (black and white) PNG mask image. White is the artifact, black is the background.
-CRITICAL RULES:
-1. Generate a 256x256 image with 1-bit monochrome color depth (no antialiasing) to keep the file size extremely small.
-2. Return ONLY the raw base64 encoded string of the PNG. Do NOT use JSON, do NOT use markdown, do NOT include quotes, do NOT include "data:image/png;base64,". Just the raw base64 characters.`;
-                        
-                        let cropMaskDataUrl = '';
-                        const refData = await callGemini(refInstruction, cropBase64, 40000, "gemini-2.5-pro");
-                        
-                        let refContent = refData?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (refContent) {
-                            if (refContent.includes('```')) {
-                                const match = refContent.match(/```(?:base64)?([\s\S]*?)```/);
-                                if (match) refContent = match[1];
-                                else refContent = refContent.replace(/```(base64)?|```/g, '');
-                            }
-                            refContent = refContent.trim().replace(/\s/g, '');
-                            
-                            if (refContent.startsWith('iVBORw0KGgo')) {
-                                cropMaskDataUrl = `data:image/png;base64,${refContent}`;
-                            } else {
-                                console.error("Invalid base64 PNG signature:", refContent.substring(0, 50));
-                            }
-                        }
-                        
-                        if (!cropMaskDataUrl) {
-                            throw new Error("Cloud Mask failed: AI generated invalid mask.");
-                        }
-                        
-                        const maskImg = await loadImage(cropMaskDataUrl);
-                        const rcv = document.createElement('canvas');
-                        rcv.width = maskImg.width; rcv.height = maskImg.height;
-                        const rctx = rcv.getContext('2d', { willReadFrequently: true })!;
-                        rctx.drawImage(maskImg, 0, 0);
-                        const iData = rctx.getImageData(0, 0, rcv.width, rcv.height);
-                        const contour = findContour(iData);
-                        
-                        const simplified = simplifyContour(contour, 0.2);
-                        const maskWidth = maskImg.width;
-                        const maskHeight = maskImg.height;
-        
-                        const x_pad = (box[1] / 1000) * targetSize; const y_pad = (box[0] / 1000) * targetSize;
-                        const w_pad = ((box[3] - box[1]) / 1000) * targetSize; const h_pad = ((box[2] - box[0]) / 1000) * targetSize;
-                        const x_orig = (x_pad - offsetX) * (originalWidth / drawW);
-                        const y_orig = (y_pad - offsetY) * (originalHeight / drawH);
-                        const w_orig = w_pad * (originalWidth / drawW);
-                        const h_orig = h_pad * (originalHeight / drawH);
-
-                        masks.push({
-                            label: obj.label,
-                            x: x_orig / originalWidth, y: y_orig / originalHeight, 
-                            width: w_orig / originalWidth, height: h_orig / originalHeight,
-                            maskWidth: maskWidth,
-                            maskHeight: maskHeight,
-                            path: createCurvePath(simplified), points: simplified
-                        });
-                    }
-
-                    logOp(op.id, '[ WAIT ] Generating high-res cutout...');
-                    const { pngData } = await generatePngAndSvgFromMasks(imageUrl, { width: img.width, height: img.height }, masks);
-                    localMaskUrl = pngData;
-                    logOp(op.id, '[  OK  ] Cloud Mask generated');
-
-                } catch (e: any) {
-                    logOp(op.id, `[ FAIL ] Cloud Mask failed: ${e.message}`);
-                    console.error(e);
-                }
-            } else {
-                logOp(op.id, '[ WAIT ] Running local AI for background removal...');
-                try {
-                    updateOp(op.id, { progress: 15, stepLabel: 'Preparing Full-Res SDR Image...' });
-                    
-                    // Convert raw HDR to SDR while PRESERVING original resolution and aspect ratio
-                    const sdrDataUrl = await new Promise<string>((resolve, reject) => {
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            const ctx = canvas.getContext('2d');
-                            if (!ctx) return reject(new Error('Canvas error'));
-                            ctx.drawImage(img, 0, 0, img.width, img.height);
-                            resolve(canvas.toDataURL('image/jpeg', 1.0));
-                        };
-                        img.onerror = () => reject(new Error('Image load failed'));
-                        img.src = imageUrl;
-                    });
-
-                    logOp(op.id, '[ WAIT ] Extracting background...');
-                    const processedSdrUrl = await preprocessForMasking(sdrDataUrl);
-                    const bgBlob = await removeBackground(processedSdrUrl, {
-                        model: 'isnet', // Upgrade to isnet for perfect solid boundaries and fewer partial cuts
-                        output: { format: 'image/png' },
-                        debug: false,
-                        progress: (key, current, total) => {
-                            const p = Math.round((current / total) * 100);
-                            updateOp(op.id, { progress: 15 + (p * 0.7), stepLabel: `Extracting: ${key} ${p}%` });
-                        }
-                    });
-                    updateOp(op.id, { progress: 90, stepLabel: 'Finalizing Image...' });
-                    localMaskUrl = await applyAlphaMask(sdrDataUrl, bgBlob);
-                    logOp(op.id, '[  OK  ] Mask generated locally');
-                } catch (err: any) {
-                    logOp(op.id, `[ FAIL ] Mask generation failed: ${err.message}`);
-                    console.error(err);
-                }
-            }
-            } else {
-                logOp(op.id, '[ SKIP ] Image processing skipped');
-                updateOp(op.id, { progress: 90 });
-            }
-
-            updateOp(op.id, { 
-                status: 'completed', 
-                progress: 100, 
-                result: {
-                    description: processed.description,
-                    maskUrl: localMaskUrl || undefined
-                }
-            });
-        } catch (err: any) {
-            logOp(op.id, `[ FAIL ] ${err.message}`);
-            updateOp(op.id, { status: 'failed', progress: 0 });
-            throw err;
-        }
-    };
-
-    const handleSaveDescription = async (op: BatchOp) => {
-        if (!op.result?.description) return;
-        const toastId = toast.loading(`Saving description...`);
-        try {
-            const { error } = await supabase
-                .from('inventory')
-                .update({ detailed_description: op.result.description })
-                .eq('id', op.item.id || op.item.row);
-                
-            if (error) throw error;
-            toast.success('Description saved successfully!', { id: toastId });
-        } catch (err: any) {
-            toast.error(`Failed to save: ${err.message}`, { id: toastId });
-        }
-    };
-
-    const handleUploadMask = async (op: BatchOp) => {
-        if (!op.result?.maskUrl) return;
-        const toastId = toast.loading(`Uploading mask for item...`);
-        try {
-            const upRes = await handleProcessedFileUpload(op.result.maskUrl, `mask_${op.id}.png`, user);
-            if (upRes && upRes.thumbnailUrl) {
-                const itemData = op.item.data || op.item;
-                const currentMasks = itemData.spatialMasks || itemData.spatial_masks || {};
-                const updatedMasks = Array.isArray(currentMasks) 
-                    ? { angle_0: [{ mask: upRes.thumbnailUrl }] } 
-                    : { ...currentMasks, angle_0: [{ mask: upRes.thumbnailUrl }] };
-
-                const { error } = await supabase.from('inventory').update({
-                    spatial_masks: updatedMasks,
-                    processed_media_urls: upRes.thumbnailUrl
-                }).eq('id', op.item.id || op.item.row);
-                
-                if (error) throw error;
-                toast.success('Mask uploaded and linked successfully!', { id: toastId });
-            }
-        } catch (e: any) {
-            toast.error(`Upload failed: ${e.message}`, { id: toastId });
-        }
-    };
-
-    const getProductCategory = (shape: string, shortDesc: string) => {
-        const combined = `${shape} ${shortDesc}`.toLowerCase();
-        if (combined.includes('wine rack')) return 'Furniture > Cabinets & Storage > Wine Racks';
-        if (combined.includes('pendant')) return 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures';
-        if (combined.includes('tower lamp') || combined.includes('floor lamp') || combined.includes('pillar')) return 'Home & Garden > Lighting > Lamps > Floor Lamps';
-        if (combined.includes('table lamp') || combined.includes('desk lamp') || combined.includes('lamp')) return 'Home & Garden > Lighting > Lamps > Desk Lamps';
-        if (combined.includes('coaster')) return 'Home & Garden > Kitchen & Dining > Barware > Coasters';
-        if (combined.includes('bathtub') || combined.includes('tub')) return 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs';
-        if (combined.includes('sink') || combined.includes('vessel')) return 'Hardware > Plumbing > Plumbing Fixtures > Sinks';
-        if (combined.includes('sculpture') || combined.includes('statue') || combined.includes('carving') || combined.includes('figure')) return 'Home & Garden > Decor > Artwork > Sculptures & Statues';
-        if (combined.includes('bowl')) return 'Home & Garden > Decor > Decorative Bowls';
-        if (combined.includes('plate')) return 'Home & Garden > Decor > Decorative Plates';
-        if (combined.includes('tray')) return 'Home & Garden > Decor > Decorative Trays';
-        if (combined.includes('fountain') || combined.includes('waterfall')) return 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains';
-        if (combined.includes('garden sculpture') || combined.includes('lawn ornament')) return 'Home & Garden > Decor > Lawn Ornaments & Garden Sculptures > Garden Sculptures';
-        if (combined.includes('mirror')) return 'Home & Garden > Decor > Mirrors';
-        if (combined.includes('shot glass') || combined.includes('tequila glass')) return 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses';
-        if (combined.includes('wall light') || combined.includes('sconce')) return 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures';
-        if (combined.includes('board game') || combined.includes('chess') || combined.includes('checkers') || combined.includes('tic tac toe')) return 'Toys & Games > Games > Board Games';
-        return 'Home & Garden > Decor';
-    };
-
-    const handleExportAll = async () => {
+    const handleExportDatabase = async () => {
         const completedOps = queue.filter(op => op.status === 'completed');
         if (completedOps.length === 0) {
             toast.error('No completed items to export.');
             return;
         }
 
-        const toastId = toast.loading(`Uploading images and descriptions for ${completedOps.length} items...`);
-        const exportDataList: any[] = [];
-        const catalogResults: CatalogArtifact[] = [];
-
+        const toastId = toast.loading(`Saving data for ${completedOps.length} items...`);
         try {
             for (const op of completedOps) {
-                let thumbnailUrl = '';
-                // 1. Upload Mask if it exists
-                if (op.result?.maskUrl) {
+                // 1. Upload Mask if it exists and is new
+                if (op.result?.maskUrl && op.result.maskUrl.startsWith('data:')) {
                     const upRes = await handleProcessedFileUpload(op.result.maskUrl, `mask_${op.id}.png`, user);
                     if (upRes && upRes.thumbnailUrl) {
-                        thumbnailUrl = upRes.thumbnailUrl;
+                        op.result.maskUrl = upRes.thumbnailUrl;
                         const itemData = op.item.data || op.item;
                         const currentMasks = itemData.spatialMasks || itemData.spatial_masks || {};
                         const updatedMasks = Array.isArray(currentMasks) 
@@ -459,72 +147,75 @@ CRITICAL RULES:
                 if (op.result?.description) {
                     await supabase.from('inventory').update({ detailed_description: op.result.description }).eq('id', op.item.id || op.item.row);
                 }
-
-                const itemData = op.item.data || op.item;
-                const shape = itemData.shape || 'object';
-                const shortDesc = itemData.shortDescription || itemData.type || '';
-                const category = getProductCategory(shape, shortDesc);
-                
-                // Normalization and code calculation for PDF
-                const normData = normalizeInventoryData(itemData);
-                const codes = calculateCodesAndPrices(itemData, 1, 'REG'); // default to 1 and 'REG' since we don't have atoms here directly, or we can just calculate them
-
-                const vendorMapping: Record<string, string> = {
-                    'ET': 'Betoeduardo',
-                    'DH': 'Delfino',
-                    'EM': 'Emmanuel',
-                    'GE': 'Geraldo',
-                    'JM': 'Jose',
-                    'ML': 'Maria Luisa',
-                    'MM': 'Mariam',
-                    'SU': 'Susana',
-                    'TE': 'Tellez',
-                    'CA': 'Carlos',
-                    'AM': 'Alejandro',
-                    'CP': 'Cantera Puebla',
-                    'AN': 'Angel',
-                    'FR': 'Fountain Rock Mine',
-                    'BT': 'Bernardo'
-                };
-                
-                const tagId = codes?.bookBarcode || normData.book_barcode || normData.itemId || '';
-                const matchPrefix = tagId.match(/^[A-Za-z]+/);
-                const extractedPrefix = matchPrefix ? matchPrefix[0] : '';
-                const rawVendorId = String(normData.vendor_id || extractedPrefix || '').toUpperCase();
-                const vendorName = vendorMapping[rawVendorId] || rawVendorId || 'Art of Decor';
-
-                exportDataList.push({
-                    op,
-                    thumbnailUrl,
-                    category,
-                    vendorName
-                });
-
-                // Update the normData with the generated AI descriptions and image URLs
-                const pdfData = { 
-                    ...normData, 
-                    detailed_description: op.result?.description || normData.detailed_description, 
-                    processed_media_urls: thumbnailUrl || normData.processed_media_urls,
-                    category: category
-                };
-                
-                // Use the base64 mask directly for the PDF to avoid CORS and loading delays
-                const pdfImage = op.result?.maskUrl || thumbnailUrl || getCleanImageUrl(normData.generatedPngUrl || normData.imageUrl || normData.mediaUrls?.split(',')[0]);
-
-                catalogResults.push({
-                    data: pdfData,
-                    codes: codes,
-                    images: pdfImage ? [pdfImage] : collectAllImages(normData),
-                    exportType: 'catalog'
-                });
             }
+            toast.success('Saved successfully to database!', { id: toastId });
+            setInventoryVersion(Date.now());
+            setIsExported(true);
+        } catch (e: any) {
+            toast.error(`Save failed: ${e.message}`, { id: toastId });
+            console.error(e);
+        }
+    };
 
-            toast.loading('Generating Shopify XLSX...', { id: toastId });
+    const buildExportContext = () => {
+        const completedOps = queue.filter(op => op.status === 'completed');
+        const exportDataList: any[] = [];
+        const catalogResults: CatalogArtifact[] = [];
+
+        for (const op of completedOps) {
+            const itemData = op.item.data || op.item;
+            const shape = itemData.shape || 'object';
+            const shortDesc = itemData.shortDescription || itemData.type || '';
+            const category = getProductCategory(shape, shortDesc);
             
-            // Generate Shopify XLSX
+            const normData = normalizeInventoryData(itemData);
+            const codes = calculateCodesAndPrices(itemData, 1, 'REG');
+            
+            const vendorMapping: Record<string, string> = {
+                'ET': 'Betoeduardo', 'DH': 'Delfino', 'EM': 'Emmanuel', 'GE': 'Geraldo',
+                'JM': 'Jose', 'ML': 'Maria Luisa', 'MM': 'Mariam', 'SU': 'Susana',
+                'TE': 'Tellez', 'CA': 'Carlos', 'AM': 'Alejandro', 'CP': 'Cantera Puebla',
+                'AN': 'Angel', 'FR': 'Fountain Rock Mine', 'BT': 'Bernardo'
+            };
+            
+            const tagId = codes?.bookBarcode || normData.book_barcode || normData.itemId || '';
+            const matchPrefix = tagId.match(/^[A-Za-z]+/);
+            const extractedPrefix = matchPrefix ? matchPrefix[0] : '';
+            const rawVendorId = String(normData.vendor_id || extractedPrefix || '').toUpperCase();
+            const vendorName = vendorMapping[rawVendorId] || rawVendorId || 'Art of Decor';
+
+            exportDataList.push({ op, category, vendorName });
+
+            const thumbnailUrl = op.result?.maskUrl || normData.processed_media_urls;
+            const pdfData = { 
+                ...normData, 
+                detailed_description: op.result?.description || normData.detailed_description, 
+                processed_media_urls: thumbnailUrl,
+                category: category
+            };
+            
+            const pdfImage = thumbnailUrl || getCleanImageUrl(normData.generatedPngUrl || normData.imageUrl || normData.mediaUrls?.split(',')[0]);
+
+            catalogResults.push({
+                data: pdfData,
+                codes: codes,
+                images: pdfImage ? [pdfImage] : collectAllImages(normData),
+                exportType: 'catalog'
+            });
+        }
+        return { exportDataList, catalogResults };
+    };
+
+    const handleGenerateXLSX = async () => {
+        if (!isExported) { toast.error("Please export to database first."); return; }
+        setIsGeneratingXlsx(true);
+        const toastId = toast.loading('Generating Shopify XLSX...');
+        try {
+            const { exportDataList } = buildExportContext();
             const workbook = new ExcelJS.Workbook();
             workbook.creator = 'Onyx Dashboard';
             const sheet = workbook.addWorksheet('Shopify Export');
+            
             const headers = [
                 'Title', 'Vendor', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
                 'Variant Price', 'Variant Grams', 'Image Src', 'Image Position', 
@@ -547,13 +238,12 @@ CRITICAL RULES:
             sheet.addRow(headers);
             sheet.getRow(1).font = { bold: true };
 
-            exportDataList.forEach(({ op, thumbnailUrl, category, vendorName }) => {
+            exportDataList.forEach(({ op, category, vendorName }) => {
                 const itemData = op.item.data || op.item;
                 const norm = normalizeInventoryData(itemData);
-                const bookRate = 20; // Default exchange rate
+                const bookRate = 20; 
                 const calc = calculateCodesAndPrices(norm, bookRate, '326');
                 
-                // Title (Fallback to standard logic if AI title fails)
                 const shape = norm.shape || '';
                 const shortDesc = norm.shortDescription || norm.type || '';
                 const color = norm.color || '';
@@ -590,17 +280,13 @@ CRITICAL RULES:
                 const variety = 'Mexican Onyx';
                 const formattedMaterial = material ? material.charAt(0).toUpperCase() + material.slice(1) : 'Onyx';
 
-                // Determine 'image src' to use
                 let imageSrc = '';
                 if (op.skipImageProcessing) {
-                    // Use original uploaded image if processing was skipped
                     imageSrc = getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]) || '';
                 } else {
-                    // Use newly generated thumbnail or previously generated png
-                    imageSrc = getCleanImageUrl(thumbnailUrl) || getCleanImageUrl(norm.generatedPngUrl) || getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]) || '';
+                    imageSrc = getCleanImageUrl(op.result?.maskUrl) || getCleanImageUrl(norm.generatedPngUrl) || getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]) || '';
                 }
                 
-                // Shopify often requires image URLs to end with a valid image extension to process them successfully.
                 if (imageSrc && imageSrc.includes('google') && !imageSrc.toLowerCase().endsWith('.png') && !imageSrc.toLowerCase().endsWith('.jpg')) {
                     imageSrc = imageSrc.includes('?') ? `${imageSrc}&ext=.png` : `${imageSrc}?.png`;
                 }
@@ -608,68 +294,42 @@ CRITICAL RULES:
                 const combinedVendorSku = `${tagId}-${vendorSku}${costMxn}`;
 
                 sheet.addRow([
-                    title, // A
-                    vendorName, // B
-                    tagId, // C Variant SKU
-                    '', // D Variant Barcode
-                    cost, // E Variant Cost
-                    price, // F Variant Price
-                    weightGrams, // G Variant Grams
-                    imageSrc, // H Image Src
-                    1, // I Image Position
-                    weightLbs, // J custom.product_weight
-                    combinedVendorSku, // K Vendor_SKU
-                    '', // L Variant Weight Unit
-                    depthIn, // M reg.variant_depth
-                    widthIn, // N reg.variant_width
-                    heightIn, // O reg.variant_height
-                    measurementsStr, // P reg.variant_measurements
-                    '', // Q Metafield: Measurements
-                    formattedMaterial, // R shopify.material
-                    variety, // S custom.variety
-                    'MX', // T Variant Country of Origin
-                    `${formattedMaterial}, ${shape}, ${shortDesc}`.replace(/,\s*$/, ''), // U Tags (Instead of U polish_type as in old export? Wait, old export has Tags column? Let's check headers. Yes, U is Tags in this export!)
-                    category, // V Product Category
-                    '', // W color-pattern
-                    polishType, // X polish_type
-                    '', // Y cut_type
-                    'Adults', // Z age-group
-                    'Unisex', // AA target-gender
-                    'Rare Earth Gallery', // AB
-                    'Rare Earth Gallery', // AC
-                    'active', // AD Status
-                    'true', // AE Published
-                    'web', // AF Published Scope
-                    'true', // AG Taxable
-                    'shopify', // AH Inventory Tracker
-                    'deny', // AI Inventory Policy
-                    'manual', // AJ Fulfillment
-                    'true' // AK Requires Shipping
+                    title, vendorName, tagId, '', cost, price, weightGrams, imageSrc, 1, weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn, measurementsStr, '', formattedMaterial, variety, 'MX', `${formattedMaterial}, ${shape}, ${shortDesc}`.replace(/,\s*$/, ''), category, '', polishType, '', 'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'true', 'web', 'true', 'shopify', 'deny', 'manual', 'true'
                 ]);
             });
 
             const buffer = await workbook.xlsx.writeBuffer();
-            const dateStr = new Date().toISOString().split('T')[0];
-            saveAs(new Blob([buffer]), `Shopify_Export_AI_${dateStr}.xlsx`);
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            setXlsxUrl(URL.createObjectURL(blob));
+            toast.success('XLSX generated! Click Download XLSX to save.', { id: toastId });
+        } catch (e: any) {
+            toast.error(`XLSX Generation failed: ${e.message}`, { id: toastId });
+            console.error(e);
+        } finally { setIsGeneratingXlsx(false); }
+    };
 
-            toast.loading('Generating Catalog PDF...', { id: toastId });
+    const handleGeneratePDF = async () => {
+        if (!isExported) { toast.error("Please export to database first."); return; }
+        setIsGeneratingPdf(true);
+        const toastId = toast.loading('Generating Catalog PDF...');
+        try {
+            const { catalogResults } = buildExportContext();
+            const dateStr = new Date().toISOString().split('T')[0];
             const blob = await exportCatalogPdf(catalogResults, {
                 title: `AI Generated Catalog ${dateStr}`,
                 method: 'grid',
-                logo: 'ArtOfDecor',
+                logo: pdfBrand,
                 exportType: 'catalog'
             }, () => {}, 'blob');
 
             if (blob instanceof Blob) {
-                saveAs(blob, `Catalog_AI_${dateStr}.pdf`);
+                setPdfUrl(URL.createObjectURL(blob));
+                toast.success('PDF generated! Click Download PDF to save.', { id: toastId });
             }
-
-            toast.success('Exports completed successfully!', { id: toastId });
-            setInventoryVersion(Date.now());
         } catch (e: any) {
-            toast.error(`Export failed: ${e.message}`, { id: toastId });
+            toast.error(`PDF Generation failed: ${e.message}`, { id: toastId });
             console.error(e);
-        }
+        } finally { setIsGeneratingPdf(false); }
     };
 
     const handleStartBatch = async () => {
@@ -928,7 +588,14 @@ CRITICAL RULES:
                                                 className="w-full h-full min-h-[120px] bg-black/40 border border-white/10 rounded-xl p-4 text-xs md:text-sm text-white/90 font-mono leading-relaxed focus:outline-none focus:border-(--main-color) transition-all resize-none scrollbar-thin scrollbar-thumb-white/20"
                                                 placeholder="AI generated description will appear here..."
                                             />
-                                            <div className="flex justify-end">
+                                            <div className="flex justify-between items-center mt-2">
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); updateOp(op.id, { status: 'idle', progress: 0, result: undefined, logs: ['[ WAIT ] Ready for AI processing'] }); }}
+                                                    className="flex items-center gap-2 px-3 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-rose-500/30 transition-all"
+                                                >
+                                                    <RefreshCw size={14} />
+                                                    Re-gen
+                                                </button>
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); handleSaveDescription(op); }}
                                                     className="flex items-center gap-2 px-4 py-2 bg-(--main-color)/20 hover:bg-(--main-color) text-(--main-color) hover:text-black text-[10px] font-black uppercase tracking-widest rounded-lg border border-(--main-color)/30 transition-all"
@@ -967,16 +634,78 @@ CRITICAL RULES:
                         </div>
                     </div>
                     
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 flex-wrap justify-end">
+                        <div className="flex gap-2 mr-2 bg-black/40 p-2 rounded-2xl border border-white/5 items-center">
+                            <span className="text-[10px] font-black text-white/40 uppercase px-2">Brand:</span>
+                            <button 
+                                onClick={() => setPdfBrand('ArtOfDecor')}
+                                className={`px-4 py-2 text-[10px] font-bold uppercase rounded-lg border transition-all ${pdfBrand === 'ArtOfDecor' ? 'bg-(--main-color) text-black border-(--main-color)' : 'bg-transparent text-white/50 border-white/20 hover:text-white'}`}
+                            >
+                                Art of Decor
+                            </button>
+                            <button 
+                                onClick={() => setPdfBrand('RareEarth')}
+                                className={`px-4 py-2 text-[10px] font-bold uppercase rounded-lg border transition-all ${pdfBrand === 'RareEarth' ? 'bg-orange-500 text-black border-orange-500' : 'bg-transparent text-white/50 border-white/20 hover:text-white'}`}
+                            >
+                                Rare Earth
+                            </button>
+                        </div>
+                        
                         {queue.some(op => op.status === 'completed') && (
                             <button 
-                                onClick={handleExportAll}
-                                className="flex items-center gap-3 px-8 py-4 bg-blue-500 hover:bg-blue-400 text-black font-black uppercase tracking-widest rounded-2xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] shrink-0"
+                                onClick={handleExportDatabase}
+                                disabled={isExported}
+                                className={`flex items-center gap-3 px-6 py-4 font-black uppercase tracking-widest rounded-2xl transition-all shrink-0 ${isExported ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-400 text-black shadow-[0_0_20px_rgba(59,130,246,0.3)]'}`}
                             >
                                 <Save size={20} />
-                                EXPORT ALL
+                                {isExported ? 'SAVED TO DB' : 'SAVE TO DB'}
                             </button>
                         )}
+                        
+                        {queue.some(op => op.status === 'completed') && (
+                            xlsxUrl ? (
+                                <a 
+                                    href={xlsxUrl}
+                                    download={`Shopify_Export_AI_${new Date().toISOString().split('T')[0]}.xlsx`}
+                                    className="flex items-center gap-3 px-6 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-widest rounded-2xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 no-underline"
+                                >
+                                    <Download size={20} />
+                                    Download XLSX
+                                </a>
+                            ) : (
+                                <button 
+                                    onClick={handleGenerateXLSX}
+                                    disabled={!isExported || isGeneratingXlsx}
+                                    className={`flex items-center gap-3 px-6 py-4 font-black uppercase tracking-widest rounded-2xl transition-all shrink-0 ${!isExported ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-black border border-emerald-500/30'}`}
+                                >
+                                    {isGeneratingXlsx ? <Loader2 size={20} className="animate-spin" /> : <Table2 size={20} />}
+                                    GENERATE XLSX
+                                </button>
+                            )
+                        )}
+                        
+                        {queue.some(op => op.status === 'completed') && (
+                            pdfUrl ? (
+                                <a 
+                                    href={pdfUrl}
+                                    download={`Catalog_AI_${new Date().toISOString().split('T')[0]}.pdf`}
+                                    className="flex items-center gap-3 px-6 py-4 bg-rose-500 hover:bg-rose-400 text-black font-black uppercase tracking-widest rounded-2xl transition-all shadow-[0_0_20px_rgba(244,63,94,0.3)] shrink-0 no-underline"
+                                >
+                                    <Download size={20} />
+                                    Download PDF
+                                </a>
+                            ) : (
+                                <button 
+                                    onClick={handleGeneratePDF}
+                                    disabled={!isExported || isGeneratingPdf}
+                                    className={`flex items-center gap-3 px-6 py-4 font-black uppercase tracking-widest rounded-2xl transition-all shrink-0 ${!isExported ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-black border border-rose-500/30'}`}
+                                >
+                                    {isGeneratingPdf ? <Loader2 size={20} className="animate-spin" /> : <FileText size={20} />}
+                                    GENERATE PDF
+                                </button>
+                            )
+                        )}
+
                         <button 
                             onClick={handleStartBatch}
                             disabled={isProcessing || queue.every(op => op.status === 'completed')}
