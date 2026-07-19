@@ -190,12 +190,22 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     
     const shape = norm.shape || '';
     const type = norm.shortDescription || '';
-    const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
+    let nameStr = item.data.detailed_description || '';
+    if (!nameStr) {
+        nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
+    }
     
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(20, 20, 20);
-    doc.text(nameStr.toUpperCase(), M + 4, row2Y);
+    // Split text to prevent overflowing the page width if the AI generated a long title
+    const maxTitleWidth = PW - M * 2 - 40; 
+    const splitTitle = doc.splitTextToSize(nameStr.toUpperCase(), maxTitleWidth);
+    doc.text(splitTitle, M + 4, row2Y);
+    
+    // Adjust row2Y based on how many lines the title took
+    const titleLines = splitTitle.length;
+    let currentY = row2Y + (titleLines * 5) + 1;
     
     const color = item.data.color || item.data.Color || '';
     const material = item.data.material || item.data.Material || '';
@@ -205,7 +215,16 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
         doc.setFontSize(13);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(60, 60, 60);
-        doc.text(detailStr.toUpperCase(), M + 4, row2Y + 6);
+        doc.text(detailStr.toUpperCase(), M + 4, currentY);
+        currentY += 6;
+    }
+
+    if (item.data.category) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 100, 100);
+        doc.text(item.data.category.toUpperCase(), M + 4, currentY);
+        currentY += 6;
     }
     
     // QTY and Page
@@ -222,7 +241,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
         doc.text(pageStr, PW - M - doc.getTextWidth(pageStr), row2Y + 3);
     }
     
-    return row2Y + 12;
+    return currentY + 4;
 }
 
 function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, pageNum: number, totalPages: number): number {

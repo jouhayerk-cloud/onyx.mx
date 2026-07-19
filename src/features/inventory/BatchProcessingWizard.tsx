@@ -504,7 +504,8 @@ CRITICAL RULES:
                 const pdfData = { 
                     ...normData, 
                     detailed_description: op.result?.description || normData.detailed_description, 
-                    processed_media_urls: thumbnailUrl || normData.processed_media_urls 
+                    processed_media_urls: thumbnailUrl || normData.processed_media_urls,
+                    category: category
                 };
                 
                 // Use the base64 mask directly for the PDF to avoid CORS and loading delays
