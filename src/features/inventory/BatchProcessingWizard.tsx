@@ -10,7 +10,7 @@ import {
 } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { getCleanImageUrl, resizeImage, handleProcessedFileUpload, loadImage, cropImage, findContour, simplifyContour, createCurvePath, generatePngAndSvgFromMasks, preprocessForMasking, applyAlphaMask } from '../../lib/utils';
-import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save } from 'lucide-react';
+import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { removeBackground } from '@imgly/background-removal';
 import ExcelJS from 'exceljs';
@@ -410,6 +410,15 @@ CRITICAL RULES:
             updateOp(op.id, { status: 'failed', progress: 0 });
             throw err;
         }
+    };
+
+    const handleRegenerate = (id: string) => {
+        setQueue(prev => prev.map(op => 
+            op.id === id 
+                ? { ...op, status: 'idle', progress: 0, logs: ['[ WAIT ] Re-queued for processing'] }
+                : op
+        ));
+        setIsExported(false);
     };
 
     const handleExportDatabase = async () => {
@@ -818,13 +827,13 @@ CRITICAL RULES:
                             <div 
                                 className="w-32 h-32 md:w-48 md:h-48 rounded-2xl bg-black/40 overflow-hidden shrink-0 relative z-10 border border-white/10 cursor-pointer group"
                                 onClick={() => {
-                                    const img = op.item.imageUrl || (op.item.data && op.item.data.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : null);
-                                    if (img) setFullscreenImage(getCleanImageUrl(img));
+                                    const img = op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data && op.item.data.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : null);
+                                    if (img) setFullscreenImage(getCleanImageUrl(img)!);
                                 }}
                             >
-                                {op.item.imageUrl || (op.item.data && op.item.data.mediaUrls) ? (
+                                {op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data && op.item.data.mediaUrls) ? (
                                     <>
-                                        <img src={getCleanImageUrl(op.item.imageUrl || op.item.data.mediaUrls.split(',')[0])} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
+                                        <img src={getCleanImageUrl(op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || op.item.data.mediaUrls.split(',')[0])!} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
                                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-all">
                                             <ZoomIn size={24} className="text-white drop-shadow-md" />
                                         </div>
@@ -841,7 +850,11 @@ CRITICAL RULES:
                                             className="text-xl md:text-2xl font-black uppercase tracking-tight"
                                             style={{ color: resolveVendorColor((op.item.data || op.item).vendor || (op.item.data || op.item).supplier) }}
                                         >
-                                            {(op.item.data || op.item).itemId || `Item ${(op.item.data || op.item).itemNumber}`}
+                                            {(() => {
+                                                const norm = normalizeInventoryData(op.item.data || op.item);
+                                                const calc = calculateCodesAndPrices(norm, 20, '326');
+                                                return calc?.printCode || calc?.bookBarcode || norm.book_barcode || norm.itemId || `Item ${norm.itemNumber}`;
+                                            })()}
                                         </h4>
                                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] font-black uppercase tracking-widest text-white/50">
                                             <span className="text-white/80">{(op.item.data || op.item).shape || 'N/A'}</span>
@@ -896,6 +909,16 @@ CRITICAL RULES:
                                             {op.processingMode === 'cloud' ? <Cloud size={14} /> : <Cpu size={14} />}
                                             {op.processingMode === 'cloud' ? 'CLOUD' : 'LOCAL'}
                                         </button>
+                                        
+                                        {op.status === 'completed' && (
+                                            <button 
+                                                onClick={() => handleRegenerate(op.id)}
+                                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30 hover:text-amber-300"
+                                            >
+                                                <RefreshCw size={14} />
+                                                RE-GENERATE
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
