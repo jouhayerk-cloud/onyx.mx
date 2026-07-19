@@ -26,7 +26,7 @@ import {
 } from '../../lib/atoms';
 import { SCRIPT_URL } from '../../lib/consts';
 import { useItemImage, useTranslation } from '../../lib/hooks';
-import { Maximize2, PackageSearch, Edit3, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Maximize2, PackageSearch, Edit3, Image as ImageIcon, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { InventoryForm, type FormState } from '../../components/InventoryForm';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { ProductPoster } from '../../components/ProductPoster';
@@ -134,6 +134,23 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
     return () => { isActive = false; };
   }, [activeMediaIndex, fullGallery]);
 
+  const [, setInventoryVersion] = useAtom(InventoryVersionAtom);
+  const handleDeleteGeneratedImage = async () => {
+    if (!data.id) return;
+    try {
+        await supabase.from('inventory').update({
+            generated_png_url: null,
+            processed_media_urls: null,
+            spatial_masks: {}
+        }).eq('id', data.id);
+        
+        toast.success("Generated image removed from database.");
+        setInventoryVersion(Date.now());
+    } catch (e) {
+        toast.error("Failed to remove image from DB");
+    }
+  };
+
   const handleOpenFullscreen = () => {
     if (!activeMediaUrl) return;
     
@@ -233,7 +250,16 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
                 className="w-full h-auto max-h-80 object-contain rounded-xl bg-black/40 shadow-2xl border border-white/10" 
               />
             )}
-            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               {data.generatedPngUrl && fullGallery[activeMediaIndex] === data.generatedPngUrl && (
+                   <button 
+                       onClick={(e) => { e.stopPropagation(); handleDeleteGeneratedImage(); }}
+                       className="bg-red-500/60 hover:bg-red-500 backdrop-blur-md p-2 rounded-full border border-white/20 text-white transition-colors"
+                       title="Remove Generated Image"
+                   >
+                       <Trash2 size={16} />
+                   </button>
+               )}
                <div className="bg-black/60 backdrop-blur-md p-2 rounded-full border border-white/20">
                   <Maximize2 size={16} className="text-white" />
                </div>

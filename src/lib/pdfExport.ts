@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData } from './utils';
+import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -26,9 +26,27 @@ interface ImgData { dataUrl: string; w: number; h: number; }
 
 async function loadImgData(url: string, maxSize = 900, keepPng?: boolean): Promise<ImgData | null> {
     try {
-        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const el = new Image(); el.crossOrigin = 'anonymous'; el.onload = () => resolve(el); el.onerror = reject; el.src = url; setTimeout(() => reject(new Error('timeout')), 8000);
-        });
+        let img = new Image();
+        try {
+            img = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const el = new Image(); el.crossOrigin = 'anonymous'; 
+                el.onload = () => resolve(el); el.onerror = reject; el.src = url; 
+                setTimeout(() => reject(new Error('timeout')), 8000);
+            });
+        } catch (err) {
+            // Fallback for CORS issues (e.g. generated AI masks on Google Drive)
+            const fileId = extractFileId(url);
+            if (fileId) {
+                const res = await fetchImageBatch(fileId);
+                img = await new Promise<HTMLImageElement>((resolve, reject) => {
+                    const el = new Image(); 
+                    el.onload = () => resolve(el); el.onerror = reject; 
+                    el.src = `data:${res.mimeType};base64,${res.base64}`; 
+                });
+            } else {
+                throw err;
+            }
+        }
         const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
         const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
         const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;

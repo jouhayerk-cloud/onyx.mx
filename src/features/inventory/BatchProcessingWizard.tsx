@@ -439,7 +439,7 @@ CRITICAL RULES:
     const handleRegenerate = (id: string) => {
         setQueue(prev => prev.map(op => 
             op.id === id 
-                ? { ...op, status: 'idle', progress: 0, logs: ['[ WAIT ] Re-queued for processing'] }
+                ? { ...op, status: 'idle', progress: 0, logs: ['[ WAIT ] Re-queued for processing'], result: { ...op.result, maskUrl: undefined } }
                 : op
         ));
         setIsExported(false);
@@ -514,8 +514,6 @@ CRITICAL RULES:
                     
                     if (op.result?.maskUrl) {
                         combinedMaskUrls.push(op.result.maskUrl);
-                    } else if (op.skipImageProcessing && op.imageUrl) {
-                        combinedMaskUrls.push(op.imageUrl);
                     }
                     
                     if (op.result?.description) {
