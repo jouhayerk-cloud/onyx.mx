@@ -955,15 +955,15 @@ CRITICAL RULES:
                                         {op.result.maskUrl && (
                                             <div 
                                                 className="w-full md:w-32 h-32 rounded-xl overflow-hidden shrink-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+Cjwvc3ZnPg==')] flex flex-col items-center justify-center border border-white/20 group relative cursor-pointer"
-                                                onClick={() => setFullscreenImage(op.result!.maskUrl!)}
+                                                onClick={() => setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!)}
                                             >
-                                                <img src={op.result.maskUrl} className="w-full h-full object-contain drop-shadow-2xl group-hover:scale-110 transition-all duration-300" />
+                                                <img src={getCleanImageUrl(op.result.maskUrl)!} className="w-full h-full object-contain drop-shadow-2xl group-hover:scale-110 transition-all duration-300" />
                                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-4">
                                                     <button onClick={(e) => { e.stopPropagation(); handleUploadMask(op); }} className="flex flex-col items-center text-white/80 hover:text-white hover:scale-110 transition-all">
                                                         <UploadCloud size={20} />
                                                         <span className="text-[9px] font-black uppercase mt-1">Upload</span>
                                                     </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setFullscreenImage(op.result!.maskUrl!); }} className="flex flex-col items-center text-white/80 hover:text-white hover:scale-110 transition-all">
+                                                    <button onClick={(e) => { e.stopPropagation(); setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!); }} className="flex flex-col items-center text-white/80 hover:text-white hover:scale-110 transition-all">
                                                         <ZoomIn size={20} />
                                                         <span className="text-[9px] font-black uppercase mt-1">View</span>
                                                     </button>
