@@ -196,14 +196,16 @@ export const BatchProcessingWizard: React.FC = () => {
             const base64 = aiDataUrl.split(',')[1];
             logOp(op.id, '[  OK  ] Image resized successfully');
 
-            updateOp(op.id, { progress: 30 });
-            logOp(op.id, '[ WAIT ] Analyzing via Gemini...');
-            
-            const shape = itemData.shape || 'Artifact';
-            const type = itemData.shortDescription || itemData.type || 'Object';
-            const material = itemData.material || 'Onyx';
-            
-            const prompt = `FIND the ${material} ${shape} ${type}. 
+            let processed = { description: '' };
+            if ((op.imageIndex || 0) === 0) {
+                updateOp(op.id, { progress: 30 });
+                logOp(op.id, '[ WAIT ] Analyzing via Gemini...');
+                
+                const shape = itemData.shape || 'Artifact';
+                const type = itemData.shortDescription || itemData.type || 'Object';
+                const material = itemData.material || 'Onyx';
+                
+                const prompt = `FIND the ${material} ${shape} ${type}. 
 Generate a short, title-style description (maximum 1 sentence) of the item.
 
 CRITICAL RULES for the description:
@@ -220,26 +222,30 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
   "description": "Your short title-style description here..."
 }`;
 
-            const data = await callGemini(prompt, base64);
-            logOp(op.id, '[  OK  ] Received Gemini response');
-            
-            let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!resultText) throw new Error("Empty response from AI");
-            
-            updateOp(op.id, { progress: 70 });
-            logOp(op.id, '[ WAIT ] Parsing results...');
-            
-            if (resultText.includes('```')) {
-                const match = resultText.match(/```(?:json)?([\s\S]*?)```/);
-                if (match) resultText = match[1].trim();
-                else resultText = resultText.replace(/```(json)?|```/g, '').trim();
+                const data = await callGemini(prompt, base64);
+                logOp(op.id, '[  OK  ] Received Gemini response');
+                
+                let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!resultText) throw new Error("Empty response from AI");
+                
+                updateOp(op.id, { progress: 70 });
+                logOp(op.id, '[ WAIT ] Parsing results...');
+                
+                if (resultText.includes('```')) {
+                    const match = resultText.match(/```(?:json)?([\s\S]*?)```/);
+                    if (match) resultText = match[1].trim();
+                    else resultText = resultText.replace(/```(json)?|```/g, '').trim();
+                }
+                
+                processed = JSON.parse(resultText);
+                if (!processed.description) {
+                    throw new Error("Invalid output format from AI");
+                }
+                logOp(op.id, '[  OK  ] Parsing complete');
+            } else {
+                updateOp(op.id, { progress: 70 });
+                logOp(op.id, '[  OK  ] Using primary item description');
             }
-            
-            const processed = JSON.parse(resultText);
-            if (!processed.description) {
-                throw new Error("Invalid output format from AI");
-            }
-            logOp(op.id, '[  OK  ] Parsing complete');
 
             let localMaskUrl = null;
             if (!op.skipImageProcessing) {
@@ -384,15 +390,24 @@ CRITICAL RULES:
 
                     logOp(op.id, '[ WAIT ] Extracting background...');
                     const processedSdrUrl = await preprocessForMasking(sdrDataUrl);
+                    
+                    // Yield to main thread to prevent UI freezing
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
                     const bgBlob = await removeBackground(processedSdrUrl, {
                         model: 'isnet', // Upgrade to isnet for perfect solid boundaries and fewer partial cuts
                         output: { format: 'image/png' },
+                        device: 'gpu' as any, // Explicitly request GPU acceleration if available
                         debug: false,
                         progress: (key, current, total) => {
                             const p = Math.round((current / total) * 100);
                             updateOp(op.id, { progress: 15 + (p * 0.7), stepLabel: `Extracting: ${key} ${p}%` });
                         }
                     });
+                    
+                    // Yield again before applying alpha mask
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
                     updateOp(op.id, { progress: 90, stepLabel: 'Finalizing Image...' });
                     localMaskUrl = await applyAlphaMask(sdrDataUrl, bgBlob);
                     logOp(op.id, '[  OK  ] Mask generated locally');
@@ -474,9 +489,12 @@ CRITICAL RULES:
                 const primaryOp = ops[0];
                 const itemData = primaryOp.item.data || primaryOp.item;
                 const currentMasks = itemData.spatialMasks || itemData.spatial_masks || {};
-                const updatedMasks = Array.isArray(currentMasks) 
-                    ? { angle_0: [{ mask: combinedMaskUrls[0] }] } 
-                    : { ...currentMasks, angle_0: [{ mask: combinedMaskUrls[0] }] };
+                let updatedMasks = Array.isArray(currentMasks) ? {} : { ...currentMasks };
+                combinedMaskUrls.forEach((url, idx) => {
+                    if (url) {
+                        updatedMasks[`angle_${idx}`] = [{ mask: url }];
+                    }
+                });
 
                 await supabase.from('inventory').update({ 
                     detailed_description: lastDescription,
