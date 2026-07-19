@@ -32,8 +32,17 @@ async function loadImgData(url: string, maxSize = 900, keepPng?: boolean): Promi
         const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
         const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
         const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        const ctx = canvas.getContext('2d')!;
+        
         const isPng = keepPng ?? (url.startsWith('data:image/png') || url.toLowerCase().includes('.png'));
+        
+        if (!isPng) {
+            // Fill off-black background for transparent product masks
+            ctx.fillStyle = '#111111';
+            ctx.fillRect(0, 0, w, h);
+        }
+        
+        ctx.drawImage(img, 0, 0, w, h);
         return { dataUrl: canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.88), w, h };
     } catch { return null; }
 }
