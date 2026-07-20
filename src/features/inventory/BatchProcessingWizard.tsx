@@ -893,16 +893,16 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
     };
 
     const handleOptimizeLegacyPNGs = async () => {
-        const toastId = toast.loading('Finding legacy PNG masks to optimize...');
+        const toastId = toast.loading('Finding masks to optimize...');
         try {
-            const { data, error } = await supabase.from('inventory').select('*').like('processed_media_urls', '%.png%');
+            const { data, error } = await supabase.from('inventory').select('*').not('processed_media_urls', 'is', null);
             if (error) throw error;
             if (!data || data.length === 0) {
-                toast.success('No legacy PNG masks found!', { id: toastId });
+                toast.success('No masks found!', { id: toastId });
                 return;
             }
 
-            toast.loading(`Found ${data.length} items to optimize. Starting conversion...`, { id: toastId });
+            toast.loading(`Scanning ${data.length} items. Starting conversion...`, { id: toastId });
             let optimizedCount = 0;
 
             for (const item of data) {
@@ -914,10 +914,14 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         }
                     }
 
+                    // Skip if already optimized
+                    if (processedMap['_optimized'] === 'true') continue;
+
                     let updated = false;
                     for (const [imgUrl, maskUrl] of Object.entries(processedMap)) {
-                        if (maskUrl && maskUrl.includes('.png')) {
-                            toast.loading(`Optimizing mask ${optimizedCount + 1} of ${data.length}...`, { id: toastId });
+                        if (imgUrl === '_optimized') continue;
+                        if (maskUrl) {
+                            toast.loading(`Optimizing mask ${optimizedCount + 1}...`, { id: toastId });
                             const img = await loadImage(maskUrl);
                             const canvas = document.createElement('canvas');
                             canvas.width = img.width;
@@ -935,7 +939,8 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     }
 
                     if (updated) {
-                        const maskUrls = Object.values(processedMap).filter(Boolean);
+                        processedMap['_optimized'] = 'true';
+                        const maskUrls = Object.values(processedMap).filter(url => url !== 'true' && url);
                         await supabase.from('inventory').update({
                             processed_media_urls: JSON.stringify(processedMap),
                             generated_png_url: maskUrls.length > 0 ? maskUrls[0] : null
@@ -947,8 +952,12 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 }
             }
             
-            toast.success(`Optimized ${optimizedCount} masks successfully!`, { id: toastId });
-            setInventoryVersion(Date.now());
+            if (optimizedCount > 0) {
+                toast.success(`Optimized ${optimizedCount} masks successfully!`, { id: toastId });
+                setInventoryVersion(Date.now());
+            } else {
+                toast.success('All masks are already optimized!', { id: toastId });
+            }
         } catch (e: any) {
             toast.error(`Optimization failed: ${e.message}`, { id: toastId });
             console.error(e);
