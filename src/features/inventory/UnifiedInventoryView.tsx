@@ -52,7 +52,7 @@ import {
 } from '../../lib/atoms';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass, getDynamicCrateIdComponents } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass, getDynamicCrateIdComponents, extractFileId, imageCache, fetchImageBatch, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -66,6 +66,84 @@ import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
 const inp = "h-12 w-full px-4 bg-(--text-color)/[0.04] border border-(--text-color)/12 rounded-2xl text-sm text-(--text-color) placeholder-(--text-color)/30 outline-none focus:border-(--main-color)/50 focus:bg-(--text-color)/[0.08] transition-all";
 const inpNum = inp + " font-mono text-center";
+
+const DriveImage = ({ src, className, ...props }: any) => {
+    const [cachedSrc, setCachedSrc] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!src) return;
+
+        let createdObjUrl: string | null = null;
+        
+        // Handle direct data URIs to avoid iOS length limits on <img> src
+        if (src.startsWith('data:')) {
+            try {
+                const arr = src.split(',');
+                const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while(n--) u8arr[n] = bstr.charCodeAt(n);
+                createdObjUrl = URL.createObjectURL(new Blob([u8arr], {type: mime}));
+                setCachedSrc(createdObjUrl);
+            } catch(e) {
+                setCachedSrc(src);
+            }
+            return () => {
+                if (createdObjUrl) URL.revokeObjectURL(createdObjUrl);
+            };
+        }
+
+        const fid = extractFileId(src);
+        if (!fid) {
+            setCachedSrc(getCleanImageUrl(src));
+            return;
+        }
+
+        if (imageCache.has(fid)) {
+            setCachedSrc(imageCache.get(fid) || null);
+            return;
+        }
+
+        let isMounted = true;
+        fetchImageBatch(fid).then((res) => {
+             if (isMounted && res && res.base64) {
+                 try {
+                     const byteCharacters = atob(res.base64);
+                     const byteNumbers = new Array(byteCharacters.length);
+                     for (let i = 0; i < byteCharacters.length; i++) {
+                         byteNumbers[i] = byteCharacters.charCodeAt(i);
+                     }
+                     const byteArray = new Uint8Array(byteNumbers);
+                     const blob = new Blob([byteArray], { type: res.mimeType || 'image/png' });
+                     const objUrl = URL.createObjectURL(blob);
+                     imageCache.set(fid, objUrl);
+                     setCachedSrc(objUrl);
+                 } catch(e) {
+                     setCachedSrc(`data:${res.mimeType};base64,${res.base64}`);
+                 }
+             } else if (isMounted) {
+                 setCachedSrc(getCleanImageUrl(src));
+             }
+        }).catch(e => {
+             if (isMounted) setCachedSrc(getCleanImageUrl(src));
+        });
+
+        return () => { isMounted = false; };
+    }, [src]);
+
+    if (!cachedSrc) {
+        return <div className={`animate-pulse bg-white/5 ${className}`}></div>;
+    }
+
+    const imgProps = { ...props };
+    // Remove lazy loading if it's a blob URL to fix iOS Safari paint bug
+    if (imgProps.loading === 'lazy' && cachedSrc.startsWith('blob:')) {
+        delete imgProps.loading;
+    }
+
+    return <img src={cachedSrc} className={className} {...imgProps} />;
+};
 
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
     const [currentIdx, setCurrentIdx] = useState(initialIdx);
@@ -139,7 +217,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
             {isVideo ? (
                 <video preload="none" src={getCleanImageUrl(activeSrc)} controls autoPlay className="max-w-[90vw] max-h-[90vh] shadow-2xl rounded-2xl" onClick={(e) => e.stopPropagation()} />
             ) : (
-                <img loading="lazy" src={getCleanImageUrl(activeSrc)} alt="" draggable={false}
+                <DriveImage loading="lazy" src={activeSrc} alt="" draggable={false}
                     key={currentIdx}
                     className="max-w-[90vw] max-h-[90vh] object-contain select-none transition-transform animate-in fade-in zoom-in-95 duration-300"
                     style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
@@ -268,14 +346,25 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
 
     const mediaUrls = useMemo(() => {
+        const rawImages = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
         if (norm.processed_media_urls) {
-            return String(norm.processed_media_urls).split(',').map(u => u.trim()).filter(Boolean);
+            const processedMediaStr = String(norm.processed_media_urls).trim();
+            if (processedMediaStr.startsWith('{')) {
+                try {
+                    const processedMap = JSON.parse(processedMediaStr);
+                    const images = collectAllImages(norm);
+                    const mapped = images.map(img => processedMap[img]).filter(Boolean);
+                    if (mapped.length > 0) return mapped;
+                } catch(e) {}
+            } else {
+                return processedMediaStr.split(',').map(u => u.trim()).filter(Boolean);
+            }
         }
         if (norm.generatedPngUrl) {
             return [norm.generatedPngUrl];
         }
-        return norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-    }, [norm.mediaUrls, norm.generatedPngUrl, norm.processed_media_urls]);
+        return rawImages;
+    }, [norm.mediaUrls, norm.generatedPngUrl, norm.processed_media_urls, norm]);
 
 
     const activeIdx = 0;
@@ -441,7 +530,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
                             if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                         }}>
-                        {mediaUrls[cardIdx] ? <img loading="lazy" key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} color={accentColor} /></div>}
+                        {mediaUrls[cardIdx] ? <DriveImage loading="lazy" key={cardIdx} src={mediaUrls[cardIdx]} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} color={accentColor} /></div>}
                         {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></div>}
                         
                         {/* List View Card Navigation Chevrons */}
@@ -506,7 +595,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 {mediaUrls.map((u, i) => (
                                     <div key={i} onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
                                         className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden shrink-0 cursor-pointer hover:border-(--main-color)/50 transition-all group/thumb relative">
-                                        <img loading="lazy" src={getCleanImageUrl(u)} className="w-full h-full object-cover opacity-60 group-hover/thumb:opacity-100 transition-all" />
+                                        <DriveImage loading="lazy" src={u} className="w-full h-full object-cover opacity-60 group-hover/thumb:opacity-100 transition-all" />
                                         {isVideoFile(u) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/40 group-hover/thumb:text-white transition-all"><Video size={14} /></div>}
                                     </div>
                                 ))}
@@ -621,7 +710,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             {isVideoFile(mediaUrls[modalIdx]) ? (
                                 <video preload="none" src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" autoPlay muted loop />
                             ) : (
-                                <img loading="lazy" src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" />
+                                <DriveImage loading="lazy" src={mediaUrls[modalIdx]} className="w-full h-full object-contain" />
                             )}
                             
                             {/* Modal Hero Navigation Chevrons */}
@@ -647,7 +736,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         {mediaUrls.map((u, i) => (
                             <div key={i} onClick={() => setModalIdx(i)}
                                 className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${modalIdx === i ? 'border-(--main-color) scale-110' : 'border-transparent opacity-40 hover:opacity-100'}`}>
-                                <img loading="lazy" src={getCleanImageUrl(u)} className="w-full h-full object-cover" />
+                                <DriveImage loading="lazy" src={u} className="w-full h-full object-cover" />
                             </div>
                         ))}
                     </div>
@@ -768,7 +857,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         return (
                             <div className="relative w-full bg-black/40 overflow-hidden cursor-pointer"
                                  onClick={(e) => { e.stopPropagation(); setViewerIdx(0); setShowViewer(true); }}>
-                                <img loading="lazy" src={getCleanImageUrl(visibleUrls[0])} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 hover:scale-105" />
+                                <DriveImage loading="lazy" src={visibleUrls[0]} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 hover:scale-105" />
                                 {isVideoFile(visibleUrls[0]) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={32} className="text-white/60" /></div>}
                             </div>
                         );
@@ -780,7 +869,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 {visibleUrls.map((url, i) => (
                                     <div key={i} className="relative overflow-hidden cursor-pointer bg-black/20"
                                          onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
-                                        <img loading="lazy" src={getCleanImageUrl(url)} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 hover:scale-110" />
+                                        <DriveImage loading="lazy" src={url} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 hover:scale-110" />
                                         {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={24} className="text-white/60" /></div>}
                                     </div>
                                 ))}
@@ -795,7 +884,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             {visibleUrls.map((url, i) => (
                                 <div key={i} className={`relative overflow-hidden group/galimg aspect-square cursor-pointer`}
                                      onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
-                                    <img loading="lazy" src={getCleanImageUrl(url)} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
+                                    <DriveImage loading="lazy" src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
                                     {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
                                     {i === visibleUrls.length - 1 && remaining > 0 && (
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
@@ -915,7 +1004,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
                     if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                 }}>
-                {mediaUrls[cardIdx] ? <img loading="lazy" key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="absolute inset-0 flex items-center justify-center opacity-80 mix-blend-screen scale-[1.3] group-hover:scale-[1.35] transition-transform duration-700"><WireframeIcon item={norm} color={accentColor} /></div>}
+                {mediaUrls[cardIdx] ? <DriveImage loading="lazy" key={cardIdx} src={mediaUrls[cardIdx]} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="absolute inset-0 flex items-center justify-center opacity-80 mix-blend-screen scale-[1.3] group-hover:scale-[1.35] transition-transform duration-700"><WireframeIcon item={norm} color={accentColor} /></div>}
                 {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Upload size={24} className="text-white/40" /></div>}
                 
                 {/* Grid View Card Navigation Chevrons */}
