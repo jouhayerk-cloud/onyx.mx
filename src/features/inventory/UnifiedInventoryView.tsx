@@ -52,7 +52,7 @@ import {
 } from '../../lib/atoms';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass, getDynamicCrateIdComponents, extractFileId, imageCache, fetchImageBatch, collectAllImages } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -68,81 +68,31 @@ const inp = "h-12 w-full px-4 bg-(--text-color)/[0.04] border border-(--text-col
 const inpNum = inp + " font-mono text-center";
 
 const DriveImage = ({ src, className, ...props }: any) => {
-    const [cachedSrc, setCachedSrc] = useState<string | null>(null);
+    const resolvedSrc = useMemo(() => {
+        if (!src) return null;
 
-    useEffect(() => {
-        if (!src) return;
+        // Handle data URIs directly
+        if (src.startsWith('data:') || src.startsWith('blob:')) return src;
 
-        let createdObjUrl: string | null = null;
-        
-        // Handle direct data URIs to avoid iOS length limits on <img> src
-        if (src.startsWith('data:')) {
-            try {
-                const arr = src.split(',');
-                const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-                const bstr = atob(arr[1]);
-                let n = bstr.length;
-                const u8arr = new Uint8Array(n);
-                while(n--) u8arr[n] = bstr.charCodeAt(n);
-                createdObjUrl = URL.createObjectURL(new Blob([u8arr], {type: mime}));
-                setCachedSrc(createdObjUrl);
-            } catch(e) {
-                setCachedSrc(src);
-            }
-            return () => {
-                if (createdObjUrl) URL.revokeObjectURL(createdObjUrl);
-            };
-        }
-
+        // For Drive URLs, use the fast lh3.googleusercontent.com direct URL
+        // This bypasses the slow batch base64 fetcher entirely
         const fid = extractFileId(src);
-        if (!fid) {
-            setCachedSrc(getCleanImageUrl(src));
-            return;
-        }
+        if (fid) return `https://lh3.googleusercontent.com/d/${fid}`;
 
-        if (imageCache.has(fid)) {
-            setCachedSrc(imageCache.get(fid) || null);
-            return;
-        }
-
-        let isMounted = true;
-        fetchImageBatch(fid).then((res) => {
-             if (isMounted && res && res.base64) {
-                 try {
-                     const byteCharacters = atob(res.base64);
-                     const byteNumbers = new Array(byteCharacters.length);
-                     for (let i = 0; i < byteCharacters.length; i++) {
-                         byteNumbers[i] = byteCharacters.charCodeAt(i);
-                     }
-                     const byteArray = new Uint8Array(byteNumbers);
-                     const blob = new Blob([byteArray], { type: res.mimeType || 'image/png' });
-                     const objUrl = URL.createObjectURL(blob);
-                     imageCache.set(fid, objUrl);
-                     setCachedSrc(objUrl);
-                 } catch(e) {
-                     setCachedSrc(`data:${res.mimeType};base64,${res.base64}`);
-                 }
-             } else if (isMounted) {
-                 setCachedSrc(getCleanImageUrl(src));
-             }
-        }).catch(e => {
-             if (isMounted) setCachedSrc(getCleanImageUrl(src));
-        });
-
-        return () => { isMounted = false; };
+        // For non-Drive URLs, just clean them
+        return getCleanImageUrl(src) || src;
     }, [src]);
 
-    if (!cachedSrc) {
-        return <div className={`animate-pulse bg-white/5 ${className}`}></div>;
+    const [hasError, setHasError] = useState(false);
+
+    // Reset error state when src changes
+    useEffect(() => { setHasError(false); }, [resolvedSrc]);
+
+    if (!resolvedSrc || hasError) {
+        return <div className={`bg-white/5 ${className}`}></div>;
     }
 
-    const imgProps = { ...props };
-    // Remove lazy loading if it's a blob URL to fix iOS Safari paint bug
-    if (imgProps.loading === 'lazy' && cachedSrc.startsWith('blob:')) {
-        delete imgProps.loading;
-    }
-
-    return <img src={cachedSrc} className={className} {...imgProps} />;
+    return <img src={resolvedSrc} className={className} loading="lazy" decoding="async" onError={() => setHasError(true)} {...props} />;
 };
 
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
