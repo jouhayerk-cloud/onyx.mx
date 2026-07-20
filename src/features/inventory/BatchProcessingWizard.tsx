@@ -168,7 +168,7 @@ export const BatchProcessingWizard: React.FC = () => {
         updateOp(id, prev => ({ logs: [...prev.logs, text] }));
     };
 
-    const callGemini = async (prompt: string, imgData: string, timeoutMs: number = 40000, modelId: string = "gemini-2.5-flash") => {
+    const callGemini = async (prompt: string, imgData: string, timeoutMs: number = 40000, modelId: string = "gemini-2.5-pro") => {
         const API_KEY = getApiKey();
         if (!API_KEY) throw new Error("API Key missing");
         
@@ -317,7 +317,7 @@ Instructions:
 Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string", "polygon": [[y,x], ...]}].`;
 
                 try {
-                    // Use the 2.5 Pro model for unparalleled detection logic and complex polygon adherence
+                    // Use the latest 2.5 model for unparalleled detection logic
                     const data = await callGemini(instruction, base64, 40000, "gemini-2.5-pro");
                     let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (!resultText) throw new Error("Empty response from Engine");
@@ -400,7 +400,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         
                         // Crop using the original image space coordinates
                         const cropUrl = await cropImage(imageUrl, bx_x, bx_y, bx_w, bx_h, 512);
-                        const processedCropUrl = await preprocessForMasking(cropUrl, itemData.shape || 'object');
+                        const processedCropUrl = await preprocessForMasking(cropUrl);
                         
                         logOp(op.id, `[ WAIT ] Segmenting ${m.label}...`);
                         const bgBlob = await checkAbort(op.id, removeBackground(processedCropUrl, {
@@ -473,7 +473,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     });
 
                     logOp(op.id, '[ WAIT ] Extracting background...');
-                    const processedSdrUrl = await preprocessForMasking(sdrDataUrl, itemData.shape || 'object');
+                    const processedSdrUrl = await preprocessForMasking(sdrDataUrl);
                     
                     // Yield to main thread to prevent UI freezing
                     await new Promise(resolve => setTimeout(resolve, 50));
