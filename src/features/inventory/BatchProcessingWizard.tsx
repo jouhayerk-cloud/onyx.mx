@@ -301,8 +301,8 @@ Instructions:
 1. Focus ONLY on the artifact closest to the center of the image.
 2. If it is a bowl, basin, or canoe, strictly extract and separate the 'rim', 'interior', and 'exterior' of that central artifact ONLY. 
 3. CRITICAL: You MUST include the natural, rough, or unpolished outer rock edges as part of the artifact. Do NOT crop out or ignore the rough edges (e.g. the bark-like exterior or rustic edges of bowls and canoes). 
-4. For MIRRORS, the SOLID ONYX MIRROR FRAME is your absolute priority. You MUST output exactly ONE bounding box labeled 'mirror_frame' that encompasses the entire stone frame.
-   - The bounding box must tightly encompass the outer edge of the stone frame.
+4. For MIRRORS, the frame MUST be strictly separated into 4 distinct segments to avoid the center glass reflections. You MUST output exactly 4 bounding boxes with these exact labels: 'top_frame', 'bottom_frame', 'left_frame', 'right_frame'.
+   - CRITICAL: These 4 bounding boxes MUST overlap heavily at the corners. For example, 'top_frame' must extend all the way to the far left and far right outer edges of the stone, and 'left_frame' must extend all the way to the top and bottom outer edges.
    - Completely EXCLUDE cardboard on the floor, people holding the mirror, and any reflections of the floor/people visible INSIDE the mirror glass from your consideration.
    - For your detection: The EXTERNAL (outer) edges of the mirror frame are REGULAR straight lines or continuous curves. The INNER edges of the mirror frame (where onyx meets the glass surface) are NATURAL edges with irregular, rugged shapes following the stone's veins.
 Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string"}].`;
@@ -350,7 +350,8 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         const norm_w = (raw_w * targetSize) / drawW;
                         const norm_h = (raw_h * targetSize) / drawH;
                         
-                        const PAD = 0.15; // 15% padding to catch natural rough edges
+                        const isMirrorSegment = m.label.includes('frame') || shape.toLowerCase() === 'mirror';
+                        const PAD = isMirrorSegment ? 0.25 : 0.15; // 25% padding for mirrors to ensure corners overlap fully
                         const bx_x = Math.max(0, norm_x - PAD);
                         const bx_y = Math.max(0, norm_y - PAD);
                         const bx_w = Math.min(1 - bx_x, norm_w + (PAD * 2));
