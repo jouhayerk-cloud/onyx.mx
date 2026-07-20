@@ -68,20 +68,29 @@ const inp = "h-12 w-full px-4 bg-(--text-color)/[0.04] border border-(--text-col
 const inpNum = inp + " font-mono text-center";
 
 const DriveImage = ({ src, className, ...props }: any) => {
+    const isIOS = typeof navigator !== 'undefined' && 
+        (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
     const resolvedSrc = useMemo(() => {
         if (!src) return null;
 
         // Handle data URIs directly
         if (src.startsWith('data:') || src.startsWith('blob:')) return src;
 
-        // For Drive URLs, use the fast lh3.googleusercontent.com direct URL
-        // This bypasses the slow batch base64 fetcher entirely
+        // For Drive URLs, extract the ID
         const fid = extractFileId(src);
-        if (fid) return `https://lh3.googleusercontent.com/d/${fid}`;
+        if (fid) {
+            // iOS Safari struggles with transparent PNGs served from lh3 direct download links due to MIME/Content-Disposition issues.
+            // uc?export=view provides the correct inline MIME type headers for WebKit.
+            if (isIOS) {
+                return `https://drive.google.com/uc?export=view&id=${fid}`;
+            }
+            return `https://lh3.googleusercontent.com/d/${fid}`;
+        }
 
         // For non-Drive URLs, just clean them
         return getCleanImageUrl(src) || src;
-    }, [src]);
+    }, [src, isIOS]);
 
     const [hasError, setHasError] = useState(false);
 
@@ -92,7 +101,16 @@ const DriveImage = ({ src, className, ...props }: any) => {
         return <div className={`bg-white/5 ${className}`}></div>;
     }
 
-    return <img src={resolvedSrc} className={className} loading="lazy" decoding="async" onError={() => setHasError(true)} {...props} />;
+    const imgProps = { ...props };
+    if (isIOS) {
+        delete imgProps.loading;
+        delete imgProps.decoding;
+    } else {
+        if (!imgProps.loading) imgProps.loading = "lazy";
+        if (!imgProps.decoding) imgProps.decoding = "async";
+    }
+
+    return <img src={resolvedSrc} className={className} onError={() => setHasError(true)} {...imgProps} />;
 };
 
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
