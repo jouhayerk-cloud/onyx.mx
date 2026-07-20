@@ -748,16 +748,24 @@ export async function applyAlphaMask(originalUrl: string, maskBlob: Blob): Promi
         const maskImg = await loadImage(maskDataUrl);
 
         const canvas = document.createElement('canvas');
-        canvas.width = origImg.width;
-        canvas.height = origImg.height;
+        
+        // Scale down to max 1600px for web performance
+        const MAX_DIM = 1600;
+        let scale = 1;
+        if (origImg.width > MAX_DIM || origImg.height > MAX_DIM) {
+            scale = MAX_DIM / Math.max(origImg.width, origImg.height);
+        }
+        
+        canvas.width = Math.round(origImg.width * scale);
+        canvas.height = Math.round(origImg.height * scale);
         const ctx = canvas.getContext('2d')!;
 
-        // Draw original
-        ctx.drawImage(origImg, 0, 0);
+        // Draw original scaled
+        ctx.drawImage(origImg, 0, 0, canvas.width, canvas.height);
         
         // Mask it out based on the alpha channel of the mask image
         ctx.globalCompositeOperation = 'destination-in';
-        ctx.drawImage(maskImg, 0, 0, origImg.width, origImg.height);
+        ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
 
         resolve(canvas.toDataURL('image/webp', 0.85));
     });
@@ -1264,7 +1272,7 @@ export const getItemPaddedVolume = (itemData: any, qty: number = 1) => {
   return itemVol * qty * 1.15; // 15% packing material padding
 };
 
-export async function generatePngAndSvgFromMasks(
+  export async function generatePngAndSvgFromMasks(
   imageSrc: string | null,
   imageDimensions: { width: number; height: number },
   masksToExport: BoundingBoxMaskType[],
@@ -1274,7 +1282,16 @@ export async function generatePngAndSvgFromMasks(
   }
 
   const image = await loadImage(imageSrc);
-  const { width, height } = imageDimensions;
+  
+  // Scale down to max 1600px for web performance
+  const MAX_DIM = 1600;
+  let scale = 1;
+  if (imageDimensions.width > MAX_DIM || imageDimensions.height > MAX_DIM) {
+      scale = MAX_DIM / Math.max(imageDimensions.width, imageDimensions.height);
+  }
+  
+  const width = Math.round(imageDimensions.width * scale);
+  const height = Math.round(imageDimensions.height * scale);
 
   let minX = Infinity,
     minY = Infinity,
