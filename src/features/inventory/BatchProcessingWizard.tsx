@@ -301,11 +301,12 @@ Instructions:
 1. Focus ONLY on the artifact closest to the center of the image.
 2. If it is a bowl, basin, or canoe, strictly extract and separate the 'rim', 'interior', and 'exterior' of that central artifact ONLY. 
 3. CRITICAL: You MUST include the natural, rough, or unpolished outer rock edges as part of the artifact. Do NOT crop out or ignore the rough edges (e.g. the bark-like exterior or rustic edges of bowls and canoes). 
-4. For MIRRORS, the SOLID ONYX MIRROR FRAME is your absolute priority. You MUST output exactly ONE bounding box labeled 'mirror_frame' that encompasses the entire stone frame.
-   - The bounding box must tightly encompass the outer edge of the stone frame.
+4. For MIRRORS, the SOLID ONYX MIRROR FRAME is your absolute priority. You MUST output exactly TWO objects:
+   - 1. A bounding box labeled 'mirror_frame' that encompasses the entire stone frame (outer edge).
+   - 2. A polygon labeled 'mirror_glass' that tightly traces the exact inner boundary where the onyx frame meets the center glass reflection. 
+   - CRITICAL for mirror_glass: Provide a 'polygon' array of at least 20 [y, x] coordinates (normalized 0-1000) tracing the natural, irregular inner rugged edge of the stone frame. This polygon will be used to cut out the center reflection.
    - Completely EXCLUDE cardboard on the floor, people holding the mirror, and any reflections of the floor/people visible INSIDE the mirror glass from your consideration.
-   - For your detection: The EXTERNAL (outer) edges of the mirror frame are REGULAR straight lines or continuous curves. The INNER edges of the mirror frame (where onyx meets the glass surface) are NATURAL edges with irregular, rugged shapes following the stone's veins.
-Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string"}].`;
+Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string", "polygon": [[y,x], ...]}].`;
 
                 try {
                     // Use the latest 2.5 model for unparalleled detection logic
@@ -339,7 +340,30 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         const m = processed[idx];
                         updateOp(op.id, { progress: 15 + ((idx/processed.length) * 75), stepLabel: `Extracting Mask ${idx+1}/${processed.length}...` });
                         
+                        if (m.polygon && m.polygon.length > 0) {
+                            const pts = m.polygon.map((pt: any[]) => {
+                                const raw_px = pt[1] / 1000;
+                                const raw_py = pt[0] / 1000;
+                                return {
+                                    x: (raw_px * targetSize - offsetX) / drawW,
+                                    y: (raw_py * targetSize - offsetY) / drawH
+                                };
+                            });
+                            masks.push({
+                                label: m.label,
+                                x: 0, y: 0,
+                                width: 1, height: 1,
+                                maskWidth: 1,
+                                maskHeight: 1,
+                                path: createCurvePath(pts)
+                            });
+                            logOp(op.id, `[  OK  ] Extracted ${m.label} polygon from Gemini directly`);
+                            continue;
+                        }
+
                         const box = m.box_2d;
+                        if (!box) continue;
+                        
                         const raw_x = box[1] / 1000; const raw_y = box[0] / 1000;
                         const raw_w = (box[3] - box[1]) / 1000; const raw_h = (box[2] - box[0]) / 1000;
                         

@@ -1313,7 +1313,7 @@ export async function generatePngAndSvgFromMasks(
     matrix.scaleSelf(finalW / mask.maskWidth, finalH / mask.maskHeight);
     clippingPath.addPath(path, matrix);
   }
-  ctx.clip(clippingPath);
+  ctx.clip(clippingPath, 'evenodd');
   ctx.filter = 'blur(0.5px)'; // Subtle edge softening
 
   ctx.drawImage(
