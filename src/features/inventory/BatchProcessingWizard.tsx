@@ -892,6 +892,69 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
         } finally { setIsGeneratingPdf(false); }
     };
 
+    const handleOptimizeLegacyPNGs = async () => {
+        const toastId = toast.loading('Finding legacy PNG masks to optimize...');
+        try {
+            const { data, error } = await supabase.from('inventory').select('*').like('processed_media_urls', '%.png%');
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                toast.success('No legacy PNG masks found!', { id: toastId });
+                return;
+            }
+
+            toast.loading(`Found ${data.length} items to optimize. Starting conversion...`, { id: toastId });
+            let optimizedCount = 0;
+
+            for (const item of data) {
+                try {
+                    let processedMap: Record<string, string> = {};
+                    if (item.processed_media_urls) {
+                        if (item.processed_media_urls.startsWith('{')) {
+                            processedMap = JSON.parse(item.processed_media_urls);
+                        }
+                    }
+
+                    let updated = false;
+                    for (const [imgUrl, maskUrl] of Object.entries(processedMap)) {
+                        if (maskUrl && maskUrl.includes('.png')) {
+                            toast.loading(`Optimizing mask ${optimizedCount + 1} of ${data.length}...`, { id: toastId });
+                            const img = await loadImage(maskUrl);
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d')!;
+                            ctx.drawImage(img, 0, 0);
+                            const webpData = canvas.toDataURL('image/webp', 0.85);
+                            
+                            const upRes = await handleProcessedFileUpload(webpData, `mask_opt_${item.id}.webp`, user);
+                            if (upRes && upRes.thumbnailUrl) {
+                                processedMap[imgUrl] = upRes.thumbnailUrl;
+                                updated = true;
+                            }
+                        }
+                    }
+
+                    if (updated) {
+                        const maskUrls = Object.values(processedMap).filter(Boolean);
+                        await supabase.from('inventory').update({
+                            processed_media_urls: JSON.stringify(processedMap),
+                            generated_png_url: maskUrls.length > 0 ? maskUrls[0] : null
+                        }).eq('id', item.id);
+                        optimizedCount++;
+                    }
+                } catch (err) {
+                    console.error(`Failed to optimize item ${item.id}`, err);
+                }
+            }
+            
+            toast.success(`Optimized ${optimizedCount} masks successfully!`, { id: toastId });
+            setInventoryVersion(Date.now());
+        } catch (e: any) {
+            toast.error(`Optimization failed: ${e.message}`, { id: toastId });
+            console.error(e);
+        }
+    };
+
     const handleStartBatch = async () => {
         if (!getApiKey()) {
             setShowApiModal(true);
@@ -1008,6 +1071,9 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         </div>
                     </div>
                     <div className="flex gap-2">
+                        <button onClick={handleOptimizeLegacyPNGs} title="Optimize Legacy PNG Masks to WebP" className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-amber-400 transition-all">
+                            <Sparkles size={24} />
+                        </button>
                         <button onClick={() => setShowApiModal(true)} title="API Settings" className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition-all">
                             <Settings2 size={24} />
                         </button>
