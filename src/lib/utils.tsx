@@ -677,7 +677,7 @@ export function createCurvePath(points: { x: number; y: number }[]): string {
     return path;
 }
 
-export async function preprocessForMasking(dataUrl: string, shape: string = 'object'): Promise<string> {
+export async function preprocessForMasking(dataUrl: string): Promise<string> {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
@@ -693,8 +693,6 @@ export async function preprocessForMasking(dataUrl: string, shape: string = 'obj
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
             
-            const isCylinder = shape.toLowerCase() === 'cylinder';
-            
             // Apply color contrast and saturation boost (color contrast rules) to aid edge detection
             const contrast = 1.25; // 25% contrast boost
             const intercept = 128 * (1 - contrast);
@@ -705,28 +703,19 @@ export async function preprocessForMasking(dataUrl: string, shape: string = 'obj
                 const g = data[i + 1];
                 const b = data[i + 2];
                 
-                let cr, cg, cb;
+                // 1. Contrast Boost
+                let cr = r * contrast + intercept;
+                let cg = g * contrast + intercept;
+                let cb = b * contrast + intercept;
                 
-                if (isCylinder) {
-                    // CYLINDERS: The raw pixels are too dark for isnet to see the edges against the black background.
-                    // We apply a strict 2x exposure multiplier. This brightens the dark shadows (e.g. 15 -> 30) 
-                    // without lifting the pure black background (0 -> 0), giving isnet the sharp edge it needs.
-                    cr = r * 2.0;
-                    cg = g * 2.0;
-                    cb = b * 2.0;
-                } else {
-                    // DEFAULT: High contrast and saturation (can crush blacks, but great for bowls/mirrors)
-                    // 1. Contrast Boost
-                    cr = r * contrast + intercept;
-                    cg = g * contrast + intercept;
-                    cb = b * contrast + intercept;
-                    
-                    // 2. Saturation Boost
-                    const luma = 0.299 * cr + 0.587 * cg + 0.114 * cb;
-                    cr = luma + saturation * (cr - luma);
-                    cg = luma + saturation * (cg - luma);
-                    cb = luma + saturation * (cb - luma);
-                }
+                // 2. Saturation Boost
+                // Find luminance
+                const luma = 0.299 * cr + 0.587 * cg + 0.114 * cb;
+                
+                // Interpolate between luma and color
+                cr = luma + saturation * (cr - luma);
+                cg = luma + saturation * (cg - luma);
+                cb = luma + saturation * (cb - luma);
                 
                 // Clamp
                 data[i] = Math.max(0, Math.min(255, cr));
