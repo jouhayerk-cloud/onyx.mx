@@ -164,6 +164,12 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
 export async function handleProcessedFileUpload(base64Data: string, fileName: string, user: any): Promise<{ fileId: string; thumbnailUrl: string } | null> {
   try {
     console.log(`[Drive] Uploading PROCESSED MEDIA ${fileName} using action: uploadMedia...`);
+    
+    // Detect mimeType from prefix before removing it
+    let mimeType = 'image/png';
+    if (base64Data.startsWith('data:image/webp')) mimeType = 'image/webp';
+    else if (base64Data.startsWith('data:image/jpeg')) mimeType = 'image/jpeg';
+    
     // Ensure base64 doesn't have the data URL prefix if it does
     let cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
     
@@ -181,7 +187,7 @@ export async function handleProcessedFileUpload(base64Data: string, fileName: st
       body: JSON.stringify({
         action: 'uploadMedia',
         fileName: fileName,
-        mimeType: 'image/png',
+        mimeType: mimeType,
         base64: cleanBase64,
         folderType: 'processed',
         user
@@ -753,7 +759,7 @@ export async function applyAlphaMask(originalUrl: string, maskBlob: Blob): Promi
         ctx.globalCompositeOperation = 'destination-in';
         ctx.drawImage(maskImg, 0, 0, origImg.width, origImg.height);
 
-        resolve(canvas.toDataURL('image/png'));
+        resolve(canvas.toDataURL('image/webp', 0.85));
     });
 }
 
@@ -1328,7 +1334,7 @@ export async function generatePngAndSvgFromMasks(
     cropHeight, // target height
   );
 
-  const pngData = exportCanvas.toDataURL('image/png');
+  const pngData = exportCanvas.toDataURL('image/webp', 0.85);
 
   let finalImageSrc = imageSrc;
   if (!imageSrc.startsWith('data:')) {

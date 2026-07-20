@@ -608,7 +608,8 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 
                 for (const op of ops) {
                     if (op.result?.maskUrl && op.result.maskUrl.startsWith('data:')) {
-                        const upRes = await handleProcessedFileUpload(op.result.maskUrl, `mask_${op.id}.png`, user);
+                        const ext = op.result.maskUrl.startsWith('data:image/webp') ? 'webp' : 'png';
+                        const upRes = await handleProcessedFileUpload(op.result.maskUrl, `mask_${op.id}.${ext}`, user);
                         if (upRes && upRes.thumbnailUrl) {
                             op.result.maskUrl = upRes.thumbnailUrl;
                         }
