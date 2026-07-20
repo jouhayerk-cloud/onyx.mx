@@ -310,9 +310,9 @@ Instructions:
 2. If it is a bowl, basin, or canoe, strictly extract and separate the 'rim', 'interior', and 'exterior' of that central artifact ONLY. 
 3. CRITICAL: You MUST include the natural, rough, or unpolished outer rock edges as part of the artifact. Do NOT crop out or ignore the rough edges (e.g. the bark-like exterior or rustic edges of bowls and canoes). 
 4. For MIRRORS, the SOLID ONYX MIRROR FRAME is your absolute priority. You MUST output exactly TWO objects:
-   - 1. A bounding box labeled 'mirror_frame' that encompasses the entire stone frame (outer edge).
+   - 1. A bounding box labeled 'mirror_frame' that encompasses the entire stone frame (outer edge). Do NOT provide a polygon for this.
    - 2. A polygon labeled 'mirror_glass' that tightly traces the exact inner boundary where the onyx frame meets the center glass reflection. 
-   - CRITICAL for mirror_glass: Provide a 'polygon' array of 8 to 12 [y, x] coordinates (normalized 0-1000) tracing the inner edge of the stone frame. Do NOT output more than 15 points, keep it simple. This polygon will be used to cut out the center reflection.
+   - CRITICAL for mirror_glass: Provide a 'polygon' array of 24 to 36 [y, x] coordinates (normalized 0-1000) tracing the inner edge of the stone frame. You MUST output enough points to accurately capture the natural wavy irregular inner contour of the stone. This polygon will be used to cut out the center reflection.
    - Completely EXCLUDE cardboard on the floor, people holding the mirror, and any reflections of the floor/people visible INSIDE the mirror glass from your consideration.
 Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string", "polygon": [[y,x], ...]}].`;
 
@@ -348,7 +348,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         const m = processed[idx];
                         updateOp(op.id, { progress: 15 + ((idx/processed.length) * 75), stepLabel: `Extracting Mask ${idx+1}/${processed.length}...` });
                         
-                        if (m.polygon && m.polygon.length > 0) {
+                        if (m.polygon && m.polygon.length > 0 && String(m.label).toLowerCase() === 'mirror_glass') {
                             const pts = m.polygon.map((pt: any[]) => {
                                 const raw_px = pt[1] / 1000;
                                 const raw_py = pt[0] / 1000;
@@ -370,10 +370,20 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         }
 
                         const box = m.box_2d;
-                        if (!box) continue;
+                        if (!box) {
+                            if (m.polygon && m.polygon.length > 0) {
+                                // Fallback: if Gemini gave a polygon but no box_2d for something else, compute the bounding box from the polygon so isnet can use it
+                                const xs = m.polygon.map((p:any) => p[1]);
+                                const ys = m.polygon.map((p:any) => p[0]);
+                                m.box_2d = [Math.min(...ys), Math.min(...xs), Math.max(...ys), Math.max(...xs)];
+                            } else {
+                                continue;
+                            }
+                        }
                         
-                        const raw_x = box[1] / 1000; const raw_y = box[0] / 1000;
-                        const raw_w = (box[3] - box[1]) / 1000; const raw_h = (box[2] - box[0]) / 1000;
+                        const finalBox = m.box_2d;
+                        const raw_x = finalBox[1] / 1000; const raw_y = finalBox[0] / 1000;
+                        const raw_w = (finalBox[3] - finalBox[1]) / 1000; const raw_h = (finalBox[2] - finalBox[0]) / 1000;
                         
                         // Gemini's coordinates are relative to a 1024x1024 letterboxed canvas
                         // We must map them back to the original image's coordinate space
