@@ -400,7 +400,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         
                         // Crop using the original image space coordinates
                         const cropUrl = await cropImage(imageUrl, bx_x, bx_y, bx_w, bx_h, 512);
-                        const processedCropUrl = await preprocessForMasking(cropUrl);
+                        const processedCropUrl = await preprocessForMasking(cropUrl, itemData.shape || 'object');
                         
                         logOp(op.id, `[ WAIT ] Segmenting ${m.label}...`);
                         const bgBlob = await checkAbort(op.id, removeBackground(processedCropUrl, {
@@ -473,7 +473,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     });
 
                     logOp(op.id, '[ WAIT ] Extracting background...');
-                    const processedSdrUrl = await preprocessForMasking(sdrDataUrl);
+                    const processedSdrUrl = await preprocessForMasking(sdrDataUrl, itemData.shape || 'object');
                     
                     // Yield to main thread to prevent UI freezing
                     await new Promise(resolve => setTimeout(resolve, 50));
