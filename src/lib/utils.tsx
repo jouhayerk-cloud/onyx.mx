@@ -708,11 +708,12 @@ export async function preprocessForMasking(dataUrl: string, shape: string = 'obj
                 let cr, cg, cb;
                 
                 if (isCylinder) {
-                    // CYLINDERS: Gamma correction (<1) to lift dark edge shadows off the black background
-                    const gamma = 0.5;
-                    cr = 255 * Math.pow(r / 255, gamma);
-                    cg = 255 * Math.pow(g / 255, gamma);
-                    cb = 255 * Math.pow(b / 255, gamma);
+                    // CYLINDERS: Do NOT apply any contrast or gamma modifications. 
+                    // isnet is highly sensitive to color shifts on translucent objects like amber onyx, 
+                    // so passing the raw pixels yields the best solid mask.
+                    cr = r;
+                    cg = g;
+                    cb = b;
                 } else {
                     // DEFAULT: High contrast and saturation (can crush blacks, but great for bowls/mirrors)
                     // 1. Contrast Boost
