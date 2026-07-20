@@ -317,8 +317,8 @@ Instructions:
 Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string", "polygon": [[y,x], ...]}].`;
 
                 try {
-                    // Use the latest 2.5 model for unparalleled detection logic
-                    const data = await callGemini(instruction, base64, 40000, "gemini-2.5-flash");
+                    // Use the 2.5 Pro model for unparalleled detection logic and complex polygon adherence
+                    const data = await callGemini(instruction, base64, 40000, "gemini-2.5-pro");
                     let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (!resultText) throw new Error("Empty response from Engine");
                     
