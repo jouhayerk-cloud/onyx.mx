@@ -10,7 +10,7 @@ import {
 } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { getCleanImageUrl, resizeImage, handleProcessedFileUpload, loadImage, cropImage, findContour, simplifyContour, createCurvePath, generatePngAndSvgFromMasks, preprocessForMasking, applyAlphaMask } from '../../lib/utils';
-import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle } from 'lucide-react';
+import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { removeBackground } from '@imgly/background-removal';
 import ExcelJS from 'exceljs';
@@ -892,6 +892,38 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
         } finally { setIsGeneratingPdf(false); }
     };
 
+    const handleClearGen = async () => {
+        if (!confirm(`Are you sure you want to clear AI generation data for ${queue.length} selected items?`)) return;
+        
+        const toastId = toast.loading(`Clearing AI data for ${queue.length} items...`);
+        try {
+            const ids = queue.map(op => op.item.id);
+            if (ids.length === 0) return;
+            
+            const { error } = await supabase.from('inventory').update({
+                detailed_description: null,
+                spatial_masks: null,
+                processed_media_urls: null,
+                generated_png_url: null
+            }).in('id', ids);
+            
+            if (error) throw error;
+            
+            // Also clear the queue state so UI updates
+            setQueue(prev => prev.map(op => ({
+                ...op,
+                result: undefined,
+                status: 'pending'
+            })));
+            setHasUnsavedChanges(true); // Treat this as a change that needs to be noticed
+            
+            toast.success(`Cleared AI data for ${ids.length} items!`, { id: toastId });
+        } catch (e: any) {
+            toast.error(`Clear failed: ${e.message}`, { id: toastId });
+            console.error(e);
+        }
+    };
+
     const handleOptimizeLegacyPNGs = async () => {
         const toastId = toast.loading('Finding masks to optimize...');
         try {
@@ -1075,11 +1107,14 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                             <Bot size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black uppercase tracking-tight text-white">Onyx.mx - Shopifier</h2>
+                            <h2 className="text-xl font-black uppercase tracking-tight text-white">Onyx.mx - Shopifyer</h2>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Batch segmentation & description logic</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
+                        <button onClick={handleClearGen} title="Clear AI Generated Data" className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-rose-500 transition-all">
+                            <Trash2 size={24} />
+                        </button>
                         <button onClick={handleOptimizeLegacyPNGs} title="Optimize Legacy PNG Masks to WebP" className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-amber-400 transition-all">
                             <Sparkles size={24} />
                         </button>
