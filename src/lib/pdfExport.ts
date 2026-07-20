@@ -52,17 +52,18 @@ async function loadImgData(url: string, maxSize = 900, keepPng?: boolean): Promi
         const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d')!;
         
-        const isPng = keepPng ?? (url.startsWith('data:image/png') || url.toLowerCase().includes('.png'));
-        
-        if (!isPng) {
-            // Fill off-black background for transparent product masks
+        if (!keepPng) {
+            // Fill off-black background for all item images (JPEGs ignore this, PNG masks get the background)
             ctx.fillStyle = '#111111';
             ctx.fillRect(0, 0, w, h);
         }
         
         ctx.drawImage(img, 0, 0, w, h);
-        return { dataUrl: canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.88), w, h };
-    } catch { return null; }
+        return { dataUrl: canvas.toDataURL(keepPng ? 'image/png' : 'image/jpeg', 0.88), w, h };
+    } catch (err) { 
+        console.error("Failed to load image for PDF:", url, err);
+        return null; 
+    }
 }
 
 function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number, ch: number, scale = 1.0) {

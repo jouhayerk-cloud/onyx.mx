@@ -507,10 +507,6 @@ export function cropImage(
 ): Promise<string> {
   return new Promise(async (resolve) => {
     const img = await loadImage(src);
-    const canvas = document.createElement('canvas');
-    canvas.width = targetSize;
-    canvas.height = targetSize;
-    const ctx = canvas.getContext('2d')!;
     
     // Calculate dimensions in original pixels
     const sx = x * img.width;
@@ -518,17 +514,23 @@ export function cropImage(
     const sw = w * img.width;
     const sh = h * img.height;
     
-    // Add context padding (15%) to avoid edge artifacts
-    const px = sw * 0.15;
-    const py = sh * 0.15;
+    // Determine the scale factor to fit within targetSize while maintaining aspect ratio
+    const scale = Math.min(targetSize / sw, targetSize / sh);
+    const canvasW = Math.round(sw * scale);
+    const canvasH = Math.round(sh * scale);
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+    const ctx = canvas.getContext('2d')!;
     
     ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, targetSize, targetSize);
+    ctx.fillRect(0, 0, canvasW, canvasH);
     ctx.drawImage(
       img, 
-      Math.max(0, sx - px), Math.max(0, sy - py), 
-      sw + (2 * px), sh + (2 * py), 
-      0, 0, targetSize, targetSize
+      Math.max(0, sx), Math.max(0, sy), 
+      sw, sh, 
+      0, 0, canvasW, canvasH
     );
     resolve(canvas.toDataURL('image/jpeg', 0.9));
   });
@@ -550,65 +552,72 @@ export function hash(): Record<string, string> {
 
 export function findContour(imageData: ImageData): { x: number; y: number }[] {
   const { data, width, height } = imageData;
-  let start: { x: number; y: number } | null = null;
+  
+  // Create a copy of the alpha channel to avoid modifying the original
+  const alpha = new Uint8Array(width * height);
+  for (let i = 0; i < width * height; i++) {
+    alpha[i] = data[i * 4];
+  }
 
-  for (let y = 0; y < height && !start; y++) {
-    for (let x = 0; x < width && !start; x++) {
-      if (data[(y * width + x) * 4] > 128) {
-        start = { x, y };
+  const offsets = [
+    { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }, { x: -1, y: 1 },
+    { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }
+  ];
+
+  let bestContour: { x: number; y: number }[] = [];
+
+  for (let startY = 0; startY < height; startY++) {
+    for (let startX = 0; startX < width; startX++) {
+      if (alpha[startY * width + startX] > 128) {
+        // 1. Trace the contour for this blob
+        const contour: { x: number; y: number }[] = [];
+        let p = { x: startX, y: startY };
+        let dir = 0;
+        let count = 0;
+        const maxCount = width * height;
+        
+        do {
+          contour.push({ x: p.x, y: p.y });
+          let s_dir = (dir + 5) % 8;
+          let foundNext = false;
+          
+          for (let i = 0; i < 8; i++) {
+            dir = (s_dir + i) % 8;
+            const offset = offsets[dir];
+            let q = { x: p.x + offset.x, y: p.y + offset.y };
+            
+            if (q.x >= 0 && q.x < width && q.y >= 0 && q.y < height && alpha[q.y * width + q.x] > 128) {
+              p = q;
+              foundNext = true;
+              break;
+            }
+          }
+          if (!foundNext) break; // Isolated pixel
+          count++;
+        } while ((p.x !== startX || p.y !== startY) && count < maxCount);
+
+        if (contour.length > bestContour.length) {
+          bestContour = contour;
+        }
+
+        // 2. Erase this blob using flood fill so we don't scan it again
+        const stack = [{ x: startX, y: startY }];
+        while (stack.length > 0) {
+          const { x, y } = stack.pop()!;
+          const idx = y * width + x;
+          if (alpha[idx] > 128) {
+            alpha[idx] = 0; // Erase
+            if (x > 0) stack.push({ x: x - 1, y });
+            if (x < width - 1) stack.push({ x: x + 1, y });
+            if (y > 0) stack.push({ x, y: y - 1 });
+            if (y < height - 1) stack.push({ x, y: y + 1 });
+          }
+        }
       }
     }
   }
 
-  if (!start) return [];
-
-  const contour: { x: number; y: number }[] = [];
-  let p = start;
-  let dir = 0;
-  const offsets = [
-    { x: 1, y: 0 },
-    { x: 1, y: 1 },
-    { x: 0, y: 1 },
-    { x: -1, y: 1 },
-    { x: -1, y: 0 },
-    { x: -1, y: -1 },
-    { x: 0, y: -1 },
-    { x: 1, y: -1 },
-  ];
-
-  let count = 0;
-  const maxCount = width * height;
-
-  do {
-    contour.push({ x: p.x, y: p.y });
-    let s_dir = (dir + 5) % 8;
-    let foundNext = false;
-
-    for (let i = 0; i < 8; i++) {
-      dir = (s_dir + i) % 8;
-      const offset = offsets[dir];
-      let q = { x: p.x + offset.x, y: p.y + offset.y };
-
-      if (
-        q.x >= 0 &&
-        q.x < width &&
-        q.y >= 0 &&
-        q.y < height &&
-        data[(q.y * width + q.x) * 4] > 128
-      ) {
-        p = q;
-        foundNext = true;
-        break;
-      }
-    }
-    if (!foundNext) break;
-    if (++count > maxCount) {
-      console.warn('Contour trace exceeded max iterations, breaking.');
-      break;
-    }
-  } while (p.x !== start.x || p.y !== start.y);
-
-  return contour;
+  return bestContour;
 }
 
 export function simplifyContour(
@@ -684,24 +693,34 @@ export async function preprocessForMasking(dataUrl: string): Promise<string> {
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
             
-            // Apply grayscale and contrast boost for HDR compensation
-            const contrast = 1.5; // 50% contrast boost
+            // Apply color contrast and saturation boost (color contrast rules) to aid edge detection
+            const contrast = 1.25; // 25% contrast boost
             const intercept = 128 * (1 - contrast);
+            const saturation = 1.4; // 40% saturation boost
             
             for (let i = 0; i < data.length; i += 4) {
-                // Grayscale
                 const r = data[i];
                 const g = data[i + 1];
                 const b = data[i + 2];
-                const gray = (0.299 * r + 0.587 * g + 0.114 * b);
                 
-                // Contrast boost
-                let finalVal = gray * contrast + intercept;
-                finalVal = Math.max(0, Math.min(255, finalVal));
+                // 1. Contrast Boost
+                let cr = r * contrast + intercept;
+                let cg = g * contrast + intercept;
+                let cb = b * contrast + intercept;
                 
-                data[i] = finalVal;
-                data[i + 1] = finalVal;
-                data[i + 2] = finalVal;
+                // 2. Saturation Boost
+                // Find luminance
+                const luma = 0.299 * cr + 0.587 * cg + 0.114 * cb;
+                
+                // Interpolate between luma and color
+                cr = luma + saturation * (cr - luma);
+                cg = luma + saturation * (cg - luma);
+                cb = luma + saturation * (cb - luma);
+                
+                // Clamp
+                data[i] = Math.max(0, Math.min(255, cr));
+                data[i + 1] = Math.max(0, Math.min(255, cg));
+                data[i + 2] = Math.max(0, Math.min(255, cb));
             }
             
             ctx.putImageData(imageData, 0, 0);
