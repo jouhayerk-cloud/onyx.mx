@@ -172,30 +172,38 @@ export const BatchProcessingWizard: React.FC = () => {
         const API_KEY = getApiKey();
         if (!API_KEY) throw new Error("API Key missing");
         
-        // Use v1beta endpoint for 1.5-flash since some accounts might not have it exposed on v1
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${API_KEY}`;
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                contents: [{ 
-                    parts: [
-                        { text: prompt }, 
-                        { inlineData: { mimeType: 'image/jpeg', data: imgData } }
-                    ] 
-                }] 
-            })
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            if (res.status === 400 && err?.error?.message?.includes('API key not valid')) {
-                localStorage.removeItem('ONYX_GEMINI_KEY');
-                throw new Error("Invalid API Key! Please click the Settings icon above to provide a valid key.");
+        try {
+            // Use v1beta endpoint for 1.5-flash since some accounts might not have it exposed on v1
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${API_KEY}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({ 
+                    contents: [{ 
+                        parts: [
+                            { text: prompt }, 
+                            { inlineData: { mimeType: 'image/jpeg', data: imgData } }
+                        ] 
+                    }] 
+                })
+            });
+            
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                if (res.status === 400 && err?.error?.message?.includes('API key not valid')) {
+                    localStorage.removeItem('ONYX_GEMINI_KEY');
+                    throw new Error("Invalid API Key! Please click the Settings icon above to provide a valid key.");
+                }
+                throw new Error(`API Error: ${res.status} ${err?.error?.message || ''}`);
             }
-            throw new Error(`API Error: ${res.status} ${err?.error?.message || ''}`);
+            return await res.json();
+        } finally {
+            clearTimeout(timeoutId);
         }
-        return await res.json();
     };
 
     const checkAbort = async <T,>(id: string, promise: Promise<T>, timeoutMs?: number): Promise<T> => {
@@ -304,7 +312,7 @@ Instructions:
 4. For MIRRORS, the SOLID ONYX MIRROR FRAME is your absolute priority. You MUST output exactly TWO objects:
    - 1. A bounding box labeled 'mirror_frame' that encompasses the entire stone frame (outer edge).
    - 2. A polygon labeled 'mirror_glass' that tightly traces the exact inner boundary where the onyx frame meets the center glass reflection. 
-   - CRITICAL for mirror_glass: Provide a 'polygon' array of at least 20 [y, x] coordinates (normalized 0-1000) tracing the natural, irregular inner rugged edge of the stone frame. This polygon will be used to cut out the center reflection.
+   - CRITICAL for mirror_glass: Provide a 'polygon' array of 8 to 12 [y, x] coordinates (normalized 0-1000) tracing the inner edge of the stone frame. Do NOT output more than 15 points, keep it simple. This polygon will be used to cut out the center reflection.
    - Completely EXCLUDE cardboard on the floor, people holding the mirror, and any reflections of the floor/people visible INSIDE the mirror glass from your consideration.
 Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string", "polygon": [[y,x], ...]}].`;
 
