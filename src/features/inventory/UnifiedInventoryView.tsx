@@ -80,17 +80,15 @@ const DriveImage = ({ src, className, ...props }: any) => {
         // For Drive URLs, extract the ID
         const fid = extractFileId(src);
         if (fid) {
-            // iOS Safari struggles with transparent PNGs served from lh3 direct download links due to MIME/Content-Disposition issues.
-            // uc?export=view provides the correct inline MIME type headers for WebKit.
-            if (isIOS) {
-                return `https://drive.google.com/uc?export=view&id=${fid}`;
-            }
-            return `https://lh3.googleusercontent.com/d/${fid}`;
+            // Revert back to lh3.googleusercontent.com/d/
+            // Appending ?.png helps trick iOS Safari's strict MIME sniffer into rendering
+            // the opaque application/octet-stream as an image.
+            return `https://lh3.googleusercontent.com/d/${fid}?.png`;
         }
 
         // For non-Drive URLs, just clean them
         return getCleanImageUrl(src) || src;
-    }, [src, isIOS]);
+    }, [src]);
 
     const [hasError, setHasError] = useState(false);
 
