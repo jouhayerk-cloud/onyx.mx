@@ -77,6 +77,7 @@ const NFCWizard          = React.lazy(() => import('../logistics/LabelWizard').t
 const PackWizard         = React.lazy(() => import('../logistics/PackWizard').then(m => ({ default: m.PackWizard })));
 const CratePackingManager = React.lazy(() => import('../logistics/CratePackingManager').then(m => ({ default: m.CratePackingManager })));
 const ItemsPayWizard     = React.lazy(() => import('../finance/ItemsPayWizard').then(m => ({ default: m.ItemsPayWizard })));
+const PicoBridgeView       = React.lazy(() => import('../pico/PicoBridgeView').then(m => ({ default: m.PicoBridgeView })));
 // ──────────────────────────────────────────────────────────────────────────────
 
 /** Module-level constant — avoids re-creating this object on every NavItemWithSubmenu render */
@@ -288,6 +289,20 @@ export function MainAppView() {
         }
     }, [user, activeView, setIsDummyMode]);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p' || e.key === 'O' || e.key === 'o')) {
+                e.preventDefault();
+                setActiveView('pico-bridge');
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        if (window.location.search.includes('view=pico-bridge') || window.location.pathname === '/pico-bridge') {
+            setActiveView('pico-bridge');
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [setActiveView]);
+
     const pageContent = (() => {
         if (isEditingMask || workflowStep === 'fullscreenEdit' || workflowStep === 'fullscreenView') {
             return (
@@ -322,6 +337,7 @@ export function MainAppView() {
             case 'viewer':
                 return <ViewerView onOpenArtifact={(id) => { setUniversalView('tag'); setTagId(id); }} />;
             case 'onyx': return <OnyxOrbView />;
+            case 'pico-bridge': return <PicoBridgeView />;
 
             default:
                 return <InventoryView />;

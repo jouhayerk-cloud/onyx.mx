@@ -2,8 +2,44 @@
 
 import JSZip from 'jszip';
 
+/**
+ * Sanitizes an individual cell value for Excel / OpenXML / ExcelJS export.
+ * Strips out illegal XML 1.0 control characters (ASCII 0x00-0x08, 0x0B-0x0C, 0x0E-0x1F, 0x7F-0x9F, \uFFFD)
+ * and zero-width/formatting characters that trigger Excel's "sharedStrings.xml" corruption/repair errors,
+ * and enforces the 32,767 cell char limit.
+ */
+export const sanitizeExcelValue = (val: any): any => {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'number' || typeof val === 'boolean') return val;
+    let str = String(val);
+    str = str.replace(/[\v\f\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\uFFFD\u200B-\u200F\u2028-\u202F\uFEFF]/g, '');
+    if (str.length > 32767) {
+        str = str.slice(0, 32764) + '...';
+    }
+    return str;
+};
+
+/**
+ * Sanitizes an entire row array or row object for Excel / OpenXML export.
+ */
+export const sanitizeExcelRow = (row: any): any => {
+    if (!row) return row;
+    if (Array.isArray(row)) {
+        return row.map(sanitizeExcelValue);
+    }
+    if (typeof row === 'object') {
+        const cleaned: Record<string, any> = {};
+        for (const key of Object.keys(row)) {
+            cleaned[key] = sanitizeExcelValue(row[key]);
+        }
+        return cleaned;
+    }
+    return sanitizeExcelValue(row);
+};
+
 const escapeXml = (str: string) => {
-    return String(str ?? '').replace(/[<>&'"]/g, (c) => {
+    const clean = sanitizeExcelValue(str);
+    return String(clean).replace(/[<>&'"]/g, (c) => {
         switch (c) {
             case '<': return '&lt;';
             case '>': return '&gt;';
