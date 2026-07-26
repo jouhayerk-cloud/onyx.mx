@@ -288,6 +288,285 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
 import { ART_OF_DECOR_LOGO } from './artOfDecorLogo';
 import { RARE_EARTH_LOGO } from './rareEarthLogo';
 
+function renderStyledMarketingHtml(doc: any, html: string, x: number, y: number, width: number, maxH: number) {
+    if (!html) return;
+    let currentY = y;
+    const endYLimit = y + maxH;
+
+    let clean = html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<\/h[1-6]>/gi, '\n\n');
+
+    clean = clean.replace(/<li[^>]*>/gi, '• ');
+    const blocks = clean.split(/\n+/).map(b => b.trim()).filter(Boolean);
+
+    for (let block of blocks) {
+        if (currentY > endYLimit - 6) break;
+
+        const isBullet = block.startsWith('• ');
+        if (isBullet) {
+            block = block.substring(2).trim();
+        }
+
+        let boldPrefix = '';
+        let remainderText = block;
+        const boldMatch = block.match(/^<(?:strong|b)[^>]*>(.*?)<\/(?:strong|b)>\s*(.*)$/i);
+        if (boldMatch) {
+            boldPrefix = boldMatch[1].replace(/<[^>]+>/g, '').trim();
+            remainderText = boldMatch[2].replace(/<[^>]+>/g, '').trim();
+        } else {
+            remainderText = block.replace(/<[^>]+>/g, '').trim();
+        }
+
+        if (!boldPrefix && !remainderText) continue;
+
+        let textX = x;
+        let textW = width;
+        if (isBullet) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(160, 60, 30);
+            doc.text('•', x, currentY);
+            textX = x + 4;
+            textW = width - 4;
+        }
+
+        if (boldPrefix) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9.5);
+            doc.setTextColor(20, 20, 20);
+            const prefixStr = boldPrefix + (remainderText && !remainderText.startsWith(':') ? ' ' : '');
+            const prefixW = doc.getTextWidth(prefixStr);
+
+            if (prefixW < textW * 0.45 && remainderText) {
+                doc.text(prefixStr, textX, currentY);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(50, 50, 50);
+                
+                const remW = textW - prefixW;
+                const remLines = doc.splitTextToSize(remainderText, remW);
+                doc.text(remLines[0] || '', textX + prefixW, currentY);
+                
+                if (remLines.length > 1) {
+                    const nextLines = doc.splitTextToSize(remLines.slice(1).join(' '), textW);
+                    for (let l = 0; l < nextLines.length; l++) {
+                        currentY += 4.2;
+                        if (currentY > endYLimit - 4) break;
+                        doc.text(nextLines[l], textX, currentY);
+                    }
+                }
+                currentY += 5.5;
+                continue;
+            } else {
+                const pLines = doc.splitTextToSize(prefixStr, textW);
+                for (let l = 0; l < pLines.length; l++) {
+                    doc.text(pLines[l], textX, currentY);
+                    currentY += 4.2;
+                }
+                if (!remainderText) {
+                    currentY += 2;
+                    continue;
+                }
+            }
+        }
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.2);
+        doc.setTextColor(50, 50, 50);
+        const lines = doc.splitTextToSize(remainderText, textW);
+        for (let l = 0; l < lines.length; l++) {
+            if (currentY > endYLimit - 4) break;
+            doc.text(lines[l], textX, currentY);
+            currentY += 4.2;
+        }
+        currentY += 3.5;
+    }
+}
+
+async function drawCatalogHubPage(
+    doc: any, 
+    item: CatalogArtifact, 
+    M: number, 
+    PW: number, 
+    PH: number, 
+    logoData: ImgData | null,
+    pageInfo?: { current: number; total: number }
+) {
+    const norm = normalizeInventoryData(item.data); 
+    const codes = item.codes;
+    const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
+
+    // 1. Smaller top information panel (QR barcode and Title/Brand Logo)
+    const topY = M;
+    if (logoData) {
+        let logoH = 12;
+        let logoW = logoData.w * (logoH / logoData.h);
+        if (logoW > 45) {
+            logoW = 45;
+            logoH = logoData.h * (logoW / logoData.w);
+        }
+        doc.addImage(logoData.dataUrl, 'PNG', M, topY, logoW, logoH);
+    }
+
+    let qrDataUrl = '';
+    try {
+        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
+    } catch (e) {}
+
+    let barDataUrl = '';
+    try {
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 35, lineColor: '#141414' });
+        barDataUrl = canvas.toDataURL('image/png');
+    } catch (e) {}
+
+    const qrSize = 16;
+    const rightEdge = PW - M;
+    let currX = rightEdge - qrSize;
+
+    if (qrDataUrl) {
+        doc.addImage(qrDataUrl, 'PNG', currX, topY, qrSize, qrSize);
+        const tagVColor = getVendorColor(barcode);
+        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
+        const qrCenterX = currX + qrSize / 2;
+        const qrCenterY = topY + qrSize / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.circle(qrCenterX, qrCenterY, 2.0, 'F');
+        doc.setFillColor(tagHexColor);
+        doc.circle(qrCenterX, qrCenterY, 1.5, 'F');
+    }
+
+    const barW = 44;
+    const barH = 10;
+    if (barDataUrl) {
+        const barX = currX - barW - 4;
+        doc.addImage(barDataUrl, 'PNG', barX, topY, barW, barH);
+        
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(20, 20, 20);
+        doc.text(`TAG ID: ${barcode}`, barX, topY + barH + 4.5);
+
+        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
+        const wVal = norm.weightKg ? `${norm.weightKg}kg` : '—';
+        const infoStr = `${dimsMetric || 'Custom Dims'} · ${wVal}`;
+        
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(infoStr, barX, topY + barH + 8.5);
+    }
+
+    const sep1Y = topY + 20;
+    doc.setDrawColor(225, 225, 225);
+    doc.setLineWidth(0.3);
+    doc.line(M, sep1Y, PW - M, sep1Y);
+
+    // 2. Title & Subtitle block
+    const shape = norm.shape || 'Sculptural Form';
+    const shortDesc = norm.shortDescription || norm.description || 'Artisanal Piece';
+    const color = norm.color || item.data.Color || '';
+    const material = norm.material || item.data.Material || 'Onyx';
+    const titleStr = `${shape} · ${shortDesc} · ${color} · ${material}`.replace(/\s+/g, ' ').trim().toUpperCase();
+
+    let titleY = sep1Y + 7;
+    doc.setFontSize(14.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 15, 15);
+    const splitTitle = doc.splitTextToSize(titleStr, PW - 2 * M - 20);
+    doc.text(splitTitle, M, titleY);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 40, 40);
+    const qtyStr = `QTY: ${norm.quantity || 1}`;
+    doc.text(qtyStr, PW - M - doc.getTextWidth(qtyStr), titleY);
+
+    titleY += (splitTitle.length * 5.5) + 1;
+
+    const subtitleStr = item.data.description || item.data.detailed_description || `${shape} handcrafted from natural Mexican ${material}.`;
+    doc.setFontSize(10.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(80, 80, 80);
+    const splitSub = doc.splitTextToSize(subtitleStr, PW - 2 * M);
+    doc.text(splitSub, M, titleY);
+
+    titleY += (splitSub.length * 4.5) + 3;
+
+    // 3. Colors information
+    const colorsStr = item.data.dominant_colors || norm.color || 'Natural Mexican Banding';
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(110, 110, 110);
+    doc.text('COLOR PROFILE:', M, titleY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 20);
+    doc.text(colorsStr.toUpperCase(), M + 30, titleY);
+
+    const sep2Y = titleY + 4;
+    doc.setDrawColor(235, 235, 235);
+    doc.setLineWidth(0.2);
+    doc.line(M, sep2Y, PW - M, sep2Y);
+
+    // 4. Side-by-Side Content Zone
+    const contentY = sep2Y + 6;
+    const contentH = PH - 24 - contentY;
+
+    const col1W = (PW - 2 * M - 8) * 0.46;
+    doc.setFillColor(252, 252, 250); // Off white / gallery white background
+    doc.setDrawColor(236, 236, 232);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(M, contentY, col1W, contentH, 3, 3, 'FD');
+
+    const imgs = item.images || [];
+    if (imgs.length === 0) {
+        let wCm = parseFloat(norm.widthCm) || 0;
+        let hCm = parseFloat(norm.heightCm) || 0;
+        let dCm = parseFloat(norm.lengthCm) || 0;
+        if (wCm || hCm || dCm) {
+            try {
+                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shape, shortDesc, resolveItemColor(item.data), true);
+                if (axoDataUrl) {
+                    const axoSize = Math.min(col1W * 0.75, contentH * 0.75, 120);
+                    doc.addImage(axoDataUrl, 'JPEG', M + (col1W - axoSize) / 2, contentY + (contentH - axoSize) / 2, axoSize, axoSize);
+                }
+            } catch (e) {}
+        }
+    } else if (imgs.length === 1) {
+        const imgData = await loadImgData(getCleanImageUrl(imgs[0]), 1200, true);
+        if (imgData) {
+            drawContain(doc, imgData, M + 4, contentY + 4, col1W - 8, contentH - 8, 0.94);
+        }
+    } else {
+        const numToShow = Math.min(imgs.length, 2);
+        const cellH = (contentH - 8 - (numToShow - 1) * 4) / numToShow;
+        for (let j = 0; j < numToShow; j++) {
+            const imgData = await loadImgData(getCleanImageUrl(imgs[j]), 1000, true);
+            const cy = contentY + 4 + j * (cellH + 4);
+            if (imgData) {
+                drawContain(doc, imgData, M + 4, cy, col1W - 8, cellH, 0.92);
+            }
+        }
+    }
+
+    const col2X = M + col1W + 8;
+    const col2W = (PW - 2 * M) - col1W - 8;
+    
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 20);
+    doc.text('MARKETING OVERVIEW & SPECIFICATIONS', col2X, contentY + 4);
+    
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+    doc.line(col2X, contentY + 6.5, col2X + col2W, contentY + 6.5);
+
+    const marketingHtml = item.data.marketing_description || item.data.generatedDescription || item.data.generated_description || '';
+    renderStyledMarketingHtml(doc, marketingHtml, col2X, contentY + 11.5, col2W, contentH - 12);
+}
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single'; logo?: string; exportType?: 'regular' | 'catalog' },
@@ -300,7 +579,7 @@ export async function exportCatalogPdf(
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
     let logoData: ImgData | null = null;
-    if (config.method === 'single') {
+    if (config.method === 'single' || exportType === 'catalog') {
         const logoStr = config.logo === 'RareEarth' ? RARE_EARTH_LOGO : ART_OF_DECOR_LOGO;
         logoData = await loadImgData(logoStr, 400, true);
     }
@@ -309,7 +588,7 @@ export async function exportCatalogPdf(
     const footer = (doc: any) => { 
         globalPageNum++; 
         
-        if (config.method === 'single') {
+        if (config.method === 'single' || exportType === 'catalog') {
             doc.setFontSize(11);
             const madeText = 'Made in Mexico for';
             doc.setTextColor(20, 20, 20);
@@ -355,7 +634,16 @@ export async function exportCatalogPdf(
     const totalItems = results.length;
     let processedCount = 0;
 
-    if (config.method === 'single') {
+    if (exportType === 'catalog') {
+        // --- METHOD: CATALOG HUB EXPORT (SIDE-BY-SIDE WITH STYLED MARKETING DESC) ---
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i];
+            processedCount++;
+            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+            addPage();
+            await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems });
+        }
+    } else if (config.method === 'single') {
         // --- METHOD: ONE IMAGE PER PAGE ---
         for (let i = 0; i < results.length; i++) {
             const item = results[i];

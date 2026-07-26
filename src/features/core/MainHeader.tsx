@@ -109,6 +109,7 @@ const OnyxBar: React.FC = () => null;
 
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl } from '../../lib/utils';
+import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -116,6 +117,7 @@ import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
 import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
+import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { saveAs } from 'file-saver';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import toast from 'react-hot-toast';
@@ -3066,7 +3068,7 @@ export function MainHeader() {
 
             // Shopify Headers
             const headers = [
-                'Title', 'Vendor', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
+                'Title', 'Body (HTML)', 'Vendor', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
                 'Variant Price', 'Variant Grams', 'Image Src', 'Image Position', 
                 'Metafield: custom.product_weight [single_line_text_field]', 
                 'Variant Metafield: Vendor_SKU', 'Variant Weight Unit', 
@@ -3082,10 +3084,11 @@ export function MainHeader() {
                 'Variant Metafield: mm-google-shopping.custom_label_1', 
                 'Metafield: reg.designer', 'Status', 'Published', 'Published Scope', 
                 'Variant Taxable', 'Variant Inventory Tracker', 'Variant Inventory Policy', 
-                'Variant Fulfillment Service', 'Variant Requires Shipping'
+                'Variant Fulfillment Service', 'Variant Requires Shipping',
+                'Included / Art Of Decor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights'
             ];
 
-            sheet.addRow(headers);
+            sheet.addRow(sanitizeExcelRow(headers));
             sheet.getRow(1).font = { bold: true };
 
             // Helper for numbers
@@ -3245,65 +3248,83 @@ export function MainHeader() {
                 if (vId === 'JM') polishType = 'high-polish';
                 else if (['EM', 'ML', 'TE'].includes(vId)) polishType = 'polish';
 
+                const bodyHtml = norm.generatedDescription || norm.generated_description || generateFallbackMarketingHtml(norm);
+
+                let colorsStr = '';
+                if (norm.color && norm.color.includes(',')) {
+                    colorsStr = norm.color;
+                } else {
+                    colorsStr = getStoneStyleColors(material, `${shape} ${shortDesc}`, color).join(', ');
+                }
+
+                const testStr = `${shape} ${shortDesc} ${productCategory} ${title} ${material}`;
+                const artOfDecorVal = 'TRUE';
+                const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
+                const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
+
                 const rowData = [
                     title, // A
-                    vendorName, // B
-                    tagId, // C
-                    '', // D Variant Barcode
-                    cost, // E Variant Cost
-                    price, // F Variant Price
-                    weightGrams, // G Variant Grams
-                    imageSrc, // H Image Src
-                    1, // I Image Position
-                    weightLbs, // J custom.product_weight
-                    vendorSku, // K Vendor_SKU
-                    '', // L Variant Weight Unit
-                    depthIn, // M reg.variant_depth
-                    widthIn, // N reg.variant_width
-                    heightIn, // O reg.variant_height
-                    measurementsStr, // P reg.variant_measurements
-                    '', // Q Metafield: Measurements
-                    toTitleCase(material), // R shopify.material
-                    'Mexican Onyx', // S custom.variety
-                    'MX', // T Variant Country of Origin
-                    tagsList, // U Tags
-                    productCategory, // V Product Category
-                    '', // W shopify.color-pattern
-                    polishType, // X custom.polish_type
-                    '', // Y custom.cut_type
-                    'Adults', // Z shopify.age-group
-                    'Unisex', // AA shopify.target-gender
-                    'Rare Earth Gallery', // AB mm-google-shopping.custom_label_1
-                    'Rare Earth Gallery', // AC reg.designer
-                    'Active', // AD Status
-                    'FALSE', // AE Published
-                    'GLOBAL', // AF Published Scope
-                    'TRUE', // AG Variant Taxable
-                    'shopify', // AH Variant Inventory Tracker
-                    'deny', // AI Variant Inventory Policy
-                    'manual', // AJ Variant Fulfillment Service
-                    'TRUE' // AK Variant Requires Shipping
+                    bodyHtml, // B Body (HTML)
+                    vendorName, // C Vendor
+                    tagId, // D Variant SKU
+                    '', // E Variant Barcode
+                    cost, // F Variant Cost
+                    price, // G Variant Price
+                    weightGrams, // H Variant Grams
+                    imageSrc, // I Image Src
+                    1, // J Image Position
+                    weightLbs, // K custom.product_weight
+                    vendorSku, // L Vendor_SKU
+                    '', // M Variant Weight Unit
+                    depthIn, // N reg.variant_depth
+                    widthIn, // O reg.variant_width
+                    heightIn, // P reg.variant_height
+                    measurementsStr, // Q reg.variant_measurements
+                    '', // R Metafield: Measurements
+                    toTitleCase(material), // S shopify.material
+                    'Mexican Onyx', // T custom.variety
+                    'MX', // U Variant Country of Origin
+                    tagsList, // V Tags
+                    productCategory, // W Product Category
+                    colorsStr, // X shopify.color-pattern
+                    polishType, // Y custom.polish_type
+                    '', // Z custom.cut_type
+                    'Adults', // AA shopify.age-group
+                    'Unisex', // AB shopify.target-gender
+                    'Rare Earth Gallery', // AC mm-google-shopping.custom_label_1
+                    'Rare Earth Gallery', // AD reg.designer
+                    'Active', // AE Status
+                    'FALSE', // AF Published
+                    'GLOBAL', // AG Published Scope
+                    'TRUE', // AH Variant Taxable
+                    'shopify', // AI Variant Inventory Tracker
+                    'deny', // AJ Variant Inventory Policy
+                    'manual', // AK Variant Fulfillment Service
+                    'TRUE', // AL Variant Requires Shipping
+                    artOfDecorVal, // AM Included / Art Of Decor
+                    fountainsVal, // AN Included / Trade Partners - Fountains
+                    pendantsVal // AO Included / Trade Partners - Pendant Lights
                 ];
 
                 allExportRows.push(rowData);
             });
             
-            // Sort by Vendor (Index 1) then by Category (Index 21)
+            // Sort by Vendor (Index 2) then by Category (Index 22)
             allExportRows.sort((a, b) => {
-                const vendorA = String(a[1] || '').toLowerCase();
-                const vendorB = String(b[1] || '').toLowerCase();
+                const vendorA = String(a[2] || '').toLowerCase();
+                const vendorB = String(b[2] || '').toLowerCase();
                 if (vendorA < vendorB) return -1;
                 if (vendorA > vendorB) return 1;
                 
-                const catA = String(a[21] || '').toLowerCase();
-                const catB = String(b[21] || '').toLowerCase();
+                const catA = String(a[22] || '').toLowerCase();
+                const catB = String(b[22] || '').toLowerCase();
                 if (catA < catB) return -1;
                 if (catA > catB) return 1;
                 
                 return 0;
             });
             
-            allExportRows.forEach(r => sheet.addRow(r));
+            allExportRows.forEach(r => sheet.addRow(sanitizeExcelRow(r)));
 
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');

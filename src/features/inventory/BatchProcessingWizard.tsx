@@ -17,6 +17,8 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
 import { collectAllImages, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { extractDominantColorsFromImage, getStoneStyleColors, generateFallbackMarketingHtml, generateBitmapAndHexMap } from '../../lib/colorExtractor';
+import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { vendors } from '../../lib/consts';
 
 const resolveVendorColor = (inputStr: string | undefined | null) => {
@@ -27,8 +29,9 @@ const resolveVendorColor = (inputStr: string | undefined | null) => {
     const nameMatch = vKeys.find(k => (vendors as any)[k].name.toUpperCase() === upper);
     if (nameMatch) return (vendors as any)[nameMatch].color;
     // Then try matching by prefix (for Tag IDs)
-    const vPre = vKeys.find(k => upper.startsWith(k));
-    return vPre ? (vendors as any)[vPre].color : '#ffffff';
+    const prefixMatch = vKeys.find(k => upper.startsWith(k));
+    if (prefixMatch) return (vendors as any)[prefixMatch].color;
+    return '#ffffff';
 };
 
 interface BatchOp {
@@ -43,7 +46,13 @@ interface BatchOp {
     skipImageProcessing?: boolean;
     result?: {
         description?: string;
+        marketingDescription?: string;
+        dominantColors?: string[];
         maskUrl?: string;
+        bitmapUrl?: string;
+        hexString?: string;
+        cols?: number;
+        rows?: number;
     };
 }
 
@@ -78,6 +87,7 @@ export const BatchProcessingWizard: React.FC = () => {
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [isSavingDb, setIsSavingDb] = useState(false);
     const [pdfBrand, setPdfBrand] = useState<'ArtOfDecor' | 'RareEarth'>('ArtOfDecor');
+    const [editHtmlId, setEditHtmlId] = useState<string | null>(null);
 
     const saveApiKey = () => {
         if (apiInputRef.current?.value) {
@@ -246,30 +256,34 @@ export const BatchProcessingWizard: React.FC = () => {
             const base64 = aiDataUrl.split(',')[1];
             logOp(op.id, '[  OK  ] Image resized successfully');
 
-            let processed = { description: op.result?.description || '' };
-            if ((op.imageIndex || 0) === 0 && !processed.description) {
+            let processed: any = { 
+                description: op.result?.description || '',
+                marketingDescription: op.result?.marketingDescription || '',
+                dominantColors: op.result?.dominantColors || []
+            };
+            if ((op.imageIndex || 0) === 0 && (!processed.description || !processed.marketingDescription || !processed.dominantColors?.length)) {
                 updateOp(op.id, { progress: 30 });
                 logOp(op.id, '[ WAIT ] Analyzing via Gemini...');
                 
                 const shape = itemData.shape || 'Artifact';
                 const type = itemData.shortDescription || itemData.type || 'Object';
                 const material = itemData.material || 'Onyx';
+                const color = itemData.color || 'Natural Veining';
                 
                 const prompt = `FIND the ${material} ${shape} ${type}. 
-Generate a short, title-style description (maximum 1 sentence) of the item.
+Generate comprehensive catalog content for this item based on its features, shape, material (${material}), and color (${color}).
 
-CRITICAL RULES for the description:
-- Keep it concise, like a product title.
-- Do NOT use the word 'lamp'. ALL lamps MUST be described as 'Luminarie' or 'Luminaries'.
-
-Examples of the desired style:
-- Rectangular White Onyx Wall Luminarie pair with green banding running in the center.
-- Aqua Onyx Cylinder Luminarie with Rustic open top aqua band in center.
-- Round Pink Onyx mirror with brown banding.
+CRITICAL RULES:
+1. "description": A short, title-style description (maximum 1 sentence, concise like a product title).
+2. "marketingDescription": A 1000 to 1200 character long marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium, engaging, and emphasize artisanal Mexican stone craftsmanship, translucency, and natural veining.
+3. "dominantColors": An array of 2 to 3 color names selected strictly from this allowed list: [Black, Blue, Bronze, Brown, Clear, Copper, Cream, Gold, Gray, Green, Iridescent, Multicolor, Orange, Pink, Purple, Rainbow, Red, Rose Gold, Silver, Tan, Turquoise/Aqua, White, Yellow].
+4. Do NOT use the word 'lamp'. ALL lamps MUST be described as 'Luminarie' or 'Luminaries'.
 
 Return ONLY valid JSON in this exact structure, with no markdown formatting:
 {
-  "description": "Your short title-style description here..."
+  "description": "Your short title-style description here...",
+  "marketingDescription": "<p>Your 1000-1200 character HTML marketing description here...</p>",
+  "dominantColors": ["Color1", "Color2"]
 }`;
 
                 const data = await callGemini(prompt, base64);
@@ -287,7 +301,12 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
                     else resultText = resultText.replace(/```(json)?|```/g, '').trim();
                 }
                 
-                processed = JSON.parse(resultText);
+                const parsed = JSON.parse(resultText);
+                processed = {
+                    description: parsed.description || processed.description,
+                    marketingDescription: parsed.marketingDescription || processed.marketingDescription,
+                    dominantColors: Array.isArray(parsed.dominantColors) ? parsed.dominantColors : processed.dominantColors
+                };
                 if (!processed.description) {
                     throw new Error("Invalid output format from AI");
                 }
@@ -504,15 +523,23 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
             }
             } else {
                 logOp(op.id, '[ SKIP ] Image processing skipped');
-                updateOp(op.id, { progress: 90 });
             }
+
+            const bitmapRes = await generateBitmapAndHexMap(localMaskUrl || op.imageUrl, 20, 20, 80, 149, 61, 199, itemData.material, itemData.shape, itemData.color);
+            const finalColors = (processed.dominantColors && processed.dominantColors.length > 0) ? processed.dominantColors : bitmapRes.dominantColors;
 
             updateOp(op.id, { 
                 status: 'completed', 
                 progress: 100, 
                 result: {
                     description: processed.description,
-                    maskUrl: localMaskUrl || undefined
+                    marketingDescription: processed.marketingDescription,
+                    dominantColors: finalColors,
+                    maskUrl: localMaskUrl || undefined,
+                    bitmapUrl: bitmapRes.bitmapDataUrl,
+                    hexString: bitmapRes.hexString,
+                    cols: bitmapRes.cols,
+                    rows: bitmapRes.rows
                 }
             });
         } catch (err: any) {
@@ -564,13 +591,24 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
     };
 
     const handleSaveDescription = async (op: BatchOp) => {
-        if (!op.result?.description) return;
+        if (!op.result?.description && !op.result?.marketingDescription) return;
         const toastId = toast.loading('Saving description...');
         try {
             const itemId = op.item.data?.id || op.item.id || op.item.row;
-            await supabase.from('inventory').update({
-                detailed_description: op.result.description
-            }).eq('id', itemId);
+            const updatePayload: any = {};
+            if (op.result.description) updatePayload.detailed_description = op.result.description;
+            if (op.result.marketingDescription) updatePayload.generated_description = op.result.marketingDescription;
+            if (op.result.dominantColors && op.result.dominantColors.length > 0) updatePayload.color = op.result.dominantColors.join(', ');
+            if (op.result.hexString) {
+                updatePayload.spatial_points = [{
+                    type: 'pixel_map',
+                    dimensions: `${op.result.cols || 20}x${op.result.rows || 20}`,
+                    hex_string: op.result.hexString,
+                    bitmap_url: op.result.bitmapUrl || null
+                }];
+            }
+
+            await supabase.from('inventory').update(updatePayload).eq('id', itemId);
             toast.success('Description saved!', { id: toastId });
             setInventoryVersion(Date.now());
         } catch (e: any) {
@@ -605,6 +643,8 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 
                 let combinedMaskUrls: string[] = [];
                 let lastDescription = '';
+                let lastMarketingDescription = '';
+                let lastColors: string[] = [];
                 
                 for (const op of ops) {
                     if (op.result?.maskUrl && op.result.maskUrl.startsWith('data:')) {
@@ -612,6 +652,13 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         const upRes = await handleProcessedFileUpload(op.result.maskUrl, `mask_${op.id}.${ext}`, user);
                         if (upRes && upRes.thumbnailUrl) {
                             op.result.maskUrl = upRes.thumbnailUrl;
+                        }
+                    }
+
+                    if (op.result?.bitmapUrl && op.result.bitmapUrl.startsWith('data:')) {
+                        const upRes = await handleProcessedFileUpload(op.result.bitmapUrl, `bitmap_${op.id}.webp`, user);
+                        if (upRes && upRes.thumbnailUrl) {
+                            op.result.bitmapUrl = upRes.thumbnailUrl;
                         }
                     }
                     
@@ -623,6 +670,12 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     
                     if (op.result?.description) {
                         lastDescription = op.result.description;
+                    }
+                    if (op.result?.marketingDescription) {
+                        lastMarketingDescription = op.result.marketingDescription;
+                    }
+                    if (op.result?.dominantColors && op.result.dominantColors.length > 0) {
+                        lastColors = op.result.dominantColors;
                     }
                 }
                 
@@ -637,18 +690,65 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 });
 
                 let processedMap: Record<string, string> = {};
+                let lastHexString = '';
+                let lastBitmapUrl = '';
+                let lastCols = 20;
+                let lastRows = 20;
                 ops.forEach(op => {
                     if (op.result?.maskUrl && op.imageUrl) {
                         processedMap[op.imageUrl] = op.result.maskUrl;
                     }
+                    if (op.result?.hexString) {
+                        lastHexString = op.result.hexString;
+                        lastBitmapUrl = op.result.bitmapUrl || '';
+                        if (op.result.cols) lastCols = op.result.cols;
+                        if (op.result.rows) lastRows = op.result.rows;
+                    }
                 });
 
-                await supabase.from('inventory').update({ 
-                    detailed_description: lastDescription,
+                if (!lastHexString || lastColors.length === 0) {
+                    const primaryUrl = combinedMaskUrls[0] || itemData.generatedPngUrl || itemData.imageUrl;
+                    const bitmapRes = await generateBitmapAndHexMap(primaryUrl, 20, 20, 80, 149, 61, 199, itemData.material, itemData.shape, itemData.color);
+                    if (!lastHexString) {
+                        lastHexString = bitmapRes.hexString;
+                        lastBitmapUrl = bitmapRes.bitmapDataUrl;
+                    }
+                    if (lastColors.length === 0) {
+                        lastColors = bitmapRes.dominantColors;
+                    }
+                }
+
+                if (!lastMarketingDescription) {
+                    lastMarketingDescription = generateFallbackMarketingHtml(itemData);
+                }
+
+                if (lastHexString) {
+                    processedMap['_pixel_map_hex'] = lastHexString;
+                    if (lastBitmapUrl) processedMap['_bitmap_url'] = lastBitmapUrl;
+                }
+
+                const updatePayload: any = { 
+                    detailed_description: lastDescription || itemData.detailedDescription || itemData.detailed_description || null,
+                    generated_description: lastMarketingDescription,
                     spatial_masks: updatedMasks,
                     processed_media_urls: JSON.stringify(processedMap),
                     generated_png_url: combinedMaskUrls[0] || null
-                }).eq('id', itemId);
+                };
+
+                if (lastColors.length > 0) {
+                    updatePayload.color = lastColors.join(', ');
+                }
+
+                if (lastHexString) {
+                    updatePayload.spatial_points = [{
+                        type: 'pixel_map',
+                        dimensions: `${lastCols}x${lastRows}`,
+                        hex_string: lastHexString,
+                        bitmap_url: lastBitmapUrl || null
+                    }];
+                }
+
+                await supabase.from('inventory').update(updatePayload).eq('id', itemId);
                 
                 savedCount++;
                 setOverallProgress((savedCount / entries.length) * 100);
@@ -730,7 +830,13 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
             exportDataList.push({ op: primaryOp, category, vendorName, allMasks: combinedMaskUrls });
 
             let lastDescription = '';
-            for (const op of ops) { if (op.result?.description) lastDescription = op.result.description; }
+            let lastMarketingDesc = '';
+            let lastColors: string[] = [];
+            for (const op of ops) { 
+                if (op.result?.description) lastDescription = op.result.description; 
+                if (op.result?.marketingDescription) lastMarketingDesc = op.result.marketingDescription;
+                if (op.result?.dominantColors && op.result.dominantColors.length > 0) lastColors = op.result.dominantColors;
+            }
 
             const pdfProcessedMap: Record<string, string> = {};
             ops.forEach(op => {
@@ -741,7 +847,10 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
 
             const pdfData = { 
                 ...normData, 
+                description: lastDescription || normData.description,
                 detailed_description: lastDescription || normData.detailed_description, 
+                marketing_description: lastMarketingDesc || normData.generatedDescription || normData.generated_description || generateFallbackMarketingHtml(normData),
+                dominant_colors: (lastColors.length > 0 ? lastColors.join(', ') : (normData.color || '')),
                 processed_media_urls: JSON.stringify(pdfProcessedMap),
                 category: category
             };
@@ -767,7 +876,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
             const sheet = workbook.addWorksheet('Shopify Export');
             
             const headers = [
-                'Title', 'Vendor', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
+                'Title', 'Body (HTML)', 'Vendor', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
                 'Variant Price', 'Variant Grams', 'Image Src', 'Image Position', 
                 'Metafield: custom.product_weight [single_line_text_field]', 
                 'Variant Metafield: Vendor_SKU', 'Variant Weight Unit', 
@@ -783,9 +892,10 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 'Variant Metafield: mm-google-shopping.custom_label_1', 
                 'Metafield: reg.designer', 'Status', 'Published', 'Published Scope', 
                 'Variant Taxable', 'Variant Inventory Tracker', 'Variant Inventory Policy', 
-                'Variant Fulfillment Service', 'Variant Requires Shipping'
+                'Variant Fulfillment Service', 'Variant Requires Shipping',
+                'Included / Art Of Decor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights'
             ];
-            sheet.addRow(headers);
+            sheet.addRow(sanitizeExcelRow(headers));
             sheet.getRow(1).font = { bold: true };
 
             exportDataList.forEach(({ op, category, vendorName, allMasks }) => {
@@ -800,6 +910,22 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 const material = norm.material || '';
                 const fallbackTitle = `${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                 const title = op.result?.description || fallbackTitle;
+
+                const bodyHtml = op.result?.marketingDescription || norm.generatedDescription || generateFallbackMarketingHtml(norm);
+
+                let colorsStr = '';
+                if (op.result?.dominantColors && op.result.dominantColors.length > 0) {
+                    colorsStr = op.result.dominantColors.join(', ');
+                } else if (norm.color && norm.color.includes(',')) {
+                    colorsStr = norm.color;
+                } else {
+                    colorsStr = getStoneStyleColors(material, `${shape} ${shortDesc}`, color).join(', ');
+                }
+
+                const testStr = `${shape} ${shortDesc} ${category} ${title} ${material}`;
+                const artOfDecorVal = 'TRUE';
+                const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
+                const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
 
                 const tagId = calc.printCode || calc.bookBarcode || norm.book_barcode || norm.itemId || String(itemData.row) || '';
                 const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
@@ -853,9 +979,9 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     norm.widthCm ? `${norm.widthCm} cm` : ''
                 ].filter(Boolean).join(', ');
 
-                sheet.addRow([
-                    title, vendorName, tagId, '', cost, price, weightGrams, imageSrc, 1, weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn, measurementsStr, '', formattedMaterial, variety, 'MX', tagsArray, category, '', polishType, '', 'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'true', 'web', 'true', 'shopify', 'deny', 'manual', 'true'
-                ]);
+                sheet.addRow(sanitizeExcelRow([
+                    title, bodyHtml, vendorName, tagId, '', cost, price, weightGrams, imageSrc, 1, weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn, measurementsStr, '', formattedMaterial, variety, 'MX', tagsArray, category, colorsStr, polishType, '', 'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'true', 'web', 'true', 'shopify', 'deny', 'manual', 'true', artOfDecorVal, fountainsVal, pendantsVal
+                ]));
             });
 
             const buffer = await workbook.xlsx.writeBuffer();
@@ -1107,7 +1233,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                             <Bot size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black uppercase tracking-tight text-white">Onyx.mx - Shopifyer</h2>
+                            <h2 className="text-xl font-black uppercase tracking-tight text-white">Onyx.mx - Catalog Hub</h2>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Batch segmentation & description logic</p>
                         </div>
                     </div>
@@ -1316,23 +1442,112 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                 
                                 {/* Free-Floating Generated Description */}
                                 {op.result && (
-                                    <div className="mt-4 flex flex-col gap-2 animate-in slide-in-from-top-2 w-full">
-                                        <textarea 
-                                            value={op.result.description || ''}
-                                            onChange={(e) => {
-                                                updateOp(op.id, { result: { ...op.result, description: e.target.value } });
-                                                setHasUnsavedChanges(true);
-                                            }}
-                                            className="w-full min-h-[60px] md:min-h-[80px] bg-black/30 border border-white/5 hover:border-white/20 rounded-xl p-3 md:p-4 text-xs md:text-sm text-white/90 font-mono leading-relaxed focus:outline-none focus:border-(--main-color) transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
-                                            placeholder="AI generated description will appear here..."
-                                        />
+                                    <div className="mt-4 flex flex-col gap-3 animate-in slide-in-from-top-2 w-full">
+                                        {op.result.dominantColors && op.result.dominantColors.length > 0 && (
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-white/40 mr-1">Extracted Colors:</span>
+                                                {op.result.dominantColors.map((c, i) => (
+                                                    <span key={i} className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-[10px] font-bold text-white/90">
+                                                        {c}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {op.result.hexString && (
+                                            <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/10">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                                        <Sparkles size={12} className="text-amber-400"/> On-Device Pixel Map ({op.result.cols || 20}x{op.result.rows || 20} = {(op.result.cols || 20) * (op.result.rows || 20)} px)
+                                                    </span>
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigator.clipboard.writeText(op.result?.hexString || '');
+                                                            toast.success('Hexadecimal pixel map copied to clipboard!');
+                                                        }}
+                                                        className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[9px] font-bold text-white/80 transition-all cursor-pointer"
+                                                    >
+                                                        Copy Hex Map
+                                                    </button>
+                                                </div>
+                                                <div className="flex flex-col md:flex-row items-center gap-4 my-1">
+                                                    {op.result.bitmapUrl && (
+                                                        <div className="shrink-0 relative group">
+                                                            <img 
+                                                                src={op.result.bitmapUrl} 
+                                                                alt="Pixel Bitmap" 
+                                                                className="h-16 w-auto rounded border border-white/20 shadow-lg" 
+                                                                style={{ imageRendering: 'pixelated' }} 
+                                                            />
+                                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                                                                <span className="text-[8px] text-white font-bold uppercase">Dynamic Aspect Grid</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 w-full max-h-16 overflow-y-auto font-mono text-[9px] text-white/70 bg-black/60 p-2 rounded border border-white/5 break-all select-all scrollbar-thin scrollbar-thumb-white/20">
+                                                        {op.result.hexString}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="text-[9px] font-black uppercase tracking-wider text-white/40 block mb-1">Title Description</label>
+                                            <textarea 
+                                                value={op.result.description || ''}
+                                                onChange={(e) => {
+                                                    updateOp(op.id, { result: { ...op.result, description: e.target.value } });
+                                                    setHasUnsavedChanges(true);
+                                                }}
+                                                className="w-full min-h-[50px] bg-black/30 border border-white/5 hover:border-white/20 rounded-xl p-3 text-xs md:text-sm text-white/90 font-mono leading-relaxed focus:outline-none focus:border-(--main-color) transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
+                                                placeholder="AI generated title description..."
+                                            />
+                                        </div>
+                                        {op.result.marketingDescription !== undefined && (
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <label className="text-[9px] font-black uppercase tracking-wider text-amber-400/90 flex items-center gap-1.5">
+                                                        <Sparkles size={12}/> Marketing Description (Embedded HTML Review)
+                                                    </label>
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditHtmlId(editHtmlId === op.id ? null : op.id);
+                                                        }}
+                                                        className="text-[9px] font-black text-amber-400 hover:text-amber-300 underline uppercase tracking-wider cursor-pointer bg-white/5 px-2 py-0.5 rounded border border-white/10"
+                                                    >
+                                                        {editHtmlId === op.id ? 'View Styled Preview' : 'Edit Source HTML'}
+                                                    </button>
+                                                </div>
+                                                {editHtmlId === op.id ? (
+                                                    <textarea 
+                                                        value={op.result.marketingDescription || ''}
+                                                        onChange={(e) => {
+                                                            updateOp(op.id, { result: { ...op.result, marketingDescription: e.target.value } });
+                                                            setHasUnsavedChanges(true);
+                                                        }}
+                                                        className="w-full min-h-[120px] bg-black/60 border border-amber-500/40 rounded-xl p-3 text-xs text-amber-200/90 font-mono leading-relaxed focus:outline-none focus:border-amber-400 transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
+                                                        placeholder="AI generated HTML marketing description..."
+                                                    />
+                                                ) : (
+                                                    <div className="w-full min-h-[80px] bg-black/50 border border-white/15 rounded-xl p-4 text-xs md:text-sm text-white/90 leading-relaxed overflow-y-auto max-h-[280px] space-y-3 font-sans shadow-inner">
+                                                        <style>{`
+                                                            .marketing-preview-${op.id} p { margin-bottom: 0.75rem; line-height: 1.6; color: rgba(255, 255, 255, 0.92); font-size: 0.85rem; }
+                                                            .marketing-preview-${op.id} strong { color: #f59e0b; font-weight: 700; }
+                                                            .marketing-preview-${op.id} ul { list-style-type: disc; padding-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+                                                            .marketing-preview-${op.id} li { margin-bottom: 0.35rem; color: rgba(255, 255, 255, 0.85); font-size: 0.85rem; }
+                                                        `}</style>
+                                                        <div className={`marketing-preview-${op.id}`} dangerouslySetInnerHTML={{ __html: op.result.marketingDescription || '<p className="text-white/40 italic">No HTML description generated yet.</p>' }} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="flex justify-end">
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); handleSaveDescription(op); }}
                                                 className="flex items-center gap-2 px-4 py-2 bg-(--main-color)/20 hover:bg-(--main-color) text-(--main-color) hover:text-black text-[10px] font-black uppercase tracking-widest rounded-lg border border-(--main-color)/30 transition-all"
                                             >
                                                 <Save size={14} />
-                                                Save Description
+                                                Save Description & Colors
                                             </button>
                                         </div>
                                     </div>
