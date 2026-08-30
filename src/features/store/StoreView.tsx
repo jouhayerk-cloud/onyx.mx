@@ -17,7 +17,7 @@ import {
     isStoreSelectionModeAtom,
     selectedStoreIdsAtom
 } from '../../lib/atoms';
-import { vendors } from '../../lib/consts';
+import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { normalizeInventoryData, getCleanImageUrl, handleFileUpload, readFileAsDataURL, calculateCodesAndPrices, cmToImperial } from '../../lib/utils';
 import { 
     ShoppingBag, Search, Filter, LayoutGrid, LayoutList, Layout, 
@@ -144,7 +144,7 @@ export function StoreView() {
                 let imgs = [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
                 imgs = imgs.filter(img => !isVideoFile(img));
 
-                const currentRate = liveRate || exchangeRate || 1;
+                const currentRate = liveRate || exchangeRate || DEFAULT_EXCHANGE_RATE;
                 const codes = calculateCodesAndPrices(item.data || item, currentRate, '1');
 
                 const priceMxn = Number(item.price_mxn || norm.price_mxn || item.price || norm.price || 0);
@@ -962,7 +962,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate, isSele
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Unit Val.</span>
                     <div className="flex flex-col leading-tight">
                         <span className="text-sm md:text-base font-black text-(--main-color) font-mono italic">${(unitPrice / 1000).toFixed(1)}K <span className="text-[9px] opacity-40">MXN</span></span>
-                        <span className="text-[10px] md:text-xs font-black text-white/30 font-mono tracking-tighter">${(unitPrice / (exchangeRate || 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="opacity-40 tracking-widest uppercase text-[7px]">USD</span></span>
+                        <span className="text-[10px] md:text-xs font-black text-white/30 font-mono tracking-tighter">${(unitPrice / (exchangeRate || DEFAULT_EXCHANGE_RATE)).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="opacity-40 tracking-widest uppercase text-[7px]">USD</span></span>
                     </div>
                 </div>
 
@@ -1220,7 +1220,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                                     {compaction < 0.6 && <span className="font-black text-white/20 uppercase tracking-[0.3em] mr-2" style={{ fontSize: `${dText(5.5)}px` }}>MXN</span>}
                                     
                                     <span className="font-black text-white/40 font-mono tracking-tighter italic" style={{ fontSize: `${dText(14)}px` }}>
-                                        ${(Number(n.price_mxn || n.price || 0) / (exchangeRate || 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        ${(Number(n.price_mxn || n.price || 0) / (exchangeRate || DEFAULT_EXCHANGE_RATE)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                     </span>
                                     {compaction < 0.6 && <span className="font-black text-white/10 uppercase tracking-[0.3em]" style={{ fontSize: `${dText(5.5)}px` }}>USD</span>}
                                  </div>
@@ -1324,8 +1324,10 @@ const GalleryFullItem = ({ item, onClick, inBag, onToggleBag, isSelectionMode, i
     const mediaUrls = useMemo(() => {
         const raw = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
         const main = (raw.length > 0 ? raw[0] : null) || n.generatedPngUrl;
-        return [main, ...raw.filter(u => u !== main && u !== n.generatedPngUrl), n.generatedPngUrl].filter(Boolean) as string[];
-    }, [n.generatedPngUrl, n.mediaUrls]);
+        const allMedia = [main, ...raw.filter(u => u !== main && u !== n.generatedPngUrl), n.generatedPngUrl].filter(Boolean) as string[];
+        if (n.videoGen) allMedia.push(n.videoGen);
+        return allMedia;
+    }, [n.generatedPngUrl, n.mediaUrls, n.videoGen]);
 
     const primaryMedia = mediaUrls[0] || '';
     const isVideo = primaryMedia.toLowerCase().endsWith('.mp4') || primaryMedia.toLowerCase().endsWith('.mov');

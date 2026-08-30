@@ -8,7 +8,7 @@ import {
 } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, toTitleCase } from '../../lib/utils';
-import { vendors } from '../../lib/consts';
+import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import {
     Package, DollarSign, Users, TrendingUp, Layers, Shapes,
     BarChart3, PieChart, LayoutGrid, User, Activity,
@@ -275,7 +275,7 @@ export function AdminDashboard() {
         financeData.forEach(d => {
             const sub = String(d.subcategory || '').toLowerCase();
             const amtMxn = (d.amount || 0) + (d.commission || 0);
-            const amtUsd = amtMxn / (d.exchange_rate || currentExchangeRate || 20);
+            const amtUsd = amtMxn / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE);
             if (sub.includes('month') || sub.includes('mo-exp')) { cats.Monthly.mxn += amtMxn; cats.Monthly.usd += amtUsd; }
             else if (sub.includes('suppl') || sub.includes('sppl')) { cats.Supplies.mxn += amtMxn; cats.Supplies.usd += amtUsd; }
             else if (sub.includes('labr') || sub.includes('labor')) { cats.Labor.mxn += amtMxn; cats.Labor.usd += amtUsd; }
@@ -298,7 +298,7 @@ export function AdminDashboard() {
             if (sub.includes('crate') || sub.includes('pallet') || desc.includes('crate') || desc.includes('pallet')) {
                 const amtMxn = (d.amount || 0) + (d.commission || 0);
                 logisticsSpendMxn += amtMxn;
-                logisticsSpendUsd += amtMxn / (d.exchange_rate || currentExchangeRate || 20);
+                logisticsSpendUsd += amtMxn / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE);
             }
         });
 

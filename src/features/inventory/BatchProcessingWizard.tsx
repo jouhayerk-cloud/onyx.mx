@@ -1,23 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAtom, useSetAtom } from 'jotai/react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { createPortal } from 'react-dom';
 import { 
     isBatchWizardOpenAtom, 
     batchWizardItemsAtom, 
     inventoryAtom, 
     InventoryVersionAtom,
-    userAtom
+    userAtom,
+    exchangeRateAtom,
+    liveExchangeRateAtom
 } from '../../lib/atoms';
+import { SCRIPT_URL , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
+import { ai } from '../../lib/ai';
+import { processVideoWithGemini } from '../../lib/videoAI';
 import { supabase } from '../../lib/supabase';
-import { getCleanImageUrl, resizeImage, handleProcessedFileUpload, loadImage, cropImage, findContour, simplifyContour, createCurvePath, generatePngAndSvgFromMasks, preprocessForMasking, applyAlphaMask } from '../../lib/utils';
-import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2 } from 'lucide-react';
+
+import { 
+    getCleanImageUrl, 
+    resizeImage, 
+    handleProcessedFileUpload, 
+    loadImage, 
+    cropImage, 
+    findContour, 
+    simplifyContour, 
+    createCurvePath, 
+    generatePngAndSvgFromMasks, 
+    preprocessForMasking, 
+    applyAlphaMask,
+    collectAllImages, 
+    calculateCodesAndPrices, 
+    normalizeInventoryData, 
+    getProductCategoryAndType,
+    formatProductTitle
+} from '../../lib/utils';
+import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2, Layers, Video, Maximize2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { removeBackground } from '@imgly/background-removal';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
-import { collectAllImages, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
-import { extractDominantColorsFromImage, getStoneStyleColors, generateFallbackMarketingHtml, generateBitmapAndHexMap } from '../../lib/colorExtractor';
+import { extractDominantColorsFromImage, getStoneStyleColors, generateFallbackMarketingHtml, generateBitmapAndHexMap, reconstructRgbPixelMap } from '../../lib/colorExtractor';
+import { SquareCropModal } from '../../components/SquareCropModal';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { vendors } from '../../lib/consts';
 
@@ -42,17 +65,22 @@ interface BatchOp {
     status: 'idle' | 'processing' | 'completed' | 'failed';
     progress: number;
     logs: string[];
-    processingMode?: 'local' | 'cloud';
+    processingMode?: 'local' | 'cloud' | 'hybrid';
     skipImageProcessing?: boolean;
+    forceRegenerateDescription?: boolean;
     result?: {
         description?: string;
         marketingDescription?: string;
         dominantColors?: string[];
+        generatedType?: string;
         maskUrl?: string;
         bitmapUrl?: string;
         hexString?: string;
         cols?: number;
         rows?: number;
+        localSegmentationMasks?: string;
+        cloudSegmentationMasks?: string;
+        videoGen?: string;
     };
 }
 
@@ -69,6 +97,9 @@ export const BatchProcessingWizard: React.FC = () => {
     const [batchItems, setBatchItems] = useAtom(batchWizardItemsAtom);
     const setInventoryVersion = useSetAtom(InventoryVersionAtom);
     const [user] = useAtom(userAtom);
+    const exchangeRate = useAtomValue(exchangeRateAtom);
+    const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
+    const activeRate = liveExchangeRate || exchangeRate || DEFAULT_EXCHANGE_RATE;
     
     const [queue, setQueue] = useState<BatchOp[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -88,6 +119,7 @@ export const BatchProcessingWizard: React.FC = () => {
     const [isSavingDb, setIsSavingDb] = useState(false);
     const [pdfBrand, setPdfBrand] = useState<'ArtOfDecor' | 'RareEarth'>('ArtOfDecor');
     const [editHtmlId, setEditHtmlId] = useState<string | null>(null);
+    const [cropModalState, setCropModalState] = useState<{ isOpen: boolean; opId: string; imageSrc: string }>({ isOpen: false, opId: '', imageSrc: '' });
 
     const saveApiKey = () => {
         if (apiInputRef.current?.value) {
@@ -118,36 +150,58 @@ export const BatchProcessingWizard: React.FC = () => {
                     }
                 }
                 
+                const savedMarketingDesc = norm.marketingDescription || norm.marketing_description || norm.generatedDescription || norm.generated_description || item.generatedDescription || item.generated_description || undefined;
+                const recon = reconstructRgbPixelMap(norm.spatialPoints || norm.spatial_points || item.spatial_points);
+                const savedHexString = recon ? recon.hexString : (item.hexString || item.hex_string || undefined);
+                const savedBitmapUrl = recon ? recon.bitmapUrl : undefined;
+                const savedCols = recon ? recon.cols : undefined;
+                const savedRows = recon ? recon.rows : undefined;
+                const savedDominantColors = norm.generatedColor || norm.dominantColors || norm.dominant_colors || item.dominantColors || item.dominant_colors || undefined;
+                const savedGeneratedType = norm.generatedType || norm.generated_type || item.generatedType || item.generated_type || (item.processed_media_urls && typeof item.processed_media_urls === 'string' && item.processed_media_urls.startsWith('{') ? (() => { try { return JSON.parse(item.processed_media_urls)['_generated_type']; } catch(e) { return undefined; } })() : undefined);
+                
+                const detailedDesc = norm.detailedDescription || norm.detailed_description || item.detailedDescription || item.detailed_description;
+
+                const baseResultObj = (detailedDesc || savedMarketingDesc || savedHexString || savedGeneratedType) ? {
+                    description: detailedDesc || norm.description || '',
+                    marketingDescription: savedMarketingDesc,
+                    hexString: savedHexString,
+                    bitmapUrl: savedBitmapUrl,
+                    cols: savedCols,
+                    rows: savedRows,
+                    dominantColors: Array.isArray(savedDominantColors) ? savedDominantColors : (typeof savedDominantColors === 'string' && savedDominantColors ? savedDominantColors.split(',').map((s: string) => s.trim()) : undefined),
+                    generatedType: savedGeneratedType
+                } : undefined;
+
                 if (images.length === 0) {
-                    const hasAI = !!norm.detailed_description;
+                    const hasData = !!baseResultObj;
                     newQueue.push({
                         id: String(item.id || item.row),
                         item,
                         imageIndex: 0,
                         imageUrl: '',
-                        status: hasAI ? 'completed' : 'idle',
-                        progress: hasAI ? 100 : 0,
-                        logs: hasAI ? ['[  OK  ] Loaded saved AI content'] : ['[ WAIT ] Ready for AI processing'],
+                        status: hasData ? 'completed' : 'idle',
+                        progress: hasData ? 100 : 0,
+                        logs: hasData ? ['[  OK  ] Loaded saved DB content'] : ['[ WAIT ] Ready for AI processing'],
                         processingMode: 'local',
                         skipImageProcessing: true,
-                        result: hasAI ? { description: norm.detailed_description } : undefined
+                        result: baseResultObj
                     });
                 } else {
                     images.forEach((imgUrl, idx) => {
                         const maskUrl = processedMap[imgUrl] || undefined;
-                        const hasAI = !!(norm.detailed_description || maskUrl);
+                        const hasData = !!(baseResultObj || maskUrl);
                         newQueue.push({
                             id: `${item.id || item.row}_img${idx}`,
                             item,
                             imageIndex: idx,
                             imageUrl: imgUrl,
-                            status: hasAI ? 'completed' : 'idle',
-                            progress: hasAI ? 100 : 0,
-                            logs: hasAI ? ['[  OK  ] Loaded saved AI content'] : ['[ WAIT ] Ready for AI processing'],
+                            status: hasData ? 'completed' : 'idle',
+                            progress: hasData ? 100 : 0,
+                            logs: hasData ? ['[  OK  ] Loaded saved DB content'] : ['[ WAIT ] Ready for AI processing'],
                             processingMode: 'local',
                             skipImageProcessing: false,
-                            result: hasAI ? {
-                                description: norm.detailed_description,
+                            result: (baseResultObj || maskUrl) ? {
+                                ...(baseResultObj || { description: norm.description || '' }),
                                 maskUrl: maskUrl
                             } : undefined
                         });
@@ -248,20 +302,88 @@ export const BatchProcessingWizard: React.FC = () => {
         logOp(op.id, '[ WAIT ] Resizing image...');
         try {
             const itemData = op.item.data || op.item;
+            const isCylPendant = String((itemData.shape || '') + ' ' + (itemData.shortDescription || itemData.type || '') + ' ' + (itemData.description || '') + ' ' + (itemData.title || '')).toLowerCase().match(/cylinder|cilindro|pendant|colgante/i) !== null;
             const rawImageUrl = op.imageUrl || getCleanImageUrl(op.item.generatedPngUrl || itemData.generatedPngUrl || op.item.imageUrl || itemData.mediaUrls?.split(',')[0]);
             const imageUrl = getCleanImageUrl(rawImageUrl);
             if (!imageUrl) throw new Error("No image found for item");
+            
+            if (imageUrl.toLowerCase().includes('photos.app.goo.gl') || imageUrl.toLowerCase().includes('photos.google.com')) {
+                logOp(op.id, '[ SKIP ] Google Photos link detected. Skipping AI processing.');
+                updateOp(op.id, { 
+                    status: 'completed', 
+                    progress: 100,
+                    result: op.result || {}
+                });
+                return;
+            }
 
-            const aiDataUrl = await resizeImage(imageUrl, 1024);
-            const base64 = aiDataUrl.split(',')[1];
-            logOp(op.id, '[  OK  ] Image resized successfully');
+            const isVideo = imageUrl.match(/\.(mp4|mov|avi|webm|mkv)(\?|$)/i) !== null;
+            let base64 = '';
+            
+            if (isVideo) {
+                logOp(op.id, '[ WAIT ] Fetching video file for AI...');
+                const videoRes = await fetch(imageUrl);
+                const videoBlob = await videoRes.blob();
+                
+                logOp(op.id, '[ WAIT ] Generating clean video clips with Gemini...');
+                const generatedClips = await processVideoWithGemini(
+                    new File([videoBlob], 'input.mp4', { type: videoBlob.type }),
+                    itemData.shape || 'Artifact',
+                    itemData.shortDescription || itemData.description || 'Onyx item',
+                    (p, label) => {
+                        updateOp(op.id, { progress: Math.min(90, 10 + p) });
+                        logOp(op.id, `[ WAIT ] ${label}`);
+                    }
+                );
+                
+                let processedMap: Record<string, string> = {};
+                if (itemData.processed_media_urls) {
+                    try {
+                        processedMap = JSON.parse(itemData.processed_media_urls);
+                    } catch (e) {}
+                }
+
+                const uploadedUrls: string[] = [];
+                for (let ci = 0; ci < generatedClips.length; ci++) {
+                    logOp(op.id, `[ WAIT ] Uploading generated clip ${ci + 1}/${generatedClips.length} to Supabase...`);
+                    const clipFileName = `gen_${Date.now()}_${op.id}_clip${ci}.mp4`;
+                    const { data, error } = await supabase.storage.from('inventory-media').upload(
+                        `generated_videos/${clipFileName}`, generatedClips[ci],
+                        { cacheControl: '3600', upsert: false }
+                    );
+                    if (error) {
+                        console.error(`Supabase upload failed for clip ${ci}:`, error.message);
+                        continue;
+                    }
+                    const { data: { publicUrl } } = supabase.storage.from('inventory-media').getPublicUrl(`generated_videos/${clipFileName}`);
+                    uploadedUrls.push(publicUrl);
+                    processedMap[`videoGen_${ci}`] = publicUrl;
+                }
+
+                // First clip is also stored as 'videoGen' for backward compatibility
+                if (uploadedUrls.length > 0) {
+                    processedMap['videoGen'] = uploadedUrls[0];
+                }
+                processedMap['videoGenCount'] = String(uploadedUrls.length);
+                
+                updateOp(op.id, { 
+                    result: { ...op.result, processedMap, videoGen: uploadedUrls[0] || '' } 
+                });
+                
+                logOp(op.id, `[  OK  ] ${uploadedUrls.length} video clip(s) generated and uploaded.`);
+            } else {
+                const aiDataUrl = await resizeImage(imageUrl, 1024);
+                base64 = aiDataUrl.split(',')[1];
+                logOp(op.id, '[  OK  ] Image resized successfully');
+            }
 
             let processed: any = { 
                 description: op.result?.description || '',
                 marketingDescription: op.result?.marketingDescription || '',
-                dominantColors: op.result?.dominantColors || []
+                dominantColors: op.result?.dominantColors || [],
+                generatedType: op.result?.generatedType || ''
             };
-            if ((op.imageIndex || 0) === 0 && (!processed.description || !processed.marketingDescription || !processed.dominantColors?.length)) {
+            if ((op.imageIndex || 0) === 0 && (!processed.description || !processed.marketingDescription || !processed.dominantColors?.length || !processed.generatedType || op.forceRegenerateDescription)) {
                 updateOp(op.id, { progress: 30 });
                 logOp(op.id, '[ WAIT ] Analyzing via Gemini...');
                 
@@ -269,21 +391,44 @@ export const BatchProcessingWizard: React.FC = () => {
                 const type = itemData.shortDescription || itemData.type || 'Object';
                 const material = itemData.material || 'Onyx';
                 const color = itemData.color || 'Natural Veining';
+                const collectionTotal = itemData.quantity || itemData.qty || '41';
                 
-                const prompt = `FIND the ${material} ${shape} ${type}. 
-Generate comprehensive catalog content for this item based on its features, shape, material (${material}), and color (${color}).
+                const prompt = isCylPendant ? `FIND and ANALYZE the collection of Mexican Onyx Cylinder Pendant Lamps/Fixtures in this image.
+Notice: These cylinder pendants are packed in SETS / BOXES against a black studio background, and this photo shows the exact items included in this specific Box Set.
 
-CRITICAL RULES:
-1. "description": A short, title-style description (maximum 1 sentence, concise like a product title).
+CRITICAL RULES FOR CYLINDER PENDANTS:
+1. "description": A highly descriptive product title (MAXIMUM 80 characters long). Do NOT use articles (a, an, the, and). Do NOT end with a period. (e.g., "Mexican Onyx Cylinder Pendant Light Fixtures - Box Set").
 2. "marketingDescription": A 1000 to 1200 character long marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium, engaging, and emphasize artisanal Mexican stone craftsmanship, translucency, and natural veining.
+   - You MUST COUNT the exact number of individual cylinder pieces visible in this photo (e.g. 9 pieces, 12 pieces, etc.) and state clearly early in the description: "This box set contains [X] pieces" (replacing [X] with the exact number of cylinders you counted in the image).
+   - You MUST also mention later in the description that this set is part of a larger limited edition master collection (stating clearly: "${collectionTotal} items in this limited edition collection").
+   - Emphasize how each cylinder in the set showcases unique natural veining and warm translucent glow when illuminated.
 3. "dominantColors": An array of 2 to 3 color names selected strictly from this allowed list: [Black, Blue, Bronze, Brown, Clear, Copper, Cream, Gold, Gray, Green, Iridescent, Multicolor, Orange, Pink, Purple, Rainbow, Red, Rose Gold, Silver, Tan, Turquoise/Aqua, White, Yellow].
-4. Do NOT use the word 'lamp'. ALL lamps MUST be described as 'Luminarie' or 'Luminaries'.
+   - CRITICAL COLOR RULE: Completely IGNORE the black studio background cloth! NEVER include "Black" as a dominant color for translucent cylinder pendants! Choose only the true natural stone colors (e.g. Cream, Tan, Brown, Amber/Orange, White, Green, etc.).
+4. Do NOT use the word 'lamp'. ALL fixtures MUST be described as 'Luminarie' or 'Luminaries' or 'Light Fixtures'.
+5. "generatedType": Choose ONE category strictly from this allowed list: [Barware > Wine Stoppers, Bathtubs, Board Games > Chess Sets, Home Decor > Candleholders, Home Decor > Coasters, Home Decor > Decorative Bowls, Home Decor > Decorative Plates, Home Decor > Decorative Trays, Home Decor > Floor Lamps, Home Decor > Mirrors, Home Decor > Pendant Lights, Home Decor > Sculptures, Home Decor > Sinks, Home Decor > Table Lamps, Home Decor > Tables, Home Decor > Vases, Home Decor > Wall Panels, Home Decor > Wine Racks, Outdoor Decor > Fountains]. CRITICAL RULE: Canoes, canoe dishes, or canoe bowls MUST be classified as "Home Decor > Decorative Trays". For Cylinder Pendants, always choose "Home Decor > Pendant Lights".
 
 Return ONLY valid JSON in this exact structure, with no markdown formatting:
 {
   "description": "Your short title-style description here...",
   "marketingDescription": "<p>Your 1000-1200 character HTML marketing description here...</p>",
-  "dominantColors": ["Color1", "Color2"]
+  "dominantColors": ["Color1", "Color2"],
+  "generatedType": "Home Decor > Pendant Lights"
+}` : `FIND the ${material} ${shape} ${type}. 
+Generate comprehensive catalog content for this item based on its features, shape, material (${material}), and color (${color}).
+
+CRITICAL RULES:
+1. "description": A highly descriptive product title (MAXIMUM 80 characters long). Do NOT use articles (a, an, the, and). Do NOT end with a period.
+2. "marketingDescription": A 1000 to 1200 character long marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium, engaging, and emphasize artisanal Mexican stone craftsmanship, translucency, and natural veining.
+3. "dominantColors": An array of 2 to 3 color names selected strictly from this allowed list: [Black, Blue, Bronze, Brown, Clear, Copper, Cream, Gold, Gray, Green, Iridescent, Multicolor, Orange, Pink, Purple, Rainbow, Red, Rose Gold, Silver, Tan, Turquoise/Aqua, White, Yellow].
+4. Do NOT use the word 'lamp'. ALL lamps MUST be described as 'Luminarie' or 'Luminaries'.
+5. "generatedType": Choose ONE category strictly from this allowed list: [Barware > Wine Stoppers, Bathtubs, Board Games > Chess Sets, Home Decor > Candleholders, Home Decor > Coasters, Home Decor > Decorative Bowls, Home Decor > Decorative Plates, Home Decor > Decorative Trays, Home Decor > Floor Lamps, Home Decor > Mirrors, Home Decor > Pendant Lights, Home Decor > Sculptures, Home Decor > Sinks, Home Decor > Table Lamps, Home Decor > Tables, Home Decor > Vases, Home Decor > Wall Panels, Home Decor > Wine Racks, Outdoor Decor > Fountains]. CRITICAL RULE: Canoes, canoe dishes, or canoe bowls MUST be classified as "Home Decor > Decorative Trays".
+
+Return ONLY valid JSON in this exact structure, with no markdown formatting:
+{
+  "description": "Your short title-style description here...",
+  "marketingDescription": "<p>Your 1000-1200 character HTML marketing description here...</p>",
+  "dominantColors": ["Color1", "Color2"],
+  "generatedType": "Home Decor > Decorative Bowls"
 }`;
 
                 const data = await callGemini(prompt, base64);
@@ -302,10 +447,20 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
                 }
                 
                 const parsed = JSON.parse(resultText);
+                let dominantColors = Array.isArray(parsed.dominantColors) ? parsed.dominantColors : processed.dominantColors;
+                if (isCylPendant && Array.isArray(dominantColors)) {
+                    dominantColors = dominantColors.filter((c: string) => c !== "Black");
+                    if (dominantColors.length === 0) dominantColors = ["Cream", "Tan"];
+                }
+                let generatedType = parsed.generatedType || parsed.generated_type || processed.generatedType || '';
+                if (isCylPendant && !generatedType) {
+                    generatedType = "Home Decor > Pendant Lights";
+                }
                 processed = {
-                    description: parsed.description || processed.description,
-                    marketingDescription: parsed.marketingDescription || processed.marketingDescription,
-                    dominantColors: Array.isArray(parsed.dominantColors) ? parsed.dominantColors : processed.dominantColors
+                    description: formatProductTitle(op.forceRegenerateDescription ? parsed.description : (processed.description || parsed.description)),
+                    marketingDescription: op.forceRegenerateDescription ? parsed.marketingDescription : (processed.marketingDescription || parsed.marketingDescription),
+                    dominantColors: op.forceRegenerateDescription ? dominantColors : (processed.dominantColors?.length > 0 ? processed.dominantColors : dominantColors),
+                    generatedType: op.forceRegenerateDescription ? generatedType : (processed.generatedType || generatedType)
                 };
                 if (!processed.description) {
                     throw new Error("Invalid output format from AI");
@@ -317,13 +472,17 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
             }
 
             let localMaskUrl = null;
-            if (!op.skipImageProcessing) {
+            if (!op.skipImageProcessing && !isVideo) {
                 if (op.processingMode === 'cloud') {
                     logOp(op.id, '[ WAIT ] Running Cloud AI for segmentation...');
-                const itemData = op.item.data || op.item;
                 const shape = itemData.shape || 'object';
                 // Pass 1: Only ask for bounding boxes, NOT masks! Asking for multiple base64 masks in one pass blows past the 8192 token limit!
-                const instruction = `Find the primary, central ${shape} Onyx artifact in the image. Ignore any other artifacts in the background or corners.
+                const instruction = isCylPendant ? `Find ALL the Cylinder Pendant Onyx lamps/fixtures in the image. Notice these items are packed in SETS (multiple vertical stone cylinders arranged in a row or grid against a black studio background).
+Instructions:
+1. You MUST include the entire set of cylinders in the bounding box. Do NOT ignore any cylinder in the group.
+2. Output a SINGLE bounding box labeled 'cylinder_set' that encompasses all cylinders shown in the photo from the top-leftmost cylinder edge to the bottom-rightmost cylinder edge.
+3. Completely ignore black studio background edges, cardboard on the floor, or extraneous studio objects.
+Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "cylinder_set"}].` : `Find the primary, central ${shape} Onyx artifact in the image. Ignore any other artifacts in the background or corners.
 Instructions: 
 1. Focus ONLY on the artifact closest to the center of the image.
 2. If it is a bowl, basin, or canoe, strictly extract and separate the 'rim', 'interior', and 'exterior' of that central artifact ONLY. 
@@ -362,6 +521,20 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     const offsetY = (targetSize - drawH) / 2;
 
                     const masks: any[] = [];
+                    logOp(op.id, `[ WAIT ] Extracting high-res global boundary on GPU...`);
+                    const bgBlobFull = await checkAbort(op.id, removeBackground(processedSdrUrl, {
+                        output: { format: 'image/png' }, device: 'gpu' as any, debug: false,
+                    }), 60000);
+                    const maskImgFull = await loadImage(URL.createObjectURL(bgBlobFull));
+                    const rcvFull = document.createElement('canvas'); rcvFull.width = maskImgFull.width; rcvFull.height = maskImgFull.height;
+                    const rctxFull = rcvFull.getContext('2d', { willReadFrequently: true })!;
+                    rctxFull.clearRect(0, 0, rcvFull.width, rcvFull.height); rctxFull.drawImage(maskImgFull, 0, 0);
+                    rctxFull.globalCompositeOperation = 'source-in'; rctxFull.fillStyle = 'white'; rctxFull.fillRect(0, 0, rcvFull.width, rcvFull.height);
+                    rctxFull.globalCompositeOperation = 'destination-over'; rctxFull.fillStyle = 'black'; rctxFull.fillRect(0, 0, rcvFull.width, rcvFull.height);
+                    rctxFull.globalCompositeOperation = 'source-over';
+                    const contourFull = findContour(rctxFull.getImageData(0, 0, rcvFull.width, rcvFull.height));
+                    const simplifiedFull = simplifyContour(contourFull, 0.2);
+
                     for (let idx = 0; idx < processed.length; idx++) {
                         if (cancelTokens.current[op.id]) throw new Error("Cancelled by user");
                         const m = processed[idx];
@@ -388,86 +561,166 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                             continue;
                         }
 
-                        const box = m.box_2d;
-                        if (!box) {
-                            if (m.polygon && m.polygon.length > 0) {
-                                // Fallback: if Gemini gave a polygon but no box_2d for something else, compute the bounding box from the polygon so isnet can use it
-                                const xs = m.polygon.map((p:any) => p[1]);
-                                const ys = m.polygon.map((p:any) => p[0]);
-                                m.box_2d = [Math.min(...ys), Math.min(...xs), Math.max(...ys), Math.max(...xs)];
-                            } else {
-                                continue;
-                            }
-                        }
-                        
-                        const finalBox = m.box_2d;
-                        const raw_x = finalBox[1] / 1000; const raw_y = finalBox[0] / 1000;
-                        const raw_w = (finalBox[3] - finalBox[1]) / 1000; const raw_h = (finalBox[2] - finalBox[0]) / 1000;
-                        
-                        // Gemini's coordinates are relative to a 1024x1024 letterboxed canvas
-                        // We must map them back to the original image's coordinate space
-                        const norm_x = (raw_x * targetSize - offsetX) / drawW;
-                        const norm_y = (raw_y * targetSize - offsetY) / drawH;
-                        const norm_w = (raw_w * targetSize) / drawW;
-                        const norm_h = (raw_h * targetSize) / drawH;
-                        
-                        const PAD = 0.15; // 15% padding to catch natural rough edges
-                        const bx_x = Math.max(0, norm_x - PAD);
-                        const bx_y = Math.max(0, norm_y - PAD);
-                        const bx_w = Math.min(1 - bx_x, norm_w + (PAD * 2));
-                        const bx_h = Math.min(1 - bx_y, norm_h + (PAD * 2));
-                        
-                        // Crop using the original image space coordinates
-                        const cropUrl = await cropImage(imageUrl, bx_x, bx_y, bx_w, bx_h, 512);
-                        const processedCropUrl = await preprocessForMasking(cropUrl);
-                        
-                        logOp(op.id, `[ WAIT ] Segmenting ${m.label}...`);
-                        const bgBlob = await checkAbort(op.id, removeBackground(processedCropUrl, {
-                            model: 'isnet',
-                            output: { format: 'image/png' },
-                            device: 'gpu' as any,
-                            debug: false,
-                        }), 60000); // 60 seconds timeout per mask part to avoid permanent hang
-                        
-                        const maskImg = await loadImage(URL.createObjectURL(bgBlob));
-                        const rcv = document.createElement('canvas');
-                        rcv.width = maskImg.width; rcv.height = maskImg.height;
-                        const rctx = rcv.getContext('2d', { willReadFrequently: true })!;
-                        
-                        rctx.clearRect(0, 0, rcv.width, rcv.height);
-                        rctx.drawImage(maskImg, 0, 0);
-                        rctx.globalCompositeOperation = 'source-in';
-                        rctx.fillStyle = 'white';
-                        rctx.fillRect(0, 0, rcv.width, rcv.height);
-                        rctx.globalCompositeOperation = 'destination-over';
-                        rctx.fillStyle = 'black';
-                        rctx.fillRect(0, 0, rcv.width, rcv.height);
-                        rctx.globalCompositeOperation = 'source-over';
-                        const iData = rctx.getImageData(0, 0, rcv.width, rcv.height);
-                        const contour = findContour(iData);
-                        
-                        const simplified = simplifyContour(contour, 0.2);
-                        const maskWidth = maskImg.width;
-                        const maskHeight = maskImg.height;
-        
                         masks.push({
-                            label: m.label,
-                            x: bx_x, y: bx_y, 
-                            width: bx_w, height: bx_h,
-                            maskWidth: maskWidth,
-                            maskHeight: maskHeight,
-                            path: createCurvePath(simplified)
+                            label: m.label || 'artifact',
+                            x: 0, y: 0, 
+                            width: 1, height: 1,
+                            maskWidth: maskImgFull.width,
+                            maskHeight: maskImgFull.height,
+                            path: createCurvePath(simplifiedFull)
                         });
                     }
 
                     logOp(op.id, '[ WAIT ] Generating high-res cutout...');
-                    const { pngData } = await checkAbort(op.id, generatePngAndSvgFromMasks(imageUrl, { width: img.width, height: img.height }, masks));
+                    const { pngData, svgData } = await checkAbort(op.id, generatePngAndSvgFromMasks(imageUrl, { width: img.width, height: img.height }, masks, isCylPendant));
                     localMaskUrl = pngData;
+                    op.result = op.result || {};
+                    op.result.cloudSegmentationMasks = JSON.stringify({
+                        width: img.width, height: img.height,
+                        svgData: svgData, layers: masks
+                    });
                     logOp(op.id, '[  OK  ] Cloud Mask generated');
 
                 } catch (e: any) {
                     logOp(op.id, `[ FAIL ] Cloud Mask failed: ${e.message}`);
                     console.error(e);
+                }
+            } else if (op.processingMode === 'hybrid') {
+                logOp(op.id, '[ WAIT ] [HYBRID 1/4] Running Local GPU AI for initial background removal...');
+                try {
+                    updateOp(op.id, { progress: 15, stepLabel: 'Preparing Full-Res SDR Image...' });
+                    const sdrDataUrl = await new Promise<string>((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width; canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) return reject(new Error('Canvas error'));
+                            ctx.drawImage(img, 0, 0, img.width, img.height);
+                            resolve(canvas.toDataURL('image/jpeg', 1.0));
+                        };
+                        img.onerror = () => reject(new Error('Image load failed'));
+                        img.src = imageUrl;
+                    });
+
+                    logOp(op.id, '[ WAIT ] [HYBRID 1/4] Extracting background on GPU...');
+                    const processedSdrUrl = await preprocessForMasking(sdrDataUrl);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    if (cancelTokens.current[op.id]) throw new Error("Cancelled by user");
+
+                    const bgBlob = await checkAbort(op.id, removeBackground(processedSdrUrl, {
+                        output: { format: 'image/png' },
+                        device: 'gpu' as any,
+                        debug: false,
+                        progress: (key, current, total) => {
+                            const p = Math.round((current / total) * 100);
+                            updateOp(op.id, { progress: 15 + (p * 0.25), stepLabel: `GPU Extracting: ${key} ${p}%` });
+                        }
+                    }), 120000);
+
+                    const img = await loadImage(imageUrl);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    if (cancelTokens.current[op.id]) throw new Error("Cancelled by user");
+
+                    const initialLocalMaskUrl = await applyAlphaMask(sdrDataUrl, bgBlob, isCylPendant);
+                    logOp(op.id, '[  OK  ] [HYBRID 1/4] Local GPU mask generated');
+
+                    logOp(op.id, '[ WAIT ] [HYBRID 2/4] Tracing vector contours (Bézier curve engine)...');
+                    updateOp(op.id, { progress: 45, stepLabel: 'Traced Vector Boundaries...' });
+                    const maskImg = await loadImage(initialLocalMaskUrl);
+                    const mCanvas = document.createElement('canvas');
+                    mCanvas.width = maskImg.width; mCanvas.height = maskImg.height;
+                    const mCtx = mCanvas.getContext('2d', { willReadFrequently: true })!;
+                    mCtx.drawImage(maskImg, 0, 0);
+                    const mData = mCtx.getImageData(0, 0, maskImg.width, maskImg.height);
+                    const contour = findContour(mData);
+                    const simplified = simplifyContour(contour, 2.0);
+                    const svgPath = createCurvePath(simplified);
+                    
+                    op.result = op.result || {};
+                    op.result.localSegmentationMasks = JSON.stringify({
+                        width: maskImg.width, height: maskImg.height,
+                        path: svgPath, pointCount: simplified.length,
+                        points: simplified.map(p => [Math.round((p.y / maskImg.height) * 1000), Math.round((p.x / maskImg.width) * 1000)])
+                    });
+                    logOp(op.id, `[  OK  ] [HYBRID 2/4] Extracted ${simplified.length} vector points`);
+
+                    logOp(op.id, '[ WAIT ] [HYBRID 3/4] Prompting Cloud AI for multi-layer refinement...');
+                    updateOp(op.id, { progress: 60, stepLabel: 'Querying Cloud AI for Refinement...' });
+                    
+                    const shape = itemData.shape || 'object';
+                    const hybridInstruction = isCylPendant ? `We performed initial GPU segmentation on these Cylinder Pendant Onyx lamps/fixtures. Now perform Cloud AI Refinement.
+Notice these items are packed in SETS (multiple vertical stone cylinders arranged in a row or grid against a black studio background).
+Instructions:
+1. You MUST include the entire set of cylinders in the bounding box. Do NOT ignore any cylinder in the group.
+2. Output a SINGLE bounding box labeled 'cylinder_set' that encompasses all cylinders shown in the photo from the top-leftmost cylinder edge to the bottom-rightmost cylinder edge.
+3. Completely ignore black studio background edges, cardboard on the floor, or extraneous studio objects.
+Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "cylinder_set"}].` : `We performed initial local GPU segmentation on this ${shape} Onyx artifact (with ${simplified.length} vector points). Now perform Cloud AI Vector Refinement to generate clean semantic layers and boundaries.
+Instructions:
+1. Focus ONLY on the primary artifact in the center of the image. Ignore cardboard, studio backgrounds, or people.
+2. For MIRRORS, the SOLID ONYX MIRROR FRAME is your absolute priority. You MUST output exactly TWO objects:
+   - A bounding box labeled 'mirror_frame' encompassing the outer edge of the stone frame.
+   - A polygon labeled 'mirror_glass' tracing the exact inner boundary where the onyx frame meets the reflection glass (provide 24 to 36 [y, x] coordinates normalized 0-1000).
+3. For bowls, basins, or canoes, separate 'rim', 'interior', and 'exterior' if distinct, or output a single comprehensive bounding box including all rough rock exterior edges.
+4. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string", "polygon": [[y,x], ...]}].`;
+
+                    try {
+                        const cloudData = await callGemini(hybridInstruction, base64, 40000, "gemini-2.5-pro");
+                        let resultText = cloudData?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!resultText) throw new Error("Empty response from Cloud Engine");
+                        if (resultText.includes('```')) {
+                            const match = resultText.match(/```(?:json)?([\s\S]*?)```/);
+                            if (match) resultText = match[1].trim();
+                            else resultText = resultText.replace(/```(json)?|```/g, '').trim();
+                        }
+                        const processed = JSON.parse(resultText);
+                        logOp(op.id, `[  OK  ] [HYBRID 3/4] Cloud AI refined ${processed.length} layers`);
+                        updateOp(op.id, { progress: 80, stepLabel: 'Building Final Refined SVG Masks...' });
+
+                        const originalWidth = img.width; const originalHeight = img.height;
+                        const targetSize = 1024;
+                        let drawW, drawH;
+                        if (originalWidth > originalHeight) { drawW = targetSize; drawH = Math.round(originalHeight * (targetSize / originalWidth)); } 
+                        else { drawH = targetSize; drawW = Math.round(originalWidth * (targetSize / originalHeight)); }
+                        const offsetX = (targetSize - drawW) / 2; const offsetY = (targetSize - drawH) / 2;
+
+                        const cloudMasks: any[] = [];
+                        for (let idx = 0; idx < processed.length; idx++) {
+                            if (cancelTokens.current[op.id]) throw new Error("Cancelled by user");
+                            const m = processed[idx];
+                            if (m.polygon && m.polygon.length > 0 && String(m.label).toLowerCase() === 'mirror_glass') {
+                                const pts = m.polygon.map((pt: any[]) => {
+                                    const raw_px = pt[1] / 1000; const raw_py = pt[0] / 1000;
+                                    return { x: (raw_px * targetSize - offsetX) / drawW, y: (raw_py * targetSize - offsetY) / drawH };
+                                });
+                                cloudMasks.push({ label: m.label, x: 0, y: 0, width: 1, height: 1, maskWidth: 1, maskHeight: 1, path: createCurvePath(pts) });
+                                continue;
+                            }
+                            cloudMasks.push({
+                                label: m.label || 'artifact',
+                                x: 0, y: 0, width: 1, height: 1,
+                                maskWidth: img.width,
+                                maskHeight: img.height,
+                                path: createCurvePath(simplified)
+                            });
+                        }
+
+                        logOp(op.id, '[ WAIT ] [HYBRID 4/4] Generating final high-res SVG & PNG cutout...');
+                        const { pngData, svgData } = await checkAbort(op.id, generatePngAndSvgFromMasks(imageUrl, { width: img.width, height: img.height }, cloudMasks, isCylPendant));
+                        localMaskUrl = pngData || initialLocalMaskUrl;
+                        op.result.cloudSegmentationMasks = JSON.stringify({
+                            width: img.width, height: img.height,
+                            svgData: svgData, layers: cloudMasks
+                        });
+                        logOp(op.id, '[  OK  ] [HYBRID 4/4] Hybrid pipeline completed successfully!');
+                    } catch (cloudErr: any) {
+                        logOp(op.id, `[ WARN ] Cloud refinement fallback to GPU mask: ${cloudErr.message}`);
+                        localMaskUrl = initialLocalMaskUrl;
+                    }
+                } catch (err: any) {
+                    logOp(op.id, `[ FAIL ] Hybrid segmentation failed: ${err.message}`);
+                    console.error(err);
                 }
             } else {
                 logOp(op.id, '[ WAIT ] Running local AI for background removal...');
@@ -499,7 +752,6 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     if (cancelTokens.current[op.id]) throw new Error("Cancelled by user");
 
                     const bgBlob = await checkAbort(op.id, removeBackground(processedSdrUrl, {
-                        model: 'isnet', // Upgrade to isnet for perfect solid boundaries and fewer partial cuts
                         output: { format: 'image/png' },
                         device: 'gpu' as any, // Explicitly request GPU acceleration if available
                         debug: false,
@@ -514,8 +766,27 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     if (cancelTokens.current[op.id]) throw new Error("Cancelled by user");
 
                     updateOp(op.id, { progress: 90, stepLabel: 'Finalizing Image...' });
-                    localMaskUrl = await applyAlphaMask(sdrDataUrl, bgBlob);
+                    localMaskUrl = await applyAlphaMask(sdrDataUrl, bgBlob, isCylPendant);
                     logOp(op.id, '[  OK  ] Mask generated locally');
+                    try {
+                        const maskImg = await loadImage(localMaskUrl);
+                        const mCanvas = document.createElement('canvas');
+                        mCanvas.width = maskImg.width; mCanvas.height = maskImg.height;
+                        const mCtx = mCanvas.getContext('2d', { willReadFrequently: true })!;
+                        mCtx.drawImage(maskImg, 0, 0);
+                        const mData = mCtx.getImageData(0, 0, maskImg.width, maskImg.height);
+                        const contour = findContour(mData);
+                        const simplified = simplifyContour(contour, 2.0);
+                        const svgPath = createCurvePath(simplified);
+                        op.result = op.result || {};
+                        op.result.localSegmentationMasks = JSON.stringify({
+                            width: maskImg.width, height: maskImg.height,
+                            path: svgPath, pointCount: simplified.length,
+                            points: simplified.map(p => [Math.round((p.y / maskImg.height) * 1000), Math.round((p.x / maskImg.width) * 1000)])
+                        });
+                    } catch (vErr) {
+                        console.warn("Could not parse local vector mask:", vErr);
+                    }
                 } catch (err: any) {
                     logOp(op.id, `[ FAIL ] Mask generation failed: ${err.message}`);
                     console.error(err);
@@ -525,23 +796,50 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 logOp(op.id, '[ SKIP ] Image processing skipped');
             }
 
-            const bitmapRes = await generateBitmapAndHexMap(localMaskUrl || op.imageUrl, 20, 20, 80, 149, 61, 199, itemData.material, itemData.shape, itemData.color);
-            const finalColors = (processed.dominantColors && processed.dominantColors.length > 0) ? processed.dominantColors : bitmapRes.dominantColors;
+            let finalColors = processed.dominantColors || [];
+            let bitmapRes: any = {};
+            if (!isVideo) {
+                bitmapRes = await generateBitmapAndHexMap(localMaskUrl || op.result?.maskUrl || op.imageUrl, 20, 20, 80, 149, 61, 199, itemData.material, itemData.shape, itemData.color);
+                finalColors = (processed.dominantColors && processed.dominantColors.length > 0) ? processed.dominantColors : bitmapRes.dominantColors;
+            }
 
             updateOp(op.id, { 
                 status: 'completed', 
                 progress: 100, 
+                forceRegenerateDescription: false,
                 result: {
+                    ...op.result,
                     description: processed.description,
                     marketingDescription: processed.marketingDescription,
                     dominantColors: finalColors,
-                    maskUrl: localMaskUrl || undefined,
-                    bitmapUrl: bitmapRes.bitmapDataUrl,
-                    hexString: bitmapRes.hexString,
-                    cols: bitmapRes.cols,
-                    rows: bitmapRes.rows
+                    generatedType: processed.generatedType || op.result?.generatedType,
+                    maskUrl: localMaskUrl || op.result?.maskUrl || undefined,
+                    bitmapUrl: bitmapRes.bitmapDataUrl || op.result?.bitmapUrl,
+                    hexString: bitmapRes.hexString || op.result?.hexString,
+                    cols: bitmapRes.cols || op.result?.cols,
+                    rows: bitmapRes.rows || op.result?.rows,
+                    videoGen: processed.videoGen || op.result?.videoGen
                 }
             });
+
+            // Propagate generated description and colors to all sibling images of the same item
+            if ((op.imageIndex || 0) === 0) {
+                setQueue(prev => prev.map(q => {
+                    if (q.item.id === op.item.id && q.id !== op.id) {
+                        return {
+                            ...q,
+                            result: {
+                                ...q.result,
+                                description: processed.description,
+                                marketingDescription: processed.marketingDescription,
+                                dominantColors: finalColors,
+                                generatedType: processed.generatedType || op.result?.generatedType
+                            }
+                        };
+                    }
+                    return q;
+                }));
+            }
         } catch (err: any) {
             logOp(op.id, `[ FAIL ] ${err.message}`);
             updateOp(op.id, { status: 'failed', progress: 0 });
@@ -554,6 +852,16 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
         setQueue(prev => prev.map(op => 
             op.id === id 
                 ? { ...op, status: 'idle', progress: 0, logs: ['[ WAIT ] Re-queued for processing'], result: { ...op.result, maskUrl: undefined } }
+                : op
+        ));
+        setHasUnsavedChanges(true);
+    };
+
+    const handleRegenerateAI = (id: string) => {
+        cancelTokens.current[id] = false;
+        setQueue(prev => prev.map(op => 
+            op.id === id 
+                ? { ...op, status: 'idle', progress: 0, forceRegenerateDescription: true, logs: ['[ WAIT ] Re-queued for AI regeneration'] }
                 : op
         ));
         setHasUnsavedChanges(true);
@@ -598,21 +906,80 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
             const updatePayload: any = {};
             if (op.result.description) updatePayload.detailed_description = op.result.description;
             if (op.result.marketingDescription) updatePayload.generated_description = op.result.marketingDescription;
-            if (op.result.dominantColors && op.result.dominantColors.length > 0) updatePayload.color = op.result.dominantColors.join(', ');
+            let processedMap: Record<string, string> = {};
+            const itemData = op.item.data || op.item || {};
+            const rawMedia = itemData.processedMediaUrls || itemData.processed_media_urls;
+            if (rawMedia && typeof rawMedia === 'string' && rawMedia.startsWith('{')) {
+                try {
+                    processedMap = JSON.parse(rawMedia);
+                } catch (e) {}
+            }
+            if (op.result.dominantColors && op.result.dominantColors.length > 0) {
+                const genColorStr = op.result.dominantColors.join(', ');
+                updatePayload.generated_color = genColorStr;
+                processedMap['_generated_color'] = genColorStr;
+            }
+            if (op.result.generatedType) {
+                updatePayload.generated_type = op.result.generatedType;
+                processedMap['_generated_type'] = op.result.generatedType;
+            }
+            if (op.result.videoGen) {
+                processedMap['videoGen'] = op.result.videoGen;
+            }
+            updatePayload.processed_media_urls = JSON.stringify(processedMap);
+            if (op.result.localSegmentationMasks) updatePayload.local_segmentation_masks = op.result.localSegmentationMasks;
+            if (op.result.cloudSegmentationMasks) {
+                updatePayload.cloud_segmentation_masks = op.result.cloudSegmentationMasks;
+                updatePayload.spatial_masks = op.result.cloudSegmentationMasks;
+            }
+            
+            // Generate and save Classification and Type
+            const catAndType = getProductCategoryAndType({
+                ...itemData,
+                description: op.result.description || itemData.description,
+                type: op.result.generatedType || itemData.type
+            });
+            if (catAndType) {
+                updatePayload.product_category = catAndType.category;
+                updatePayload.product_type = catAndType.type;
+                processedMap['_product_category'] = catAndType.category;
+                processedMap['_product_type'] = catAndType.type;
+            }
+            
+            if (Object.keys(processedMap).length > 0) {
+                updatePayload.processed_media_urls = JSON.stringify(processedMap);
+            }
             if (op.result.hexString) {
                 updatePayload.spatial_points = [{
                     type: 'pixel_map',
                     dimensions: `${op.result.cols || 20}x${op.result.rows || 20}`,
+                    cols: op.result.cols || 20,
+                    rows: op.result.rows || 20,
                     hex_string: op.result.hexString,
                     bitmap_url: op.result.bitmapUrl || null
                 }];
             }
 
-            await supabase.from('inventory').update(updatePayload).eq('id', itemId);
+            const { error: sbErr } = await supabase.from('inventory').update(updatePayload).eq('id', itemId);
+            if (sbErr) {
+                if (sbErr.code === '42703' || sbErr.message?.includes('column')) {
+                    const fallbackPayload = { ...updatePayload };
+                    delete fallbackPayload.generated_type;
+                    delete fallbackPayload.generated_color;
+                    delete fallbackPayload.local_segmentation_masks;
+                    delete fallbackPayload.cloud_segmentation_masks;
+                    delete fallbackPayload.product_category;
+                    delete fallbackPayload.product_type;
+                    const { error: retryErr } = await supabase.from('inventory').update(fallbackPayload).eq('id', itemId);
+                    if (retryErr) throw retryErr;
+                } else {
+                    throw sbErr;
+                }
+            }
             toast.success('Description saved!', { id: toastId });
             setInventoryVersion(Date.now());
         } catch (e: any) {
-            toast.error('Failed to save description', { id: toastId });
+            toast.error('Failed to save description: ' + (e.message || ''), { id: toastId });
         }
     };
 
@@ -645,6 +1012,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 let lastDescription = '';
                 let lastMarketingDescription = '';
                 let lastColors: string[] = [];
+                let lastGeneratedType = '';
                 
                 for (const op of ops) {
                     if (op.result?.maskUrl && op.result.maskUrl.startsWith('data:')) {
@@ -677,7 +1045,17 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     if (op.result?.dominantColors && op.result.dominantColors.length > 0) {
                         lastColors = op.result.dominantColors;
                     }
+                    if (op.result?.generatedType) {
+                        lastGeneratedType = op.result.generatedType;
+                    }
                 }
+                
+                let lastLocalMasks = '';
+                let lastCloudMasks = '';
+                ops.forEach(op => {
+                    if (op.result?.localSegmentationMasks) lastLocalMasks = op.result.localSegmentationMasks;
+                    if (op.result?.cloudSegmentationMasks) lastCloudMasks = op.result.cloudSegmentationMasks;
+                });
                 
                 const primaryOp = ops[0];
                 const itemData = primaryOp.item.data || primaryOp.item;
@@ -698,6 +1076,9 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     if (op.result?.maskUrl && op.imageUrl) {
                         processedMap[op.imageUrl] = op.result.maskUrl;
                     }
+                    if (op.result?.videoGen) {
+                        processedMap['videoGen'] = op.result.videoGen;
+                    }
                     if (op.result?.hexString) {
                         lastHexString = op.result.hexString;
                         lastBitmapUrl = op.result.bitmapUrl || '';
@@ -712,6 +1093,8 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     if (!lastHexString) {
                         lastHexString = bitmapRes.hexString;
                         lastBitmapUrl = bitmapRes.bitmapDataUrl;
+                        lastCols = bitmapRes.cols;
+                        lastRows = bitmapRes.rows;
                     }
                     if (lastColors.length === 0) {
                         lastColors = bitmapRes.dominantColors;
@@ -727,6 +1110,14 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     if (lastBitmapUrl) processedMap['_bitmap_url'] = lastBitmapUrl;
                 }
 
+                if (lastColors.length > 0) {
+                    processedMap['_generated_color'] = lastColors.join(', ');
+                }
+
+                if (lastGeneratedType) {
+                    processedMap['_generated_type'] = lastGeneratedType;
+                }
+
                 const updatePayload: any = { 
                     detailed_description: lastDescription || itemData.detailedDescription || itemData.detailed_description || null,
                     generated_description: lastMarketingDescription,
@@ -736,19 +1127,44 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 };
 
                 if (lastColors.length > 0) {
-                    updatePayload.color = lastColors.join(', ');
+                    updatePayload.generated_color = lastColors.join(', ');
+                }
+
+                if (lastGeneratedType) {
+                    updatePayload.generated_type = lastGeneratedType;
+                }
+                if (lastLocalMasks) updatePayload.local_segmentation_masks = lastLocalMasks;
+                if (lastCloudMasks) {
+                    updatePayload.cloud_segmentation_masks = lastCloudMasks;
+                    updatePayload.spatial_masks = lastCloudMasks;
                 }
 
                 if (lastHexString) {
                     updatePayload.spatial_points = [{
                         type: 'pixel_map',
                         dimensions: `${lastCols}x${lastRows}`,
+                        cols: lastCols,
+                        rows: lastRows,
                         hex_string: lastHexString,
                         bitmap_url: lastBitmapUrl || null
                     }];
                 }
 
-                await supabase.from('inventory').update(updatePayload).eq('id', itemId);
+                const { error: sbErr } = await supabase.from('inventory').update(updatePayload).eq('id', itemId);
+                if (sbErr) {
+                    if (sbErr.code === '42703' || sbErr.message?.includes('column')) {
+                        const fallbackPayload = { ...updatePayload };
+                        delete fallbackPayload.generated_type;
+                        delete fallbackPayload.generated_color;
+                        delete fallbackPayload.local_segmentation_masks;
+                        delete fallbackPayload.cloud_segmentation_masks;
+                        delete fallbackPayload.video_gen;
+                        const { error: retryErr } = await supabase.from('inventory').update(fallbackPayload).eq('id', itemId);
+                        if (retryErr) throw retryErr;
+                    } else {
+                        throw sbErr;
+                    }
+                }
                 
                 savedCount++;
                 setOverallProgress((savedCount / entries.length) * 100);
@@ -810,7 +1226,8 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
             const category = getProductCategory(shape, shortDesc);
             
             const normData = normalizeInventoryData(itemData);
-            const codes = calculateCodesAndPrices(itemData, 1, 'REG');
+            const bookPrefix = normData.workbook || itemData.workbook || '326';
+            const codes = calculateCodesAndPrices(itemData, activeRate, bookPrefix);
             
             const vendorMapping: Record<string, string> = {
                 'ET': 'Betoeduardo', 'DH': 'Delfino', 'EM': 'Emmanuel', 'GE': 'Geraldo',
@@ -825,9 +1242,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
             const rawVendorId = String(normData.vendor_id || extractedPrefix || '').toUpperCase();
             const vendorName = vendorMapping[rawVendorId] || rawVendorId || 'Art of Decor';
 
-            const combinedMaskUrls = ops.map(op => op.result?.maskUrl || (op.skipImageProcessing ? op.imageUrl : undefined)).filter(Boolean) as string[];
-            
-            exportDataList.push({ op: primaryOp, category, vendorName, allMasks: combinedMaskUrls });
+            const combinedMaskUrls = ops.map(op => (op.skipImageProcessing ? op.imageUrl : (op.result?.maskUrl || op.imageUrl))).filter(Boolean) as string[];
 
             let lastDescription = '';
             let lastMarketingDesc = '';
@@ -840,13 +1255,19 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
 
             const pdfProcessedMap: Record<string, string> = {};
             ops.forEach(op => {
-                if (op.result?.maskUrl && op.imageUrl) {
+                if (!op.skipImageProcessing && op.result?.maskUrl && op.imageUrl) {
                     pdfProcessedMap[op.imageUrl] = op.result.maskUrl;
                 }
             });
 
             const pdfData = { 
                 ...normData, 
+                book_barcode: codes?.bookBarcode || normData.book_barcode || normData.itemId || '',
+                book_aq_code: codes?.bookAqCode || normData.book_aq_code || '',
+                book_land_code: codes?.bookLandCode || normData.book_land_code || '',
+                book_acquisition: codes?.bookAcquisition || normData.book_acquisition || '',
+                book_landed: codes?.bookLanded || normData.book_landed || '',
+                book_retail: codes?.bookRetail || normData.book_retail || '',
                 description: lastDescription || normData.description,
                 detailed_description: lastDescription || normData.detailed_description, 
                 marketing_description: lastMarketingDesc || normData.generatedDescription || normData.generated_description || generateFallbackMarketingHtml(normData),
@@ -855,12 +1276,58 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 category: category
             };
             
-            catalogResults.push({
-                data: pdfData,
-                codes: codes,
-                images: combinedMaskUrls.length > 0 ? combinedMaskUrls.map(u => getCleanImageUrl(u)!) : collectAllImages(normData),
-                exportType: 'catalog'
-            });
+            const numImages = combinedMaskUrls.length;
+            const quantity = Number(normData.quantity) || 1;
+            const isCylinderPendant = (normData.type || '').toUpperCase().includes('CYLINDER PENDANT');
+
+            const isQtyMatchesImages = quantity === numImages && numImages > 1;
+            const isCylinderBoxSet = isCylinderPendant && quantity > numImages && numImages > 1;
+
+            if (isQtyMatchesImages || isCylinderBoxSet) {
+                let qtyPerRow = 1;
+                if (isCylinderBoxSet) {
+                    const w = Math.round(parseFloat(normData.widthCm) || 0);
+                    if (w === 12 || w === 10) qtyPerRow = 9;
+                    else if (w === 8) qtyPerRow = 12;
+                    else qtyPerRow = Math.round(quantity / numImages);
+                }
+                
+                ops.forEach((op, index) => {
+                    const singleMask = combinedMaskUrls[index] ? [combinedMaskUrls[index]] : [];
+                    const partSuffix = `(${index + 1} of ${numImages})`;
+                    const modifiedNormData = { ...normData, quantity: qtyPerRow, partSuffix };
+                    
+                    exportDataList.push({ op, category, vendorName, allMasks: singleMask, overrideNormData: modifiedNormData });
+                    
+                    const singlePdfData = { ...pdfData, quantity: qtyPerRow, partSuffix };
+                    
+                    catalogResults.push({
+                        data: singlePdfData,
+                        codes: {
+                            ...codes,
+                            primaryPriceLabel: 'USD RETAIL',
+                            primaryPriceValue: `$${codes.bookRetail} USD`
+                        },
+                        images: singleMask.length > 0 ? singleMask.map(u => getCleanImageUrl(u)!) : [],
+                        exportType: 'catalog'
+                    });
+                });
+            } else {
+                exportDataList.push({ op: primaryOp, category, vendorName, allMasks: combinedMaskUrls });
+                
+                const isSingleItemMultiImage = quantity === 1 && numImages > 1;
+                
+                catalogResults.push({
+                    data: pdfData,
+                    codes: {
+                        ...codes,
+                        primaryPriceLabel: 'USD RETAIL',
+                        primaryPriceValue: `$${codes.bookRetail} USD`
+                    },
+                    images: combinedMaskUrls.length > 0 ? combinedMaskUrls.map(u => getCleanImageUrl(u)!) : collectAllImages(normData),
+                    exportType: isSingleItemMultiImage ? 'catalog-grid' as any : 'catalog'
+                });
+            }
         }
         return { exportDataList, catalogResults };
     };
@@ -876,15 +1343,15 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
             const sheet = workbook.addWorksheet('Shopify Export');
             
             const headers = [
-                'Title', 'Body (HTML)', 'Vendor', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
-                'Variant Price', 'Variant Grams', 'Image Src', 'Image Position', 
+                'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Type', 'Option1 Name', 'Option1 Value', 'Variant Position', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
+                'Variant Price', 'Variant Grams', 'Image Src', 'Image Command', 'Image Position', 'Variant Image', 
                 'Metafield: custom.product_weight [single_line_text_field]', 
                 'Variant Metafield: Vendor_SKU', 'Variant Weight Unit', 
                 'Variant Metafield: reg.variant_depth', 'Variant Metafield: reg.variant_width', 
                 'Variant Metafield: reg.variant_height', 'Variant Metafield: reg.variant_measurements', 
                 'Metafield: Measurements', 'Metafield: shopify.material [list.metaobject_reference]', 
-                'Metafield: custom.variety [list.single_line_text_field]', 'Variant Country of Origin', 
-                'Tags', 'Product Category', 'Metafield: shopify.color-pattern [list.metaobject_reference]', 
+                'Metafield: custom.variety [list.single_line_text_field]', 'Product Category', 
+                'Tags', 'Metafield: shopify.color-pattern [list.metaobject_reference]', 
                 'Metafield: custom.polish_type [list.single_line_text_field]', 
                 'Metafield: custom.cut_type [list.single_line_text_field]', 
                 'Metafield: shopify.age-group [list.metaobject_reference]', 
@@ -898,18 +1365,18 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
             sheet.addRow(sanitizeExcelRow(headers));
             sheet.getRow(1).font = { bold: true };
 
-            exportDataList.forEach(({ op, category, vendorName, allMasks }) => {
+            exportDataList.forEach(({ op, category, vendorName, allMasks, overrideNormData }) => {
                 const itemData = op.item.data || op.item;
-                const norm = normalizeInventoryData(itemData);
-                const bookRate = 20; 
-                const calc = calculateCodesAndPrices(norm, bookRate, '326');
+                const norm = overrideNormData || normalizeInventoryData(itemData);
+                const bookPrefix = norm.workbook || itemData.workbook || '326';
+                const calc = calculateCodesAndPrices(norm, activeRate, bookPrefix);
                 
                 const shape = norm.shape || '';
                 const shortDesc = norm.shortDescription || norm.type || '';
                 const color = norm.color || '';
                 const material = norm.material || '';
                 const fallbackTitle = `${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                const title = op.result?.description || fallbackTitle;
+                const title = formatProductTitle(op.result?.description || fallbackTitle) + (norm.partSuffix ? ` ${norm.partSuffix}` : '');
 
                 const bodyHtml = op.result?.marketingDescription || norm.generatedDescription || generateFallbackMarketingHtml(norm);
 
@@ -930,20 +1397,25 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 const tagId = calc.printCode || calc.bookBarcode || norm.book_barcode || norm.itemId || String(itemData.row) || '';
                 const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
                 
-                const rawVendorId = String(norm.vendor_id || '').toUpperCase();
-                let polishType = 'matte';
-                if (rawVendorId === 'JM') polishType = 'high-polish';
-                else if (['EM', 'ML', 'TE'].includes(rawVendorId)) polishType = 'polish';
+                const rawVendorId = String(norm.vendorId || norm.vendor_id || '').toUpperCase().trim();
+                const vendorPrefix = rawVendorId.split('-')[0] || rawVendorId.substring(0, 2);
+
+                // Strictly map polishType to allowed Shopify choices:
+                // ["Fully Polished", "Raw/Unpolished", "Partially Polished", "Single-Side Polish", "Double-Side Polish", "Tumbled", "Matte"]
+                let polishType = 'Matte';
+                if (vendorPrefix === 'JM') {
+                    polishType = 'Fully Polished';
+                } else if (['TE', 'EM', 'ML'].includes(vendorPrefix)) {
+                    polishType = 'Partially Polished';
+                }
 
                 const parseNum = (val: any) => { const num = parseFloat(val); return isNaN(num) ? 0 : num; };
                 const cmToIn = (cm: any) => (parseNum(cm) / 2.54).toFixed(2);
                 const kgToLbs = (kg: any) => (parseNum(kg) * 2.20462).toFixed(2);
                 
                 const costMxn = parseFloat(norm.price || norm.acquisition_price_mxn || '0') || 0;
-                const landedUsd = ((costMxn / bookRate) * 1.4) || 0;
-                const retailUsd = (landedUsd * 12) || 0;
-                const price = Math.round(retailUsd * 100) / 100;
                 const cost = calc.bookLanded || '';
+                const price = calc.bookRetail && calc.bookRetail !== '-' ? parseFloat(calc.bookRetail) || 0 : ((costMxn / activeRate) * 1.4 * 12) || 0;
 
                 const weightKg = parseNum(norm.weightKg);
                 const weightGrams = Math.round(weightKg * 1000);
@@ -956,16 +1428,32 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                 const variety = 'Mexican Onyx';
                 const formattedMaterial = material ? material.charAt(0).toUpperCase() + material.slice(1) : 'Onyx';
 
-                let imageSrc = '';
-                if (allMasks && allMasks.length > 0) {
-                    imageSrc = getCleanImageUrl(allMasks[0]) || '';
+                // Collect all images for the item
+                let itemImages: string[] = [];
+                if (op.skipImageProcessing) {
+                    const raw = op.imageUrl || norm.imageUrl || norm.mediaUrls;
+                    if (raw) {
+                        itemImages = typeof raw === 'string' ? raw.split(',').map(s => s.trim()).filter(Boolean) : [raw];
+                    }
+                } else if (allMasks && allMasks.length > 0) {
+                    itemImages = allMasks.map(m => getCleanImageUrl(m) || '').filter(Boolean);
                 } else {
-                    imageSrc = getCleanImageUrl(norm.generatedPngUrl) || getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]) || '';
+                    const primary = getCleanImageUrl(norm.generatedPngUrl) || getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]);
+                    if (primary) itemImages.push(primary);
                 }
-                
-                if (imageSrc && imageSrc.includes('google') && !imageSrc.toLowerCase().endsWith('.png') && !imageSrc.toLowerCase().endsWith('.jpg')) {
-                    imageSrc = imageSrc.includes('?') ? `${imageSrc}&ext=.png` : `${imageSrc}?.png`;
+
+                if (itemImages.length === 0) {
+                    itemImages = [''];
                 }
+
+                // Clean Drive / image URLs
+                itemImages = itemImages.map(img => {
+                    let clean = getCleanImageUrl(img) || img;
+                    if (clean && clean.includes('google') && !clean.toLowerCase().endsWith('.png') && !clean.toLowerCase().endsWith('.jpg')) {
+                        clean = clean.includes('?') ? `${clean}&ext=.png` : `${clean}?.png`;
+                    }
+                    return clean;
+                });
 
                 const combinedVendorSku = `${tagId}-${vendorSku}${costMxn}`;
 
@@ -979,9 +1467,21 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     norm.widthCm ? `${norm.widthCm} cm` : ''
                 ].filter(Boolean).join(', ');
 
-                sheet.addRow(sanitizeExcelRow([
-                    title, bodyHtml, vendorName, tagId, '', cost, price, weightGrams, imageSrc, 1, weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn, measurementsStr, '', formattedMaterial, variety, 'MX', tagsArray, category, colorsStr, polishType, '', 'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'true', 'web', 'true', 'shopify', 'deny', 'manual', 'true', artOfDecorVal, fountainsVal, pendantsVal
-                ]));
+                const catAndType = getProductCategoryAndType(norm);
+                const finalCategory = catAndType.category;
+                const finalType = catAndType.type;
+                const handle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || tagId.toLowerCase();
+
+                // Export ONE row per image (Matrixify multi-image format)
+                itemImages.forEach((imgUrl, imgIdx) => {
+                    const imagePosition = imgIdx + 1;
+                    const imageCommand = 'MERGE';
+                    const variantImage = imgIdx === 0 ? imgUrl : '';
+
+                    sheet.addRow(sanitizeExcelRow([
+                        handle, title, bodyHtml, vendorName, finalType, 'Title', 'Default Title', 1, tagId, tagId, cost, price, weightGrams, imgUrl, imageCommand, imagePosition, variantImage, weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn, measurementsStr, '', formattedMaterial, variety, finalCategory, tagsArray, colorsStr, polishType, '', 'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'FALSE', 'global', 'true', 'shopify', 'deny', 'manual', 'true', artOfDecorVal, fountainsVal, pendantsVal
+                    ]));
+                });
             });
 
             const buffer = await workbook.xlsx.writeBuffer();
@@ -1135,7 +1635,8 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
         let completed = 0;
         for (const op of queue) {
             if (isAborted) break;
-            if (op.status === 'completed') {
+            const needsContent = (op.imageIndex || 0) === 0 && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription);
+            if (op.status === 'completed' && !needsContent) {
                 completed++;
                 continue;
             }
@@ -1170,7 +1671,8 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
         setHasUnsavedChanges(true);
         setQueue(prev => prev.map(op => {
             if (op.id === id) {
-                return { ...op, processingMode: op.processingMode === 'local' ? 'cloud' : 'local' };
+                const nextMode = op.processingMode === 'local' ? 'cloud' : op.processingMode === 'cloud' ? 'hybrid' : 'local';
+                return { ...op, processingMode: nextMode };
             }
             return op;
         }));
@@ -1186,8 +1688,50 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
         }));
     };
 
+    const allSkippingImage = queue.length > 0 && queue.every(op => op.skipImageProcessing);
+
+    const toggleAllImageProcessing = () => {
+        setHasUnsavedChanges(true);
+        const nextState = !allSkippingImage;
+        setQueue(prev => prev.map(op => ({
+            ...op,
+            skipImageProcessing: nextState
+        })));
+        toast.success(nextState ? "Image Processing OFF for all items (Using original images)" : "Image Processing ON for all items (Masks enabled)");
+    };
+
+    const handleRegenerateAllDescriptions = () => {
+        if (!confirm(`Are you sure you want to force regenerate AI descriptions and colors for ALL (${queue.length}) active items in the queue?`)) return;
+        setHasUnsavedChanges(true);
+        setQueue(prev => prev.map(op => {
+            if ((op.imageIndex || 0) !== 0) return op;
+            return {
+                ...op,
+                forceRegenerateDescription: true,
+                status: 'idle',
+                progress: 0,
+                logs: [...op.logs, '[ WAIT ] Re-queued for forced AI description & color generation']
+            };
+        }));
+        toast.success("All items enabled for AI description & color regeneration! Click START ENGINE to begin.");
+    };
+
+    const completedOps = queue.filter(op => op.status === 'completed');
+    
+    // Strict check: PDF and XLSX generation requires EVERY primary item to have the necessary AI generated fields
+    const isFullyGenerated = queue.length > 0 && queue.every(op => {
+        if ((op.imageIndex || 0) !== 0) return true;
+        return op.result?.description &&
+            op.result?.dominantColors && op.result.dominantColors.length > 0 &&
+            op.result?.hexString &&
+            op.result?.generatedType;
+    });
+    
     const allCompleted = queue.length > 0 && queue.every(op => op.status === 'completed');
-    const needsProcessing = queue.some(op => op.status !== 'completed');
+    const needsProcessing = queue.some(op => 
+        op.status !== 'completed' || 
+        ((op.imageIndex || 0) === 0 && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription))
+    );
 
     if (!isOpen) return null;
 
@@ -1237,7 +1781,27 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Batch segmentation & description logic</p>
                         </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={toggleAllImageProcessing}
+                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg ${
+                                allSkippingImage 
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' 
+                                    : 'bg-(--main-color)/20 text-(--main-color) border-(--main-color)/40 hover:bg-(--main-color)/30'
+                            }`}
+                            title="Toggle Image Processing (Masks & Transparency) ON/OFF for ALL items"
+                        >
+                            <UploadCloud size={16} className={allSkippingImage ? 'text-amber-300' : 'text-(--main-color)'} />
+                            <span>{allSkippingImage ? 'IMG PROCESSING: OFF (ORIGINALS)' : 'IMG PROCESSING: ON (MASKS)'}</span>
+                        </button>
+                        <button 
+                            onClick={handleRegenerateAllDescriptions}
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
+                            title="Regenerate ALL Descriptions (Force AI body descriptions and color info for all active items)"
+                        >
+                            <Sparkles size={16} className="text-emerald-300" />
+                            <span>REGENERATE DESCRIPTIONS</span>
+                        </button>
                         <button onClick={handleClearGen} title="Clear AI Generated Data" className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-rose-500 transition-all">
                             <Trash2 size={24} />
                         </button>
@@ -1259,9 +1823,17 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         <div key={op.id} className="relative overflow-hidden bg-black/10 backdrop-blur-2xl rounded-2xl p-4 md:p-6 flex flex-col md:flex-row items-start gap-4 md:gap-6 shadow-2xl">
                             {/* Glowing Progress Background */}
                             <div 
-                                className="absolute top-0 left-0 bottom-0 bg-(--main-color)/10 transition-all duration-500 ease-out z-0"
+                                className="absolute top-0 left-0 bottom-0 bg-(--main-color)/30 transition-all duration-500 ease-out z-0"
                                 style={{ width: `${op.progress}%` }}
                             />
+                            
+                            {/* Missing Data Indicator */}
+                            {(op.imageIndex || 0) === 0 && (!op.result?.description || !op.result?.dominantColors?.length || !op.result?.hexString || !op.result?.generatedType) && (
+                                <div 
+                                    className="absolute top-4 right-4 z-20 w-4 h-4 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.8)]" 
+                                    title="Incomplete Data: Missing Description, Colors, Hex Map, or Type"
+                                />
+                            )}
                             
                             {/* Images Side-by-Side Container */}
                             <div className="flex gap-4 shrink-0 relative z-10">
@@ -1273,19 +1845,30 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                         if (img) setFullscreenImage(getCleanImageUrl(img)!);
                                     }}
                                 >
-                                    {op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data && op.item.data.mediaUrls) ? (
-                                        <>
-                                            <img src={getCleanImageUrl(op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || op.item.data.mediaUrls.split(',')[0])!} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
-                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-all">
-                                                <ZoomIn size={24} className="text-white drop-shadow-md" />
+                                    {(() => {
+                                        const thumbUrl = getCleanImageUrl(op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data?.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : ''));
+                                        if (!thumbUrl) return (
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-white/20">
+                                                <UploadCloud size={24} />
+                                                <span className="text-[10px] font-black uppercase mt-2">No Image</span>
                                             </div>
-                                        </>
-                                    ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center text-white/20">
-                                            <UploadCloud size={24} />
-                                            <span className="text-[10px] font-black uppercase mt-2">No Image</span>
-                                        </div>
-                                    )}
+                                        );
+                                        
+                                        const isThumbVideo = /\.(mov|mp4|webm|m4v)(\?|$)/i.test(thumbUrl);
+                                        
+                                        return (
+                                            <>
+                                                {isThumbVideo ? (
+                                                    <video src={thumbUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500 pointer-events-none" muted playsInline loop autoPlay />
+                                                ) : (
+                                                    <img src={thumbUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
+                                                )}
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-all">
+                                                    <ZoomIn size={24} className="text-white drop-shadow-md" />
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                                 
                                 {/* Generated Mask Image */}
@@ -1334,7 +1917,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                         <h4 className="text-xl md:text-2xl font-black uppercase tracking-tight">
                                             {(() => {
                                                 const norm = normalizeInventoryData(op.item.data || op.item);
-                                                const calc = calculateCodesAndPrices(norm, 20, '326');
+                                                const calc = calculateCodesAndPrices(norm, activeRate, norm.workbook || op.item.workbook || '326');
                                                 const tagId = calc?.printCode || calc?.bookBarcode || norm.book_barcode || norm.itemId || `Item ${norm.itemNumber}`;
                                                 
                                                 const match = tagId.replace(/\s+/g, '').match(/^([A-Za-z]+\d{2,4})(\d{2}[A-Za-z]*)$/);
@@ -1374,8 +1957,10 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                         </div>
                                     </div>
                                     
-                                    {/* Buttons */}
-                                    <div className="flex flex-wrap gap-2 opacity-70 hover:opacity-100 transition-opacity shrink-0">
+                                    {/* Actions & Hex Map */}
+                                    <div className="flex flex-col items-end gap-3 shrink-0">
+                                        {/* Buttons */}
+                                        <div className="flex flex-wrap gap-2 opacity-70 hover:opacity-100 transition-opacity justify-end">
                                         <button 
                                             onClick={() => toggleImageProcessing(op.id)}
                                             disabled={op.status !== 'idle'}
@@ -1392,14 +1977,16 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                             onClick={() => toggleProcessingMode(op.id)}
                                             disabled={op.status !== 'idle' || op.skipImageProcessing}
                                             className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-[9px] font-black uppercase tracking-widest ${
-                                                op.processingMode === 'cloud' 
+                                                op.processingMode === 'hybrid'
+                                                    ? 'text-purple-400 hover:text-purple-300 bg-purple-500/10 border border-purple-500/30'
+                                                    : op.processingMode === 'cloud' 
                                                     ? 'text-blue-400 hover:text-blue-300 bg-black/40 hover:bg-white/10'
                                                     : 'text-(--main-color) hover:text-(--main-color) bg-black/40 hover:bg-white/10'
                                             } ${op.status !== 'idle' || op.skipImageProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            title="Toggle Cloud/Local"
+                                            title="Toggle Local / Cloud / Hybrid Processing"
                                         >
-                                            {op.processingMode === 'cloud' ? <Cloud size={14} /> : <Cpu size={14} />}
-                                            {op.processingMode === 'cloud' ? 'CLOUD' : 'LOCAL'}
+                                            {op.processingMode === 'hybrid' ? <Layers size={14} className="animate-pulse" /> : op.processingMode === 'cloud' ? <Cloud size={14} /> : <Cpu size={14} />}
+                                            {op.processingMode === 'hybrid' ? 'HYBRID' : op.processingMode === 'cloud' ? 'CLOUD' : 'LOCAL'}
                                         </button>
                                         
                                         {op.status === 'processing' && (
@@ -1412,14 +1999,85 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                             </button>
                                         )}
                                         {op.status === 'completed' && (
-                                            <button 
-                                                onClick={() => handleRegenerate(op.id)}
-                                                className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-amber-400 hover:text-amber-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                title="Re-Generate Mask"
-                                            >
-                                                <RefreshCw size={14} /> RE-GENERATE
-                                            </button>
+                                            <>
+                                                <button 
+                                                    onClick={() => handleRegenerate(op.id)}
+                                                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-amber-400 hover:text-amber-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
+                                                    title="Re-Generate Mask"
+                                                >
+                                                    <RefreshCw size={14} /> RE-GENERATE
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleRegenerateAI(op.id)}
+                                                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-blue-400 hover:text-blue-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
+                                                    title="Re-Generate AI Info"
+                                                >
+                                                    <RefreshCw size={14} /> RE-GEN INFO
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        const rawUrl = op.result?.maskUrl || op.item?.generatedPngUrl || op.imageUrl || op.item?.imageUrl || '';
+                                                        const cleanUrl = getCleanImageUrl(rawUrl) || rawUrl;
+                                                        setCropModalState({ isOpen: true, opId: op.id, imageSrc: cleanUrl });
+                                                    }}
+                                                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-purple-400 hover:text-purple-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
+                                                    title="1:1 Square Crop Tool"
+                                                >
+                                                    <Maximize2 size={14} /> 1:1 CROP
+                                                </button>
+                                            </>
                                         )}
+                                        </div>
+                                        
+                                        {/* HEX Map Top Area */}
+                                        {op.result?.bitmapUrl && (
+                                            <div className="flex items-center gap-3 bg-black/40 p-1.5 rounded-xl border border-white/10 animate-in fade-in zoom-in-95">
+                                                <span className="text-[10px] font-black uppercase text-amber-400 flex items-center gap-1.5 pl-2">
+                                                    <Sparkles size={12} className="text-amber-400"/> {op.result.cols || 20}x{op.result.rows || 20}
+                                                </span>
+                                                <img src={op.result.bitmapUrl} className="h-10 md:h-12 w-auto rounded-lg border border-white/20 shadow-lg" style={{ imageRendering: 'pixelated' }} />
+                                                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(op.result?.hexString || ''); toast.success('Hexadecimal pixel map copied to clipboard!'); }} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white/90 transition-all cursor-pointer">
+                                                    Copy Map
+                                                </button>
+                                            </div>
+                                        )}
+                                        {(() => {
+                                            const pMap = op.result?.processedMap;
+                                            const clipCount = parseInt(pMap?.videoGenCount || '0', 10);
+                                            const clipUrls: string[] = [];
+                                            if (clipCount > 0 && pMap) {
+                                                for (let ci = 0; ci < clipCount; ci++) {
+                                                    if (pMap[`videoGen_${ci}`]) clipUrls.push(pMap[`videoGen_${ci}`]);
+                                                }
+                                            } else if (pMap?.videoGen || op.result?.videoGen) {
+                                                clipUrls.push(pMap?.videoGen || op.result?.videoGen);
+                                            }
+                                            if (clipUrls.length === 0) return null;
+                                            return (
+                                                <div className="flex flex-col gap-2 bg-black/40 p-2 rounded-xl border border-white/10 animate-in fade-in zoom-in-95">
+                                                    <span className="text-[10px] font-black uppercase text-purple-400 flex items-center gap-1.5 pl-1">
+                                                        <Video size={12} className="text-purple-400"/> AI Generated Video{clipUrls.length > 1 ? ` — ${clipUrls.length} Clips` : ''}
+                                                    </span>
+                                                    <div className={`flex gap-2 ${clipUrls.length > 1 ? 'overflow-x-auto pb-1' : ''}`}>
+                                                        {clipUrls.map((url, ci) => (
+                                                            <div key={ci} className="flex flex-col items-center gap-1 shrink-0">
+                                                                {clipUrls.length > 1 && (
+                                                                    <span className="text-[9px] font-bold text-white/40 uppercase">Clip {ci + 1}</span>
+                                                                )}
+                                                                <video
+                                                                    src={url}
+                                                                    controls
+                                                                    autoPlay={ci === 0}
+                                                                    loop
+                                                                    muted
+                                                                    className="h-48 md:h-64 w-auto rounded-lg border border-white/20 shadow-lg object-contain"
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
 
@@ -1443,54 +2101,31 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                 {/* Free-Floating Generated Description */}
                                 {op.result && (
                                     <div className="mt-4 flex flex-col gap-3 animate-in slide-in-from-top-2 w-full">
-                                        {op.result.dominantColors && op.result.dominantColors.length > 0 && (
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                                <span className="text-[9px] font-black uppercase tracking-wider text-white/40 mr-1">Extracted Colors:</span>
-                                                {op.result.dominantColors.map((c, i) => (
-                                                    <span key={i} className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-[10px] font-bold text-white/90">
-                                                        {c}
+                                        {/* Compact Generated Content Area */}
+                                        <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-white/5">
+                                            {op.result.generatedType && (
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <span className="text-[9px] font-black uppercase text-white/40">AI:</span>
+                                                    <span className="px-2 py-0.5 rounded bg-(--main-color)/20 border border-(--main-color)/40 text-[9px] font-extrabold text-(--main-color) uppercase tracking-wider">
+                                                        {op.result.generatedType}
                                                     </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {op.result.hexString && (
-                                            <div className="flex flex-col gap-2 bg-black/40 p-3 rounded-xl border border-white/10">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                                                        <Sparkles size={12} className="text-amber-400"/> On-Device Pixel Map ({op.result.cols || 20}x{op.result.rows || 20} = {(op.result.cols || 20) * (op.result.rows || 20)} px)
-                                                    </span>
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            navigator.clipboard.writeText(op.result?.hexString || '');
-                                                            toast.success('Hexadecimal pixel map copied to clipboard!');
-                                                        }}
-                                                        className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[9px] font-bold text-white/80 transition-all cursor-pointer"
-                                                    >
-                                                        Copy Hex Map
-                                                    </button>
                                                 </div>
-                                                <div className="flex flex-col md:flex-row items-center gap-4 my-1">
-                                                    {op.result.bitmapUrl && (
-                                                        <div className="shrink-0 relative group">
-                                                            <img 
-                                                                src={op.result.bitmapUrl} 
-                                                                alt="Pixel Bitmap" 
-                                                                className="h-16 w-auto rounded border border-white/20 shadow-lg" 
-                                                                style={{ imageRendering: 'pixelated' }} 
-                                                            />
-                                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
-                                                                <span className="text-[8px] text-white font-bold uppercase">Dynamic Aspect Grid</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex-1 w-full max-h-16 overflow-y-auto font-mono text-[9px] text-white/70 bg-black/60 p-2 rounded border border-white/5 break-all select-all scrollbar-thin scrollbar-thumb-white/20">
-                                                        {op.result.hexString}
+                                            )}
+                                            
+                                            {op.result.dominantColors && op.result.dominantColors.length > 0 && (
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <span className="text-[9px] font-black uppercase text-white/40">Colors:</span>
+                                                    <div className="flex items-center gap-1">
+                                                        {op.result.dominantColors.map((c, i) => (
+                                                            <span key={i} className="px-1.5 py-0.5 rounded bg-white/10 border border-white/10 text-[8px] font-bold text-white/90 whitespace-nowrap">
+                                                                {c}
+                                                            </span>
+                                                        ))}
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                        <div>
+                                            )}
+                                        </div>
+                                        <div className="max-w-4xl">
                                             <label className="text-[9px] font-black uppercase tracking-wider text-white/40 block mb-1">Title Description</label>
                                             <textarea 
                                                 value={op.result.description || ''}
@@ -1498,12 +2133,12 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                                     updateOp(op.id, { result: { ...op.result, description: e.target.value } });
                                                     setHasUnsavedChanges(true);
                                                 }}
-                                                className="w-full min-h-[50px] bg-black/30 border border-white/5 hover:border-white/20 rounded-xl p-3 text-xs md:text-sm text-white/90 font-mono leading-relaxed focus:outline-none focus:border-(--main-color) transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
+                                                className="w-full min-h-[44px] bg-black/30 border border-white/5 hover:border-white/20 rounded-xl p-3 text-xs md:text-sm text-white/90 font-mono leading-relaxed focus:outline-none focus:border-(--main-color) transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
                                                 placeholder="AI generated title description..."
                                             />
                                         </div>
                                         {op.result.marketingDescription !== undefined && (
-                                            <div>
+                                            <div className="max-w-5xl">
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <label className="text-[9px] font-black uppercase tracking-wider text-amber-400/90 flex items-center gap-1.5">
                                                         <Sparkles size={12}/> Marketing Description (Embedded HTML Review)
@@ -1525,11 +2160,11 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                                             updateOp(op.id, { result: { ...op.result, marketingDescription: e.target.value } });
                                                             setHasUnsavedChanges(true);
                                                         }}
-                                                        className="w-full min-h-[120px] bg-black/60 border border-amber-500/40 rounded-xl p-3 text-xs text-amber-200/90 font-mono leading-relaxed focus:outline-none focus:border-amber-400 transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
+                                                        className="w-full min-h-[100px] bg-black/60 border border-amber-500/40 rounded-xl p-3 text-xs text-amber-200/90 font-mono leading-relaxed focus:outline-none focus:border-amber-400 transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
                                                         placeholder="AI generated HTML marketing description..."
                                                     />
                                                 ) : (
-                                                    <div className="w-full min-h-[80px] bg-black/50 border border-white/15 rounded-xl p-4 text-xs md:text-sm text-white/90 leading-relaxed overflow-y-auto max-h-[280px] space-y-3 font-sans shadow-inner">
+                                                    <div className="w-full min-h-[60px] bg-black/50 border border-white/15 rounded-xl p-4 text-xs md:text-sm text-white/90 leading-relaxed overflow-y-auto max-h-[220px] space-y-3 font-sans shadow-inner">
                                                         <style>{`
                                                             .marketing-preview-${op.id} p { margin-bottom: 0.75rem; line-height: 1.6; color: rgba(255, 255, 255, 0.92); font-size: 0.85rem; }
                                                             .marketing-preview-${op.id} strong { color: #f59e0b; font-weight: 700; }
@@ -1595,18 +2230,18 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         
                         <button 
                             onClick={handleExportDatabase}
-                            disabled={!allCompleted || !hasUnsavedChanges}
-                            className={`flex items-center gap-3 px-6 py-4 font-black uppercase tracking-widest rounded-2xl transition-all shrink-0 ${(!hasUnsavedChanges && allCompleted) ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500 hover:bg-blue-400 text-black shadow-[0_0_20px_rgba(59,130,246,0.3)]'} ${(!allCompleted || !hasUnsavedChanges) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={completedOps.length === 0 || !hasUnsavedChanges}
+                            className={`flex items-center gap-3 px-6 py-4 font-black uppercase tracking-widest rounded-2xl transition-all shrink-0 ${(!hasUnsavedChanges && completedOps.length > 0) ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500 hover:bg-blue-400 text-black shadow-[0_0_20px_rgba(59,130,246,0.3)]'} ${(completedOps.length === 0 || !hasUnsavedChanges) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            {(!hasUnsavedChanges && allCompleted) ? <CheckCircle2 size={20} /> : <Save size={20} />}
-                            {(!hasUnsavedChanges && allCompleted) ? 'SAVED TO DB' : 'SAVE TO DB'}
+                            {(!hasUnsavedChanges && completedOps.length > 0) ? <CheckCircle2 size={20} /> : <Save size={20} />}
+                            {(!hasUnsavedChanges && completedOps.length > 0) ? 'SAVED TO DB' : 'SAVE TO DB'}
                         </button>
                         
                             <>
                                 {!xlsxUrl ? (
                                     <button 
                                         onClick={handleGenerateXLSX}
-                                        disabled={!allCompleted || hasUnsavedChanges || isGeneratingXlsx}
+                                        disabled={!isFullyGenerated || hasUnsavedChanges || isGeneratingXlsx}
                                         className="flex items-center gap-3 px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 shrink-0"
                                     >
                                         {isGeneratingXlsx ? <Loader2 size={20} className="animate-spin" /> : <Settings2 size={20} />}
@@ -1626,7 +2261,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                                 {!pdfUrl ? (
                                     <button 
                                         onClick={handleGeneratePDF}
-                                        disabled={!allCompleted || hasUnsavedChanges || isGeneratingPdf}
+                                        disabled={!isFullyGenerated || hasUnsavedChanges || isGeneratingPdf}
                                         className="flex items-center gap-3 px-6 py-4 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 shrink-0"
                                     >
                                         {isGeneratingPdf ? <Loader2 size={20} className="animate-spin" /> : <Settings2 size={20} />}
@@ -1678,6 +2313,23 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     </div>
                 </div>
             )}
+            {/* 1:1 Square Crop Tool Modal */}
+            <SquareCropModal
+                isOpen={cropModalState.isOpen}
+                imageSrc={cropModalState.imageSrc}
+                onClose={() => setCropModalState({ isOpen: false, opId: '', imageSrc: '' })}
+                onCropComplete={(croppedUrl) => {
+                    if (!cropModalState.opId) return;
+                    updateOp(cropModalState.opId, {
+                        result: {
+                            ...queue.find(o => o.id === cropModalState.opId)?.result,
+                            maskUrl: croppedUrl
+                        }
+                    });
+                    setHasUnsavedChanges(true);
+                    toast.success("1:1 Square crop applied!");
+                }}
+            />
         </div>
     , document.body);
 };

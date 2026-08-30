@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { normalizeInventoryData, calculateCodesAndPrices, getCleanImageUrl } from './utils';
+import { DEFAULT_EXCHANGE_RATE } from './consts';
 
 export interface ResolvedArtifact {
     data: any;
@@ -15,7 +16,7 @@ export interface ResolvedArtifact {
  */
 export async function resolveArtifact(tagId: string, options: { exchangeRate?: number; workbookPrefix?: string } = {}): Promise<ResolvedArtifact | null> {
     if (!tagId) return null;
-    const { exchangeRate = 20, workbookPrefix = '326' } = options;
+    const { exchangeRate = DEFAULT_EXCHANGE_RATE, workbookPrefix = '326' } = options;
 
     try {
         let fetched: { data: any; source?: string } | null = null;
@@ -107,7 +108,7 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
  * Performs direct resolution first, then falls back to keyword searching.
  */
 export async function searchArtifacts(query: string, options: { exchangeRate?: number; workbookPrefix?: string } = {}): Promise<ResolvedArtifact[]> {
-    const { exchangeRate = 20, workbookPrefix = '326' } = options;
+    const { exchangeRate = DEFAULT_EXCHANGE_RATE, workbookPrefix = '326' } = options;
     const terms = query.split(/\s+/).filter(Boolean);
     if (!terms.length) return [];
 

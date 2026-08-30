@@ -101,18 +101,19 @@ import {
     onyxApiKeyAtom,
     isWarehouseSelectionModeAtom,
     warehouseSelectedIdsAtom,
-    showWarehouseExportWizardAtom
+    showWarehouseExportWizardAtom,
+    isArchiveVisibleAtom
 } from '../../lib/atoms';
 // Consolidated imports to prevent duplicates
 
 const OnyxBar: React.FC = () => null;
 
-import { vendors } from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl } from '../../lib/utils';
+import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
+import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
-import { useTranslation, useLogout } from '../../lib/hooks';
+import { useTranslation, useLogout, useDatabase } from '../../lib/hooks';
 
 import { CameraView } from '../../lib/Types';
 import ExcelJS from 'exceljs';
@@ -134,7 +135,8 @@ import {
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
-    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup
+    PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup, CloudUpload,
+    Wrench, ClipboardClock, LayoutTemplate
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -367,6 +369,30 @@ const InventoryBar: React.FC = () => {
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
     const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
+    const setView = useSetAtom(activeViewAtom);
+
+    const items = useAtomValue(inventoryAtom);
+    const exRate = useAtomValue(exchangeRateAtom) || useAtomValue(liveExchangeRateAtom) || 19;
+    const db = useDatabase();
+    const setInvVersion = useSetAtom(InventoryVersionAtom);
+    const [isSyncingCalc, setIsSyncingCalc] = useState(false);
+    const handleSyncCalculatedFields = async () => {
+        if (isSyncingCalc) return;
+        setIsSyncingCalc(true);
+        const tid = toast.loading('Syncing calculated fields to database...');
+        try {
+            const count = await syncAllCalculatedFieldsToDB(items, exRate, db, (pct, curr, tot) => {
+                toast.loading(`Syncing calculated fields: ${curr}/${tot} items (${pct}%)`, { id: tid });
+            });
+            toast.success(`Successfully synced calculated fields to database! (${count} items)`, { id: tid });
+            setInvVersion(v => v + 1);
+        } catch (err: any) {
+            console.error('[Sync Fields Error]', err);
+            toast.error(`Sync failed: ${err.message || 'Unknown error'}`, { id: tid });
+        } finally {
+            setIsSyncingCalc(false);
+        }
+    };
 
     const handleToggleSelectionMode = () => {
         setIsSelectionMode(!isSelectionMode);
@@ -374,60 +400,147 @@ const InventoryBar: React.FC = () => {
     };
 
     const [viewSlider] = useAtom(inventoryViewSliderAtom);
-    const ViewIcon = viewSlider < 33 ? LayoutList : viewSlider < 66 ? Grid3x3 : Layout;
+    const ViewIcon = LayoutTemplate; // Updated icon per request
+    const [showTools, setShowTools] = useState(false);
+    const [isArchiveVisible, setIsArchiveVisible] = useAtom(isArchiveVisibleAtom);
+    const user = useAtomValue(userAtom);
+
+    const handleGoogleSheetsUpload = async () => {
+        const webhookUrl = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK;
+        if (!webhookUrl) {
+            toast.error("VITE_GOOGLE_SHEETS_WEBHOOK is not defined in .env.local");
+            return;
+        }
+
+        const tid = toast.loading("Preparing Google Sheets payload...");
+        try {
+            const payloadItems = items.map(item => {
+                const itemData = normalizeInventoryData(item.data);
+                const calculated = calculateCodesAndPrices(itemData, exRate, '326');
+                
+                return {
+                    vendor: itemData.vendor_id || itemData.vendorId || '',
+                    item_id: itemData.itemId || itemData.item_id || itemData.tag_id || '',
+                    description: `${itemData.shape || itemData.shape_type || ''} ${itemData.shortDescription || itemData.short_description || itemData.description || ''}`.trim(),
+                    color_material: `${itemData.color || ''} ${itemData.material || ''}`.trim(),
+                    quantity: parseFloat(itemData.quantity) || 1,
+                    price_mxn: calculated.bookAcquisition !== '-' ? (parseFloat(itemData.price || itemData.price_mxn) || 0) : 0,
+                    price_usd: calculated.bookAcquisition !== '-' ? ((parseFloat(itemData.price || itemData.price_mxn) || 0) / exRate) : 0,
+                    acq_code: calculated.bookAqCode || '-',
+                    landed_code: calculated.bookLandCode || '-',
+                    retail: calculated.bookRetail || 0,
+                    image_url: itemData.generatedPngUrl || itemData.generated_png_url || itemData.image_url || ''
+                };
+            }).filter(i => i.item_id); // Only send items with valid IDs
+
+            toast.loading(`Uploading ${payloadItems.length} items to Google Sheets...`, { id: tid });
+
+            const res = await fetch(webhookUrl, {
+                method: 'POST',
+                body: JSON.stringify({ items: payloadItems }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                toast.success(`Google Sheets updated! (${result.message})`, { id: tid });
+            } else {
+                throw new Error(result.error || 'Failed to update Google Sheets');
+            }
+        } catch (error: any) {
+            console.error('Google Sheets Upload Error:', error);
+            toast.error(`Google Sheets Upload failed: ${error.message}`, { id: tid });
+        }
+    };
 
     return (
         <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
             <div className="flex items-center gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
-                {/* 1. SELECT */}
-                <button 
-                    onClick={handleToggleSelectionMode}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSelectionMode ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Select"
-                >
-                    <SquareCheckBig size={22} strokeWidth={2} />
-                </button>
-
-                {/* 2. VIEW */}
-                <button 
-                    onClick={() => setIsViewSliderOpen(!isViewSliderOpen)}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isViewSliderOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="View"
-                >
-                    <ViewIcon size={22} strokeWidth={2.5} className={isViewSliderOpen ? 'animate-pulse' : ''} />
-                </button>
-
-                {/* 3. FILTER */}
-                <button 
-                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Filter"
-                >
-                    <Filter size={22} strokeWidth={2} />
-                </button>
-
-                {/* 4. SEARCH */}
-                <button 
-                    onClick={() => setIsSearchOpen(!isSearchOpen)}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Search"
-                >
-                    <Search size={22} strokeWidth={2} />
-                </button>
-
-                <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
-
-                {/* 5. ADD ENTRY */}
+                {/* 1. ADD ENTRY */}
                 <button 
                     onClick={() => {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
-                        setIsUploadWizardOpen(true);
+                        setView('upload');
                     }}
                     className="flex items-center justify-center transition-all duration-300 text-(--color-inventory) hover:text-white hover:scale-110 group"
                     title="Add Entry"
                 >
                     <Plus size={32} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.8)]" />
                 </button>
+
+                {/* 2. TOOLS TOGGLE */}
+                <button 
+                    onClick={() => setShowTools(!showTools)}
+                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${showTools ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                    title="Tools"
+                >
+                    <Wrench size={22} strokeWidth={2} />
+                </button>
+
+                {/* 3. GOOGLE SHEETS UPLOAD (ADMIN + DEVELOPER) */}
+                {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                    <button 
+                        onClick={handleGoogleSheetsUpload}
+                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 text-emerald-500/60 hover:text-emerald-400`}
+                        title="Update Google Sheets"
+                    >
+                        <FileSpreadsheet size={22} strokeWidth={2} />
+                    </button>
+                )}
+
+                {showTools && (
+                    <div className="flex items-center gap-1 sm:gap-2 animate-in fade-in slide-in-from-left-4 duration-300 ml-2">
+                        {/* SELECT */}
+                        <button 
+                            onClick={handleToggleSelectionMode}
+                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSelectionMode ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                            title="Select"
+                        >
+                            <SquareCheckBig size={22} strokeWidth={2} />
+                        </button>
+
+                        {/* VIEW */}
+                        <button 
+                            onClick={() => setIsViewSliderOpen(!isViewSliderOpen)}
+                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isViewSliderOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                            title="View"
+                        >
+                            <ViewIcon size={22} strokeWidth={2.5} className={isViewSliderOpen ? 'animate-pulse' : ''} />
+                        </button>
+
+                        {/* FILTER */}
+                        <button 
+                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                            title="Filter"
+                        >
+                            <Filter size={22} strokeWidth={2} />
+                        </button>
+
+                        {/* SEARCH */}
+                        <button 
+                            onClick={() => setIsSearchOpen(!isSearchOpen)}
+                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
+                            title="Search"
+                        >
+                            <Search size={22} strokeWidth={2} />
+                        </button>
+                        
+                        <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
+
+                        {/* SYNC CALCULATED FIELDS TO DB */}
+                        <button 
+                            onClick={handleSyncCalculatedFields}
+                            disabled={isSyncingCalc}
+                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSyncingCalc ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)] animate-bounce' : 'text-white/50 hover:text-white'}`}
+                            title="Sync Calculated Fields to DB"
+                        >
+                            <CloudUpload size={22} strokeWidth={2} />
+                        </button>
+                    </div>
+                )}
             </div>
             
             <div className="flex items-center gap-4 shrink-0 justify-end flex-1">
@@ -879,26 +992,6 @@ const UploadBar: React.FC = () => {
     return (
         <div className="flex items-center gap-3">
             <ModuleBadge icon="upload" label="Add Entry" color="var(--color-upload)" />
-
-            <div className="flex items-center border-l border-white/5 pl-5 ml-2 gap-5">
-                <div className="flex flex-col items-start select-none">
-                    <span className="text-[9px] font-black uppercase tracking-[0.3em] leading-none mb-2 opacity-30">WORKBOOK TAG</span>
-                    <div className="flex gap-1.5">
-                        {['v326', 'v825'].map(wb => (
-                            <button
-                                key={wb}
-                                type="button"
-                                onClick={() => setItemData(prev => ({ ...prev, workbook: wb }))}
-                                className={`text-[11px] font-black font-mono leading-none tracking-tighter transition-all px-3 py-1.5 rounded-lg border ${activeWb === wb 
-                                    ? 'bg-white/10 text-white border-white/20 shadow-[0_5px_15px_rgba(255,255,255,0.05)]' 
-                                    : 'text-white/20 border-transparent hover:text-white/50 hover:bg-white/5'}`}
-                            >
-                                {wb.toUpperCase()}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };
@@ -944,6 +1037,7 @@ export function MainHeader() {
     const isViewSliderOpen = useAtomValue(isInventoryViewSliderOpenAtom);
     const selectedIds = useAtomValue(selectedInventoryIdsAtom);
     const exportSelectedTrigger = useAtomValue(inventoryExportSelectedXLSXTriggerAtom);
+    const [isArchiveVisible, setIsArchiveVisible] = useAtom(isArchiveVisibleAtom);
 
     useEffect(() => {
         if (exportSelectedTrigger > 0) {
@@ -990,7 +1084,7 @@ export function MainHeader() {
                 }
             });
 
-            const bookRate = exchangeRate || 20;
+            const bookRate = exchangeRate || DEFAULT_EXCHANGE_RATE;
 
             const exportItems = inventory.filter(item => selectedIds.includes(item.row));
 
@@ -1201,7 +1295,7 @@ export function MainHeader() {
             });
 
             const internetRate = liveExchangeRateValue || exchangeRate;
-            const bookRate = exchangeRate || 20;
+            const bookRate = exchangeRate || DEFAULT_EXCHANGE_RATE;
 
             // 1. DATA PREPARATION (Fetch shipments and full registry early for filtering)
             let crateToTruck = new Map<string, string>();
@@ -1547,7 +1641,7 @@ export function MainHeader() {
                         if (inv) {
                             try {
                                 const norm = normalizeInventoryData(inv.data);
-                                const calc = calculateCodesAndPrices(norm, liveExchangeRateValue || exchangeRate || 18, '326');
+                                const calc = calculateCodesAndPrices(norm, liveExchangeRateValue || exchangeRate || DEFAULT_EXCHANGE_RATE, '326');
                                 const tag = calc.bookBarcode || norm.book_barcode || norm.itemId || String(inv.row);
                                 if (tag) barcodes.push(tag);
                             } catch (e) { console.warn('Item barcode calculation failed:', e); }
@@ -2274,7 +2368,7 @@ export function MainHeader() {
                 });
             }
 
-            const bookRate = exchangeRate || 20;
+            const bookRate = exchangeRate || DEFAULT_EXCHANGE_RATE;
 
             const exportItems = inventory.filter(item => {
                 const status = (item.data.status || '').toLowerCase().trim();
@@ -3066,10 +3160,10 @@ export function MainHeader() {
             const sheetName = `Shopify Export`;
             const sheet = workbook.addWorksheet(sheetName);
 
-            // Shopify Headers
+            // Shopify Headers (Matrixify Multi-Image Format)
             const headers = [
-                'Title', 'Body (HTML)', 'Vendor', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
-                'Variant Price', 'Variant Grams', 'Image Src', 'Image Position', 
+                'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Type', 'Option1 Name', 'Option1 Value', 'Variant Position', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
+                'Variant Price', 'Variant Grams', 'Image Src', 'Image Command', 'Image Position', 'Variant Image', 
                 'Metafield: custom.product_weight [single_line_text_field]', 
                 'Variant Metafield: Vendor_SKU', 'Variant Weight Unit', 
                 'Variant Metafield: reg.variant_depth', 'Variant Metafield: reg.variant_width', 
@@ -3137,7 +3231,7 @@ export function MainHeader() {
                 return;
             }
             
-            const bookRate = exchangeRate || 20;
+            const bookRate = exchangeRate || DEFAULT_EXCHANGE_RATE;
             const shippedItems = inventory.filter((item: any) => selectedIds.includes(item.row));
             
             const allExportRows: any[][] = [];
@@ -3157,13 +3251,13 @@ export function MainHeader() {
                 const vendorMapping: Record<string, string> = {
                     'ET': 'Betoeduardo',
                     'DH': 'Delfino',
-                    'EM': 'Emmanuel',
+                    'EM': 'Emanuel',
                     'GE': 'Geraldo',
-                    'JM': 'Jose',
-                    'ML': 'Maria Luisa',
+                    'JM': 'Jose Manuel',
+                    'ML': 'Manuel',
                     'MM': 'Mariam',
                     'SU': 'Susana',
-                    'TE': 'Tellez',
+                    'TE': 'Tereso',
                     'CA': 'Carlos',
                     'AM': 'Alejandro',
                     'CP': 'Cantera Puebla',
@@ -3182,13 +3276,13 @@ export function MainHeader() {
                                    (activeVendors.find(v => String(v.id).toUpperCase() === rawVendorId)?.name) || 
                                    rawVendorId;
                 
-                const cost = calc.bookLanded || ''; // E) Variant Cost
+                const cost = calc.bookLanded || '';
                 
                 const costMxn = parseFloat(norm.price || norm.acquisition_price_mxn || '0') || 0;
                 const landedUsd = ((costMxn / bookRate) * 1.4) || 0;
                 const retailUsd = (landedUsd * 12) || 0;
                 
-                const price = onyxRound(retailUsd); // F) Variant Price
+                const price = onyxRound(retailUsd);
                 
                 const weightKg = parseNum(norm.weightKg);
                 const weightGrams = Math.round(weightKg * 1000);
@@ -3198,36 +3292,10 @@ export function MainHeader() {
                 const widthIn = cmToIn(norm.widthCm);
                 const heightIn = cmToIn(norm.heightCm);
                 
-                // Get primary image
-                let imageSrc = '';
                 const allImages = collectAllImages(norm);
-                if (allImages && allImages.length > 0) {
-                    const clean = allImages[0];
-                    if (clean && clean.includes('lh3.googleusercontent.com/d/')) {
-                        const fileId = clean.split('/d/')[1];
-                        imageSrc = `https://drive.google.com/uc?export=download&id=${fileId}`;
-                    } else if (clean && clean.includes('drive.google.com/file/d/')) {
-                        const match = clean.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                        if (match && match[1]) {
-                            imageSrc = `https://drive.google.com/uc?export=download&id=${match[1]}`;
-                        } else {
-                            imageSrc = clean;
-                        }
-                    } else if (clean && clean.includes('id=')) {
-                        const match = clean.match(/id=([a-zA-Z0-9_-]+)/);
-                        if (match && match[1]) {
-                            imageSrc = `https://drive.google.com/uc?export=download&id=${match[1]}`;
-                        } else {
-                            imageSrc = clean;
-                        }
-                    } else {
-                        imageSrc = clean;
-                    }
-                }
-                
-                // Vendor SKU
+                const imageList = (allImages && allImages.length > 0) ? allImages : [''];
+
                 const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
-                
                 const measurementsStr = `D${depthIn}xW${widthIn}xH${heightIn}`;
                 
                 const createdAtDate = norm.createdAt || item.created_at || item.createdAt;
@@ -3243,10 +3311,13 @@ export function MainHeader() {
                 
                 const productCategory = getProductCategory(shape, shortDesc);
                 
-                let polishType = 'matte';
+                let polishType = 'Matte';
                 const vId = rawVendorId;
-                if (vId === 'JM') polishType = 'high-polish';
-                else if (['EM', 'ML', 'TE'].includes(vId)) polishType = 'polish';
+                if (vId === 'JM') {
+                    polishType = 'Fully Polished';
+                } else if (['EM', 'ML', 'TE'].includes(vId)) {
+                    polishType = 'Partially Polished';
+                }
 
                 const bodyHtml = norm.generatedDescription || norm.generated_description || generateFallbackMarketingHtml(norm);
 
@@ -3261,55 +3332,84 @@ export function MainHeader() {
                 const artOfDecorVal = 'TRUE';
                 const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
                 const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
+                const handle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || tagId.toLowerCase();
 
-                const rowData = [
-                    title, // A
-                    bodyHtml, // B Body (HTML)
-                    vendorName, // C Vendor
-                    tagId, // D Variant SKU
-                    '', // E Variant Barcode
-                    cost, // F Variant Cost
-                    price, // G Variant Price
-                    weightGrams, // H Variant Grams
-                    imageSrc, // I Image Src
-                    1, // J Image Position
-                    weightLbs, // K custom.product_weight
-                    vendorSku, // L Vendor_SKU
-                    '', // M Variant Weight Unit
-                    depthIn, // N reg.variant_depth
-                    widthIn, // O reg.variant_width
-                    heightIn, // P reg.variant_height
-                    measurementsStr, // Q reg.variant_measurements
-                    '', // R Metafield: Measurements
-                    toTitleCase(material), // S shopify.material
-                    'Mexican Onyx', // T custom.variety
-                    'MX', // U Variant Country of Origin
-                    tagsList, // V Tags
-                    productCategory, // W Product Category
-                    colorsStr, // X shopify.color-pattern
-                    polishType, // Y custom.polish_type
-                    '', // Z custom.cut_type
-                    'Adults', // AA shopify.age-group
-                    'Unisex', // AB shopify.target-gender
-                    'Rare Earth Gallery', // AC mm-google-shopping.custom_label_1
-                    'Rare Earth Gallery', // AD reg.designer
-                    'Active', // AE Status
-                    'FALSE', // AF Published
-                    'GLOBAL', // AG Published Scope
-                    'TRUE', // AH Variant Taxable
-                    'shopify', // AI Variant Inventory Tracker
-                    'deny', // AJ Variant Inventory Policy
-                    'manual', // AK Variant Fulfillment Service
-                    'TRUE', // AL Variant Requires Shipping
-                    artOfDecorVal, // AM Included / Art Of Decor
-                    fountainsVal, // AN Included / Trade Partners - Fountains
-                    pendantsVal // AO Included / Trade Partners - Pendant Lights
-                ];
+                const catAndType = getProductCategoryAndType(norm);
+                const finalType = catAndType.type;
 
-                allExportRows.push(rowData);
+                // Export 1 row per image
+                imageList.forEach((imgRaw, idx) => {
+                    let imageSrc = '';
+                    if (imgRaw) {
+                        if (imgRaw.includes('lh3.googleusercontent.com/d/')) {
+                            const fileId = imgRaw.split('/d/')[1];
+                            imageSrc = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                        } else if (imgRaw.includes('drive.google.com/file/d/')) {
+                            const match = imgRaw.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                            imageSrc = (match && match[1]) ? `https://drive.google.com/uc?export=download&id=${match[1]}` : imgRaw;
+                        } else if (imgRaw.includes('id=')) {
+                            const match = imgRaw.match(/id=([a-zA-Z0-9_-]+)/);
+                            imageSrc = (match && match[1]) ? `https://drive.google.com/uc?export=download&id=${match[1]}` : imgRaw;
+                        } else {
+                            imageSrc = imgRaw;
+                        }
+                    }
+
+                    const rowData = [
+                        handle,
+                        title,
+                        bodyHtml,
+                        vendorName,
+                        finalType,
+                        'Title',
+                        'Default Title',
+                        1,
+                        tagId,
+                        tagId,
+                        cost,
+                        price,
+                        weightGrams,
+                        imageSrc,
+                        'MERGE',
+                        idx + 1,
+                        idx === 0 ? imageSrc : '',
+                        weightLbs,
+                        vendorSku,
+                        '',
+                        depthIn,
+                        widthIn,
+                        heightIn,
+                        measurementsStr,
+                        '',
+                        toTitleCase(material),
+                        'Mexican Onyx',
+                        'MX',
+                        tagsList,
+                        productCategory,
+                        colorsStr,
+                        polishType,
+                        '',
+                        'Adults',
+                        'Unisex',
+                        'Rare Earth Gallery',
+                        'Rare Earth Gallery',
+                        'active',
+                        'FALSE',
+                        'global',
+                        'true',
+                        'shopify',
+                        'deny',
+                        'manual',
+                        'true',
+                        artOfDecorVal,
+                        fountainsVal,
+                        pendantsVal
+                    ];
+
+                    allExportRows.push(rowData);
+                });
             });
             
-            // Sort by Vendor (Index 2) then by Category (Index 22)
             allExportRows.sort((a, b) => {
                 const vendorA = String(a[2] || '').toLowerCase();
                 const vendorB = String(b[2] || '').toLowerCase();
@@ -3473,6 +3573,7 @@ export function MainHeader() {
 
                     {/* Full Color XLSX Download Button */}
                     <div className="flex items-center gap-1.5">
+                        {/* Redundant V2 Button Hidden
                         <button
                             onClick={handleMasterExportXLSX_V2}
                             disabled={isExporting}
@@ -3483,6 +3584,7 @@ export function MainHeader() {
                         >
                             <DatabaseBackup size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/v2:scale-110 transition-transform text-white/60 group-hover/v2:text-white'} />
                         </button>
+                        */}
 
                         {selectedIds.length > 0 && (
                             <button
@@ -3497,6 +3599,7 @@ export function MainHeader() {
                             </button>
                         )}
 
+                        {/* oldWorkbook 
                         <button
                             onClick={handleMasterExportXLSX}
                             disabled={isExporting}
@@ -3508,6 +3611,28 @@ export function MainHeader() {
                         >
                             <FileSpreadsheet size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                             <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Workbook</span>
+                        </button>
+                        */}
+                        
+                        {/* Archive Toggle — next to WorkbookV2 */}
+                        <button
+                            onClick={() => setIsArchiveVisible(!isArchiveVisible)}
+                            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 border ${isArchiveVisible ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/70 hover:bg-white/10'}`}
+                            title={isArchiveVisible ? "Hide Archive (826 season only)" : "Show Archive (include 826 + 325/326)"}
+                        >
+                            <ClipboardClock size={20} strokeWidth={2.5} className="transition-transform group-hover:scale-110" />
+                        </button>
+
+                        <button
+                            onClick={handleMasterExportXLSX_V2}
+                            disabled={isExporting}
+                            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 shadow-xl hover:shadow-(--main-color)/20 group/xlsx ${
+                                isExporting ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
+                            title="Download Workbook V2 (Rare Earth Format)"
+                        >
+                            <FileSpreadsheet size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                         </button>
                     </div>
 
