@@ -5,7 +5,7 @@
 import { atom } from 'jotai';
 import { atomWithStorage, createJSONStorage } from 'jotai/utils';
 const sessionJSONStorage = createJSONStorage<any>(() => sessionStorage);
-import { colors } from './consts';
+import { colors, DEFAULT_EXCHANGE_RATE } from './consts';
 export { inventoryStatusSetsAtom } from './inventoryStatusAtom';
 
 import {
@@ -30,10 +30,14 @@ export type User = {
   role: UserRole;
 };
 export const userAtom = atomWithStorage<User | null>('userSession', null);
-export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
+
 export const themeAtom = atomWithStorage<string>('appTheme', 'talan');
+export const appStyleAtom = atomWithStorage<'rock' | 'paper'>('appStyle', 'rock');
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v2', true);
-export const exchangeRateAtom = atomWithStorage<number>('exchangeRate', 17.0);
+export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
+// NOTE: atomWithStorage persists, so a browser that stored an older rate keeps it
+// until changed in Settings — this default only applies to fresh sessions.
+export const exchangeRateAtom = atomWithStorage<number>('exchangeRate', DEFAULT_EXCHANGE_RATE);
 export type CurrencyMode = 'MXN' | 'USD';
 export const currencyModeAtom = atomWithStorage<CurrencyMode>('currencyMode', 'MXN');
 
@@ -185,7 +189,7 @@ export const batchActionItemsDataAtom = atom<InventoryItem[]>([]);
 export const isMarketMultiSelectModeAtom = atom(false);
 export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
-export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer' | 'welcome' | 'onyx' | 'pico-bridge'>('activeView', 'welcome', sessionJSONStorage);
+export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer' | 'welcome' | 'onyx' | 'pico-bridge' | 'onyx-reg' | 'devices'>('activeView', 'welcome', sessionJSONStorage);
 export const onyxMessagesAtom = atom<any[]>([]);
 export const onyxIsListeningAtom = atom<boolean>(false);
 export const onyxIsTypingAtom = atom<boolean>(false);
@@ -244,6 +248,26 @@ export const uploadItemDataAtom = atom<Partial<InventoryItemData> & {
 }>({});
 
 export const uploadCurrentStepAtom = atom<'media' | 'details' | 'review'>('media');
+
+// Batch Create from XLSX
+export interface BatchCreateItem {
+  id: string;
+  itemNumber: string;
+  shape: string;
+  itemType: string;
+  color: string;
+  material: string;
+  widthCm: string;
+  heightCm: string;
+  lengthCm: string;
+  weightKg: string;
+  price: string;
+  quantity: string;
+  description: string;
+  mediaFiles: UploadedFile[];
+}
+export const batchCreateItemsAtom = atom<BatchCreateItem[]>([]);
+export const batchCreateModeAtom = atom<'single' | 'batch'>('single');
 
 export const dashboardActiveTabAtom = atomWithStorage<'acquisitions' | 'payments' | 'shipping'>('dashboardActiveTab', 'acquisitions', sessionJSONStorage);
 export const acquisitionsVersionAtom = atom(0);
@@ -624,3 +648,31 @@ export const onyxRequestSendAtom = atom(0);
 
 export const isBatchWizardOpenAtom = atom<boolean>(false);
 export const batchWizardItemsAtom = atom<any[]>([]);
+
+// PicoBridge & OnyxChan State
+export interface PicoDevice {
+  id: string;
+  name: string;
+  role: 'ADMIN' | 'SCANNER' | 'DISPLAY' | 'ROBOT';
+  status: 'online' | 'offline';
+  lastSeen: string;
+  hardware: string;
+}
+
+export const picoDevicesAtom = atomWithStorage<Record<string, PicoDevice>>('picoDevices', {
+  'onyxchan-01': {
+    id: 'onyxchan-01',
+    name: 'OnyxChan (StackChan)',
+    role: 'ROBOT',
+    status: 'offline',
+    lastSeen: new Date().toISOString(),
+    hardware: 'M5Stack CoreS3'
+  }
+});
+export const activePicoDeviceAtom = atom<string | null>('onyxchan-01');
+export const picoRemoteCommandAtom = atom<{deviceId: string, command: string, payload: any} | null>(null);
+
+// Defaults ON while the 826 season is still empty: with it off, "hide archive"
+// correctly resolves to an empty list and the app looks broken on a fresh browser.
+// Flip back to false once inventory_826/finance_826 carry real data.
+export const isArchiveVisibleAtom = atomWithStorage<boolean>('isArchiveVisible', true);

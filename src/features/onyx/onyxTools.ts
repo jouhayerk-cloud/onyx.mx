@@ -1,5 +1,6 @@
 
 import { onyxQueries } from './onyxQueries';
+import { DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 
 export const onyxToolDefinitions = [
     {
@@ -135,7 +136,7 @@ export const onyxToolHandlers = {
                     let barcode = item.book_barcode;
                     if (!barcode || barcode.includes('-')) {
                         try {
-                            const exchangeRate = 17.0; // Standard fallback
+                            const exchangeRate = DEFAULT_EXCHANGE_RATE;
                             const costMxn = item.price_mxn || 0;
                             const costUsd = costMxn / exchangeRate;
                             const landedCost = onyxRound(costUsd * 1.4);
@@ -188,7 +189,7 @@ export const onyxToolHandlers = {
             let barcode = item.book_barcode;
             if (!barcode || barcode.includes('-')) {
                 try {
-                    const exchangeRate = 17.0; 
+                    const exchangeRate = DEFAULT_EXCHANGE_RATE;
                     const costMxn = item.price_mxn || 0;
                     const costUsd = costMxn / exchangeRate;
                     const landedCost = onyxRound(costUsd * 1.4);
