@@ -14,9 +14,56 @@ export interface ResolvedArtifact {
  * Official Onyx.mx resolution logic for a single tagId/barcode.
  * Supports: Exact barcode, Regex Pattern (SU...), Production Table, Legacy ItemID.
  */
+/**
+ * Public tag resolution goes through the `artifact` edge function, not the
+ * inventory table.
+ *
+ * The function runs on the service role server-side and returns a curated field
+ * set — never price_mxn, acquisition or landed cost — so the database can stay
+ * closed to anonymous callers while printed QR labels keep resolving. Retail is
+ * computed there from the cost it declines to expose.
+ */
+const ARTIFACT_FN = `${import.meta.env.VITE_SUPABASE_URL || ''}/functions/v1/artifact`;
+
+async function fetchPublicArtifact(tagId: string): Promise<any | null> {
+    try {
+        const res = await fetch(`${ARTIFACT_FN}?tagid=${encodeURIComponent(tagId)}&format=json`);
+        if (!res.ok) return null;
+        const body = await res.json();
+        return body?.found ? body.data : null;
+    } catch (err) {
+        console.error('[artifact] public lookup failed:', err);
+        return null;
+    }
+}
+
 export async function resolveArtifact(tagId: string, options: { exchangeRate?: number; workbookPrefix?: string } = {}): Promise<ResolvedArtifact | null> {
     if (!tagId) return null;
     const { exchangeRate = DEFAULT_EXCHANGE_RATE, workbookPrefix = '326' } = options;
+
+    // Unauthenticated callers (public tag scans) must use the edge function.
+    // Signed-in users fall through to the direct queries below, which return the
+    // full record including the cost codes the app is entitled to show.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        const publicItem = await fetchPublicArtifact(tagId);
+        if (!publicItem) return null;
+
+        const data = normalizeInventoryData(publicItem);
+        const images: string[] = [];
+        if (data.generatedPngUrl) images.push(data.generatedPngUrl);
+        if (data.mediaUrls) String(data.mediaUrls).split(',').forEach(u => { const t = u.trim(); if (t) images.push(t); });
+        if (data.generatedImageUrls) String(data.generatedImageUrls).split(',').forEach(u => { const t = u.trim(); if (t) images.push(t); });
+
+        return {
+            data,
+            // Retail arrives precomputed. Acquisition and landed codes are absent by
+            // design: the cypher is public, so publishing them publishes the cost.
+            codes: { bookBardcode: publicItem.book_barcode, bookRetail: publicItem.book_retail },
+            images: Array.from(new Set(images.filter(Boolean))).map(url => getCleanImageUrl(url)),
+            source: 'public'
+        };
+    }
 
     try {
         let fetched: { data: any; source?: string } | null = null;
