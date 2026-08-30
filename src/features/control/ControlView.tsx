@@ -6,6 +6,7 @@ import { UserRegistryPanel } from './UserRegistryPanel';
 import { DatabaseStatsPanel } from './DatabaseStatsPanel';
 import { StoreSettingsPanel } from './StoreSettingsPanel';
 import { DataBaseArtifact } from './DataBaseArtifact';
+import { DatabaseModePanel } from './DatabaseModePanel';
 import { Shield, Database, Users, ShoppingBag, Terminal } from 'lucide-react';
 
 type ControlTab = 'users' | 'database' | 'store';
@@ -80,6 +81,7 @@ export function ControlView() {
                     {activeTab === 'users' && <UserRegistryPanel />}
                     {activeTab === 'database' && (
                         <div className="flex flex-col gap-16">
+                            <DatabaseModePanel />
                             <DatabaseStatsPanel />
                             <DataBaseArtifact />
                         </div>
