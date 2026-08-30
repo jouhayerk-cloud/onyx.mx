@@ -4,12 +4,13 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom, financeTotalsAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom, financeTotalsAtom, isArchiveVisibleAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase, useNotify } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { isLegacyRow } from '../../lib/seasons';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, Package as PackageIcon,
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
@@ -1146,6 +1147,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const showFilters = useAtomValue(paymentFilterBarModeAtom) !== 'off';
     const financeSearch = useAtomValue(financeSearchTermAtom);
+    const isArchiveVisible = useAtomValue(isArchiveVisibleAtom);
     const [liveExchangeRate, setLiveExchangeRate] = useAtom<number | null, [number | null], void>(liveExchangeRateAtom as any);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
@@ -1312,6 +1314,10 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
         return [...docs]
             .filter(r => {
+                // Past seasons are hidden unless the Archive toggle is on — same switch
+                // the Inventory module uses, so both views stay on the same season.
+                if (!isArchiveVisible && isLegacyRow(r)) return false;
+
                 const subcatValue = normalizeSubcat(r.subcategory || r.category || '');
                 const subcatMatch = subcatFilter === 'All' || subcatValue === subcatFilter;
                 const destMatch = destinationFilter === 'All' || r.destination === destinationFilter;
@@ -1334,7 +1340,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 return subcatMatch && destMatch && vendorMatch && statusMatch && searchMatch;
             })
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
-    }, [docs, subcatFilter, destinationFilter, vendorFilter, financeSearch, statusFilter]);
+    }, [docs, subcatFilter, destinationFilter, vendorFilter, financeSearch, statusFilter, isArchiveVisible]);
 
     const handleRequestPayment = async (dest: PaymentDestination, percentage: number, manualFee: number = 0, includeIva: boolean = false, includeComm: boolean = false) => {
         if (!requestGroup) return;

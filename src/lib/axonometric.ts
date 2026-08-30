@@ -32,7 +32,8 @@ export async function generateAxonometricDataUrl(
     w_cm: number, h_cm: number, d_cm: number,
     shapeStr: string = '', descStr: string = '',
     wireframeColor?: string,
-    asJpeg: boolean = false
+    asJpeg: boolean = false,
+    hexMapString?: string
 ): Promise<string> {
     return new Promise((resolve) => {
         let W = w_cm;
@@ -133,12 +134,53 @@ export async function generateAxonometricDataUrl(
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
 
-        const isWireframe = !!wireframeColor;
+        const isWireframe = wireframeColor === 'black' || wireframeColor === 'wireframe' || wireframeColor === 'transparent' || wireframeColor === '#000000';
         // Grayscale Palette (transparent if wireframe to achieve hidden-line look)
         const COLOR_TOP = isWireframe ? 'rgba(0,0,0,0)' : '#F0F0F0';
         const COLOR_RIGHT = isWireframe ? 'rgba(0,0,0,0)' : '#D4D4D4';
         const COLOR_LEFT = isWireframe ? 'rgba(0,0,0,0)' : '#9E9E9E';
         const COLOR_OUTLINE = wireframeColor || '#111111';
+
+        let hexPattern: CanvasPattern | null = null;
+        let parsedHexList: string[] = [];
+        let tCols = 20;
+        let tRows = 20;
+        if (hexMapString && !isWireframe) {
+            try {
+                parsedHexList = hexMapString.split(',').map(s => s.trim()).filter(s => s.startsWith('#') || /^[0-9A-Fa-f]{6}$/.test(s));
+                if (parsedHexList.length > 0) {
+                    if (parsedHexList.length === 160) { tCols = 20; tRows = 8; }
+                    else if (parsedHexList.length === 400) { tCols = 20; tRows = 20; }
+                    else if (parsedHexList.length === 64) { tCols = 8; tRows = 8; }
+                    else if (parsedHexList.length === 100) { tCols = 10; tRows = 10; }
+                    else if (parsedHexList.length > 0 && parsedHexList.length % 20 === 0) { tCols = 20; tRows = parsedHexList.length / 20; }
+                    else if (parsedHexList.length > 0 && parsedHexList.length % 16 === 0) { tCols = 16; tRows = parsedHexList.length / 16; }
+                    else {
+                        tCols = Math.max(1, Math.round(Math.sqrt(parsedHexList.length)));
+                        tRows = Math.ceil(parsedHexList.length / tCols);
+                    }
+
+                    const texCan = document.createElement('canvas');
+                    const cellSize = Math.max(4, Math.round(160 / tCols));
+                    texCan.width = tCols * cellSize;
+                    texCan.height = tRows * cellSize;
+                    const texCtx = texCan.getContext('2d');
+                    if (texCtx) {
+                        for (let r = 0; r < tRows; r++) {
+                            for (let c = 0; c < tCols; c++) {
+                                const idx = r * tCols + c;
+                                const color = parsedHexList[idx] || parsedHexList[0] || '#CCCCCC';
+                                texCtx.fillStyle = color.startsWith('#') ? color : `#${color}`;
+                                texCtx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                            }
+                        }
+                        hexPattern = ctx.createPattern(texCan, 'repeat');
+                    }
+                }
+            } catch(e) {
+                console.error("Failed to create hex texture pattern", e);
+            }
+        }
 
         ctx.font = 'bold 18px "Helvetica Neue", Helvetica, Arial, sans-serif';
         ctx.textAlign = 'center';
@@ -202,11 +244,22 @@ export async function generateAxonometricDataUrl(
             ctx.lineTo(cx + (cb_u + u2)*scale, cy + (cb_v + v2)*scale);
             ctx.closePath();
             
-            const grd = ctx!.createLinearGradient(cx + (cb_u + u2)*scale, 0, cx + (cb_u + u1)*scale, 0);
-            grd.addColorStop(0, COLOR_LEFT);
-            grd.addColorStop(1, COLOR_RIGHT);
-            ctx.fillStyle = grd;
-            ctx.fill();
+            if (hexPattern) {
+                ctx.fillStyle = hexPattern;
+                ctx.fill();
+                const shGrd = ctx!.createLinearGradient(cx + (cb_u + u2)*scale, 0, cx + (cb_u + u1)*scale, 0);
+                shGrd.addColorStop(0, 'rgba(0,0,0,0.35)');
+                shGrd.addColorStop(0.5, 'rgba(255,255,255,0.1)');
+                shGrd.addColorStop(1, 'rgba(0,0,0,0.15)');
+                ctx.fillStyle = shGrd;
+                ctx.fill();
+            } else {
+                const grd = ctx!.createLinearGradient(cx + (cb_u + u2)*scale, 0, cx + (cb_u + u1)*scale, 0);
+                grd.addColorStop(0, COLOR_LEFT);
+                grd.addColorStop(1, COLOR_RIGHT);
+                ctx.fillStyle = grd;
+                ctx.fill();
+            }
             
             ctx.beginPath();
             ctx.moveTo(cx + (cb_u + u1)*scale, cy + (cb_v + v1)*scale);
@@ -218,8 +271,12 @@ export async function generateAxonometricDataUrl(
             ctx.stroke();
 
             drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
-            ctx.fillStyle = COLOR_TOP;
+            ctx.fillStyle = hexPattern || COLOR_TOP;
             ctx.fill();
+            if (hexPattern) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.fill();
+            }
             ctx.stroke();
 
             // Draw inner top ellipse (hollow interior or glass)
@@ -344,11 +401,22 @@ export async function generateAxonometricDataUrl(
                 ctx.lineTo(pm_u, pm_v);
                 ctx.closePath();
                 
-                const grd = ctx.createLinearGradient(p0_u, 0, p2_u, 0);
-                grd.addColorStop(0, COLOR_LEFT);
-                grd.addColorStop(1, COLOR_RIGHT);
-                ctx.fillStyle = grd;
-                ctx.fill();
+                if (hexPattern) {
+                    ctx.fillStyle = hexPattern;
+                    ctx.fill();
+                    const shGrd = ctx.createLinearGradient(p0_u, 0, p2_u, 0);
+                    shGrd.addColorStop(0, 'rgba(0,0,0,0.35)');
+                    shGrd.addColorStop(0.5, 'rgba(255,255,255,0.1)');
+                    shGrd.addColorStop(1, 'rgba(0,0,0,0.2)');
+                    ctx.fillStyle = shGrd;
+                    ctx.fill();
+                } else {
+                    const grd = ctx.createLinearGradient(p0_u, 0, p2_u, 0);
+                    grd.addColorStop(0, COLOR_LEFT);
+                    grd.addColorStop(1, COLOR_RIGHT);
+                    ctx.fillStyle = grd;
+                    ctx.fill();
+                }
 
                 // Stroke bottom sweeping curve
                 ctx.beginPath();
@@ -359,8 +427,12 @@ export async function generateAxonometricDataUrl(
 
                 // Draw full top ellipse (outer rim)
                 drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
-                ctx.fillStyle = COLOR_TOP;
+                ctx.fillStyle = hexPattern || COLOR_TOP;
                 ctx.fill();
+                if (hexPattern) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.fill();
+                }
                 ctx.stroke();
 
                 // Draw inner top ellipse (hollow interior)
@@ -434,8 +506,12 @@ export async function generateAxonometricDataUrl(
 
             // 3. Draw front face
             traceIsoCircle(frontCx, frontCy, R);
-            ctx!.fillStyle = COLOR_TOP;
+            ctx!.fillStyle = hexPattern || COLOR_TOP;
             ctx!.fill();
+            if (hexPattern) {
+                ctx!.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx!.fill();
+            }
             ctx!.stroke();
 
             // 4. Draw inner glass
@@ -495,6 +571,14 @@ export async function generateAxonometricDataUrl(
             
             if (isWireframe) {
                 ctx!.fillStyle = 'rgba(0,0,0,0)';
+            } else if (hexPattern) {
+                ctx!.fillStyle = hexPattern;
+                ctx!.fill();
+                const shGrd = ctx!.createRadialGradient(ptX - (R*0.3)*scale, ptY - (R*0.3)*scale, R*0.1*scale, ptX, ptY, R*scale);
+                shGrd.addColorStop(0, 'rgba(255,255,255,0.3)');
+                shGrd.addColorStop(0.7, 'rgba(0,0,0,0.1)');
+                shGrd.addColorStop(1, 'rgba(0,0,0,0.45)');
+                ctx!.fillStyle = shGrd;
             } else {
                 ctx!.fillStyle = grd;
             }
@@ -518,22 +602,26 @@ export async function generateAxonometricDataUrl(
             const projected = v3d.map(p => project(p.x, p.y, p.z));
             const pts = projected.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
 
-            function drawFace(indices: number[], color: string) {
+            function drawFace(indices: number[], color: string, shadeOverlay?: string) {
                 ctx!.beginPath();
                 ctx!.moveTo(pts[indices[0]].u, pts[indices[0]].v);
                 for (let i = 1; i < indices.length; i++) ctx!.lineTo(pts[indices[i]].u, pts[indices[i]].v);
                 ctx!.closePath();
-                ctx!.fillStyle = color;
+                ctx!.fillStyle = hexPattern || color;
                 ctx!.fill();
+                if (hexPattern && shadeOverlay) {
+                    ctx!.fillStyle = shadeOverlay;
+                    ctx!.fill();
+                }
                 ctx!.stroke();
             }
 
             // Top-Left Face
-            drawFace([0, 5, 2], COLOR_TOP);
+            drawFace([0, 5, 2], COLOR_TOP, 'rgba(255, 255, 255, 0.15)');
             // Top-Right Face
-            drawFace([0, 2, 3], COLOR_RIGHT);
+            drawFace([0, 2, 3], COLOR_RIGHT, 'rgba(0, 0, 0, 0.15)');
             // Bottom-Left Face
-            drawFace([1, 5, 2], COLOR_LEFT);
+            drawFace([1, 5, 2], COLOR_LEFT, 'rgba(0, 0, 0, 0.35)');
             
             // Bottom-Right Face
             ctx!.fillStyle = isWireframe ? 'rgba(0,0,0,0)' : '#A3A3A3'; 
@@ -561,19 +649,115 @@ export async function generateAxonometricDataUrl(
             const projected = v3d.map(p => project(p.x, p.y, p.z));
             const pts = projected.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
 
-            function drawFace(indices: number[], color: string) {
+            function drawFace(indices: number[], color: string, shadeOverlay?: string) {
                 ctx!.beginPath();
                 ctx!.moveTo(pts[indices[0]].u, pts[indices[0]].v);
                 for (let i = 1; i < indices.length; i++) ctx!.lineTo(pts[indices[i]].u, pts[indices[i]].v);
                 ctx!.closePath();
-                ctx!.fillStyle = color;
+                ctx!.fillStyle = hexPattern || color;
                 ctx!.fill();
+                if (hexPattern && shadeOverlay) {
+                    ctx!.fillStyle = shadeOverlay;
+                    ctx!.fill();
+                }
                 ctx!.stroke();
             }
 
-            drawFace([4, 5, 6, 7], COLOR_TOP);
-            drawFace([0, 3, 7, 4], COLOR_LEFT);
-            drawFace([0, 1, 5, 4], COLOR_RIGHT);
+            function drawProjectedHexGrid(faceType: 'front' | 'top' | 'left', shadeOverlay?: string) {
+                if (!parsedHexList || parsedHexList.length === 0) return;
+                const topInset = geom === 'polyhedron' ? 0.3 : 0;
+                for (let r = 0; r < tRows; r++) {
+                    for (let c = 0; c < tCols; c++) {
+                        const idx = r * tCols + c;
+                        const color = parsedHexList[idx] || parsedHexList[0] || '#CCCCCC';
+                        const hexCol = color.startsWith('#') ? color : `#${color}`;
+                        
+                        let p1_3d, p2_3d, p3_3d, p4_3d;
+                        if (faceType === 'front') {
+                            const yRatio1 = (tRows - r) / tRows;
+                            const yRatio2 = (tRows - (r + 1)) / tRows;
+                            const insetLeft1 = W * topInset * yRatio1;
+                            const insetRight1 = W * (1 - topInset * yRatio1);
+                            const insetLeft2 = W * topInset * yRatio2;
+                            const insetRight2 = W * (1 - topInset * yRatio2);
+                            
+                            const x1_top = insetLeft1 + (c / tCols) * (insetRight1 - insetLeft1);
+                            const x2_top = insetLeft1 + ((c + 1) / tCols) * (insetRight1 - insetLeft1);
+                            const x1_bot = insetLeft2 + (c / tCols) * (insetRight2 - insetLeft2);
+                            const x2_bot = insetLeft2 + ((c + 1) / tCols) * (insetRight2 - insetLeft2);
+                            
+                            const y1 = H - (r / tRows) * H;
+                            const y2 = H - ((r + 1) / tRows) * H;
+                            p1_3d = { x: x1_top, y: y1, z: 0 };
+                            p2_3d = { x: x2_top, y: y1, z: 0 };
+                            p3_3d = { x: x2_bot, y: y2, z: 0 };
+                            p4_3d = { x: x1_bot, y: y2, z: 0 };
+                        } else if (faceType === 'top') {
+                            const x1 = W * topInset + (c / tCols) * (W * (1 - 2 * topInset));
+                            const x2 = W * topInset + ((c + 1) / tCols) * (W * (1 - 2 * topInset));
+                            const z1 = D * topInset + (r / tRows) * (D * (1 - 2 * topInset));
+                            const z2 = D * topInset + ((r + 1) / tRows) * (D * (1 - 2 * topInset));
+                            p1_3d = { x: x1, y: H, z: z1 };
+                            p2_3d = { x: x2, y: H, z: z1 };
+                            p3_3d = { x: x2, y: H, z: z2 };
+                            p4_3d = { x: x1, y: H, z: z2 };
+                        } else { // left
+                            const yRatio1 = (tRows - r) / tRows;
+                            const yRatio2 = (tRows - (r + 1)) / tRows;
+                            const insetFront1 = D * topInset * yRatio1;
+                            const insetBack1 = D * (1 - topInset * yRatio1);
+                            const insetFront2 = D * topInset * yRatio2;
+                            const insetBack2 = D * (1 - topInset * yRatio2);
+                            
+                            const z1_top = insetFront1 + (c / tCols) * (insetBack1 - insetFront1);
+                            const z2_top = insetFront1 + ((c + 1) / tCols) * (insetBack1 - insetFront1);
+                            const z1_bot = insetFront2 + (c / tCols) * (insetBack2 - insetFront2);
+                            const z2_bot = insetFront2 + ((c + 1) / tCols) * (insetBack2 - insetFront2);
+
+                            const y1 = H - (r / tRows) * H;
+                            const y2 = H - ((r + 1) / tRows) * H;
+                            p1_3d = { x: 0, y: y1, z: z1_top };
+                            p2_3d = { x: 0, y: y1, z: z2_top };
+                            p3_3d = { x: 0, y: y2, z: z2_bot };
+                            p4_3d = { x: 0, y: y2, z: z1_bot };
+                        }
+
+                        const p1 = project(p1_3d.x, p1_3d.y, p1_3d.z);
+                        const p2 = project(p2_3d.x, p2_3d.y, p2_3d.z);
+                        const p3 = project(p3_3d.x, p3_3d.y, p3_3d.z);
+                        const p4 = project(p4_3d.x, p4_3d.y, p4_3d.z);
+
+                        ctx!.beginPath();
+                        ctx!.moveTo(p1.u * scale + cx, p1.v * scale + cy);
+                        ctx!.lineTo(p2.u * scale + cx, p2.v * scale + cy);
+                        ctx!.lineTo(p3.u * scale + cx, p3.v * scale + cy);
+                        ctx!.lineTo(p4.u * scale + cx, p4.v * scale + cy);
+                        ctx!.closePath();
+                        ctx!.fillStyle = hexCol;
+                        ctx!.fill();
+                    }
+                }
+                if (shadeOverlay) {
+                    const indices = faceType === 'top' ? [4, 5, 6, 7] : faceType === 'left' ? [0, 3, 7, 4] : [0, 1, 5, 4];
+                    ctx!.beginPath();
+                    ctx!.moveTo(pts[indices[0]].u, pts[indices[0]].v);
+                    for (let i = 1; i < indices.length; i++) ctx!.lineTo(pts[indices[i]].u, pts[indices[i]].v);
+                    ctx!.closePath();
+                    ctx!.fillStyle = shadeOverlay;
+                    ctx!.fill();
+                    ctx!.stroke();
+                }
+            }
+
+            if (parsedHexList && parsedHexList.length > 0 && !isWireframe) {
+                drawProjectedHexGrid('top', 'rgba(255, 255, 255, 0.15)');
+                drawProjectedHexGrid('left', 'rgba(0, 0, 0, 0.35)');
+                drawProjectedHexGrid('front', 'rgba(0, 0, 0, 0.15)');
+            } else {
+                drawFace([4, 5, 6, 7], COLOR_TOP, 'rgba(255, 255, 255, 0.15)');
+                drawFace([0, 3, 7, 4], COLOR_LEFT, 'rgba(0, 0, 0, 0.35)');
+                drawFace([0, 1, 5, 4], COLOR_RIGHT, 'rgba(0, 0, 0, 0.15)');
+            }
 
             if (isMirror) {
                 // Find largest face to draw the glass on

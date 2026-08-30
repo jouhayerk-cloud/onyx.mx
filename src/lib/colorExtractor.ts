@@ -109,6 +109,11 @@ export function getStoneStyleColors(material: string = '', title: string = '', c
     return ["Cream", "Tan", "Brown"];
 }
 
+export function isCylinderPendantItem(material: string = '', title: string = '', color: string = ''): boolean {
+    const combined = `${material} ${title} ${color}`.toLowerCase();
+    return combined.includes('cylinder') || combined.includes('cilindro') || combined.includes('pendant') || combined.includes('colgante');
+}
+
 /**
  * On-device image processing: pixelates the extracted mask/image on a canvas,
  * extracts hex color of each non-transparent block, and returns the 2-3 most apparent colors.
@@ -162,6 +167,10 @@ export async function extractDominantColorsFromImage(
                         // Ignore transparent or nearly transparent pixels (cutout background)
                         if (a < 50) continue;
                         
+                        // RULE: ALWAYS ignore black studio background from color data
+                        const isBlackBg = r <= 45 && g <= 45 && b <= 45 && (Math.max(r, g, b) - Math.min(r, g, b)) <= 15;
+                        if (isBlackBg) continue;
+                        
                         validBlocks++;
 
                         // Find closest color in our palette using weighted Euclidean distance
@@ -184,6 +193,11 @@ export async function extractDominantColorsFromImage(
                         return resolve(fallbacks);
                     }
 
+                    const isCylPendant = isCylinderPendantItem(material, title, color);
+                    if (isCylPendant && colorCounts["Black"]) {
+                        delete colorCounts["Black"];
+                    }
+
                     // Sort identified colors by frequency
                     const sorted = Object.entries(colorCounts)
                         .sort((a, b) => b[1] - a[1])
@@ -191,7 +205,7 @@ export async function extractDominantColorsFromImage(
                         .map(([col]) => col as ShopifyColor);
 
                     // Combine extracted colors with stone style fallbacks to ensure 2-3 colors
-                    const combined = Array.from(new Set([...sorted, ...fallbacks])).slice(0, 3);
+                    const combined = Array.from(new Set([...sorted, ...fallbacks])).filter(c => !(isCylPendant && c === "Black")).slice(0, 3);
                     resolve(combined);
                 } catch (e) {
                     resolve(fallbacks);
@@ -354,7 +368,8 @@ export async function generateBitmapAndHexMap(
                             const pa = imgData[idx + 3];
 
                             let hex = '#FFFFFF';
-                            if (pa >= 50) {
+                            const isBlackBg = pr <= 45 && pg <= 45 && pb <= 45 && (Math.max(pr, pg, pb) - Math.min(pr, pg, pb)) <= 15;
+                            if (pa >= 50 && !isBlackBg) {
                                 // Apply Brightness
                                 pr += bOffset; pg += bOffset; pb += bOffset;
                                 // Apply Contrast
@@ -400,13 +415,18 @@ export async function generateBitmapAndHexMap(
                     const bitmapDataUrl = outCanvas.toDataURL('image/webp', 0.9);
                     const hexString = hexCodes.join(',');
 
+                    const isCylPendant = isCylinderPendantItem(material, title, color);
+                    if (isCylPendant && colorCounts["Black"]) {
+                        delete colorCounts["Black"];
+                    }
+
                     let dominantColors = fallbacks;
                     if (validBlocks > 0) {
                         const sorted = Object.entries(colorCounts)
                             .sort((a, b) => b[1] - a[1])
                             .filter(([_, count]) => (count / validBlocks) >= 0.05)
                             .map(([col]) => col as ShopifyColor);
-                        dominantColors = Array.from(new Set([...sorted, ...fallbacks])).slice(0, 3);
+                        dominantColors = Array.from(new Set([...sorted, ...fallbacks])).filter(c => !(isCylPendant && c === "Black")).slice(0, 3);
                     }
 
                     resolve({
@@ -458,3 +478,118 @@ export async function generateBitmapAndHexMap(
     }
 }
 
+export interface RgbPixel {
+    r: number;
+    g: number;
+    b: number;
+    hex: string;
+}
+
+export interface ReconstructedPixelMap {
+    cols: number;
+    rows: number;
+    pixels: RgbPixel[];
+    grid: RgbPixel[][];
+    hexString: string;
+    bitmapUrl?: string;
+}
+
+/**
+ * Parses a saved spatial_points pixel map from the database and reconstructs
+ * the full RGB pixel map grid and flat array for hexadecimal-based inventory searches.
+ */
+export function reconstructRgbPixelMap(spatialPoints: any): ReconstructedPixelMap | null {
+    if (!spatialPoints) return null;
+    let pointsArray = spatialPoints;
+    if (typeof spatialPoints === 'string') {
+        try {
+            pointsArray = JSON.parse(spatialPoints);
+        } catch (e) {
+            if (spatialPoints.includes(',') || spatialPoints.startsWith('#')) {
+                pointsArray = [{ type: 'pixel_map', hex_string: spatialPoints }];
+            } else {
+                return null;
+            }
+        }
+    }
+    if (!Array.isArray(pointsArray)) {
+        if (typeof pointsArray === 'object' && (pointsArray.hex_string || pointsArray.hexString || pointsArray.type === 'pixel_map')) {
+            pointsArray = [pointsArray];
+        } else {
+            return null;
+        }
+    }
+
+    const pixelMapObj = pointsArray.find((p: any) => p && (p.type === 'pixel_map' || p.hex_string || p.hexString));
+    if (!pixelMapObj) return null;
+
+    const hexString = pixelMapObj.hex_string || pixelMapObj.hexString || '';
+    if (!hexString) return null;
+
+    const hexList = hexString.split(',').map((s: string) => s.trim());
+    let cols = pixelMapObj.cols || 20;
+    let rows = pixelMapObj.rows || 20;
+
+    if (pixelMapObj.dimensions && typeof pixelMapObj.dimensions === 'string' && pixelMapObj.dimensions.includes('x')) {
+        const parts = pixelMapObj.dimensions.split('x');
+        const c = parseInt(parts[0], 10);
+        const r = parseInt(parts[1], 10);
+        if (!isNaN(c) && c > 0) cols = c;
+        if (!isNaN(r) && r > 0) rows = r;
+    } else if (!pixelMapObj.cols || !pixelMapObj.rows) {
+        if (hexList.length === 160) { cols = 20; rows = 8; }
+        else if (hexList.length === 400) { cols = 20; rows = 20; }
+        else {
+            cols = Math.max(1, Math.round(Math.sqrt(hexList.length)));
+            rows = Math.ceil(hexList.length / cols);
+        }
+    }
+
+    const pixels: RgbPixel[] = hexList.map((hex: string) => {
+        const cleanHex = hex.startsWith('#') ? hex.slice(1) : hex;
+        const num = parseInt(cleanHex, 16);
+        const r = (num >> 16) & 255;
+        const g = (num >> 8) & 255;
+        const b = num & 255;
+        return { r: isNaN(r) ? 255 : r, g: isNaN(g) ? 255 : g, b: isNaN(b) ? 255 : b, hex: hex.startsWith('#') ? hex : `#${hex}` };
+    });
+
+    const grid: RgbPixel[][] = [];
+    for (let r = 0; r < rows; r++) {
+        const rowSlice: RgbPixel[] = [];
+        for (let c = 0; c < cols; c++) {
+            const idx = r * cols + c;
+            rowSlice.push(pixels[idx] || { r: 255, g: 255, b: 255, hex: '#FFFFFF' });
+        }
+        grid.push(rowSlice);
+    }
+
+    let bitmapUrl = pixelMapObj.bitmap_url || pixelMapObj.bitmapUrl || undefined;
+    if ((!bitmapUrl || !bitmapUrl.startsWith('data:image/')) && typeof document !== 'undefined' && pixels.length > 0) {
+        try {
+            const blockSize = 12;
+            const can = document.createElement('canvas');
+            can.width = cols * blockSize;
+            can.height = rows * blockSize;
+            const ctx = can.getContext('2d');
+            if (ctx) {
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const idx = r * cols + c;
+                        const hex = pixels[idx]?.hex || '#FFFFFF';
+                        ctx.fillStyle = hex;
+                        ctx.fillRect(c * blockSize, r * blockSize, blockSize, blockSize);
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 1.5;
+                        ctx.strokeRect(c * blockSize, r * blockSize, blockSize, blockSize);
+                    }
+                }
+                bitmapUrl = can.toDataURL('image/webp', 0.9);
+            }
+        } catch (e) {
+            console.error('Failed to reconstruct bitmapUrl from hex grid', e);
+        }
+    }
+
+    return { cols, rows, pixels, grid, hexString, bitmapUrl };
+}

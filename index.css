@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&family=Open+Sans:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "./src/styles/tokens.css";
+@import "./src/styles/paper.css";
 
 html, body, #root {
   height: 100%;
@@ -557,31 +558,207 @@ body {
   overflow-y: auto;
 }
 
+/*
+  Toasts render over whichever theme is active, so the surface and text are taken
+  from theme tokens rather than hardcoded. The old rule was white text on a
+  near-transparent white pane — legible on Talan/Fluorite, unreadable on the light
+  themes (Aqua, Nacar). --toast-* are defined per theme below.
+*/
 .toast-liquid-glass {
-  background: rgba(255, 255, 255, 0.05) !important;
-  backdrop-filter: blur(30px) saturate(200%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: var(--toast-bg) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  border: 1px solid var(--toast-border) !important;
   border-left: 8px solid var(--main-color, #F97316) !important;
-  color: white !important;
+  color: var(--toast-text) !important;
   border-radius: 0 !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
-  padding: 24px 40px !important;
+  box-shadow: 0 18px 40px var(--toast-shadow) !important;
+  padding: 18px 28px !important;
   font-family: "Outfit", "DM Sans", sans-serif !important;
   font-weight: 800 !important;
   letter-spacing: 0.02em !important;
   text-transform: none !important;
-  font-size: 18px !important;
+  font-size: 16px !important;
   position: relative;
   overflow: hidden;
-  transform-origin: right bottom;
-  animation: toastRevealBottomRight 0.6s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-  margin-right: 30px !important;
-  margin-bottom: 30px !important;
+  transform-origin: center top;
+  animation: toastRevealTopCenter 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  margin-top: 20px !important;
   max-width: 500px !important;
   display: flex !important;
   align-items: center !important;
-  gap: 20px !important;
+  gap: 16px !important;
+}
+
+/* Nested text inherits the resolved toast colour rather than a stale white.
+   Icons are excluded — they carry their own status colour. */
+.toast-liquid-glass,
+.toast-liquid-glass *:not(svg):not(svg *) {
+  color: var(--toast-text) !important;
+}
+
+/* Status icons: the -400 shades read well on the dark themes but fall below
+   the 3:1 non-text contrast floor on the light ones, so deepen them there. */
+html.theme-aqua .toast-liquid-glass .text-emerald-400,
+html.theme-nacar .toast-liquid-glass .text-emerald-400 { color: #047857 !important; }
+html.theme-aqua .toast-liquid-glass .text-rose-400,
+html.theme-nacar .toast-liquid-glass .text-rose-400 { color: #be123c !important; }
+html.theme-aqua .toast-liquid-glass .text-blue-400,
+html.theme-nacar .toast-liquid-glass .text-blue-400 { color: #1d4ed8 !important; }
+
+/* Dark themes — light text on a dark translucent pane */
+:root,
+html.theme-talan,
+html.theme-fluorite {
+  --toast-bg: rgba(20, 18, 16, 0.82);
+  --toast-border: rgba(255, 255, 255, 0.12);
+  --toast-text: #f7f7f4;
+  --toast-shadow: rgba(0, 0, 0, 0.45);
+}
+
+html.theme-fluorite {
+  --toast-bg: rgba(24, 12, 40, 0.84);
+  --toast-border: rgba(0, 229, 255, 0.22);
+}
+
+/* Light themes — dark text on a light translucent pane */
+html.theme-aqua,
+html.theme-nacar {
+  --toast-bg: rgba(255, 255, 255, 0.88);
+  --toast-border: rgba(0, 0, 0, 0.10);
+  --toast-text: #14110f;
+  --toast-shadow: rgba(0, 0, 0, 0.18);
+}
+
+html.theme-nacar {
+  --toast-bg: rgba(255, 252, 245, 0.9);
+  --toast-border: rgba(212, 163, 115, 0.35);
+  --toast-text: #2a2624;
+}
+
+/* ==========================================================================
+   CREATE ITEM — theme alignment
+   --------------------------------------------------------------------------
+   Create Item was authored as a fixed light card (bg-[#F9F8F6], text-black/x)
+   while the rest of the app is themed. On the dark themes that left a white
+   panel whose inputs were still painted by the global `input { background:
+   var(--input-color) !important }` rule above — black bars on a white card.
+   Mapping its light utilities onto the theme tokens makes the form follow the
+   active theme, which is also what makes it match the Add Entry wizard.
+   ========================================================================== */
+
+.create-item-shell {
+  background-color: var(--app-bg-solid);
+}
+
+.create-item {
+  background-color: var(--glass-bg);
+  color: var(--text-color-primary);
+}
+
+.create-item .text-black {
+  color: var(--text-color-primary) !important;
+}
+
+.create-item [class*="text-black/"] {
+  color: var(--text-color-secondary) !important;
+}
+
+.create-item [class*="border-black/"] {
+  border-color: var(--border-color) !important;
+}
+
+.create-item [class*="bg-black/"] {
+  background-color: var(--input-color) !important;
+}
+
+/* Solid white chips/cards inside the form follow the surface instead */
+.create-item .bg-white {
+  background-color: var(--glass-bg) !important;
+  color: var(--text-color-primary) !important;
+}
+
+/* Vendor swatches and other explicitly-coloured fills keep their own colour */
+.create-item [style*="background-color"] {
+  background-color: revert-layer;
+}
+
+/* ==========================================================================
+   ADD ENTRY WIZARD — theme alignment
+   --------------------------------------------------------------------------
+   The wizard's markup is written in hardcoded dark utilities (text-white/60,
+   bg-white/5, border-white/10), so it stayed dark on the light themes and
+   ignored Paper entirely — visually disconnected from Create Item, which is
+   the other entry surface. Remapping the classes here keeps the wizard's
+   layout untouched while letting it follow the active theme, the same
+   technique paper.css already uses app-wide.
+   ========================================================================== */
+
+.entry-wizard [class*="text-white/"] {
+  color: var(--text-color-secondary) !important;
+}
+
+.entry-wizard .text-white {
+  color: var(--text-color-primary) !important;
+}
+
+.entry-wizard [class*="bg-white/"] {
+  background-color: var(--glass-bg) !important;
+}
+
+.entry-wizard [class*="border-white/"] {
+  border-color: var(--border-color) !important;
+}
+
+/* Inputs read as fields on any ground */
+.entry-wizard input,
+.entry-wizard textarea,
+.entry-wizard select {
+  color: var(--text-color-primary) !important;
+}
+.entry-wizard input::placeholder,
+.entry-wizard textarea::placeholder {
+  color: var(--text-color-secondary) !important;
+  opacity: 0.6;
+}
+
+/* Keep white text where it sits on a solid accent fill */
+.entry-wizard [style*="background-color"] .text-white,
+.entry-wizard [class*="bg-(--main-color)"] .text-white {
+  color: #ffffff !important;
+}
+
+/* The scrim should darken on dark themes and lighten on light ones */
+html.theme-aqua .entry-wizard > .absolute.inset-0,
+html.theme-nacar .entry-wizard > .absolute.inset-0 {
+  background-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+/* Paper style is flat by definition — solid surface, no blur, no shadow */
+html.style-paper .toast-liquid-glass {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+html.style-paper.theme-talan .toast-liquid-glass,
+html.style-paper.theme-fluorite .toast-liquid-glass {
+  background: var(--paper-raised) !important;
+  border-color: var(--paper-border) !important;
+  --toast-text: var(--paper-text);
+}
+html.style-paper.theme-aqua .toast-liquid-glass,
+html.style-paper.theme-nacar .toast-liquid-glass {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  --toast-text: #111827;
+}
+
+/* Paper flattens the wizard too — solid panels, no blur */
+html.style-paper .entry-wizard [class*="bg-white/"],
+html.style-paper .entry-wizard [class*="backdrop-blur"] {
+  background-color: var(--glass-bg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .toast-liquid-glass::after {
@@ -598,9 +775,9 @@ body {
   z-index: 1;
 }
 
-@keyframes toastRevealBottomRight {
-  0% { opacity: 0; transform: translateX(100%) skewX(-5deg); }
-  100% { opacity: 1; transform: translateX(0) skewX(0); }
+@keyframes toastRevealTopCenter {
+  0%   { opacity: 0; transform: translateY(-120%) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .sidebar-compact-tooltip {

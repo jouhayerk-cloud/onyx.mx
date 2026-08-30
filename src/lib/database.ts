@@ -3,16 +3,18 @@ import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
 import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
 import { supabase } from './supabase';
+import { resolveSeason, type Season } from './seasons';
 addRxPlugin(RxDBQueryBuilderPlugin);
 addRxPlugin(RxDBMigrationSchemaPlugin);
 
 const financeSchema = {
     title: 'finance schema',
-    version: 6,
+    version: 7,
     primaryKey: 'id',
     type: 'object',
     properties: {
         id: { type: 'string', maxLength: 100 },
+        season: { type: ['string', 'null'] },
         date: { type: ['string', 'null'] },
         type: { type: ['string', 'null'] },
         category: { type: ['string', 'null'] },
@@ -44,11 +46,12 @@ const financeSchema = {
 
 const logisticsSchema = {
     title: 'logistics schema',
-    version: 4,
+    version: 5,
     primaryKey: 'id',
     type: 'object',
     properties: {
         id: { type: 'string', maxLength: 100 },
+        season: { type: ['string', 'null'] },
         type: { type: ['string', 'null'] },
         vendors: { type: ['string', 'null'] },
         vendor_id: { type: ['string', 'null'] },
@@ -123,11 +126,12 @@ const shipmentsSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 13,
+    version: 15,
     primaryKey: 'id',
     type: 'object',
     properties: {
         id: { type: 'string', maxLength: 100 },
+        season: { type: ['string', 'null'] },
         timestamp: { type: ['string', 'null'] },
         vendor_id: { type: ['string', 'null'] },
         item_id: { type: ['string', 'null'] },
@@ -184,8 +188,39 @@ const inventorySchema = {
         is_hidden: { type: ['boolean', 'null'] },
         hidden_reason: { type: ['string', 'null'] },
         payment_ids: { type: ['string', 'null'] },
-        updated_at: { type: ['string', 'null'] }
+        updated_at: { type: ['string', 'null'] },
+        video_gen: { type: ['string', 'null'] }
     }
+};
+
+/**
+ * Unsaved form state, kept locally so a half-filled entry survives a reload, a
+ * crash or a tab switch.
+ *
+ * Deliberately NOT part of the sync loop below: pullReplication prunes any local
+ * row missing from Supabase, so a draft parked in a synced collection would be
+ * deleted the moment the next sync ran. Keeping drafts in their own collection
+ * makes them structurally immune to that.
+ *
+ * `data` is free-form on purpose — forms change shape often and a draft should
+ * never fail to save because a field was added.
+ */
+const draftsSchema = {
+    title: 'drafts schema',
+    version: 0,
+    primaryKey: 'id',
+    type: 'object',
+    properties: {
+        id: { type: 'string', maxLength: 100 },
+        kind: { type: 'string', maxLength: 40 },
+        season: { type: ['string', 'null'] },
+        created_by: { type: ['string', 'null'] },
+        created_at: { type: ['string', 'null'] },
+        updated_at: { type: ['string', 'null'] },
+        data: { type: 'object' }
+    },
+    required: ['id', 'kind'],
+    indexes: ['kind']
 };
 
 export type OnyxDatabase = RxDatabase<{
@@ -194,6 +229,7 @@ export type OnyxDatabase = RxDatabase<{
     logistics: RxCollection<any>;
     production: RxCollection<any>;
     shipments: RxCollection<any>;
+    drafts: RxCollection<any>;
 }>;
 
 let dbPromise: Promise<OnyxDatabase> | null = null;
@@ -203,7 +239,8 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
         const chunk = docs.slice(i, i + chunkSize).map(doc => ({
             ...doc,
             id: String(doc.id),
-            workbook: doc.workbook != null ? String(doc.workbook) : null
+            workbook: doc.workbook != null ? String(doc.workbook) : null,
+            season: doc.season != null ? String(doc.season) : null
         }));
         try {
             await collection.bulkUpsert(chunk);
@@ -227,7 +264,13 @@ const createDatabase = async () => {
 
     try {
         db = await createRxDatabase<OnyxDatabase>({
-            name: 'onyxdb18', // Forced clean start for mobile stability
+            // Bumped from onyxdb18 with the season schema change (inventory 14→15,
+            // finance 6→7, logistics 4→5). An earlier 13→14 inventory migration had
+            // been left incomplete, so stacking another version on top left RxDB
+            // awaiting a migration that never finished and the whole DB promise hung.
+            // The local store is a cache — Supabase is the source of truth — so a
+            // clean name is cheaper and safer than repairing migration state.
+            name: 'onyxdb19',
             storage: getRxStorageDexie()
         });
 
@@ -235,19 +278,24 @@ const createDatabase = async () => {
             inventory: {
                 schema: inventorySchema,
                 migrationStrategies: {
-                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null, 9: () => null, 10: () => null, 11: (oldDoc) => oldDoc, 12: (oldDoc) => oldDoc, 13: (oldDoc) => oldDoc,
+                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null, 9: () => null, 10: () => null, 11: (oldDoc) => oldDoc, 12: (oldDoc) => oldDoc, 13: (oldDoc) => oldDoc, 14: (oldDoc) => oldDoc,
+                    // 15: season stamp added — left unset here, the next sync fills it in
+                    // and rowSeason() infers from workbook until then.
+                    15: (oldDoc) => oldDoc,
                 }
             },
             finance: {
                 schema: financeSchema,
                 migrationStrategies: {
                     1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null,
+                    7: (oldDoc) => oldDoc,
                 }
             },
             logistics: {
                 schema: logisticsSchema,
                 migrationStrategies: {
                     1: () => null, 2: () => null, 3: () => null, 4: () => null,
+                    5: (oldDoc) => oldDoc,
                 }
             },
             production: { 
@@ -261,6 +309,10 @@ const createDatabase = async () => {
                 migrationStrategies: {
                     1: () => null,
                 }
+            },
+            // Local-only — never added to the sync loop below.
+            drafts: {
+                schema: draftsSchema
             }
         });
 
@@ -314,21 +366,60 @@ const createDatabase = async () => {
                     return { data: allData, success };
                 };
 
-                const syncCollection = async (table: string, collection: RxCollection<any>) => {
-                    const { data, success } = await fetchPaginated(table);
-                    if (!success) return; // Skip if fetch failed to avoid accidental wiping
+                // The _826 tables are retired: everything lives in the legacy tables and
+                // the season is carried by the `workbook` column (v326 / v825 / v826),
+                // which resolveSeason() reads. One source per collection.
+                //
+                // This also removes a trap in the old dual-load: once the _826 tables are
+                // dropped, fetching them fails, allSourcesOk goes false, and the prune
+                // below would never run again — so deleted rows would linger locally
+                // forever.
+                const getSeasonSources = (table: string): { name: string; season: Season }[] =>
+                    [{ name: table, season: 'legacy' }];
 
-                    // 1. Upsert new/updated records
-                    if (data.length > 0) {
-                        await bulkUpsertChunked(collection, data);
+                const syncCollection = async (table: string, collection: RxCollection<any>) => {
+                    const sources = getSeasonSources(table);
+                    const merged: any[] = [];
+                    let allSourcesOk = true;
+
+                    for (const source of sources) {
+                        const { data, success } = await fetchPaginated(source.name);
+                        if (!success) {
+                            // A missing or erroring table must not make the rows it would have
+                            // returned look deleted, so remember it and skip the prune below.
+                            allSourcesOk = false;
+                            continue;
+                        }
+                        for (const row of data) {
+                            merged.push({ ...row, season: resolveSeason(row, source.season) });
+                        }
                     }
 
-                    // 2. Prune stale records (items deleted from Supabase)
-                    // We only prune if we have a successful fetch, treating it as the source of truth
-                    const remoteIds = new Set(data.map(d => String(d.id)));
+                    // 1. Upsert new/updated records
+                    if (merged.length > 0) {
+                        await bulkUpsertChunked(collection, merged);
+                    }
+
+                    // 2. Prune stale records (items deleted from Supabase).
+                    // Only safe when every source responded — otherwise a transient failure
+                    // would wipe locally cached rows that still exist remotely.
+                    if (!allSourcesOk) {
+                        console.warn(`[DB] ${table}: skipping prune, not all season sources responded`);
+                        return;
+                    }
+
                     const localDocs = await collection.find().exec();
+
+                    // An empty remote against a populated cache is far more likely to be a
+                    // misconfigured season than a genuine mass delete — refuse to wipe.
+                    if (merged.length === 0 && localDocs.length > 0) {
+                        console.warn(`[DB] ${table}: remote returned 0 rows, keeping ${localDocs.length} cached records`);
+                        return;
+                    }
+
+                    const remoteIds = new Set(merged.map(d => String(d.id)));
                     const staleDocs = localDocs.filter((doc: any) => !remoteIds.has(doc.id));
-                    
+
                     if (staleDocs.length > 0) {
                         console.log(`[DB] Pruning ${staleDocs.length} stale records from ${table}`);
                         // Use sequential removal to avoid blocking the event loop on mobile
