@@ -1,7 +1,8 @@
-
 import React, { useState, useEffect, useMemo, useRef, memo, useCallback } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import toast from 'react-hot-toast';
+import { useFormDraft } from '../../lib/useFormDraft';
+import { buildAttributeSuggestions } from '../../lib/attributeSuggestions';
 import { 
     userAtom, 
     isUploadWizardOpenAtom, 
@@ -10,6 +11,8 @@ import {
     isDummyModeAtom, 
     sidebarStateAtom, 
     uploadItemDataAtom,
+    activeViewAtom,
+    uploadTabAtom,
     workbookVersionAtom,
     InventoryVersionAtom,
     isInventoryViewSliderOpenAtom,
@@ -48,6 +51,7 @@ import {
     FileSpreadsheet, Zap, Scan, LayoutGrid, FileText, Camera,
     BookOpen, AlertTriangle, RefreshCw, ChevronDown, Save
 } from 'lucide-react';
+import { compressAndTrimVideo } from '../../lib/videoCompressor';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
@@ -58,6 +62,14 @@ interface WizardMedia {
     type: 'image' | 'video';
     originalUrl?: string;
 }
+
+/**
+ * True once the entry has something worth keeping. Auto-populated fields (vendor,
+ * index, status, quantity) are ignored — they are set for the user, so counting them
+ * would make every freshly opened wizard look like a draft in progress.
+ */
+const hasEntryContent = (s: Partial<WizardState> | null): boolean =>
+    Boolean(s && (s.shape || s.material || s.color || s.type || s.price || s.notes));
 
 interface WizardState {
     status: EntryStatus;
@@ -209,6 +221,8 @@ const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, field
 export const UploadWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isUploadWizardOpenAtom);
     const [itemData, setItemData] = useAtom(uploadItemDataAtom);
+    const setActiveView = useSetAtom(activeViewAtom);
+    const setUploadTab = useSetAtom(uploadTabAtom);
     
     // Auto-hide toolbar bars when wizard is open
     const setIsViewSliderOpen = useSetAtom(isInventoryViewSliderOpenAtom);
@@ -284,8 +298,38 @@ export const UploadWizard: React.FC = () => {
     
     const [saving, setSaving] = useState(false);
     const [savingProgress, setSavingProgress] = useState(0);
+    const [uploadProgressMsg, setUploadProgressMsg] = useState('');
     const isDummyMode = useAtomValue(isDummyModeAtom);
     const [state, setState] = useState<WizardState>(INITIAL_STATE);
+    const [suggestionRows, setSuggestionRows] = useState<any[]>([]);
+
+    // Only the typed fields are drafted. mediaList holds base64 data URLs (far too
+    // large for IndexedDB drafts) and existingCount/existingNumbers are re-derived
+    // from the database on open, so none of them belong in a draft.
+    const draftableState = useMemo(() => {
+        const { mediaList, existingCount, existingNumbers, ...rest } = state;
+        return rest;
+    }, [state]);
+
+    // Drafts apply to new entries only — editing an existing item must not resurrect
+    // a half-typed entry over the record being edited.
+    const isNewEntry = !itemData?.id;
+    const { restored: restoredDraft, ready: draftReady, clear: clearDraft } = useFormDraft(
+        'inventory-add-entry',
+        draftableState,
+        {
+            ownerKey: user?.id ?? user?.name ?? null,
+            enabled: isOpen && isNewEntry && hasEntryContent(draftableState)
+        }
+    );
+
+    // Offer the draft back when the wizard opens on a fresh entry.
+    useEffect(() => {
+        if (!isOpen || !isNewEntry || !draftReady) return;
+        if (!restoredDraft || !hasEntryContent(restoredDraft)) return;
+        setState(prev => ({ ...prev, ...restoredDraft }));
+        toast.success('Restored your unsaved entry');
+    }, [isOpen, draftReady]);
     const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
     const [globalSuggestionIndex, setGlobalSuggestionIndex] = useState(0);
     const [isStatusExpanded, setIsStatusExpanded] = useState(false);
@@ -344,37 +388,60 @@ export const UploadWizard: React.FC = () => {
     }, [isOpen, itemData, user]);
 
     useEffect(() => {
-        if (!isOpen) {
-            setItemData({});
-        }
+        // Disabled to prevent state wipe on window focus / re-renders
+        // if (!isOpen) {
+        //     setItemData({});
+        // }
     }, [isOpen, setItemData]);
 
+    // Load the catalogue once per open; the cascade below re-derives from it locally.
     useEffect(() => {
         if (!db || !isOpen) return;
-        const fetchTags = async () => {
+        let cancelled = false;
+
+        (async () => {
             try {
                 const items = await db.inventory.find().exec();
-                const u = (cols: string[]) => Array.from(new Set(items.map((i: any) => {
-                    for (const c of cols) if (i[c]) return String(i[c]);
-                    return null;
-                }).filter(Boolean))).sort().slice(0, 32);
-
-                setSuggestions({
-                    shape: u(['shape']),
-                    material: u(['material']),
-                    color: u(['color']),
-                    type: u(['short_description', 'shortDescription', 'item_type', 'type']),
-                    weightKg: u(['weight_kg', 'weightKg']),
-                    widthCm: u(['width_cm', 'widthCm']),
-                    heightCm: u(['height_cm', 'heightCm']),
-                    lengthCm: u(['length_cm', 'lengthCm']),
-                    price: u(['price_mxn', 'priceMxn', 'price']),
-                    quantity: u(['quantity'])
-                } as any);
+                if (!cancelled) setSuggestionRows(items.map((i: any) => i.toJSON?.() ?? i));
             } catch (e) { console.error(e); }
-        };
-        fetchTags();
+        })();
+
+        return () => { cancelled = true; };
     }, [db, isOpen]);
+
+    // Shape / Type / Color / Material cross-filter each other: choosing shape
+    // "squared" narrows Type to the types recorded against squared items, and
+    // choosing type "table lamp" narrows Shape to the shapes table lamps come in.
+    // The measurement fields stay flat — they aren't categorical.
+    useEffect(() => {
+        if (suggestionRows.length === 0) return;
+
+        const u = (cols: string[]) => Array.from(new Set(suggestionRows.map((i: any) => {
+            for (const c of cols) if (i[c]) return String(i[c]);
+            return null;
+        }).filter(Boolean))).sort().slice(0, 32) as string[];
+
+        const cascaded = buildAttributeSuggestions(suggestionRows, {
+            shape: state.shape,
+            material: state.material,
+            color: state.color,
+            type: state.type
+        });
+
+        setSuggestions({
+            ...cascaded,
+            shape: cascaded.shape?.slice(0, 32) ?? [],
+            material: cascaded.material?.slice(0, 32) ?? [],
+            color: cascaded.color?.slice(0, 32) ?? [],
+            type: cascaded.type?.slice(0, 32) ?? [],
+            weightKg: u(['weight_kg', 'weightKg']),
+            widthCm: u(['width_cm', 'widthCm']),
+            heightCm: u(['height_cm', 'heightCm']),
+            lengthCm: u(['length_cm', 'lengthCm']),
+            price: u(['price_mxn', 'priceMxn', 'price']),
+            quantity: u(['quantity'])
+        } as any);
+    }, [suggestionRows, state.shape, state.material, state.color, state.type]);
 
     useEffect(() => {
         // Only fetch next number if it's a NEW entry (no itemData.id)
@@ -452,6 +519,21 @@ export const UploadWizard: React.FC = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    const handleUrlAdd = () => {
+        const url = window.prompt('Paste Media URL:');
+        if (!url) return;
+        
+        setState(prev => ({
+            ...prev,
+            mediaList: [...prev.mediaList, {
+                file: null,
+                preview: url,
+                type: isVideoFile(url) ? 'video' : 'image',
+                originalUrl: url
+            }]
+        }));
+    };
+
     const removeMedia = useCallback((idx: number) => {
         setState(prev => ({ ...prev, mediaList: prev.mediaList.filter((_, i) => i !== idx) }));
     }, []);
@@ -488,7 +570,16 @@ export const UploadWizard: React.FC = () => {
                     for (let i = 0; i < state.mediaList.length; i++) {
                         const m = state.mediaList[i];
                         if (m.file) {
-                            const res = await handleFileUpload(m.file, user);
+                            let fileToUpload = m.file;
+                            if (fileToUpload.type.startsWith('video/')) {
+                                setUploadProgressMsg(`Loading compressor... (first time only)`);
+                                fileToUpload = await compressAndTrimVideo(fileToUpload, (p) => {
+                                    setUploadProgressMsg(`Compressing video... ${p}%`);
+                                });
+                                setUploadProgressMsg('Uploading optimized video...');
+                            }
+                            
+                            const res = await handleFileUpload(fileToUpload, user);
                             if (res) uploadedUrls.push(`${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`);
                         } else if (m.originalUrl) {
                             uploadedUrls.push(m.originalUrl);
@@ -542,8 +633,14 @@ export const UploadWizard: React.FC = () => {
                 workbook: itemData.workbook || 'v326',
                 description: state.notes,
                 pay_req: state.payReq || null,
-                created_by: user?.name || user?.email,
-                timestamp: new Date().toISOString(),
+                // Creation stamps belong to the original entry only. This is an upsert
+                // that also serves the inventory edit popup, so setting them
+                // unconditionally rewrote the creator and creation date on every edit.
+                // `timestamp` is the creation date here — the table has no created_at.
+                ...(itemData?.id ? {} : {
+                    created_by: user?.name || user?.email,
+                    timestamp: new Date().toISOString(),
+                }),
                 updated_at: new Date().toISOString(),
             };
             
@@ -567,6 +664,12 @@ export const UploadWizard: React.FC = () => {
             }
 
             setInventoryVersion(v => v + 1);
+
+            // Committed — drop the in-progress copy so this item isn't offered for
+            // restore. Attributes the wizard carries forward for the next entry are
+            // re-drafted by the autosave below.
+            await clearDraft();
+
             const bookStr = String(itemData.workbook || '326').replace(/\D/g, '');
             toast.success(`${state.vendorId}${bookStr}${state.itemNumber} saved`, { id: tid });
 
@@ -587,7 +690,7 @@ export const UploadWizard: React.FC = () => {
             toast.error(err.message || 'Artifact Synchronization Failed', { id: tid });
             return false;
         } finally {
-            setTimeout(() => { setSaving(false); setSavingProgress(0); }, 300);
+            setTimeout(() => { setSaving(false); setSavingProgress(0); setUploadProgressMsg(''); }, 300);
         }
     };
 
@@ -614,7 +717,7 @@ export const UploadWizard: React.FC = () => {
 
     return (
         <div 
-            className="absolute inset-0 z-[400] flex justify-center items-start pt-[128px] animate-in fade-in duration-500 overflow-hidden"
+            className="entry-wizard absolute inset-0 z-[400] flex justify-center items-start pt-[128px] animate-in fade-in duration-500 overflow-hidden"
             onClick={() => setIsOpen(false)}
         >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={() => setIsOpen(false)} />
@@ -655,8 +758,25 @@ export const UploadWizard: React.FC = () => {
                                     </div>
                                     
                                     <div className="flex items-center gap-10 shrink-0">
-                                        {['v326', 'v825'].map(v => (
-                                            <button key={v} onClick={(e) => { e.stopPropagation(); setItemData(prev => ({ ...prev, workbook: v as any })); }}
+                                        {/* Create Item is the only entry form for 826, so picking
+                                            Book 826 here hands off to it instead of continuing in
+                                            this wizard. 326/825 stay in place. */}
+                                        {['v826', 'v326', 'v825'].map(v => (
+                                            <button key={v} onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (v === 'v826') {
+                                                    // Hand off with a clean slate. If this wizard was
+                                                    // opened from Create Item, that view restores its
+                                                    // own stashed state on close.
+                                                    setItemData({});
+                                                    setIsOpen(false);
+                                                    setUploadTab('entry');
+                                                    setActiveView('upload');
+                                                    toast('Book 826 entries are created in Create Item', { icon: '→' });
+                                                    return;
+                                                }
+                                                setItemData(prev => ({ ...prev, workbook: v as any }));
+                                            }}
                                                 className={`text-3xl font-black uppercase tracking-tighter transition-all relative group whitespace-nowrap ${itemData.workbook === v ? 'text-(--main-color)' : 'text-white/20 hover:text-white/40'}`}>
                                                 BOOK {v.slice(1)}
                                                 {itemData.workbook === v && (
@@ -766,7 +886,12 @@ export const UploadWizard: React.FC = () => {
 
                         {/* Evidence Hub - Collapsible */}
                         <div className="space-y-3">
-                            <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Evidence</label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Evidence</label>
+                                <button onClick={(e) => { e.preventDefault(); handleUrlAdd(); }} className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.4em] hover:text-white transition-all">
+                                    + ADD URL
+                                </button>
+                            </div>
                             <div className="flex flex-col gap-3">
                                   <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
                                 {state.mediaList.length === 0 ? (
@@ -783,7 +908,7 @@ export const UploadWizard: React.FC = () => {
                                         {state.mediaList.map((m, i) => (
                                             <div key={i} className="w-20 h-20 rounded-xl overflow-hidden relative group/media border border-white/10 bg-black">
                                                 {m.type === 'video' ? (
-                                                    <div className="w-full h-full flex items-center justify-center"><Video size={16} className="text-white" /></div>
+                                                    <video src={m.preview || ''} className="w-full h-full object-cover" autoPlay loop muted playsInline />
                                                 ) : (
                                                     <img src={m.preview || ''} className="w-full h-full object-cover" />
                                                 )}
@@ -885,7 +1010,9 @@ export const UploadWizard: React.FC = () => {
                                 <div className="h-full bg-(--main-color) transition-all duration-200 ease-out shadow-[0_0_40px_rgba(var(--main-color-rgb),0.6)]" style={{ width: `${savingProgress}%` }} />
                             </div>
                         </div>
-                        <p className="text-[10px] font-black text-white uppercase tracking-[1.5em] animate-pulse">Syncing Protocols...</p>
+                        <p className="text-[10px] font-black text-white uppercase tracking-[1.5em] animate-pulse">
+                            {uploadProgressMsg || 'Syncing Protocols...'}
+                        </p>
                     </div>
                 </div>
             )}

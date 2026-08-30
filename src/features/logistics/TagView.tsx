@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useAtomValue } from 'jotai';
 import { exchangeRateAtom, workbookVersionAtom } from '../../lib/atoms';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, cmToImperial, formatWeightImperialOnly } from '../../lib/utils';
-import { vendors } from '../../lib/consts';
+import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
 import { resolveArtifact, ResolvedArtifact } from '../../lib/artifactUtils';
 import {
@@ -204,7 +204,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
         const resolve = async () => {
             if (!tagId) return;
             setLoading(true);
-            const resolved = await resolveArtifact(tagId, { exchangeRate: exchangeRate || 20, workbookPrefix: workbookPrefix || '326' });
+            const resolved = await resolveArtifact(tagId, { exchangeRate: exchangeRate || DEFAULT_EXCHANGE_RATE, workbookPrefix: workbookPrefix || '326' });
             if (resolved) {
                 setFetchedItem(resolved);
             }

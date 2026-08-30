@@ -5,7 +5,7 @@ import {
     financeSubTabAtom, paymentCategoryFilterAtom, liveExchangeRateAtom, inventoryAtom, storeInventoryAtom, logisticsDataAtom,
     inventoryArtifactConfigAtom, currencyModeAtom, paymentsArtifactConfigAtom, financeTotalsAtom
 } from '../../lib/atoms';
-import { vendors } from '../../lib/consts';
+import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import {
     RefreshCcw, DollarSign, Wallet, Activity,
@@ -187,7 +187,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
         financeData.forEach(d => {
             const sub = String(d.subcategory || '').toLowerCase();
             const amtMxn = (d.amount || 0) + (d.commission || 0);
-            const amtUsd = amtMxn / (d.exchange_rate || currentExchangeRate || 20);
+            const amtUsd = amtMxn / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE);
             
             if (sub.includes('month') || sub.includes('mo-exp')) { cats.Monthly.mxn += amtMxn; cats.Monthly.usd += amtUsd; }
             else if (sub.includes('suppl') || sub.includes('sppl')) { cats.Supplies.mxn += amtMxn; cats.Supplies.usd += amtUsd; }
@@ -321,7 +321,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
             if (sub.includes('crate') || sub.includes('pallet') || desc.includes('crate') || desc.includes('pallet')) {
                 const amtMxn = (d.amount || 0) + (d.commission || 0);
                 logisticsSpendMxn += amtMxn;
-                logisticsSpendUsd += amtMxn / (d.exchange_rate || currentExchangeRate || 20);
+                logisticsSpendUsd += amtMxn / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE);
             }
         });
 
@@ -605,7 +605,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                     <div className="px-3 pb-3 pt-2 space-y-2 border-t border-(--text-color)/5">
                                                         {req.docs.map(d => {
                                                             const rowMxn = (d.amount || 0) + (d.commission || 0);
-                                                            const rowUsd = rowMxn / (d.exchange_rate || currentExchangeRate || 20);
+                                                            const rowUsd = rowMxn / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE);
                                                             
                                                             const rawIds = d.related_ids || d.related_inventory_ids;
                                                             const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
@@ -669,13 +669,13 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                                                 <div className="flex flex-col items-end gap-0.5">
                                                                                     <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">Net Paid</span>
                                                                                     <span className="text-[9px] font-mono font-bold text-(--text-color)/70">
-                                                                                        {currencyMode === 'MXN' ? fmtMXN(d.amount || 0) : fmtUSD((d.amount || 0) / (d.exchange_rate || currentExchangeRate || 20))}
+                                                                                        {currencyMode === 'MXN' ? fmtMXN(d.amount || 0) : fmtUSD((d.amount || 0) / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE))}
                                                                                     </span>
                                                                                 </div>
                                                                                 <div className="flex flex-col items-end gap-0.5">
                                                                                     <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">Taxes/Fees</span>
                                                                                     <span className="text-[9px] font-mono font-bold text-red-400/80">
-                                                                                        {currencyMode === 'MXN' ? fmtMXN(d.commission || 0) : fmtUSD((d.commission || 0) / (d.exchange_rate || currentExchangeRate || 20))}
+                                                                                        {currencyMode === 'MXN' ? fmtMXN(d.commission || 0) : fmtUSD((d.commission || 0) / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE))}
                                                                                     </span>
                                                                                 </div>
                                                                             </div>

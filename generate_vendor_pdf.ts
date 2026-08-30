@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import * as fs from "fs";
 
-function hexToRgb(hex) {
+function hexToRgb(hex: string) {
     hex = hex.replace("#", "");
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
@@ -9,24 +9,30 @@ function hexToRgb(hex) {
     return [r, g, b];
 }
 
-const vendors = [
-    { code: "JM", hex: "#6BCEBB", name: "Jose Meza" },
-    { code: "EM", hex: "#00AEEF", name: "Emmanuel de los Santos" },
-    { code: "CA", hex: "#85C1E9", name: "Carlos Arenas" },
-    { code: "AN", hex: "#FFED00", name: "Angel Cabrera" },
-    { code: "SU", hex: "#B19CD9", name: "Susana" },
-    { code: "TE", hex: "#FFCB05", name: "Tellez Taller" },
-    { code: "DH", hex: "#8DC63F", name: "Delfini Hernandez" },
-    { code: "ML", hex: "#F9A17A", name: "Maria Luisa" },
-    { code: "GE", hex: "#F7941D", name: "Gerardo De Gante" },
-    { code: "FR", hex: "#F36F21", name: "Fountain Rock" },
-    { code: "ET", hex: "#636466", name: "Eduardo Tellez" },
-    { code: "AM", hex: "#800020", name: "Alejandro Meza" },
-    { code: "BT", hex: "#603913", name: "Bernardo" },
-    { code: "RF", hex: "#00A591", name: "Roberto Florita" },
-    { code: "GS", hex: "#D11C7E", name: "Gift Store" },
-    { code: "CP", hex: "#A01E5D", name: "Cantera Puebla" }
-];
+const vendorsObj = {
+  AM: { name: 'ALEJANDRO MEZA', color: '#A89285' },
+  AN: { name: 'ANGEL CABRERA', color: '#FFED00' },
+  BT: { name: 'BERNARDO', color: '#603913' },
+  CA: { name: 'CARLOS ARENAS', color: '#85C1E9' },
+  CP: { name: 'CANTERA PUEBLA', color: '#A01E5D' },
+  DH: { name: 'DELFINO HERNANDEZ', color: '#8DC63F' },
+  EM: { name: 'EMMANUEL DE LOS SANTOS', color: '#00AEEF' },
+  ET: { name: 'EDUARDO TELLEZ', color: '#636466' },
+  FR: { name: 'FOUNTAIN ROCK', color: '#F36F21' },
+  GE: { name: 'GERARDO DE GANTE', color: '#F7941D' },
+  GM: { name: 'GEMA MARTIN', color: '#E6194B' },
+  GS: { name: 'GIFT STORE', color: '#D11C7E' },
+  IH: { name: 'ISMAEL HUERTA', color: '#F3FF94' },
+  JM: { name: 'JOSE MEZA', color: '#6BCEBB' },
+  ML: { name: 'MARIA LUISA', color: '#F9A17A' },
+  MM: { name: 'MARGARITA MEZA', color: '#911EB4' },
+  RF: { name: 'ROBERTO FLORITA', color: '#00A591' },
+  SU: { name: 'SUSANA', color: '#B19CD9' },
+  TE: { name: 'TELLEZ TALLER', color: '#FFCB05' },
+};
+
+const vendorKeys = Object.keys(vendorsObj).sort();
+const vendors = vendorKeys.map(k => ({ code: k, hex: vendorsObj[k as keyof typeof vendorsObj].color, name: vendorsObj[k as keyof typeof vendorsObj].name }));
 
 const doc = new jsPDF({
     orientation: "portrait",
@@ -45,10 +51,9 @@ doc.setFontSize(10);
 doc.setTextColor(120, 120, 120);
 doc.text("LOGISTICS VENDOR MASTER GUIDE | PANTONE STYLE", 0.5, 1.0);
 
-// Grid settings (2x4 per page? or 3x4? Let's try to fit all on one page if possible, but Pantone cards are tall)
-// To keep "Full Page" and fit 16 swatches, 4x4 is best.
+// Grid settings (20 items - we need 4x5 grid)
 const cols = 4;
-const rows = 4;
+const rows = 5;
 const marginX = 0.5;
 const marginY = 1.3;
 const spacing = 0.2;
@@ -96,8 +101,8 @@ doc.line(0.5, 10.5, 8.0, 10.5);
 doc.setFont("helvetica", "normal");
 doc.setFontSize(8);
 doc.setTextColor(150, 150, 150);
-doc.text("ONYX.MX LOGISTICS & SUPPLY CHAIN CHROMATIC SYSTEM © 2026", 0.5, 10.7);
+doc.text("ONYX.MX LOGISTICS & SUPPLY CHAIN CHROMATIC SYSTEM Ac 2026", 0.5, 10.7);
 
 const buffer = doc.output("arraybuffer");
-fs.writeFileSync("VendorCodesPRINT.pdf", Buffer.from(buffer));
+fs.writeFileSync("c:\\Jouhayerk\\VendorColorsPRINT.pdf", Buffer.from(buffer));
 console.log("Pantone Style PDF generated successfully!");

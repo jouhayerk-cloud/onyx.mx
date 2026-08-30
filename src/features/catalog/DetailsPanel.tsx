@@ -314,6 +314,17 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
               >
                 {cached ? (
                    <img src={cached} className="w-full h-full object-cover" />
+                ) : !fid ? (
+                   /\.(mov|mp4|webm|m4v)$/i.test(url.split(/[#?]/)[0]) ? (
+                     <div className="relative w-full h-full">
+                       <video src={url} className="w-full h-full object-cover" muted playsInline />
+                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                         <span className="text-[10px] font-bold text-white/80">▶</span>
+                       </div>
+                     </div>
+                   ) : (
+                     <img src={url} className="w-full h-full object-cover" />
+                   )
                 ) : (
                   <div className="w-full h-full bg-white/5 flex items-center justify-center">
                     <span className="text-[10px] font-bold text-white/30">{idx + 1}</span>
@@ -674,7 +685,9 @@ export function DetailsPanel() {
                     status: 'Acquired',
                     acquired_by: user?.email,
                     acquired_at: new Date().toISOString(),
-                    workbook: '326',
+                    // Must stay 'v326': the whole table uses the v-prefixed form, and
+                    // the next-item-number query matches on it exactly.
+                    workbook: 'v326',
                     updated_at: new Date().toISOString()
                   };
                   
@@ -709,7 +722,7 @@ export function DetailsPanel() {
                 try {
                   const payload = {
                     status: 'Archive',
-                    workbook: '825',
+                    workbook: 'v825',
                     updated_at: new Date().toISOString()
                   };
                   
@@ -733,7 +746,7 @@ export function DetailsPanel() {
             </button>
           </div>
         )}
-        {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer') && (itemData?.status === 'Archive' || itemData?.workbook === '825') && itemData?.status !== 'Shipped') && (
+        {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer') && (itemData?.status === 'Archive' || itemData?.workbook === '825' || itemData?.workbook === 'v825') && itemData?.status !== 'Shipped') && (
           <div className="p-4 border-t border-(--border-color) shrink-0">
             <button
               className="button w-full bg-[#8DC63F]! text-black! font-black"

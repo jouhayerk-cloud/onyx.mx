@@ -18,10 +18,18 @@ jobs:
         run: |
           npm install
           npm run build
+        # Vite only inlines variables prefixed VITE_. Anything without that prefix
+        # is invisible to the bundle, which is why the Gemini key was undefined in
+        # every deployed build despite the secret being set.
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          # VITE_CYPHER_KEY intentionally NOT passed. The cost cypher moved into
+          # the database (public.onyx_cypher); shipping a key here would put a
+          # working cypher back in the public bundle. Delete the repo secret too.
+          VITE_GOOGLE_SHEETS_WEBHOOK: ${{ secrets.VITE_GOOGLE_SHEETS_WEBHOOK }}
+          VITE_SUPABASE_OFFLINE_KEY: ${{ secrets.VITE_SUPABASE_OFFLINE_KEY }}
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4

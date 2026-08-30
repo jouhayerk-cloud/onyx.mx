@@ -3,6 +3,16 @@
 export const SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbz7HTsC9FEqbJ0jiMLjk327q4Qo07SWPh2zZzu7V4vjvdqOcc0iwsrtBWWvywRz_Jn5xw/exec';
 
+/**
+ * MXN per USD. The single fallback for every price calculation.
+ *
+ * The live value comes from exchangeRateAtom (or a finance row's own exchange_rate
+ * where one was recorded); this is what applies when neither is available. It used
+ * to be written inline at ~20 call sites as 20, 19, 18 or even 1, so the same item
+ * priced differently depending on which screen you looked at.
+ */
+export const DEFAULT_EXCHANGE_RATE = 17.0;
+
 export const colors = [
   'rgb(0, 0, 0)',
   'rgb(255, 255, 255)',
@@ -27,14 +37,14 @@ export const vendors = {
   GE: { name: 'GERARDO DE GANTE', color: '#F7941D' },
   FR: { name: 'FOUNTAIN ROCK', color: '#F36F21' },
   ET: { name: 'EDUARDO TELLEZ', color: '#636466' },
-  AM: { name: 'ALEJANDRO MEZA', color: '#800020' },
+  AM: { name: 'ALEJANDRO MEZA', color: '#A89285' },
   BT: { name: 'BERNARDO', color: '#603913' },
   RF: { name: 'ROBERTO FLORITA', color: '#00A591' },
   GS: { name: 'GIFT STORE', color: '#D11C7E' },
   CP: { name: 'CANTERA PUEBLA', color: '#A01E5D' },
   GM: { name: 'GEMA MARTIN', color: '#E6194B' },
   MM: { name: 'MARGARITA MEZA', color: '#911EB4' },
-  IH: { name: 'ISMAEL HUERTA', color: '#E8A020' },
+  IH: { name: 'ISMAEL HUERTA', color: '#F3FF94' },
   ON: { name: 'ONYX', color: '#4B5563' },
   SIMONA: { name: 'SIMONA', color: '#E6194B' },
   JUAN: { name: 'JUAN', color: '#3C89D0' },
