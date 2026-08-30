@@ -48,11 +48,13 @@ import {
     inventoryStatusSetsAtom,
     isUploadWizardOpenAtom,
     uploadItemDataAtom,
-    logisticsDataAtom
+    logisticsDataAtom,
+    isArchiveVisibleAtom
 } from '../../lib/atoms';
 import { WireframeCrate } from '../../components/CrateVisuals';
+import { isLegacyRow } from '../../lib/seasons';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -253,26 +255,16 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
     }
 
     return (
-        <div className="flex items-center rounded-lg border border-white/10 relative overflow-hidden group hover:border-white/30 transition-colors bg-black/40 shadow-lg">
-            <div className="px-3 py-2 flex items-center justify-center shrink-0 border-r border-white/10 bg-black/20">
-                <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={28} vibrant />
+        <div className="flex items-center rounded flex-none border border-white/10 overflow-hidden bg-black/10 shadow-sm shrink-0">
+            <div className="px-1 py-0.5 flex items-center justify-center shrink-0 border-r border-white/5 bg-black/20">
+                <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={14} vibrant />
             </div>
             <div className="flex items-center min-w-0">
-                {date && (
-                    <div className="px-2.5 py-2">
-                        <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-white/90">{date}</span>
-                    </div>
-                )}
                 {vList.map((v, idx) => (
-                    <div key={v} className="px-2.5 py-2" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}>
-                        <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-black">{v}</span>
+                    <div key={v} className="px-1.5 py-0.5" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}>
+                        <span className="text-[9px] font-black tracking-widest leading-none block text-black">{v}</span>
                     </div>
                 ))}
-                {sequence && (
-                    <div className="px-3 py-2 bg-white/10">
-                        <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-white">{sequence}</span>
-                    </div>
-                )}
             </div>
         </div>
     );
@@ -326,11 +318,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 return processedMediaStr.split(',').map(u => u.trim()).filter(Boolean);
             }
         }
+        if (norm.video_gen) {
+            return [norm.video_gen, ...rawImages.filter(r => r !== norm.video_gen)];
+        }
         if (norm.generatedPngUrl) {
             return [norm.generatedPngUrl];
         }
         return rawImages;
-    }, [norm.mediaUrls, norm.generatedPngUrl, norm.processed_media_urls, norm]);
+    }, [norm.mediaUrls, norm.generatedPngUrl, norm.processed_media_urls, norm.video_gen, norm]);
 
 
     const activeIdx = 0;
@@ -340,6 +335,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
     const dimensionsStr = formatDimensionsImperial(norm.widthCm, norm.heightCm, norm.lengthCm);
     const weightStr = formatWeightImperial(norm.weightKg);
+    const metricDimensionsStr = formatDimensionsMetricOnly(norm.widthCm, norm.heightCm, norm.lengthCm);
+    const metricWeightStr = formatWeightMetricOnly(norm.weightKg);
 
     const calculated = useMemo(() => calculateCodesAndPrices(norm, exchangeRate, '326'), [norm, exchangeRate]);
     const payStatus = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds);
@@ -513,32 +510,53 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             </>
                         )}
                     </div>
-                    <div className="flex-1 flex items-center px-4 gap-8 min-w-0 overflow-x-auto no-scrollbar relative pr-10 lg:pr-16">
-                        <div className="flex flex-col shrink-0 min-w-[140px] py-1">
-                            <div className="flex items-baseline gap-3">
-                                <h3 className="text-base font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">{norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-40 font-black ml-1 text-[11px] uppercase tracking-widest">{norm.shortDescription}</span>}</h3>
-                                <span className="text-base font-black text-(--main-color) font-mono">x{norm.quantity || 1}</span>
-                            </div>
-                            <div className="text-[11px] text-(--text-color)/60 uppercase tracking-[0.2em] font-black whitespace-nowrap">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
-                        </div>
+                    <div className="flex-1 flex items-center px-4 gap-5 min-w-0 overflow-x-auto no-scrollbar relative pr-10 lg:pr-16">
                         <div className="flex flex-col min-w-[100px] shrink-0 justify-center">
                             <button 
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
                                     navigator.clipboard.writeText(calculated.bookBarcode); 
-                                    toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '📋' }); 
+                                    toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '🏷️' }); 
                                 }}
-                                className="inline-flex items-center rounded text-black text-[14px] font-black uppercase tracking-tight shadow-lg w-fit hover:scale-105 active:scale-95 transition-all overflow-hidden" 
+                                className="inline-flex items-center rounded text-black text-[16px] font-black uppercase tracking-tight shadow-sm w-fit hover:scale-105 active:scale-95 transition-all overflow-hidden" 
                             >
-                                <span className="px-2 py-1" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || 'N/A').slice(0, 5)}</span>
-                                <span className="px-2 py-1 text-(--text-color) bg-transparent border border-white/10">{(calculated.bookBarcodeDisplay || 'N/A').slice(5)}</span>
+                                <span className="px-2 py-0.5" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || 'N/A').slice(0, 5)}</span>
+                                <span className="px-2 py-0.5 text-(--text-color) bg-transparent border border-white/10">{(calculated.bookBarcodeDisplay || 'N/A').slice(5)}</span>
                             </button>
                         </div>
-                        <div className="flex flex-col min-w-[140px] shrink-0 justify-center gap-1"><span className="text-[13px] font-mono text-(--text-color)/80">{dimensionsStr || '—'}</span><span className="text-[13px] font-mono text-(--text-color)/60">{weightStr || '—'}</span></div>
-                        <div className="flex flex-col min-w-[90px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-sm font-bold text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span></div></div>
-                        <div className="flex flex-col min-w-[90px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-sm font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
-                        <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[13px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
-                        <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[13px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
+                        <div className="flex flex-col shrink-0 min-w-[140px] py-1">
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-[16px] font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">
+                                    {norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-80 ml-1">{norm.shortDescription}</span>}
+                                </h3>
+                            </div>
+                            <div className="text-[13px] text-(--text-color)/60 uppercase tracking-widest font-black whitespace-nowrap mt-0.5">
+                                {[norm.color, norm.material].filter(Boolean).join(' ')}
+                            </div>
+                        </div>
+                        <div className="flex flex-col min-w-[140px] shrink-0 justify-center gap-0.5">
+                            <span className="text-[16px] font-mono font-black text-(--text-color)">{metricDimensionsStr || '-'}</span>
+                            <span className="text-[14px] font-mono font-bold text-(--text-color)/80">{metricWeightStr || '-'}</span>
+                        </div>
+                        <div className="flex flex-col min-w-[90px] shrink-0">
+                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">Price / Qty</span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-[15px] font-black text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span>
+                                <span className="text-[12px] font-black text-cyan-500 font-mono">x{norm.quantity || 1}</span>
+                            </div>
+                        </div>
+                        <div className="flex flex-col min-w-[90px] shrink-0">
+                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">Total MXN</span>
+                            <span className="text-[14px] font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span>
+                        </div>
+                        <div className="flex flex-col min-w-[70px] shrink-0">
+                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">AQ Code</span>
+                            <span className="text-[14px] text-(--text-color)/80 font-mono font-black">{calculated.bookAqCode || '-'}</span>
+                        </div>
+                        <div className="flex flex-col min-w-[70px] shrink-0">
+                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">LD Code</span>
+                            <span className="text-[14px] text-yellow-500/90 font-mono font-black">{calculated.bookLandCode || '-'}</span>
+                        </div>
                         
                         <div className="flex flex-col min-w-[110px] shrink-0 justify-center gap-1 border-l border-white/5 pl-4 ml-2">
                             {norm.packingStatus === 'Packed' ? (
@@ -554,10 +572,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     </div>
                 </div>
                 {isExpanded > 0 && (
-                    <div className="w-full px-4 md:px-10 pb-6 pt-4 bg-black/30 backdrop-blur-sm border-t border-white/5 animate-in slide-in-from-top-2 duration-300 overflow-x-auto custom-scrollbar min-w-0">
+                    <div className="w-full px-4 md:px-10 pb-2 pt-2 bg-transparent animate-in slide-in-from-top-2 duration-300 overflow-x-auto custom-scrollbar min-w-0">
                         {/* List View Thumbnail Gallery */}
                         {mediaUrls.length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 shrink-0 mb-6">
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 shrink-0 mb-1 mt-1">
                                 {mediaUrls.map((u, i) => (
                                     <div key={i} onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
                                         className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden shrink-0 cursor-pointer hover:border-(--main-color)/50 transition-all group/thumb relative">
@@ -567,15 +585,63 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 ))}
                             </div>
                         )}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 mb-2 min-w-fit">
-                            <div><p className={lbl}>Dimensions</p><p className="text-[11px] font-mono text-(--text-color)/70">{dimensionsStr || '—'}</p></div>
-                            <div><p className={lbl}>Weight</p><p className="text-[11px] font-mono text-(--text-color)/70">{weightStr || '—'}</p></div>
-                            <div><p className={lbl}>Landed USD</p><p className="text-sm font-black text-yellow-300 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
-                            <div><p className={lbl}>Retail USD</p><p className="text-sm font-black text-green-400 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
+                        
+                        <div className="flex items-start justify-between w-full min-w-fit pr-10 lg:pr-16">
+                            {/* Left side details (Dimensions, Weight, Landed, Retail) aligned roughly with the SIZES column */}
+                            <div className="flex items-start gap-8 sm:gap-16 ml-[240px] lg:ml-[280px]">
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-[12px] font-mono font-bold text-(--text-color)/50">{dimensionsStr || '-'}</span>
+                                    <span className="text-[12px] font-mono font-bold text-(--text-color)/50">{weightStr || '-'}</span>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.2em]">Landed</span>
+                                    <span className="text-[15px] font-black text-yellow-500 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.2em]">Retail</span>
+                                    <span className="text-[15px] font-black text-green-500 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span>
+                                </div>
+                            </div>
+                            
+                            {/* Action Toolbar on the far right */}
+                            <div className="flex items-center gap-3 shrink-0">
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleExpand(2);
+                                    }}
+                                    className="p-2 text-(--text-color)/30 hover:text-(--main-color) transition-all"
+                                    title={isExpanded === 2 ? "Hide Identity Hub" : "Show Identity Hub (Barcode/QR)"}
+                                >
+                                    <ScanBarcode size={22} strokeWidth={2} />
+                                </button>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
+                                        toast.success('Trace Link Copied');
+                                    }}
+                                    className="p-2 text-cyan-400 hover:text-cyan-300 transition-all"
+                                    title="Copy Trace Link"
+                                >
+                                    <Copy size={22} strokeWidth={2} />
+                                </button>
+                                {isEditable && (
+                                    <button onClick={handleEdit} className="p-2 text-cyan-400 hover:text-cyan-300 transition-all" title="Edit Item">
+                                        <Pencil size={22} strokeWidth={2} />
+                                    </button>
+                                )}
+                                {isInternalUser && (
+                                    <button onClick={handleDelete} className="p-2 text-red-400 hover:text-red-300 transition-all" title="Remove Artifact">
+                                        <Trash2 size={22} strokeWidth={2} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
+
                         {/* Consolidated Artifact Identity Hub - List View */}
                         {isExpanded >= 2 && (
-                            <div className="col-span-full animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="mt-4 col-span-full animate-in fade-in slide-in-from-top-4 duration-500">
                                 <div className="flex flex-col sm:flex-row items-center justify-center gap-12 sm:gap-20 w-full lg:px-20 min-w-fit">
                                     {/* Barcode Panel - High Density White */}
                                     <div className="w-full max-w-md mx-auto bg-white rounded-none p-2 shadow-xl border border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-lg transition-all duration-500">
@@ -617,44 +683,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 </div>
                             </div>
                         )}
-                        {/* Action Toolbar */}
-                        <div className="flex items-center gap-6 col-span-full pt-8 mt-4 border-t border-white/5">
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleExpand(2);
-                                }}
-                                className={`p-2 -m-2 transition-all flex items-center gap-2 group ${isExpanded === 2 ? 'text-(--main-color)' : 'text-(--main-color)/60 hover:text-(--main-color)'}`}
-                                title={isExpanded === 2 ? "Hide Identity Hub" : "Show Identity Hub (Barcode/QR)"}
-                            >
-                                <ScanBarcode size={18} strokeWidth={2} />
-                                <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Artifact Hub</span>
-                            </button>
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
-                                    toast.success('Trace Link Copied');
-                                }}
-                                className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all flex items-center gap-2 group"
-                                title="Copy Trace Link"
-                            >
-                                <Copy size={18} strokeWidth={2} />
-                                <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Copy Link</span>
-                            </button>
-                            {isEditable && (
-                                <button onClick={handleEdit} className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all flex items-center gap-2 group" title="Edit Item">
-                                    <Pencil size={18} strokeWidth={2} />
-                                    <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
-                                </button>
-                            )}
-                            {isInternalUser && (
-                                <button onClick={handleDelete} className="p-2 -m-2 text-red-500/60 hover:text-red-500 transition-all flex items-center gap-2 group" title="Remove Artifact">
-                                    <Trash2 size={18} />
-                                    <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Delete</span>
-                                </button>
-                            )}
-                        </div>
+                        
                         {renderPaymentHistory()}
                     </div>
                 )}
@@ -888,7 +917,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                              </div>
                              <h3 className="text-2xl font-black text-(--text-color) uppercase tracking-tighter leading-tight mt-1.5 truncate">
                                  {norm.shape || 'OBJECT'} 
-                                 <span className="text-[12px] font-black text-(--text-color)/30 uppercase tracking-[0.25em] ml-2">{norm.shortDescription}</span>
+                                 <span className="text-[14px] font-black text-(--text-color)/80 uppercase tracking-[0.2em] ml-2">{norm.shortDescription}</span>
                              </h3>
                              <div className="text-[12px] text-(--text-color)/70 uppercase tracking-widest font-black mt-1.5">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
@@ -908,12 +937,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     <div className="flex items-center gap-4 py-3 border-y border-white/5">
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">Dimensions</span>
-                            <span className="text-[12px] font-mono text-(--text-color)/60">{dimensionsStr || '—'}</span>
+                            <span className="text-[14px] font-mono font-black text-(--text-color)">{metricDimensionsStr || '—'}</span>
                         </div>
                         <div className="w-px h-6 bg-white/5" />
                         <div className="flex flex-col gap-0.5">
                             <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">Weight</span>
-                            <span className="text-[12px] font-mono text-(--text-color)/60">{weightStr || '—'}</span>
+                            <span className="text-[14px] font-mono font-black text-(--text-color)">{metricWeightStr || '—'}</span>
                         </div>
                     </div>
 
@@ -971,7 +1000,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                 }}>
                 {mediaUrls[cardIdx] ? <DriveImage loading="lazy" key={cardIdx} src={mediaUrls[cardIdx]} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="absolute inset-0 flex items-center justify-center opacity-80 mix-blend-screen scale-[1.3] group-hover:scale-[1.35] transition-transform duration-700"><WireframeIcon item={norm} color={accentColor} /></div>}
-                {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Upload size={24} className="text-white/40" /></div>}
+                {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Video size={32} className="text-white/70 shadow-lg drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" /></div>}
                 
                 {/* Grid View Card Navigation Chevrons */}
                 {mediaUrls.length > 1 && (
@@ -1097,6 +1126,7 @@ export const UnifiedInventoryView = () => {
     const setIsNFCWizardOpen = useSetAtom(isPackingNFCWizardOpenAtom);
     const setIsPackingCrateWizardOpen = useSetAtom(isPackingCrateWizardOpenAtom);
     const setIsPaymentWizardOpen = useSetAtom(isPaymentWizardOpenAtom);
+
 
     // Load deployed crates to derive TRK-DATE tags on inventory items
     const [deployedCrates, setDeployedCrates] = useState<any[]>([]);
@@ -1226,10 +1256,18 @@ export const UnifiedInventoryView = () => {
         setIsUploadWizardOpen(true);
     }, [items, setUploadItemData, setIsUploadWizardOpen]);
 
+    const isArchiveVisible = useAtomValue(isArchiveVisibleAtom);
+
     const filteredItems = useMemo(() => {
         const filtered = items.filter(item => {
             if (item.data.is_hidden) return false;
             
+            const itemIdStr = String(item.data.itemId || item.data.item_id || '');
+            
+            // Past seasons (v825/v326) are hidden unless the Archive toggle is on. The
+            // season lives on the row itself — item_id never encodes it.
+            if (!isArchiveVisible && isLegacyRow(item.data)) return false;
+
             const status = getStatusClass(item.data, partialPayIds, fullPayIds);
             if (statusFilter !== 'All') {
                 const crateId = item.data.crate_id || item.data.crateId;
@@ -1250,7 +1288,6 @@ export const UnifiedInventoryView = () => {
                 if (statusFilter === 'Paid' && status !== 'GREEN') return false;
                 if (statusFilter === 'New' && status !== 'BLUE') return false;
             }
-            const itemIdStr = String(item.data.itemId || item.data.item_id || '');
             let vPre = item.data.vendor_id || item.data.vendorId || '';
             if (!vPre) {
                 if (itemIdStr.includes('-')) vPre = itemIdStr.split('-')[0];
@@ -1338,7 +1375,7 @@ export const UnifiedInventoryView = () => {
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter, materialFilter, deployedItemsMap, logisticsDocs]);
+    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, isArchiveVisible, user, categoryFilter, materialFilter, deployedItemsMap, logisticsDocs]);
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);
