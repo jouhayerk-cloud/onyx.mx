@@ -264,7 +264,13 @@ const createDatabase = async () => {
 
     try {
         db = await createRxDatabase<OnyxDatabase>({
-            name: 'onyxdb18', // Forced clean start for mobile stability
+            // Bumped from onyxdb18 with the season schema change (inventory 14→15,
+            // finance 6→7, logistics 4→5). An earlier 13→14 inventory migration had
+            // been left incomplete, so stacking another version on top left RxDB
+            // awaiting a migration that never finished and the whole DB promise hung.
+            // The local store is a cache — Supabase is the source of truth — so a
+            // clean name is cheaper and safer than repairing migration state.
+            name: 'onyxdb19',
             storage: getRxStorageDexie()
         });
 
