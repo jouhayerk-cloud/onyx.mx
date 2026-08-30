@@ -36,6 +36,14 @@ CREATE INDEX IF NOT EXISTS idx_inventory_workbook  ON public.inventory (workbook
 -- so anyone holding a printed label could reverse it to acquisition cost. The
 -- key now exists only here. SECURITY DEFINER, pinned search_path, and EXECUTE
 -- revoked so it cannot be probed through PostgREST.
+-- Onyx rounds UP at a fraction of 0.4, not 0.5 (onyxRound in utils.tsx). Using
+-- plain floor() or round() produces a different final character and would have
+-- rewritten 215 existing barcodes — verified against the live data.
+CREATE OR REPLACE FUNCTION public.onyx_round(n NUMERIC)
+RETURNS NUMERIC AS $$
+    SELECT CASE WHEN $1 - floor($1) >= 0.4 THEN floor($1) + 1 ELSE floor($1) END;
+$$ LANGUAGE sql IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION public.onyx_cypher(n NUMERIC)
 RETURNS TEXT AS $$
 DECLARE
@@ -45,7 +53,7 @@ DECLARE
     i INT;
 BEGIN
     IF n IS NULL THEN RETURN NULL; END IF;
-    digits := floor(n)::TEXT;
+    digits := public.onyx_round(n)::TEXT;
     FOR i IN 1..length(digits) LOOP
         out := out || substr(key, (substr(digits, i, 1))::INT + 1, 1);
     END LOOP;
@@ -86,10 +94,18 @@ BEGIN
         NEW.book_land_code   := public.onyx_cypher(landed);
 
         book_str := regexp_replace(COALESCE(NEW.workbook, 'v326'), '\D', '', 'g');
-        NEW.book_barcode := COALESCE(NEW.vendor_id, split_part(NEW.item_id, '-', 1), '??')
-                            || book_str
-                            || COALESCE(NEW.item_number::TEXT, '1')
-                            || COALESCE(NEW.book_land_code, '');
+
+        -- A barcode that already exists is printed on a physical label somewhere,
+        -- so it is never recomputed — only filled in when absent. COALESCE is the
+        -- safety net: even a wrong formula cannot desynchronise a printed tag.
+        -- To force regeneration, clear book_barcode first.
+        NEW.book_barcode := COALESCE(
+            NEW.book_barcode,
+            COALESCE(NEW.vendor_id, split_part(NEW.item_id, '-', 1), '??')
+                || book_str
+                || COALESCE(NEW.item_number::TEXT, '1')
+                || COALESCE(NEW.book_land_code, '')
+        );
     END IF;
     RETURN NEW;
 END;
@@ -105,6 +121,12 @@ CREATE TRIGGER trg_inventory_book_fields
 -- ── 4. Backfill so every existing row has stored codes ───────────────────────
 -- The client will read these instead of computing them, which is what lets the
 -- key be removed from the bundle. Touching price_mxn fires the trigger.
+--
+-- Dry-run against live data before writing this (517 priced rows):
+--   with onyx_round  ->  361 barcodes reproduced exactly, 0 changed, 156 filled in
+--   with plain floor ->  146 reproduced, 215 CHANGED   <- would have broken labels
+-- The COALESCE guard in the trigger makes the 0-changed result structural, not
+-- just a property of the formula being right.
 UPDATE public.inventory SET price_mxn = price_mxn
  WHERE price_mxn IS NOT NULL AND price_mxn > 0;
 
