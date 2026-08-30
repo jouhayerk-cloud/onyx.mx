@@ -5,6 +5,7 @@ import { Server } from "npm:@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "npm:@modelcontextprotocol/sdk/server/sse.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "npm:@modelcontextprotocol/sdk/types.js";
 import { createClient } from "npm:@supabase/supabase-js";
+import { ONYXCHAN_TOOLS } from "../_shared/onyxchanTools.ts";
 
 // Initialize Supabase Client (Edge Functions inject these environment variables)
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -120,212 +121,7 @@ const server = new Server(
 
 // ── Register ALL MCP Tools ───────────────────────────────────────────────────
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      // ── Physical Robot Control Tools ──
-      {
-        name: "move_head",
-        description: "Pan (yaw) and tilt (pitch) the robot's physical head using dual precision servos.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string", description: "Target OnyxChan robot ID or MAC." },
-            pan: { type: "number", description: "Horizontal yaw angle in degrees (-90 to 90). Negative is left, positive is right." },
-            tilt: { type: "number", description: "Vertical pitch angle in degrees (0 to 90). 0 is forward, 90 is looking straight up." },
-          },
-          required: ["device_id", "pan", "tilt"],
-        },
-      },
-      {
-        name: "set_expression",
-        description: "Change the avatar facial expression on the robot's LCD screen.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string", description: "Target OnyxChan robot ID or MAC." },
-            expression: {
-              type: "string",
-              enum: ["calm", "happy", "thinking", "sleepy", "shy", "smug", "pouty", "alert", "error", "speaking", "listening", "vendor-display"],
-              description: "The expression to display.",
-            },
-            duration: { type: "number", description: "Optional duration in ms before returning to calm." },
-          },
-          required: ["device_id", "expression"],
-        },
-      },
-      {
-        name: "speak",
-        description: "Make the robot speak aloud via Text-to-Speech (TTS) synthesizer.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string", description: "Target OnyxChan robot ID or MAC." },
-            text: { type: "string", description: "Text for the robot to speak aloud." },
-            language: {
-              type: "string",
-              enum: ["es", "en", "ja"],
-              description: "Speech language: 'es' for Spanish, 'en' for English, 'ja' for Japanese.",
-              default: "es",
-            },
-          },
-          required: ["device_id", "text"],
-        },
-      },
-      {
-        name: "display_vendor_card",
-        description: "Render a branded, color-coded vendor or telemetry card on the robot's LCD screen.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string", description: "Target OnyxChan robot ID or MAC." },
-            vendor: { type: "string", description: "Vendor name (e.g., 'Martha', 'Ramses', 'Alejandra', 'Carolina')." },
-            title: { type: "string", description: "Header title text on the LCD." },
-            details: {
-              type: "array",
-              items: { type: "string" },
-              description: "Up to 4 detail lines to display.",
-            },
-            color: { type: "string", description: "Optional hex color override (e.g. #737104)." },
-            icon: {
-              type: "string",
-              enum: ["box", "tag", "dollar", "truck", "package"],
-              description: "Optional icon identifier.",
-            },
-          },
-          required: ["device_id", "vendor", "title", "details"],
-        },
-      },
-      {
-        name: "display_inventory_card",
-        description: "Render an inventory item card on the robot's LCD screen showing details from Supabase.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string", description: "Target OnyxChan robot ID or MAC." },
-            item_id: { type: "string", description: "Item UUID from inventory." },
-            title: { type: "string", description: "Item title." },
-            price: { type: "number", description: "Item price." },
-            stock: { type: "number", description: "Stock quantity." },
-            vendor: { type: "string", description: "Vendor name." },
-          },
-          required: ["device_id", "item_id", "title"],
-        },
-      },
-      {
-        name: "get_robot_status",
-        description: "Query device connectivity, battery level, RSSI, firmware version, and linked accessories.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string", description: "The robot device ID or MAC to inspect." },
-          },
-          required: ["device_id"],
-        },
-      },
-      {
-        name: "ping_robot",
-        description: "Send a ping to the physical robot over Realtime to test communication latency.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string", description: "Target robot device ID." },
-          },
-          required: ["device_id"],
-        },
-      },
-
-      // ── Data Query & Inventory Tools ──
-      {
-        name: "query_inventory",
-        description: "Search inventory items by keyword, vendor name, status, or book barcode tag ID.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            search_term: { type: "string", description: "Text to search in item title, description, or barcode." },
-            vendor: { type: "string", description: "Filter by vendor name." },
-            status: { type: "string", description: "Filter by item status." },
-            limit: { type: "number", description: "Max results to return (default 20).", default: 20 },
-          },
-        },
-      },
-      {
-        name: "query_inventory_item",
-        description: "Query detailed information about a single inventory item by ID.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            item_id: { type: "string", description: "The item ID to query." },
-          },
-          required: ["item_id"],
-        },
-      },
-      {
-        name: "query_payment_status",
-        description: "Query payment status and financial obligations for a specific vendor.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            vendor_id: { type: "string", description: "The vendor ID or name." },
-          },
-          required: ["vendor_id"],
-        },
-      },
-
-      // ── App Screen Control Tools ──
-      {
-        name: "app_change_view",
-        description: "Change the active view in the Onyx.mx web app (inventory, finance, logistics, create, control, pico-bridge, viewer).",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string", description: "The OnyxChan device ID." },
-            view: { type: "string", description: "The view to switch to." },
-          },
-          required: ["device_id", "view"],
-        },
-      },
-      {
-        name: "app_search_inventory",
-        description: "Filter inventory in real-time on the user's screen.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string" },
-            search_term: { type: "string", description: "Search query." },
-          },
-          required: ["device_id", "search_term"],
-        },
-      },
-      {
-        name: "app_open_inventory_artifact",
-        description: "Pop up the Inventory Artifact modal showing specific items on the user's screen.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string" },
-            item_ids: {
-              type: "array",
-              items: { type: "string" },
-              description: "Array of item IDs to display.",
-            },
-            title: { type: "string", description: "Modal title." },
-          },
-          required: ["device_id", "item_ids"],
-        },
-      },
-      {
-        name: "app_open_add_item",
-        description: "Open the Add Item / Upload Wizard on the user's screen.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            device_id: { type: "string" },
-          },
-          required: ["device_id"],
-        },
-      },
-    ],
-  };
+  return { tools: ONYXCHAN_TOOLS };
 });
 
 // ── Handle Tool Execution ─────────────────────────────────────────────────────
@@ -531,6 +327,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (name === "app_open_add_item") {
       await broadcastStateUpdate(String(args?.device_id), "isUploadWizardOpenAtom", true);
       return { content: [{ type: "text", text: `Add Item wizard opened.` }] };
+    }
+
+    // 14. count_vendor_items
+    if (name === "count_vendor_items") {
+      const { count, error } = await supabase
+        .from("inventory")
+        .select("*", { count: "exact", head: true })
+        .eq("vendor_id", String(args?.vendor_id));
+      if (error) throw error;
+      return { content: [{ type: "text", text: JSON.stringify({ vendor_id: args?.vendor_id, count: count ?? 0 }) }] };
+    }
+
+    // 15. resolve_tag
+    if (name === "resolve_tag") {
+      const tag = String(args?.tag ?? "");
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("item_id, vendor_id, short_description, book_barcode, status")
+        .or(`book_barcode.eq.${sanitiseFilterTerm(tag)},item_id.eq.${sanitiseFilterTerm(tag)}`)
+        .maybeSingle();
+      if (error) throw error;
+      return {
+        content: [{ type: "text", text: JSON.stringify(data ?? { found: false, tag }) }],
+      };
     }
 
     throw new Error(`Unknown MCP tool: ${name}`);
