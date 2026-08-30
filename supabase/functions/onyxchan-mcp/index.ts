@@ -11,6 +11,48 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// A wildcard here let any website drive the robot from a visitor's browser.
+const ALLOWED_ORIGIN = Deno.env.get("ONYXCHAN_ALLOWED_ORIGIN")
+  || "https://jouhayerk-cloud.github.io";
+
+// ── Authentication ────────────────────────────────────────────────────────────
+// This function runs on the service role, which bypasses RLS entirely. Without
+// a gate here, every policy fix made on the database is irrelevant to anyone who
+// can reach this URL: `{"tool":"query_inventory"}` would return the whole
+// inventory, costs included, to an unauthenticated caller.
+//
+// Callers must present a valid Supabase JWT belonging to a provisioned user —
+// the same bar the app itself uses (a row in app_users, not merely an account).
+async function requireStaff(req: Request): Promise<Response | null> {
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return jsonError(401, "Missing bearer token");
+
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user?.email) return jsonError(401, "Invalid or expired token");
+
+  const { data: row } = await supabase
+    .from("app_users")
+    .select("role")
+    .ilike("email", user.email)
+    .maybeSingle();
+
+  if (!row?.role) return jsonError(403, "No application role assigned");
+  return null; // authorised
+}
+
+function jsonError(status: number, message: string): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { "Access-Control-Allow-Origin": ALLOWED_ORIGIN, "Content-Type": "application/json" },
+  });
+}
+
+// PostgREST parses `or=` filters as a comma/parenthesis-delimited expression, so
+// an unescaped search term can inject extra predicates. Strip the delimiters.
+function sanitiseFilterTerm(raw: unknown): string {
+  return String(raw ?? "").replace(/[,()*:."'\\]/g, " ").trim().slice(0, 100);
+}
+
 // ── Vendor Color Map ──────────────────────────────────────────────────────────
 const VENDOR_COLORS: Record<string, string> = {
   Ramses: "#737104",
@@ -409,10 +451,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (name === "query_inventory") {
       let query = supabase.from("inventory").select("*").limit(Number(args?.limit) || 20);
       if (args?.search_term) {
-        query = query.or(`title.ilike.%${args.search_term}%,description.ilike.%${args.search_term}%,book_barcode.ilike.%${args.search_term}%`);
+        // `title` and `vendor` do not exist on this table — selecting or
+        // filtering on them makes PostgREST reject the whole query. Verified
+        // against the live schema: short_description, description, book_barcode
+        // and vendor_id are the real columns.
+        const term = sanitiseFilterTerm(args.search_term);
+        if (term) {
+          query = query.or(
+            `short_description.ilike.%${term}%,description.ilike.%${term}%,book_barcode.ilike.%${term}%`,
+          );
+        }
       }
       if (args?.vendor) {
-        query = query.eq("vendor", String(args.vendor));
+        query = query.eq("vendor_id", String(args.vendor));
       }
       if (args?.status) {
         query = query.eq("status", String(args.status));
@@ -437,8 +488,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // 9. query_payment_status
     if (name === "query_payment_status") {
+      // `finance_payments` does not exist — verified against the live schema,
+      // which has `finance` (and the retired `finance_826`). This tool has
+      // therefore never returned anything but an error. Left pointing at the
+      // real table; confirm the column names before relying on it.
       const { data, error } = await supabase
-        .from("finance_payments")
+        .from("finance")
         .select("*")
         .eq("vendor_id", String(args?.vendor_id));
       if (error) throw error;
@@ -490,13 +545,22 @@ Deno.serve(async (req) => {
 
   // CORS Headers
   const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   };
 
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  // Every path below this line either moves physical hardware, reads inventory
+  // and finance on the service role, or pushes state into a user's browser.
+  // None of it is public. The bare "v2.5 Active" banner at the bottom is the
+  // only unauthenticated response.
+  if (req.method === "POST") {
+    const denied = await requireStaff(req);
+    if (denied) return denied;
   }
 
   // 1. SSE Connection for MCP
@@ -563,6 +627,13 @@ Deno.serve(async (req) => {
   }
 
   // 3. Heartbeat from robot hardware
+  //
+  // NOTE: this now sits behind requireStaff, which a device cannot satisfy — it
+  // has no user JWT. That is deliberate until per-device tokens exist: the old
+  // behaviour let anyone POST a device_id and rewrite that device's status,
+  // battery and last_seen. Nothing calls this today (the firmware's networking
+  // is still commented out), so failing closed costs nothing now and avoids
+  // shipping an open write endpoint. Device auth is tracked separately.
   if (url.pathname.endsWith("/heartbeat") && req.method === "POST") {
     const { device_id, battery, rssi } = await req.json();
     await supabase
