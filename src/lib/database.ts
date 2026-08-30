@@ -366,21 +366,16 @@ const createDatabase = async () => {
                     return { data: allData, success };
                 };
 
-                // Tables that exist in both a legacy and an 826 generation. In 826 mode we
-                // pull BOTH so the Archive toggle can show or hide past seasons without a
-                // reload; each row is stamped with the season of the table it came from.
-                const SEASONAL_TABLES = ['inventory', 'finance', 'logistics'];
-
-                const getSeasonSources = (table: string): { name: string; season: Season }[] => {
-                    const dbMode = localStorage.getItem('onyx_db_mode') || '826';
-                    if (dbMode === '826' && SEASONAL_TABLES.includes(table)) {
-                        return [
-                            { name: `${table}_826`, season: '826' },
-                            { name: table, season: 'legacy' },
-                        ];
-                    }
-                    return [{ name: table, season: 'legacy' }];
-                };
+                // The _826 tables are retired: everything lives in the legacy tables and
+                // the season is carried by the `workbook` column (v326 / v825 / v826),
+                // which resolveSeason() reads. One source per collection.
+                //
+                // This also removes a trap in the old dual-load: once the _826 tables are
+                // dropped, fetching them fails, allSourcesOk goes false, and the prune
+                // below would never run again — so deleted rows would linger locally
+                // forever.
+                const getSeasonSources = (table: string): { name: string; season: Season }[] =>
+                    [{ name: table, season: 'legacy' }];
 
                 const syncCollection = async (table: string, collection: RxCollection<any>) => {
                     const sources = getSeasonSources(table);
@@ -441,7 +436,7 @@ const createDatabase = async () => {
                 await syncCollection('production', db.production);
                 await syncCollection('shipments', db.shipments);
 
-                console.log(`🏁 [DB] Prioritized paginated sync complete (Mode: ${localStorage.getItem('onyx_db_mode') || '826'}).`);
+                console.log('🏁 [DB] Prioritized paginated sync complete.');
             } catch (err) {
                 console.error('🔥 [DB] Fatal Sync Crash:', err);
             }
