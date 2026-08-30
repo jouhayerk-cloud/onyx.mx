@@ -10,7 +10,10 @@
     "deploy": "npm run build && npx gh-pages -d dist"
   },
   "dependencies": {
-    "@google/genai": "^1.52.0",
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@google/genai": "^2.14.0",
     "@google/generative-ai": "^0.24.1",
     "@imgly/background-removal": "^1.7.0",
     "@supabase/supabase-js": "^2.97.0",

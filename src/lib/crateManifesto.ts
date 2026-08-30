@@ -5,7 +5,7 @@
  */
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { cmToImperial } from './utils';
+import { cmToImperial, extractItemHexString } from './utils';
 import { getVendorColor } from './excelStyles';
 import { generateAxonometricDataUrl, resolveItemColor } from './axonometric';
 
@@ -956,7 +956,7 @@ export async function exportCrateManifesto(
                 if (!dCm) dCm = wCm;
                 
                 const itemColor = resolveItemColor(item as any);
-                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, itemColor, true);
+                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, itemColor, true, extractItemHexString(item));
                 if (axoDataUrl) {
                     const axoSize = 20; // LARGER
                     doc.addImage(axoDataUrl, 'JPEG', COL_DIMS.x + COL_DIMS.w - axoSize - 2, y + (ROW_H - axoSize) / 2, axoSize, axoSize);

@@ -6,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
  */
 const getApiKey = () => {
     // 1. Check for user-provided key in storage (set via settings)
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('onyxApiKey') : null;
+    const stored = typeof window !== 'undefined' ? (localStorage.getItem('ONYX_GEMINI_KEY') || localStorage.getItem('onyxApiKey')) : null;
     if (stored) return stored.replace(/['"]/g, '').trim();
 
     // 2. Fallback to bundled system key (prefixed with VITE_)
@@ -15,11 +15,27 @@ const getApiKey = () => {
     return system.replace(/['"]/g, '').trim();
 };
 
-const apiKey = getApiKey();
+let _aiInstance: GoogleGenAI | null = null;
+let _lastApiKey: string | null = null;
 
-if (!apiKey && typeof window !== 'undefined') {
-    console.warn("⚠️ Neural Core: Missing API credentials. AI features disabled.");
-}
+export const getAiClient = () => {
+    const currentKey = getApiKey();
+    if (!currentKey && typeof window !== 'undefined') {
+        console.warn("💎 Neural Core: Missing API credentials. AI features disabled.");
+    }
+    
+    // Re-initialize if the key has changed
+    if (!_aiInstance || _lastApiKey !== currentKey) {
+        _aiInstance = new GoogleGenAI({ apiKey: currentKey as string });
+        _lastApiKey = currentKey;
+    }
+    return _aiInstance;
+};
 
-// Export a singleton instance. 
-export const ai = new GoogleGenAI({ apiKey: apiKey as string });
+// For backwards compatibility where `ai` is imported directly
+export const ai = new Proxy({} as GoogleGenAI, {
+    get: (target, prop) => {
+        const client = getAiClient();
+        return (client as any)[prop];
+    }
+});
