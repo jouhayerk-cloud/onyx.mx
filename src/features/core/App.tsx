@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
-import { themeAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom } from '../../lib/atoms';
+import { themeAtom, appStyleAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom } from '../../lib/atoms';
 import { resolveUserRole } from '../../lib/utils';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
@@ -23,6 +23,7 @@ const ViewerView      = React.lazy(() => import('../viewer/ViewerView').then(m =
 export default function App() {
   const [user, setUser] = useAtom(userAtom);
   const theme = useAtomValue(themeAtom);
+  const appStyle = useAtomValue(appStyleAtom);
   const performanceMode = useAtomValue(performanceModeAtom);
   const setLanguage = useSetAtom(languageAtom);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -211,12 +212,20 @@ export default function App() {
     // Robustly remove any existing theme classes
     const classes = Array.from(document.documentElement.classList);
     classes.forEach(c => {
-      if (c.startsWith('theme-')) document.documentElement.classList.remove(c);
+      if (c.startsWith('theme-') || c.startsWith('style-')) document.documentElement.classList.remove(c);
     });
     
-    // Apply new theme
+    // Apply new theme and style
     document.documentElement.classList.add(`theme-${theme}`);
-  }, [theme]);
+    document.documentElement.classList.add(`style-${appStyle}`);
+
+    // Paper implies Light mode (remove dark), Rock implies Dark mode (glassmorphic)
+    if (appStyle === 'paper') {
+        document.documentElement.classList.remove('dark');
+    } else {
+        document.documentElement.classList.add('dark');
+    }
+  }, [theme, appStyle]);
 
   useEffect(() => {
     if (performanceMode) {
@@ -297,7 +306,7 @@ export default function App() {
         </>
       )}
       <Toaster
-        position="bottom-right"
+        position="top-center"
         toastOptions={{
           duration: 5000,
           className: 'toast-liquid-glass',
