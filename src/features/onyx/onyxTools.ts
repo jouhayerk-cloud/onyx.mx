@@ -167,22 +167,11 @@ export const onyxToolHandlers = {
             // put a working key in the client bundle and let any printed label be
             // reversed to acquisition cost.
 
-            let barcode = item.book_barcode;
-            if (!barcode || barcode.includes('-')) {
-                try {
-                    const exchangeRate = DEFAULT_EXCHANGE_RATE;
-                    const costMxn = item.price_mxn || 0;
-                    const costUsd = costMxn / exchangeRate;
-                    const landedCost = onyxRound(costUsd * 1.4);
-                    const vendorPrefix = (item.item_id || '').split('-')[0] || '??';
-                    const bookStr = (item.workbook || '326').toString().replace(/v/gi, '');
-                    const itemNum = parseInt(item.item_number || '1', 10);
-                    const cypher = numberToCypher(landedCost);
-                    barcode = `${vendorPrefix}${bookStr}${itemNum}${cypher}`;
-                } catch (e) {
-                    barcode = item.item_id || "No TAG ID";
-                }
-            }
+            // The client cannot rebuild a barcode any more: numberToCypher returns a
+            // placeholder without the key, so recomputing here emitted tags like
+            // FR8261— that disagree with the label physically on the stone. Fall
+            // back to the item id, which is at least unambiguously not a barcode.
+            const barcode = item.book_barcode || item.item_id || "No TAG ID";
 
             return {
                 tag_id: barcode,
