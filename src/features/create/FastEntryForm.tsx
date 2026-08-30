@@ -5,6 +5,8 @@ import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { GoogleGenAI, Type } from '@google/genai';
 import { AudioVisualizer } from '../../components/AudioVisualizer';
 import { useResetState, useNotify, useDatabase } from '../../lib/hooks';
+import { useFormDraft } from '../../lib/useFormDraft';
+import { buildAttributeSuggestions } from '../../lib/attributeSuggestions';
 import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/Types';
 import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask, handleFileUpload } from '../../lib/utils';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
@@ -17,7 +19,7 @@ const initialFormState = {
     itemId: '', itemNumber: '', shape: '', material: '', description: '',
     weightKg: '', heightCm: '', widthCm: '', lengthCm: '', price: '',
     quantity: '1', color: '', expires: new Date().toISOString().slice(0, 10),
-    status: 'Catalog', workbook: '326',
+    status: 'Catalog', workbook: 'v326',
     shortDescription: '', generatedDescription: '', detailedDescription: '',
 };
 
@@ -33,6 +35,14 @@ const formFields = [
     { name: 'dimensions', placeholder: 'Dimensions', type: 'group' },
     { name: 'submit', placeholder: 'Save Item', type: 'submit' },
 ];
+
+/**
+ * True once the user has entered something worth keeping. Fields the form
+ * pre-populates (status, workbook, quantity, expires) are ignored on purpose —
+ * they are present on a blank form and would make every empty form look like a draft.
+ */
+const hasEntryContent = (s: Partial<typeof initialFormState> | null): boolean =>
+    Boolean(s && (s.itemId || s.shape || s.material || s.description || s.price || s.color));
 
 type AIStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -65,7 +75,28 @@ export function FastEntryForm() {
     const [formState, setFormState] = useState(initialFormState);
     const [activeInput, setActiveInput] = useState('media');
     const [suggestions, setSuggestions] = useState<{ [key: string]: string[] }>({});
+    const [suggestionRows, setSuggestionRows] = useState<any[]>([]);
     const [draftCreated, setDraftCreated] = useState(false);
+
+    // Keeps the half-filled form alive across reloads. Stored in the local `drafts`
+    // collection, which is never synced — so unlike the old placeholder row in
+    // `inventory`, it can't be pruned away mid-entry.
+    //
+    // Only entries the user actually started are persisted: without this guard,
+    // handleCancel's resetState would autosave the blank form over a real draft and
+    // the next visit would "restore" an empty entry.
+    const { restored: restoredDraft, ready: draftReady, clear: clearDraft } = useFormDraft(
+        'inventory-entry',
+        formState,
+        { ownerKey: user?.id ?? user?.name ?? null, enabled: hasEntryContent(formState) }
+    );
+
+    // Restore once, when the initial lookup settles.
+    useEffect(() => {
+        if (!draftReady || !restoredDraft || !hasEntryContent(restoredDraft)) return;
+        setFormState(prev => ({ ...prev, ...restoredDraft }));
+        notify.success('Restored your unsaved entry');
+    }, [draftReady]);
 
     const [detectionStatus, setDetectionStatus] = useState<AIStatus>('idle');
     const [segmentationStatus, setSegmentationStatus] = useState<AIStatus>('idle');
@@ -91,20 +122,37 @@ export function FastEntryForm() {
         setFormState(prev => ({ ...prev, [name]: value }));
     };
 
+    // Load the catalogue once. The previous version ran a full find() per field, so
+    // every mount read the whole inventory twice to build two flat value lists.
     useEffect(() => {
         if (!db) return;
-        const fetchSuggestions = async (columnName: string) => {
+        let cancelled = false;
+
+        (async () => {
             try {
                 const items = await db.inventory.find().exec();
-                const values = Array.from(new Set(items.map((i: any) => i[columnName]).filter(Boolean)));
-                setSuggestions(prev => ({ ...prev, [columnName]: values as string[] }));
+                if (cancelled) return;
+                setSuggestionRows(items.map((i: any) => i.toJSON?.() ?? i));
             } catch (error) {
-                console.error(`Failed to fetch suggestions for ${columnName}:`, error);
+                console.error('Failed to load attribute suggestions:', error);
             }
-        };
-        fetchSuggestions('shape');
-        fetchSuggestions('material');
+        })();
+
+        return () => { cancelled = true; };
     }, [db]);
+
+    // Cross-filtered suggestions: each field offers only values that co-occur with
+    // what's already chosen, so picking a shape narrows Type and Material, and
+    // picking a type narrows Shape.
+    useEffect(() => {
+        if (suggestionRows.length === 0) return;
+        setSuggestions(buildAttributeSuggestions(suggestionRows, {
+            shape: formState.shape,
+            material: formState.material,
+            color: formState.color,
+            type: (formState as any).type
+        }));
+    }, [suggestionRows, formState.shape, formState.material, formState.color]);
 
     useEffect(() => {
         if (user?.role === 'Vendor') {
@@ -129,39 +177,38 @@ export function FastEntryForm() {
     useEffect(() => {
         if (imageSrc && formState.itemId && !draftCreated && db) {
             setDraftCreated(true);
-            const createDraft = async () => {
-                const toastId = 'draft-creation';
+            // Reserves the row id and item number. No placeholder row is written to
+            // `inventory` any more — a local-only row there was pruned by the next
+            // sync, taking the in-progress entry with it. The partial state now lives
+            // in the `drafts` collection (see useFormDraft above) until handleSubmit
+            // saves the item for real.
+            const startEntry = async () => {
                 try {
-                    notify.loading('Creating draft...', { id: toastId });
-
                     const newId = crypto.randomUUID();
 
+                    // `item_id` is the stored column; the old `itemId` selector matched
+                    // nothing, so every entry was numbered 0001.
                     const existingItems = await db.inventory.find({
-                        selector: { itemId: formState.itemId }
+                        selector: { item_id: formState.itemId }
                     }).exec();
-                    const nextNum = existingItems.length + 1;
-
-                    const newItemData = {
-                        id: newId,
-                        itemId: formState.itemId,
-                        itemNumber: String(nextNum).padStart(4, '0'),
-                        timestamp: new Date().toISOString(),
-                        createdBy: user?.name,
-                        status: 'Draft'
-                    };
-
-                    await db.inventory.insert(newItemData);
+                    const itemNumber = String(existingItems.length + 1).padStart(4, '0');
 
                     setSelectedItemRow(newId);
-                    setSelectedItemData(newItemData as any);
-                    setFormState(prev => ({ ...prev, itemNumber: newItemData.itemNumber }));
-                    notify.success('Draft created!', { id: toastId });
+                    setSelectedItemData({
+                        id: newId,
+                        item_id: formState.itemId,
+                        item_number: itemNumber,
+                        created_by: user?.name,
+                        timestamp: new Date().toISOString(),
+                        status: 'Draft'
+                    } as any);
+                    setFormState(prev => ({ ...prev, itemNumber }));
                 } catch (error: any) {
-                    notify.error(`Could not create draft: ${error.message}`, { id: toastId });
+                    notify.error(`Could not start entry: ${error.message}`);
                     setDraftCreated(false);
                 }
             };
-            createDraft();
+            startEntry();
         }
     }, [imageSrc, formState.itemId, draftCreated, user, setSelectedItemRow, setSelectedItemData, notify, db]);
 
@@ -334,7 +381,7 @@ export function FastEntryForm() {
                 quantity: Number(formState.quantity) || 1,
                 color: formState.color,
                 status: 'Catalog',
-                workbook: '326',
+                workbook: 'v326',
                 short_description: formState.shortDescription,
                 generated_description: formState.generatedDescription,
                 detailed_description: formState.detailedDescription,
@@ -347,6 +394,10 @@ export function FastEntryForm() {
             };
 
             await db.inventory.upsert(payload);
+
+            // The entry is committed — drop the in-progress copy so it isn't offered
+            // for restore next time the form opens.
+            await clearDraft();
 
             notify.success('Item saved!', { id: toastId });
             handleCancel();
