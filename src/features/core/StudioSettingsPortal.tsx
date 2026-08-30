@@ -6,6 +6,7 @@ import {
     isStudioSettingsOpenAtom, 
     studioSettingsViewModeAtom, 
     themeAtom, 
+    appStyleAtom,
     performanceModeAtom, 
     userAtom,
     isOfflineModeAtom
@@ -14,7 +15,7 @@ import { useSyncEngine } from '../../lib/syncEngine';
 import { 
     X, AlertCircle, LogOut, 
     Shield, Activity, Palette, Zap, Terminal,
-    Wifi, WifiOff
+    Wifi, WifiOff, Layout
 } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -36,6 +37,7 @@ export const StudioSettingsPortal: React.FC = () => {
     const [isOpen, setIsOpen]             = useAtom(isStudioSettingsOpenAtom);
     const [viewMode, setViewMode]         = useAtom(studioSettingsViewModeAtom);
     const [theme, setTheme]               = useAtom(themeAtom);
+    const [appStyle, setAppStyle]         = useAtom(appStyleAtom);
     const [performanceMode, setPerf]      = useAtom(performanceModeAtom);
     const [user]                          = useAtom(userAtom);
     const [isOffline]                     = useAtom(isOfflineModeAtom);
@@ -139,6 +141,18 @@ export const StudioSettingsPortal: React.FC = () => {
                                         </div>
                                         
                                         <div className="flex items-center gap-4 md:gap-8 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
+                                            {/* Style Toggle (Rock/Paper) */}
+                                            <button 
+                                                onClick={() => setAppStyle(appStyle === 'rock' ? 'paper' : 'rock')} 
+                                                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-150 ${appStyle === 'paper' ? 'text-blue-500 hover:bg-blue-500/10' : 'text-white/20 hover:bg-white/10'}`}
+                                                title={appStyle === 'paper' ? 'PAPER STYLE' : 'ROCK STYLE'}
+                                            >
+                                                <Layout size={20} />
+                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded transition-all duration-150 ${appStyle === 'paper' ? 'bg-blue-500 text-white' : L ? 'bg-black/10 text-black' : 'bg-white/10 text-white'} uppercase tracking-wider`}>
+                                                    {appStyle === 'paper' ? 'PAPER' : 'ROCK'}
+                                                </span>
+                                            </button>
+
                                             {/* Performance Toggle */}
                                             <button 
                                                 onClick={() => setPerf(!performanceMode)} 

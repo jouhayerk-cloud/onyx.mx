@@ -85,6 +85,10 @@ export interface InventoryItemData {
   spatialBoxes2d?: string;
   spatialPoints?: string;
   spatialMasks?: string;
+  local_segmentation_masks?: string;
+  localSegmentationMasks?: string;
+  cloud_segmentation_masks?: string;
+  cloudSegmentationMasks?: string;
   spatialBoxes3d?: string;
   isClientVisible?: string | boolean;
   printDate?: string;

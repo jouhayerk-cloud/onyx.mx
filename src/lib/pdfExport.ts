@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch } from './utils';
+import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -22,58 +22,207 @@ export interface CatalogArtifact {
     exportType?: 'regular' | 'catalog';
 }
 
-interface ImgData { dataUrl: string; w: number; h: number; }
+function drawFormattedTagCode(doc: jsPDF, codes: any, x: number, y: number, fontSize: number = 9) {
+    const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '';
+    const parts = barcode.trim().split(/\s+/);
+    const sec1 = parts[0] || '';
+    const sec2 = parts.slice(1).join(' ') || '';
+    const sec3 = codes.bookAqCode && codes.bookAqCode !== '-' ? codes.bookAqCode : '';
+    const sec4 = codes.bookRetail && codes.bookRetail !== '-' ? codes.bookRetail.toString().replace(/[^0-9.]/g, '') : '';
 
-async function loadImgData(url: string, maxSize = 900, keepPng?: boolean): Promise<ImgData | null> {
+    doc.setFontSize(fontSize);
+    doc.setTextColor(20, 20, 20);
+
+    let currX = x;
+    
+    // 1. First section: Vendor Code and Bookv (regular text)
+    if (sec1) {
+        doc.setFont('helvetica', 'normal');
+        doc.text(sec1, currX, y);
+        currX += doc.getTextWidth(sec1);
+    }
+    
+    // 2. Middle section: item vendor index, landed code, and acquisition code (bold text)
+    let middleParts = [];
+    if (sec2) middleParts.push(sec2);
+    if (sec3) middleParts.push(sec3);
+    if (middleParts.length > 0) {
+        const middleStr = (sec1 ? '-' : '') + middleParts.join('-');
+        doc.setFont('helvetica', 'bold');
+        doc.text(middleStr, currX, y);
+        currX += doc.getTextWidth(middleStr);
+    }
+    
+    // 3. Last section: Retail USD (regular text)
+    if (sec4) {
+        const lastStr = (sec1 || middleParts.length > 0 ? '-' : '') + sec4;
+        doc.setFont('helvetica', 'normal');
+        doc.text(lastStr, currX, y);
+        currX += doc.getTextWidth(lastStr);
+    }
+}
+
+interface ImgData { dataUrl: string; w: number; h: number; edgeColor?: string; }
+
+async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
     try {
-        let img = new Image();
-        try {
+        if (!url) return null;
+        const cleanUrl = getCleanImageUrl(url) || url;
+        let img: HTMLImageElement;
+
+        const isDataOrBlob = cleanUrl.startsWith('data:') || cleanUrl.startsWith('blob:');
+
+        if (isDataOrBlob) {
+            // Data or Blob URLs: load directly, no CORS issues
             img = await new Promise<HTMLImageElement>((resolve, reject) => {
-                const el = new Image(); el.crossOrigin = 'anonymous'; 
-                el.onload = () => resolve(el); el.onerror = reject; el.src = url; 
-                setTimeout(() => reject(new Error('timeout')), 8000);
+                const el = new Image();
+                el.onload = () => resolve(el);
+                el.onerror = () => reject(new Error('Data/Blob URL load failed'));
+                el.src = cleanUrl;
+                setTimeout(() => reject(new Error('Data URL timeout')), 5000);
             });
-        } catch (err) {
-            // Fallback for CORS issues (e.g. generated AI masks on Google Drive)
-            const fileId = extractFileId(url);
-            if (fileId) {
-                const res = await fetchImageBatch(fileId);
-                img = await new Promise<HTMLImageElement>((resolve, reject) => {
-                    const el = new Image(); 
-                    el.onload = () => resolve(el); el.onerror = reject; 
-                    el.src = `data:${res.mimeType};base64,${res.base64}`; 
-                });
-            } else {
-                throw err;
-            }
+        } else {
+            // For ALL external URLs: convert to data URL via fetch first to avoid
+            // canvas tainting. Canvas operations (getImageData, toDataURL) throw
+            // SecurityError on cross-origin images even with crossOrigin='anonymous'
+            // if the server doesn't send proper CORS headers.
+            img = await loadExternalImageAsDataUrl(cleanUrl);
         }
-        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-        const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
-        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d')!;
-        
-        if (!keepPng) {
-            // Fill off-black background for all item images (JPEGs ignore this, PNG masks get the background)
-            ctx.fillStyle = '#111111';
-            ctx.fillRect(0, 0, w, h);
+
+        // Sample edge color from image (safe since image is same-origin data URL)
+        let edgeColor = bgColor;
+        try {
+            edgeColor = extractEdgeColor(img) || bgColor;
+        } catch (e) {
+            // Non-critical: edge color extraction failed, use default
         }
+
+        const imgW = img.naturalWidth || img.width || 500;
+        const imgH = img.naturalHeight || img.height || 500;
+
+        const scale = Math.min(maxSize / imgW, maxSize / imgH, 1);
+        const w = Math.max(1, Math.round(imgW * scale));
+        const h = Math.max(1, Math.round(imgH * scale));
+
+        let canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
         
         ctx.drawImage(img, 0, 0, w, h);
-        return { dataUrl: canvas.toDataURL(keepPng ? 'image/png' : 'image/jpeg', 0.88), w, h };
+
+        if (cleanUrl.includes('mask') || cleanUrl.includes('png') || cleanUrl.startsWith('data:image/png') || keepPng) {
+            try {
+                canvas = trimTransparentCanvas(canvas, padding);
+            } catch (e) {
+                // trimTransparentCanvas may fail on tainted canvas, use original
+            }
+        }
+        
+        return { 
+            dataUrl: canvas.toDataURL('image/png', 0.92), 
+            w: Math.max(1, canvas.width), 
+            h: Math.max(1, canvas.height),
+            edgeColor: edgeColor
+        };
     } catch (err) { 
         console.error("Failed to load image for PDF:", url, err);
         return null; 
     }
 }
 
-function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number, ch: number, scale = 1.0) {
-    // doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cw, ch, 'F');
-    const ir = img.w / img.h; const cr = cw / ch;
+/**
+ * Loads an external image by fetching it as a blob and converting to a data URL,
+ * which makes it same-origin and prevents canvas tainting.
+ * Falls back through multiple strategies:
+ *   1. fetch() → blob → data URL (bypasses CORS canvas taint)
+ *   2. Google Drive batch API (for drive.google.com file IDs)
+ *   3. CORS anonymous Image() as last resort
+ */
+async function loadExternalImageAsDataUrl(cleanUrl: string): Promise<HTMLImageElement> {
+    // Strategy 1: fetch → blob → dataURL (preferred, avoids canvas tainting)
+    try {
+        const resp = await fetch(cleanUrl, { mode: 'cors' });
+        if (resp.ok) {
+            const blob = await resp.blob();
+            if (blob.size > 0) {
+                const dataUrl = await new Promise<string>((res, rej) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => res(reader.result as string);
+                    reader.onerror = rej;
+                    reader.readAsDataURL(blob);
+                });
+                return await new Promise<HTMLImageElement>((res, rej) => {
+                    const el = new Image();
+                    el.onload = () => res(el);
+                    el.onerror = rej;
+                    el.src = dataUrl;
+                    setTimeout(() => rej(new Error('Fetch data URL image timeout')), 5000);
+                });
+            }
+        }
+    } catch (e) {
+        // fetch failed (CORS blocked, network error, etc.) — try next strategy
+    }
+
+    // Strategy 2: Google Drive batch API
+    const fileId = extractFileId(cleanUrl);
+    if (fileId) {
+        try {
+            const res = await fetchImageBatch(fileId);
+            return await new Promise<HTMLImageElement>((resolve, reject) => {
+                const el = new Image();
+                el.onload = () => resolve(el);
+                el.onerror = reject;
+                el.src = `data:${res.mimeType};base64,${res.base64}`;
+                setTimeout(() => reject(new Error('Drive batch image timeout')), 8000);
+            });
+        } catch (e) {
+            // Drive batch failed, try next
+        }
+    }
+
+    // Strategy 3: CORS anonymous Image() as last resort
+    // WARNING: This may taint the canvas — getImageData/toDataURL will throw.
+    // But at least the image will be visible if addImage accepts HTMLImageElement.
+    return await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.crossOrigin = 'anonymous';
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error(`All image loading strategies failed for: ${cleanUrl}`));
+        el.src = cleanUrl;
+        setTimeout(() => reject(new Error('CORS image timeout')), 8000);
+    });
+}
+
+function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number, ch: number, scale = 1.0, overrideBgColor?: string) {
+    if (!img || !img.dataUrl || !img.w || !img.h) return;
+
+    // 1. Draw Background Frame as a SEPARATE vector object in the PDF
+    const frameColor = overrideBgColor || img.edgeColor || '#1C1C1E';
+    if (frameColor && frameColor !== 'transparent') {
+        const hex = frameColor.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16) || 28;
+        const g = parseInt(hex.substring(2, 4), 16) || 28;
+        const b = parseInt(hex.substring(4, 6), 16) || 30;
+        doc.setFillColor(r, g, b);
+        doc.roundedRect(cx, cy, cw, ch, 2, 2, 'F');
+    }
+
+    // 2. Draw Image as a SEPARATE transparent image object centered on top
+    const pad = Math.min(cw, ch) * 0.06;
+    const availW = Math.max(1, cw - pad * 2);
+    const availH = Math.max(1, ch - pad * 2);
+    const ir = (img.w && img.h) ? (img.w / img.h) : 1; 
+    const cr = availW / availH;
     let dw: number, dh: number;
-    if (ir > cr) { dw = cw; dh = cw / ir; } else { dh = ch; dw = ch * ir; }
+    if (ir > cr) { dw = availW; dh = availW / ir; } else { dh = availH; dw = availH * ir; }
     dw *= scale; dh *= scale;
+
+    const imgX = cx + (cw - dw) / 2;
+    const imgY = cy + (ch - dh) / 2;
     const format = img.dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-    doc.addImage(img.dataUrl, format, cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
+    doc.addImage(img.dataUrl, format, imgX, imgY, dw, dh);
 }
 
 const toImp = (val: any, type: 'in' | 'lbs' | 'ft' = 'in') => {
@@ -140,21 +289,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     }
     
     const tagIdY = row1Y + barHeight + 5;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(20, 20, 20);
-    doc.text(barcode, codesX, tagIdY);
-    
-    const barcodeWidth = doc.getTextWidth(barcode);
-    
-    const retailNum = codes.bookRetail && codes.bookRetail !== '-' ? codes.bookRetail.toString().replace(/[^0-9.]/g, '') : '';
-    const topCodes = `${codes.bookAqCode || ''}${retailNum}`.trim();
-    if (topCodes) {
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(140, 140, 140);
-        doc.text(topCodes, codesX + barcodeWidth + 4, tagIdY);
-    }
+    drawFormattedTagCode(doc, codes, codesX, tagIdY, 10);
     
     // 3. Dimensions Block
     const dimX = M + 85;
@@ -201,12 +336,12 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
         doc.text(`(${weightImp})`, weightX, row1Y + 12);
     }
     
-    // 5. Axonometric icon
-    const axoSize = 22;
+    // 5. Axonometric icon (made larger)
+    const axoSize = 27;
     const axoX = PW - M - axoSize;
     if (wCm || hCm || dCm) {
         try {
-            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
+            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true, extractItemHexString(item.data));
             if (axoDataUrl) {
                 doc.addImage(axoDataUrl, 'JPEG', axoX, row1Y - 2, axoSize, axoSize);
             }
@@ -220,41 +355,46 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     
     const shape = norm.shape || '';
     const type = norm.shortDescription || '';
-    let nameStr = item.data.detailed_description || '';
+    let nameStr = item.data.title || item.data.generatedTitle || item.data.generated_title || item.data.description || item.data.detailed_description || norm.description || norm.detailedDescription || '';
     if (!nameStr) {
         nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
     }
     
-    doc.setFontSize(14);
+    doc.setFontSize(11.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(20, 20, 20);
-    // Split text to prevent overflowing the page width if the AI generated a long title
     const maxTitleWidth = PW - M * 2 - 40; 
-    const splitTitle = doc.splitTextToSize(nameStr.toUpperCase(), maxTitleWidth);
+    const finalNameStr = nameStr.toUpperCase() + (item.data.partSuffix ? ` ${item.data.partSuffix.toUpperCase()}` : '');
+    const splitTitle = doc.splitTextToSize(finalNameStr, maxTitleWidth);
     doc.text(splitTitle, M + 4, row2Y);
     
-    // Adjust row2Y based on how many lines the title took
     const titleLines = splitTitle.length;
-    let currentY = row2Y + (titleLines * 5) + 1;
+    let currentY = row2Y + (titleLines * 4.5) + 1;
     
-    const color = item.data.color || item.data.Color || '';
-    const material = item.data.material || item.data.Material || '';
-    const detailStr = [color, material].filter(Boolean).join(' · ');
+    const color = norm.color || item.data.color || item.data.Color || '';
+    const material = norm.material || item.data.material || item.data.Material || '';
+    const genColor = norm.generatedColor || (Array.isArray(norm.dominantColors) ? norm.dominantColors.join(', ') : (norm.dominantColors || ''));
     
-    if (detailStr) {
-        doc.setFontSize(13);
+    let colorLine = [shape, type, color, material].filter(Boolean).join(' · ');
+    if (colorLine) {
+        doc.setFontSize(9.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(60, 60, 60);
-        doc.text(detailStr.toUpperCase(), M + 4, currentY);
-        currentY += 6;
+        doc.text(colorLine.toUpperCase(), M + 4, currentY);
+        currentY += 5;
     }
 
-    if (item.data.category) {
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(100, 100, 100);
-        doc.text(item.data.category.toUpperCase(), M + 4, currentY);
-        currentY += 6;
+    const catAndType = getProductCategoryAndType(norm);
+    let subParts = [];
+    subParts.push(catAndType.category);
+    subParts.push(catAndType.type);
+    if (genColor) subParts.push(genColor);
+    if (subParts.length > 0) {
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(90, 90, 90);
+        doc.text(subParts.join('  |  ').toUpperCase(), M + 4, currentY);
+        currentY += 5;
     }
     
     // QTY and Page
@@ -279,7 +419,7 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
     const hY = startY + 4;
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
     doc.text(`${item.codes.bookBarcodeDisplay || item.codes.bookBarcode || item.codes.bookTagId || '—'}  \xb7  PAGE ${pageNum} OF ${totalPages}`, M + 4, hY);
-    doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
     doc.text((norm.shortDescription || norm.shape || 'Stone Piece').toUpperCase(), M + 4, hY + 8);
     doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
     return hY + 12;
@@ -385,27 +525,94 @@ function renderStyledMarketingHtml(doc: any, html: string, x: number, y: number,
     }
 }
 
+interface LogoData {
+    dataUrl: string;
+    w: number;
+    h: number;
+    aspectRatio: number;
+}
+
+async function loadLogoData(logoBase64Url: string): Promise<LogoData | null> {
+    if (!logoBase64Url) return null;
+    try {
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const el = new Image();
+            el.onload = () => resolve(el);
+            el.onerror = (e) => reject(e);
+            el.src = logoBase64Url;
+            setTimeout(() => reject(new Error('Logo load timeout')), 4000);
+        });
+        const w = img.naturalWidth || img.width || 400;
+        const h = img.naturalHeight || img.height || 100;
+        return {
+            dataUrl: logoBase64Url,
+            w,
+            h,
+            aspectRatio: (w && h) ? (w / h) : 3.5
+        };
+    } catch (e) {
+        console.error("Failed to load logo data:", e);
+        return null;
+    }
+}
+
+function getItemImages(item: any): string[] {
+    if (!item) return [];
+    
+    // 1. Direct images array on CatalogArtifact
+    if (Array.isArray(item.images) && item.images.length > 0) {
+        const cleaned = item.images.map((u: string) => getCleanImageUrl(u)).filter(Boolean) as string[];
+        if (cleaned.length > 0) return cleaned;
+    }
+
+    // 2. Check item.data or direct item properties
+    const norm = normalizeInventoryData(item.data || item);
+    const urls: string[] = [];
+
+    // 3. Check generated PNG / mask URL
+    const genPng = getCleanImageUrl(norm.generatedPngUrl || item.generated_png_url || item.generatedPngUrl || item.maskUrl || item.mask_url);
+    if (genPng) urls.push(genPng);
+
+    // 4. Check primary image URL
+    const mainImg = getCleanImageUrl(norm.imageUrl || item.image_url || item.imageUrl);
+    if (mainImg && !urls.includes(mainImg)) urls.push(mainImg);
+
+    // 5. Check media_urls
+    const rawMedia = norm.mediaUrls || item.media_urls || item.mediaUrls || (item.data ? (item.data.media_urls || item.data.mediaUrls) : null);
+    if (rawMedia && typeof rawMedia === 'string') {
+        const parts = rawMedia.split(',').map((s: string) => getCleanImageUrl(s.trim())).filter(Boolean) as string[];
+        for (const p of parts) {
+            if (!urls.includes(p)) urls.push(p);
+        }
+    }
+
+    return urls;
+}
+
 async function drawCatalogHubPage(
     doc: any, 
     item: CatalogArtifact, 
     M: number, 
     PW: number, 
     PH: number, 
-    logoData: ImgData | null,
-    pageInfo?: { current: number; total: number }
+    logoData: LogoData | null,
+    pageInfo?: { current: number; total: number },
+    imageIndex: number = 0
 ) {
-    const norm = normalizeInventoryData(item.data); 
-    const codes = item.codes;
+    const norm = normalizeInventoryData(item.data || item); 
+    const codes = item.codes || {};
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
 
-    // 1. Smaller top information panel (QR barcode and Title/Brand Logo)
+    // 1. Top information panel: Brand Logo (direct vector/PNG without frame container)
     const topY = M;
     if (logoData) {
-        let logoH = 12;
-        let logoW = logoData.w * (logoH / logoData.h);
-        if (logoW > 45) {
-            logoW = 45;
-            logoH = logoData.h * (logoW / logoData.w);
+        const maxLogoW = 55;
+        const maxLogoH = 16;
+        let logoW = maxLogoW;
+        let logoH = logoW / logoData.aspectRatio;
+        if (logoH > maxLogoH) {
+            logoH = maxLogoH;
+            logoW = logoH * logoData.aspectRatio;
         }
         doc.addImage(logoData.dataUrl, 'PNG', M, topY, logoW, logoH);
     }
@@ -444,10 +651,7 @@ async function drawCatalogHubPage(
         const barX = currX - barW - 4;
         doc.addImage(barDataUrl, 'PNG', barX, topY, barW, barH);
         
-        doc.setFontSize(9.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(20, 20, 20);
-        doc.text(`TAG ID: ${barcode}`, barX, topY + barH + 4.5);
+        drawFormattedTagCode(doc, codes, barX, topY + barH + 4.5, 9);
 
         const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
         const wVal = norm.weightKg ? `${norm.weightKg}kg` : '—';
@@ -467,12 +671,16 @@ async function drawCatalogHubPage(
     // 2. Title & Subtitle block
     const shape = norm.shape || 'Sculptural Form';
     const shortDesc = norm.shortDescription || norm.description || 'Artisanal Piece';
-    const color = norm.color || item.data.Color || '';
-    const material = norm.material || item.data.Material || 'Onyx';
-    const titleStr = `${shape} · ${shortDesc} · ${color} · ${material}`.replace(/\s+/g, ' ').trim().toUpperCase();
+    const color = norm.color || (item.data ? item.data.Color : '') || '';
+    const material = norm.material || (item.data ? item.data.Material : '') || 'Onyx';
+    
+    // Main Title: Generated Title
+    const itemDataObj = item.data || item;
+    const mainDescStr = itemDataObj.title || itemDataObj.generatedTitle || itemDataObj.generated_title || itemDataObj.description || itemDataObj.detailed_description || norm.description || norm.detailedDescription || `${shape} handcrafted from natural Mexican ${material}`;
+    const titleStr = mainDescStr.replace(/\s+/g, ' ').trim().toUpperCase() + (itemDataObj.partSuffix ? ` ${itemDataObj.partSuffix.toUpperCase()}` : '');
 
     let titleY = sep1Y + 7;
-    doc.setFontSize(14.5);
+    doc.setFontSize(11.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 15, 15);
     const splitTitle = doc.splitTextToSize(titleStr, PW - 2 * M - 20);
@@ -484,87 +692,161 @@ async function drawCatalogHubPage(
     const qtyStr = `QTY: ${norm.quantity || 1}`;
     doc.text(qtyStr, PW - M - doc.getTextWidth(qtyStr), titleY);
 
-    titleY += (splitTitle.length * 5.5) + 1;
+    titleY += (splitTitle.length * 4.5) + 1.5;
 
-    const subtitleStr = item.data.description || item.data.detailed_description || `${shape} handcrafted from natural Mexican ${material}.`;
-    doc.setFontSize(10.5);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(80, 80, 80);
-    const splitSub = doc.splitTextToSize(subtitleStr, PW - 2 * M);
-    doc.text(splitSub, M, titleY);
+    // Subtitle 1: Shape Type Color Material
+    const shapeTypeColorMat = [shape, shortDesc, color, material].filter(Boolean).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+    if (shapeTypeColorMat) {
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        const splitSub1 = doc.splitTextToSize(shapeTypeColorMat, PW - 2 * M);
+        doc.text(splitSub1, M, titleY);
+        titleY += (splitSub1.length * 4.5) + 1.5;
+    }
 
-    titleY += (splitSub.length * 4.5) + 3;
-
-    // 3. Colors information
-    const colorsStr = item.data.dominant_colors || norm.color || 'Natural Mexican Banding';
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(110, 110, 110);
-    doc.text('COLOR PROFILE:', M, titleY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(20, 20, 20);
-    doc.text(colorsStr.toUpperCase(), M + 30, titleY);
+    // Subtitle 2: Category and GENERATED color
+    const catAndTypeGrid = getProductCategoryAndType(norm);
+    const genColorStr = norm.generatedColor || (Array.isArray(norm.dominantColors) ? norm.dominantColors.join(', ') : (norm.dominantColors || ''));
+    
+    let sub2Parts = [];
+    sub2Parts.push(catAndTypeGrid.category.toUpperCase());
+    sub2Parts.push(catAndTypeGrid.type.toUpperCase());
+    if (genColorStr) sub2Parts.push(genColorStr.toUpperCase());
+    
+    if (sub2Parts.length > 0) {
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(90, 90, 90);
+        const sub2Text = sub2Parts.join('  |  ');
+        const splitSub2 = doc.splitTextToSize(sub2Text, PW - 2 * M);
+        doc.text(splitSub2, M, titleY);
+        titleY += (splitSub2.length * 4.5) + 1.5;
+    }
 
     const sep2Y = titleY + 4;
     doc.setDrawColor(235, 235, 235);
     doc.setLineWidth(0.2);
     doc.line(M, sep2Y, PW - M, sep2Y);
 
-    // 4. Side-by-Side Content Zone
-    const contentY = sep2Y + 6;
-    const contentH = PH - 24 - contentY;
+    // 4. Stacked Content Zone (Horizontally stacked: Image on top, Body description below)
+    const contentY = sep2Y + 2;
+    const contentH = PH - 47 - contentY;
+    const fullW = PW - 2 * M;
+    const imgBoxH = contentH * 0.58;
 
-    const col1W = (PW - 2 * M - 8) * 0.46;
-    doc.setFillColor(252, 252, 250); // Off white / gallery white background
-    doc.setDrawColor(236, 236, 232);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(M, contentY, col1W, contentH, 3, 3, 'FD');
+    const imgs = getItemImages(item);
+    const currentImgUrl = imgs[imageIndex] || imgs[0];
 
-    const imgs = item.images || [];
-    if (imgs.length === 0) {
+    if (!currentImgUrl) {
         let wCm = parseFloat(norm.widthCm) || 0;
         let hCm = parseFloat(norm.heightCm) || 0;
         let dCm = parseFloat(norm.lengthCm) || 0;
         if (wCm || hCm || dCm) {
             try {
-                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shape, shortDesc, resolveItemColor(item.data), true);
+                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shape, shortDesc, resolveItemColor(itemDataObj), true, extractItemHexString(itemDataObj));
                 if (axoDataUrl) {
-                    const axoSize = Math.min(col1W * 0.75, contentH * 0.75, 120);
-                    doc.addImage(axoDataUrl, 'JPEG', M + (col1W - axoSize) / 2, contentY + (contentH - axoSize) / 2, axoSize, axoSize);
+                    const axoSize = Math.min(fullW * 0.75, imgBoxH * 0.75, 80);
+                    doc.addImage(axoDataUrl, 'JPEG', M + (fullW - axoSize) / 2, contentY + (imgBoxH - axoSize) / 2, axoSize, axoSize);
                 }
             } catch (e) {}
         }
-    } else if (imgs.length === 1) {
-        const imgData = await loadImgData(getCleanImageUrl(imgs[0]), 1200, true);
-        if (imgData) {
-            drawContain(doc, imgData, M + 4, contentY + 4, col1W - 8, contentH - 8, 0.94);
+    } else if (item.exportType === 'catalog-grid' && imgs.length > 1) {
+        const gridImages = imgs.slice(0, 3);
+        const gap = 4;
+        
+        if (gridImages.length === 3) {
+            const topH = (imgBoxH - gap) * 0.6;
+            const botH = (imgBoxH - gap) * 0.4;
+            const botW = (fullW - gap) / 2;
+            
+            const imgData0 = await loadImgData(gridImages[0], 800, false, '#1C1C1E', 32);
+            if (imgData0) drawContain(doc, imgData0, M, contentY, fullW, topH, 1.0);
+            
+            const imgData1 = await loadImgData(gridImages[1], 800, false, '#1C1C1E', 32);
+            if (imgData1) drawContain(doc, imgData1, M, contentY + topH + gap, botW, botH, 1.0);
+            
+            const imgData2 = await loadImgData(gridImages[2], 800, false, '#1C1C1E', 32);
+            if (imgData2) drawContain(doc, imgData2, M + botW + gap, contentY + topH + gap, botW, botH, 1.0);
+        } else {
+            const cellH = (imgBoxH - gap) / 2;
+            for (let idx = 0; idx < 2; idx++) {
+                const imgData = await loadImgData(gridImages[idx], 800, false, '#1C1C1E', 32);
+                if (imgData) drawContain(doc, imgData, M, contentY + idx * (cellH + gap), fullW, cellH, 1.0);
+            }
         }
     } else {
-        const numToShow = Math.min(imgs.length, 2);
-        const cellH = (contentH - 8 - (numToShow - 1) * 4) / numToShow;
-        for (let j = 0; j < numToShow; j++) {
-            const imgData = await loadImgData(getCleanImageUrl(imgs[j]), 1000, true);
-            const cy = contentY + 4 + j * (cellH + 4);
-            if (imgData) {
-                drawContain(doc, imgData, M + 4, cy, col1W - 8, cellH, 0.92);
-            }
+        const imgData = await loadImgData(currentImgUrl, 800, false, '#1C1C1E', 32);
+        if (imgData) {
+            drawContain(doc, imgData, M, contentY, fullW, imgBoxH, 1.0);
         }
     }
 
-    const col2X = M + col1W + 8;
-    const col2W = (PW - 2 * M) - col1W - 8;
+    const descY = contentY + imgBoxH + 6;
+    const descH = contentH - imgBoxH - 6;
     
-    doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(20, 20, 20);
-    doc.text('MARKETING OVERVIEW & SPECIFICATIONS', col2X, contentY + 4);
-    
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.2);
-    doc.line(col2X, contentY + 6.5, col2X + col2W, contentY + 6.5);
-
     const marketingHtml = item.data.marketing_description || item.data.generatedDescription || item.data.generated_description || '';
-    renderStyledMarketingHtml(doc, marketingHtml, col2X, contentY + 11.5, col2W, contentH - 12);
+    renderStyledMarketingHtml(doc, marketingHtml, M, descY, fullW, descH);
+
+    // 5. Large axonometric icon & ADD Dimensions Panel generated at the bottom left of the page
+    const wVal = parseFloat(norm.widthCm) || 20;
+    const hVal = parseFloat(norm.heightCm) || 30;
+    const dVal = parseFloat(norm.lengthCm) || 20;
+    const iconSize = 38;
+    const bottomY = PH - 44;
+    
+    try {
+        const smallAxoUrl = await generateAxonometricDataUrl(wVal, hVal, dVal, shape, shortDesc, resolveItemColor(item.data), true, extractItemHexString(item.data));
+        if (smallAxoUrl) {
+            doc.addImage(smallAxoUrl, 'JPEG', M, bottomY, iconSize, iconSize);
+        }
+    } catch (e) {}
+
+    // Free floating, condensed, data-dense imperial dimensions (no borders, containers, titles, or shape)
+    const panelX = M + iconSize + 6; // 12 + 38 + 6 = 56
+    const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in') || '—';
+    const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in') || '—';
+    const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in') || '—';
+    const wtImp = toImp(norm.weightKg, 'lbs') || '—';
+    const ovImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ') || '—';
+
+    doc.setFontSize(8);
+    const col1X = panelX;
+    const col2X = panelX + 44;
+    let yPos = bottomY + 12;
+    const rowGap = 6.5;
+
+    // Row 1: Width & Height
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('WIDTH:', col1X, yPos);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(wImp, col1X + 13, yPos);
+
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('HEIGHT:', col2X, yPos);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(hImp, col2X + 14, yPos);
+
+    yPos += rowGap;
+
+    // Row 2: Depth & Weight
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('DEPTH:', col1X, yPos);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(dImp, col1X + 13, yPos);
+
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('WEIGHT:', col2X, yPos);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(wtImp, col2X + 15, yPos);
+
+    yPos += rowGap;
+
+    // Row 3: Overall Dims
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('OVERALL:', col1X, yPos);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(ovImp, col1X + 17, yPos);
 }
 
 export async function exportCatalogPdf(
@@ -578,10 +860,10 @@ export async function exportCatalogPdf(
     const PW = 210, PH = 297, M = 12;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
-    let logoData: ImgData | null = null;
+    let logoData: LogoData | null = null;
     if (config.method === 'single' || exportType === 'catalog') {
         const logoStr = config.logo === 'RareEarth' ? RARE_EARTH_LOGO : ART_OF_DECOR_LOGO;
-        logoData = await loadImgData(logoStr, 400, true);
+        logoData = await loadLogoData(logoStr);
     }
     
     let globalPageNum = 0;
@@ -589,39 +871,37 @@ export async function exportCatalogPdf(
         globalPageNum++; 
         
         if (config.method === 'single' || exportType === 'catalog') {
-            doc.setFontSize(11);
+            doc.setFontSize(10);
             const madeText = 'Made in Mexico for';
             doc.setTextColor(20, 20, 20);
             const tw = doc.getTextWidth(madeText);
             
-            let logoW = 0;
-            let logoH = 0;
-            let logoY = PH - 21.5;
-            
             const rightEdge = PW - M;
-            
+            let logoX = rightEdge - 50;
+            let logoY = PH - 20;
+
             if (logoData) {
-                if (config.logo === 'RareEarth') {
-                    logoH = 12; 
-                    logoW = logoData.w * (logoH / logoData.h);
-                    logoY = PH - 26.5; // Moved down slightly
-                    const logoX = rightEdge - logoW;
-                    doc.addImage(logoData.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
-                } else {
-                    logoH = 4.8; 
-                    logoW = logoData.w * (logoH / logoData.h);
-                    logoY = PH - 21.5;
-                    const logoX = rightEdge - logoW;
-                    doc.addImage(logoData.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
+                const isRareEarth = config.logo === 'RareEarth';
+                let logoW = isRareEarth ? 42 : 52;
+                let logoH = logoW / logoData.aspectRatio;
+                if (isRareEarth && logoH > 14) {
+                    logoH = 14;
+                    logoW = logoH * logoData.aspectRatio;
+                } else if (!isRareEarth && logoH > 8) {
+                    logoH = 8;
+                    logoW = logoH * logoData.aspectRatio;
                 }
+
+                logoY = isRareEarth ? (PH - 24) : (PH - 20);
+                logoX = rightEdge - logoW;
+
+                doc.addImage(logoData.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
             }
             
             const textY = logoData ? logoY - 1.5 : PH - 23;
             const textX = rightEdge - tw;
             doc.text(madeText, textX, textY);
         }
-        
-        // Page numbers removed as requested
     };
 
     let isFirstPage = true;
@@ -635,29 +915,43 @@ export async function exportCatalogPdf(
     let processedCount = 0;
 
     if (exportType === 'catalog') {
-        // --- METHOD: CATALOG HUB EXPORT (SIDE-BY-SIDE WITH STYLED MARKETING DESC) ---
+        // --- METHOD: CATALOG HUB EXPORT (ONE IMAGE PER PAGE WITH STYLED MARKETING DESC) ---
         for (let i = 0; i < results.length; i++) {
             const item = results[i];
-            processedCount++;
-            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
-            addPage();
-            await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems });
+            const imgs = getItemImages(item);
+            if (item.exportType === 'catalog-grid' && imgs.length > 1) {
+                processedCount++;
+                onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+                addPage();
+                await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, 0);
+            } else if (imgs.length <= 1) {
+                processedCount++;
+                onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+                addPage();
+                await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, 0);
+            } else {
+                for (let j = 0; j < imgs.length; j++) {
+                    processedCount++;
+                    onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${i + 1} (Image ${j + 1}/${imgs.length})...`);
+                    addPage();
+                    await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, j);
+                }
+            }
         }
-    } else if (config.method === 'single') {
+    } else {
         // --- METHOD: ONE IMAGE PER PAGE ---
         for (let i = 0; i < results.length; i++) {
             const item = results[i];
-            const imgs = item.images;
+            const imgs = getItemImages(item);
             processedCount++;
             onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
 
             if (imgs.length === 0) {
                 addPage();
                 const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
-                // Gray background removed to prevent overlapping footer
                 
                 // Draw large axonometric icon in place of image
-                const norm = normalizeInventoryData(item.data);
+                const norm = normalizeInventoryData(item.data || item);
                 const shapeStr = norm.shape || '';
                 const descStr = norm.shortDescription || norm.description || '';
                 let wCm = parseFloat(norm.widthCm) || 0;
@@ -665,12 +959,8 @@ export async function exportCatalogPdf(
                 let dCm = parseFloat(norm.lengthCm) || 0;
                 
                 if (wCm || hCm || dCm) {
-                    
-                    
-                    
-
                     try {
-                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
+                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data || item), true, extractItemHexString(item.data || item));
                         if (axoDataUrl) {
                             const cw = PW - M * 2 - 4;
                             const ch = PH - specY - 28;
@@ -688,95 +978,13 @@ export async function exportCatalogPdf(
                     addPage();
                     const specY = await drawHeader(doc, item, M, PW, M - 6, exportType, { current: j + 1, total: imgs.length });
                     
-                    const imgUrl = getCleanImageUrl(imgs[j]);
-                    const d = await loadImgData(imgUrl, 1200);
+                    const imgUrl = imgs[j];
+                    const d = await loadImgData(imgUrl, 800, false, '#1C1C1E', 32);
                     const imgW = PW - M * 2 - 4;
                     const imgH = PH - specY - 24;
                     if (d) {
                         drawContain(doc, d, M + 4, specY + 4, imgW, imgH, 0.90);
                     }
-                }
-            }
-        }
-    } else {
-        // --- METHOD: GRID CATALOG ---
-        // Unified grid layout: ALL items use the full detailed header, with a smart grid of images below.
-        for (let i = 0; i < results.length; i++) {
-            const item = results[i]; 
-            const imgs = item.images; 
-            const n = imgs.length;
-            processedCount++;
-            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
-            
-            if (n === 0) {
-                // Item with NO images - draw header and large axometric icon
-                addPage();
-                const specY = await drawHeader(doc, item, M, PW, M - 6, exportType);
-                // Gray background removed to prevent overlapping footer
-                
-                const norm = normalizeInventoryData(item.data);
-                const shapeStr = norm.shape || '';
-                const descStr = norm.shortDescription || norm.description || '';
-                let wCm = parseFloat(norm.widthCm) || 0;
-                let hCm = parseFloat(norm.heightCm) || 0;
-                let dCm = parseFloat(norm.lengthCm) || 0;
-                
-                if (wCm || hCm || dCm) {
-                    
-                    
-                    
-
-                    try {
-                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true);
-                        if (axoDataUrl) {
-                            const cw = PW - M * 2 - 4;
-                            const ch = PH - specY - 28;
-                            const axoSize = Math.min(cw * 0.8, ch * 0.8, 160);
-                            const axoX = M + 4 + (cw - axoSize) / 2;
-                            const axoY = specY + 4 + (ch - axoSize) / 2;
-                            doc.addImage(axoDataUrl, 'JPEG', axoX, axoY, axoSize, axoSize);
-                        }
-                    } catch (e) {}
-                }
-                continue;
-            }
-
-            const CHUNK = 12; // 4 columns x 3 rows max per page
-            const totalPagesForItem = Math.ceil(n / CHUNK);
-            
-            for (let p = 0; p < totalPagesForItem; p++) {
-                addPage();
-                
-                let imgTop = 0;
-                if (p === 0) {
-                    imgTop = await drawHeader(doc, item, M, PW, M - 6, exportType);
-                } else {
-                    imgTop = drawHeaderCompact(doc, item, M, PW, M - 6, p + 1, totalPagesForItem);
-                }
-                
-                const imgH = PH - imgTop - 14; 
-                const imgW = PW - M * 2 - 4;
-                const currentChunk = imgs.slice(p * CHUNK, (p + 1) * CHUNK);
-                const numInChunk = currentChunk.length;
-                
-                let cols = 1, rows = 1;
-                if (numInChunk === 1) { cols = 1; rows = 1; }
-                else if (numInChunk === 2) { cols = 2; rows = 1; }
-                else if (numInChunk <= 4) { cols = 2; rows = 2; }
-                else if (numInChunk <= 6) { cols = 3; rows = 2; }
-                else if (numInChunk <= 9) { cols = 3; rows = 3; }
-                else { cols = 4; rows = 3; }
-                
-                const GAP = 2; 
-                const cellW = (imgW - GAP * (cols - 1)) / cols; 
-                const cellH = (imgH - GAP * (rows - 1)) / rows;
-                
-                for (let j = 0; j < numInChunk; j++) {
-                    const cx = M + 4 + (j % cols) * (cellW + GAP);
-                    const cy = imgTop + Math.floor(j / cols) * (cellH + GAP);
-                    const d = await loadImgData(getCleanImageUrl(currentChunk[j]));
-                    if (d) drawContain(doc, d, cx, cy, cellW, cellH);
-                    else { doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cellW, cellH, 'F'); }
                 }
             }
         }
