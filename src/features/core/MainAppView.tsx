@@ -32,7 +32,7 @@ import {
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers, ShoppingBag,
-    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d, History, Brain
+    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d, History, Brain, Cpu
 } from 'lucide-react';
 
 import { MainHeader } from './MainHeader';
@@ -47,6 +47,7 @@ import { UniversalToolsBar } from './UniversalToolsBar';
 import { InventorySelectionDock } from './InventorySelectionDock';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { ViewSkeleton } from '../../components/ui/ViewSkeleton';
+import { useRemoteControl } from '../pico/useRemoteControl';
 
 // ── Lazy-loaded route views ────────────────────────────────────────────────────
 // These chunks are only downloaded when the user navigates to that view.
@@ -60,6 +61,7 @@ const FinanceView        = React.lazy(() => import('../finance/FinanceView').the
 const AdminDashboard     = React.lazy(() => import('../dashboard/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const ClientOverview     = React.lazy(() => import('../dashboard/ClientOverview').then(m => ({ default: m.ClientOverview })));
 const StoreView          = React.lazy(() => import('../store/StoreView').then(m => ({ default: m.StoreView })));
+const RegStorePreview    = React.lazy(() => import('../store/RegStorePreview').then(m => ({ default: m.RegStorePreview })));
 const PackingModule      = React.lazy(() => import('../logistics/PackingModule').then(m => ({ default: m.PackingModule })));
 const DeployedView       = React.lazy(() => import('../logistics/DeployedView').then(m => ({ default: m.DeployedView })));
 const ProcessView        = React.lazy(() => import('../process/ProcessView').then(m => ({ default: m.ProcessView })));
@@ -196,6 +198,9 @@ export function MainAppView() {
     const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const setIsFinanceScrolled = useSetAtom(isFinanceScrolledAtom);
+
+    // OnyxChan Remote State Control — listens for Supabase Realtime broadcasts
+    useRemoteControl();
 
     // Deep Link Effect
     useEffect(() => {
@@ -337,7 +342,9 @@ export function MainAppView() {
             case 'viewer':
                 return <ViewerView onOpenArtifact={(id) => { setUniversalView('tag'); setTagId(id); }} />;
             case 'onyx': return <OnyxOrbView />;
+            case 'onyx-reg': return <RegStorePreview />;
             case 'pico-bridge': return <PicoBridgeView />;
+            case 'devices': return <PicoBridgeView />;
 
             default:
                 return <InventoryView />;
@@ -417,6 +424,28 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">Finances</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Finances</span>
+                            </li>
+                        )}
+                        {/* ── ONYX.MX-REG (Store UI Clone) - HIDDEN ── */}
+                        {/* 
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
+                            <li className={`sidebar-list-item ${activeView === 'onyx-reg' ? 'active' : ''}`} onClick={() => { setActiveView('onyx-reg'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Store size={20} strokeWidth={1.75} className="text-amber-500" />
+                                    <span className="sidebar-list-item-text font-bold text-amber-600">Onyx.mx-REG</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Onyx.mx-REG</span>
+                            </li>
+                        )}
+                        */}
+                        {/* ── DEVICES ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                            <li className={`sidebar-list-item ${activeView === 'devices' ? 'active' : ''}`} onClick={() => { setActiveView('devices'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Cpu size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Devices</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Devices</span>
                             </li>
                         )}
                         {/* ── INVENTORY ── */}

@@ -17,6 +17,8 @@ export interface PicoDevice {
   firmware_version: string;
   is_active: boolean;
   last_seen_at: string;
+  /** Local IP address on LAN for direct WebSocket bridge (e.g. '192.168.1.137') */
+  local_ip?: string;
 }
 
 export interface PicoSession {

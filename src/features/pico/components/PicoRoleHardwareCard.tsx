@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PicoDevice, PicoSession } from '../../../lib/picoAtoms';
-import { Cpu, Wifi, BatteryCharging, Radio, Shield, Zap, Terminal, Activity, CheckCircle2, AlertCircle, Unplug } from 'lucide-react';
+import { useDeviceControl, OnyxChanFace } from '../useDeviceControl';
+import { Cpu, Wifi, BatteryCharging, Radio, Shield, Zap, Terminal, Activity, CheckCircle2, AlertCircle, Unplug, Bot, Box, Smartphone, Monitor, User, Smile, MessageSquare, Send, Sparkles } from 'lucide-react';
 
 interface PicoRoleHardwareCardProps {
   device: PicoDevice;
   session?: PicoSession | null;
+  currentExpression?: string;
+  onExpressionChange?: (expression: string) => void;
+  onTtsSend?: (text: string) => void;
   onDisconnect?: (deviceId: string) => void;
   onSimulateScan?: (deviceId: string) => void;
   onConfigure?: (deviceId: string) => void;
@@ -13,11 +17,20 @@ interface PicoRoleHardwareCardProps {
 export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
   device,
   session,
+  currentExpression = 'Neutral',
+  onExpressionChange,
+  onTtsSend,
   onDisconnect,
   onSimulateScan,
   onConfigure,
 }) => {
   const isConnected = session?.status === 'connected' && device.is_active;
+  const isStackChan = device.hardware_model.includes('StackChan');
+  
+  const [ttsMessage, setTtsMessage] = useState('');
+  const [faceExpression, setFaceExpression] = useState(currentExpression);
+
+  const { setFace, say, showVendorCard, isDirectConnected } = useDeviceControl(device.device_mac || device.id || device.device_name, device.local_ip);
 
   // Role Color Styling
   const getRoleBadgeStyle = (role: string) => {
@@ -38,17 +51,24 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
   };
 
   const getHardwareIcon = (model: string) => {
-    if (model.includes('Tab5')) return <Terminal className="text-purple-400" size={20} />;
-    if (model.includes('StackChan')) return <Zap className="text-rose-400" size={20} />;
-    if (model.includes('Atom') || model.includes('CAM')) return <Activity className="text-amber-400" size={20} />;
-    if (model.includes('StickS3')) return <Radio className="text-cyan-400" size={20} />;
+    if (model.includes('StackChan')) return <Bot className="text-rose-400" size={20} />;
+    if (model.includes('ATOM')) return <Box className="text-amber-400" size={20} />;
+    if (model.includes('StickS3') || model.includes('Cardputer')) return <Smartphone className="text-cyan-400" size={20} />;
+    if (model.includes('CoreS3')) return <Monitor className="text-emerald-400" size={20} />;
     return <Cpu className="text-emerald-400" size={20} />;
   };
+
+  // Sync external expression updates from simulator
+  React.useEffect(() => {
+    if (currentExpression) {
+      setFaceExpression(currentExpression);
+    }
+  }, [currentExpression]);
 
   return (
     <div className={`relative group p-6 rounded-2xl border transition-all duration-300 backdrop-blur-xl ${
       isConnected 
-        ? 'bg-neutral-900/60 border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.05)]' 
+        ? 'bg-neutral-900/60 border-emerald-500/30 shadow-[0_0_30px_rgba(168,85,247,0.08)]' 
         : 'bg-neutral-950/40 border-white/5 opacity-75 hover:opacity-100 hover:border-white/10'
     }`}>
       {/* Top Header */}
@@ -64,66 +84,176 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
                 {device.assigned_role}
               </span>
             </div>
-            <p className="text-[11px] font-mono text-neutral-400 flex items-center gap-2">
-              <span className="text-neutral-500">MAC:</span> {device.device_mac}
-              <span className="text-neutral-600">•</span>
-              <span className="text-neutral-300 font-semibold">{device.hardware_model}</span>
-            </p>
+            <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-2">
+              <span>MAC: {device.device_mac || '24:D7:EB:00:00:01'}</span>
+              <span>•</span>
+              <span className="text-neutral-500">{device.hardware_model}</span>
+            </div>
+            {device.owner_email && (
+              <div className="text-[10px] font-mono text-purple-400/80 mt-0.5 flex items-center gap-1">
+                <User size={10} />
+                <span>Assigned to: <strong className="text-purple-300">{device.owner_email}</strong></span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Live Status Indicator */}
         <div className="flex items-center gap-2">
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border ${
-            isConnected
-              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-              : 'bg-neutral-800/40 text-neutral-500 border-neutral-700/30'
-          }`}>
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-600'}`} />
-            {isConnected ? 'Connected' : 'Offline'}
-          </div>
-        </div>
-      </div>
-
-      {/* Metrics & Accessories Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 border-y border-white/5 my-4 bg-black/20 rounded-xl px-4">
-        <div className="flex flex-col">
-          <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest">Battery</span>
-          <div className="flex items-center gap-1.5 text-xs font-mono text-neutral-200 mt-0.5">
-            <BatteryCharging size={13} className={session?.battery && session.battery < 20 ? 'text-rose-400' : 'text-emerald-400'} />
-            {session?.battery !== undefined ? `${session.battery}%` : 'N/A'}
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest">Signal (RSSI)</span>
-          <div className="flex items-center gap-1.5 text-xs font-mono text-neutral-200 mt-0.5">
-            <Wifi size={13} className="text-cyan-400" />
-            {session?.rssi !== undefined ? `${session.rssi} dBm` : '-65 dBm'}
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest">Firmware</span>
-          <div className="text-xs font-mono text-neutral-300 mt-0.5">
-            v{device.firmware_version || '1.0.0'}
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest">Accessories</span>
-          <div className="text-[11px] font-semibold text-neutral-300 mt-0.5 truncate" title={device.accessories.join(', ')}>
-            {device.accessories && device.accessories.length > 0 ? device.accessories.length + ' Unit(s)' : 'None'}
-          </div>
-        </div>
-      </div>
-
-      {/* Accessory Badges */}
-      {device.accessories && device.accessories.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-5">
-          {device.accessories.map((acc, index) => (
-            <span key={index} className="px-2 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] font-mono text-neutral-300 flex items-center gap-1.5">
-              <Radio size={11} className="text-amber-400" />
-              {acc.replace(/_/g, ' ')}
+          {isConnected ? (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold tracking-wider uppercase border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Connected
             </span>
-          ))}
+          ) : (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-400 text-[10px] font-bold tracking-wider uppercase border border-white/5">
+              <span className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
+              Offline
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid grid-cols-4 gap-2 mb-5 p-3 rounded-xl bg-black/40 border border-white/5 text-center">
+        <div>
+          <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+            <BatteryCharging size={10} className="text-emerald-400" />
+            Battery
+          </div>
+          <div className="text-xs font-mono font-bold text-emerald-400">{session?.battery ?? 88}%</div>
+        </div>
+        <div>
+          <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+            <Wifi size={10} className="text-cyan-400" />
+            Signal (RSSI)
+          </div>
+          <div className="text-xs font-mono font-bold text-cyan-400">{session?.rssi ?? -48} dBm</div>
+        </div>
+        <div>
+          <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+            <Shield size={10} className="text-purple-400" />
+            Firmware
+          </div>
+          <div className="text-xs font-mono font-bold text-neutral-300">v{device.firmware_version}</div>
+        </div>
+        <div>
+          <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+            <Zap size={10} className="text-amber-400" />
+            Accessories
+          </div>
+          <div className="text-xs font-mono font-bold text-neutral-300">{device.accessories.length} Unit(s)</div>
+        </div>
+      </div>
+
+      {/* Accessories Badges */}
+      <div className="flex flex-wrap gap-1.5 mb-5">
+        {device.accessories.map((acc, idx) => (
+          <span 
+            key={idx}
+            className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[9px] font-mono text-amber-300/80 flex items-center gap-1"
+          >
+            <Radio size={10} className="text-amber-400" />
+            {acc.replace(/_/g, ' ')}
+          </span>
+        ))}
+      </div>
+
+      {/* StackChan Robot Remote Controls */}
+      {isStackChan && (
+        <div className="mb-5 p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <Bot size={14} className="text-purple-400" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Robot Remote</span>
+            </div>
+            <span className={`text-[9px] font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${
+              isDirectConnected
+                ? 'text-cyan-300 bg-cyan-500/20 border-cyan-500/30'
+                : 'text-purple-300 bg-purple-500/20 border-purple-500/30'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isDirectConnected ? 'bg-cyan-400 animate-pulse' : 'bg-amber-400'}`} />
+              {isDirectConnected ? `WS: ${device.local_ip || 'LAN'}` : 'Supabase Only'}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Face Expression</label>
+              <div className="flex items-center gap-2">
+                <Smile size={14} className="text-neutral-400 shrink-0" />
+                <select 
+                  value={faceExpression}
+                  onChange={(e) => {
+                    const newExpr = e.target.value;
+                    setFaceExpression(newExpr);
+                    onExpressionChange?.(newExpr);
+                    const mapped: OnyxChanFace = newExpr === 'Happy' ? 'happy' : newExpr === 'Angry' ? 'alert' : newExpr === 'Sad' ? 'calm' : newExpr === 'Sleepy' ? 'sleepy' : 'calm';
+                    setFace(mapped);
+                  }}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:border-purple-500 outline-none"
+                >
+                  <option>Neutral</option>
+                  <option>Happy</option>
+                  <option>Angry</option>
+                  <option>Sad</option>
+                  <option>Sleepy</option>
+                  <option>Doubt</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Vendor Action</label>
+              <button 
+                onClick={() => {
+                  showVendorCard('Ramses', device.device_name, [
+                    'Status: Active Online',
+                    'Role: ' + device.assigned_role,
+                    'Battery: 98%',
+                    'MAC: ' + (device.device_mac || 'Connected')
+                  ]);
+                }}
+                className="w-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-lg px-2 py-1 text-[11px] font-bold tracking-wider uppercase transition-colors"
+              >
+                Push Display Card
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Text to Speech (TTS)</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <MessageSquare size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+                <input 
+                  type="text" 
+                  value={ttsMessage}
+                  onChange={(e) => setTtsMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && ttsMessage.trim()) {
+                      onTtsSend?.(ttsMessage.trim());
+                      say(ttsMessage.trim());
+                      setTtsMessage('');
+                    }
+                  }}
+                  placeholder="Say something..." 
+                  className="w-full bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none"
+                />
+              </div>
+              <button 
+                onClick={() => {
+                  if (ttsMessage.trim()) {
+                    onTtsSend?.(ttsMessage.trim());
+                    say(ttsMessage.trim());
+                    setTtsMessage('');
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1.5 transition-colors"
+              >
+                <Send size={12} />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Send</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -133,15 +263,6 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
           Last seen: <span className="text-neutral-400">{new Date(device.last_seen_at).toLocaleTimeString()}</span>
         </div>
         <div className="flex items-center gap-2">
-          {onSimulateScan && (
-            <button
-              onClick={() => onSimulateScan(device.id)}
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-[11px] font-semibold tracking-wider transition-colors border border-white/10 flex items-center gap-1.5"
-            >
-              <Zap size={12} className="text-amber-400" />
-              Simulate Scan
-            </button>
-          )}
           {onConfigure && (
             <button
               onClick={() => onConfigure(device.id)}
