@@ -47,7 +47,14 @@ $$ LANGUAGE sql IMMUTABLE;
 CREATE OR REPLACE FUNCTION public.onyx_cypher(n NUMERIC)
 RETURNS TEXT AS $$
 DECLARE
-    key CONSTANT TEXT := 'DMOXHELFAN';   -- replace with a fresh key when rotating
+    -- The real key is NOT in this file and must never be committed: this
+    -- repository is public, so a literal here would put the cypher straight
+    -- back where it started. The live value was set directly in the SQL editor.
+    --
+    -- Re-running this file as-is installs the placeholder below and will
+    -- produce WRONG codes for any row written afterwards. Substitute the real
+    -- 10-character key before replaying it against a database.
+    key CONSTANT TEXT := '<<SET-OUT-OF-BAND>>';
     digits TEXT;
     out TEXT := '';
     i INT;
