@@ -1515,7 +1515,20 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
 
     const cypherString = isNaN(landedCostRounded) ? 'XXXX' : numberToCypher(landedCostRounded);
     const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
-    const displayTagId = `${vendorPrefix}${bookStr} ${itemCountStr}${cypherString}`;
+
+    // The stored barcode wins here too, not just for bookBarcode below. This used
+    // to be rebuilt unconditionally from cypherString, so once the cypher key left
+    // the bundle the display lost its landed-code suffix (FR825 15— instead of
+    // FR825 15MAF) while copy, which reads bookBarcode, stayed correct.
+    const effectiveBarcode = norm.book_barcode && norm.book_barcode !== '-'
+      ? String(norm.book_barcode)
+      : newTagId;
+
+    // Display format is the barcode with a space after the vendor+workbook prefix.
+    const splitAt = vendorPrefix.length + bookStr.length;
+    const displayTagId = effectiveBarcode.length > splitAt
+      ? `${effectiveBarcode.slice(0, splitAt)} ${effectiveBarcode.slice(splitAt)}`
+      : effectiveBarcode;
 
     return {
       bookAcquisition: isNaN(costUsd) ? '-' : onyxRound(costUsd).toString(),
@@ -1531,10 +1544,10 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
       bookLandCode: norm.book_land_code && norm.book_land_code !== '-'
                       ? norm.book_land_code
                       : cypherString,
-      bookBarcode:  norm.book_barcode && norm.book_barcode !== '-' ? norm.book_barcode : newTagId,
+      bookBarcode:  effectiveBarcode,
       bookTagId: norm.itemId || '-', // The original workbook tag ID (e.g. EM-001-T)
       bookBarcodeDisplay: displayTagId,
-      bookBardcode: newTagId, // Legacy typo alias
+      bookBardcode: effectiveBarcode, // Legacy typo alias; also had the recompute bug
       vendorColor: vendorData?.color || '#555',
       acquisitionCostMxn: costMxn
     };
