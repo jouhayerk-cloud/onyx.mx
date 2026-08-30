@@ -1349,9 +1349,21 @@ export async function extractGradientFromMask(
   }
 }
 
+/**
+ * DEPRECATED — the cypher now lives in the database.
+ *
+ * public.onyx_cypher() computes book_aq_code / book_land_code / book_barcode on
+ * write, and the app reads those stored values. This client-side path exists only
+ * as a fallback for records written before that trigger, and has NO key of its
+ * own: the previous hardcoded fallback key meant every printed label could be
+ * reversed to acquisition cost by anyone reading the JS bundle.
+ *
+ * Without VITE_CYPHER_KEY set — which is now the intended state — this returns a
+ * placeholder rather than leaking a working cypher.
+ */
 export const numberToCypher = (num: number): string => {
 
-  const key = (import.meta.env.VITE_CYPHER_KEY as string) || 'DMOXHELFAN';
+  const key = import.meta.env.VITE_CYPHER_KEY as string;
   if (!key || key.length < 10) return '—';
 
   return String(Math.floor(num))
@@ -1439,6 +1451,9 @@ export const normalizeInventoryData = (data: any): any => {
     packingStatus: d.packing_status || d.packingStatus,
     book_barcode: d.book_barcode || d.bookBarcode || d.tag_id || d.item_id || d.itemId || d.item_number || '',
     book_aq_code: d.book_aq_code || d.bookAqCode || d.aq_code || '-',
+    // Computed by the database trigger alongside book_aq_code; surfaced here so
+    // calculateCodesAndPrices can prefer the stored value over recomputing.
+    book_land_code: d.book_land_code || d.bookLandCode || d.land_code || '-',
     price: d.price_mxn || d.acquisition_price_mxn || d.acq_price_mxn || d.price_unit || d.price || d.cost_mxn || d.cost || 0,
     width_cm: d.width_cm || d.widthCm || d.width || d.w,
     height_cm: d.height_cm || d.heightCm || d.height || d.h,
@@ -1506,9 +1521,17 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
       bookAcquisition: isNaN(costUsd) ? '-' : onyxRound(costUsd).toString(),
       bookLanded:   isNaN(landedCost) ? '-' : onyxRound(landedCost).toString(),
       bookRetail:   isNaN(retailPrice) ? '-' : onyxRound(retailPrice).toString(),
-      bookAqCode:   isNaN(costUsdRounded) ? '-' : numberToCypher(costUsdRounded),
-      bookLandCode: cypherString,
-      bookBarcode: newTagId,
+      // Stored values win. The database computes these on write and they are what
+      // is printed on physical labels — recomputing here could disagree with a tag
+      // already in the field. The client-side path is only a fallback for rows
+      // written before the trigger existed.
+      bookAqCode:   norm.book_aq_code && norm.book_aq_code !== '-'
+                      ? norm.book_aq_code
+                      : (isNaN(costUsdRounded) ? '-' : numberToCypher(costUsdRounded)),
+      bookLandCode: norm.book_land_code && norm.book_land_code !== '-'
+                      ? norm.book_land_code
+                      : cypherString,
+      bookBarcode:  norm.book_barcode && norm.book_barcode !== '-' ? norm.book_barcode : newTagId,
       bookTagId: norm.itemId || '-', // The original workbook tag ID (e.g. EM-001-T)
       bookBarcodeDisplay: displayTagId,
       bookBardcode: newTagId, // Legacy typo alias

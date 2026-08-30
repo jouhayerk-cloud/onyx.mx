@@ -124,31 +124,14 @@ export const onyxToolHandlers = {
             }
             const result = await onyxQueries.searchInventory(args);
             
-            // Core Barcode Generation Logic (Mirroring calculateCodesAndPrices in utils.tsx)
-            const numberToCypher = (num: number) => {
-                const key = 'DMOXHELFAN';
-                return String(Math.floor(num)).split('').map(d => key[parseInt(d, 10)] || '').join('');
-            };
-            const onyxRound = (n: number) => (n - Math.floor(n) >= 0.4) ? Math.floor(n) + 1 : Math.floor(n);
+            // Barcodes are computed by the database (public.onyx_cypher) and stored on
+            // the row. This used to re-derive them from a hardcoded cypher key, which
+            // put a working key in the client bundle and let any printed label be
+            // reversed to acquisition cost.
 
             return {
                 items: result.items.map(item => {
-                    let barcode = item.book_barcode;
-                    if (!barcode || barcode.includes('-')) {
-                        try {
-                            const exchangeRate = DEFAULT_EXCHANGE_RATE;
-                            const costMxn = item.price_mxn || 0;
-                            const costUsd = costMxn / exchangeRate;
-                            const landedCost = onyxRound(costUsd * 1.4);
-                            const vendorPrefix = (item.item_id || '').split('-')[0] || '??';
-                            const bookStr = (item.workbook || '326').toString().replace(/v/gi, '');
-                            const itemNum = parseInt(item.item_number || '1', 10);
-                            const cypher = numberToCypher(landedCost);
-                            barcode = `${vendorPrefix}${bookStr}${itemNum}${cypher}`;
-                        } catch (e) {
-                            barcode = item.item_id || "No TAG ID";
-                        }
-                    }
+                    const barcode = item.book_barcode || item.item_id || "No TAG ID";
 
                     return { 
                         id: item.id,
@@ -179,12 +162,10 @@ export const onyxToolHandlers = {
             const item = await onyxQueries.getItemByAnyId(id);
             if (!item) return { error: "Item not found" };
             
-            // Core Barcode Generation Logic (Mirroring calculateCodesAndPrices in utils.tsx)
-            const numberToCypher = (num: number) => {
-                const key = 'DMOXHELFAN';
-                return String(Math.floor(num)).split('').map(d => key[parseInt(d, 10)] || '').join('');
-            };
-            const onyxRound = (n: number) => (n - Math.floor(n) >= 0.4) ? Math.floor(n) + 1 : Math.floor(n);
+            // Barcodes are computed by the database (public.onyx_cypher) and stored on
+            // the row. This used to re-derive them from a hardcoded cypher key, which
+            // put a working key in the client bundle and let any printed label be
+            // reversed to acquisition cost.
 
             let barcode = item.book_barcode;
             if (!barcode || barcode.includes('-')) {
