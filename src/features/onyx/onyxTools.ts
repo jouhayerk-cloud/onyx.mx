@@ -1,6 +1,5 @@
 
 import { onyxQueries } from './onyxQueries';
-import { DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 
 export const onyxToolDefinitions = [
     {
