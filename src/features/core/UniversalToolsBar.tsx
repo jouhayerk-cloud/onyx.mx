@@ -528,7 +528,7 @@ export const UniversalToolsBar: React.FC = () => {
                                             <button key={sort.key} onClick={() => {
                                                 if (invSortKey === sort.key) setInvSortOrder(invSortOrder === 'asc' ? 'desc' : 'asc');
                                                 else { setInvSortKey(sort.key as any); setInvSortOrder('desc'); }
-                                            }} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all font-black text-[9px] tracking-wider ${invSortKey === sort.key ? 'bg-white text-black shadow-lg' : 'text-white/20 hover:text-white hover:bg-white/5'}`}>
+                                            }} aria-pressed={invSortKey === sort.key} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all font-black text-[9px] tracking-wider ${invSortKey === sort.key ? 'bg-white text-black shadow-lg' : 'text-white/20 hover:text-white hover:bg-white/5'}`}>
                                                 {sort.label}
                                                 {invSortKey === sort.key && (invSortOrder === 'asc' ? <ArrowUp size={10} strokeWidth={4} /> : <ArrowDown size={10} strokeWidth={4} />)}
                                             </button>
@@ -611,7 +611,7 @@ export const UniversalToolsBar: React.FC = () => {
                                     const Icon = s.icon;
                                     const isActive = finCategoryFilter === s.id;
                                     return (
-                                        <button key={s.id} onClick={() => setFinCategoryFilter(s.id as any)} className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`}>
+                                        <button key={s.id} aria-pressed={isActive} onClick={() => setFinCategoryFilter(s.id as any)} className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`}>
                                             <Icon size={20} strokeWidth={isActive ? 4 : 3} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
                                             <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${isActive ? 'text-white' : 'text-zinc-500'}`}>{s.id}</span>
                                         </button>
@@ -735,7 +735,7 @@ export const UniversalToolsBar: React.FC = () => {
                                 const Icon = s.icon;
                                 const isActive = invStatusFilter === s.id;
                                 return (
-                                    <button key={s.id} onClick={() => setInvStatusFilter(s.id as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`} style={{ color: isActive ? s.color : undefined }}>
+                                    <button key={s.id} aria-pressed={isActive} onClick={() => setInvStatusFilter(s.id as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`} style={{ color: isActive ? s.color : undefined }}>
                                         <Icon size={18} strokeWidth={isActive ? 4 : 3} className={isActive ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : ''} />
                                         <span className={`text-[8px] font-black uppercase tracking-wider ${isActive ? 'text-white' : 'text-zinc-500'}`}>{s.id}</span>
                                     </button>
@@ -751,7 +751,7 @@ export const UniversalToolsBar: React.FC = () => {
                                 const vendorColor = (vendors as any)[v]?.color || '#ffffff';
                                 const isActive = invVendorFilter.includes(v) || invVendorFilter.includes('All');
                                 return (
-                                    <button key={v} onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])} className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'grayscale brightness-50 hover:grayscale-0'}`} style={{ color: isActive ? vendorColor : '#52525b' }}>
+                                    <button key={v} aria-pressed={isActive} onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])} className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'grayscale brightness-50 hover:grayscale-0'}`} style={{ color: isActive ? vendorColor : '#52525b' }}>
                                         <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: vendorColor }} />
                                         <span className="text-[10px] font-black uppercase tracking-tight">{v}</span>
                                     </button>
