@@ -32,7 +32,12 @@ export type User = {
 export const userAtom = atomWithStorage<User | null>('userSession', null);
 
 export const themeAtom = atomWithStorage<string>('appTheme', 'talan');
-export const appStyleAtom = atomWithStorage<'rock' | 'paper'>('appStyle', 'rock');
+/** ROCK = layered glass · PAPER = flat ink · SLAB = neumorphic carved stone.
+ *  Widening this union is backwards-compatible: browsers holding a stored
+ *  'rock' or 'paper' keep it, and only opt into 'slab' via the Settings toggle. */
+export type AppStyle = 'rock' | 'paper' | 'slab';
+export const APP_STYLES: AppStyle[] = ['rock', 'paper', 'slab'];
+export const appStyleAtom = atomWithStorage<AppStyle>('appStyle', 'rock');
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v2', true);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 // NOTE: atomWithStorage persists, so a browser that stored an older rate keeps it

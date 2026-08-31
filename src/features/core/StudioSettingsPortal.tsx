@@ -2,21 +2,24 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom } from 'jotai';
-import { 
-    isStudioSettingsOpenAtom, 
-    studioSettingsViewModeAtom, 
-    themeAtom, 
+import {
+    isStudioSettingsOpenAtom,
+    studioSettingsViewModeAtom,
+    themeAtom,
     appStyleAtom,
-    performanceModeAtom, 
+    APP_STYLES,
+    performanceModeAtom,
     userAtom,
     isOfflineModeAtom
 } from '../../lib/atoms';
+import type { AppStyle } from '../../lib/atoms';
 import { useSyncEngine } from '../../lib/syncEngine';
-import { 
-    X, AlertCircle, LogOut, 
+import {
+    X, AlertCircle, LogOut,
     Shield, Activity, Palette, Zap, Terminal,
-    Wifi, WifiOff, Layout
+    Wifi, WifiOff, Layers, FileText, Box
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { THEME_ASSETS } from '../../lib/themes-assets';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -25,6 +28,16 @@ import changelogText from '../../assets/CHANGELOG.md?raw';
 declare const __APP_VERSION__: string;
 
 const LIGHT_THEMES = ['nacar', 'aqua'];
+
+/** ROCK → PAPER → SLAB → ROCK. One button cycles the three; the row it sits in
+ *  already carries four controls, so a segmented control would not survive the
+ *  mobile breakpoint. Order follows APP_STYLES in lib/atoms — adding a fourth
+ *  style means one entry here and one there, nothing else. */
+const STYLE_META: Record<AppStyle, { label: string; icon: LucideIcon; tint: string; chip: string | null }> = {
+    rock:  { label: 'ROCK',  icon: Layers,   tint: 'text-white/20 hover:bg-white/10',     chip: null },
+    paper: { label: 'PAPER', icon: FileText, tint: 'text-blue-500 hover:bg-blue-500/10',  chip: 'bg-blue-500 text-white' },
+    slab:  { label: 'SLAB',  icon: Box,      tint: 'text-teal-400 hover:bg-teal-400/10',  chip: 'bg-teal-400 text-black' },
+};
 
 const themes = [
     { name: 'talan',    swatch: THEME_ASSETS.talan.swatch },
@@ -48,6 +61,12 @@ export const StudioSettingsPortal: React.FC = () => {
     if (!isOpen) return null;
 
     const L = LIGHT_THEMES.includes(theme); // true = light theme
+
+    // Fall back to ROCK if storage holds a style this build no longer knows —
+    // appStyleAtom persists raw JSON, so an unknown value must not crash Settings.
+    const styleMeta  = STYLE_META[appStyle] ?? STYLE_META.rock;
+    const StyleIcon  = styleMeta.icon;
+    const nextStyle  = APP_STYLES[(APP_STYLES.indexOf(appStyle) + 1) % APP_STYLES.length];
 
     const handleClose   = () => setIsOpen(false);
 
@@ -141,15 +160,16 @@ export const StudioSettingsPortal: React.FC = () => {
                                         </div>
                                         
                                         <div className="flex items-center gap-4 md:gap-8 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
-                                            {/* Style Toggle (Rock/Paper) */}
-                                            <button 
-                                                onClick={() => setAppStyle(appStyle === 'rock' ? 'paper' : 'rock')} 
-                                                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-150 ${appStyle === 'paper' ? 'text-blue-500 hover:bg-blue-500/10' : 'text-white/20 hover:bg-white/10'}`}
-                                                title={appStyle === 'paper' ? 'PAPER STYLE' : 'ROCK STYLE'}
+                                            {/* Style Toggle (Rock/Paper/Slab) */}
+                                            <button
+                                                onClick={() => setAppStyle(nextStyle)}
+                                                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-150 ${styleMeta.tint}`}
+                                                title={`${styleMeta.label} STYLE — CLICK FOR ${STYLE_META[nextStyle].label}`}
+                                                aria-label={`Interface style: ${styleMeta.label}. Activate to switch to ${STYLE_META[nextStyle].label}.`}
                                             >
-                                                <Layout size={20} />
-                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded transition-all duration-150 ${appStyle === 'paper' ? 'bg-blue-500 text-white' : L ? 'bg-black/10 text-black' : 'bg-white/10 text-white'} uppercase tracking-wider`}>
-                                                    {appStyle === 'paper' ? 'PAPER' : 'ROCK'}
+                                                <StyleIcon size={20} />
+                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded transition-all duration-150 ${styleMeta.chip ?? (L ? 'bg-black/10 text-black' : 'bg-white/10 text-white')} uppercase tracking-wider`}>
+                                                    {styleMeta.label}
                                                 </span>
                                             </button>
 

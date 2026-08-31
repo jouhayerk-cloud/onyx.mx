@@ -219,7 +219,10 @@ export default function App() {
     document.documentElement.classList.add(`theme-${theme}`);
     document.documentElement.classList.add(`style-${appStyle}`);
 
-    // Paper implies Light mode (remove dark), Rock implies Dark mode (glassmorphic)
+    // PAPER is the only style that forces light mode. ROCK (glassmorphic) and
+    // SLAB (neumorphic) both keep the dark class and let the theme's own
+    // palette decide the ground — slab.css defines a light slab for
+    // Nacar/Aqua and a dark slab for Talan/Fluorite.
     if (appStyle === 'paper') {
         document.documentElement.classList.remove('dark');
     } else {
