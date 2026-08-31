@@ -1,0 +1,475 @@
+/* ==========================================================================
+   SLAB — neumorphic style (ROCK / PAPER / SLAB)
+   --------------------------------------------------------------------------
+   ROCK stacks translucent glass in layers. PAPER is flat ink on a sheet.
+   SLAB is the third: one continuous block of stone with the controls carved
+   into it. Nothing floats and nothing overlaps — every control is either
+   raised out of the surface or pressed into it.
+
+   The entire system is two shadow recipes and one surface colour. Ground and
+   control share that colour; the sameness is the point. Light source is fixed
+   top-left and is never rotated.
+
+   THREE RULES THIS FILE ENFORCES, in order of importance:
+
+   1. Every interactive control keeps a hairline border IN ADDITION to its
+      shadow. A shadow-only edge almost never reaches the 3:1 contrast WCAG
+      2.2 requires for UI component boundaries. The shadow carries tactility;
+      the border carries contrast. Focus is a solid outline, never a shadow
+      change — a pressed shadow is invisible to whoever needs focus most.
+
+   2. Relief on chrome, flat on data. A neumorphic shadow per row across 519
+      inventory items is visual noise and real paint cost. Containers are
+      pressed once; rows inside stay flat. Nothing here targets table rows or
+      list items.
+
+   3. Colour that carries meaning rides ON the slab, never into it. The 25
+      vendor codes (lib/consts.tsx), the payment traffic light, category
+      colours and material swatches are a printed physical standard — they are
+      left completely untouched. "Monochromatic surface" applies to chrome.
+
+   NOTE: this file must never weaken paper.css. The two styles are mutually
+   exclusive by construction — PAPER kills all box-shadow globally, which is
+   the one thing SLAB is made of — so every selector here is scoped to
+   html.style-slab and the two never load together.
+   ========================================================================== */
+
+html.style-slab {
+    /* Default slab — a neutral warm stone, used when no theme class matches. */
+    --slab:      #E4E2DC;
+    --slab-hi:   #F8F6F1;
+    --slab-sh:   #B9B6AD;
+    --slab-ink:  #1F1D1A;
+    --slab-dim:  #6B675F;
+    --slab-edge: rgba(0, 0, 0, 0.10);
+
+    /* A disciplined three-step radius scale. Sixteen ad-hoc radius values are
+       in use across src/; collapsing them is what makes the app read as one
+       carved material rather than a pile of unrelated parts. */
+    --slab-r-sm: 10px;
+    --slab-r-md: 16px;
+    --slab-r-lg: 22px;
+
+    /* The two primitives. Everything below is one of these. */
+    --slab-raised:  -5px -5px 11px var(--slab-hi), 5px 5px 11px var(--slab-sh);
+    --slab-lift:    -3px -3px 7px var(--slab-hi), 3px 3px 7px var(--slab-sh);
+    --slab-pressed: inset -3px -3px 7px var(--slab-hi), inset 4px 4px 8px var(--slab-sh);
+}
+
+/* ── Per-theme slabs ──────────────────────────────────────────────────────
+   A neumorphic surface MUST sit mid-tone. The raised form needs a highlight
+   lighter than the surface and a shadow darker than it; on #ffffff there is
+   no headroom above and the bevel collapses into a one-sided drop shadow.
+   This is exactly why SLAB could not be folded into PAPER, whose #root is
+   pure white (paper.css:14). Each theme therefore gets its own mid-tone. */
+
+/* NACAR — warm near-white stone */
+html.style-slab.theme-nacar {
+    --slab:      #EDE9DF;
+    --slab-hi:   #FDFBF5;
+    --slab-sh:   #C6BFAF;
+    --slab-ink:  #2A2624;
+    --slab-dim:  #6F675C;
+    --slab-edge: rgba(69, 58, 42, 0.14);
+}
+
+/* AQUA — cool light coastal */
+html.style-slab.theme-aqua {
+    --slab:      #E7EAE6;
+    --slab-hi:   #FAFBF7;
+    --slab-sh:   #BFC5BD;
+    --slab-ink:  #1A1614;
+    --slab-dim:  #646B66;
+    --slab-edge: rgba(20, 40, 38, 0.14);
+}
+
+/* TALAN — warm dark stone */
+html.style-slab.theme-talan {
+    --slab:      #191614;
+    --slab-hi:   #241F1B;
+    --slab-sh:   #0B0908;
+    --slab-ink:  #F5F5F0;
+    --slab-dim:  #9A9489;
+    --slab-edge: rgba(245, 245, 240, 0.13);
+}
+
+/* FLUORITE — cool dark violet */
+html.style-slab.theme-fluorite {
+    --slab:      #241536;
+    --slab-hi:   #2F1C46;
+    --slab-sh:   #140B20;
+    --slab-ink:  #FFFFFF;
+    --slab-dim:  #A79BC4;
+    --slab-edge: rgba(0, 229, 255, 0.18);
+}
+
+/* ── The ground ───────────────────────────────────────────────────────────
+   One colour, edge to edge. The mesh gradient behind the app is the ROCK
+   metaphor and is suppressed — a slab has no atmosphere behind it. */
+
+html.style-slab body {
+    background-color: var(--slab);
+    background-image: none !important;
+}
+
+html.style-slab #root {
+    background-color: var(--slab);
+
+    /* Feed the existing token layer so component classNames that already read
+       these variables land on the slab without being rewritten. --main-color
+       and --accent-color are deliberately NOT overridden, exactly as paper.css
+       leaves them, so the four themes keep their identity. */
+    --app-bg-solid:         var(--slab);
+    --bg-color:             var(--slab);
+    --sidebar-bg:           var(--slab);
+    --main-header-bg:       var(--slab);
+    --glass-bg:             var(--slab);
+    --input-color:          var(--slab);
+    --border-color:         var(--slab-edge);
+    --text-color:           var(--slab-ink);
+    --text-color-primary:   var(--slab-ink);
+    --text-color-secondary: var(--slab-dim);
+    --text-shadow:          none;
+    --box-radius:           var(--slab-r-md);
+}
+
+html.style-slab .hero-background,
+html.style-slab [class*="bg-[radial-gradient"],
+html.style-slab [class*="bg-gradient"] {
+    background-image: none !important;
+}
+
+/* ── No glass ─────────────────────────────────────────────────────────────
+   Translucency and blur are what ROCK is; a single opaque material is what
+   SLAB is. Everything resolves to the one surface colour. */
+
+html.style-slab [class*="backdrop-blur"],
+html.style-slab .glass-panel,
+html.style-slab .glass-sm,
+html.style-slab .glass-md,
+html.style-slab .glass-lg,
+html.style-slab .glass-tile {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+html.style-slab .glass-panel::before {
+    display: none !important;
+}
+
+html.style-slab [class*="bg-white/"],
+html.style-slab [class*="bg-black/"],
+html.style-slab [class*="backdrop-blur"] {
+    background-color: var(--slab) !important;
+}
+
+html.style-slab [class*="border-white/"],
+html.style-slab [class*="border-black/"] {
+    border-color: var(--slab-edge) !important;
+}
+
+/* ── Text ─────────────────────────────────────────────────────────────────
+   ~6,000 hardcoded text-white utilities bypass the token layer entirely, so
+   they are remapped here the same way paper.css does it. On the dark slabs
+   they are remapped back — see the dark section at the bottom.
+
+   The low-opacity tiers are floored at --slab-dim rather than being carried
+   across proportionally. 648 uses of 8–10px type at 20–40% opacity would fail
+   WCAG badly on a mid-tone ground; collapsing them to one legible dim tone is
+   the single highest-value correction in this file. */
+
+html.style-slab .text-white,
+html.style-slab .text-white\/90,
+html.style-slab .text-white\/80 {
+    color: var(--slab-ink) !important;
+}
+
+html.style-slab .text-white\/10,
+html.style-slab .text-white\/20,
+html.style-slab .text-white\/30,
+html.style-slab .text-white\/40,
+html.style-slab .text-white\/50,
+html.style-slab .text-white\/60,
+html.style-slab .text-white\/70 {
+    color: var(--slab-dim) !important;
+}
+
+/* Text sitting on a solid colour fill must stay white — those fills are
+   status and vendor colours and are not part of the slab. */
+html.style-slab [class*="bg-blue-"] .text-white,
+html.style-slab [class*="bg-green-"] .text-white,
+html.style-slab [class*="bg-red-"] .text-white,
+html.style-slab [class*="bg-rose-"] .text-white,
+html.style-slab [class*="bg-purple-"] .text-white,
+html.style-slab [class*="bg-orange-"] .text-white,
+html.style-slab [class*="bg-amber-"] .text-white,
+html.style-slab [class*="bg-emerald-"] .text-white,
+html.style-slab [class*="bg-blue-"].text-white,
+html.style-slab [class*="bg-green-"].text-white,
+html.style-slab [class*="bg-red-"].text-white,
+html.style-slab [class*="bg-rose-"].text-white,
+html.style-slab [class*="bg-purple-"].text-white,
+html.style-slab [class*="bg-orange-"].text-white,
+html.style-slab [class*="bg-amber-"].text-white,
+html.style-slab [class*="bg-emerald-"].text-white,
+html.style-slab [style*="background-color"].text-white {
+    color: #ffffff !important;
+}
+
+/* ── Radius ───────────────────────────────────────────────────────────────
+   Collapsed onto the three-step scale. rounded-full is left alone: pills,
+   avatars and status dots are meant to be circular. */
+
+html.style-slab .rounded,
+html.style-slab .rounded-sm,
+html.style-slab .rounded-md,
+html.style-slab .rounded-lg {
+    border-radius: var(--slab-r-sm) !important;
+}
+
+html.style-slab .rounded-xl,
+html.style-slab .rounded-2xl {
+    border-radius: var(--slab-r-md) !important;
+}
+
+html.style-slab .rounded-3xl,
+html.style-slab [class*="rounded-["] {
+    border-radius: var(--slab-r-lg) !important;
+}
+
+/* ── Raised chrome ────────────────────────────────────────────────────────
+   Deliberately a short list. These are the app's frame — shell, panels,
+   tiles — not its data. */
+
+/* position and z-index are deliberately NOT set here. index.css:459 switches
+   .sidebar to position:absolute under 768px; setting position:relative from a
+   higher-specificity selector put the collapsed sidebar back into the flex
+   flow, where translateX(-100%) hid it visually while it kept occupying its
+   240px of flex-basis — a dead gap down the left of every phone screen. */
+html.style-slab .sidebar {
+    background-color: var(--slab);
+    border-right: none;
+    box-shadow: var(--slab-raised);
+}
+
+/* Collapsed to zero width, the bevel would bleed across the content edge. */
+html.style-slab .app-container.sidebar-hidden .sidebar {
+    box-shadow: none;
+}
+
+html.style-slab .main-header {
+    background-color: var(--slab);
+    box-shadow: var(--slab-lift);
+}
+
+html.style-slab .glass-panel,
+html.style-slab .glass-sm,
+html.style-slab .glass-md,
+html.style-slab .glass-lg,
+html.style-slab .glass-tile {
+    background-color: var(--slab) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-raised) !important;
+}
+
+/* The active nav item is carved into the slab rather than painted onto it —
+   the one place where the metaphor does real work for wayfinding. The accent
+   bar and label colour still come from the theme. */
+html.style-slab .sidebar-list-item.active {
+    background-color: color-mix(in srgb, var(--main-color) 12%, var(--slab)) !important;
+    color: var(--main-color) !important;
+    box-shadow: var(--slab-pressed);
+    text-shadow: none;
+}
+
+html.style-slab .sidebar-list-item.active svg {
+    color: var(--main-color) !important;
+}
+
+/* index.css:210 paints this rail #fff, which vanishes on a light slab. */
+html.style-slab .sidebar-list-item.active::before {
+    background-color: var(--main-color) !important;
+}
+
+html.style-slab .sidebar-submenu-item.active {
+    background-color: color-mix(in srgb, var(--main-color) 10%, var(--slab)) !important;
+    color: var(--main-color) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────
+   A modest lift, not the full raise. Buttons appear inside dense surfaces
+   too, and a heavy shadow on each one reintroduces exactly the noise rule 2
+   exists to prevent. The hairline border is the non-negotiable part. */
+
+html.style-slab button,
+html.style-slab [role="button"] {
+    box-shadow: var(--slab-lift);
+    border: 1px solid var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+html.style-slab button:active,
+html.style-slab [role="button"]:active {
+    box-shadow: var(--slab-pressed);
+    transform: none;
+}
+
+/* ── ON ───────────────────────────────────────────────────────────────────
+   A toggle that is ON is carved into the slab and takes the theme accent —
+   pressed geometry AND a colour shift, so the state survives for anyone who
+   cannot resolve a soft shadow. Applies anywhere: header, tool bar, filters.
+
+   The specificity here (0,2,2) deliberately beats the .text-white remap
+   above (0,2,1), so the accent reaches the label; both carry !important and
+   the more specific rule wins. Icons keep their per-module inline colour. */
+html.style-slab button[aria-pressed="true"],
+html.style-slab button[data-active="true"],
+html.style-slab [role="button"][aria-pressed="true"],
+/* The dark-slab .text-white restore at the bottom of this file is (0,3,1) and
+   would otherwise repaint an ON control back to --slab-ink. These theme-scoped
+   duplicates are (0,3,2) so the accent survives on Talan and Fluorite too. */
+html.style-slab.theme-talan button[aria-pressed="true"],
+html.style-slab.theme-talan button[data-active="true"],
+html.style-slab.theme-fluorite button[aria-pressed="true"],
+html.style-slab.theme-fluorite button[data-active="true"] {
+    box-shadow: var(--slab-pressed) !important;
+    background-color: color-mix(in srgb, var(--main-color) 12%, var(--slab)) !important;
+    border-color: color-mix(in srgb, var(--main-color) 40%, transparent) !important;
+    color: var(--main-color) !important;
+    transform: none;
+}
+
+/* The label is a bare <span> with no colour class, so it inherits the accent.
+   Anything inside that does carry one is pulled along explicitly. */
+html.style-slab button[aria-pressed="true"] span,
+html.style-slab button[data-active="true"] span {
+    color: inherit !important;
+}
+
+html.style-slab button:disabled {
+    box-shadow: none;
+    opacity: 0.35;
+}
+
+/* Focus is an outline, always. Never a shadow — a pressed shadow is invisible
+   to exactly the people who depend on focus being visible. */
+html.style-slab button:focus-visible,
+html.style-slab a:focus-visible,
+html.style-slab input:focus-visible,
+html.style-slab select:focus-visible,
+html.style-slab textarea:focus-visible,
+html.style-slab [role="button"]:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+/* Buttons that are already a solid meaning-colour keep that fill and get the
+   lift only — they are signal, not chrome. */
+html.style-slab button[class*="bg-blue-"],
+html.style-slab button[class*="bg-green-"],
+html.style-slab button[class*="bg-red-"],
+html.style-slab button[class*="bg-rose-"],
+html.style-slab button[class*="bg-purple-"],
+html.style-slab button[class*="bg-orange-"],
+html.style-slab button[class*="bg-amber-"],
+html.style-slab button[class*="bg-emerald-"] {
+    background-color: revert-layer !important;
+    border-color: rgba(0, 0, 0, 0.18);
+}
+
+/* Inputs are always pressed — a well cut into the slab. */
+html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.style-slab textarea,
+html.style-slab select {
+    background-color: var(--slab) !important;
+    color: var(--slab-ink) !important;
+    border: 1px solid var(--slab-edge) !important;
+    border-radius: var(--slab-r-sm) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+html.style-slab input::placeholder,
+html.style-slab textarea::placeholder {
+    color: var(--slab-dim) !important;
+    opacity: 1;
+}
+
+/* ── Untouchable ──────────────────────────────────────────────────────────
+   Status dots, vendor tags, printed labels and the axonometric canvas carry
+   information in their colour and geometry. They get no shadow, no radius
+   change and no colour remap. NFCTagCard in particular is a physical label
+   preview — it must keep rendering as white stock with black ink. */
+
+html.style-slab .status-dot,
+html.style-slab .vendor-tag {
+    box-shadow: none !important;
+    border: none !important;
+}
+
+html.style-slab canvas,
+html.style-slab svg {
+    box-shadow: none !important;
+}
+
+html.style-slab .toast-liquid-glass {
+    background: var(--slab) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    color: var(--slab-ink) !important;
+    border: 1px solid var(--slab-edge) !important;
+    border-left: 8px solid var(--main-color) !important;
+    box-shadow: var(--slab-raised) !important;
+}
+
+/* ==========================================================================
+   DARK SLABS — Talan and Fluorite
+   --------------------------------------------------------------------------
+   The remaps above assume a light ground. On the dark slabs the text tiers
+   must stay light, so they are restored here. The shadow primitives need no
+   inversion: --slab-hi and --slab-sh are already redefined per theme, so the
+   same top-left light source produces a correct dark bevel.
+   ========================================================================== */
+
+html.style-slab.theme-talan .text-white,
+html.style-slab.theme-talan .text-white\/90,
+html.style-slab.theme-talan .text-white\/80,
+html.style-slab.theme-fluorite .text-white,
+html.style-slab.theme-fluorite .text-white\/90,
+html.style-slab.theme-fluorite .text-white\/80 {
+    color: var(--slab-ink) !important;
+}
+
+html.style-slab.theme-talan .text-white\/10,
+html.style-slab.theme-talan .text-white\/20,
+html.style-slab.theme-talan .text-white\/30,
+html.style-slab.theme-talan .text-white\/40,
+html.style-slab.theme-talan .text-white\/50,
+html.style-slab.theme-talan .text-white\/60,
+html.style-slab.theme-talan .text-white\/70,
+html.style-slab.theme-fluorite .text-white\/10,
+html.style-slab.theme-fluorite .text-white\/20,
+html.style-slab.theme-fluorite .text-white\/30,
+html.style-slab.theme-fluorite .text-white\/40,
+html.style-slab.theme-fluorite .text-white\/50,
+html.style-slab.theme-fluorite .text-white\/60,
+html.style-slab.theme-fluorite .text-white\/70 {
+    color: var(--slab-dim) !important;
+}
+
+/* Dark slabs have less tonal headroom than light ones, so the bevel is
+   tightened rather than being left to smear. */
+html.style-slab.theme-talan,
+html.style-slab.theme-fluorite {
+    --slab-raised:  -4px -4px 9px var(--slab-hi), 4px 4px 9px var(--slab-sh);
+    --slab-lift:    -2px -2px 5px var(--slab-hi), 2px 2px 5px var(--slab-sh);
+    --slab-pressed: inset -2px -2px 5px var(--slab-hi), inset 3px 3px 7px var(--slab-sh);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.style-slab button,
+    html.style-slab [role="button"] {
+        transition: none;
+    }
+}
