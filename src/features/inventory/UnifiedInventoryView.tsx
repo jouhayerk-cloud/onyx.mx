@@ -49,10 +49,10 @@ import {
     isUploadWizardOpenAtom,
     uploadItemDataAtom,
     logisticsDataAtom,
-    isArchiveVisibleAtom
+    visibleWorkbooksAtom
 } from '../../lib/atoms';
 import { WireframeCrate } from '../../components/CrateVisuals';
-import { isLegacyRow } from '../../lib/seasons';
+import { rowWorkbook } from '../../lib/seasons';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
@@ -1256,7 +1256,7 @@ export const UnifiedInventoryView = () => {
         setIsUploadWizardOpen(true);
     }, [items, setUploadItemData, setIsUploadWizardOpen]);
 
-    const isArchiveVisible = useAtomValue(isArchiveVisibleAtom);
+    const visibleWorkbooks = useAtomValue(visibleWorkbooksAtom);
 
     const filteredItems = useMemo(() => {
         const filtered = items.filter(item => {
@@ -1264,9 +1264,10 @@ export const UnifiedInventoryView = () => {
             
             const itemIdStr = String(item.data.itemId || item.data.item_id || '');
             
-            // Past seasons (v825/v326) are hidden unless the Archive toggle is on. The
-            // season lives on the row itself — item_id never encodes it.
-            if (!isArchiveVisible && isLegacyRow(item.data)) return false;
+            // Each season is toggled independently now, so 825 can be reviewed
+            // without 326 coming along. The season lives on the row itself —
+            // item_id never encodes it.
+            if (visibleWorkbooks[rowWorkbook(item.data)] === false) return false;
 
             const status = getStatusClass(item.data, partialPayIds, fullPayIds);
             if (statusFilter !== 'All') {
@@ -1375,7 +1376,7 @@ export const UnifiedInventoryView = () => {
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, isArchiveVisible, user, categoryFilter, materialFilter, deployedItemsMap, logisticsDocs]);
+    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, visibleWorkbooks, user, categoryFilter, materialFilter, deployedItemsMap, logisticsDocs]);
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);

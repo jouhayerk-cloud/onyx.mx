@@ -40,7 +40,7 @@ html.style-slab {
     --slab-hi:   #F8F6F1;
     --slab-sh:   #B9B6AD;
     --slab-ink:  #1F1D1A;
-    --slab-dim:  #6B675F;
+    --slab-dim:  #4A443C;
     --slab-edge: rgba(0, 0, 0, 0.10);
 
     /* A disciplined three-step radius scale. Sixteen ad-hoc radius values are
@@ -50,10 +50,58 @@ html.style-slab {
     --slab-r-md: 16px;
     --slab-r-lg: 22px;
 
-    /* The two primitives. Everything below is one of these. */
-    --slab-raised:  -5px -5px 11px var(--slab-hi), 5px 5px 11px var(--slab-sh);
-    --slab-lift:    -3px -3px 7px var(--slab-hi), 3px 3px 7px var(--slab-sh);
-    --slab-pressed: inset -3px -3px 7px var(--slab-hi), inset 4px 4px 8px var(--slab-sh);
+    /* ── Elevation scale ──────────────────────────────────────────────────
+       Six steps on one axis. Everything in this file is one of them, and the
+       whole interaction grammar is a walk along this scale:
+
+         flat        nothing to press           disabled
+         lift        pressable                  control at rest
+         raised      rising toward the pointer  control on hover, panels
+         float       lifted clear of the slab   hoverable card
+         pressed     going in under the pointer :active, and ON
+         pressed-deep  seated at the bottom     checked well, ON + hover
+
+       Depth encodes affordance, direction encodes state. Because that is one
+       rule rather than a per-component decision, a control's state is legible
+       without reading its label. */
+    --slab-flat:         none;
+    --slab-lift:         -3px -3px 7px var(--slab-hi), 3px 3px 7px var(--slab-sh);
+    --slab-raised:       -5px -5px 11px var(--slab-hi), 5px 5px 11px var(--slab-sh);
+    --slab-float:        -8px -8px 18px var(--slab-hi), 8px 8px 18px var(--slab-sh);
+    --slab-pressed:      inset -3px -3px 7px var(--slab-hi), inset 4px 4px 8px var(--slab-sh);
+    --slab-pressed-deep: inset -5px -5px 10px var(--slab-hi), inset 6px 6px 12px var(--slab-sh);
+
+    /* Surface tints. Depth alone cannot carry state: a soft shadow rarely
+       clears the 3:1 WCAG 2.2 wants for a control boundary, and it disappears
+       entirely under forced-colors or reduced-transparency settings. Every
+       state below pairs its elevation with one of these. */
+    --slab-tint-hover:  color-mix(in srgb, var(--slab-hi) 55%, var(--slab));
+    --slab-tint-on:     color-mix(in srgb, var(--main-color) 12%, var(--slab));
+    --slab-tint-on-hi:  color-mix(in srgb, var(--main-color) 20%, var(--slab));
+    --slab-edge-on:     color-mix(in srgb, var(--main-color) 45%, transparent);
+
+    /* One duration for every depth change, so the whole surface feels like a
+       single material rather than parts moving at different speeds. */
+    --slab-ease: 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Sheen. A real extruded surface catches the light across its face, not
+       just at its edges, so a raised panel carries a faint gradient along the
+       same top-left axis as its shadow and a pressed one carries the inverse.
+       This is where the gradients live now: on the surfaces, never behind
+       them — the ground stays one flat colour so the relief has something
+       uniform to sit against. */
+    --slab-sheen: linear-gradient(145deg,
+        color-mix(in srgb, var(--slab-hi) 42%, var(--slab)) 0%,
+        var(--slab) 46%,
+        color-mix(in srgb, var(--slab-sh) 20%, var(--slab)) 100%);
+    --slab-sheen-in: linear-gradient(145deg,
+        color-mix(in srgb, var(--slab-sh) 20%, var(--slab)) 0%,
+        var(--slab) 54%,
+        color-mix(in srgb, var(--slab-hi) 34%, var(--slab)) 100%);
+    /* The theme accent, for surfaces that are ON rather than merely raised. */
+    --slab-sheen-on: linear-gradient(145deg,
+        color-mix(in srgb, var(--main-color) 22%, var(--slab)) 0%,
+        color-mix(in srgb, var(--main-color) 10%, var(--slab)) 100%);
 }
 
 /* ── Per-theme slabs ──────────────────────────────────────────────────────
@@ -69,7 +117,7 @@ html.style-slab.theme-nacar {
     --slab-hi:   #FDFBF5;
     --slab-sh:   #C6BFAF;
     --slab-ink:  #2A2624;
-    --slab-dim:  #6F675C;
+    --slab-dim:  #4E4740;
     --slab-edge: rgba(69, 58, 42, 0.14);
 }
 
@@ -79,7 +127,7 @@ html.style-slab.theme-aqua {
     --slab-hi:   #FAFBF7;
     --slab-sh:   #BFC5BD;
     --slab-ink:  #1A1614;
-    --slab-dim:  #646B66;
+    --slab-dim:  #444B47;
     --slab-edge: rgba(20, 40, 38, 0.14);
 }
 
@@ -89,7 +137,7 @@ html.style-slab.theme-talan {
     --slab-hi:   #241F1B;
     --slab-sh:   #0B0908;
     --slab-ink:  #F5F5F0;
-    --slab-dim:  #9A9489;
+    --slab-dim:  #B4AEA2;
     --slab-edge: rgba(245, 245, 240, 0.13);
 }
 
@@ -99,7 +147,7 @@ html.style-slab.theme-fluorite {
     --slab-hi:   #2F1C46;
     --slab-sh:   #140B20;
     --slab-ink:  #FFFFFF;
-    --slab-dim:  #A79BC4;
+    --slab-dim:  #C4B8DE;
     --slab-edge: rgba(0, 229, 255, 0.18);
 }
 
@@ -297,29 +345,61 @@ html.style-slab .sidebar-submenu-item.active {
     box-shadow: var(--slab-pressed);
 }
 
-/* ── Controls ─────────────────────────────────────────────────────────────
-   A modest lift, not the full raise. Buttons appear inside dense surfaces
-   too, and a heavy shadow on each one reintroduces exactly the noise rule 2
-   exists to prevent. The hairline border is the non-negotiable part. */
+/* ── Controls: the state walk ─────────────────────────────────────────────
+   rest → lift, hover → raised, active → pressed, ON → pressed + accent,
+   disabled → flat. A modest lift at rest, not the full raise: buttons appear
+   inside dense surfaces too, and a heavy shadow on each reintroduces exactly
+   the noise rule 2 exists to prevent. The hairline border is non-negotiable.
+
+   MIGRATION NOTE: before this section SLAB had no :hover rule at all, and the
+   [class*="bg-white/"] flattener further up also matches Tailwind's
+   hover:bg-white/10 (attribute substring), pinning it to --slab !important.
+   Hover feedback was therefore invisible everywhere in this style. Every rule
+   below that repaints on hover must stay more specific than that flattener. */
 
 html.style-slab button,
-html.style-slab [role="button"] {
+html.style-slab [role="button"],
+html.style-slab summary {
     box-shadow: var(--slab-lift);
     border: 1px solid var(--slab-edge);
     border-radius: var(--slab-r-sm);
-    transition: box-shadow 0.16s ease, transform 0.16s ease;
+    transition: box-shadow var(--slab-ease), background-color var(--slab-ease),
+                border-color var(--slab-ease), color var(--slab-ease);
 }
 
+/* HOVER — the control rises toward the pointer. */
+html.style-slab button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover,
+html.style-slab [role="button"]:not([aria-pressed="true"]):hover,
+html.style-slab summary:hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+    border-color: color-mix(in srgb, var(--slab-sh) 60%, transparent);
+}
+
+/* ACTIVE — it goes in under the pointer. !important so the press always wins
+   over hover regardless of which rule the cascade reached last. */
+html.style-slab button:not(:disabled):active,
+html.style-slab [role="button"]:active,
+html.style-slab summary:active {
+    box-shadow: var(--slab-pressed) !important;
+    background-color: var(--slab) !important;
+}
+
+/* Depth is now the press feedback. 144 active:scale-* utilities shrink the
+   element at the same time, which reads as receding rather than being pushed
+   in — two metaphors for one event. Hover scaling is left alone; it is
+   additive rather than contradictory. */
 html.style-slab button:active,
-html.style-slab [role="button"]:active {
-    box-shadow: var(--slab-pressed);
-    transform: none;
+html.style-slab [role="button"]:active,
+html.style-slab button:active > *,
+html.style-slab [role="button"]:active > * {
+    transform: none !important;
 }
 
 /* ── ON ───────────────────────────────────────────────────────────────────
-   A toggle that is ON is carved into the slab and takes the theme accent —
+   A toggle that is ON stays carved into the slab and takes the theme accent —
    pressed geometry AND a colour shift, so the state survives for anyone who
-   cannot resolve a soft shadow. Applies anywhere: header, tool bar, filters.
+   cannot resolve a soft shadow.
 
    The specificity here (0,2,2) deliberately beats the .text-white remap
    above (0,2,1), so the accent reaches the label; both carry !important and
@@ -335,10 +415,20 @@ html.style-slab.theme-talan button[data-active="true"],
 html.style-slab.theme-fluorite button[aria-pressed="true"],
 html.style-slab.theme-fluorite button[data-active="true"] {
     box-shadow: var(--slab-pressed) !important;
-    background-color: color-mix(in srgb, var(--main-color) 12%, var(--slab)) !important;
-    border-color: color-mix(in srgb, var(--main-color) 40%, transparent) !important;
+    background-color: var(--slab-tint-on) !important;
+    border-color: var(--slab-edge-on) !important;
     color: var(--main-color) !important;
     transform: none;
+}
+
+/* ON + hover seats deeper instead of rising — an engaged toggle must never
+   animate the same direction as an idle one, or the two states blur. */
+html.style-slab button[aria-pressed="true"]:not(:disabled):hover,
+html.style-slab button[data-active="true"]:not(:disabled):hover,
+html.style-slab.theme-talan button[aria-pressed="true"]:hover,
+html.style-slab.theme-fluorite button[aria-pressed="true"]:hover {
+    box-shadow: var(--slab-pressed-deep) !important;
+    background-color: var(--slab-tint-on-hi) !important;
 }
 
 /* The label is a bare <span> with no colour class, so it inherits the accent.
@@ -348,9 +438,15 @@ html.style-slab button[data-active="true"] span {
     color: inherit !important;
 }
 
-html.style-slab button:disabled {
-    box-shadow: none;
-    opacity: 0.35;
+/* DISABLED — flat. No depth means nothing to press, which is the whole point
+   of the scale: the affordance is removed, not merely dimmed. */
+html.style-slab button:disabled,
+html.style-slab [role="button"][aria-disabled="true"] {
+    box-shadow: var(--slab-flat) !important;
+    background-color: var(--slab) !important;
+    border-color: color-mix(in srgb, var(--slab-edge) 50%, transparent) !important;
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 /* Focus is an outline, always. Never a shadow — a pressed shadow is invisible
@@ -360,13 +456,15 @@ html.style-slab a:focus-visible,
 html.style-slab input:focus-visible,
 html.style-slab select:focus-visible,
 html.style-slab textarea:focus-visible,
+html.style-slab summary:focus-visible,
 html.style-slab [role="button"]:focus-visible {
     outline: 2px solid var(--main-color);
     outline-offset: 3px;
 }
 
 /* Buttons that are already a solid meaning-colour keep that fill and get the
-   lift only — they are signal, not chrome. */
+   lift only — they are signal, not chrome. Hover deepens the colour rather
+   than tinting it toward the slab, which would wash the signal out. */
 html.style-slab button[class*="bg-blue-"],
 html.style-slab button[class*="bg-green-"],
 html.style-slab button[class*="bg-red-"],
@@ -377,6 +475,187 @@ html.style-slab button[class*="bg-amber-"],
 html.style-slab button[class*="bg-emerald-"] {
     background-color: revert-layer !important;
     border-color: rgba(0, 0, 0, 0.18);
+}
+
+html.style-slab button[class*="bg-blue-"]:not(:disabled):hover,
+html.style-slab button[class*="bg-green-"]:not(:disabled):hover,
+html.style-slab button[class*="bg-red-"]:not(:disabled):hover,
+html.style-slab button[class*="bg-rose-"]:not(:disabled):hover,
+html.style-slab button[class*="bg-purple-"]:not(:disabled):hover,
+html.style-slab button[class*="bg-orange-"]:not(:disabled):hover,
+html.style-slab button[class*="bg-amber-"]:not(:disabled):hover,
+html.style-slab button[class*="bg-emerald-"]:not(:disabled):hover {
+    background-color: revert-layer !important;
+    box-shadow: var(--slab-raised);
+    filter: brightness(1.08);
+}
+
+/* ── Toggles ──────────────────────────────────────────────────────────────
+   Native checkboxes and range inputs were previously excluded from styling
+   altogether, so they rendered as OS widgets sitting on the slab — the one
+   place the material visibly broke. They follow the same walk: a checkbox is
+   a pressable tile that seats into the slab when checked, matching every
+   other ON control rather than inventing a second convention. */
+
+html.style-slab input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    flex-shrink: 0;
+    position: relative;
+    cursor: pointer;
+    background-color: var(--slab);
+    border: 1px solid var(--slab-edge);
+    border-radius: 6px;
+    box-shadow: var(--slab-lift);
+    transition: box-shadow var(--slab-ease), background-color var(--slab-ease),
+                border-color var(--slab-ease);
+}
+
+html.style-slab input[type="checkbox"]:not(:disabled):hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover);
+}
+
+html.style-slab input[type="checkbox"]:checked {
+    box-shadow: var(--slab-pressed) !important;
+    background-color: var(--slab-tint-on);
+    border-color: var(--slab-edge-on);
+}
+
+html.style-slab input[type="checkbox"]:checked:hover {
+    box-shadow: var(--slab-pressed-deep) !important;
+    background-color: var(--slab-tint-on-hi);
+}
+
+/* The tick is drawn, not a glyph, so it inherits the theme accent and stays
+   crisp at any zoom. It is the non-depth cue that makes "checked" testable. */
+html.style-slab input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.34rem;
+    top: 0.11rem;
+    width: 0.3rem;
+    height: 0.58rem;
+    border: solid var(--main-color);
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
+}
+
+html.style-slab input[type="checkbox"]:disabled {
+    box-shadow: var(--slab-flat);
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Range: a channel cut into the slab with a knob resting in it. This is the
+   clearest expression of the material in the whole app — the track is the
+   one place a genuine groove is literally correct. */
+html.style-slab input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    height: 1.5rem;
+    cursor: pointer;
+}
+
+html.style-slab input[type="range"]::-webkit-slider-runnable-track {
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--slab);
+    box-shadow: var(--slab-pressed);
+    border: 1px solid var(--slab-edge);
+}
+html.style-slab input[type="range"]::-moz-range-track {
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--slab);
+    box-shadow: var(--slab-pressed);
+    border: 1px solid var(--slab-edge);
+}
+
+html.style-slab input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: -0.4rem;
+    border-radius: 50%;
+    background: var(--slab);
+    border: 1px solid var(--slab-edge);
+    box-shadow: var(--slab-lift);
+    transition: box-shadow var(--slab-ease);
+}
+html.style-slab input[type="range"]::-moz-range-thumb {
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    background: var(--slab);
+    border: 1px solid var(--slab-edge);
+    box-shadow: var(--slab-lift);
+}
+
+html.style-slab input[type="range"]:hover::-webkit-slider-thumb { box-shadow: var(--slab-raised); }
+html.style-slab input[type="range"]:active::-webkit-slider-thumb { box-shadow: var(--slab-pressed); }
+html.style-slab input[type="range"]:hover::-moz-range-thumb { box-shadow: var(--slab-raised); }
+html.style-slab input[type="range"]:active::-moz-range-thumb { box-shadow: var(--slab-pressed); }
+
+/* ── Navigation ───────────────────────────────────────────────────────────
+   index.css:2617 slides nav items 2px right on hover. On a carved surface a
+   slide reads as the item detaching; rising is the motion the material
+   implies, so the slide is replaced rather than layered onto. */
+html.style-slab .sidebar-list-item {
+    border-radius: var(--slab-r-sm);
+    transition: box-shadow var(--slab-ease), background-color var(--slab-ease);
+}
+
+html.style-slab .sidebar-list-item:not(.active):hover {
+    transform: none;
+    box-shadow: var(--slab-lift);
+    background-color: var(--slab-tint-hover) !important;
+}
+
+html.style-slab .sidebar-list-item.active:hover {
+    box-shadow: var(--slab-pressed-deep);
+    background-color: var(--slab-tint-on-hi) !important;
+}
+
+html.style-slab .sidebar-submenu-item:not(.active):hover {
+    transform: none;
+    box-shadow: var(--slab-lift);
+    background-color: var(--slab-tint-hover) !important;
+    border-radius: var(--slab-r-sm);
+}
+
+/* ── Hoverable panels ─────────────────────────────────────────────────────
+   Panels that are themselves a target lift clear of the slab. Rule 2 still
+   holds: this is keyed to the glass-* panel classes, never to list rows. */
+html.style-slab .glass-panel,
+html.style-slab .glass-sm,
+html.style-slab .glass-md,
+html.style-slab .glass-lg,
+html.style-slab .glass-tile {
+    transition: box-shadow var(--slab-ease);
+}
+
+html.style-slab a:hover > .glass-tile,
+html.style-slab button:hover > .glass-tile,
+html.style-slab .glass-tile:hover {
+    box-shadow: var(--slab-float) !important;
+}
+
+/* Motion here is 160ms of depth and nothing else. Anyone who has asked for
+   less gets the same states with no animation — the states are shadow and
+   colour, not movement, so nothing is lost. */
+@media (prefers-reduced-motion: reduce) {
+    html.style-slab *,
+    html.style-slab *::before,
+    html.style-slab *::after {
+        transition-duration: 0.01ms !important;
+    }
 }
 
 /* Inputs are always pressed — a well cut into the slab. */
@@ -462,9 +741,14 @@ html.style-slab.theme-fluorite .text-white\/70 {
    tightened rather than being left to smear. */
 html.style-slab.theme-talan,
 html.style-slab.theme-fluorite {
-    --slab-raised:  -4px -4px 9px var(--slab-hi), 4px 4px 9px var(--slab-sh);
-    --slab-lift:    -2px -2px 5px var(--slab-hi), 2px 2px 5px var(--slab-sh);
-    --slab-pressed: inset -2px -2px 5px var(--slab-hi), inset 3px 3px 7px var(--slab-sh);
+    --slab-lift:         -2px -2px 5px var(--slab-hi), 2px 2px 5px var(--slab-sh);
+    --slab-raised:       -4px -4px 9px var(--slab-hi), 4px 4px 9px var(--slab-sh);
+    --slab-float:        -6px -6px 14px var(--slab-hi), 6px 6px 14px var(--slab-sh);
+    --slab-pressed:      inset -2px -2px 5px var(--slab-hi), inset 3px 3px 7px var(--slab-sh);
+    --slab-pressed-deep: inset -4px -4px 8px var(--slab-hi), inset 5px 5px 10px var(--slab-sh);
+    /* A dark slab has less tonal headroom, so the light tint is weaker and the
+       accent has to carry more of the hover signal. */
+    --slab-tint-hover:   color-mix(in srgb, var(--slab-hi) 75%, var(--slab));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -472,4 +756,316 @@ html.style-slab.theme-fluorite {
     html.style-slab [role="button"] {
         transition: none;
     }
+}
+
+/* ── Readouts ─────────────────────────────────────────────────────────────
+   An instrument, not a control: displays are recessed into the slab while
+   controls extrude from it. That distinction is the whole reason the depth
+   scale is legible — if a readout could be raised, "raised" would stop
+   meaning "you can press this". It therefore gets no hover and no press.
+
+   Text inside carries no shadow. --text-shadow is set to none on #root for
+   this style, but several components hardcode drop-shadow utilities, and on a
+   mid-tone slab a shadowed glyph reads as smudged rather than lifted. */
+html.style-slab .stats-readout {
+    background-color: var(--slab) !important;
+    border: 1px solid var(--slab-edge) !important;
+    border-radius: var(--slab-r-sm) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+html.style-slab .stats-readout,
+html.style-slab .stats-readout * {
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+/* ── Axonometric item icons ───────────────────────────────────────────────
+   The wireframe placeholder is drawn in the item's own resolved colour
+   (lib/axonometric.ts) and composited with mix-blend-screen. Screen is
+   correct over ROCK's near-black media cell, where it makes the colour glow.
+   Over a light slab it is white by definition — screen against a light
+   backdrop can only lighten — so every icon washed out to a pale silhouette
+   and the colour coding was lost.
+
+   Light slabs composite normally at full strength, which restores the item
+   colour. Dark slabs keep screen, where it still reads as it does on ROCK. */
+html.style-slab:not(.theme-talan):not(.theme-fluorite) .mix-blend-screen {
+    mix-blend-mode: normal;
+    opacity: 1;
+}
+
+/* The media cell behind the icon is bg-black/40, flattened to the slab above.
+   On a light slab that leaves the coloured wireframe on its own ground, which
+   is what makes the hue readable rather than merely present. */
+html.style-slab:not(.theme-talan):not(.theme-fluorite) .group\/listimg {
+    background-color: color-mix(in srgb, var(--slab-sh) 22%, var(--slab)) !important;
+}
+
+/* ── Type: no shadows, higher contrast ────────────────────────────────────
+   A shadowed glyph on a mid-tone slab reads as smudged, not lifted — the
+   surface is already carrying all the depth the design has. index.css and
+   ~40 components set text-shadow or drop-shadow utilities for the ROCK glow;
+   none of them belong here.
+
+   --slab-dim was also raised on every palette. It is the floor for the whole
+   text-white/10..70 range, and 648 uses of 8–10px type land on it, so it has
+   to clear AA on its own ground rather than relying on size. */
+html.style-slab,
+html.style-slab *,
+html.style-slab *::before,
+html.style-slab *::after {
+    text-shadow: none !important;
+}
+
+html.style-slab [class*="drop-shadow"] {
+    filter: none !important;
+}
+
+/* ── Inventory rows ───────────────────────────────────────────────────────
+   Rule 2 in full: relief on chrome, flat on data. A row is flat at rest, so
+   519 of them cost nothing and read as one continuous surface, and lifts only
+   under the pointer — one shadow on screen at a time instead of 519.
+
+   The hook is the bg-(--sidebar-bg) utility the row carries; the sidebar
+   itself is styled from its own .sidebar rule and is unaffected. */
+html.style-slab [class*="bg-(--sidebar-bg)"] {
+    background-color: color-mix(in srgb, var(--slab-hi) 45%, var(--slab)) !important;
+    box-shadow: none !important;
+    border-color: var(--slab-edge) !important;
+    border-radius: var(--slab-r-sm) !important;
+    transition: box-shadow var(--slab-ease), background-color var(--slab-ease);
+}
+
+html.style-slab [class*="bg-(--sidebar-bg)"]:hover {
+    background-color: var(--slab-hi) !important;
+    box-shadow: var(--slab-lift) !important;
+    border-color: color-mix(in srgb, var(--slab-sh) 55%, transparent) !important;
+}
+
+/* An expanded row is the one the user is working in: seat it into the slab so
+   it reads as selected without needing the ring utility's colour. */
+html.style-slab [class*="bg-(--sidebar-bg)"][class*="ring-1"] {
+    box-shadow: var(--slab-pressed) !important;
+    background-color: var(--slab) !important;
+}
+
+/* The media cell and its status rails are data, not chrome — they keep their
+   own colour and take no depth. */
+html.style-slab .group\/listimg,
+html.style-slab .status-dot,
+html.style-slab .vendor-tag {
+    box-shadow: none !important;
+}
+
+/* ── Gradients on surfaces, not behind them ───────────────────────────────
+   The mesh gradient behind the app is suppressed further up: a slab has no
+   atmosphere behind it, and a gradient ground destroys relief because the
+   shadow colours stop matching their surroundings. The colour moves onto the
+   surfaces instead, where it does real work — a sheen along the light axis
+   reinforces the extrusion rather than competing with it. */
+
+html.style-slab .glass-panel,
+html.style-slab .glass-sm,
+html.style-slab .glass-md,
+html.style-slab .glass-lg,
+html.style-slab .glass-tile,
+html.style-slab .sidebar,
+html.style-slab .main-header {
+    background-image: var(--slab-sheen) !important;
+}
+
+/* Pressed surfaces take the inverse sheen so the light still reads as one
+   source: the near edge is shaded and the far edge catches it. */
+html.style-slab .stats-readout,
+html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.style-slab textarea,
+html.style-slab select {
+    background-image: var(--slab-sheen-in) !important;
+}
+
+/* ON surfaces carry the theme accent as a gradient rather than a flat tint,
+   which is what makes an engaged toggle read as lit from within. */
+html.style-slab button[aria-pressed="true"],
+html.style-slab button[data-active="true"],
+html.style-slab .sidebar-list-item.active {
+    background-image: var(--slab-sheen-on) !important;
+}
+
+/* ── Expanded item detail ─────────────────────────────────────────────────
+   The panel that opens under a row is a drawer cut into the slab, so it is
+   pressed rather than raised — it belongs to the row above it, and pressing
+   it keeps the row's own hover lift legible as a separate thing. */
+html.style-slab [class*="bg-(--sidebar-bg)"] + div,
+html.style-slab .custom-scrollbar[class*="slide-in-from-top"] {
+    background-image: var(--slab-sheen-in) !important;
+    background-color: var(--slab) !important;
+    box-shadow: var(--slab-pressed);
+    border-radius: var(--slab-r-sm);
+}
+
+/* Deployed / status chips are data. They keep their colour, lose the ROCK
+   glow and the blur, and sit flat on whatever surface carries them. */
+html.style-slab [class*="bg-teal-500/10"],
+html.style-slab [class*="bg-emerald-500/10"],
+html.style-slab [class*="bg-amber-500/10"],
+html.style-slab [class*="bg-rose-500/10"],
+html.style-slab [class*="bg-blue-500/10"] {
+    background-image: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* ── Info notch ───────────────────────────────────────────────────────────
+   Let into the top-centre edge of the header the way an instrument is let
+   into a panel: square at the top where it meets the edge, rounded below,
+   and pressed rather than raised because it is a readout. The stats half is
+   pressable — it runs the database sync, and what that sync updates is
+   exactly the figures shown, so the number you want refreshed is the thing
+   you press. */
+html.style-slab .info-notch {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen-in) !important;
+    border: 1px solid var(--slab-edge);
+    border-top: none;
+    border-radius: 0 0 var(--slab-r-md) var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+    overflow: hidden;
+}
+
+html.style-slab .info-notch > button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+html.style-slab .info-notch > button:not(:disabled):hover {
+    background-color: color-mix(in srgb, var(--slab-hi) 40%, transparent) !important;
+    box-shadow: none !important;
+}
+
+html.style-slab .info-notch > button:not(:disabled):active {
+    box-shadow: var(--slab-pressed-deep) !important;
+}
+
+html.style-slab .info-notch-user {
+    border-left: 1px solid var(--slab-edge) !important;
+}
+
+/* ── Season switches ──────────────────────────────────────────────────────
+   A real switch: the track is a channel cut into the slab, the knob a bead
+   resting in it that slides and takes the accent when the season is shown.
+   Position carries the state as well as colour, so it survives greyscale. */
+html.style-slab .season-toggle {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+}
+
+html.style-slab .season-toggle:hover {
+    background-color: var(--slab-tint-hover) !important;
+    box-shadow: none !important;
+}
+
+html.style-slab .season-track {
+    background-color: var(--slab);
+    box-shadow: var(--slab-pressed);
+    border: 1px solid var(--slab-edge);
+}
+
+html.style-slab .season-knob {
+    left: 2px;
+    background-color: var(--slab-dim);
+    box-shadow: var(--slab-lift);
+}
+
+html.style-slab .season-toggle[aria-pressed="true"] .season-knob {
+    left: calc(100% - 0.625rem - 2px);
+    background-color: var(--main-color);
+}
+
+html.style-slab .season-toggle[aria-pressed="true"] .season-track {
+    box-shadow: var(--slab-pressed);
+    border-color: var(--slab-edge-on);
+}
+
+/* ── Pressed-when-active, everywhere ──────────────────────────────────────
+   aria-pressed drives the ON state, and the tools bar now sets it. Several
+   older surfaces still signal "active" with a white fill or a scale bump
+   instead; those are caught here so the rule holds across the app rather
+   than only where the markup happens to be modern.
+
+   The scale bump in particular has to go: a control that grows to say it is
+   on contradicts a system where ON means recessed. */
+html.style-slab button.scale-110,
+html.style-slab button[class*="scale-110"] {
+    transform: none !important;
+}
+
+html.style-slab button[aria-pressed="true"][class*="scale-110"],
+html.style-slab button[data-active="true"][class*="scale-110"] {
+    transform: none !important;
+    box-shadow: var(--slab-pressed) !important;
+}
+
+/* A white-filled button is the app's other way of saying "selected". */
+html.style-slab button.bg-white,
+html.style-slab button[class*="bg-white "]:not([class*="bg-white/"]) {
+    background-color: var(--slab-tint-on) !important;
+    background-image: var(--slab-sheen-on) !important;
+    color: var(--main-color) !important;
+    box-shadow: var(--slab-pressed) !important;
+    border-color: var(--slab-edge-on) !important;
+}
+
+/* Bottom action bar and filter pills: same walk as everything else. */
+html.style-slab .filter-pill[aria-pressed="true"],
+html.style-slab [role="tab"][aria-selected="true"] {
+    box-shadow: var(--slab-pressed) !important;
+    background-image: var(--slab-sheen-on) !important;
+    color: var(--main-color) !important;
+}
+
+/* ── Filters are destructive on a carved control ──────────────────────────
+   A neumorphic bevel is a light highlight top-left and a dark shadow
+   bottom-right. CSS filters apply to an element's box-shadow as well as its
+   surface, so `brightness-50` on an inactive vendor chip halves the highlight
+   too: the bevel collapses into two dark shadows and the control reads as
+   heavily shadowed rather than dimmed.
+
+   The control keeps its own light; only its contents dim. */
+html.style-slab button[class*="brightness-"],
+html.style-slab button[class*="grayscale"],
+html.style-slab [role="button"][class*="brightness-"] {
+    filter: none !important;
+}
+
+html.style-slab button[class*="brightness-"]:not([aria-pressed="true"]) > *,
+html.style-slab button[class*="grayscale"]:not([aria-pressed="true"]) > * {
+    filter: grayscale(1);
+    opacity: 0.5;
+}
+
+/* ── Season switches float free ───────────────────────────────────────────
+   No container: the switch itself is the control, and wrapping it in a second
+   raised box states the same affordance twice. Only the track is carved. */
+html.style-slab .season-toggle,
+html.style-slab .season-toggle:hover,
+html.style-slab .season-toggle:active,
+html.style-slab .season-toggle[aria-pressed="true"],
+html.style-slab .season-toggle[aria-pressed="false"] {
+    background: none !important;
+    background-image: none !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+}
+
+html.style-slab .season-toggle:hover .season-track {
+    border-color: color-mix(in srgb, var(--main-color) 45%, transparent);
 }

@@ -681,3 +681,11 @@ export const picoRemoteCommandAtom = atom<{deviceId: string, command: string, pa
 // correctly resolves to an empty list and the app looks broken on a fresh browser.
 // Flip back to false once inventory_826/finance_826 carry real data.
 export const isArchiveVisibleAtom = atomWithStorage<boolean>('isArchiveVisible', true);
+
+/** Per-season visibility, replacing the single archive boolean. All three
+ *  default to visible, which is what isArchiveVisible=true used to mean. */
+export type WorkbookVisibility = { v825: boolean; v326: boolean; v826: boolean };
+export const visibleWorkbooksAtom = atomWithStorage<WorkbookVisibility>(
+    'visibleWorkbooks_v1',
+    { v825: true, v326: true, v826: true }
+);

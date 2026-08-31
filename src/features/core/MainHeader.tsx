@@ -102,8 +102,9 @@ import {
     isWarehouseSelectionModeAtom,
     warehouseSelectedIdsAtom,
     showWarehouseExportWizardAtom,
-    isArchiveVisibleAtom
+    visibleWorkbooksAtom
 } from '../../lib/atoms';
+import { WORKBOOK_IDS, type WorkbookId } from '../../lib/seasons';
 // Consolidated imports to prevent duplicates
 
 const OnyxBar: React.FC = () => null;
@@ -322,62 +323,30 @@ const ShippingStats: React.FC = () => {
 };
 
 
-const InventoryStats: React.FC = () => {
+/**
+ * The info notch: a readout indented into the top-centre edge of the header,
+ * the way an instrument is let into a panel rather than sitting on it.
+ *
+ * It absorbed two controls that used to be separate buttons. Pressing the
+ * figures runs the database sync — the readout is what that sync updates, so
+ * the number you want refreshed is the thing you press. The user block moved
+ * in beside it and still opens Settings; it stops the notch from being a bare
+ * strip of digits and gives the right half of it a purpose.
+ */
+const InfoNotch: React.FC = () => {
     const typesCount = useAtomValue(filteredInventoryCountAtom);
     const totalQty = useAtomValue(filteredInventoryTotalQtyAtom);
     const totalValue = useAtomValue(filteredInventoryTotalValueAtom);
-    const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
-
-    const lbl = "text-[9px] font-black uppercase tracking-[0.2em] opacity-30 leading-none mb-1";
-    const val = "text-[15px] font-black leading-none tracking-tighter";
-
-    return (
-        <div className="flex items-center gap-5 px-5 border-l border-white/5 animate-in fade-in slide-in-from-right-4 duration-500 shrink-0">
-            <div className="flex flex-col">
-                <span className={lbl}>Types</span>
-                <span className={`${val} text-white/80`}>{typesCount.toLocaleString()}</span>
-            </div>
-            <div className="w-px h-6 bg-white/5" />
-            <div className="flex flex-col">
-                <span className={lbl}>Count</span>
-                <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
-            </div>
-            <div className="w-px h-6 bg-white/5" />
-            <div className="flex flex-col min-w-[60px]">
-                <span className={lbl}>Rate</span>
-                <span className={`${val} text-white/50 font-mono`}>
-                    {exchangeRate ? exchangeRate.toFixed(2) : '0.00'}
-                </span>
-            </div>
-            <div className="w-px h-6 bg-white/5" />
-            <div className="flex flex-col min-w-[80px]">
-                <span className={lbl}>Total {showFinancials ? 'MXN' : ''}</span>
-                <span className={`${val} text-(--main-color)`}>
-                    {showFinancials ? `$${totalValue.toLocaleString()}` : '***'}
-                </span>
-            </div>
-        </div>
-    );
-};
-
-
-const InventoryBar: React.FC = () => {
-    const [search, setSearch] = useAtom(inventorySearchTermAtom);
-    const [isFiltersOpen, setIsFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
-    const [isViewSliderOpen, setIsViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
-    const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
-    const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
-    const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
-    const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
-    const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
-    const setView = useSetAtom(activeViewAtom);
+    const user = useAtomValue(userAtom);
+    const openSettingsPortal = useSetAtom(isStudioSettingsOpenAtom);
 
     const items = useAtomValue(inventoryAtom);
     const exRate = useAtomValue(exchangeRateAtom) || useAtomValue(liveExchangeRateAtom) || 19;
     const db = useDatabase();
     const setInvVersion = useSetAtom(InventoryVersionAtom);
     const [isSyncingCalc, setIsSyncingCalc] = useState(false);
+
     const handleSyncCalculatedFields = async () => {
         if (isSyncingCalc) return;
         setIsSyncingCalc(true);
@@ -396,17 +365,98 @@ const InventoryBar: React.FC = () => {
         }
     };
 
-    const handleToggleSelectionMode = () => {
-        setIsSelectionMode(!isSelectionMode);
-        if (isSelectionMode) setSelectedIds([]);
-    };
+    // Labels on row one, values on row two: grid-flow-col fills the first child
+    // into row 1 and the second into row 2, so the value columns line up
+    // regardless of how long each label is.
+    const lbl = "text-[7px] font-black uppercase tracking-[0.16em] opacity-40 leading-none";
+    const val = "text-[12px] font-black leading-none tracking-tight tabular-nums";
 
-    const [viewSlider] = useAtom(inventoryViewSliderAtom);
-    const ViewIcon = LayoutTemplate; // Updated icon per request
-    const [showTools, setShowTools] = useState(false);
-    const [isArchiveVisible, setIsArchiveVisible] = useAtom(isArchiveVisibleAtom);
+    const displayName = (user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
+        ? user.name.split(' ')[0]
+        : user?.email?.split('@')[0] || 'User';
+
+    return (
+        <div className="info-notch flex items-stretch gap-0 shrink-0 [text-shadow:none] [&_*]:[text-shadow:none]">
+            <button
+                onClick={handleSyncCalculatedFields}
+                disabled={isSyncingCalc}
+                title="Sync calculated fields to the database"
+                className={`info-notch-stats grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-3.5 gap-y-1 px-3.5 py-1.5 ${isSyncingCalc ? 'animate-pulse' : ''}`}
+            >
+                <span className={lbl}>Types</span>
+                <span className={`${val} text-(--text-color)`}>{typesCount.toLocaleString()}</span>
+
+                <span className={lbl}>Qty</span>
+                <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
+
+                <span className={lbl}>{showFinancials ? 'Total MXN' : 'Total'}</span>
+                <span className={`${val} text-(--main-color)`}>
+                    {showFinancials ? `$${totalValue.toLocaleString()}` : '\u2022\u2022\u2022'}
+                </span>
+            </button>
+
+            <button
+                onClick={() => openSettingsPortal(true)}
+                title="Settings"
+                className="info-notch-user grid grid-rows-2 auto-cols-max items-center gap-y-1 px-3.5 py-1.5 text-left"
+            >
+                <span className={`${lbl} text-(--main-color)`}>Welcome</span>
+                <span className="text-[12px] font-black leading-none tracking-tight capitalize text-(--text-color)">
+                    {displayName}
+                </span>
+            </button>
+        </div>
+    );
+};
+
+
+/**
+ * One switch per season workbook. This replaced a single "hide archive"
+ * boolean that could only express 826-only or everything, which made it
+ * impossible to look at 825 without 326 coming along.
+ *
+ * Each switch is a real toggle: a track pressed into the slab with a knob
+ * resting in it, and aria-pressed so the ON styling and screen readers agree.
+ */
+const SeasonToggles: React.FC = () => {
+    const [visible, setVisible] = useAtom(visibleWorkbooksAtom);
+    const flip = (id: WorkbookId) =>
+        setVisible(prev => ({ ...prev, [id]: !(prev?.[id] ?? true) }));
+
+    return (
+        <div className="season-toggles flex items-center gap-1 shrink-0">
+            {WORKBOOK_IDS.map(id => {
+                const on = visible?.[id] ?? true;
+                return (
+                    <button
+                        key={id}
+                        onClick={() => flip(id)}
+                        aria-pressed={on}
+                        className={`season-toggle flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.12em] transition-all ${on ? 'text-(--main-color)' : 'text-(--text-color)/35'}`}
+                        title={`${on ? 'Hide' : 'Show'} season ${id.replace('v', '')}`}
+                    >
+                        <span className="season-track relative w-6 h-3 rounded-full shrink-0 inline-block">
+                            <span className="season-knob absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all" />
+                        </span>
+                        {id.replace('v', '')}
+                    </button>
+                );
+            })}
+        </div>
+    );
+};
+
+/**
+ * The two bulk-upload actions, lifted out of InventoryBar so they can sit in
+ * the header's right-hand column beneath the workbook tools. Self-contained:
+ * it owns the atoms and state both handlers need, so nothing has to be threaded
+ * down. Role gating is unchanged — Sheets stays Admin/Developer only, the
+ * database sync stays open to anyone who can reach it.
+ */
+const SheetsUploadButton: React.FC = () => {
+    const items = useAtomValue(inventoryAtom);
+    const exRate = useAtomValue(exchangeRateAtom) || useAtomValue(liveExchangeRateAtom) || 19;
     const user = useAtomValue(userAtom);
-
     const handleGoogleSheetsUpload = async () => {
         const webhookUrl = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK;
         if (!webhookUrl) {
@@ -457,6 +507,41 @@ const InventoryBar: React.FC = () => {
         }
     };
 
+    if (user?.role !== 'Admin' && user?.role !== 'Developer') return null;
+
+    return (
+        <button
+            onClick={handleGoogleSheetsUpload}
+            className="flex items-center justify-center w-12 h-12 rounded-xl text-emerald-500/80 hover:text-emerald-400 transition-all shrink-0"
+            title="Upload inventory to Google Sheets"
+        >
+            <FileSpreadsheet size={20} strokeWidth={2.5} />
+        </button>
+    );
+};
+
+const InventoryBar: React.FC = () => {
+    const [search, setSearch] = useAtom(inventorySearchTermAtom);
+    const [isFiltersOpen, setIsFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
+    const [isViewSliderOpen, setIsViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
+    const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
+    const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
+    const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
+    const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
+    const setView = useSetAtom(activeViewAtom);
+
+    const handleToggleSelectionMode = () => {
+        setIsSelectionMode(!isSelectionMode);
+        if (isSelectionMode) setSelectedIds([]);
+    };
+
+    const [viewSlider] = useAtom(inventoryViewSliderAtom);
+    const ViewIcon = LayoutTemplate; // Updated icon per request
+    const [showTools, setShowTools] = useState(false);
+    const user = useAtomValue(userAtom);
+
+
     return (
         <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
             <div className="flex items-center gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
@@ -480,17 +565,6 @@ const InventoryBar: React.FC = () => {
                 >
                     <Wrench size={22} strokeWidth={2} />
                 </button>
-
-                {/* 3. GOOGLE SHEETS UPLOAD (ADMIN + DEVELOPER) */}
-                {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                    <button 
-                        onClick={handleGoogleSheetsUpload}
-                        className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 text-emerald-500/60 hover:text-emerald-400`}
-                        title="Update Google Sheets"
-                    >
-                        <FileSpreadsheet size={22} strokeWidth={2} />
-                    </button>
-                )}
 
                 {showTools && (
                     <div className="flex items-center gap-1 sm:gap-2 animate-in fade-in slide-in-from-left-4 duration-300 ml-2">
@@ -530,24 +604,10 @@ const InventoryBar: React.FC = () => {
                             <Search size={22} strokeWidth={2} />
                         </button>
                         
-                        <div className="w-px h-5 bg-white/10 mx-1.5 shrink-0" />
-
-                        {/* SYNC CALCULATED FIELDS TO DB */}
-                        <button 
-                            onClick={handleSyncCalculatedFields}
-                            disabled={isSyncingCalc}
-                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSyncingCalc ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)] animate-bounce' : 'text-white/50 hover:text-white'}`}
-                            title="Sync Calculated Fields to DB"
-                        >
-                            <CloudUpload size={22} strokeWidth={2} />
-                        </button>
                     </div>
                 )}
             </div>
             
-            <div className="flex items-center gap-4 shrink-0 justify-end flex-1">
-                <InventoryStats />
-            </div>
         </div>
     );
 };
@@ -1039,7 +1099,6 @@ export function MainHeader() {
     const isViewSliderOpen = useAtomValue(isInventoryViewSliderOpenAtom);
     const selectedIds = useAtomValue(selectedInventoryIdsAtom);
     const exportSelectedTrigger = useAtomValue(inventoryExportSelectedXLSXTriggerAtom);
-    const [isArchiveVisible, setIsArchiveVisible] = useAtom(isArchiveVisibleAtom);
 
     useEffect(() => {
         if (exportSelectedTrigger > 0) {
@@ -3459,7 +3518,17 @@ export function MainHeader() {
             {/* Double height, two-line tool grid. overflow-y-hidden is required, not
                 cosmetic: with overflow-x:auto and overflow-y:visible the spec forces
                 overflow-y to compute to auto, so the bar scrolled vertically too. */}
-            <div className={`main-header h-40 sm:h-48 max-h-40 sm:max-h-48 flex items-stretch pl-6 pr-6 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
+            {/* The notch sits OUTSIDE the scrolling row on purpose: .main-header is
+                a horizontal scroll container, so anything absolutely positioned
+                inside it would slide away with the content and be clipped by
+                overflow-y-hidden. This wrapper is the positioning context. */}
+            <div className="relative w-full shrink-0">
+            {activeView === 'inventory' && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-0 z-30">
+                    <InfoNotch />
+                </div>
+            )}
+            <div className={`main-header h-28 sm:h-32 max-h-28 sm:max-h-32 flex items-center pl-6 pr-6 pt-8 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -3489,8 +3558,11 @@ export function MainHeader() {
                         own root div (which stays a real positioned box, so its dropdowns
                         still anchor correctly), while nested groups like SubTabPills
                         remain a single grid item and keep their tabs on one line. */}
-                    <div className="grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-2 sm:gap-x-6 gap-y-1 min-w-max pr-4
-                        [&>*]:row-span-2 [&>*]:grid [&>*]:grid-rows-2 [&>*]:grid-flow-col [&>*]:auto-cols-max [&>*]:items-center [&>*]:gap-x-3 [&>*]:gap-y-1">
+                    {/* One centred row. The two-row grid left row 2 empty once the
+                        readout moved into the notch, which put this cluster on a
+                        different baseline from the right-hand one and opened a band
+                        of dead space under both. */}
+                    <div className="flex items-center gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
                         {activeView === 'inventory' && <InventoryBar />}
                         {activeView === 'store' && <StoreBar />}
                         {activeView === 'finance' && <FinanceBar />}
@@ -3537,8 +3609,11 @@ export function MainHeader() {
                     </div>
                 </div>
 
-                <div className="grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-1 sm:gap-x-6 gap-y-1 shrink-0 pl-2 sm:pl-4 ml-auto h-full
-                    [&>*]:row-span-2 [&>*]:flex [&>*]:items-center">
+                {/* Top-right corner of the header: the readout sits on the first
+                    row and the tool icons on the second, so the two never fight
+                    for the same horizontal space on a narrow viewport. */}
+                <div className="flex items-center justify-end shrink-0 pl-2 sm:pl-4 ml-auto h-full">
+                    <div className="flex items-center gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
                         {sentTruckId && (
@@ -3632,15 +3707,9 @@ export function MainHeader() {
                         </button>
                         */}
                         
-                        {/* Archive Toggle — next to WorkbookV2 */}
-                        <button
-                            onClick={() => setIsArchiveVisible(!isArchiveVisible)}
-                            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 border ${isArchiveVisible ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/70 hover:bg-white/10'}`}
-                            title={isArchiveVisible ? "Hide Archive (826 season only)" : "Show Archive (include 826 + 325/326)"}
-                        >
-                            <ClipboardClock size={20} strokeWidth={2.5} className="transition-transform group-hover:scale-110" />
-                        </button>
+                        <SeasonToggles />
 
+                        <SheetsUploadButton />
                         <button
                             onClick={handleMasterExportXLSX_V2}
                             disabled={isExporting}
@@ -3654,20 +3723,6 @@ export function MainHeader() {
                         </button>
                     </div>
 
-                    <div
-                        className="flex flex-col items-end border-l border-white/5 pl-4 sm:pl-6 cursor-pointer shrink-0 transition-all active:scale-95"
-                        onClick={() => openSettingsPortal(true)}
-                    >
-                        <span className="hidden sm:inline-block text-[7px] font-bold uppercase tracking-[0.3em] text-(--main-color) opacity-40 leading-none mb-1">WELCOME</span>
-                        <div className="flex items-center gap-2">
-                            
-                            <span className="hidden sm:inline-block text-[14px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
-                                {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
-                                    ? user.name.split(' ')[0]
-                                    : user?.email?.split('@')[0] || 'User'}
-                            </span>
-                        </div>
-                    </div>
 
                 {activeView === 'store' && (
                     <div className="flex items-center gap-1 mx-2 relative">
@@ -3684,9 +3739,10 @@ export function MainHeader() {
                         </button>
                     </div>
                 )}
+                    </div>
                 </div>
             </div>
-            <ShoppingBagDrawer isOpen={isBagOpen} onClose={() => setIsBagOpen(false)} />
+            </div>            <ShoppingBagDrawer isOpen={isBagOpen} onClose={() => setIsBagOpen(false)} />
         </>
     );
 }

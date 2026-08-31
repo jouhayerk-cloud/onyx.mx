@@ -1762,7 +1762,7 @@ export const CratesInventoryView: React.FC = () => {
 
     return (
         <div className="flex flex-col relative">
-            <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-6 border-b border-white/10 bg-black/40 backdrop-blur-3xl sticky top-36 sm:top-48 z-[60] w-full gap-4 lg:gap-8">
+            <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-6 border-b border-white/10 bg-black/40 backdrop-blur-3xl sticky top-28 sm:top-32 z-[60] w-full gap-4 lg:gap-8">
                 <div className="flex items-center gap-4 sm:gap-8 shrink-0">
                     <div className="shrink-0">
                         <div className="flex items-center gap-5 mt-1">

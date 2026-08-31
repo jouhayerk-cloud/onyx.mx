@@ -44,3 +44,26 @@ export const rowSeason = (row: any): Season => {
 
 /** True when a row belongs to an archived season (825/326). */
 export const isLegacyRow = (row: any): boolean => rowSeason(row) === 'legacy';
+
+/* ── Per-workbook visibility ──────────────────────────────────────────────
+   The single "hide archive" boolean collapsed three seasons into two states:
+   826-only, or everything. These let each workbook be toggled on its own, so
+   825 can be reviewed without dragging 326 along with it. */
+
+export type WorkbookId = 'v825' | 'v326' | 'v826';
+
+export const WORKBOOK_IDS: WorkbookId[] = ['v825', 'v326', 'v826'];
+
+/**
+ * Which workbook a synced row belongs to. The row's own workbook value wins
+ * when it is conclusive; otherwise the season stamp decides, exactly as
+ * rowSeason does. 325 folds into 326 — it is the same archived season under an
+ * older label and has never been shown separately.
+ */
+export const rowWorkbook = (row: any): WorkbookId => {
+    const wb = String(row?.workbook ?? '').trim().toLowerCase().replace(/^v/, '');
+    if (wb === '826') return 'v826';
+    if (wb === '825') return 'v825';
+    if (wb === '326' || wb === '325') return 'v326';
+    return rowSeason(row) === '826' ? 'v826' : 'v326';
+};
