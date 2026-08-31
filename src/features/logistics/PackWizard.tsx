@@ -180,7 +180,15 @@ export const PackWizard: React.FC = () => {
             const inventoryRowsToUpdate = selectedItems.map(item => item.row ?? item.data.id);
             if (inventoryRowsToUpdate.length > 0) {
                 const { error: invError } = await supabase.from('inventory')
-                    .update({ packing_status: 'Packed', crate_id: selectedCrate.id })
+                    .update({
+                        packing_status: 'Packed',
+                        crate_id: selectedCrate.id,
+                        // Processing stamp. packing_status records THAT an item is
+                        // packed; pack_date records when, which is what the season
+                        // reports need and what nothing was recording before.
+                        pack_date: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                    })
                     .in('id', inventoryRowsToUpdate);
                 if (invError) throw invError;
             }

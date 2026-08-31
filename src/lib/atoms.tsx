@@ -207,6 +207,11 @@ export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status'
 export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc', sessionJSONStorage);
 export const inventoryCategoryFilterAtom = atomWithStorage<string>('inventoryCategoryFilter', 'All', sessionJSONStorage);
 export const isInventoryCategoryFilterOpenAtom = atom<boolean>(false);
+/** Nested smart filters. Flat key lists: "Bowl" selects a whole type,
+ *  "Bowl>Round" one shape within it. See lib/smartFilters.ts. */
+export const inventoryTypeShapeFilterAtom = atomWithStorage<string[]>('inventoryTypeShapeFilter', [], sessionJSONStorage);
+export const inventoryMaterialColorFilterAtom = atomWithStorage<string[]>('inventoryMaterialColorFilter', [], sessionJSONStorage);
+
 export const inventoryMaterialFilterAtom = atomWithStorage<string>('inventoryMaterialFilter', 'All', sessionJSONStorage);
 export const isInventoryMaterialFilterOpenAtom = atom<boolean>(false);
 export const isInventorySortMenuOpenAtom = atom<boolean>(false);
@@ -423,6 +428,7 @@ export const notificationsAtom = atom<Notification[]>([]);
 // Top-bar deployable panel states
 export const isInventoryVendorFilterOpenAtom = atomWithStorage<boolean>('invVendorFilter', false, sessionJSONStorage);
 export const inventoryVendorFilterAtom = atomWithStorage<string[]>('inventoryVendorFilter', ['All'], sessionJSONStorage);
+export const isInventorySmartFiltersOpenAtom = atomWithStorage<boolean>('invSmartFilters', false, sessionJSONStorage);
 export const isInventoryFiltersPanelOpenAtom = atomWithStorage<boolean>('invFiltersPanel', false, sessionJSONStorage);
 export const isInventoryStatusFilterOpenAtom = atomWithStorage<boolean>('invStatusFilter', false, sessionJSONStorage);
 export const isPaymentsSearchOpenAtom = atom<boolean>(false);
@@ -680,6 +686,12 @@ export const picoRemoteCommandAtom = atom<{deviceId: string, command: string, pa
 // Defaults ON while the 826 season is still empty: with it off, "hide archive"
 // correctly resolves to an empty list and the app looks broken on a fresh browser.
 // Flip back to false once inventory_826/finance_826 carry real data.
+/** Whether the inventory tool group is disclosed. It gates the tool buttons
+ *  AND the bars they deploy, so collapsing the group hides View/Filter/Search
+ *  without clearing which of them were open — reopening restores exactly what
+ *  was on screen. */
+export const inventoryToolsOpenAtom = atomWithStorage<boolean>('inventoryToolsOpen', false);
+
 export const isArchiveVisibleAtom = atomWithStorage<boolean>('isArchiveVisible', true);
 
 /** Per-season visibility, replacing the single archive boolean. All three

@@ -1,0 +1,27 @@
+// Scoped type check.
+//
+// tsconfig.json has no `include` and sets `allowJs: true`, so tsc sweeps in
+// junk at the repo root (fix_ui_13.cjs, scratch/writeb64.js). Those files have
+// unterminated string literals, and a syntax error anywhere ABORTS tsc's
+// semantic pass — which means `tsc -p tsconfig.json` silently reports nothing
+// and `npm run build` (esbuild, transpile-only) never type-checks at all.
+//
+// The practical consequence: undefined identifiers reach the browser as
+// runtime crashes with a green build. This config scopes the check to src/ so
+// the semantic pass actually runs.
+//
+//     npx tsc -p tsconfig.check.json --noEmit
+//
+// src/ currently carries ~210 pre-existing errors, so a clean run is not the
+// bar. Compare against a baseline taken before your change:
+//
+//     git stash && npx tsc -p tsconfig.check.json --noEmit > base.txt; git stash pop
+//     npx tsc -p tsconfig.check.json --noEmit > now.txt
+//     diff <(sed 's/([0-9]*,[0-9]*)//' base.txt) <(sed 's/([0-9]*,[0-9]*)//' now.txt)
+//
+// Stripping (line,col) makes the comparison position-independent, so shifting
+// code around does not read as a new error.
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

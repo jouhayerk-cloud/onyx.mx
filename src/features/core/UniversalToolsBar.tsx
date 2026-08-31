@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { buildTypeShapeTree, buildMaterialColorTree, toggleKey, type SmartFilterNode } from '../../lib/smartFilters';
 import { 
     activeViewAtom, 
     isInventorySelectionModeAtom,
@@ -53,6 +54,10 @@ import {
     truckingPositionsAtom,
     logisticsDocsAtom,
     isInventorySearchOpenAtom,
+    inventoryToolsOpenAtom,
+    isInventorySmartFiltersOpenAtom,
+    inventoryTypeShapeFilterAtom,
+    inventoryMaterialColorFilterAtom,
     inventorySearchTermAtom,
     truckDockIsCompactAtom,
     truckStatsIsCompactAtom,
@@ -211,6 +216,100 @@ const SectionHeader: React.FC<{
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
+
+/**
+ * One hierarchy. Parents are always visible; a parent's children appear only
+ * once it is expanded, because showing every shape for every type at once is
+ * several hundred chips and unusable on a phone.
+ *
+ * Expansion is independent of selection: a user can look inside a branch
+ * without filtering by it, which is how you find the shape you actually want.
+ */
+const SmartFilterGroup: React.FC<{
+    title: string;
+    tree: SmartFilterNode[];
+    selected: string[];
+    onToggle: (key: string) => void;
+    onClear: () => void;
+}> = ({ title, tree, selected, onToggle, onClear }) => {
+    const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+    const sel = new Set(selected || []);
+    const activeCount = (selected || []).length;
+
+    if (tree.length === 0) return null;
+
+    return (
+        <div className="flex flex-col gap-2 shrink-0">
+            <div className="flex items-center gap-3">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 leading-none">{title}</span>
+                {activeCount > 0 && (
+                    <button onClick={onClear}
+                        className="smart-clear text-[8px] font-black uppercase tracking-[0.16em] px-2 py-0.5 rounded-md"
+                        title="Clear this filter">
+                        Clear {activeCount}
+                    </button>
+                )}
+            </div>
+
+            <div className="flex flex-wrap items-start gap-1.5 max-w-[46rem]">
+                {tree.map(node => {
+                    const isOpen = expanded.has(node.key);
+                    const isSel = sel.has(node.key);
+                    return (
+                        <div key={node.key} className="flex flex-col gap-1">
+                            <div className="flex items-stretch">
+                                <button
+                                    onClick={() => onToggle(node.key)}
+                                    aria-pressed={isSel}
+                                    className="smart-chip flex items-center gap-1.5 px-2.5 py-1.5 rounded-l-lg text-[9px] font-black uppercase tracking-[0.1em]"
+                                    title={`Filter by ${node.label}`}
+                                >
+                                    {node.label}
+                                    <span className="smart-count tabular-nums opacity-50">{node.count}</span>
+                                </button>
+                                {node.children.length > 0 && (
+                                    <button
+                                        onClick={() => setExpanded(p => {
+                                            const n = new Set(p);
+                                            n.has(node.key) ? n.delete(node.key) : n.add(node.key);
+                                            return n;
+                                        })}
+                                        aria-pressed={isOpen}
+                                        aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${node.label}`}
+                                        className="smart-expand flex items-center justify-center px-1.5 rounded-r-lg"
+                                        title={`${node.children.length} shape${node.children.length !== 1 ? 's' : ''}`}
+                                    >
+                                        <ChevronDown size={11} strokeWidth={3}
+                                            className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {isOpen && (
+                                <div className="smart-children flex flex-wrap gap-1 pl-2 ml-1 animate-in fade-in duration-200">
+                                    {node.children.map(child => (
+                                        <button
+                                            key={child.key}
+                                            onClick={() => onToggle(child.key)}
+                                            aria-pressed={sel.has(child.key)}
+                                            className="smart-chip smart-chip-child flex items-center gap-1.5 px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-[0.08em]"
+                                            title={`Filter by ${node.label} / ${child.label}`}
+                                        >
+                                            {child.label}
+                                            <span className="smart-count tabular-nums opacity-50">{child.count}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+
 export const UniversalToolsBar: React.FC = () => {
     const activeView = useAtomValue(activeViewAtom);
     const logisticsSubTab = useAtomValue(logisticsSubTabAtom);
@@ -221,6 +320,19 @@ export const UniversalToolsBar: React.FC = () => {
     const [invMode, setInvMode] = useAtom(inventoryViewModeAtom);
     const [isInvFiltersOpen, setIsInvFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
     const [isInvSearchOpen, setIsInvSearchOpen] = useAtom(isInventorySearchOpenAtom);
+    // The Tools disclosure gates these bars without clearing their state, so
+    // collapsing the group hides them and reopening restores what was active.
+    const toolsOpen = useAtomValue(inventoryToolsOpenAtom);
+    const smartOpen = useAtomValue(isInventorySmartFiltersOpenAtom);
+    const [typeShapeSel, setTypeShapeSel] = useAtom(inventoryTypeShapeFilterAtom);
+    const [materialColorSel, setMaterialColorSel] = useAtom(inventoryMaterialColorFilterAtom);
+    const inventoryRows = useAtomValue(inventoryAtom);
+
+    // Both hierarchies are derived from the live rows, so a new type or colour
+    // appears as a filter the moment an item using it is saved — nothing to
+    // configure and nothing to keep in sync with the data.
+    const typeShapeTree = React.useMemo(() => buildTypeShapeTree(inventoryRows || []), [inventoryRows]);
+    const materialColorTree = React.useMemo(() => buildMaterialColorTree(inventoryRows || []), [inventoryRows]);
     const [invSearchTerm, setInvSearchTerm] = useAtom(inventorySearchTermAtom);
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const invCategoryFilter = useAtomValue(inventoryCategoryFilterAtom);
@@ -451,17 +563,17 @@ export const UniversalToolsBar: React.FC = () => {
     return (
         <div className="flex flex-col w-full z-50">
             {/* ── TOP BAR (SEARCH/SLIDERS) ────────────────────────────────────────────────────────── */}
-            {((isInventory && (isInvSearchOpen || isInvViewSliderOpen)) || (isFinance && isFinSearchOpen)) && (
+            {((isInventory && toolsOpen && (isInvSearchOpen || isInvViewSliderOpen)) || (isFinance && isFinSearchOpen)) && (
                 <div className="w-full animate-in slide-in-from-top duration-500 overflow-hidden pr-4 pl-4">
                     <div className="w-full mx-auto px-6 py-3 flex flex-col gap-4">
-                        {isInventory && isInvSearchOpen && (
+                        {isInventory && toolsOpen && isInvSearchOpen && (
                             <div className="flex items-center gap-6 group transition-all shrink-0">
                                 <Search size={24} strokeWidth={3} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
                                 <input autoFocus type="text" value={invSearchTerm} onChange={(e) => setInvSearchTerm(e.target.value)} placeholder="SEARCH INVENTORY..." className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
                                 {invSearchTerm && <button onClick={() => setInvSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={24} strokeWidth={3} /></button>}
                             </div>
                         )}
-                        {isInventory && isInvViewSliderOpen && (
+                        {isInventory && toolsOpen && isInvViewSliderOpen && (
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full animate-in slide-in-from-top-4 duration-500 py-2 gap-6 sm:gap-0">
                                 <div className="flex items-center gap-8 w-full sm:w-1/2">
                                     <div className="flex items-center gap-3 shrink-0">
@@ -525,13 +637,21 @@ export const UniversalToolsBar: React.FC = () => {
                                             { key: 'Value', label: 'VALUE' },
                                             { key: 'Qty', label: 'QTY' }
                                         ].map(sort => (
-                                            <button key={sort.key} onClick={() => {
-                                                if (invSortKey === sort.key) setInvSortOrder(invSortOrder === 'asc' ? 'desc' : 'asc');
-                                                else { setInvSortKey(sort.key as any); setInvSortOrder('desc'); }
-                                            }} aria-pressed={invSortKey === sort.key} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all font-black text-[9px] tracking-wider ${invSortKey === sort.key ? 'bg-white text-black shadow-lg' : 'text-white/20 hover:text-white hover:bg-white/5'}`}>
-                                                {sort.label}
-                                                {invSortKey === sort.key && (invSortOrder === 'asc' ? <ArrowUp size={10} strokeWidth={4} /> : <ArrowDown size={10} strokeWidth={4} />)}
+                                        <div key={sort.key} className="tool-cell flex flex-col items-center gap-1 shrink-0">
+                                            <button
+                                                aria-pressed={invSortKey === sort.key}
+                                                title={sort.label}
+                                                onClick={() => {
+                                                    if (invSortKey === sort.key) setInvSortOrder(invSortOrder === 'asc' ? 'desc' : 'asc');
+                                                    else { setInvSortKey(sort.key as any); setInvSortOrder('desc'); }
+                                                }}
+                                                className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
+                                                {invSortKey === sort.key
+                                                    ? (invSortOrder === 'asc' ? <ArrowUp size={18} strokeWidth={3} /> : <ArrowDown size={18} strokeWidth={3} />)
+                                                    : <ArrowUpDown size={16} strokeWidth={2.2} />}
                                             </button>
+                                            <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{sort.label}</span>
+                                        </div>
                                         ))}
                                     </div>
                                 </div>
@@ -611,10 +731,13 @@ export const UniversalToolsBar: React.FC = () => {
                                     const Icon = s.icon;
                                     const isActive = finCategoryFilter === s.id;
                                     return (
-                                        <button key={s.id} aria-pressed={isActive} onClick={() => setFinCategoryFilter(s.id as any)} className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`}>
-                                            <Icon size={20} strokeWidth={isActive ? 4 : 3} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
-                                            <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${isActive ? 'text-white' : 'text-zinc-500'}`}>{s.id}</span>
-                                        </button>
+                                        <div key={s.id} className="tool-cell flex flex-col items-center gap-1 shrink-0">
+                                            <button aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
+                                                className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
+                                                <Icon size={20} strokeWidth={isActive ? 3.5 : 2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
+                                            </button>
+                                            <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
+                                        </div>
                                     );
                                 })}
                             </div>
@@ -714,8 +837,34 @@ export const UniversalToolsBar: React.FC = () => {
                 </div>
             )}
 
+            {/* ── Smart filters ────────────────────────────────────────────
+                Two auto-generated hierarchies: Type -> Shape and Material ->
+                Colour. A parent selects its whole branch; expanding it narrows
+                to one child. Counts come from the current rows, so the
+                distribution is visible while choosing rather than after. */}
+            {isInventory && toolsOpen && smartOpen && (
+                <div className="smart-filters w-full border-t border-white/5 animate-in slide-in-from-top duration-300 px-4 py-4 overflow-x-auto no-scrollbar">
+                    <div className="flex items-start gap-10 min-w-max">
+                        <SmartFilterGroup
+                            title="Type / Shape"
+                            tree={typeShapeTree}
+                            selected={typeShapeSel}
+                            onToggle={(k: string) => setTypeShapeSel(prev => toggleKey(prev || [], k))}
+                            onClear={() => setTypeShapeSel([])}
+                        />
+                        <SmartFilterGroup
+                            title="Material / Colour"
+                            tree={materialColorTree}
+                            selected={materialColorSel}
+                            onToggle={(k: string) => setMaterialColorSel(prev => toggleKey(prev || [], k))}
+                            onClear={() => setMaterialColorSel([])}
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* ── INVENTORY TOOLS ─────────────────────────────────────────────────────────── */}
-            {isInventory && isInvFiltersOpen && (
+            {isInventory && toolsOpen && isInvFiltersOpen && (
                 <div className="flex flex-col w-full min-h-0">
                     <div className="w-full px-6 py-3 flex items-center justify-between overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center gap-5 shrink-0">
@@ -735,10 +884,14 @@ export const UniversalToolsBar: React.FC = () => {
                                 const Icon = s.icon;
                                 const isActive = invStatusFilter === s.id;
                                 return (
-                                    <button key={s.id} aria-pressed={isActive} onClick={() => setInvStatusFilter(s.id as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${isActive ? 'scale-110' : 'text-zinc-600 hover:text-white'}`} style={{ color: isActive ? s.color : undefined }}>
-                                        <Icon size={18} strokeWidth={isActive ? 4 : 3} className={isActive ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : ''} />
-                                        <span className={`text-[8px] font-black uppercase tracking-wider ${isActive ? 'text-white' : 'text-zinc-500'}`}>{s.id}</span>
-                                    </button>
+                                    <div key={s.id} className="tool-cell flex flex-col items-center gap-1 shrink-0">
+                                        <button aria-pressed={isActive} title={s.id} onClick={() => setInvStatusFilter(s.id as any)}
+                                            className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
+                                            style={{ color: isActive ? s.color : undefined }}>
+                                            <Icon size={19} strokeWidth={isActive ? 3.5 : 2.5} />
+                                        </button>
+                                        <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -751,10 +904,13 @@ export const UniversalToolsBar: React.FC = () => {
                                 const vendorColor = (vendors as any)[v]?.color || '#ffffff';
                                 const isActive = invVendorFilter.includes(v) || invVendorFilter.includes('All');
                                 return (
-                                    <button key={v} aria-pressed={isActive} onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])} className={`flex flex-col items-center gap-1.5 transition-all shrink-0 ${isActive ? 'scale-110' : 'grayscale brightness-50 hover:grayscale-0'}`} style={{ color: isActive ? vendorColor : '#52525b' }}>
-                                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: vendorColor }} />
-                                        <span className="text-[10px] font-black uppercase tracking-tight">{v}</span>
-                                    </button>
+                                    <div key={v} className="tool-cell flex flex-col items-center gap-1 shrink-0">
+                                        <button aria-pressed={isActive} title={v}
+                                            onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])}
+                                            className="tool-btn vendor-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
+                                            style={{ ['--vendor-color' as any]: vendorColor }} />
+                                        <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none" style={{ color: vendorColor }}>{v}</span>
+                                    </div>
                                 );
                             })}
                         </div>

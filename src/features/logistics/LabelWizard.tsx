@@ -11,7 +11,8 @@ import {
     themeAtom,
     packingSelectedIdsAtom,
     activeViewAtom,
-    logisticsSubTabAtom
+    logisticsSubTabAtom,
+    userAtom
 } from '../../lib/atoms';
 import { 
     X, Printer, Nfc, FileSpreadsheet, FileText, Download, Sheet, ListChecks, 
@@ -19,7 +20,7 @@ import {
     ShieldAlert, CheckCircle, Edit3, Check, BookOpen, Layers,
     Sparkles, ArrowRight, Activity, Terminal, ExternalLink,
     Smartphone, Cpu, Waves, QrCode, Tag, DollarSign, Barcode,
-    Maximize2, Search, ZapOff
+    Maximize2, Search, ZapOff, History
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { RareEarthLogoBase64 } from './RareEarthLogoBase64';
@@ -32,6 +33,7 @@ import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { vendors } from '../../lib/consts';
 import { generateAxonometricDataUrl } from '../../lib/axonometric';
 import { NFCTagCard } from '../../components/LabelVisuals';
+import { supabase } from '../../lib/supabase';
 
 /* ─── NFC Tags HUD Component ─── */
 import { ScannerCenter } from '../../components/ScannerCenter';
@@ -167,7 +169,7 @@ export const NFCWizard: React.FC = () => {
                 onClick={() => setIsOpen(false)} 
             />
             
-            <div className="relative w-full h-full flex flex-col lg:flex-row pointer-events-auto overflow-y-auto bg-black/10 backdrop-blur-3xl">
+            <div className="label-wizard nfc-wizard relative w-full h-full flex flex-col lg:flex-row pointer-events-auto overflow-y-auto bg-black/10 backdrop-blur-3xl">
                 
                 {/* Floating Close Button - Studio Standard */}
                 <button 
@@ -365,6 +367,7 @@ export const NFCWizard: React.FC = () => {
 
 /* ─── Printables Engine HUB Sub-component (LARGE Mode) ─── */
 export const LabelWizard: React.FC = () => {
+    const user = useAtomValue(userAtom);
     const [isOpen, setIsOpen] = useAtom(isPackingPrintWizardOpenAtom);
     const selectedIds = useAtomValue(selectedInventoryIdsAtom);
     const inventory = useAtomValue(inventoryAtom);
@@ -381,7 +384,116 @@ export const LabelWizard: React.FC = () => {
     const [urls, setUrls] = useState({ xlsx: '', pdf: '', catalog: '' });
 
     const [isPrintWorkflowOpen, setIsPrintWorkflowOpen] = useState(false);
+    const [showJobLog, setShowJobLog] = useState(false);
+    // Tracks activeLabelSize, which is declared further down; commitPrintJob
+    // reads it through this so the callback does not depend on declaration order.
+    const labelSizeRef = React.useRef<string>('50x30');
+
+    // A print job that has been handed to the engine but not yet confirmed.
+    const pendingPrintJobRef = React.useRef<{ ids: string[]; tagById: Record<string, string>; checksum: string; jobId: string; isReprint: boolean } | null>(null);
+
+    /**
+     * SHA-256 of the exact label payload sent to the printer. Stored per item
+     * so a tag can be traced back to the job that produced it, and so a
+     * reprint is distinguishable from the original rather than just bumping a
+     * date. Deterministic: the same batch yields the same checksum.
+     */
+    const computeJobChecksum = async (batch: any): Promise<string> => {
+        try {
+            const bytes = new TextEncoder().encode(JSON.stringify(batch));
+            const digest = await crypto.subtle.digest('SHA-256', bytes);
+            return Array.from(new Uint8Array(digest))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch {
+            return '';
+        }
+    };
+
+    // The last completed job, so the operator can reprint or review it without
+    // rebuilding the batch.
+    const [lastPrintJob, setLastPrintJob] = React.useState<{
+        jobId: string; labelCount: number; itemCount: number; at: string; isReprint: boolean;
+    } | null>(null);
+
+    /**
+     * Records a completed job. Called only from the designer's PRINT_COMPLETE,
+     * which fires inside its !isPrintCancelled() guard — so a row here means
+     * labels physically came out of the printer, not that a wizard was opened.
+     *
+     * Counts come from the designer rather than from inventory.quantity: the
+     * batch expands one label per unit, and an operator can add doubles at the
+     * end of a run, so the printer's own tally is the only accurate one.
+     */
+    const commitPrintJob = React.useCallback(async (detail: any, reason: string) => {
+        const job = pendingPrintJobRef.current;
+        if (!job || job.ids.length === 0) return;
+        pendingPrintJobRef.current = null;
+
+        const printedTags: string[] = Array.isArray(detail?.printedTags) ? detail.printedTags : [];
+        const labelCount: number = Number(detail?.totalRecords) || printedTags.length || job.ids.length;
+        const stamp = detail?.finishedAt || new Date().toISOString();
+        const isReprint = !!job.isReprint;
+
+        // How many labels each tag actually received. A tag appearing twice in
+        // the run is two labels, which is exactly the double-label case.
+        const perTag = new Map<string, number>();
+        printedTags.forEach(t => perTag.set(t, (perTag.get(t) || 0) + 1));
+
+        try {
+            const { error: jobErr } = await supabase.from('print_jobs').insert({
+                id: job.jobId,
+                checksum: job.checksum,
+                printed_at: stamp,
+                printed_by: user?.email || user?.name || null,
+                label_count: labelCount,
+                item_count: job.ids.length,
+                is_reprint: isReprint,
+                label_size: labelSizeRef.current,
+                source: detail?.source || 'batch',
+            });
+            if (jobErr) throw jobErr;
+
+            // One row per item in the job, carrying its own label count. The
+            // inventory running totals are maintained by trigger from these.
+            const rows = job.ids.map((id: string) => {
+                const tag = job.tagById?.[id] || '';
+                return {
+                    job_id: job.jobId,
+                    inventory_id: id,
+                    tag_id: tag,
+                    labels_printed: perTag.get(tag) ?? 1,
+                };
+            });
+            for (let i = 0; i < rows.length; i += 100) {
+                const { error: itemErr } = await supabase.from('print_job_items').insert(rows.slice(i, i + 100));
+                if (itemErr) throw itemErr;
+            }
+
+            // A reprint must not rewrite the original print date — that is the
+            // moment the tag first existed. Only the job log grows.
+            if (!isReprint) {
+                for (let i = 0; i < job.ids.length; i += 50) {
+                    const { error } = await supabase.from('inventory').update({
+                        print_date: stamp,
+                        print_job_checksum: job.checksum,
+                        print_job_id: job.jobId,
+                        updated_at: stamp,
+                    }).in('id', job.ids.slice(i, i + 50));
+                    if (error) throw error;
+                }
+            }
+
+            setLastPrintJob({ jobId: job.jobId, labelCount, itemCount: job.ids.length, at: stamp, isReprint });
+            toast.success(`Logged ${labelCount} label${labelCount !== 1 ? 's' : ''} across ${job.ids.length} item${job.ids.length !== 1 ? 's' : ''}`);
+            console.log(`[LabelWizard] print job ${job.jobId} recorded (${reason})`);
+        } catch (e: any) {
+            console.error('[LabelWizard] print job log failed:', e);
+            toast.error('Labels printed, but the job was not logged: ' + (e?.message || 'unknown error'));
+        }
+    }, [user]);
+
     const [activeLabelSize, setActiveLabelSize] = useState<'50x30' | '50x50'>('50x30');
+    React.useEffect(() => { labelSizeRef.current = activeLabelSize; }, [activeLabelSize]);
     const [isPrintHelperOpen, setIsPrintHelperOpen] = useState(false);
     const [logoVariant, setLogoVariant] = useState<'ArtOfDecor' | 'RareEarth'>('ArtOfDecor');
     const [activeSlide, setActiveSlide] = useState<0 | 1>(0);
@@ -621,7 +733,7 @@ export const LabelWizard: React.FC = () => {
         };
     };
 
-    const handlePrintBluetooth = async () => {
+    const handlePrintBluetooth = async (isReprint = false) => {
         setProgress(p => ({ ...p, printer: 5 }));
         const tid = toast.loading('Generating dynamic 3D structures for labels...');
         try {
@@ -634,6 +746,23 @@ export const LabelWizard: React.FC = () => {
             pendingBatchRef.current = batchProject;
             setProgress(p => ({ ...p, printer: 100 }));
             toast.success('Batch Prepared! Launching Print Engine', { id: tid });
+
+            // Hold the job until the engine confirms it printed. Stamping here
+            // would record every opened wizard as a printed tag, which is the
+            // opposite of what the checksum is for.
+            const tagById: Record<string, string> = {};
+            selectedItems.forEach((it: any) => {
+                const id = it.row ?? it.data?.id ?? it.id;
+                if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
+            });
+            pendingPrintJobRef.current = {
+                ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
+                tagById,
+                checksum: await computeJobChecksum(batchProject),
+                jobId: `PJ-${Date.now().toString(36).toUpperCase()}`,
+                isReprint,
+            };
+
             setIsPrintWorkflowOpen(true);
             setActiveSlide(1);
         } catch (e: any) {
@@ -660,7 +789,22 @@ export const LabelWizard: React.FC = () => {
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
+            // The engine reports a finished job. This is the confident path:
+            // a checksum written from here means tags physically printed.
+            if (event.data?.type === 'PRINT_COMPLETE' || event.data?.type === 'PRINT_DONE') {
+                  commitPrintJob(event.data.payload || {}, 'designer reported PRINT_COMPLETE');
+              }
             if (event.data?.type === 'CLOSE_WIZARD') {
+                  // Fallback: the current print engine emits no completion
+                  // message, so closing after a job is the only other evidence
+                  // available. Ask rather than assume — silently stamping an
+                  // abandoned job is exactly the false positive the checksum
+                  // exists to prevent.
+                  // The designer now reports PRINT_COMPLETE itself, so a job
+                  // still pending at close was abandoned. Dropping it is
+                  // correct: recording it would be the false positive the
+                  // checksum exists to prevent.
+                  pendingPrintJobRef.current = null;
                   setIsPrintWorkflowOpen(false);
               }
               if (event.data?.type === 'DESIGNER_READY') {
@@ -681,7 +825,7 @@ export const LabelWizard: React.FC = () => {
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, []);
+    }, [commitPrintJob]);
 
     useEffect(() => {
         if (isOpen) {
@@ -993,7 +1137,7 @@ export const LabelWizard: React.FC = () => {
                 </div>
             )}
 
-        <div className="fixed inset-0 z-[5000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
+        <div className="label-wizard fixed inset-0 z-[5000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
             <div className="absolute inset-0 bg-black/20 backdrop-blur-[80px] pointer-events-auto" onClick={() => setIsOpen(false)} />
             
             <div className="relative w-full h-[100dvh] md:w-[95vw] md:h-[95vh] flex flex-col overflow-y-auto overflow-x-hidden no-scrollbar pointer-events-auto p-8 md:p-12 lg:p-16 max-w-7xl mx-auto animate-in zoom-in-95 duration-700 bg-transparent">
@@ -1034,7 +1178,7 @@ export const LabelWizard: React.FC = () => {
                             placeholder="ID_NULL"
                         />
                     </div>
-                    <div className="flex gap-8 shrink-0">
+                    <div className="wizard-readout flex gap-8 shrink-0">
                         <div className="flex flex-col items-end">
                             <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">TYPES</span>
                             <div className="text-4xl md:text-5xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)]">
@@ -1160,7 +1304,7 @@ export const LabelWizard: React.FC = () => {
                                     
                                     <div className="mt-4">
                                         <button
-                                            onClick={handlePrintBluetooth}
+                                            onClick={() => handlePrintBluetooth()}
                                             disabled={progress.printer > 0 && progress.printer < 100}
                                             className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(var(--main-color-rgb),0.6)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                                         >
@@ -1392,9 +1536,56 @@ export const LabelWizard: React.FC = () => {
                                     className="w-full h-full border-none bg-transparent"
                                     title="OnyxLabels Designer"
                                     allow="bluetooth"
-                                    
                                 />
                             </div>
+
+                            {/* End-of-job bar. Appears only once a run has actually
+                                completed, because it is driven by the designer's
+                                PRINT_COMPLETE rather than by opening the wizard.
+                                Doubles are handled here: reprinting a job logs a
+                                second set of labels against the same items without
+                                touching the original print date. */}
+                            {lastPrintJob && (
+                                <div className="print-job-bar shrink-0 flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-t border-white/10">
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 leading-none mb-1">Job</span>
+                                            <span className="text-[12px] font-black tabular-nums leading-none">{lastPrintJob.jobId}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 leading-none mb-1">Labels</span>
+                                            <span className="text-[12px] font-black tabular-nums leading-none text-(--main-color)">{lastPrintJob.labelCount}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 leading-none mb-1">Items</span>
+                                            <span className="text-[12px] font-black tabular-nums leading-none">{lastPrintJob.itemCount}</span>
+                                        </div>
+                                        {lastPrintJob.isReprint && (
+                                            <span className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-400">Reprint</span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => { setLastPrintJob(null); handlePrintBluetooth(true); }}
+                                            className="flex items-center gap-2 px-4 h-11 rounded-xl text-[9px] font-black uppercase tracking-[0.16em] transition-all"
+                                            title="Send the same batch again — logs a second set of labels, keeps the original print date"
+                                        >
+                                            <Printer size={16} strokeWidth={2.5} />
+                                            Reprint Batch
+                                        </button>
+                                        <button
+                                            onClick={() => setShowJobLog(v => !v)}
+                                            aria-pressed={showJobLog}
+                                            className="flex items-center gap-2 px-4 h-11 rounded-xl text-[9px] font-black uppercase tracking-[0.16em] transition-all"
+                                            title="Print job history for this batch"
+                                        >
+                                            <History size={16} strokeWidth={2.5} />
+                                            Job Log
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

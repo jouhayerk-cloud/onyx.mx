@@ -829,7 +829,7 @@ html.style-slab [class*="drop-shadow"] {
 
    The hook is the bg-(--sidebar-bg) utility the row carries; the sidebar
    itself is styled from its own .sidebar rule and is unaffected. */
-html.style-slab [class*="bg-(--sidebar-bg)"] {
+html.style-slab [class*="bg-(--sidebar-bg)"]:not(.payment-row) {
     background-color: color-mix(in srgb, var(--slab-hi) 45%, var(--slab)) !important;
     box-shadow: none !important;
     border-color: var(--slab-edge) !important;
@@ -837,7 +837,7 @@ html.style-slab [class*="bg-(--sidebar-bg)"] {
     transition: box-shadow var(--slab-ease), background-color var(--slab-ease);
 }
 
-html.style-slab [class*="bg-(--sidebar-bg)"]:hover {
+html.style-slab [class*="bg-(--sidebar-bg)"]:not(.payment-row):hover {
     background-color: var(--slab-hi) !important;
     box-shadow: var(--slab-lift) !important;
     border-color: color-mix(in srgb, var(--slab-sh) 55%, transparent) !important;
@@ -1068,4 +1068,494 @@ html.style-slab .season-toggle[aria-pressed="false"] {
 
 html.style-slab .season-toggle:hover .season-track {
     border-color: color-mix(in srgb, var(--main-color) 45%, transparent);
+}
+
+/* ── Selection dock ───────────────────────────────────────────────────────
+   The dock floats above the list rather than belonging to it, so it is the
+   one surface that reads as a separate slab laid on top: raised from the
+   edge it meets, with its own light. The blur is dropped — the dock is
+   opaque stone, not glass over content. */
+html.style-slab .selection-dock {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-top: 1px solid var(--slab-edge) !important;
+    border-radius: var(--slab-r-lg) var(--slab-r-lg) 0 0;
+    box-shadow: 0 -6px 16px color-mix(in srgb, var(--slab-sh) 70%, transparent),
+                inset 0 1px 0 var(--slab-hi) !important;
+}
+
+/* Dock actions are icon-only and sit close together, so they take the modest
+   lift rather than the full raise; the row would otherwise read as corrugated. */
+html.style-slab .selection-dock button {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    border-radius: var(--slab-r-sm) !important;
+    box-shadow: var(--slab-lift);
+    padding: 0.6rem !important;
+}
+
+html.style-slab .selection-dock button:not(:disabled):hover {
+    box-shadow: var(--slab-raised);
+    background-image: var(--slab-sheen) !important;
+    background-color: var(--slab-tint-hover) !important;
+    transform: none !important;
+}
+
+html.style-slab .selection-dock button:active {
+    box-shadow: var(--slab-pressed) !important;
+    background-image: var(--slab-sheen-in) !important;
+}
+
+/* The hover tooltips are absolutely positioned chips, not controls. */
+html.style-slab .selection-dock button span[class*="absolute"] {
+    background-color: var(--slab-ink) !important;
+    background-image: none !important;
+    color: var(--slab) !important;
+    box-shadow: var(--slab-raised);
+    border: none !important;
+}
+
+/* ── Payment history ──────────────────────────────────────────────────────
+   Financial rows are readouts, so they are wells cut into the detail drawer
+   rather than cards sitting on it. They carry no hover: nothing here is
+   pressable, and a lift would imply otherwise.
+
+   The figures keep their meaning colours — green paid, red fees, accent
+   total — because those are data, and rule 3 keeps data colour off the slab
+   and on top of it. */
+/* .payment-row also carries bg-(--sidebar-bg), the same utility the inventory
+   rows use, so the flat-rows rule above claimed it and set box-shadow:none
+   !important. The rows rule now excludes it, and the depth is stated with
+   !important here so nothing else can flatten a readout back into a card. */
+html.style-slab .payment-row {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen-in) !important;
+    border: 1px solid var(--slab-edge) !important;
+    border-radius: var(--slab-r-sm) !important;
+    box-shadow: var(--slab-pressed) !important;
+}
+
+html.style-slab .payment-row:hover {
+    box-shadow: var(--slab-pressed) !important;
+}
+
+html.style-slab .payment-history > h4 {
+    color: var(--slab-dim) !important;
+    opacity: 1 !important;
+}
+
+/* Column separators inside a pressed well should read as a scored line, not
+   a border between cards. */
+html.style-slab .payment-row [class*="border-l"] {
+    border-left-color: var(--slab-edge) !important;
+}
+
+/* ── Item information ─────────────────────────────────────────────────────
+   The label/value pairs in the expanded row are instrument text: the label
+   sits at the dim tone (which now clears AAA) and the value at full ink,
+   with tabular figures so columns align down the list. Meaning colours on
+   Landed and Retail are left exactly as they are. */
+html.style-slab .payment-row span,
+html.style-slab [class*="bg-(--sidebar-bg)"] + div span {
+    text-shadow: none !important;
+}
+
+html.style-slab [class*="bg-(--sidebar-bg)"] + div [class*="font-mono"],
+html.style-slab .payment-row [class*="font-mono"] {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Opacity-dimmed labels were tuned against a dark ground; on the slab the
+   dim tone already carries the contrast, so the extra fade only costs
+   legibility at 8-10px. */
+html.style-slab .payment-row .opacity-30,
+html.style-slab .payment-row .opacity-40,
+html.style-slab .payment-history .opacity-30,
+html.style-slab .payment-history .opacity-40,
+html.style-slab [class*="bg-(--sidebar-bg)"] + div .opacity-30,
+html.style-slab [class*="bg-(--sidebar-bg)"] + div .opacity-40 {
+    opacity: 1 !important;
+    color: var(--slab-dim) !important;
+}
+
+/* An accent-coloured label keeps its accent — it is naming a total, which is
+   meaning, not chrome. Only the neutral labels are re-toned above. */
+html.style-slab .payment-row .text-\(--main-color\),
+html.style-slab .payment-history .text-\(--main-color\) {
+    color: var(--main-color) !important;
+    opacity: 1 !important;
+}
+
+/* ── Logo panel ───────────────────────────────────────────────────────────
+   The mark is set into the slab rather than sitting on it, matching the info
+   notch: both are identity, not controls, and neither should read as
+   pressable. It keeps its own hover because it still opens the sidebar. */
+html.style-slab .logo-panel {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen-in) !important;
+    border: 1px solid var(--slab-edge) !important;
+    border-radius: var(--slab-r-md) !important;
+    box-shadow: var(--slab-pressed) !important;
+}
+
+html.style-slab .logo-panel:hover {
+    box-shadow: var(--slab-pressed-deep) !important;
+    background-color: var(--slab-tint-hover) !important;
+}
+
+/* Two-row season switch: the track sits above its label, so the control reads
+   top-to-bottom like every other labelled figure in the bar. */
+html.style-slab .season-toggle[aria-pressed="true"] .season-knob {
+    left: calc(100% - 0.625rem - 3px);
+}
+
+/* ── Tool cells: icon in the key, label on the panel ──────────────────────
+   The label sits outside the control, so the pressed surface is only as large
+   as the icon target — the depth change reads as a discrete key rather than a
+   wide slab — and every label lands on one baseline across the bar no matter
+   how the controls differ in size. */
+html.style-slab .tool-cell {
+    background: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+html.style-slab .tool-label {
+    background: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    text-shadow: none !important;
+    color: var(--slab-dim);
+    transition: color var(--slab-ease);
+}
+
+/* The label follows its control's state, so the pair reads as one thing. */
+html.style-slab .tool-cell:has(> .tool-btn[aria-pressed="true"]) .tool-label {
+    color: var(--main-color);
+}
+
+html.style-slab .tool-cell:hover .tool-label {
+    color: var(--slab-ink);
+}
+
+html.style-slab .tool-btn {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-lift);
+    color: var(--slab-dim);
+}
+
+html.style-slab .tool-btn:not(:disabled):hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+    color: var(--slab-ink);
+}
+
+html.style-slab .tool-btn[aria-pressed="true"] {
+    box-shadow: var(--slab-pressed) !important;
+    background-image: var(--slab-sheen-on) !important;
+    background-color: var(--slab-tint-on) !important;
+    border-color: var(--slab-edge-on) !important;
+}
+
+html.style-slab .tool-btn:not(:disabled):active {
+    box-shadow: var(--slab-pressed) !important;
+}
+
+/* Vendor keys are the exception: the vendor colour IS the identifier, so the
+   whole key carries it and the label repeats it beneath. The bevel still
+   applies over the fill, which is why the inline background is left alone
+   and only the shadow and border are stated here. */
+/* The fill arrives as --vendor-color rather than an inline background-color:
+   .tool-btn sets background-color with !important, and an !important
+   declaration in a stylesheet beats an inline style, so the inline fill was
+   being overridden and every key rendered as bare slab. A custom property
+   sidesteps that — the inline value feeds a rule that can also be !important. */
+html.style-slab .vendor-btn {
+    background-color: var(--vendor-color, var(--slab)) !important;
+    background-image: none !important;
+    border-color: color-mix(in srgb, var(--slab-sh) 60%, transparent) !important;
+}
+
+/* Selected: seated into the slab, full-strength colour. */
+html.style-slab .vendor-btn[aria-pressed="true"] {
+    background-color: var(--vendor-color, var(--slab)) !important;
+    background-image: none !important;
+    box-shadow: var(--slab-pressed-deep) !important;
+    border-color: color-mix(in srgb, var(--slab-sh) 75%, transparent) !important;
+}
+
+/* Deselected: raised and muted toward the slab. Mixing toward the surface
+   keeps the hue identifiable while clearly reading as off — opacity would
+   have dulled the bevel along with the fill. */
+html.style-slab .vendor-btn[aria-pressed="false"] {
+    background-color: color-mix(in srgb, var(--vendor-color, var(--slab)) 28%, var(--slab)) !important;
+    box-shadow: var(--slab-lift) !important;
+}
+
+html.style-slab .vendor-btn[aria-pressed="false"] + .tool-label {
+    opacity: 0.45;
+}
+
+/* ── Vendor keys are flat colour, never sheened ───────────────────────────
+   The sheen exists to describe an extruded slab surface. A vendor key is not
+   a surface — it is an identifier, and a gradient across it shifts the very
+   hue that identifies the vendor. Stated at .tool-btn.vendor-btn specificity
+   so it outranks both .tool-btn[aria-pressed] and the theme-scoped ON rules,
+   which otherwise reapply --slab-sheen-on to a selected key. */
+html.style-slab .tool-btn.vendor-btn,
+html.style-slab .tool-btn.vendor-btn:hover,
+html.style-slab .tool-btn.vendor-btn[aria-pressed="true"],
+html.style-slab .tool-btn.vendor-btn[aria-pressed="false"],
+html.style-slab.theme-talan .tool-btn.vendor-btn[aria-pressed="true"],
+html.style-slab.theme-fluorite .tool-btn.vendor-btn[aria-pressed="true"] {
+    background-image: none !important;
+}
+
+html.style-slab .tool-btn.vendor-btn[aria-pressed="true"] {
+    background-color: var(--vendor-color, var(--slab)) !important;
+}
+
+html.style-slab .tool-btn.vendor-btn[aria-pressed="false"] {
+    background-color: color-mix(in srgb, var(--vendor-color, var(--slab)) 28%, var(--slab)) !important;
+}
+
+/* ══ PRINTABLES WIZARD ═══════════════════════════════════════════════════
+   The wizard is a full-screen surface, so it is the one place the slab has
+   to work at scale rather than as chrome around a list. Everything below
+   follows the same grammar as the rest of the app — the only difference is
+   that here the ground itself is the wizard rather than the app shell. */
+
+html.style-slab .label-wizard {
+    background-color: var(--slab) !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    color: var(--slab-ink);
+}
+
+/* The scrim behind it. ROCK blurs the app through the overlay; a slab is
+   opaque stone and shows nothing behind it. */
+html.style-slab .label-wizard > [class*="bg-black/"] {
+    background-color: var(--slab) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* ── Panels ───────────────────────────────────────────────────────────────
+   Print Settings, the preview frame and the export cards are the wizard's
+   raised furniture. They were bg-black/30..40 with rounded-3xl and
+   shadow-2xl, all of which read as floating glass on a light ground. */
+html.style-slab .label-wizard [class*="rounded-3xl"],
+html.style-slab .label-wizard [class*="rounded-[2"],
+html.style-slab .label-wizard [class*="rounded-2xl"] {
+    border-radius: var(--slab-r-lg) !important;
+}
+
+html.style-slab .label-wizard [class*="bg-black/3"],
+html.style-slab .label-wizard [class*="bg-black/4"],
+html.style-slab .label-wizard [class*="bg-white/[0.0"] {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-raised) !important;
+    backdrop-filter: none !important;
+}
+
+/* ── Item selection ───────────────────────────────────────────────────────
+   Selecting is the wizard's core interaction, so it gets the clearest
+   expression of the grammar: a tile lifts at rest, rises under the pointer,
+   and seats into the slab when chosen. Depth carries the selection; the
+   accent border makes it survive greyscale and low vision. */
+html.style-slab .label-wizard button[class*="w-24 h-24"],
+html.style-slab .label-wizard button[class*="aspect-square"] {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    border-radius: var(--slab-r-md) !important;
+    box-shadow: var(--slab-lift);
+    transition: box-shadow var(--slab-ease), background-color var(--slab-ease);
+}
+
+html.style-slab .label-wizard button[class*="w-24 h-24"]:hover,
+html.style-slab .label-wizard button[class*="aspect-square"]:hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+}
+
+html.style-slab .label-wizard button[aria-pressed="true"][class*="w-24 h-24"],
+html.style-slab .label-wizard button[class*="w-24 h-24"][class*="border-(--main-color)"],
+html.style-slab .label-wizard button[class*="w-24 h-24"][class*="bg-(--main-color)"] {
+    box-shadow: var(--slab-pressed) !important;
+    background-image: var(--slab-sheen-on) !important;
+    border-color: var(--slab-edge-on) !important;
+}
+
+/* ── Readouts ─────────────────────────────────────────────────────────────
+   TYPES and TOTAL ITEMS are counts, not controls: recessed like the header
+   notch, and stripped of the glow the dark theme gave them. */
+html.style-slab .wizard-readout {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen-in) !important;
+    border: 1px solid var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+    padding: 0.75rem 1.25rem;
+}
+
+html.style-slab .wizard-readout * {
+    filter: none !important;
+    text-shadow: none !important;
+}
+
+/* ── Tabs and primary actions ─────────────────────────────────────────────
+   The mode tabs follow the ON grammar. The primary print button keeps its
+   accent fill — it is the commit action and should stay the loudest thing on
+   the surface — but loses the flat look for a real key. */
+html.style-slab .label-wizard [class*="bg-(--main-color)"]:not(.tool-btn) {
+    background-image: none !important;
+    box-shadow: var(--slab-raised);
+    border: 1px solid color-mix(in srgb, var(--main-color) 65%, #000) !important;
+}
+
+html.style-slab .label-wizard [class*="bg-(--main-color)"]:not(.tool-btn):hover {
+    box-shadow: var(--slab-float);
+    filter: brightness(1.06);
+}
+
+html.style-slab .label-wizard [class*="bg-(--main-color)"]:not(.tool-btn):active {
+    box-shadow: var(--slab-pressed) !important;
+    filter: none;
+}
+
+/* ── End-of-job bar ───────────────────────────────────────────────────────
+   Sits under the designer as a ledge: raised from the edge it meets, so it
+   reads as attached to the wizard rather than floating over the print area. */
+html.style-slab .print-job-bar {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border-top: 1px solid var(--slab-edge) !important;
+    box-shadow: 0 -5px 14px color-mix(in srgb, var(--slab-sh) 60%, transparent),
+                inset 0 1px 0 var(--slab-hi);
+}
+
+html.style-slab .print-job-bar button {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-lift);
+    color: var(--slab-ink);
+}
+
+html.style-slab .print-job-bar button:hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+}
+
+html.style-slab .print-job-bar button[aria-pressed="true"] {
+    box-shadow: var(--slab-pressed) !important;
+    background-image: var(--slab-sheen-on) !important;
+    color: var(--main-color) !important;
+}
+
+/* The designer runs in an iframe with its own stylesheet, which this cannot
+   reach. Framing it as a pressed well at least seats it into the wizard
+   rather than leaving it as a bright rectangle floating on the slab. */
+html.style-slab .label-wizard iframe {
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+    background-color: var(--slab);
+}
+
+/* ── Smart filter chips ───────────────────────────────────────────────────
+   A hierarchy, so depth has to say two different things at once: whether a
+   branch is *selected* and whether it is *expanded*. Selection uses the
+   normal ON grammar — pressed plus accent. Expansion uses only the chevron's
+   rotation, deliberately not depth, because a branch you are merely looking
+   inside is not a filter you have applied, and giving both the same visual
+   weight is what makes nested filter UIs unreadable. */
+html.style-slab .smart-filters {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen-in) !important;
+    border-top: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+html.style-slab .smart-chip {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-lift);
+    color: var(--slab-dim);
+    transition: box-shadow var(--slab-ease), background-color var(--slab-ease), color var(--slab-ease);
+}
+
+html.style-slab .smart-chip:hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+    color: var(--slab-ink);
+}
+
+html.style-slab .smart-chip[aria-pressed="true"] {
+    box-shadow: var(--slab-pressed) !important;
+    background-image: var(--slab-sheen-on) !important;
+    background-color: var(--slab-tint-on) !important;
+    border-color: var(--slab-edge-on) !important;
+    color: var(--main-color) !important;
+}
+
+/* A child chip is one step down, so it is one step shallower. Nesting depth
+   reads as physical depth without needing an indent guide. */
+html.style-slab .smart-chip-child {
+    box-shadow: var(--slab-lift);
+    background-image: none !important;
+    background-color: color-mix(in srgb, var(--slab-hi) 35%, var(--slab)) !important;
+}
+
+html.style-slab .smart-chip-child[aria-pressed="true"] {
+    box-shadow: var(--slab-pressed) !important;
+}
+
+/* The expander shares the chip's surface so the pair reads as one control
+   split in two, not two controls that happen to be adjacent. */
+html.style-slab .smart-expand {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    border-left: none !important;
+    box-shadow: var(--slab-lift);
+    color: var(--slab-dim);
+}
+
+html.style-slab .smart-expand:hover {
+    background-color: var(--slab-tint-hover) !important;
+    color: var(--slab-ink);
+}
+
+html.style-slab .smart-expand[aria-pressed="true"] {
+    box-shadow: var(--slab-pressed) !important;
+    color: var(--main-color);
+}
+
+html.style-slab .smart-children {
+    border-left: 1px solid var(--slab-edge);
+}
+
+html.style-slab .smart-clear {
+    background-color: var(--slab) !important;
+    border: 1px solid color-mix(in srgb, var(--stop, #DC2626) 35%, transparent) !important;
+    box-shadow: var(--slab-lift);
+    color: #DC2626;
+}
+
+html.style-slab .smart-clear:hover {
+    box-shadow: var(--slab-raised);
+}
+
+html.style-slab .smart-count {
+    font-variant-numeric: tabular-nums;
 }

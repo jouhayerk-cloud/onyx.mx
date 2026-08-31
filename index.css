@@ -3185,8 +3185,8 @@ html.theme-tekis .wizardstate-indicator {
     padding: 0 0.75rem;
     /* Two rows of h-16 (64px) controls plus the 4px row gap is 132px, so the
        old 56px — and a naive doubling to 112px — both clipped the top row. */
-    height: 112px;
-    max-height: 112px;
+    height: 96px;
+    max-height: 96px;
   }
 
   /* Better mobile touch targets for all buttons */

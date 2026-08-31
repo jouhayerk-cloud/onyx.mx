@@ -126,7 +126,7 @@ const shipmentsSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 15,
+    version: 17,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -170,6 +170,20 @@ const inventorySchema = {
         sent_notes: { type: ['string', 'null'] },
         sent_pack: { type: ['string', 'null'] },
         sent_date: { type: ['string', 'null'] },
+        // Processing stamps. pack_date is new; sent_manifest_id existed in the
+        // client's read path but never as a column, which is why every dispatch
+        // silently failed to record a ship date.
+        pack_date: { type: ['string', 'null'] },
+        sent_manifest_id: { type: ['string', 'null'] },
+        // Print provenance: a checksum means the tag physically printed, as
+        // opposed to a date which only means the wizard ran.
+        print_job_checksum: { type: ['string', 'null'] },
+        print_job_id: { type: ['string', 'null'] },
+        payment_requested_at: { type: ['string', 'null'] },
+        // Derived server-side and read-only. Synced so the client can filter
+        // on them without recomputing the ladder in a dozen components.
+        lifecycle_status: { type: ['string', 'null'] },
+        payment_status: { type: ['string', 'null'] },
         shipped: { type: ['boolean', 'null'] },
         workbook: { type: ['string', 'null'] },
         crate_id: { type: ['string', 'null'] },
@@ -282,6 +296,13 @@ const createDatabase = async () => {
                     // 15: season stamp added — left unset here, the next sync fills it in
                     // and rowSeason() infers from workbook until then.
                     15: (oldDoc) => oldDoc,
+                    // 16: pack_date + sent_manifest_id added. Both are nullable
+                    // and back-filled by the next sync, so existing docs pass
+                    // through untouched.
+                    16: (oldDoc) => oldDoc,
+                    // 17: print provenance + the two derived status columns.
+                    // All nullable and server-populated, so docs pass through.
+                    17: (oldDoc) => oldDoc,
                 }
             },
             finance: {

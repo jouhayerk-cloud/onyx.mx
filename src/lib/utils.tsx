@@ -1442,6 +1442,15 @@ export const normalizeInventoryData = (data: any): any => {
     sentDate: d.sent_date || d.sentDate,
     sentManifestId: d.sent_manifest_id || d.sentManifestId,
     printDate: d.print_date || d.printDate,
+    packDate: d.pack_date || d.packDate,
+    createdAt: d.created_at || d.createdAt || d.timestamp,
+    printJobChecksum: d.print_job_checksum || d.printJobChecksum,
+    printJobId: d.print_job_id || d.printJobId,
+    paymentRequestedAt: d.payment_requested_at || d.paymentRequestedAt,
+    // Server-derived. Read these rather than re-deriving the ladder locally;
+    // getStatusClass still exists for the colour mapping the UI needs.
+    lifecycleStatus: d.lifecycle_status || d.lifecycleStatus,
+    paymentStatus: d.payment_status || d.paymentStatus,
     isClientVisible: d.is_client_visible || d.isClientVisible,
     rating: d.rating ?? 0,
     is_hidden: d.is_hidden ?? false,
