@@ -19,6 +19,23 @@ const WS_ENDPOINTS = [
 
 const WS_PORTS = [3000, 80, 8080, 81];
 
+/**
+ * A page served over HTTPS may not open a plain ws:// socket — the browser blocks
+ * it as mixed content and flags the page as not secure. Loopback is the single
+ * exception: browsers treat localhost/127.0.0.1 as a trustworthy origin, so
+ * ws://localhost still connects from https://.
+ *
+ * On the deployed site the LAN gateway is therefore unreachable by design. That
+ * is the architecture, not a defect: production drives devices through Supabase
+ * Realtime over wss:// (see PicoRealtimeController), and this direct socket is
+ * the local development path.
+ */
+const isSecurePage = (): boolean =>
+  typeof window !== 'undefined' && window.location.protocol === 'https:';
+
+const isLoopbackHost = (host: string): boolean =>
+  host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]';
+
 /** Max reconnection attempts before giving up */
 const MAX_RECONNECT = 5;
 const RECONNECT_BASE_MS = 1000;
@@ -152,15 +169,20 @@ export function useStackChanSocket(
       wsRef.current = null;
     }
 
+    const secure = isSecurePage();
+
     setState(s => ({ ...s, status: 'connecting', lastError: null }));
 
       for (const port of WS_PORTS) {
       for (const path of WS_ENDPOINTS) {
-        // Try localhost first for the Node.js Gateway, fallback to direct robot IP
-        const urlsToTry = [
-          `ws://localhost:${port}${path}`,
-          `ws://${localIp}:${port}${path}`
-        ];
+        // Try localhost first for the Node.js Gateway, fallback to direct robot IP.
+        // The LAN address is omitted on HTTPS: the browser would block each attempt
+        // as mixed content and mark the page not secure. With 4 ports x 3 paths that
+        // was 24 blocked requests per connect.
+        const urlsToTry = [`ws://localhost:${port}${path}`];
+        if (!secure || isLoopbackHost(localIp)) {
+          urlsToTry.push(`ws://${localIp}:${port}${path}`);
+        }
 
         for (const url of urlsToTry) {
           try {
@@ -194,7 +216,20 @@ export function useStackChanSocket(
       }
     }
 
-    // All endpoints failed
+    // All endpoints failed.
+    if (secure && !isLoopbackHost(localIp)) {
+      // Not a transient failure — retrying cannot succeed from an HTTPS page, and
+      // each attempt is another mixed-content warning. Stop and say why.
+      setState(s => ({
+        ...s,
+        status: 'error',
+        lastError:
+          `Direct LAN control is unavailable over HTTPS (${localIp} needs ws://, which the browser blocks). ` +
+          `Devices are driven through Supabase Realtime here; run the app locally to use the gateway directly.`,
+      }));
+      return;
+    }
+
     setState(s => ({
       ...s,
       status: 'error',
