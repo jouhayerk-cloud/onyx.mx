@@ -596,10 +596,22 @@ export const UploadWizard: React.FC = () => {
             let calculated: any = {};
             try {
                 calculated = calculateCodesAndPrices(
-                    { 
-                        price: parseFloat(state.price) || 0, 
-                        itemId: `${state.vendorId}-${String(state.itemNumber).padStart(3, '0')}`, 
-                        workbook: itemData.workbook || 'v326', 
+                    {
+                        price: parseFloat(state.price) || 0,
+                        itemId: `${state.vendorId}-${String(state.itemNumber).padStart(3, '0')}`,
+                        // The row's real barcode must be passed through. Without it
+                        // normalizeInventoryData's fallback chain (book_barcode -> tag_id
+                        // -> item_id) resolves to itemId, so every edit wrote the workbook
+                        // id back as the barcode: AN3261OOOH became AN-001.
+                        //
+                        // Passing it also preserves it. calculateCodesAndPrices keeps a
+                        // valid stored barcode and only recomputes a missing or malformed
+                        // one, which matters because this payload overwrites book_barcode
+                        // unconditionally — the database trigger deliberately never
+                        // recomputes an existing barcode, since it is printed on a physical
+                        // label, and the client must not undo that protection.
+                        book_barcode: itemData.book_barcode || itemData.bookBarcode,
+                        workbook: itemData.workbook || 'v326',
                         itemNumber: state.itemNumber || '1',
                         vendorId: state.vendorId
                     },

@@ -1516,13 +1516,24 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     const cypherString = isNaN(landedCostRounded) ? 'XXXX' : numberToCypher(landedCostRounded);
     const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
 
-    // The stored barcode wins here too, not just for bookBarcode below. This used
-    // to be rebuilt unconditionally from cypherString, so once the cypher key left
-    // the bundle the display lost its landed-code suffix (FR825 15— instead of
-    // FR825 15MAF) while copy, which reads bookBarcode, stayed correct.
-    const effectiveBarcode = norm.book_barcode && norm.book_barcode !== '-'
-      ? String(norm.book_barcode)
-      : newTagId;
+    // A stored barcode wins over recomputing: rebuilding unconditionally from
+    // cypherString meant that once the cypher key left the bundle the display lost
+    // its landed-code suffix (FR825 15— instead of FR825 15MAF) while copy, which
+    // reads bookBarcode, stayed correct.
+    //
+    // But it must be a real barcode. normalizeInventoryData falls back
+    // book_barcode -> tag_id -> item_id -> item_number, so norm.book_barcode is the
+    // workbook id (AN-001) for any row whose book_barcode is empty. Trusting that
+    // blindly replaced the tag with AN-001 after an edit, because DetailsPanel's
+    // edit payload omits book_barcode. A genuine barcode always begins with
+    // vendorPrefix + bookStr; anything else is the fallback leaking through and is
+    // recomputed instead.
+    const storedBarcode = String(norm.book_barcode ?? '').trim();
+    const expectedPrefix = `${vendorPrefix}${bookStr}`;
+    const effectiveBarcode =
+      storedBarcode && storedBarcode !== '-' && storedBarcode.toUpperCase().startsWith(expectedPrefix)
+        ? storedBarcode
+        : newTagId;
 
     // Display format is the barcode with a space after the vendor+workbook prefix.
     const splitAt = vendorPrefix.length + bookStr.length;
