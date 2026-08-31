@@ -22,11 +22,33 @@ const ALLOWED_ORIGIN = Deno.env.get("ONYXCHAN_ALLOWED_ORIGIN")
 // can reach this URL: `{"tool":"query_inventory"}` would return the whole
 // inventory, costs included, to an unauthenticated caller.
 //
-// Callers must present a valid Supabase JWT belonging to a provisioned user —
-// the same bar the app itself uses (a row in app_users, not merely an account).
-async function requireStaff(req: Request): Promise<Response | null> {
+// Two kinds of caller, with very different privilege:
+//
+//   staff   a Supabase JWT belonging to a provisioned user (a row in app_users,
+//           not merely an account). Full tool surface.
+//   device  a per-device token issued by public.issue_device_token. Restricted
+//           to DEVICE_TOOLS and can only ever act as itself.
+//
+// A device credential lives in flash on hardware that sits on a warehouse floor,
+// so it is treated as semi-public: it may report telemetry and resolve a scanned
+// tag, and it may not read costs, query finance, or drive a user's browser.
+type Caller =
+  | { kind: "staff"; role: string }
+  | { kind: "device"; deviceId: string };
+
+const DEVICE_TOOLS = new Set(["resolve_tag", "get_robot_status", "ping_robot"]);
+
+async function authenticate(req: Request): Promise<Caller | Response> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return jsonError(401, "Missing bearer token");
+
+  // Device tokens carry a distinguishing prefix, so a device credential is never
+  // sent to the auth server and a user JWT is never hashed against device rows.
+  if (token.startsWith("ocd_")) {
+    const { data: deviceId, error } = await supabase.rpc("verify_device_token", { p_token: token });
+    if (error || !deviceId) return jsonError(401, "Invalid or revoked device token");
+    return { kind: "device", deviceId: String(deviceId) };
+  }
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user?.email) return jsonError(401, "Invalid or expired token");
@@ -38,7 +60,7 @@ async function requireStaff(req: Request): Promise<Response | null> {
     .maybeSingle();
 
   if (!row?.role) return jsonError(403, "No application role assigned");
-  return null; // authorised
+  return { kind: "staff", role: String(row.role) };
 }
 
 function jsonError(status: number, message: string): Response {
@@ -378,10 +400,21 @@ Deno.serve(async (req) => {
   // and finance on the service role, or pushes state into a user's browser.
   // None of it is public. The bare "v2.5 Active" banner at the bottom is the
   // only unauthenticated response.
+  let caller: Caller | null = null;
   if (req.method === "POST") {
-    const denied = await requireStaff(req);
-    if (denied) return denied;
+    const result = await authenticate(req);
+    if (result instanceof Response) return result;
+    caller = result;
   }
+
+  // Devices get a deliberately narrow surface. Enforced here rather than inside
+  // each handler so a tool added later is denied to devices by default.
+  const guardToolForCaller = (toolName: string): Response | null => {
+    if (caller?.kind === "device" && !DEVICE_TOOLS.has(toolName)) {
+      return jsonError(403, `Device tokens may not call ${toolName}`);
+    }
+    return null;
+  };
 
   // 1. SSE Connection for MCP
   if (url.pathname.endsWith("/sse") && req.method === "GET") {
@@ -403,6 +436,8 @@ Deno.serve(async (req) => {
 
       // If it's a direct tool execution request { tool: "speak", args: { ... } }
       if (body.tool) {
+        const blocked = guardToolForCaller(String(body.tool));
+        if (blocked) return blocked;
         const handlerRes = await server.request(
           { method: "tools/call", params: { name: body.tool, arguments: body.args || {} } },
           CallToolRequestSchema
@@ -416,13 +451,20 @@ Deno.serve(async (req) => {
       // If it's standard JSON-RPC 2.0
       if (body.jsonrpc === "2.0") {
         if (body.method === "tools/list") {
-          const tools = await server.request({ method: "tools/list", params: {} }, ListToolsRequestSchema);
-          return new Response(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: tools }), {
+          const tools: any = await server.request({ method: "tools/list", params: {} }, ListToolsRequestSchema);
+          // A device is shown only what it may call, so its client does not
+          // advertise tools it would be refused.
+          const visible = caller?.kind === "device"
+            ? { ...tools, tools: (tools.tools || []).filter((t: any) => DEVICE_TOOLS.has(t.name)) }
+            : tools;
+          return new Response(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: visible }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         if (body.method === "tools/call") {
+          const blocked = guardToolForCaller(String(body.params?.name ?? ""));
+          if (blocked) return blocked;
           const callRes = await server.request(
             { method: "tools/call", params: body.params },
             CallToolRequestSchema
@@ -448,25 +490,32 @@ Deno.serve(async (req) => {
 
   // 3. Heartbeat from robot hardware
   //
-  // NOTE: this now sits behind requireStaff, which a device cannot satisfy — it
-  // has no user JWT. That is deliberate until per-device tokens exist: the old
-  // behaviour let anyone POST a device_id and rewrite that device's status,
-  // battery and last_seen. Nothing calls this today (the firmware's networking
-  // is still commented out), so failing closed costs nothing now and avoids
-  // shipping an open write endpoint. Device auth is tracked separately.
+  // The device_id is taken from the credential, never from the body. Previously
+  // the body supplied it, so any caller could mark any device online, set its
+  // battery, and move its last_seen — the classic confused-deputy shape.
+  // A staff token may still post a heartbeat, but must name the device.
   if (url.pathname.endsWith("/heartbeat") && req.method === "POST") {
-    const { device_id, battery, rssi } = await req.json();
-    await supabase
-      .from("onyxchan_devices")
-      .update({
-        status: "online",
-        battery_level: battery,
-        rssi,
-        last_seen: new Date().toISOString(),
-      })
-      .eq("device_id", device_id);
+    const body = await req.json().catch(() => ({}));
 
-    return new Response(JSON.stringify({ status: "ok" }), {
+    const deviceId = caller?.kind === "device"
+      ? caller.deviceId
+      : String(body?.device_id ?? "");
+
+    if (!deviceId) return jsonError(400, "device_id required for staff-posted heartbeats");
+
+    const toInt = (v: unknown): number | null => {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.trunc(n) : null;
+    };
+
+    const { error } = await supabase.rpc("record_device_heartbeat", {
+      p_device_id: deviceId,
+      p_battery: toInt(body?.battery),
+      p_rssi: toInt(body?.rssi),
+    });
+    if (error) return jsonError(500, `heartbeat failed: ${error.message}`);
+
+    return new Response(JSON.stringify({ status: "ok", device_id: deviceId }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

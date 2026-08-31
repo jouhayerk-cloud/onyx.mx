@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @import "./src/styles/tokens.css";
 @import "./src/styles/paper.css";
+@import "./src/styles/slab.css";
 
 html, body, #root {
   height: 100%;
@@ -3177,10 +3178,15 @@ html.theme-tekis .wizardstate-indicator {
     max-height: 85vh;
   }
 
-  /* Header: compact icons on mobile */
+  /* Header: compact icons on mobile. Height is double the old 56px because the
+     bar is now a two-row tool grid — this rule sits after the Tailwind import
+     and so beats the h-40/max-h-40 utilities on the element. */
   .main-header {
     padding: 0 0.75rem;
-    height: 56px;
+    /* Two rows of h-16 (64px) controls plus the 4px row gap is 132px, so the
+       old 56px — and a naive doubling to 112px — both clipped the top row. */
+    height: 144px;
+    max-height: 144px;
   }
 
   /* Better mobile touch targets for all buttons */

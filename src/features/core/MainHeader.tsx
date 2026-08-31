@@ -206,6 +206,7 @@ const SubTabPills: React.FC<{
             const TabIcon = t.icon ? iconToLucide[t.icon] : null;
             return (
                 <button key={t.id} onClick={() => onSelect(t.id)}
+                    aria-pressed={active === t.id}
                     className={`flex flex-col items-center justify-center p-2 transition-all active:scale-90 group/pill select-none h-16 w-16
                         ${active === t.id ? 'text-(--text-color)' : 'text-(--text-color)/30 hover:text-(--text-color)'}`}
                     style={active === t.id ? { color: accentColor } : {}}>
@@ -227,10 +228,11 @@ const StudioAction: React.FC<{
     disabled?: boolean;
     className?: string;
 }> = ({ icon: Icon, label, onClick, active, title, color = 'var(--main-color)', disabled, className = "" }) => (
-    <button 
+    <button
         onClick={onClick}
         disabled={disabled}
         title={title}
+        aria-pressed={active}
         className={`flex flex-col items-center justify-center h-16 px-4 rounded-2xl transition-all active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className}
             ${active ? 'bg-white/5 text-white' : 'text-white/30 hover:text-white/60 hover:bg-white/2'}`}
     >
@@ -3454,7 +3456,10 @@ export function MainHeader() {
 
     return (
         <>
-            <div className={`main-header h-20 sm:h-24 max-h-20 sm:max-h-24 flex items-center pl-6 pr-6 shrink-0 transition-all flex-nowrap w-full overflow-x-auto no-scrollbar shadow-none`}>
+            {/* Double height, two-line tool grid. overflow-y-hidden is required, not
+                cosmetic: with overflow-x:auto and overflow-y:visible the spec forces
+                overflow-y to compute to auto, so the bar scrolled vertically too. */}
+            <div className={`main-header h-40 sm:h-48 max-h-40 sm:max-h-48 flex items-stretch pl-6 pr-6 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -3471,9 +3476,21 @@ export function MainHeader() {
                     )}
                 </div>
 
-                {/* Dynamic Module Bar — Aligned Left & Horizontally Scrollable */}
-                <div className="flex-1 flex items-center justify-start min-w-0 overflow-x-auto no-scrollbar custom-scrollbar-hide">
-                    <div className="flex items-center gap-1 sm:gap-6 flex-nowrap min-w-max pr-4">
+                {/* Dynamic Module Bar — aligned left. Deliberately NOT its own
+                    scroll container: when it was flex-1 + min-w-0 + overflow-x-auto
+                    it absorbed all the overflow internally, so the right-hand group
+                    (Workbook, Export, user) stayed pinned and could never be reached
+                    by scrolling. The .main-header above is the single scroller now,
+                    so every control in the bar scrolls as one row. */}
+                <div className="flex items-center justify-start shrink-0">
+                    {/* Two rows, flowing in columns, growing right — the only layout that
+                        gives exactly two lines AND unbounded horizontal growth. The
+                        [&>*] variants push the same grid one level down onto each Bar's
+                        own root div (which stays a real positioned box, so its dropdowns
+                        still anchor correctly), while nested groups like SubTabPills
+                        remain a single grid item and keep their tabs on one line. */}
+                    <div className="grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-2 sm:gap-x-6 gap-y-1 min-w-max pr-4
+                        [&>*]:row-span-2 [&>*]:grid [&>*]:grid-rows-2 [&>*]:grid-flow-col [&>*]:auto-cols-max [&>*]:items-center [&>*]:gap-x-3 [&>*]:gap-y-1">
                         {activeView === 'inventory' && <InventoryBar />}
                         {activeView === 'store' && <StoreBar />}
                         {activeView === 'finance' && <FinanceBar />}
@@ -3520,7 +3537,8 @@ export function MainHeader() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1 sm:gap-6 shrink-0 pl-2 sm:pl-4 ml-auto h-full">
+                <div className="grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-1 sm:gap-x-6 gap-y-1 shrink-0 pl-2 sm:pl-4 ml-auto h-full
+                    [&>*]:row-span-2 [&>*]:flex [&>*]:items-center">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
                         {sentTruckId && (
