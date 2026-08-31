@@ -35,6 +35,23 @@ function isOfflineMode(): boolean {
  * @param payload   - Record data (must include `id`)
  * @param skipLocal - Skip RxDB write (for tables not in local DB)
  */
+/**
+ * Columns Postgres computes itself. Naming one in an INSERT or UPDATE makes
+ * the whole statement fail — the same way an unknown column does, which is
+ * how sent_date went unwritten for months without anyone noticing. They are
+ * stripped on the way out; the local copy keeps them for reading.
+ */
+const GENERATED_COLUMNS = new Set(['lifecycle_status', 'payment_status']);
+
+const stripGenerated = (payload: any): any => {
+    if (!payload || typeof payload !== 'object') return payload;
+    const clean: any = {};
+    for (const [k, v] of Object.entries(payload)) {
+        if (!GENERATED_COLUMNS.has(k)) clean[k] = v;
+    }
+    return clean;
+};
+
 export async function syncWrite(
     table: string,
     operation: ChangeOperation,
@@ -65,7 +82,7 @@ export async function syncWrite(
         const client = isOfflineMode() ? offlineClient : supabase;
         try {
             if (operation === 'upsert') {
-                const { error } = await client.from(table).upsert(payload);
+                const { error } = await client.from(table).upsert(stripGenerated(payload));
                 if (error) {
                     enqueueChange(table, operation, payload);
                     return { error };

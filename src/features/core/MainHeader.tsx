@@ -102,7 +102,9 @@ import {
     isWarehouseSelectionModeAtom,
     warehouseSelectedIdsAtom,
     showWarehouseExportWizardAtom,
-    visibleWorkbooksAtom
+    visibleWorkbooksAtom,
+    inventoryToolsOpenAtom,
+    isInventorySmartFiltersOpenAtom
 } from '../../lib/atoms';
 import { WORKBOOK_IDS, type WorkbookId } from '../../lib/seasons';
 // Consolidated imports to prevent duplicates
@@ -138,6 +140,7 @@ import {
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
     PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup, CloudUpload,
     Wrench, ClipboardClock, LayoutTemplate
+, Tag
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -202,18 +205,22 @@ const SubTabPills: React.FC<{
     onSelect: (id: string) => void;
     accentColor?: string;
 }> = ({ tabs, active, onSelect, accentColor = 'var(--main-color)' }) => (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-end gap-1">
         {tabs.map(t => {
             const TabIcon = t.icon ? iconToLucide[t.icon] : null;
             return (
-                <button key={t.id} onClick={() => onSelect(t.id)}
-                    aria-pressed={active === t.id}
-                    className={`flex flex-col items-center justify-center p-2 transition-all active:scale-90 group/pill select-none h-16 w-16
-                        ${active === t.id ? 'text-(--text-color)' : 'text-(--text-color)/30 hover:text-(--text-color)'}`}
-                    style={active === t.id ? { color: accentColor } : {}}>
-                    {TabIcon && <TabIcon size={32} strokeWidth={1.5} />}
-                    {(!TabIcon && t.label) && <span className="text-[10px] font-black">{t.label}</span>}
-                </button>
+                <div key={t.id} className="tool-cell flex flex-col items-center gap-1 shrink-0">
+                    <button onClick={() => onSelect(t.id)}
+                        aria-pressed={active === t.id}
+                        title={t.label}
+                        className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all select-none"
+                        style={active === t.id ? { color: accentColor } : {}}>
+                        {TabIcon ? <TabIcon size={21} strokeWidth={2.2} /> : <span className="text-[10px] font-black">{t.label}</span>}
+                    </button>
+                    {TabIcon && (
+                        <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">{t.label}</span>
+                    )}
+                </div>
             );
         })}
     </div>
@@ -229,17 +236,18 @@ const StudioAction: React.FC<{
     disabled?: boolean;
     className?: string;
 }> = ({ icon: Icon, label, onClick, active, title, color = 'var(--main-color)', disabled, className = "" }) => (
-    <button
-        onClick={onClick}
-        disabled={disabled}
-        title={title}
-        aria-pressed={active}
-        className={`flex flex-col items-center justify-center h-16 px-4 rounded-2xl transition-all active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className}
-            ${active ? 'bg-white/5 text-white' : 'text-white/30 hover:text-white/60 hover:bg-white/2'}`}
-    >
-        <Icon size={24} strokeWidth={2} className="group-hover/studio:scale-110 transition-transform mb-1" style={{ color: active ? color : undefined }} />
-        <span className="text-[8px] font-black uppercase tracking-widest leading-none">{label}</span>
-    </button>
+    <div className="tool-cell flex flex-col items-center gap-1 shrink-0">
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            title={title || label}
+            aria-pressed={active}
+            className={`tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all select-none disabled:opacity-30 disabled:pointer-events-none ${className}`}
+        >
+            <Icon size={21} strokeWidth={2.2} style={{ color: active ? color : undefined }} />
+        </button>
+        <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">{label}</span>
+    </div>
 );
 
 const DeployableSearch: React.FC<{
@@ -418,13 +426,46 @@ const InfoNotch: React.FC = () => {
  * Each switch is a real toggle: a track pressed into the slab with a knob
  * resting in it, and aria-pressed so the ON styling and screen readers agree.
  */
+/**
+ * A tool cell: an icon-only control with its label sitting outside it, on the
+ * panel. Keeping the text out of the button means the pressed surface is only
+ * as large as the icon target, so the depth change reads as a discrete key
+ * rather than a wide slab, and labels line up on a single baseline across the
+ * whole bar regardless of how big each control is.
+ */
+const ToolButton: React.FC<{
+    icon: any;
+    label: string;
+    onClick: () => void;
+    active?: boolean;
+    title?: string;
+    disabled?: boolean;
+    tone?: string;
+}> = ({ icon: Icon, label, onClick, active, title, disabled, tone }) => (
+    <div className="tool-cell flex flex-col items-center gap-1 shrink-0">
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            aria-pressed={active}
+            title={title || label}
+            className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
+            style={active && tone ? { color: tone } : undefined}
+        >
+            <Icon size={21} strokeWidth={2.2} />
+        </button>
+        <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">
+            {label}
+        </span>
+    </div>
+);
+
 const SeasonToggles: React.FC = () => {
     const [visible, setVisible] = useAtom(visibleWorkbooksAtom);
     const flip = (id: WorkbookId) =>
         setVisible(prev => ({ ...prev, [id]: !(prev?.[id] ?? true) }));
 
     return (
-        <div className="season-toggles flex items-center gap-1 shrink-0">
+        <div className="season-toggles flex items-center gap-2 shrink-0">
             {WORKBOOK_IDS.map(id => {
                 const on = visible?.[id] ?? true;
                 return (
@@ -432,13 +473,15 @@ const SeasonToggles: React.FC = () => {
                         key={id}
                         onClick={() => flip(id)}
                         aria-pressed={on}
-                        className={`season-toggle flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.12em] transition-all ${on ? 'text-(--main-color)' : 'text-(--text-color)/35'}`}
+                        className={`season-toggle flex flex-col items-center gap-1 transition-all ${on ? 'text-(--main-color)' : 'text-(--text-color)/35'}`}
                         title={`${on ? 'Hide' : 'Show'} season ${id.replace('v', '')}`}
                     >
-                        <span className="season-track relative w-6 h-3 rounded-full shrink-0 inline-block">
+                        <span className="season-track relative w-7 h-3.5 rounded-full shrink-0 block">
                             <span className="season-knob absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all" />
                         </span>
-                        {id.replace('v', '')}
+                        <span className="text-[9px] font-black uppercase tracking-[0.1em] leading-none">
+                            {id.replace('v', '')}
+                        </span>
                     </button>
                 );
             })}
@@ -453,6 +496,27 @@ const SeasonToggles: React.FC = () => {
  * down. Role gating is unchanged — Sheets stays Admin/Developer only, the
  * database sync stays open to anyone who can reach it.
  */
+/**
+ * Add Entry, lifted out of the left tool cluster so it can sit beside the
+ * export group. It is deliberately NOT inside the export disclosure: adding
+ * an item is the most frequent action in this view and must never be one
+ * click behind a toggle.
+ */
+const InventoryAddButton: React.FC = () => {
+    const setView = useSetAtom(activeViewAtom);
+    return (
+        <ToolButton
+            icon={Plus}
+            label="Add"
+            title="Add Entry"
+            onClick={() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setView('upload');
+            }}
+        />
+    );
+};
+
 const SheetsUploadButton: React.FC = () => {
     const items = useAtomValue(inventoryAtom);
     const exRate = useAtomValue(exchangeRateAtom) || useAtomValue(liveExchangeRateAtom) || 19;
@@ -510,13 +574,12 @@ const SheetsUploadButton: React.FC = () => {
     if (user?.role !== 'Admin' && user?.role !== 'Developer') return null;
 
     return (
-        <button
-            onClick={handleGoogleSheetsUpload}
-            className="flex items-center justify-center w-12 h-12 rounded-xl text-emerald-500/80 hover:text-emerald-400 transition-all shrink-0"
+        <ToolButton
+            icon={FileSpreadsheet}
+            label="Sheets"
             title="Upload inventory to Google Sheets"
-        >
-            <FileSpreadsheet size={20} strokeWidth={2.5} />
-        </button>
+            onClick={handleGoogleSheetsUpload}
+        />
     );
 };
 
@@ -538,72 +601,38 @@ const InventoryBar: React.FC = () => {
 
     const [viewSlider] = useAtom(inventoryViewSliderAtom);
     const ViewIcon = LayoutTemplate; // Updated icon per request
-    const [showTools, setShowTools] = useState(false);
+    const [showTools, setShowTools] = useAtom(inventoryToolsOpenAtom);
+    const [showSmart, setShowSmart] = useAtom(isInventorySmartFiltersOpenAtom);
     const user = useAtomValue(userAtom);
 
 
     return (
         <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
-                {/* 1. ADD ENTRY */}
-                <button 
-                    onClick={() => {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                        setView('upload');
-                    }}
-                    className="flex items-center justify-center transition-all duration-300 text-(--color-inventory) hover:text-white hover:scale-110 group"
-                    title="Add Entry"
-                >
-                    <Plus size={32} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.8)]" />
-                </button>
+            <div className="flex items-end gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
+                <ToolButton icon={SquareCheckBig} label="Select" active={isSelectionMode}
+                    onClick={handleToggleSelectionMode} />
 
-                {/* 2. TOOLS TOGGLE */}
-                <button 
-                    onClick={() => setShowTools(!showTools)}
-                    className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${showTools ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Tools"
-                >
-                    <Wrench size={22} strokeWidth={2} />
-                </button>
+                {/* TOOLS — a disclosure for the whole tool set. Off hides the
+                    buttons AND any bars they deployed; on brings back every
+                    button plus whichever bars were active. State is gated, not
+                    cleared, so nothing is lost by collapsing the group. */}
+                <ToolButton icon={Wrench} label="Tools" active={showTools}
+                    onClick={() => setShowTools(!showTools)} />
 
                 {showTools && (
-                    <div className="flex items-center gap-1 sm:gap-2 animate-in fade-in slide-in-from-left-4 duration-300 ml-2">
-                        {/* SELECT */}
-                        <button 
-                            onClick={handleToggleSelectionMode}
-                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSelectionMode ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                            title="Select"
-                        >
-                            <SquareCheckBig size={22} strokeWidth={2} />
-                        </button>
+                    <div className="flex items-end gap-1 sm:gap-2 animate-in fade-in slide-in-from-left-4 duration-300 ml-1">
+                        <ToolButton icon={ViewIcon} label="View" active={isViewSliderOpen}
+                            onClick={() => setIsViewSliderOpen(!isViewSliderOpen)} />
+                        <ToolButton icon={Filter} label="Filter" active={isFiltersOpen}
+                            onClick={() => setIsFiltersOpen(!isFiltersOpen)} />
+                        <ToolButton icon={Search} label="Search" active={isSearchOpen || !!search}
+                            onClick={() => setIsSearchOpen(!isSearchOpen)} />
 
-                        {/* VIEW */}
-                        <button 
-                            onClick={() => setIsViewSliderOpen(!isViewSliderOpen)}
-                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isViewSliderOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                            title="View"
-                        >
-                            <ViewIcon size={22} strokeWidth={2.5} className={isViewSliderOpen ? 'animate-pulse' : ''} />
-                        </button>
-
-                        {/* FILTER */}
-                        <button 
-                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                            title="Filter"
-                        >
-                            <Filter size={22} strokeWidth={2} />
-                        </button>
-
-                        {/* SEARCH */}
-                        <button 
-                            onClick={() => setIsSearchOpen(!isSearchOpen)}
-                            className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                            title="Search"
-                        >
-                            <Search size={22} strokeWidth={2} />
-                        </button>
-                        
+                        {/* Smart filters: the auto-generated Type/Shape and
+                            Material/Colour hierarchies. */}
+                        <ToolButton icon={Tag} label="Tags" active={showSmart}
+                            title="Smart filters — type, shape, material, colour"
+                            onClick={() => setShowSmart(!showSmart)} />
                     </div>
                 )}
             </div>
@@ -3510,6 +3539,7 @@ export function MainHeader() {
     const openSettingsPortal = useSetAtom(isStudioSettingsOpenAtom);
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
+    const [showExport, setShowExport] = useState(false);
     const isInventory = activeView === 'inventory';
     const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
 
@@ -3528,7 +3558,7 @@ export function MainHeader() {
                     <InfoNotch />
                 </div>
             )}
-            <div className={`main-header h-28 sm:h-32 max-h-28 sm:max-h-32 flex items-center pl-6 pr-6 pt-8 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
+            <div className={`main-header h-24 sm:h-28 max-h-24 sm:max-h-28 flex items-end pl-6 pr-6 pt-3 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -3537,7 +3567,7 @@ export function MainHeader() {
                                 const isMobile = window.innerWidth <= 768;
                                 setSidebarState(isMobile ? 'compact' : 'expanded');
                             }}
-                            className="p-1 px-2 -ml-2 rounded-xl hover:bg-white/5 active:scale-90 transition-all flex items-center gap-2 group/logo mr-4"
+                            className="logo-panel p-1 px-2 rounded-xl transition-all flex items-center gap-2 group/logo mr-4"
                             title="Onyx.mx Menu"
                         >
                             <OnyxMiniLogo className="w-12 h-12 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
@@ -3562,7 +3592,7 @@ export function MainHeader() {
                         readout moved into the notch, which put this cluster on a
                         different baseline from the right-hand one and opened a band
                         of dead space under both. */}
-                    <div className="flex items-center gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
+                    <div className="flex items-end gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
                         {activeView === 'inventory' && <InventoryBar />}
                         {activeView === 'store' && <StoreBar />}
                         {activeView === 'finance' && <FinanceBar />}
@@ -3612,7 +3642,7 @@ export function MainHeader() {
                 {/* Top-right corner of the header: the readout sits on the first
                     row and the tool icons on the second, so the two never fight
                     for the same horizontal space on a narrow viewport. */}
-                <div className="flex items-center justify-end shrink-0 pl-2 sm:pl-4 ml-auto h-full">
+                <div className="flex items-end justify-end shrink-0 pl-2 sm:pl-4 ml-auto h-full pb-0">
                     <div className="flex items-center gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
@@ -3667,16 +3697,8 @@ export function MainHeader() {
                     {/* Full Color XLSX Download Button */}
                     <div className="flex items-center gap-1.5">
                         {/* Redundant V2 Button Hidden
-                        <button
-                            onClick={handleMasterExportXLSX_V2}
-                            disabled={isExporting}
-                            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 bg-white/5 border border-white/5 hover:bg-white/10 group/v2 ${
-                                isExporting ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                            title="Download Workbook V2 (Rare Earth Format)"
-                        >
-                            <DatabaseBackup size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/v2:scale-110 transition-transform text-white/60 group-hover/v2:text-white'} />
-                        </button>
+                            <ToolButton icon={DatabaseBackup} label="Workbook" disabled={isExporting}
+                                title="Download Workbook V2 (Rare Earth Format)" onClick={handleMasterExportXLSX_V2} />
                         */}
 
                         {selectedIds.length > 0 && (
@@ -3707,9 +3729,10 @@ export function MainHeader() {
                         </button>
                         */}
                         
-                        <SeasonToggles />
-
-                        <SheetsUploadButton />
+                        {showExport && (
+                            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <SeasonToggles />
+                                <SheetsUploadButton />
                         <button
                             onClick={handleMasterExportXLSX_V2}
                             disabled={isExporting}
@@ -3721,6 +3744,17 @@ export function MainHeader() {
                         >
                             <FileSpreadsheet size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                         </button>
+                            </div>
+                        )}
+
+                        {/* Add stays outside the disclosure on purpose: creating an
+                            item is the most frequent action here and must never sit
+                            one click behind a toggle. */}
+                        {activeView === 'inventory' && <InventoryAddButton />}
+
+                        {/* EXPORT — the mirror of TOOLS at the other edge. */}
+                        <ToolButton icon={FolderUp} label="Export" active={showExport}
+                            title="Export tools" onClick={() => setShowExport(!showExport)} />
                     </div>
 
 

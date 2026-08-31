@@ -4047,10 +4047,18 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     const chunkSize = 50;
                     for (let i = 0; i < deployedInventoryIds.length; i += chunkSize) {
                         const chunk = deployedInventoryIds.slice(i, i + chunkSize);
-                        await supabase.from('inventory').update({
+                        // The result was discarded here, so when sent_manifest_id
+                        // did not yet exist PostgREST rejected the whole statement
+                        // and every dispatch silently failed to stamp sent_date.
+                        const { error: sentErr } = await supabase.from('inventory').update({
                             sent_date: dispatchTs,
                             sent_manifest_id: manifestId,
+                            updated_at: new Date().toISOString(),
                         }).in('id', chunk);
+                        if (sentErr) {
+                            console.error('[Dispatch] Failed to stamp sent_date:', sentErr);
+                            toast.error('Dispatch recorded, but ship dates failed: ' + sentErr.message);
+                        }
                     }
                 }
 

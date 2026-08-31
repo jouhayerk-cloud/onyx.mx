@@ -83,6 +83,7 @@ export function CreateItem() {
     const suggestions = useMemo(() => {
         const getCascadingVals = (targetField: string, dependencies: {field: string, value: string}[]) => {
             const counts: Record<string, number> = {};
+            const labels: Record<string, string> = {};
             allItems.forEach(i => {
                 const d = i.data || i;
                 
@@ -99,16 +100,22 @@ export function CreateItem() {
                 }
                 if (!matches) return;
 
-                let val = String(d[targetField] || '').trim().toUpperCase();
-                
+                let val = String(d[targetField] || '').trim();
+
                 // Fallbacks for mis-saved data in v326
-                if (targetField === 'short_description' && (!val || val === 'NULL')) val = String(d.item_type || '').trim().toUpperCase();
-                
-                if (val && val !== '-' && val !== 'NULL' && val.length > 1) {
-                    counts[val] = (counts[val] || 0) + 1;
+                if (targetField === 'short_description' && (!val || val.toUpperCase() === 'NULL')) val = String(d.item_type || '').trim();
+
+                if (val && val !== '-' && val.toUpperCase() !== 'NULL' && val.length > 1) {
+                    // Count case-insensitively but offer the stored spelling.
+                    // Uppercasing the value here meant the dropdown proposed
+                    // PENDANT while the column holds Pendant, which is how the
+                    // 69-variant / 47-real-value spread accumulated.
+                    const key = val.toUpperCase();
+                    if (!labels[key]) labels[key] = val;
+                    counts[key] = (counts[key] || 0) + 1;
                 }
             });
-            return Object.entries(counts).sort((a,b) => b[1] - a[1]).map(e => e[0]).slice(0, 8);
+            return Object.entries(counts).sort((a,b) => b[1] - a[1]).map(e => labels[e[0]] ?? e[0]).slice(0, 8);
         };
 
         return {

@@ -86,7 +86,7 @@ export const InventorySelectionDock: React.FC = () => {
 
     return (
         <div className="fixed bottom-0 left-[var(--sidebar-width,0px)] right-0 z-[1000] animate-in slide-in-from-bottom duration-500 pointer-events-none">
-            <div className="bg-black/10 backdrop-blur-3xl border-t border-white/5 px-6 md:px-10 py-4 md:py-6 flex items-center justify-between shadow-[0_-20px_80px_rgba(0,0,0,0.4)] pointer-events-auto overflow-x-auto scrollbar-hide">
+            <div className="selection-dock bg-black/10 backdrop-blur-3xl border-t border-white/5 px-6 md:px-10 py-4 md:py-6 flex items-center justify-between shadow-[0_-20px_80px_rgba(0,0,0,0.4)] pointer-events-auto overflow-x-auto scrollbar-hide">
                 <div className="flex items-center gap-6 group transition-all flex-shrink-0">
                     <div className="flex items-baseline gap-2">
                         <span className="text-(--main-color) font-black text-2xl md:text-4xl leading-none drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]">

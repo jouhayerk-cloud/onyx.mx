@@ -759,9 +759,9 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                                 
                                                 if (db) {
                                                     const iDoc = await db[invTbl].findOne({ selector: { id: item.id } }).exec();
-                                                    if (iDoc) await iDoc.patch({ crate_id: '', packing_status: 'Unpacked', updated_at: new Date().toISOString() });
+                                                    if (iDoc) await iDoc.patch({ crate_id: '', packing_status: 'Unpacked', pack_date: null, updated_at: new Date().toISOString() });
                                                 }
-                                                await supabase.from(invTbl).update({ crate_id: null, packing_status: 'Unpacked', updated_at: new Date().toISOString() }).eq('id', item.id);
+                                                await supabase.from(invTbl).update({ crate_id: null, packing_status: 'Unpacked', pack_date: null, updated_at: new Date().toISOString() }).eq('id', item.id);
                                                 
                                                 let newIds = '';
                                                 if (crate.inventory_ids) {
@@ -1762,7 +1762,7 @@ export const CratesInventoryView: React.FC = () => {
 
     return (
         <div className="flex flex-col relative">
-            <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-6 border-b border-white/10 bg-black/40 backdrop-blur-3xl sticky top-28 sm:top-32 z-[60] w-full gap-4 lg:gap-8">
+            <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-6 border-b border-white/10 bg-black/40 backdrop-blur-3xl sticky top-24 sm:top-28 z-[60] w-full gap-4 lg:gap-8">
                 <div className="flex items-center gap-4 sm:gap-8 shrink-0">
                     <div className="shrink-0">
                         <div className="flex items-center gap-5 mt-1">

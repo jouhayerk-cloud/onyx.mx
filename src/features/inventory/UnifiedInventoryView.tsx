@@ -49,10 +49,13 @@ import {
     isUploadWizardOpenAtom,
     uploadItemDataAtom,
     logisticsDataAtom,
-    visibleWorkbooksAtom
+    visibleWorkbooksAtom,
+    inventoryTypeShapeFilterAtom,
+    inventoryMaterialColorFilterAtom
 } from '../../lib/atoms';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { rowWorkbook } from '../../lib/seasons';
+import { rowMatchesTypeShape, rowMatchesMaterialColor } from '../../lib/smartFilters';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
@@ -387,7 +390,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const renderPaymentHistory = () => {
         if (!itemPayments || itemPayments.length === 0) return null;
         return (
-            <div className="col-span-full pt-6 mt-2 border-t border-(--border-color) space-y-4">
+            <div className="payment-history col-span-full pt-6 mt-2 border-t border-(--border-color) space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-40 mb-3 ml-1">Payment History (MXN)</h4>
                 <div className="flex flex-col gap-2">
                     {itemPayments.map((p: any) => {
@@ -397,7 +400,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         const format = (val: number) => showFinancials ? `$${val.toLocaleString('en-US')}` : '***';
 
                         return (
-                            <div key={p.id} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-3 rounded-xl bg-(--text-color)/5 border border-(--border-color) transition-all hover:bg-(--text-color)/10">
+                            <div key={p.id} className="payment-row flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-3 rounded-xl bg-(--text-color)/5 border border-(--border-color) transition-all hover:bg-(--text-color)/10">
                                 <div className="flex flex-col min-w-[120px]">
                                     <span className="text-[11px] text-(--text-color) font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date'}</span>
                                     <span className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${p.status === 'Paid' ? 'text-green-400' : p.status === 'Requested' ? 'text-yellow-400' : 'text-sky-400'}`}>{p.status || 'New'}</span>
@@ -1257,6 +1260,8 @@ export const UnifiedInventoryView = () => {
     }, [items, setUploadItemData, setIsUploadWizardOpen]);
 
     const visibleWorkbooks = useAtomValue(visibleWorkbooksAtom);
+    const typeShapeFilter = useAtomValue(inventoryTypeShapeFilterAtom);
+    const materialColorFilter = useAtomValue(inventoryMaterialColorFilterAtom);
 
     const filteredItems = useMemo(() => {
         const filtered = items.filter(item => {
@@ -1309,6 +1314,13 @@ export const UnifiedInventoryView = () => {
             // Independent Attribute Filters
             if (categoryFilter !== 'All' && catNormalized !== categoryFilter.toUpperCase()) return false;
             if (materialFilter !== 'All' && matNormalized !== materialFilter.toUpperCase()) return false;
+
+            // Nested smart filters. These sit alongside the flat combined
+            // filters above rather than replacing them: the flat pair is what
+            // the chips in the header still drive, and removing it would break
+            // any stored selection mid-session.
+            if (!rowMatchesTypeShape(item.data, typeShapeFilter)) return false;
+            if (!rowMatchesMaterialColor(item.data, materialColorFilter)) return false;
             if (deferredSearchTerm) {
                 const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
                 const normalizedItemId = itemId.replace(/[^a-z0-9]/g, '');
@@ -1376,7 +1388,7 @@ export const UnifiedInventoryView = () => {
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, visibleWorkbooks, user, categoryFilter, materialFilter, deployedItemsMap, logisticsDocs]);
+    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, visibleWorkbooks, user, categoryFilter, materialFilter, typeShapeFilter, materialColorFilter, deployedItemsMap, logisticsDocs]);
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);

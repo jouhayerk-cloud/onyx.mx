@@ -2008,6 +2008,31 @@ async function handleBatchPrint() {
         : `Printed ${totalRecords} label${totalRecords !== 1 ? 's' : ''}!`;
       showToast(successMsg, 'success');
       setStatus(successMsg);
+
+      // Report the finished run to the host app. This is the only moment that
+      // distinguishes "labels physically came out" from "the wizard was
+      // opened", and it is deliberately inside the !isPrintCancelled() guard
+      // so an aborted run reports nothing. Onyx.mx uses it to write the print
+      // job; other hosts simply ignore the message.
+      try {
+        const printedTags = (state.templateData || []).map(r =>
+          r && (r['TAG ID'] || r['TAGID'] || r['tag_id'] || '')
+        ).filter(Boolean);
+        window.parent.postMessage({
+          type: 'PRINT_COMPLETE',
+          payload: {
+            source: 'batch',
+            totalRecords,
+            totalRows,
+            isMultiLabel: !!isMultiLabel,
+            cloneMode: !!cloneMode,
+            printedTags,
+            finishedAt: new Date().toISOString(),
+          },
+        }, '*');
+      } catch (relayErr) {
+        console.warn('PRINT_COMPLETE relay failed:', relayErr);
+      }
     }
     btn.textContent = originalText;
 
@@ -4840,6 +4865,25 @@ async function handlePrint() {
 
     setStatus(copies > 1 ? `Printed ${copies} copies!` : 'Print complete!');
     btn.textContent = 'Print';
+
+    // Single-label path. `copies` is the operator's copy count, which is how a
+    // double label gets recorded as two rather than one.
+    try {
+      const rec = (state.templateData || [])[state.currentRecordIndex || 0];
+      window.parent.postMessage({
+        type: 'PRINT_COMPLETE',
+        payload: {
+          source: 'single',
+          totalRecords: copies,
+          totalRows: 1,
+          copies,
+          printedTags: rec ? [rec['TAG ID'] || ''].filter(Boolean) : [],
+          finishedAt: new Date().toISOString(),
+        },
+      }, '*');
+    } catch (relayErr) {
+      console.warn('PRINT_COMPLETE relay failed:', relayErr);
+    }
 
   } catch (error) {
     logError(error, 'handlePrint');
