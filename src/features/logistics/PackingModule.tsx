@@ -802,7 +802,7 @@ export const PackingModule: React.FC = () => {
 
 
             {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Sticky Glassmorphic Toolbars */}
-            <div className={`sticky top-20 sm:top-24 z-[90] overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+            <div className={`sticky top-36 sm:top-48 z-[90] overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
                 <div className="flex flex-col">
                     
                     {/* Toolbar 1: Bulk Selection + Sort Parameters */}

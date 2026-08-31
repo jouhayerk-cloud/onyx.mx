@@ -284,7 +284,7 @@ const ActiveCrateHUD: React.FC<{
     const totalNested = nestedUnits.length;
 
     return (
-        <div className="sticky top-20 sm:top-24 z-[60] w-full bg-black/60 backdrop-blur-3xl border-b border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        <div className="sticky top-36 sm:top-48 z-[60] w-full bg-black/60 backdrop-blur-3xl border-b border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             <div className="w-full max-w-screen-2xl mx-auto flex items-center justify-between gap-6 px-6 py-4 sm:px-12 sm:py-6">
                 {/* Left: Crate Info */}
                 <div className="flex items-center gap-6 min-w-0">
@@ -1376,7 +1376,7 @@ export const CratePackingManager: React.FC = () => {
             {/* ── Main Area: Inventory List ── */}
             <div className={`flex-1 flex flex-col min-w-0 relative ${!selectedCrate ? 'hidden' : ''}`}>
                 {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Sticky Glassmorphic Toolbars */}
-                <div className={`sticky top-20 sm:top-24 z-[90] overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                <div className={`sticky top-36 sm:top-48 z-[90] overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
                     <div className="flex flex-col">
                         
                         {/* Toolbar 1: Sort Parameters */}
