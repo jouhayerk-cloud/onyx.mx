@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
-import { buildTypeShapeTree, buildMaterialColorTree, toggleKey, type SmartFilterNode } from '../../lib/smartFilters';
+import { buildGeometryTree, buildMaterialColorTree, toggleKey, type SmartFilterNode } from '../../lib/smartFilters';
+import { GEOMETRIES, GEOMETRY_LABELS, type Geometry } from '../../lib/geometry';
+import { GeometryIcon } from './shapeIcons';
 import { 
     activeViewAtom, 
     isInventorySelectionModeAtom,
@@ -56,7 +58,9 @@ import {
     isInventorySearchOpenAtom,
     inventoryToolsOpenAtom,
     isInventorySmartFiltersOpenAtom,
-    inventoryTypeShapeFilterAtom,
+    isInventoryMaterialColorFilterOpenAtom,
+    isInventoryShapeFilterOpenAtom,
+    inventoryShapeFilterAtom,
     inventoryMaterialColorFilterAtom,
     inventorySearchTermAtom,
     truckDockIsCompactAtom,
@@ -65,7 +69,8 @@ import {
     inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import { 
-    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX,
+    Palette, Shapes
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -80,6 +85,13 @@ import { normalizeInventoryData } from '../../lib/utils';
 
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
+
+// buildGeometryTree's node.label is GEOMETRY_LABELS[g] ("Box", "Sculpture", …)
+// — the Shape bar needs the geometry BACK from that label to pick an icon,
+// so this is the one inverse of GEOMETRY_LABELS, built once rather than per
+// render. Computed here instead of in geometry.ts because geometry.ts is not
+// this feature's file to edit and the inverse has exactly one caller.
+const LABEL_TO_GEOMETRY = new Map<string, Geometry>(GEOMETRIES.map(g => [GEOMETRY_LABELS[g], g]));
 
 // ── Components ───────────────────────────────────────────────────────────────
 
@@ -224,6 +236,14 @@ const SectionHeader: React.FC<{
  *
  * Expansion is independent of selection: a user can look inside a branch
  * without filtering by it, which is how you find the shape you actually want.
+ *
+ * `renderIcon` is optional and used only by the Shape bar: Material/Colour's
+ * parents are free text with no bounded glyph set behind them, so that bar
+ * stays text-only, while Shape's eight parents each get the icon that makes
+ * the hierarchy visual instead of one more wall of chips (see shapeIcons.tsx).
+ * `primary` gives the Material/Colour bar the larger, first-in-reading-order
+ * treatment the user asked for as the MAIN filter, without a second component
+ * to keep in sync with this one.
  */
 const SmartFilterGroup: React.FC<{
     title: string;
@@ -231,7 +251,9 @@ const SmartFilterGroup: React.FC<{
     selected: string[];
     onToggle: (key: string) => void;
     onClear: () => void;
-}> = ({ title, tree, selected, onToggle, onClear }) => {
+    renderIcon?: (node: SmartFilterNode) => React.ReactNode;
+    primary?: boolean;
+}> = ({ title, tree, selected, onToggle, onClear, renderIcon, primary }) => {
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
     const sel = new Set(selected || []);
     const activeCount = (selected || []).length;
@@ -241,7 +263,7 @@ const SmartFilterGroup: React.FC<{
     return (
         <div className="flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-3">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 leading-none">{title}</span>
+                <span className={`font-black uppercase tracking-[0.2em] opacity-40 leading-none ${primary ? 'text-[9px]' : 'text-[8px]'}`}>{title}</span>
                 {activeCount > 0 && (
                     <button onClick={onClear}
                         className="smart-clear text-[8px] font-black uppercase tracking-[0.16em] px-2 py-0.5 rounded-md"
@@ -261,9 +283,10 @@ const SmartFilterGroup: React.FC<{
                                 <button
                                     onClick={() => onToggle(node.key)}
                                     aria-pressed={isSel}
-                                    className="smart-chip flex items-center gap-1.5 px-2.5 py-1.5 rounded-l-lg text-[9px] font-black uppercase tracking-[0.1em]"
+                                    className={`smart-chip flex items-center gap-1.5 rounded-l-lg font-black uppercase tracking-[0.1em] ${primary ? 'smart-chip-primary px-3 py-2 text-[10px]' : 'px-2.5 py-1.5 text-[9px]'}`}
                                     title={`Filter by ${node.label}`}
                                 >
+                                    {renderIcon?.(node)}
                                     {node.label}
                                     <span className="smart-count tabular-nums opacity-50">{node.count}</span>
                                 </button>
@@ -277,7 +300,7 @@ const SmartFilterGroup: React.FC<{
                                         aria-pressed={isOpen}
                                         aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${node.label}`}
                                         className="smart-expand flex items-center justify-center px-1.5 rounded-r-lg"
-                                        title={`${node.children.length} shape${node.children.length !== 1 ? 's' : ''}`}
+                                        title={`${node.children.length} sub-filter${node.children.length !== 1 ? 's' : ''}`}
                                     >
                                         <ChevronDown size={11} strokeWidth={3}
                                             className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
@@ -322,16 +345,21 @@ export const UniversalToolsBar: React.FC = () => {
     const [isInvSearchOpen, setIsInvSearchOpen] = useAtom(isInventorySearchOpenAtom);
     // The Tools disclosure gates these bars without clearing their state, so
     // collapsing the group hides them and reopening restores what was active.
+    // smartOpen is the master ("Tags") switch; the two bars below then deploy
+    // independently under it, each with its own open atom, so showing one
+    // never forces the other onto the screen.
     const toolsOpen = useAtomValue(inventoryToolsOpenAtom);
     const smartOpen = useAtomValue(isInventorySmartFiltersOpenAtom);
-    const [typeShapeSel, setTypeShapeSel] = useAtom(inventoryTypeShapeFilterAtom);
+    const [materialColorOpen, setMaterialColorOpen] = useAtom(isInventoryMaterialColorFilterOpenAtom);
+    const [shapeFilterOpen, setShapeFilterOpen] = useAtom(isInventoryShapeFilterOpenAtom);
+    const [shapeSel, setShapeSel] = useAtom(inventoryShapeFilterAtom);
     const [materialColorSel, setMaterialColorSel] = useAtom(inventoryMaterialColorFilterAtom);
     const inventoryRows = useAtomValue(inventoryAtom);
 
-    // Both hierarchies are derived from the live rows, so a new type or colour
-    // appears as a filter the moment an item using it is saved — nothing to
-    // configure and nothing to keep in sync with the data.
-    const typeShapeTree = React.useMemo(() => buildTypeShapeTree(inventoryRows || []), [inventoryRows]);
+    // Both hierarchies are derived from the live rows, so a new material,
+    // colour or shape appears as a filter the moment an item using it is
+    // saved — nothing to configure and nothing to keep in sync with the data.
+    const shapeTree = React.useMemo(() => buildGeometryTree(inventoryRows || []), [inventoryRows]);
     const materialColorTree = React.useMemo(() => buildMaterialColorTree(inventoryRows || []), [inventoryRows]);
     const [invSearchTerm, setInvSearchTerm] = useAtom(inventorySearchTermAtom);
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
@@ -838,28 +866,71 @@ export const UniversalToolsBar: React.FC = () => {
             )}
 
             {/* ── Smart filters ────────────────────────────────────────────
-                Two auto-generated hierarchies: Type -> Shape and Material ->
-                Colour. A parent selects its whole branch; expanding it narrows
-                to one child. Counts come from the current rows, so the
-                distribution is visible while choosing rather than after. */}
+                Two independent bars rather than one crowded one — that was
+                the actual complaint: both hierarchies rendered side by side
+                in a single disclosure, which only grows as branches expand.
+                The deploy row below is the "universal tools bar for smart
+                filters" itself: two keys, one per bar, each gating its own
+                bar without touching the other's selection or open state.
+
+                Material -> Colour is the MAIN filter (open by default, listed
+                first, larger chips via `primary`). Shape is headed by the
+                eight bounded geometry classes from lib/geometry.ts — icons,
+                not text, because a bounded set of eight is exactly small
+                enough to recognise by glyph — with the free-text shape/type
+                values nested underneath as sub-filters, deployed per branch
+                exactly like the old hierarchy's children were. */}
             {isInventory && toolsOpen && smartOpen && (
-                <div className="smart-filters w-full border-t border-white/5 animate-in slide-in-from-top duration-300 px-4 py-4 overflow-x-auto no-scrollbar">
-                    <div className="flex items-start gap-10 min-w-max">
-                        <SmartFilterGroup
-                            title="Type / Shape"
-                            tree={typeShapeTree}
-                            selected={typeShapeSel}
-                            onToggle={(k: string) => setTypeShapeSel(prev => toggleKey(prev || [], k))}
-                            onClear={() => setTypeShapeSel([])}
-                        />
-                        <SmartFilterGroup
-                            title="Material / Colour"
-                            tree={materialColorTree}
-                            selected={materialColorSel}
-                            onToggle={(k: string) => setMaterialColorSel(prev => toggleKey(prev || [], k))}
-                            onClear={() => setMaterialColorSel([])}
-                        />
+                <div className="smart-filters w-full border-t border-white/5 animate-in slide-in-from-top duration-300 overflow-x-auto no-scrollbar">
+                    <div className="smart-filter-deploy flex items-center gap-4 px-4 pt-3 pb-1 min-w-max">
+                        <button
+                            onClick={() => setMaterialColorOpen(!materialColorOpen)}
+                            aria-pressed={materialColorOpen}
+                            className="smart-deploy-key flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.16em]"
+                            title="Material / Colour — main filter"
+                        >
+                            <Palette size={13} strokeWidth={2.4} />
+                            Material / Colour
+                        </button>
+                        <button
+                            onClick={() => setShapeFilterOpen(!shapeFilterOpen)}
+                            aria-pressed={shapeFilterOpen}
+                            className="smart-deploy-key flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.16em]"
+                            title="Shape — sub filter"
+                        >
+                            <Shapes size={13} strokeWidth={2.4} />
+                            Shape
+                        </button>
                     </div>
+
+                    {materialColorOpen && (
+                        <div className="smart-filters-main px-4 py-3 min-w-max">
+                            <SmartFilterGroup
+                                title="Material / Colour — Main Filter"
+                                tree={materialColorTree}
+                                selected={materialColorSel}
+                                onToggle={(k: string) => setMaterialColorSel(prev => toggleKey(prev || [], k))}
+                                onClear={() => setMaterialColorSel([])}
+                                primary
+                            />
+                        </div>
+                    )}
+
+                    {shapeFilterOpen && (
+                        <div className="smart-filters-shape px-4 py-3 min-w-max">
+                            <SmartFilterGroup
+                                title="Shape — Sub Filter"
+                                tree={shapeTree}
+                                selected={shapeSel}
+                                onToggle={(k: string) => setShapeSel(prev => toggleKey(prev || [], k))}
+                                onClear={() => setShapeSel([])}
+                                renderIcon={(node) => {
+                                    const geom = LABEL_TO_GEOMETRY.get(node.label);
+                                    return geom ? <GeometryIcon geom={geom} size={13} strokeWidth={2.4} /> : null;
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { useAtom, useAtomValue } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
 import { themeAtom, appStyleAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom } from '../../lib/atoms';
 import { resolveUserRole } from '../../lib/utils';
@@ -11,6 +11,7 @@ import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { PullToRefresh } from '../../components/ui/PullToRefresh';
 import { sentTruckIdAtom } from '../../lib/atoms';
 import { useSyncEngine } from '../../lib/syncEngine';
+import { setI18nLang } from '../../lib/i18n';
 import { SyncProgressBar } from '../../components/SyncProgressBar';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -25,7 +26,7 @@ export default function App() {
   const theme = useAtomValue(themeAtom);
   const appStyle = useAtomValue(appStyleAtom);
   const performanceMode = useAtomValue(performanceModeAtom);
-  const setLanguage = useSetAtom(languageAtom);
+  const [language, setLanguage] = useAtom(languageAtom);
   const [showWelcome, setShowWelcome] = useState(false);
   const [tagId, setTagId] = useAtom(tagIdAtom);
   const [sentTruckId, setSentTruckId] = useAtom(sentTruckIdAtom);
@@ -219,15 +220,11 @@ export default function App() {
     document.documentElement.classList.add(`theme-${theme}`);
     document.documentElement.classList.add(`style-${appStyle}`);
 
-    // PAPER is the only style that forces light mode. ROCK (glassmorphic) and
-    // SLAB (neumorphic) both keep the dark class and let the theme's own
-    // palette decide the ground — slab.css defines a light slab for
-    // Nacar/Aqua and a dark slab for Talan/Fluorite.
-    if (appStyle === 'paper') {
-        document.documentElement.classList.remove('dark');
-    } else {
-        document.documentElement.classList.add('dark');
-    }
+    // PAPER (the one style that forced light mode) was retired along with its
+    // stylesheet. ROCK (glassmorphic) and SLAB (neumorphic) both keep the dark
+    // class unconditionally and let the theme's own palette decide the ground —
+    // slab.css defines a light slab for Aqua and a dark slab for Talan.
+    document.documentElement.classList.add('dark');
   }, [theme, appStyle]);
 
   useEffect(() => {
@@ -254,8 +251,18 @@ export default function App() {
       return () => clearInterval(intervalId);
   }, [user]);
 
+  // `t()` in lib/i18n reads a module-level language rather than subscribing to
+  // this atom, so it has to be pushed on every render that can change it.
+  // Assigning during render is safe here: it is idempotent and the value is
+  // read during the same commit, below.
+  setI18nLang(language);
+
   return (
-    <>
+    // Keying the tree on the language remounts it on switch. `t()` is not
+    // reactive by design (see lib/i18n), so a remount is what makes a language
+    // change reach components that do not read languageAtom themselves.
+    // Switching is rare, and drafts survive via useFormDraft.
+    <React.Fragment key={language}>
       <PullToRefresh />
       <SyncProgressBar />
       {view === 'tag' && tagId ? (
@@ -327,6 +334,6 @@ export default function App() {
           }
         }}
       />
-    </>
+    </React.Fragment>
   );
 }

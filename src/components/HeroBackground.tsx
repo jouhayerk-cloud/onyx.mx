@@ -5,8 +5,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 /**
  * HeroBackground — Dynamic Mesh Gradient
  * 
- * Provides a theme-specific mesh gradient that shifts patterns on state 
- * changes and global clicks. Talan uses Green/Gold, Fluorite uses Purple/Mint.
+ * Provides a theme-specific mesh gradient that shifts patterns on state
+ * changes and global clicks. Talan uses Green/Gold, Aqua uses Cyan/Terracotta
+ * (Fluorite, formerly Purple/Mint, was retired — see lib/atoms.tsx).
  */
 export const HeroBackground = () => {
     const performanceMode = useAtomValue(performanceModeAtom);
