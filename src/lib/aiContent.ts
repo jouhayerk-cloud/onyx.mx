@@ -62,14 +62,23 @@ const readMap = (d: any): Record<string, unknown> => {
 };
 
 /**
- * A real cleaned image exists. The underscore prefix is the whole distinction:
+ * An image entry is keyed by the source photo's URL. Testing for "no leading
+ * underscore" was nearly enough — every metadata key uses one — but not quite:
+ * BatchProcessingWizard also writes a bare `videoGen` key into the same map,
+ * which is not an image and no underscore marks it. No row carries one today,
+ * so this is closing the gap before it opens rather than fixing a live count.
+ */
+const isImageKey = (k: string): boolean => k.charAt(0) !== '_' && /^https?:\/\//i.test(k);
+
+/**
+ * A real cleaned image exists. The underscore prefix is most of the distinction:
  * every metadata entry uses it, and every image entry is keyed by the source
  * photo's URL. Counting keys without checking the prefix is the bug this file
  * was corrected for.
  */
 export const hasCleanedImage = (d: any): boolean => {
     const map = readMap(d);
-    return Object.keys(map).some(k => k.charAt(0) !== '_' && filled(map[k]));
+    return Object.keys(map).some(k => isImageKey(k) && filled(map[k]));
 };
 
 /**

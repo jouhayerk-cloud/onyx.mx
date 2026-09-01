@@ -1,1 +1,29 @@
-{ "extends": "./tsconfig.json", "include": ["src/**/*.ts", "src/**/*.tsx"] }
+// Scoped type check.  Run it with:  npm run typecheck
+//
+// This file exists because neither of the obvious checks works on this repo.
+// `npm run build` is esbuild and transpile-only, so it never type-checks at
+// all. And `tsc -p tsconfig.json` reports almost nothing: that config has no
+// `include` and sets `allowJs: true`, so tsc sweeps in junk at the repo root
+// (fix_ui_13.cjs, scratch/writeb64.js). Those files have unterminated string
+// literals, and a syntax error ANYWHERE suppresses semantic diagnostics
+// program-wide — scoping the include to src/** turns 6 reported errors into
+// 210. Two separate agents have now been misled by that in one day, so the
+// explanation stays with the file rather than in a commit message.
+//
+// The practical consequence of the gap: undefined identifiers reach the
+// browser as runtime crashes on a green build. That happened five times in
+// one session, missing lucide-react imports every time.
+//
+// A CLEAN RUN IS NOT THE BAR — src/ carries ~210 pre-existing errors. Compare
+// against a baseline taken before your change:
+//
+//     git stash && npm run typecheck > base.txt; git stash pop
+//     npm run typecheck > now.txt
+//     diff <(sed 's/([0-9]*,[0-9]*)//' base.txt) <(sed 's/([0-9]*,[0-9]*)//' now.txt)
+//
+// Stripping (line,col) makes the comparison position-independent, so moving
+// code around does not read as a new error.
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}
