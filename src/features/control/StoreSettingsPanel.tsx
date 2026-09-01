@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 interface StoreUser {
     id: string;
@@ -82,7 +83,7 @@ export function StoreSettingsPanel() {
                                     <div>
                                         <p className="text-sm text-white font-bold">{u.display_name || u.email}</p>
                                         <div className="flex gap-2 items-center text-xs mt-0.5">
-                                            <span className="text-white/40 uppercase tracking-wider">{u.role}</span>
+                                            <span className="text-white/40 uppercase tracking-wider">{el(u.role)}</span>
                                             {u.store_enabled && (
                                                 <span className="text-[9px] font-bold text-(--main-color) border border-(--main-color)/30 bg-(--main-color)/10 px-1.5 py-0.5 rounded uppercase tracking-widest">STORE ON</span>
                                             )}
@@ -101,7 +102,7 @@ export function StoreSettingsPanel() {
                                         onClick={() => toggleStoreAccess(u)}
                                         className={`button py-1.5! px-3! bg-transparent! border! text-[10px] font-black tracking-widest flex items-center gap-1.5 ${u.store_enabled ? 'border-green-500/50 text-green-400 hover:bg-green-500/10!' : 'border-white/20 text-white/50 hover:border-white/40 hover:text-white hover:bg-white/5!'}`}
                                     >
-                                        {u.store_enabled ? 'DEACTIVATE' : 'ACTIVATE'}
+                                        {u.store_enabled ? tr("DEACTIVATE") : tr("ACTIVATE")}
                                     </button>
                                 </div>
                             </div>

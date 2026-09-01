@@ -525,7 +525,7 @@ export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyp
                     <div key={idx} className="flex flex-col items-end text-right animate-in fade-in slide-in-from-right duration-700 pointer-events-auto">
                         <div className="flex items-center gap-3 mb-2 opacity-20">
                             <span className="text-[9px] font-black uppercase tracking-widest text-white">
-                                {m.role === 'user' ? userName : 'Neural Core'}
+                                {m.role === 'user' ? userName : tr("Neural Core")}
                             </span>
                             <div className="h-px w-6 bg-white/40" />
                         </div>

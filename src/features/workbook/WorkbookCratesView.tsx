@@ -111,12 +111,12 @@ export const WorkbookCratesView: React.FC = () => {
                                         </span>
                                         <span className="text-[10px] text-white/40 font-mono italic">{item.item || 'Crate'}</span>
                                     </div>
-                                    <h3 className="text-sm font-bold text-white mt-1 group-hover:text-[#8DC63F] transition-colors">{item.description || 'Logistics Entry'}</h3>
+                                    <h3 className="text-sm font-bold text-white mt-1 group-hover:text-[#8DC63F] transition-colors">{item.description || tr("Logistics Entry")}</h3>
                                 </div>
                                 <div className="text-right">
                                     <div className="text-[10px] text-white/30 uppercase">{tr("Date")}</div>
                                     <div className="text-xs font-mono text-white/60">
-                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString('es-MX') : String(item.date)) : '-'}
+                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString(tr("es-MX")) : String(item.date)) : '-'}
                                     </div>
                                 </div>
                             </div>

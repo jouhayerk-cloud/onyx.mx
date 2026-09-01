@@ -336,7 +336,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                             <button onClick={() => triggerDownload(urls.xlsx, `${name}.xlsx`)} className="px-4 py-2 bg-emerald-500 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">{tr("Download")}</button>
                         ) : (
                             <button onClick={handleGenerateXLSX} disabled={progress.xlsx >= 0} className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-                                {progress.xlsx >= 0 ? 'Building...' : 'Generate'}
+                                {progress.xlsx >= 0 ? tr("Building...") : tr("Generate")}
                             </button>
                         )}
                     </div>
@@ -359,7 +359,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                             <button onClick={() => triggerDownload(urls.pdf, `${name}.pdf`)} className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">{tr("Download")}</button>
                         ) : (
                             <button onClick={handleGeneratePDF} disabled={progress.pdf >= 0} className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-                                {progress.pdf >= 0 ? 'Rendering...' : 'Generate'}
+                                {progress.pdf >= 0 ? tr("Rendering...") : tr("Generate")}
                             </button>
                         )}
                     </div>
@@ -820,7 +820,7 @@ export const PackingModule: React.FC = () => {
                                 }`}
                             >
                                 {selectedIds.size === processedItems.length ? <CheckSquare size={14} /> : <Square size={14} />}
-                                {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select All'}
+                                {selectedIds.size === processedItems.length ? tr("Deselect All") : tr("Select All")}
                             </button>
                         </div>
 
@@ -1111,8 +1111,8 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-start justify-between gap-3">
                         <h3 className="font-black text-sm text-white leading-tight tracking-tight flex-1">
-                            {d.shape || 'OBJ'}
-                            <span className="block text-[9px] font-bold text-(--text-color)/40 uppercase tracking-[0.2em] mt-0.5">{d.shortDescription || 'Artifact'}</span>
+                            {d.shape || tr("OBJ")}
+                            <span className="block text-[9px] font-bold text-(--text-color)/40 uppercase tracking-[0.2em] mt-0.5">{d.shortDescription || tr("Artifact")}</span>
                         </h3>
                         {item.codes.bookBarcode && (
                             <button 

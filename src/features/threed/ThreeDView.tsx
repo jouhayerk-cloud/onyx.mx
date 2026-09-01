@@ -358,7 +358,7 @@ const ItemDetailsDisplay = () => {
     return (
         <div className="flex flex-col h-full">
             <div className="p-4 border-b border-(--border-color)">
-                 <h2 className="font-bold text-lg">{itemData.shape || 'Item Details'}</h2>
+                 <h2 className="font-bold text-lg">{itemData.shape || tr("Item Details")}</h2>
                  <p className="text-sm text-(--text-color-secondary)">{itemData.material}</p>
             </div>
             <div className="grow overflow-y-auto p-4 space-y-4">

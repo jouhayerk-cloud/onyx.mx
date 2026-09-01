@@ -149,8 +149,8 @@ export const WorkbookPayLogView: React.FC = () => {
                                 <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
                                     <td className="p-4">
                                         <div className="flex flex-col gap-0.5">
-                                            <span className="text-white/60">{e.reqDate ? (typeof e.reqDate === 'number' ? new Date(Math.round((e.reqDate - 25569) * 864e5)).toLocaleDateString('es-MX') : String(e.reqDate)) : '-'}</span>
-                                            <span className="text-[9px] text-white/20 italic">{tr("Paid:")} {e.payDate ? (typeof e.payDate === 'number' ? new Date(Math.round((e.payDate - 25569) * 864e5)).toLocaleDateString('es-MX') : String(e.payDate)) : 'TBD'}</span>
+                                            <span className="text-white/60">{e.reqDate ? (typeof e.reqDate === 'number' ? new Date(Math.round((e.reqDate - 25569) * 864e5)).toLocaleDateString(tr("es-MX")) : String(e.reqDate)) : '-'}</span>
+                                            <span className="text-[9px] text-white/20 italic">{tr("Paid:")} {e.payDate ? (typeof e.payDate === 'number' ? new Date(Math.round((e.payDate - 25569) * 864e5)).toLocaleDateString(tr("es-MX")) : String(e.payDate)) : tr("TBD")}</span>
                                         </div>
                                     </td>
                                     <td className="p-4">

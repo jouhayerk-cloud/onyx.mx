@@ -909,13 +909,13 @@ export const ProcessView: React.FC = () => {
                         title={tr("Toggle Gallery/Editor")}
                     >
                         {workspaceViewMode === 'gallery' ? <Target size={12} /> : <ImageIcon size={12} />}
-                        {workspaceViewMode === 'gallery' ? 'Editor' : 'Gallery'}
+                        {workspaceViewMode === 'gallery' ? tr("Editor") : tr("Gallery")}
                     </button>
                     <div className="w-px h-5 bg-white/10 mx-1" />
                     {[
-                        { id: 'move', icon: MousePointer2, title: 'Move Workspace' },
-                        { id: 'mask', icon: Scissors, title: 'Segmentation Match' },
-                        { id: 'point', icon: Target, title: 'AI Refinement' }
+                        { id: 'move', icon: MousePointer2, title: tr("Move Workspace") },
+                        { id: 'mask', icon: Scissors, title: tr("Segmentation Match") },
+                        { id: 'point', icon: Target, title: tr("AI Refinement") }
                     ].map(t => (
                         <button key={t.id} onClick={() => setTool(t.id as any)} className={`h-9 w-9 flex items-center justify-center rounded-lg transition-all ${tool === t.id ? 'bg-white text-black' : 'text-white/40 hover:text-white hover:bg-white/5'}`} title={t.title}>
                             <t.icon size={16} />
@@ -1479,7 +1479,7 @@ export const ProcessView: React.FC = () => {
                                             <div className="flex-1 flex items-center px-6 gap-8 min-w-0" onClick={() => handleSelectItem(item)}>
                                                 <div className="flex flex-col shrink-0 min-w-[140px] py-1">
                                                     <div className="flex items-baseline gap-3">
-                                                        <h3 className="text-sm font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">{item.shape || 'OBJ'} {item.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{item.shortDescription}</span>}</h3>
+                                                        <h3 className="text-sm font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">{item.shape || tr("OBJ")} {item.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{item.shortDescription}</span>}</h3>
                                                     </div>
                                                     <div className="text-[9px] text-(--text-color)/30 uppercase tracking-[0.2em] font-black whitespace-nowrap mt-1">{[item.color, item.material].filter(Boolean).join(' ')}</div>
                                                 </div>

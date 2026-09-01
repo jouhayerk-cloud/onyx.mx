@@ -229,8 +229,8 @@ export const NFCWizard: React.FC = () => {
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     {[
                                         { label: 'LND', value: currentItem?.codes.bookLandCode },
-                                        { label: 'ACQ', value: currentItem?.codes.bookAqCode },
-                                        { label: 'BOOK', value: cleanBookV }
+                                        { label: tr("ACQ"), value: currentItem?.codes.bookAqCode },
+                                        { label: tr("BOOK"), value: cleanBookV }
                                     ].map((t, i) => (
                                         <div key={i} className="flex items-center gap-2 md:gap-3 bg-white/[0.04] px-2 md:px-3 py-1.5 md:py-2 rounded-sm border border-white/10">
                                             <span className="text-[7px] md:text-[9px] font-black text-white/40 uppercase tracking-widest">{t.label}</span>
@@ -291,7 +291,7 @@ export const NFCWizard: React.FC = () => {
                                     <>
                                         <Nfc size={28} className={`md:w-[36px] md:h-[36px] transition-all duration-700 ${isWriting ? 'animate-pulse scale-110 text-white' : 'text-(--main-color) group-hover:scale-110'}`} />
                                         <span className={`text-[6px] md:text-[8px] font-black uppercase tracking-[0.3em] mt-2 ${isWriting ? 'text-white' : 'text-(--main-color) opacity-60'}`}>
-                                            {isWriting ? 'ENCODING' : 'WRITE'}
+                                            {isWriting ? tr("ENCODING") : tr("WRITE")}
                                         </span>
                                     </>
                                 )}
@@ -304,15 +304,15 @@ export const NFCWizard: React.FC = () => {
                         <div className="flex flex-col">
                             <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">{tr("CORE_SPEC")}</span>
                             <div className="flex flex-col">
-                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.color || 'CLR_NULL'}</span>
-                                <span className="text-[10px] md:text-base font-bold text-white/40 uppercase tracking-widest leading-none mt-0.5">{currentItem?.normData.material || 'MAT_NULL'}</span>
+                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.color || tr("CLR_NULL")}</span>
+                                <span className="text-[10px] md:text-base font-bold text-white/40 uppercase tracking-widest leading-none mt-0.5">{currentItem?.normData.material || tr("MAT_NULL")}</span>
                             </div>
                         </div>
 
                         <div className="flex flex-col">
                             <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">{tr("DESCRIPTOR")}</span>
                             <div className="flex flex-col">
-                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.shape || 'SHAPE_NULL'}</span>
+                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.shape || tr("SHAPE_NULL")}</span>
                                 <span className="text-[10px] md:text-base font-medium text-white/30 uppercase tracking-tight truncate">{currentItem?.normData.shortDescription || '---'}</span>
                             </div>
                         </div>
@@ -1055,7 +1055,7 @@ export const LabelWizard: React.FC = () => {
                                     className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_var(--main-color)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                                 >
                                     <Printer size={18} />
-                                    {progress.printer > 0 && progress.printer < 100 ? 'GENERATING...' : 'LAUNCH PRINT ENGINE'}
+                                    {progress.printer > 0 && progress.printer < 100 ? tr("GENERATING...") : tr("LAUNCH PRINT ENGINE")}
                                 </button>
                             </div>
                             
@@ -1065,7 +1065,7 @@ export const LabelWizard: React.FC = () => {
                                         <div className="flex flex-1 gap-2">
                                             {/* Vertical Text */}
                                             <div className="w-4 flex flex-col justify-between items-center py-1">
-                                                {Array.from("MADE IN MEXICO").map((char, i) => (
+                                                {Array.from(tr("MADE IN MEXICO")).map((char, i) => (
                                                     <span key={i} className="text-[6px] font-black leading-none">{char}</span>
                                                 ))}
                                             </div>
@@ -1270,7 +1270,7 @@ export const LabelWizard: React.FC = () => {
                                                 className="w-full py-3 bg-red-500/10 border border-red-500/30 text-red-400 font-black uppercase tracking-[0.1em] text-xs rounded-xl hover:bg-red-500/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                             >
                                                 {progress.pdf > 0 && progress.pdf < 100 ? <div className="w-4 h-4 border-2 border-red-500/20 border-t-red-500 animate-spin rounded-full" /> : <ListChecks size={16} />}
-                                                {progress.pdf === 100 ? 'RE-GENERATE PDF' : 'CONTROL PDF'}
+                                                {progress.pdf === 100 ? tr("RE-GENERATE PDF") : tr("CONTROL PDF")}
                                             </button>
                                             {progress.pdf === 100 && urls.pdf && (
                                                 <button 
@@ -1290,7 +1290,7 @@ export const LabelWizard: React.FC = () => {
                                                 className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black uppercase tracking-[0.1em] text-xs rounded-xl hover:bg-emerald-500/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                             >
                                                 {progress.xlsx > 0 && progress.xlsx < 100 ? <div className="w-4 h-4 border-2 border-emerald-500/20 border-t-emerald-500 animate-spin rounded-full" /> : <Sheet size={16} />}
-                                                {progress.xlsx === 100 ? 'RE-GENERATE XLS' : 'XLS LABELS'}
+                                                {progress.xlsx === 100 ? tr("RE-GENERATE XLS") : tr("XLS LABELS")}
                                             </button>
                                             {progress.xlsx === 100 && urls.xlsx && (
                                                 <button 
@@ -1310,7 +1310,7 @@ export const LabelWizard: React.FC = () => {
                                             className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(var(--main-color-rgb),0.6)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                                         >
                                             {progress.printer > 0 && progress.printer < 100 ? <div className="w-4 h-4 border-2 border-black/20 border-t-black animate-spin rounded-full" /> : <Printer size={18} />}
-                                            {progress.printer > 0 && progress.printer < 100 ? 'GENERATING...' : 'LAUNCH PRINT ENGINE'}
+                                            {progress.printer > 0 && progress.printer < 100 ? tr("GENERATING...") : tr("LAUNCH PRINT ENGINE")}
                                         </button>
                                     </div>
                                 </div>
@@ -1323,7 +1323,7 @@ export const LabelWizard: React.FC = () => {
                                         <div className="flex flex-1 gap-2">
                                             {/* Vertical Text */}
                                             <div className="w-4 flex flex-col justify-between items-center py-1">
-                                                {Array.from("MADE IN MEXICO").map((char, i) => (
+                                                {Array.from(tr("MADE IN MEXICO")).map((char, i) => (
                                                     <span key={i} className="text-[6px] font-black leading-none">{char}</span>
                                                 ))}
                                             </div>
@@ -1444,7 +1444,7 @@ export const LabelWizard: React.FC = () => {
                                         className="w-full py-4 bg-blue-500 border border-blue-400 text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                                     >
                                         {progress.catalog > 0 && progress.catalog < 100 ? <div className="w-4 h-4 border-2 border-black/20 border-t-black animate-spin rounded-full" /> : <BookOpen size={18} />}
-                                        {progress.catalog === 100 ? 'RE-GENERATE CATALOG' : 'GENERATE CATALOG'}
+                                        {progress.catalog === 100 ? tr("RE-GENERATE CATALOG") : tr("GENERATE CATALOG")}
                                     </button>
                                     
                                     {progress.catalog === 100 && urls.catalog && (

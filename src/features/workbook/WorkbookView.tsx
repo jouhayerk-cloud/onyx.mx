@@ -82,9 +82,9 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                                                 </td>
                                                 <td className="px-4 py-2 font-mono text-[10px] text-white/40 group-hover:text-white/80 transition-colors uppercase">{item.item_number}</td>
                                                 <td className="px-4 py-2">
-                                                    <div className="text-xs text-white/70 group-hover:text-white transition-colors">{item.description || item.shape || 'Untitled Item'}</div>
+                                                    <div className="text-xs text-white/70 group-hover:text-white transition-colors">{item.description || item.shape || tr("Untitled Item")}</div>
                                                     <div className="flex gap-2 items-center mt-1">
-                                                        <div className="text-[9px] text-white/20 font-mono">{item.material || 'Standard Material'}</div>
+                                                        <div className="text-[9px] text-white/20 font-mono">{item.material || tr("Standard Material")}</div>
                                                         {item.acquired_by && (
                                                             <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-[8px] font-bold text-white/40" title={`Acquired at ${fmtDate(item.acquired_at)}`}>
                                                                 <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -135,7 +135,7 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                            <div className="text-[10px] font-bold text-white/80 line-clamp-1">{item.description || item.shape || 'Untitled'}</div>
+                                            <div className="text-[10px] font-bold text-white/80 line-clamp-1">{item.description || item.shape || tr("Untitled")}</div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-[9px] font-mono text-white/30 uppercase tracking-tighter">{item.material}</span>
                                                 <span className="text-[10px] font-mono font-black text-[var(--main-color)]">{fmtUSD(item.price_mxn / exchangeRate)}</span>
@@ -151,8 +151,8 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                         <div className="flex gap-4 h-full overflow-x-auto custom-scrollbar pb-4 min-w-max">
                             {[
                                 { id: 'acq', label: 'ACQUIRED', filter: (d: any) => !d.in_production && !d.ready && !d.shipped, color: '#FFFFFF' },
-                                { id: 'prod', label: 'IN PRODUCTION', filter: (d: any) => d.in_production && !d.ready && !d.shipped, color: '#FFED00' },
-                                { id: 'ready', label: 'READY / QC', filter: (d: any) => d.ready && !d.shipped, color: '#8DC63F' },
+                                { id: 'prod', label: tr("IN PRODUCTION"), filter: (d: any) => d.in_production && !d.ready && !d.shipped, color: '#FFED00' },
+                                { id: 'ready', label: tr("READY / QC"), filter: (d: any) => d.ready && !d.shipped, color: '#8DC63F' },
                                 { id: 'ship', label: 'SHIPPED', filter: (d: any) => d.shipped, color: '#6BCEBB' }
                             ].map(col => {
                                 const items = filtered.filter(col.filter);
@@ -703,7 +703,7 @@ const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs
                                         <option value="Warehouse">{tr("WAREHOUSE")}</option><option value="In Transit">IN TRANSIT</option><option value="Delivered">{tr("DELIVERED")}</option>
                                     </select>
                                 </div>
-                                <div className="text-xs font-bold text-white line-clamp-1">{c.description || c.contents_summary || 'Shipment'}</div>
+                                <div className="text-xs font-bold text-white line-clamp-1">{c.description || c.contents_summary || tr("Shipment")}</div>
                                 <div className="flex gap-4 py-2 border-y border-white/5 mt-1 justify-between">
                                     <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Weight")}</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg || 0}kg</span></div>
                                     <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Crates")}</span><span className="text-[10px] font-mono font-bold text-white">{c.crate_count || c.quantity || 0}</span></div>
@@ -821,7 +821,7 @@ export const WorkbookView: React.FC = () => {
                 <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`} />
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">{isSyncing ? 'Syncing Cloud Engine...' : 'Real-time Linked'}</span>
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">{isSyncing ? tr("Syncing Cloud Engine...") : tr("Real-time Linked")}</span>
                     </div>
 
                     <div className="flex items-center gap-3">

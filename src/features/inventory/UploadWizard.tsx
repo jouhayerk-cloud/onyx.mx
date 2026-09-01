@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import { compressAndTrimVideo } from '../../lib/videoCompressor';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
@@ -766,7 +767,7 @@ export const UploadWizard: React.FC = () => {
                                     <div className="flex items-center gap-4">
                                         <div className="w-2 h-2 rounded-full bg-(--main-color) animate-pulse" />
                                         <h1 className="text-[20px] font-black uppercase tracking-[0.6em] text-white/40 leading-none">
-                                            {itemData?.id ? 'Edit Entry' : 'Add Entry'}
+                                            {itemData?.id ? tr("Edit Entry") : tr("Add Entry")}
                                         </h1>
                                     </div>
                                     
@@ -840,7 +841,7 @@ export const UploadWizard: React.FC = () => {
                                                 {state.status === 'Available' ? <LayoutGrid size={24} /> : state.status === 'Production' ? <Zap size={24} /> : <Database size={24} />}
                                             </div>
                                             <div className="flex flex-col items-start">
-                                                <span className="text-xl font-black uppercase tracking-tight text-white">{state.status}</span>
+                                                <span className="text-xl font-black uppercase tracking-tight text-white">{el(state.status)}</span>
                                             </div>
                                         </div>
                                         <ChevronDown size={20} className="text-white/20 group-hover:text-white transition-colors" />
@@ -1024,7 +1025,7 @@ export const UploadWizard: React.FC = () => {
                             </div>
                         </div>
                         <p className="text-[10px] font-black text-white uppercase tracking-[1.5em] animate-pulse">
-                            {uploadProgressMsg || 'Syncing Protocols...'}
+                            {uploadProgressMsg || tr("Syncing Protocols...")}
                         </p>
                     </div>
                 </div>

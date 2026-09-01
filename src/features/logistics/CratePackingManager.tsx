@@ -27,6 +27,7 @@ import { CratePackingWorkspace } from './CratePackingWorkspace';
 import { InventoryArtifactInner } from '../inventory/InventoryArtifact';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 // ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
 // Backward compat: entries without ":qty" default to full quantity
@@ -524,7 +525,7 @@ const CrateSelectCard: React.FC<{
                 </p>
                 <div className="flex items-center justify-center gap-3">
                     <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em]">
-                        {isPallet ? 'Pallet' : (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? 'Box' : 'Crate'}
+                        {isPallet ? tr("Pallet") : (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? tr("Box") : 'Crate'}
                     </span>
                     {partialCount > 0 && (
                         <div className="flex items-center gap-1.5">
@@ -621,7 +622,7 @@ const PackingInventoryCard: React.FC<{
             <div className="p-5 flex flex-col gap-3">
                 <div className="min-h-[40px]">
                     <h3 className="text-[11px] font-black text-white uppercase tracking-tight leading-tight line-clamp-2">
-                        {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || 'Untitled')}
+                        {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || tr("Untitled"))}
                     </h3>
                 </div>
 
@@ -1278,10 +1279,10 @@ export const CratePackingManager: React.FC = () => {
                         <div className="max-w-7xl mx-auto flex items-center justify-between">
                             <div className="flex flex-col gap-2">
                                 <h3 className="text-[14px] font-black uppercase tracking-[0.6em] text-(--main-color) italic">
-                                    {activeGroup?.isNestable ? 'Packed Boxes' : `Available ${activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Storage Units'}`}
+                                    {activeGroup?.isNestable ? tr("Packed Boxes") : `Available ${activeGroup ? activeGroup.type === 'pallet' ? tr("Pallets") : 'Crates' : tr("Storage Units")}`}
                                 </h3>
                                 <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] font-mono">
-                                    {activeCrates.length} {activeGroup?.isNestable ? 'Ready for Nesting' : 'Precision Units Ready for Assignment'}
+                                    {activeCrates.length} {activeGroup?.isNestable ? tr("Ready for Nesting") : tr("Precision Units Ready for Assignment")}
                                 </p>
                             </div>
                             {activeGroup && (
@@ -1343,7 +1344,7 @@ export const CratePackingManager: React.FC = () => {
                                                     </div>
                                                     <div className="flex flex-col gap-2 text-left">
                                                         <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isSelected ? 'text-white' : 'text-white/20'}`}>
-                                                            {c.status}
+                                                            {el(c.status)}
                                                         </span>
                                                         <div className={`h-2 transition-all duration-1000 ${isSelected ? 'w-full bg-(--main-color)' : 'w-10 bg-white/10'}`} />
                                                     </div>
@@ -1596,7 +1597,7 @@ export const CratePackingManager: React.FC = () => {
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <span className="text-lg font-black text-white tracking-tighter uppercase">{fmtDims(dest)}</span>
-                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{dest.type} · {dest.status}</span>
+                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{dest.type} · {el(dest.status)}</span>
                                         </div>
                                     </button>
                                 ))}

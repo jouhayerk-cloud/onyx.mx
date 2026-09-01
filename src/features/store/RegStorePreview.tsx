@@ -349,11 +349,11 @@ export const RegStorePreview: React.FC = () => {
                                             </div>
                                             <div className="grid grid-cols-2 gap-4 border-b border-gray-200 pb-3">
                                                 <span className="text-gray-500 font-medium flex items-center gap-2"><Scale className="w-4 h-4 text-gray-400" /> {tr("Weight:")}</span>
-                                                <span className="font-semibold text-gray-900">{pdpData.wtKg ? `${pdpData.wtKg} kg` : 'Weight TBD'}</span>
+                                                <span className="font-semibold text-gray-900">{pdpData.wtKg ? `${pdpData.wtKg} kg` : tr("Weight TBD")}</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4 border-b border-gray-200 pb-3">
                                                 <span className="text-gray-500 font-medium flex items-center gap-2"><Box className="w-4 h-4 text-gray-400" /> {tr("Material & Origin:")}</span>
-                                                <span className="font-semibold text-gray-900">{pdpData.norm.material || 'Natural Onyx'} {tr("· Sonora, Mexico")}</span>
+                                                <span className="font-semibold text-gray-900">{pdpData.norm.material || tr("Natural Onyx")} {tr("· Sonora, Mexico")}</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <span className="text-gray-500 font-medium flex items-center gap-2"><Tag className="w-4 h-4 text-gray-400" /> {tr("AI Classification:")}</span>
@@ -453,7 +453,7 @@ export const RegStorePreview: React.FC = () => {
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span>{tr("Spatial Axonometric Box:")}</span>
-                                            <span className="font-mono text-gray-700">{pdpData.norm.spatialBoxes2d ? 'Generated' : 'Manual Metric'}</span>
+                                            <span className="font-mono text-gray-700">{pdpData.norm.spatialBoxes2d ? tr("Generated") : tr("Manual Metric")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -468,7 +468,7 @@ export const RegStorePreview: React.FC = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
                             <div>
                                 <h2 className="text-2xl sm:text-3xl font-serif font-bold text-gray-900 tracking-tight">
-                                    {selectedCategory === 'All' ? 'Natural Stone & Onyx Collection' : selectedCategory}
+                                    {selectedCategory === 'All' ? tr("Natural Stone & Onyx Collection") : selectedCategory}
                                 </h2>
                                 <p className="text-xs sm:text-sm text-gray-500 mt-1">
                                     {tr("Showing")} {filteredItems.length} {tr("museum-grade handcrafted stone items ready for digital storefronts.")}
@@ -483,8 +483,8 @@ export const RegStorePreview: React.FC = () => {
                                 <h3 className="text-lg font-bold text-gray-700">{tr("No matching items found")}</h3>
                                 <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
                                     {onlyGenerated 
-                                        ? 'No items currently match the 100% AI Generated filter with this category or search term.'
-                                        : 'Try clearing your search query or selecting a different category tab.'}
+                                        ? tr("No items currently match the 100% AI Generated filter with this category or search term.")
+                                        : tr("Try clearing your search query or selecting a different category tab.")}
                                 </p>
                                 {onlyGenerated && (
                                     <button 
@@ -500,7 +500,7 @@ export const RegStorePreview: React.FC = () => {
                                 {filteredItems.map((item: any, idx: number) => {
                                     const norm = normalizeInventoryData(item.data);
                                     const codes = calculateCodesAndPrices(item.data, 0, item.id);
-                                    const title = item.data.title || norm.description || norm.generatedDescription || `${norm.shape || 'Onyx'} Piece`;
+                                    const title = item.data.title || norm.description || norm.generatedDescription || `${norm.shape || tr("Onyx")} Piece`;
                                     const price = Math.round(codes.retailPrice || 3660).toLocaleString();
                                     const imgUrl = item.images && item.images.length > 0 ? getCleanImageUrl(item.images[0]) : '/RareEarthGallery.png';
 
@@ -530,7 +530,7 @@ export const RegStorePreview: React.FC = () => {
                                             <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
                                                 <div>
                                                     <p className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                                                        {item.codes?.bookBarcodeDisplay || codes.tagId || norm.sku || 'OL-Aqua'}
+                                                        {item.codes?.bookBarcodeDisplay || codes.tagId || norm.sku || tr("OL-Aqua")}
                                                     </p>
                                                     <h3 className="font-serif font-bold text-gray-900 text-sm sm:text-base group-hover:text-amber-800 transition-colors line-clamp-2 mt-0.5 leading-snug">
                                                         {title}

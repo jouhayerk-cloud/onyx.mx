@@ -5,6 +5,7 @@ import { activeViewAtom, inventoryVendorFilterAtom } from '../../../lib/atoms';
 import { VENDOR_COLORS, useDeviceControl } from '../useDeviceControl';
 import { Shield, Sparkles, X, CheckCircle2, User, Package, CreditCard, Bot, Volume2, ArrowRight, Radio } from 'lucide-react';
 import { tr } from '../../../lib/i18n';
+import { el } from '../../../lib/i18nEnums';
 
 interface PicoVendorCardModalProps {
   scanEvent: (PicoScanEvent & { actionTaken?: string }) | null;
@@ -187,7 +188,7 @@ export const PicoVendorCardModal: React.FC<PicoVendorCardModalProps> = ({
                   {profile.paymentStatus}
                 </span>
               </div>
-              <p className="text-xs text-neutral-300 font-mono">{profile.role}</p>
+              <p className="text-xs text-neutral-300 font-mono">{el(profile.role)}</p>
               <div className="text-[10px] font-mono text-neutral-400 mt-1 flex items-center gap-2">
                 <span>{tr("Tag:")} <strong className="text-white">{scanEvent.tagId}</strong></span>
                 <span>•</span>

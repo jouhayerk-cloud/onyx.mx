@@ -127,7 +127,7 @@ const ActiveRequestGridItem: React.FC<{
                 <span className="text-[28px] font-black text-white leading-none tracking-tighter">
                     {currencyMode === 'MXN' ? fmtMXN(amount) : fmtUSD(finalAmount)}
                 </span>
-                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mt-2 truncate">{type || 'General'}</span>
+                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mt-2 truncate">{type || tr("General")}</span>
             </div>
 
             {/* Progress Bar for Partial Production */}
@@ -628,7 +628,7 @@ export const UniversalToolsBar: React.FC = () => {
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] leading-none mb-1">{tr("Density")}</span>
                                             <span className="text-[14px] font-black text-white uppercase tracking-tighter">
-                                                {invSlider <= 33 ? 'Compact' : invSlider <= 66 ? 'Standard' : 'Spacious'}
+                                                {invSlider <= 33 ? tr("Compact") : invSlider <= 66 ? tr("Standard") : tr("Spacious")}
                                             </span>
                                         </div>
                                     </div>
@@ -659,11 +659,11 @@ export const UniversalToolsBar: React.FC = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {[
-                                            { key: 'Date', label: 'DATE' },
+                                            { key: 'Date', label: tr("DATE") },
                                             { key: 'Vendor', label: 'VENDOR' },
-                                            { key: 'Status', label: 'STATUS' },
-                                            { key: 'Number', label: 'NUM' },
-                                            { key: 'Value', label: 'VALUE' },
+                                            { key: 'Status', label: tr("STATUS") },
+                                            { key: 'Number', label: tr("NUM") },
+                                            { key: 'Value', label: tr("VALUE") },
                                             { key: 'Qty', label: 'QTY' }
                                         ].map(sort => (
                                         <div key={sort.key} className="tool-cell flex flex-col items-center gap-1 shrink-0">
@@ -754,8 +754,8 @@ export const UniversalToolsBar: React.FC = () => {
                                     { id: 'Supplies', icon: Box, color: '#f59e0b' },
                                     { id: 'Labor', icon: Users, color: '#ec4899' },
                                     { id: 'Packing', icon: Archive, color: '#a855f7' },
-                                    { id: 'Operations', icon: Activity, color: '#ef4444' },
-                                    { id: 'Logistics', icon: Truck, color: '#06b6d4' }
+                                    { id: tr("Operations"), icon: Activity, color: '#ef4444' },
+                                    { id: tr("Logistics"), icon: Truck, color: '#06b6d4' }
                                 ].map(s => {
                                     const Icon = s.icon;
                                     const isActive = finCategoryFilter === s.id;
@@ -786,7 +786,7 @@ export const UniversalToolsBar: React.FC = () => {
                             {isFinQueueOpen && (
                                 <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 ${activeQueueRecords.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
                                     {activeQueueRecords.length === 0 ? <div className="py-6 text-center border border-white/5 rounded-2xl"><span className="text-[11px] font-black uppercase tracking-[0.6em]">{tr("QUEUE EMPTY")}</span></div> : activeQueueRecords.map(r => {
-                                        const v = r.vendor_id || 'Unknown';
+                                        const v = r.vendor_id || tr("Unknown");
                                         const color = vendors[v as keyof typeof vendors]?.color || '#888';
                                         return <ActiveRequestGridItem key={r.id} label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMode} exRate={exRate} onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: [r.id], title: `Detail: ${v}` })} />;
                                     })}
@@ -817,7 +817,7 @@ export const UniversalToolsBar: React.FC = () => {
                                     <span className="text-[11px] font-black uppercase tracking-[0.6em]">{tr("NO UPCOMING PAYMENTS")}</span>
                                 </div>
                             ) : combinedUpcoming.map(r => {
-                                const v = r.vendor_id || 'Unknown';
+                                const v = r.vendor_id || tr("Unknown");
                                 const color = vendors[v as keyof typeof vendors]?.color || '#888';
                                 const isAuto = (r as any).is_auto_gen;
                                 return (

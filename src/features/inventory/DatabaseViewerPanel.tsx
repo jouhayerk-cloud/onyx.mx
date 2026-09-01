@@ -235,7 +235,7 @@ export const DatabaseViewerPanel: React.FC<{ db: any }> = ({ db }) => {
                         onClick={saveEdit}
                         disabled={saving}
                         className="ml-auto px-4 py-1 rounded-lg bg-[#AEE6F5] text-black text-[10px] font-black disabled:opacity-50">
-                        {saving ? 'Saving…' : 'Save'}
+                        {saving ? tr("Saving…") : tr("Save")}
                     </button>
                     <button onClick={cancelEdit}
                         className="px-3 py-1 rounded-lg bg-white/5 text-white/40 text-[10px] font-black">

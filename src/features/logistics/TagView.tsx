@@ -308,7 +308,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                     <button onClick={handleShare}
                         className="flex items-center gap-2 h-10 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all active:scale-95">
                         <Share2 size={14} strokeWidth={2.5} />
-                        <span className="hidden sm:inline">{copied ? 'COPIED' : 'SHARE'}</span>
+                        <span className="hidden sm:inline">{copied ? tr("COPIED") : tr("SHARE")}</span>
                     </button>
                     {item.images.length > 0 && (
                         <button onClick={() => openViewer(0)}

@@ -226,7 +226,7 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
                 <div className="flex items-center gap-1 px-1.5 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded shadow-lg backdrop-blur-md">
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
                     <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none shadow-[0_0_10px_rgba(45,212,191,0.3)]">
-                        {crateId || 'DEPLOYED'}
+                        {crateId || tr("DEPLOYED")}
                     </span>
                 </div>
             );
@@ -234,7 +234,7 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
         return (
             <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-black text-teal-400 uppercase tracking-widest leading-none flex items-center gap-1"><Truck size={12} strokeWidth={3} /> {tr("DEPLOYED")}</span>
-                <span className="text-[11px] font-mono font-bold text-teal-400/80">{crateId || 'Unknown'}</span>
+                <span className="text-[11px] font-mono font-bold text-teal-400/80">{crateId || tr("Unknown")}</span>
             </div>
         );
     }
@@ -398,12 +398,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         const net = p.amount || 0;
                         const fees = p.commission || 0;
                         const total = net + fees;
-                        const format = (val: number) => showFinancials ? `$${val.toLocaleString('en-US')}` : '***';
+                        const format = (val: number) => showFinancials ? `$${val.toLocaleString(tr("en-US"))}` : '***';
 
                         return (
                             <div key={p.id} className="payment-row flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-3 rounded-xl bg-(--text-color)/5 border border-(--border-color) transition-all hover:bg-(--text-color)/10">
                                 <div className="flex flex-col min-w-[120px]">
-                                    <span className="text-[11px] text-(--text-color) font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date'}</span>
+                                    <span className="text-[11px] text-(--text-color) font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric', year: 'numeric' }) : tr("Unknown Date")}</span>
                                     <span className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${p.status === 'Paid' ? 'text-green-400' : p.status === 'Requested' ? 'text-yellow-400' : 'text-sky-400'}`}>{p.status || 'New'}</span>
                                 </div>
                                 <div className="flex items-center gap-6 sm:gap-12 w-full sm:w-auto no-scrollbar justify-between sm:justify-end">
@@ -531,7 +531,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         <div className="flex flex-col shrink-0 min-w-[140px] py-1">
                             <div className="flex items-baseline gap-2">
                                 <h3 className="text-[16px] font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">
-                                    {norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-80 ml-1">{norm.shortDescription}</span>}
+                                    {norm.shape || tr("OBJ")} {norm.shortDescription && <span className="opacity-80 ml-1">{norm.shortDescription}</span>}
                                 </h3>
                             </div>
                             <div className="text-[13px] text-(--text-color)/60 uppercase tracking-widest font-black whitespace-nowrap mt-0.5">
@@ -742,7 +742,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 )}
 
                 <div className="p-8 overflow-y-auto grow custom-scrollbar flex flex-col gap-8">
-                    <div><h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[13px] font-bold text-white/50 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
+                    <div><h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || tr("OBJ")} {norm.shortDescription}</h3><p className="text-[13px] font-bold text-white/50 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/2 border border-white/5">
                         <div><p className={lbl}>{tr("AQ Code")}</p><p className="text-2xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
                         <div><p className={lbl}>{tr("LD Code")}</p><p className="text-2xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
@@ -920,7 +920,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 </div>
                              </div>
                              <h3 className="text-2xl font-black text-(--text-color) uppercase tracking-tighter leading-tight mt-1.5 truncate">
-                                 {norm.shape || 'OBJECT'} 
+                                 {norm.shape || tr("OBJECT")} 
                                  <span className="text-[14px] font-black text-(--text-color)/80 uppercase tracking-[0.2em] ml-2">{norm.shortDescription}</span>
                              </h3>
                              <div className="text-[12px] text-(--text-color)/70 uppercase tracking-widest font-black mt-1.5">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
@@ -960,8 +960,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
                                 <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none">
                                     {deployedInfo.manifestId
-                                        ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
-                                        : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}`
+                                        ? deployedInfo.manifestId.replace(tr("TRK-"), tr("TRK·"))
+                                        : `TRK·${new Date(deployedInfo.date).toLocaleDateString(tr("en-US"), { month: 'short', year: '2-digit' })}`
                                     }
                                 </span>
                             </div>
@@ -1042,7 +1042,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             <div className="p-3 flex flex-col gap-2 flex-1">
                 <div className="flex items-start justify-between">
                     <div className="flex flex-col flex-1 min-w-0">
-                        <div className="font-black text-[15px] text-(--text-color) uppercase tracking-tight truncate">{norm.shape || 'OBJ'}</div>
+                        <div className="font-black text-[15px] text-(--text-color) uppercase tracking-tight truncate">{norm.shape || tr("OBJ")}</div>
                         <div className="text-[11px] font-black text-(--text-color)/30 uppercase tracking-widest">{norm.shortDescription}</div>
                     </div>
                     <span className="text-[13px] font-black text-(--main-color) font-mono ml-2 shrink-0">x{norm.quantity || 1}</span>
@@ -1070,8 +1070,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
                             <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none">
                                 {deployedInfo.manifestId
-                                    ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
-                                    : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}`
+                                    ? deployedInfo.manifestId.replace(tr("TRK-"), tr("TRK·"))
+                                    : `TRK·${new Date(deployedInfo.date).toLocaleDateString(tr("en-US"), { month: 'short', year: '2-digit' })}`
                                 }
                             </span>
                         </div>

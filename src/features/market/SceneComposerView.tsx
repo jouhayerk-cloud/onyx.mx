@@ -328,7 +328,7 @@ export const SceneComposerView = () => {
                 </div>
                  <div className="flex items-center gap-2">
                     <label htmlFor="scene-upload-input" className="button secondary cursor-pointer !min-h-0 text-xs py-2">
-                        {sceneImage ? 'Change Scene' : 'Upload Scene'}
+                        {sceneImage ? tr("Change Scene") : tr("Upload Scene")}
                     </label>
                     <input id="scene-upload-input" type="file" accept="image/*" className="hidden" onChange={handleSceneUpload} />
                     <button className="button secondary !min-h-0 text-xs py-2" onClick={handleDownloadScene} disabled={!sceneImage || isLoading}>{tr("Download")}</button>

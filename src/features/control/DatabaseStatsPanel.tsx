@@ -246,7 +246,7 @@ export function DatabaseStatsPanel() {
                             <div key={req.id} className="group relative flex items-center justify-between py-4 border-b border-white/3 hover:border-orange-500/30 transition-all">
                                 <div className="flex flex-col gap-1 min-w-0 pr-10">
                                     <span className="text-[10px] font-black text-white/70 uppercase tracking-tighter truncate">{req.item_id || req.itemId}</span>
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">{req.source} / {req.shape || 'Unknown'}</span>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">{req.source} / {req.shape || tr("Unknown")}</span>
                                 </div>
                                 <div className="flex items-center gap-2 opacity-30 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
                                     <button 

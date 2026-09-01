@@ -255,7 +255,7 @@ export function VideoBatchView() {
                     <h2 className="text-xl font-bold">{tr("Video Batch Creation")}</h2>
                     <div className="flex-grow overflow-y-auto pr-2 -mr-6 space-y-4">
                         <label htmlFor="video-upload" className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-[var(--border-color)] border-dashed rounded-md cursor-pointer hover:border-[var(--accent-color)]">
-                            <div className="space-y-1 text-center"><UploadIcon className="mx-auto h-12 w-12 text-[var(--text-color-secondary)]" /><p className="text-sm text-[var(--text-color-secondary)]">{fileName || 'Select a video file'}</p></div>
+                            <div className="space-y-1 text-center"><UploadIcon className="mx-auto h-12 w-12 text-[var(--text-color-secondary)]" /><p className="text-sm text-[var(--text-color-secondary)]">{fileName || tr("Select a video file")}</p></div>
                         </label>
                         <input id="video-upload" type="file" className="sr-only" accept="video/*" onChange={handleFileChange} />
                         
@@ -288,7 +288,7 @@ export function VideoBatchView() {
 
                     <div className="shrink-0 pt-4">
                         <button onClick={handleStartAnalysis} disabled={isAnalyzing || !videoFile} className="button w-full">
-                            {isAnalyzing ? statusText : 'Scan Video for Items'}
+                            {isAnalyzing ? statusText : tr("Scan Video for Items")}
                         </button>
                         {(viewStep === 'analyzing') && (
                             <div className="w-full bg-[var(--input-color)] rounded-full h-2.5 mt-2"><div className="bg-[var(--accent-color)] h-2.5 rounded-full" style={{ width: `${progress}%` }}></div></div>
@@ -304,7 +304,7 @@ export function VideoBatchView() {
                             <div className="flex items-center gap-2">
                                 <button onClick={handleReset} className="button secondary !min-h-0 text-xs py-1 px-3">{tr("Reset")}</button>
                                 <button onClick={handleCreateItems} disabled={selectedFrames.length === 0 || viewStep === 'creating'} className="button !min-h-0 text-xs py-1 px-3">
-                                    {viewStep === 'creating' ? 'Creating...' : `Create ${selectedFrames.length} Items`}
+                                    {viewStep === 'creating' ? tr("Creating...") : `Create ${selectedFrames.length} Items`}
                                 </button>
                             </div>
                         )}

@@ -8,7 +8,8 @@ import { useNotify } from '../../lib/hooks';
 import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/Types';
 import { handleFileUpload, createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask } from '../../lib/utils';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
-import { tr } from '../../lib/i18n';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 const uuidv4 = () => self.crypto.randomUUID();
 
@@ -243,7 +244,7 @@ export function BatchImportModule() {
                     </button>
                     {batchItems.length > 0 && (
                         <button onClick={processBatch} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-lg flex items-center gap-2" disabled={isBatchProcessing}>
-                            {isBatchProcessing ? <LoadingIndicator /> : '🚀 Process Batch'}
+                            {isBatchProcessing ? <LoadingIndicator /> : tr("🚀 Process Batch")}
                         </button>
                     )}
                 </div>
@@ -258,7 +259,7 @@ export function BatchImportModule() {
                         {/* Status Badge */}
                         <div className="mb-4 flex items-center gap-2">
                             <div className={`w-3 h-3 rounded-full ${item.status === 'idle' ? 'bg-slate-300' : item.status === 'processing' ? 'bg-blue-500 animate-pulse' : item.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
-                            <span className="text-sm font-semibold uppercase text-slate-500">{item.status}</span>
+                            <span className="text-sm font-semibold uppercase text-slate-500">{el(item.status)}</span>
                             {item.resultItemNumber && <span className="ml-auto font-mono text-blue-600 font-bold">{item.resultItemNumber}</span>}
                         </div>
 

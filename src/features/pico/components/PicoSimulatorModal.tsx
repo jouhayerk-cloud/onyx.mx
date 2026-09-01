@@ -108,7 +108,7 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
                         : 'bg-white/5 border-white/5 text-neutral-400 hover:text-neutral-200 text-xs'
                     }`}
                   >
-                    {type === 'UHF_RFID' ? 'UHF RFID' : type}
+                    {type === 'UHF_RFID' ? tr("UHF RFID") : type}
                   </button>
                 );
               })}
@@ -139,7 +139,7 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
                   {tr("Simulated Signal Strength (RSSI)")}
                 </label>
                 <span className={`text-xs font-mono font-bold ${rssi < -65 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {rssi} {tr("dBm")} {rssi < -65 ? '(Weak / Far)' : '(Strong / Near)'}
+                  {rssi} {tr("dBm")} {rssi < -65 ? tr("(Weak / Far)") : tr("(Strong / Near)")}
                 </span>
               </div>
               <input

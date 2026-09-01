@@ -35,6 +35,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import gsap from 'gsap';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 export const TRUCK_L_CM = 1615;
 export const TRUCK_W_CM = 244;
@@ -375,7 +376,7 @@ export const CompactItemCard: React.FC<{
             </div>
             <div className="flex flex-col min-w-[120px] max-w-[200px]">
                 <div className="flex items-center gap-1.5 leading-none mb-1">
-                    <span className="text-[11px] font-black uppercase tracking-tighter truncate text-white/80">{data.shape || 'Unit'}</span>
+                    <span className="text-[11px] font-black uppercase tracking-tighter truncate text-white/80">{data.shape || tr("Unit")}</span>
                     <div className="flex items-center gap-1 px-1 py-0.5 rounded-sm bg-black/40 text-white/40 border border-white/5">
                         <Hash size={7} />
                         <span className="text-[7px] font-black">{tag}</span>
@@ -383,7 +384,7 @@ export const CompactItemCard: React.FC<{
                 </div>
                 <div className="flex items-center gap-3 leading-none opacity-60">
                     <div className="flex items-center gap-1 min-w-0">
-                        <span className="text-[9px] font-bold truncate text-white/40">{data.shortDescription || 'Artifact'}</span>
+                        <span className="text-[9px] font-bold truncate text-white/40">{data.shortDescription || tr("Artifact")}</span>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                         <Gauge size={9} className="text-emerald-500/40" />
@@ -1700,7 +1701,7 @@ const NestingTargetModal: React.FC<{
                                 <div className="flex items-center gap-3 mt-2">
                                     <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">{t.width_cm}x{t.length_cm}x{t.height_cm} CM</span>
                                     <div className="w-1 h-1 rounded-full bg-white/10" />
-                                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">{t.status}</span>
+                                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">{el(t.status)}</span>
                                 </div>
                             </div>
                             <div className="w-10 h-10 rounded-full flex items-center justify-center text-emerald-400/40 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-all">
@@ -1850,7 +1851,7 @@ const ExportCard: React.FC<{
                         disabled={prog >= 0}
                         className="px-5 py-2.5 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"
                     >
-                        {prog >= 0 ? 'Building...' : 'Generate'}
+                        {prog >= 0 ? tr("Building...") : tr("Generate")}
                     </button>
                 )}
             </div>
@@ -2949,11 +2950,11 @@ const ReadyTruckWizard: React.FC<{
                     <div className="flex flex-col gap-5">
                         <div className="grid grid-cols-2 gap-4">
                             {[
-                                { label: 'Seal Number', key: 'sealNumber', placeholder: 'S-0000000', icon: Shield },
-                                { label: 'Tractor Number', key: 'tractorNumber', placeholder: 'T-000', icon: IdCard },
-                                { label: 'Truck Plates', key: 'truckPlates', placeholder: 'ABC-123-X', icon: ClipboardCheck },
-                                { label: 'Trailer Number', key: 'trailerNumber', placeholder: 'TR-000', icon: Hash },
-                                { label: 'Trailer Plates', key: 'trailerPlates', placeholder: 'XYZ-789-Y', icon: FileText },
+                                { label: tr("Seal Number"), key: tr("sealNumber"), placeholder: 'S-0000000', icon: Shield },
+                                { label: tr("Tractor Number"), key: tr("tractorNumber"), placeholder: 'T-000', icon: IdCard },
+                                { label: tr("Truck Plates"), key: tr("truckPlates"), placeholder: tr("ABC-123-X"), icon: ClipboardCheck },
+                                { label: tr("Trailer Number"), key: tr("trailerNumber"), placeholder: tr("TR-000"), icon: Hash },
+                                { label: tr("Trailer Plates"), key: tr("trailerPlates"), placeholder: tr("XYZ-789-Y"), icon: FileText },
                             ].map(f => (
                                 <div key={f.key} className="group flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 focus-within:border-white/20 transition-all">
                                     <div className="flex items-center justify-between">
@@ -3056,7 +3057,7 @@ const ReadyTruckWizard: React.FC<{
                                         <div>
                                             <h4 className={`text-lg font-black uppercase tracking-tighter ${publicUrl ? 'text-white' : 'text-white/20'}`}>{tr("Cloud Registry Link")}</h4>
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
-                                                {publicUrl ? 'Sync Active Ã‚Â· Publicly Accessible' : 'Pending Dispatch Ã‚Â· Registry Offline'}
+                                                {publicUrl ? tr("Sync Active Ã‚Â· Publicly Accessible") : tr("Pending Dispatch Ã‚Â· Registry Offline")}
                                             </p>
                                         </div>
                                     </div>
@@ -3178,7 +3179,7 @@ const ReadyTruckWizard: React.FC<{
                                     <Save size={14} /> {tr("Save Truck")}
                                 </button>
                                 <button onClick={onConfirm} disabled={isBusy} className="py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40">
-                                    {isBusy ? 'Syncing...' : 'Dispatch'}
+                                    {isBusy ? tr("Syncing...") : tr("Dispatch")}
                                 </button>
                             </div>
                             <button onClick={onClose} className="w-full py-3 rounded-2xl bg-white/5 text-white/40 font-black uppercase tracking-widest text-[8px] hover:bg-white/10 transition-all border border-transparent hover:border-white/5">{tr("Cancel Protocol")}</button>
@@ -3300,7 +3301,7 @@ const ReadyTruckHUD: React.FC<{ metadata: any, stats: any }> = ({ metadata, stat
                 </div>
                 <div className="flex flex-col">
                     <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">{tr("Security Seal")}</span>
-                    <span className="text-lg font-black uppercase text-emerald-400 tracking-tighter">{metadata?.sealNumber || 'OPEN'}</span>
+                    <span className="text-lg font-black uppercase text-emerald-400 tracking-tighter">{metadata?.sealNumber || tr("OPEN")}</span>
                 </div>
             </div>
             <div className="w-full h-px bg-white/5" />
@@ -4557,7 +4558,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         {/* Section 4: Status */}
                         <div className={`flex flex-col border-l border-white/10 transition-all duration-500 ${isCompact ? 'px-4 min-w-[70px]' : 'px-5 flex-1 min-w-0 gap-1'}`}>
                             <div className="flex items-center gap-3">
-                                <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-2xl'}`} style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
+                                <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-2xl'}`} style={{ color: panelStats.statusColor }}>{el(panelStats.status)}</span>
                                 {recalledShipment && (
                                     <button 
                                         onClick={() => setShowSharePopup(true)}
@@ -4583,7 +4584,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         </div>
                                         <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.tractorNumber || 'Ã¢â‚¬â€'}</span>
                                         {!isCompact && (
-                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.truckPlates || 'NO PLATES'}</span>
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.truckPlates || tr("NO PLATES")}</span>
                                         )}
                                     </div>
 
@@ -4595,7 +4596,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         </div>
                                         <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.trailerNumber || 'Ã¢â‚¬â€'}</span>
                                         {!isCompact && (
-                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.trailerPlates || 'NO PLATES'}</span>
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.trailerPlates || tr("NO PLATES")}</span>
                                         )}
                                     </div>
 
@@ -4605,7 +4606,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             <IdCard size={10} className="text-cyan-400" />
                                             <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Security")}</span>
                                         </div>
-                                        <span className="text-[14px] font-black text-cyan-400 uppercase tracking-tighter leading-none">{readyTruckFields.sealNumber || 'OPEN'}</span>
+                                        <span className="text-[14px] font-black text-cyan-400 uppercase tracking-tighter leading-none">{readyTruckFields.sealNumber || tr("OPEN")}</span>
                                         {!isCompact && (
                                             <span className="text-[9px] font-black text-white/40 uppercase tracking-widest truncate mt-1">{tr("LOCK VERIFIED")}</span>
                                         )}
@@ -4619,7 +4620,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                                 <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Logistics")}</span>
                                             </div>
                                             <span className="text-[13px] font-black text-emerald-400 uppercase tracking-tighter leading-none">{readyTruckFields.packingItems.length || 0} {tr("UNITS")}</span>
-                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.senders[0] || 'ONYX CORE'}</span>
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.senders[0] || tr("ONYX CORE")}</span>
                                         </div>
                                     )}
 
@@ -4631,7 +4632,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                                 <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Deployed")}</span>
                                             </div>
                                             <span className="text-[12px] font-black text-white/80 uppercase tracking-tighter leading-none">
-                                                {new Date(recalledShipment.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}
+                                                {new Date(recalledShipment.timestamp).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric' }).toUpperCase()}
                                             </span>
                                             <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">
                                                 {new Date(recalledShipment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

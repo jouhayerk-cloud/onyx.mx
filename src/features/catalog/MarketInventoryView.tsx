@@ -258,7 +258,7 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
           }}
           className={`button secondary min-h-0! text-xs py-1 ${!isMarketSelect && 'opacity-60'}`}
         >
-          {isMarketSelect ? 'Cancel' : 'Select'}
+          {isMarketSelect ? tr("Cancel") : tr("Select")}
         </button>
       </div>
 

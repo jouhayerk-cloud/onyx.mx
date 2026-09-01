@@ -260,7 +260,7 @@ export function PicoBridgeView() {
             className="text-neutral-400 hover:text-white text-xs font-bold tracking-wider uppercase transition-all flex items-center gap-2"
           >
             <Bluetooth size={15} className={bleState.status === 'connected' ? 'text-emerald-400 animate-pulse' : 'text-neutral-400'} />
-            <span>{bleState.status === 'connected' ? 'BLE Paired' : 'Pair BLE'}</span>
+            <span>{bleState.status === 'connected' ? tr("BLE Paired") : tr("Pair BLE")}</span>
           </button>
 
           {/* Test Harness Modal Button */}
@@ -349,7 +349,7 @@ export function PicoBridgeView() {
                 </span>
               </div>
               <span className="text-[10px] font-mono text-neutral-500">
-                {primaryStackChan ? `${primaryStackChan.device_name} (${primaryStackChan.device_mac})` : 'Standalone Web Simulator'}
+                {primaryStackChan ? `${primaryStackChan.device_name} (${primaryStackChan.device_mac})` : tr("Standalone Web Simulator")}
               </span>
             </div>
           </div>
@@ -367,7 +367,7 @@ export function PicoBridgeView() {
               title={tr("Mirror Mode (Invert Avatar Gaze / Camera)")}
             >
               {mirrorMode ? <Eye size={13} className="text-purple-300" /> : <EyeOff size={13} />}
-              <span>{tr("Mirror:")} {mirrorMode ? 'ON' : 'OFF'}</span>
+              <span>{tr("Mirror:")} {mirrorMode ? tr("ON") : tr("OFF")}</span>
             </button>
 
             {/* Theme Selector */}
@@ -419,7 +419,7 @@ export function PicoBridgeView() {
             {/* Sub-HUD Gaze Info */}
             <div className="mt-3 flex items-center justify-between w-full max-w-[400px] text-[10px] font-mono text-neutral-400">
               <span>{tr("👁 Interactive cursor tracking active")}</span>
-              <span className="text-purple-300">{mirrorMode ? '🪞 Mirror Mode' : 'Direct View'}</span>
+              <span className="text-purple-300">{mirrorMode ? tr("🪞 Mirror Mode") : tr("Direct View")}</span>
             </div>
 
             <div className="mt-2 w-full max-w-[400px]">
@@ -485,7 +485,7 @@ export function PicoBridgeView() {
               <div>
                 <div className="flex justify-between text-[10px] font-mono text-neutral-400 mb-1">
                   <span>{tr("Pan / Yaw (Horizontal):")}</span>
-                  <span className="text-cyan-400 font-bold">{panAngle}° {panAngle < 0 ? '(Left)' : panAngle > 0 ? '(Right)' : '(Center)'}</span>
+                  <span className="text-cyan-400 font-bold">{panAngle}° {panAngle < 0 ? tr("(Left)") : panAngle > 0 ? tr("(Right)") : tr("(Center)")}</span>
                 </div>
                 <input
                   type="range"
@@ -501,7 +501,7 @@ export function PicoBridgeView() {
               <div>
                 <div className="flex justify-between text-[10px] font-mono text-neutral-400 mb-1">
                   <span>{tr("Tilt / Pitch (Vertical):")}</span>
-                  <span className="text-purple-400 font-bold">{tiltAngle}° {tiltAngle > 0 ? '(Up)' : tiltAngle < 0 ? '(Down)' : '(Level)'}</span>
+                  <span className="text-purple-400 font-bold">{tiltAngle}° {tiltAngle > 0 ? tr("(Up)") : tiltAngle < 0 ? tr("(Down)") : tr("(Level)")}</span>
                 </div>
                 <input
                   type="range"

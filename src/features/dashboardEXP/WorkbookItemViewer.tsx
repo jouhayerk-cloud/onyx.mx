@@ -82,11 +82,11 @@ export const WorkbookItemViewer = ({ item, vendor, exchangeRate, workbookPrefix 
                 <div className="expanded-details price-panel">
                     <div className="price-total price-mxn">
                         <span className="label">{tr("Cost (MXN) / piece")}</span>
-                        <span className="value">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(parseFloat(item['Per piece MXN$'] || '0'))}</span>
+                        <span className="value">{new Intl.NumberFormat(tr("es-MX"), { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(parseFloat(item['Per piece MXN$'] || '0'))}</span>
                     </div>
                     <div className="price-total">
                         <span className="label">{tr("Total MXN")}</span>
-                        <span className="value">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(parseFloat(item['TOTAL PESOS'] || '0'))}</span>
+                        <span className="value">{new Intl.NumberFormat(tr("es-MX"), { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(parseFloat(item['TOTAL PESOS'] || '0'))}</span>
                     </div>
                     <div className="price-total price-landed">
                         <span className="label">{tr("Landed (USD) / piece")}</span>

@@ -388,7 +388,7 @@ const SentTruckViewer: React.FC = () => {
                                     <h2 className="text-3xl font-black uppercase tracking-tighter text-white">{selectedCrate.label}</h2>
                                 </div>
                                 <div className="flex items-center gap-4 ml-1">
-                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">{selectedCrate.subtitle || 'Payload Unit'}</span>
+                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">{selectedCrate.subtitle || tr("Payload Unit")}</span>
                                     <div className="w-1 h-1 rounded-full bg-white/10" />
                                     <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">{selectedCrate.l}×{selectedCrate.w}×{selectedCrate.h} CM</span>
                                 </div>
@@ -436,7 +436,7 @@ const SentTruckViewer: React.FC = () => {
                                                         <div className="w-2 h-8 rounded-full" style={{ backgroundColor: tagCol }} />
                                                         <div className="flex flex-col">
                                                             <span className="font-mono text-[12px] font-black text-white/90 tracking-tight">{it.itemId}</span>
-                                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-0.5">{it.vendorPrefix || 'Onyx'} {tr("Registry")}</span>
+                                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-0.5">{it.vendorPrefix || tr("Onyx")} {tr("Registry")}</span>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-end">
@@ -444,11 +444,11 @@ const SentTruckViewer: React.FC = () => {
                                                     </div>
                                                 </div>
                                                 <div className="text-lg font-black uppercase tracking-tight text-white mb-3 group-hover:translate-x-1 transition-transform">
-                                                    {it.name || `${it.type || ''} ${it.desc || ''}`.trim() || 'Unidentified Artifact'}
+                                                    {it.name || `${it.type || ''} ${it.desc || ''}`.trim() || tr("Unidentified Artifact")}
                                                 </div>
                                                 <div className="flex items-center gap-4">
                                                     <div className="px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/5">
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{it.type || 'Standard'}</span>
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{it.type || tr("Standard")}</span>
                                                     </div>
                                                     <div className="px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/5">
                                                         <span className="text-[8px] font-black uppercase tracking-widest text-white/40 truncate max-w-[140px]">{it.combinedAttr || `${it.color || ''} / ${it.material || ''}` || '—'}</span>
@@ -496,7 +496,7 @@ const SentTruckViewer: React.FC = () => {
                              </div>
                              <div className="flex flex-col gap-1">
                                 <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Security Seal")}</span>
-                                <span className="text-[13px] font-black uppercase text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]">{metadata?.sealNumber || 'NOT SEALED'}</span>
+                                <span className="text-[13px] font-black uppercase text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]">{metadata?.sealNumber || tr("NOT SEALED")}</span>
                              </div>
                          </div>
                     </div>

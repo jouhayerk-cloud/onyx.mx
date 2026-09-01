@@ -1793,7 +1793,7 @@ Instructions:
                             title={tr("Toggle Image Processing (Masks & Transparency) ON/OFF for ALL items")}
                         >
                             <UploadCloud size={16} className={allSkippingImage ? 'text-amber-300' : 'text-(--main-color)'} />
-                            <span>{allSkippingImage ? 'IMG PROCESSING: OFF (ORIGINALS)' : 'IMG PROCESSING: ON (MASKS)'}</span>
+                            <span>{allSkippingImage ? tr("IMG PROCESSING: OFF (ORIGINALS)") : tr("IMG PROCESSING: ON (MASKS)")}</span>
                         </button>
                         <button 
                             onClick={handleRegenerateAllDescriptions}
@@ -1987,7 +1987,7 @@ Instructions:
                                             title={tr("Toggle Local / Cloud / Hybrid Processing")}
                                         >
                                             {op.processingMode === 'hybrid' ? <Layers size={14} className="animate-pulse" /> : op.processingMode === 'cloud' ? <Cloud size={14} /> : <Cpu size={14} />}
-                                            {op.processingMode === 'hybrid' ? 'HYBRID' : op.processingMode === 'cloud' ? 'CLOUD' : 'LOCAL'}
+                                            {op.processingMode === 'hybrid' ? tr("HYBRID") : op.processingMode === 'cloud' ? tr("CLOUD") : tr("LOCAL")}
                                         </button>
                                         
                                         {op.status === 'processing' && (
@@ -2085,7 +2085,7 @@ Instructions:
                                 {/* Step Label & Progress text */}
                                 {op.status === 'processing' && (
                                     <div className="mt-4 flex items-center justify-between text-[10px] md:text-xs font-black uppercase tracking-widest text-(--main-color)">
-                                        <span className="flex items-center gap-2 animate-pulse"><Loader2 size={12} className="animate-spin"/> {op.stepLabel || 'Processing...'}</span>
+                                        <span className="flex items-center gap-2 animate-pulse"><Loader2 size={12} className="animate-spin"/> {op.stepLabel || tr("Processing...")}</span>
                                         <span>{Math.round(op.progress)}%</span>
                                     </div>
                                 )}
@@ -2151,7 +2151,7 @@ Instructions:
                                                         }}
                                                         className="text-[9px] font-black text-amber-400 hover:text-amber-300 underline uppercase tracking-wider cursor-pointer bg-white/5 px-2 py-0.5 rounded border border-white/10"
                                                     >
-                                                        {editHtmlId === op.id ? 'View Styled Preview' : 'Edit Source HTML'}
+                                                        {editHtmlId === op.id ? tr("View Styled Preview") : tr("Edit Source HTML")}
                                                     </button>
                                                 </div>
                                                 {editHtmlId === op.id ? (
@@ -2203,7 +2203,7 @@ Instructions:
                 {/* Global Progress Bar */}
                 <div className="w-full bg-black/40 border-t border-white/5 p-4 flex flex-col gap-2 relative z-20">
                     <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-white/60 px-4">
-                        <span>{isSavingDb ? 'Saving to DB...' : 'Total Progress'}</span>
+                        <span>{isSavingDb ? tr("Saving to DB...") : tr("Total Progress")}</span>
                         <span>{Math.round(overallProgress)}%</span>
                     </div>
                     <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden mx-4 w-[calc(100%-2rem)]">
@@ -2235,7 +2235,7 @@ Instructions:
                             className={`flex items-center gap-3 px-6 py-4 font-black uppercase tracking-widest rounded-2xl transition-all shrink-0 ${(!hasUnsavedChanges && completedOps.length > 0) ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500 hover:bg-blue-400 text-black shadow-[0_0_20px_rgba(59,130,246,0.3)]'} ${(completedOps.length === 0 || !hasUnsavedChanges) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             {(!hasUnsavedChanges && completedOps.length > 0) ? <CheckCircle2 size={20} /> : <Save size={20} />}
-                            {(!hasUnsavedChanges && completedOps.length > 0) ? 'SAVED TO DB' : 'SAVE TO DB'}
+                            {(!hasUnsavedChanges && completedOps.length > 0) ? tr("SAVED TO DB") : tr("SAVE TO DB")}
                         </button>
                         
                             <>
@@ -2286,7 +2286,7 @@ Instructions:
                             className="flex items-center gap-3 px-8 py-4 bg-(--main-color) hover:bg-(--main-color)/80 text-black font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                         >
                             {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} />}
-                            {isProcessing ? 'Processing...' : 'Start Engine'}
+                            {isProcessing ? tr("Processing...") : tr("Start Engine")}
                         </button>
                     </div>
                 </div>

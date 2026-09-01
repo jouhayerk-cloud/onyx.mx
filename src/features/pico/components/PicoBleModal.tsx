@@ -155,7 +155,7 @@ export const PicoBleModal: React.FC<PicoBleModalProps> = ({ isOpen, onClose, onD
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-semibold tracking-wide transition-colors"
           >
-            {state.status === 'connected' ? 'Done' : 'Cancel'}
+            {state.status === 'connected' ? tr("Done") : tr("Cancel")}
           </button>
           
           {state.status === 'connected' ? (
@@ -174,7 +174,7 @@ export const PicoBleModal: React.FC<PicoBleModalProps> = ({ isOpen, onClose, onD
               className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold tracking-wider uppercase transition-all shadow-lg shadow-purple-500/25 flex items-center gap-2"
             >
               {isPairing ? <RefreshCw size={14} className="animate-spin" /> : <Bluetooth size={14} />}
-              {isPairing ? 'Pairing...' : 'Start BLE Discovery'}
+              {isPairing ? tr("Pairing...") : tr("Start BLE Discovery")}
             </button>
           )}
         </div>

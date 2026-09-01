@@ -573,7 +573,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                     {vendorKey} 826
                   </span>
                   <span className="text-xs font-black text-black">{item.itemNumber}</span>
-                  <span className="text-xs font-black text-black">{codes.bookLandCode || 'XXXX'}</span>
+                  <span className="text-xs font-black text-black">{codes.bookLandCode || tr("XXXX")}</span>
                 </div>
 
                 {/* Description summary */}

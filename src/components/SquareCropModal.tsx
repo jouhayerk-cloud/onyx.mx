@@ -478,7 +478,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
                                 <p className="flex items-center justify-between">
                                     <span>{tr("Background Mode:")}</span>
                                     <strong className="text-purple-300 uppercase font-bold">
-                                        {bgMode === 'solid' ? 'Solid Color' : `Pixel Stretch (${stretchPosition})`}
+                                        {bgMode === 'solid' ? tr("Solid Color") : `Pixel Stretch (${stretchPosition})`}
                                     </strong>
                                 </p>
                             </div>

@@ -13,6 +13,7 @@ import { ExportCratesWizard } from './ExportCratesWizard';
 import { vendors } from '../../lib/consts';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
 export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number; fillPct?: number }> = ({
@@ -217,7 +218,7 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
     };
     return (
         <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${styles[status] || styles.Empty}`}>
-            {status}
+            {el(status)}
         </span>
     );
 };
@@ -573,7 +574,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                     <span className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em]">
                                         {tr("Packed Inside:")} {(() => {
                                             const p = allCrates.find(pc => pc.id === crate.parent_id);
-                                            if (!p) return 'Parent Unit';
+                                            if (!p) return tr("Parent Unit");
                                             const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(p, allCrates, allInventory);
                                             return `${date}${vList.join('')}${sequence}`;
                                         })()}
@@ -732,7 +733,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                     <p className="text-[14px] font-black text-white truncate uppercase tracking-tight">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <div className="px-1.5 py-0.5 rounded text-[9px] font-black tracking-widest uppercase" style={{ backgroundColor: vColor, color: '#000' }}>
-                                            {vId || 'UNK'}
+                                            {vId || tr("UNK")}
                                         </div>
                                         <p className="text-[10px] font-mono text-white/40 uppercase tracking-[0.1em]">{item.barcode}</p>
                                         <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">{[item.norm.color, item.norm.material].filter(Boolean).join(' ')}</p>
@@ -929,8 +930,8 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                                 <div className="flex gap-2 bg-white/[0.03] border border-white/10 rounded-3xl p-1">
                                     {[
                                         { id: 'crate', label: 'Crate' },
-                                        { id: 'pallet', label: 'Pallet' },
-                                        { id: 'cardboard', label: 'Box' }
+                                        { id: 'pallet', label: tr("Pallet") },
+                                        { id: 'cardboard', label: tr("Box") }
                                     ].map(t => (
                                         <button 
                                             key={t.id} 
@@ -983,7 +984,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                             {/* Vendor Selector (Conditional) */}
                             <div className="lg:col-span-6 space-y-3">
                                 <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">
-                                    {sourceType === 'VENDOR' ? 'Primary Vendor' : 'Protocol Source'}
+                                    {sourceType === 'VENDOR' ? tr("Primary Vendor") : tr("Protocol Source")}
                                 </label>
                                 <div className="h-20 flex flex-col justify-center bg-white/[0.03] border border-white/10 rounded-[2rem] px-6">
                                     {sourceType === 'VENDOR' ? (
@@ -1053,7 +1054,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                                 className={`w-full md:w-auto px-20 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 group ${loading ? 'bg-white/5 text-white/20' : 'bg-(--main-color) text-black hover:scale-105 active:scale-95 shadow-2xl shadow-(--main-color)/20'}`}
                             >
                                 {loading ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} className="group-hover:rotate-90 transition-transform" />}
-                                {loading ? 'Initializing Matrix...' : 'Deploy Storage Protocol'}
+                                {loading ? tr("Initializing Matrix...") : tr("Deploy Storage Protocol")}
                             </button>
                             <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">{tr("Protocol version 3.2.6 · Jouhayerk Matrix")}</p>
                         </div>
@@ -1226,8 +1227,8 @@ export const CrateEditPanel: React.FC<{
                                 <div className="flex gap-2 bg-white/[0.03] border border-white/10 rounded-3xl p-1">
                                     {[
                                         { id: 'crate', label: 'Crate' },
-                                        { id: 'pallet', label: 'Pallet' },
-                                        { id: 'cardboard', label: 'Box' }
+                                        { id: 'pallet', label: tr("Pallet") },
+                                        { id: 'cardboard', label: tr("Box") }
                                     ].map(t => (
                                         <button 
                                             key={t.id} 
@@ -1252,7 +1253,7 @@ export const CrateEditPanel: React.FC<{
                                             <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-(--main-color)">
                                                 {formData.status === 'Packed' ? <CheckCircle2 size={16} /> : formData.status === 'Partial' ? <RotateCcw size={16} /> : <Box size={16} />}
                                             </div>
-                                            <span className="text-sm font-black uppercase tracking-tight text-white">{formData.status}</span>
+                                            <span className="text-sm font-black uppercase tracking-tight text-white">{el(formData.status)}</span>
                                         </div>
                                         <ChevronDown size={16} className="text-white/20 group-hover:text-white transition-colors" />
                                     </button>
@@ -1771,7 +1772,7 @@ export const CratesInventoryView: React.FC = () => {
                             {[
                                 { label: 'Empty', value: summary.empty, dot: 'bg-emerald-400', color: 'text-emerald-400' },
                                 { label: 'Packed', value: summary.packed, dot: 'bg-rose-400', color: 'text-rose-400' },
-                                { label: 'Boxes', value: summary.boxes, dot: 'bg-amber-400', color: 'text-amber-400' },
+                                { label: tr("Boxes"), value: summary.boxes, dot: 'bg-amber-400', color: 'text-amber-400' },
                                 { label: 'Deployed', value: summary.deployed, dot: 'bg-blue-400', color: 'text-blue-400' },
                             ].map(s => (
                                 <div key={s.label} className="flex items-center gap-1.5">
@@ -1853,12 +1854,12 @@ export const CratesInventoryView: React.FC = () => {
                                 </h3>
                                 <p className="text-[10px] font-black text-white/25 uppercase tracking-[0.3em] font-mono max-w-xs">
                                     {(subTab === 'empty')
-                                        ? 'No empty units available. Create new storage to begin packing.'
+                                        ? tr("No empty units available. Create new storage to begin packing.")
                                         : (subTab === 'deployed')
-                                        ? 'No deployed units found in the shipping registry.'
+                                        ? tr("No deployed units found in the shipping registry.")
                                         : (subTab === 'crates')
-                                        ? 'No deployed units found in the registry.'
-                                        : 'No units found matching this criteria.'}
+                                        ? tr("No deployed units found in the registry.")
+                                        : tr("No units found matching this criteria.")}
                                 </p>
                             </div>
                             {(subTab === 'empty' || subTab === 'crates') && (
@@ -1939,7 +1940,7 @@ export const CratesInventoryView: React.FC = () => {
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <span className="text-lg font-black text-white tracking-tighter uppercase">{dest.width_cm}×{dest.length_cm}×{dest.height_cm}</span>
-                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{dest.type} · {dest.status}</span>
+                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{dest.type} · {el(dest.status)}</span>
                                         </div>
                                     </button>
                                 ))}

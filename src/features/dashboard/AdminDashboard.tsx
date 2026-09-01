@@ -589,9 +589,9 @@ export function AdminDashboard() {
                             {/* Distribution Labels */}
                             <div className="grid grid-cols-1 gap-4 w-full">
                                 {([
-                                    { label: 'Inventory', val: globalTotals.paidAcqMxn + globalTotals.reqMerchMxn, color: '#22c55e', sub: 'Capital Assets' },
-                                    { label: 'Operations', val: globalTotals.paidExpMxn + globalTotals.reqExpMxn, color: '#3b82f6', sub: 'Burn Rate' },
-                                    { label: 'Liability', val: globalTotals.pendingMxn, color: '#ef4444', sub: 'Outstanding' },
+                                    { label: tr("Inventory"), val: globalTotals.paidAcqMxn + globalTotals.reqMerchMxn, color: '#22c55e', sub: tr("Capital Assets") },
+                                    { label: tr("Operations"), val: globalTotals.paidExpMxn + globalTotals.reqExpMxn, color: '#3b82f6', sub: tr("Burn Rate") },
+                                    { label: tr("Liability"), val: globalTotals.pendingMxn, color: '#ef4444', sub: tr("Outstanding") },
                                 ] as const).map(g => (
                                     <div key={g.label} className="flex flex-col gap-1 border-l-4 pl-4 bg-white/[0.05] backdrop-blur-md p-3 border border-white/5" style={{ borderColor: g.color }}>
                                         <div className="flex items-center justify-between">
@@ -611,10 +611,10 @@ export function AdminDashboard() {
                             {/* Primary Payment Pillars */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                                 {([
-                                    { label: 'Paid Acq.', val: globalTotals.paidAcqMxn, sub: 'Inventory Settled', color: '#22c55e', Icon: PackageCheck },
-                                    { label: 'Req. Merch.', val: globalTotals.reqMerchMxn, sub: 'Awaiting Trans.', color: '#eab308', Icon: ShoppingCart },
-                                    { label: 'Pending Payment', val: globalTotals.pendingMxn, sub: 'Active Liability', color: '#ef4444', Icon: Receipt },
-                                    { label: 'Operations Paid', val: globalTotals.paidExpMxn, sub: 'Logistics/Supp.', color: '#3b82f6', Icon: Wrench },
+                                    { label: tr("Paid Acq."), val: globalTotals.paidAcqMxn, sub: tr("Inventory Settled"), color: '#22c55e', Icon: PackageCheck },
+                                    { label: tr("Req. Merch."), val: globalTotals.reqMerchMxn, sub: tr("Awaiting Trans."), color: '#eab308', Icon: ShoppingCart },
+                                    { label: tr("Pending Payment"), val: globalTotals.pendingMxn, sub: tr("Active Liability"), color: '#ef4444', Icon: Receipt },
+                                    { label: tr("Operations Paid"), val: globalTotals.paidExpMxn, sub: tr("Logistics/Supp."), color: '#3b82f6', Icon: Wrench },
                                 ] as const).map(pillar => (
                                     <div key={pillar.label} className="flex flex-col gap-2 group cursor-default">
                                         <div className="flex items-center gap-2">
@@ -624,7 +624,7 @@ export function AdminDashboard() {
                                         <p className="text-2xl font-mono font-black text-(--text-color) tracking-tighter">
                                             <span className="text-[10px] text-(--text-color-secondary) mr-1">{currencyMode}</span>
                                             {showFinancials
-                                                ? (currencyMode === 'MXN' ? pillar.val : pillar.val / currentExchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                                ? (currencyMode === 'MXN' ? pillar.val : pillar.val / currentExchangeRate).toLocaleString(tr("en-US"), { maximumFractionDigits: 0 })
                                                 : '***'
                                             }
                                         </p>
@@ -640,9 +640,9 @@ export function AdminDashboard() {
                                     {([
                                         { label: 'Monthly', val: opsBreakdown.Monthly, color: '#4f46e5', Icon: Calendar },
                                         { label: 'Supplies', val: opsBreakdown.Supplies, color: '#0891b2', Icon: FlaskConical },
-                                        { label: 'Labor/Fees', val: opsBreakdown.Labor, color: '#9333ea', Icon: HandCoins },
-                                        { label: 'Logistics/Pack', val: opsBreakdown.Packing, color: '#6366f1', Icon: Truck },
-                                        { label: 'Operations', val: opsBreakdown.Operations, color: '#2563eb', Icon: Wrench },
+                                        { label: tr("Labor/Fees"), val: opsBreakdown.Labor, color: '#9333ea', Icon: HandCoins },
+                                        { label: tr("Logistics/Pack"), val: opsBreakdown.Packing, color: '#6366f1', Icon: Truck },
+                                        { label: tr("Operations"), val: opsBreakdown.Operations, color: '#2563eb', Icon: Wrench },
                                     ] as const).map(cat => (
                                         <div key={cat.label} className="flex flex-col gap-2 border-l border-white/10 pl-4 hover:border-l-2 transition-all" style={{ borderLeftColor: cat.color }}>
                                             <div className="flex items-center gap-2">
@@ -651,7 +651,7 @@ export function AdminDashboard() {
                                             </div>
                                             <p className="text-lg font-mono font-black text-(--text-color) tracking-tight">
                                                 <span className="text-[9px] text-(--text-color-secondary) mr-1">{currencyMode}</span>
-                                                {(currencyMode === 'MXN' ? cat.val.mxn : cat.val.usd).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                                {(currencyMode === 'MXN' ? cat.val.mxn : cat.val.usd).toLocaleString(tr("en-US"), { maximumFractionDigits: 0 })}
                                             </p>
                                         </div>
                                     ))}
@@ -745,8 +745,8 @@ export function AdminDashboard() {
                         {/* Metrics & Accumulation - Grouped into a Floating Module */}
                         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-12 pt-16 border-t border-white/5">
                             {[
-                                { label: 'Inventory Packed', val: globalTotals.packedItems, total: globalTotals.totalItems, unit: 'Items', color: '#6BCEBB', icon: PackageCheck },
-                                { label: 'Crate Occupancy', val: globalTotals.packedCrates, total: globalTotals.totalCratesAndPallets, unit: 'Crates', color: '#00AEEF', icon: LayoutGrid }
+                                { label: tr("Inventory Packed"), val: globalTotals.packedItems, total: globalTotals.totalItems, unit: tr("Items"), color: '#6BCEBB', icon: PackageCheck },
+                                { label: tr("Crate Occupancy"), val: globalTotals.packedCrates, total: globalTotals.totalCratesAndPallets, unit: 'Crates', color: '#00AEEF', icon: LayoutGrid }
                             ].map(m => (
                                 <div key={m.label} className="flex items-start gap-8 group/stat p-6 hover:bg-white/[0.03] rounded-3xl transition-all border border-transparent hover:border-white/10">
                                     <div className="p-4 bg-white/[0.04] border border-white/20 rounded-2xl group-hover/stat:rotate-12 transition-transform shadow-2xl" style={{ color: m.color }}>
@@ -776,7 +776,7 @@ export function AdminDashboard() {
                                     <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#6BCEBB]">{tr("Logistics Ledger Accumulation")}</p>
                                     <p className="text-4xl font-mono font-black text-(--text-color) tracking-tighter leading-none group-hover/spend:translate-x-2 transition-transform">
                                         <span className="text-[14px] text-(--text-color-secondary) mr-3 font-black h-fit mb-auto">{currencyMode}</span>
-                                        {currencyMode === 'MXN' ? globalTotals.logisticsSpendMxn.toLocaleString('en-US', { maximumFractionDigits: 0 }) : globalTotals.logisticsSpendUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                        {currencyMode === 'MXN' ? globalTotals.logisticsSpendMxn.toLocaleString(tr("en-US"), { maximumFractionDigits: 0 }) : globalTotals.logisticsSpendUsd.toLocaleString(tr("en-US"), { maximumFractionDigits: 0 })}
                                     </p>
                                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--text-color-secondary) mt-2 leading-tight">{tr("Comprehensive Overhead Strategy")}</p>
                                 </div>
@@ -836,7 +836,7 @@ export function AdminDashboard() {
                         badge="Network Intelligence" 
                         right={
                             <div className="hidden sm:flex gap-4">
-                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">{tr("Acq. Balance:")} {showFinancials ? '$' + globalTotals.totalAcqValueUsd.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}</span>
+                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">{tr("Acq. Balance:")} {showFinancials ? '$' + globalTotals.totalAcqValueUsd.toLocaleString(tr("en-US"), { maximumFractionDigits: 0 }) : '***'}</span>
                             </div>
                         }
                     />

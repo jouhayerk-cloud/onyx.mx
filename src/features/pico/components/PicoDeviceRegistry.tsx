@@ -4,6 +4,7 @@ import { userAtom } from '../../../lib/atoms';
 import { PicoDevice } from '../../../lib/picoAtoms';
 import { Plus, Terminal, Check, X, AlertCircle, Bot, Box, Smartphone, Monitor, Bluetooth, Sparkles, UserCheck, RefreshCw } from 'lucide-react';
 import { tr } from '../../../lib/i18n';
+import { el } from '../../../lib/i18nEnums';
 
 interface PicoDeviceRegistryProps {
   onRegisterDevice: (device: Omit<PicoDevice, 'id' | 'last_seen_at' | 'is_active'>) => void;
@@ -250,7 +251,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
             <div>
               <div className="text-xs font-bold text-white">{tr("Auto-Discover via Bluetooth")}</div>
               <div className="text-[10px] text-neutral-400 font-mono">
-                {bleStatus || 'Search for nearby OnyxChan BLE beacon to auto-fill MAC'}
+                {bleStatus || tr("Search for nearby OnyxChan BLE beacon to auto-fill MAC")}
               </div>
             </div>
           </div>
@@ -261,7 +262,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
             className="w-full sm:w-auto px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-[11px] font-bold tracking-wider uppercase transition-colors shrink-0 flex items-center justify-center gap-1.5"
           >
             {isScanningBle ? <RefreshCw size={12} className="animate-spin" /> : <Bluetooth size={12} />}
-            {isScanningBle ? 'Scanning...' : 'Scan BLE'}
+            {isScanningBle ? tr("Scanning...") : tr("Scan BLE")}
           </button>
         </div>
 
@@ -334,9 +335,9 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
                 onChange={e => setAssignedRole(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-purple-500 transition-colors"
               >
-                {(['Developer', 'Admin', 'Vendor', 'Staff', 'User'] as const).map(role => (
+                {(['Developer', 'Admin', 'Vendor', tr("Staff"), tr("User")] as const).map(role => (
                   <option key={role} value={role} className="bg-neutral-900 text-white">
-                    {role}
+                    {el(role)}
                   </option>
                 ))}
               </select>

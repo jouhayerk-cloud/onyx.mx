@@ -382,12 +382,12 @@ export const DeployedView: React.FC = () => {
                                     <div className="w-px h-12 bg-white/10" />
                                     <div className="flex flex-col gap-2">
                                         <span className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">{tr("Tractor Unit")}</span>
-                                        <span className="text-3xl font-black tracking-tighter text-white">{selectedShipment.metadata?.tractorNumber || 'ALPHA-1'}</span>
+                                        <span className="text-3xl font-black tracking-tighter text-white">{selectedShipment.metadata?.tractorNumber || tr("ALPHA-1")}</span>
                                     </div>
                                     <div className="w-px h-12 bg-white/10" />
                                     <div className="flex flex-col gap-2">
                                         <span className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">{tr("Trailer ID")}</span>
-                                        <span className="text-3xl font-black tracking-tighter text-white">{selectedShipment.metadata?.trailerNumber || 'TR-772'}</span>
+                                        <span className="text-3xl font-black tracking-tighter text-white">{selectedShipment.metadata?.trailerNumber || tr("TR-772")}</span>
                                     </div>
                                     <div className="w-px h-12 bg-white/10" />
                                     <div className="px-6 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
@@ -411,7 +411,7 @@ export const DeployedView: React.FC = () => {
                                                 <h2 className="text-4xl font-black uppercase tracking-tighter text-white">{selectedCrate.label}</h2>
                                             </div>
                                             <div className="flex items-center gap-4 mt-1">
-                                                <span className="text-[12px] font-black text-white/40 uppercase tracking-[0.2em]">{selectedCrate.type || 'Standard Payload'}</span>
+                                                <span className="text-[12px] font-black text-white/40 uppercase tracking-[0.2em]">{selectedCrate.type || tr("Standard Payload")}</span>
                                                 <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
                                                 <span className="text-[12px] font-black text-white/40 uppercase tracking-widest">{selectedCrate.l}×{selectedCrate.w}×{selectedCrate.h} CM</span>
                                             </div>
@@ -441,7 +441,7 @@ export const DeployedView: React.FC = () => {
                                                         <div className="flex flex-col gap-1.5">
                                                             <span className="text-[16px] font-black uppercase tracking-tight text-white group-hover:translate-x-1 transition-transform">{it.name || it.itemId}</span>
                                                             <div className="flex items-center gap-3">
-                                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{it.desc || 'Standard Protocol Unit'}</span>
+                                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{it.desc || tr("Standard Protocol Unit")}</span>
                                                                 <div className="w-1 h-1 rounded-full bg-white/5" />
                                                                 <span className="text-[9px] font-black text-emerald-500/40 uppercase tracking-widest">{tr("Verified")}</span>
                                                             </div>

@@ -338,12 +338,12 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
         {/* Bottom text block */}
         <div className="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/80 to-transparent">
           <div className="flex items-end justify-between mb-1">
-            <p className="font-black text-white text-base leading-tight truncate">{norm.shape || 'Unknown Object'}</p>
+            <p className="font-black text-white text-base leading-tight truncate">{norm.shape || tr("Unknown Object")}</p>
             <p className="font-mono text-[9px] text-white/50 shrink-0 ml-2">#{norm.itemNumber}</p>
           </div>
 
           <div className="flex items-center justify-between text-[10px] text-white/70 mb-2">
-            <p className="truncate uppercase font-medium tracking-wide">{norm.material || 'Mixed Material'} · {norm.shortDescription || 'Misc'}</p>
+            <p className="truncate uppercase font-medium tracking-wide">{norm.material || tr("Mixed Material")} · {norm.shortDescription || tr("Misc")}</p>
           </div>
 
           <div className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5">

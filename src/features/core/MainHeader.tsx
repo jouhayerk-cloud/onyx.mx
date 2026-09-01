@@ -399,7 +399,7 @@ const InfoNotch: React.FC = () => {
                 <span className={lbl}>{tr("Qty")}</span>
                 <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
 
-                <span className={lbl}>{showFinancials ? 'Total MXN' : 'Total'}</span>
+                <span className={lbl}>{showFinancials ? tr("Total MXN") : tr("Total")}</span>
                 <span className={`${val} text-(--main-color)`}>
                     {showFinancials ? `$${totalValue.toLocaleString()}` : '\u2022\u2022\u2022'}
                 </span>
@@ -945,7 +945,7 @@ const LogisticsBar: React.FC = () => {
                                         ${truckBusy ? 'bg-white/5 text-white/20' : 'bg-(--main-color) text-black hover:scale-105 active:scale-95'}`}
                                 >
                                     {truckBusy ? <Activity size={14} className="animate-spin" /> : <Truck size={14} strokeWidth={3} />}
-                                    <span className="hidden sm:block">{truckBusy ? 'Processing...' : 'Ready Truck'}</span>
+                                    <span className="hidden sm:block">{truckBusy ? tr("Processing...") : tr("Ready Truck")}</span>
                                 </button>
                             </div>
 
