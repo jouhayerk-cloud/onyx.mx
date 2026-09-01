@@ -7,6 +7,7 @@ import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = ({ label, active, color }) => (
     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all duration-300 ${active
@@ -589,7 +590,7 @@ const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
             <div className="flex items-center gap-3 p-4 border-b border-white/5 bg-black/10 shrink-0">
                 <div className="flex flex-wrap gap-1.5">
                     {SUBCATEGORIES.map(s => (
-                        <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${filter === s ? 'bg-[#00AEEF] text-black shadow-lg' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>{s.toUpperCase()}</button>
+                        <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${filter === s ? 'bg-[#00AEEF] text-black shadow-lg' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>{el(s.toUpperCase())}</button>
                     ))}
                 </div>
                 <div className="ml-auto flex items-center gap-4">
@@ -680,7 +681,7 @@ const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs
             <div className="flex items-center gap-4 p-4 border-b border-white/5 bg-black/10 shrink-0">
                 <div className="flex gap-1.5">
                     {LOGISTICS_STATUSES.map(s => (
-                        <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${filter === s ? 'bg-[#8DC63F] text-black shadow-lg' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>{s.toUpperCase()}</button>
+                        <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${filter === s ? 'bg-[#8DC63F] text-black shadow-lg' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>{el(s.toUpperCase())}</button>
                     ))}
                 </div>
                 <div className="ml-auto flex gap-6">

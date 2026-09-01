@@ -20,6 +20,7 @@ import {
 import { useDeviceControl, OnyxChanFace, VENDOR_COLORS } from './useDeviceControl';
 import { useBleDevice } from './useBleDevice';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 const ALL_EXPRESSIONS: StackChanExpression[] = [
   'Neutral', 'Happy', 'Angry', 'Sad', 'Sleepy', 'Doubt',
@@ -458,7 +459,7 @@ export function PicoBridgeView() {
                           : 'text-neutral-500 hover:text-neutral-300'
                       }`}
                     >
-                      {expr}
+                      {el(expr)}
                     </button>
                   );
                 })}
