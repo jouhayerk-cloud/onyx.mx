@@ -77,9 +77,44 @@ A second audit arrived mid-implementation. Where we disagreed, these are the re-
 | `generated_svg_url`, `generated_image_urls` dead | 0 | **0** | Confirmed. |
 | Funnel is a strict prefix | — | — | Confirmed on the column-presence test; it does not survive the has-an-actual-image test. |
 
-**The one finding of theirs that most supports this plan:** grouped by shape class, the *Rock* class is 1 cutout out of 37 cleaned, against 25–38% everywhere else. Irregular natural stone is precisely where the matting path collapses — which is the empirical version of the argument at the top of this document.
+### Second pass — both audits corrected again
 
-**Consequence for `aiContent.ts`:** its `hasEnrichment()` is the 397 predicate, so the AI Content filter chip overstates cleanup by 3.4×. It should test for an image entry in the map, not for the column being non-null. Filed as follow-up, not done here.
+`jouhayerk-3a` re-queried, accepted all four corrections above, and returned two further errors of its own plus one correction to MY framing. I verified every one independently. All confirmed:
+
+**The funnel published in the original `aiContent.ts` header was wrong twice over.**
+
+* Its `397 → 175 vision → 142 copy` split does not exist. `detailed_description`, `generated_description`, `spatial_masks` and `spatial_points` all sit at **176 with zero mismatches on every pairing** — there is ONE analysis stage, not two.
+* The containment is inverted. Cleaned images are a **subset of described items**, not their parent: `cleaned_without_described = 0`, `png_without_cleaned = 0`, `gtype_without_described = 0`.
+
+```
+497
+ └─ 397  metadata      (169 have NO photos — text-derived, not image work)
+     └─ 176  described
+         ├─ 116  cleaned image
+         │   └─ 115  cutout
+         └─  83  generated_type
+```
+
+The four `_` keys are exactly `_generated_color` (397), `_pixel_map_hex` (176), `_bitmap_url` (143), `_generated_type` (83).
+
+**Correction to my own framing — Rock is the worst rate, but not the volume.** I reproduced `classifyGeometry` from `src/lib/geometry.ts` in SQL, honouring its branch order and its `shape` + `short_description ?? description` inputs. My independent numbers match theirs exactly:
+
+| Class | Photographed | Cleaned | Backlog | Rate |
+|---|---|---|---|---|
+| **Box** (incl. rectangular mirrors) | 132 | 40 | **92** | 30% |
+| **Rock** | 25 | 1 | 24 | **4%** |
+| Mirror (round) | 9 | 6 | 3 | 67% |
+| Cylinder | 36 | 33 | 3 | 92% |
+| Bowl | 36 | 34 | 2 | 94% |
+
+**Two different problems, and this plan only fixes one of them.**
+
+* **Rock at 4%, and mirrors at 47% across both mirror classes (7 of 15), against 92–94% for Cylinder and Bowl, is a capability failure.** Irregular quarry stone and reflective frames are where matting collapses. That is what background replacement and the polygon-scale fix target, and it matches the user's own report of lamps and mirrors losing parts.
+* **Box is 92 of the 125 backlog (74%) and reads as an unrun queue**, not a failure — though nothing records attempts, so "never run" is an inference, not a measurement. Volume here is a scheduling problem.
+
+Judge this work on Rock and the mirrors, not on Box throughput.
+
+**`aiContent.ts` is already fixed on main** (`4dfa6af1`): `hasCleanedImage()` requires a non-`_` key, `hasEnrichment` is gone, `hasVision`/`hasCopy` collapsed into `hasDescription`, and `needsImageCleanup()` is the 125 predicate. The removed exports had no external callers — `CONTENT_FILTERS`, `countContent`, `ContentKey` and `rowMatchesContent` all survive, so `UniversalToolsBar` and `UnifiedInventoryView` are unaffected. This branch is rebased onto it.
 
 ---
 
