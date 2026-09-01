@@ -64,6 +64,23 @@ Run directly against Postgres, not inferred from code.
 
 **RxDB mismatch:** `spatial_masks` is stored as a JSON **object** on all 176 rows, while `database.ts:165` declares `{ type: ['array','null'] }`. Not caused by this work, but it is a standing sync-validation hazard on exactly the rows this pipeline writes.
 
+### Reconciliation with the `jouhayerk-3a` audit
+
+A second audit arrived mid-implementation. Where we disagreed, these are the re-queried answers:
+
+| Claim | Their figure | Verified | Verdict |
+|---|---|---|---|
+| Re-run backlog | **13 items** | **125 items** | **Wrong.** Equates "has `processed_media_urls`" with "has a cleaned image". 281 of the 397 maps contain only `_`-prefixed metadata and no image entry at all. Against 241 rows with photos, 125 have photos but no cleaned image. |
+| `generated_type` | "dead column, never written" | **83 rows non-blank** | **Wrong**, and consequential — it is listed under "DEAD COLUMNS". Do not drop it. |
+| Cutout count | 116 | **121 non-null / 115 non-blank** | Both of us were off; 6 rows hold an empty string. |
+| `generated_color` gap | "2 rows have `processed_media_urls` but no colour (395)" | **0 rows; 397** | Not an error by either of us — the table is live. `count(generated_color)` returned 395 at 19:20 and 397 at 19:55. Two rows gained colour mid-session. |
+| `generated_svg_url`, `generated_image_urls` dead | 0 | **0** | Confirmed. |
+| Funnel is a strict prefix | — | — | Confirmed on the column-presence test; it does not survive the has-an-actual-image test. |
+
+**The one finding of theirs that most supports this plan:** grouped by shape class, the *Rock* class is 1 cutout out of 37 cleaned, against 25–38% everywhere else. Irregular natural stone is precisely where the matting path collapses — which is the empirical version of the argument at the top of this document.
+
+**Consequence for `aiContent.ts`:** its `hasEnrichment()` is the 397 predicate, so the AI Content filter chip overstates cleanup by 3.4×. It should test for an image entry in the map, not for the column being non-null. Filed as follow-up, not done here.
+
 ---
 
 ## Task 1: `bgReplace.ts` — the generation module
