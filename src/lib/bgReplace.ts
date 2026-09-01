@@ -26,7 +26,7 @@ import { supabase } from './supabase';
 import { loadImage } from './utils';
 
 /** Bumped whenever the prompt changes, so cached results are invalidated. */
-export const BG_PROMPT_VERSION = 'dark-room-v1';
+export const BG_PROMPT_VERSION = 'dark-room-v2';
 
 export type BgQuality = '1K' | '2K';
 
@@ -95,10 +95,23 @@ export interface BgSubject {
 }
 
 /**
- * The three clauses that matter are the fidelity ones. Without them the model
+ * The fidelity clauses are the ones that matter. Without them the model
  * "cleans up" the piece: it smooths rough quarry edges into machined ones,
  * reads dark veining as grime and lightens it, and flattens the glow out of a
  * backlit shade. Those are exactly the features the stock is sold on.
+ *
+ * The SUPPORT clause is the second thing that matters, and it is the reason
+ * for v2. v1 listed "cardboard" among the props to remove and the model kept
+ * it anyway — because the piece is STANDING ON IT. Read together, "keep the
+ * subject exactly as photographed" and a sheet of cardboard in contact with
+ * the subject are ambiguous about where the subject ends, and the model
+ * resolved that by promoting the cardboard to floor and lighting it. Naming
+ * cardboard harder does not fix an ambiguity; the fix is to say what the
+ * subject is NOT before saying to preserve it, and to say what goes in the
+ * removed floor's place. Hence packing material is disowned in its own
+ * paragraph ahead of the fidelity list, and the floor clause pins the new
+ * floor to the height the piece already rests at — otherwise removing a
+ * 20cm stack of boxes leaves the piece hovering.
  */
 export function buildDarkRoomPrompt(subject: BgSubject): string {
     const piece = [subject.material, subject.shape].filter(Boolean).join(' ').trim()
@@ -106,6 +119,8 @@ export function buildDarkRoomPrompt(subject: BgSubject): string {
     const detail = subject.description ? ` (${subject.description})` : '';
 
     return `Replace ONLY the background of this photograph. The subject is a handmade ${piece}${detail} in natural Mexican stone.
+
+The subject is the stone piece and nothing else. Everything it stands on, leans against, rests in or is surrounded by is warehouse packing material, NOT part of the subject, and must be removed even where it touches the piece. This includes flattened boxes and cardboard sheets laid on the floor beneath the piece, pallets, wooden crates, foam, blankets, plastic wrap, straps, loose tape and tools, together with any printed logos, arrows or handling symbols on them.
 
 Keep the subject exactly as photographed:
 - Reproduce it pixel-for-pixel. Do not restyle, retouch, straighten, recolour, relight or "improve" it.
@@ -116,8 +131,10 @@ Keep the subject exactly as photographed:
 
 Replace the surroundings with an empty dark studio room:
 - A seamless, unlit deep charcoal room with a soft floor-to-wall falloff behind the subject.
-- Add a soft contact shadow where the piece meets the floor, consistent with the existing lighting direction.
-- Remove all props, packing material, cardboard, pallets, tools, people, hands, text and watermarks.
+- Where cardboard, boxes or pallets lie under the piece, put clean studio floor in their place, level with the height the piece already rests at, so it stands directly on the floor. Do not move, tilt, rescale or reframe the piece to meet a new floor, and never leave it floating.
+- If packing material hid part of the base, the new floor line takes its place at that same height. Do not invent stone that was not photographed.
+- Add a soft contact shadow exactly where the piece meets that floor, consistent with the existing lighting direction.
+- Remove all people, hands, background text and watermarks.
 - Add nothing new: no furniture, plants, decor, reflections or text.
 
 Keep the original framing, crop, scale and camera angle. Output the full scene at the same aspect ratio.`;
