@@ -44,9 +44,19 @@ html.style-slab {
     /* A disciplined three-step radius scale. Sixteen ad-hoc radius values are
        in use across src/; collapsing them is what makes the app read as one
        carved material rather than a pile of unrelated parts. */
-    --slab-r-sm: 10px;
-    --slab-r-md: 16px;
-    --slab-r-lg: 22px;
+    /* Corner radii. Every rounded-* utility is remapped onto this scale with
+       !important (see the block near the top of the reset), so THESE THREE
+       VALUES are what corners in SLAB actually are — a rule added elsewhere
+       without !important cannot outrank them, whatever its specificity.
+ 
+       The old scale ran 10/16/22, which made keys ROUNDER under SLAB than
+       Tailwind's own rounded-xl (12px). That reads as a soft pill and fights
+       the material: SLAB is cut stone, and a tight corner is most of what
+       carries that. Now 4/6/10 — a key at 6px still catches the bevel along
+       the corner, where 2px would clip it to a hairline. */
+    --slab-r-sm: 4px;
+    --slab-r-md: 6px;
+    --slab-r-lg: 10px;
 
     /* ── Elevation scale ──────────────────────────────────────────────────
        Six steps on one axis. Everything in this file is one of them, and the
@@ -81,10 +91,6 @@ html.style-slab {
     /* One duration for every depth change, so the whole surface feels like a
        single material rather than parts moving at different speeds. */
     --slab-ease: 0.16s cubic-bezier(0.4, 0, 0.2, 1);
-
-    /* Key corner radius. 8px against Tailwind's rounded-xl (12px): tight
-       enough to read as machined, still soft enough to catch the bevel. */
-    --slab-key-radius: 8px;
 
     /* Sheen. A real extruded surface catches the light across its face, not
        just at its edges, so a raised panel carries a faint gradient along the
@@ -1208,17 +1214,6 @@ html.style-slab .tool-cell:hover .tool-label {
     color: var(--slab-ink);
 }
 
-/* Corner radius for keys. Stated here rather than by changing the rounded-xl
-   utility in the TSX so it stays a SLAB decision — a carved key reads as
-   machined at a tighter radius, where a softer one reads as a pill and loses
-   the sense of a face cut into stone. html.style-slab .tool-btn is (0,2,1)
-   against Tailwind's (0,1,0), so no !important is needed to win. */
-html.style-slab .tool-btn,
-html.style-slab .smart-chip,
-html.style-slab .smart-expand,
-html.style-slab .season-toggle {
-    border-radius: var(--slab-key-radius);
-}
 
 html.style-slab .tool-btn {
     background-color: var(--slab) !important;
