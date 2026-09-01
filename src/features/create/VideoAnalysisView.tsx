@@ -5,6 +5,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ai } from "../../lib/ai";
 
 import * as JSZip from 'jszip';
+import { tr } from '../../lib/i18n';
 
 interface AnalysisResult {
   timestamp: number;
@@ -293,38 +294,38 @@ export const VideoAnalysisView: React.FC = () => {
         {/* Setup Panel */}
         <aside className="md:w-1/3 xl:w-1/4 shrink-0 space-y-6 flex flex-col">
             <div className="glass-panel p-6 space-y-4">
-                <h2 className="text-xl font-bold">1. Upload Video</h2>
+                <h2 className="text-xl font-bold">{tr("1. Upload Video")}</h2>
                 <label htmlFor="video-upload" className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-[var(--border-color)] border-dashed rounded-md cursor-pointer hover:border-[var(--accent-color)] transition-colors">
                     <div className="space-y-1 text-center">
                         <UploadIcon className="mx-auto h-12 w-12 text-[var(--text-color-secondary)]" />
                         <div className="flex text-sm text-[var(--text-color-secondary)]">
                             <span className="relative rounded-md font-medium text-[var(--accent-color)]">
-                                Select a file
+                                {tr("Select a file")}
                             </span>
                             <p className="pl-1">or drag and drop</p>
                         </div>
-                        <p className="text-xs text-[var(--text-color-secondary)]">{fileName || 'MP4, MOV, etc.'}</p>
+                        <p className="text-xs text-[var(--text-color-secondary)]">{fileName || tr("MP4, MOV, etc.")}</p>
                     </div>
                 </label>
                 <input id="video-upload" name="video-upload" type="file" className="sr-only" accept="video/*" onChange={handleFileChange} />
             </div>
 
             <div className="glass-panel p-6 space-y-4">
-                <h2 className="text-xl font-bold">2. Items to Find</h2>
+                <h2 className="text-xl font-bold">{tr("2. Items to Find")}</h2>
                 <textarea
                     id="items-input"
                     rows={4}
                     className="w-full"
-                    placeholder="e.g. red car, dog, person holding a sign"
+                    placeholder={tr("e.g. red car, dog, person holding a sign")}
                     value={itemsToFind}
                     onChange={(e) => setItemsToFind(e.target.value)}
                 />
-                <p className="text-sm text-[var(--text-color-secondary)]">Enter a comma-separated list of items.</p>
+                <p className="text-sm text-[var(--text-color-secondary)]">{tr("Enter a comma-separated list of items.")}</p>
             </div>
 
             <div className="mt-auto pt-6">
                 <button onClick={handleAnalysis} disabled={isAnalyzing || !videoFile || !itemsToFind.trim()} className="button w-full">
-                    {isAnalyzing ? 'Analyzing...' : 'Start Analysis'}
+                    {isAnalyzing ? tr("Analyzing...") : tr("Start Analysis")}
                 </button>
             </div>
         </aside>
@@ -332,15 +333,15 @@ export const VideoAnalysisView: React.FC = () => {
         {/* Results Panel */}
         <main className="flex-1 flex flex-col glass-panel overflow-hidden">
             <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center">
-                <h2 className="text-xl font-bold">Results</h2>
+                <h2 className="text-xl font-bold">{tr("Results")}</h2>
                 {results.length > 0 && (
                     <div className="flex items-center gap-2">
                         <button onClick={() => exportToCsv(results, fileName)} className="button secondary !min-h-0 text-xs py-1 px-3 flex items-center gap-2"><CsvIcon className="w-4 h-4" /> CSV</button>
                         <button onClick={() => downloadImagesAsZip(results, fileName, setIsExporting)} disabled={isExporting} className="button secondary !min-h-0 text-xs py-1 px-3 flex items-center gap-2">
                             {isExporting ? <ImageIcon className="w-4 h-4 animate-spin" /> : <DownloadIcon className="w-4 h-4"/>}
-                            {isExporting ? 'Zipping...' : 'Images'}
+                            {isExporting ? tr("Zipping...") : tr("Images")}
                         </button>
-                        <button onClick={handleReset} className="button secondary !min-h-0 text-xs py-1 px-3 flex items-center gap-2"><RestartIcon className="w-4 h-4" /> New</button>
+                        <button onClick={handleReset} className="button secondary !min-h-0 text-xs py-1 px-3 flex items-center gap-2"><RestartIcon className="w-4 h-4" /> {tr("New")}</button>
                     </div>
                 )}
             </div>
@@ -348,7 +349,7 @@ export const VideoAnalysisView: React.FC = () => {
             <div className="flex-1 overflow-y-auto">
                 {error && (
                     <div className="m-4 bg-red-900/50 border border-red-700/50 text-red-200 px-4 py-3 rounded-lg" role="alert">
-                        <strong className="font-bold">Error: </strong>
+                        <strong className="font-bold">{tr("Error:")} </strong>
                         <span className="block sm:inline">{error}</span>
                     </div>
                 )}
@@ -356,12 +357,12 @@ export const VideoAnalysisView: React.FC = () => {
                 {isAnalyzing ? (
                     <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                         <div className="w-full max-w-md">
-                            <h3 className="text-lg font-semibold text-white mb-4">Analyzing Video...</h3>
+                            <h3 className="text-lg font-semibold text-white mb-4">{tr("Analyzing Video...")}</h3>
                             <div className="w-full bg-[var(--input-color)] rounded-full h-2.5">
                                 <div className="bg-[var(--accent-color)] h-2.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
                             </div>
                             <p className="mt-4 text-2xl font-bold text-[var(--accent-color)]">{Math.round(progress)}%</p>
-                            <p className="mt-2 text-sm text-[var(--text-color-secondary)]">Please keep this tab open. Analysis may take a few minutes.</p>
+                            <p className="mt-2 text-sm text-[var(--text-color-secondary)]">{tr("Please keep this tab open. Analysis may take a few minutes.")}</p>
                         </div>
                     </div>
                 ) : results.length > 0 ? (
@@ -372,7 +373,7 @@ export const VideoAnalysisView: React.FC = () => {
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
                                 <div className="absolute bottom-0 left-0 p-3 text-white w-full">
                                     <h3 className="font-bold text-md capitalize">{result.itemName}</h3>
-                                    <p className="text-sm text-slate-300">Time: {formatTimestamp(result.timestamp)}</p>
+                                    <p className="text-sm text-slate-300">{tr("Time:")} {formatTimestamp(result.timestamp)}</p>
                                 </div>
                             </div>
                         ))}
@@ -383,9 +384,9 @@ export const VideoAnalysisView: React.FC = () => {
                             <svg className="mx-auto h-16 w-16 text-[var(--text-color-secondary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 15.75-2.489-2.489m0 0a3.375 3.375 0 1 0-4.773-4.773 3.375 3.375 0 0 0 4.774 4.774ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                             </svg>
-                            <h3 className="mt-4 text-xl font-bold">Awaiting Analysis</h3>
+                            <h3 className="mt-4 text-xl font-bold">{tr("Awaiting Analysis")}</h3>
                             <p className="mt-2 text-[var(--text-color-secondary)]">
-                                Your video analysis results will appear here once the process is complete.
+                                {tr("Your video analysis results will appear here once the process is complete.")}
                             </p>
                         </div>
                     </div>

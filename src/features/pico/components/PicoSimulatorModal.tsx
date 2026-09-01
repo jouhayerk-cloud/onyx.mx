@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSetAtom } from 'jotai';
 import { picoRealtimePayloadAtom, PicoScanEvent } from '../../../lib/picoAtoms';
 import { Zap, Radio, QrCode, Barcode, Shield, X, Send, Sliders } from 'lucide-react';
+import { tr } from '../../../lib/i18n';
 
 interface PicoSimulatorModalProps {
   onClose: () => void;
@@ -55,8 +56,8 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
               <Zap size={20} className="text-amber-400" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-wide">Hardware Test Harness</h3>
-              <p className="text-[11px] font-mono text-neutral-400">Simulate ESP32 telemetry & RFID scan injection</p>
+              <h3 className="text-base font-bold text-white tracking-wide">{tr("Hardware Test Harness")}</h3>
+              <p className="text-[11px] font-mono text-neutral-400">{tr("Simulate ESP32 telemetry & RFID scan injection")}</p>
             </div>
           </div>
           <button
@@ -70,7 +71,7 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
         {/* Preset Quick Select */}
         <div className="mb-5">
           <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
-            Quick Test Presets
+            {tr("Quick Test Presets")}
           </label>
           <div className="flex flex-wrap gap-1.5">
             {PRESET_TAGS.map((p, idx) => (
@@ -91,7 +92,7 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
           {/* Scan Type Selector */}
           <div>
             <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-              Sensor Protocol
+              {tr("Sensor Protocol")}
             </label>
             <div className="grid grid-cols-4 gap-2">
               {(['UHF_RFID', 'NFC', 'QR', 'BARCODE'] as const).map(type => {
@@ -107,7 +108,7 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
                         : 'bg-white/5 border-white/5 text-neutral-400 hover:text-neutral-200 text-xs'
                     }`}
                   >
-                    {type === 'UHF_RFID' ? 'UHF RFID' : type}
+                    {type === 'UHF_RFID' ? tr("UHF RFID") : type}
                   </button>
                 );
               })}
@@ -117,13 +118,13 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
           {/* Tag ID Input */}
           <div>
             <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-              Scanned Tag / Barcode Payload
+              {tr("Scanned Tag / Barcode Payload")}
             </label>
             <input
               type="text"
               value={tagId}
               onChange={e => setTagId(e.target.value)}
-              placeholder="e.g., SU1004AB"
+              placeholder={tr("e.g., SU1004AB")}
               className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white text-sm font-mono font-bold tracking-wider focus:outline-none focus:border-amber-500"
               required
             />
@@ -135,10 +136,10 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
               <div className="flex items-center justify-between mb-2">
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1.5">
                   <Sliders size={12} className="text-cyan-400" />
-                  Simulated Signal Strength (RSSI)
+                  {tr("Simulated Signal Strength (RSSI)")}
                 </label>
                 <span className={`text-xs font-mono font-bold ${rssi < -65 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {rssi} dBm {rssi < -65 ? '(Weak / Far)' : '(Strong / Near)'}
+                  {rssi} {tr("dBm")} {rssi < -65 ? tr("(Weak / Far)") : tr("(Strong / Near)")}
                 </span>
               </div>
               <input
@@ -150,9 +151,9 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
                 className="w-full accent-amber-500 cursor-pointer"
               />
               <div className="flex justify-between text-[9px] font-mono text-neutral-600 mt-1">
-                <span>-90 dBm (Distant)</span>
-                <span>-65 dBm (Cutoff)</span>
-                <span>-30 dBm (Touch)</span>
+                <span>{tr("-90 dBm (Distant)")}</span>
+                <span>{tr("-65 dBm (Cutoff)")}</span>
+                <span>{tr("-30 dBm (Touch)")}</span>
               </div>
             </div>
           )}
@@ -164,14 +165,14 @@ export const PicoSimulatorModal: React.FC<PicoSimulatorModalProps> = ({ onClose,
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-semibold tracking-wide transition-colors"
             >
-              Cancel
+              {tr("Cancel")}
             </button>
             <button
               type="submit"
               className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold tracking-wider uppercase transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
             >
               <Send size={14} />
-              Inject Scan Event
+              {tr("Inject Scan Event")}
             </button>
           </div>
         </form>

@@ -12,6 +12,7 @@ import {
 import { OnyxVisuals } from './OnyxVisuals';
 import { onyxToolHandlers } from './onyxTools';
 import { decode, decodeAudioData, createBlob } from './BotOrbUtils';
+import { tr } from '../../lib/i18n';
 
 interface BotOrbProps {
     isOpen: boolean;
@@ -251,7 +252,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                                         {isRecording ? (
                                             <span className="flex items-center justify-center gap-4 text-red-500 animate-pulse">
                                                 <span className="w-2 h-2 rounded-full bg-red-500" />
-                                                NEURAL CAPTURE ACTIVE...
+                                                {tr("NEURAL CAPTURE ACTIVE...")}
                                             </span>
                                         ) : transcription || status}
                                     </p>
@@ -265,9 +266,9 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                         <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-3">
                                 <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 shadow-[0_0_15px_#ef4444]' : 'bg-emerald-500 shadow-[0_0_15px_#10b981]'} transition-all duration-500`} />
-                                <span className="text-[12px] font-black uppercase tracking-[0.5em] text-white/40">Onyx Neural Link</span>
+                                <span className="text-[12px] font-black uppercase tracking-[0.5em] text-white/40">{tr("Onyx Neural Link")}</span>
                             </div>
-                            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/10 ml-5">Core: Gemini 2.5 Flash Native Audio</span>
+                            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/10 ml-5">{tr("Core: Gemini 2.5 Flash Native Audio")}</span>
                         </div>
 
                         <button 
@@ -294,7 +295,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                                 enterKeyHint="send"
                                 value={textInput}
                                 onChange={(e) => setTextInput(e.target.value)}
-                                placeholder="Neural Query..."
+                                placeholder={tr("Neural Query...")}
                                 className="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 text-sm font-bold tracking-widest placeholder:text-white/10 uppercase"
                             />
                             <button 
@@ -315,7 +316,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
 
                             <div className="flex flex-col items-center gap-4">
                                 <div className="h-px w-12 bg-white/20" />
-                                <p className="text-[11px] font-black uppercase tracking-[0.8em] text-white/30">Hold Orb to Talk</p>
+                                <p className="text-[11px] font-black uppercase tracking-[0.8em] text-white/30">{tr("Hold Orb to Talk")}</p>
                             </div>
 
                             <button 

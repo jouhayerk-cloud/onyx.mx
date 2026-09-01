@@ -9,6 +9,7 @@ import { useDatabase } from '../../lib/hooks';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { Trash2, Save, X, Plus, Image as ImageIcon, FileSpreadsheet, ChevronLeft, Check, AlertTriangle, Languages, Loader2 } from 'lucide-react';
+import { tr } from '../../lib/i18n';
 
 const lbl = "text-[9px] font-black text-black/50 uppercase tracking-[0.1em] mb-0.5 flex items-center gap-1";
 const inp = "h-8 w-full px-2 bg-black/[0.02] border border-black/5 rounded text-[11px] font-bold text-black placeholder-black/20 outline-none focus:ring-1 focus:ring-cyan-400/50 transition-all";
@@ -110,7 +111,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
           expected: textsToTranslate.length,
           received: Array.isArray(translated) ? translated.length : typeof translated
         });
-        toast.error('Translation returned unexpected data — items loaded untranslated');
+        toast.error(tr("Translation returned unexpected data — items loaded untranslated"));
         return items;
       }
 
@@ -132,7 +133,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
       }));
     } catch (err: any) {
       console.error('Translation error:', err);
-      toast.error('Translation failed — items loaded without translation');
+      toast.error(tr("Translation failed — items loaded without translation"));
       return items;
     }
   }, []);
@@ -214,7 +215,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
         // Auto-translate Spanish → English via Gemini
         setIsTranslating(true);
-        toast.loading('Translating items ES → EN...', { id: 'translate' });
+        toast.loading(tr("Translating items ES → EN..."), { id: 'translate' });
         const translatedItems = await translateItems(items);
         toast.dismiss('translate');
         setIsTranslating(false);
@@ -248,7 +249,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
       parseXlsx(file);
     } else {
-      toast.error('Please drop an .xlsx file');
+      toast.error(tr("Please drop an .xlsx file"));
     }
   }, [parseXlsx]);
 
@@ -318,8 +319,8 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
   // ─── Batch save ──────────────────────────────────────────────────
   const handleBatchSave = async () => {
-    if (!vendorKey) return toast.error('Select a vendor first');
-    if (batchItems.length === 0) return toast.error('No items to save');
+    if (!vendorKey) return toast.error(tr("Select a vendor first"));
+    if (batchItems.length === 0) return toast.error(tr("No items to save"));
 
     setIsSaving(true);
     setSaveProgress(0);
@@ -444,20 +445,20 @@ Return ONLY the JSON array, no markdown, no explanation.`;
             <>
               <Loader2 size={48} className="text-cyan-400 animate-spin" strokeWidth={1.5} />
               <div className="text-center">
-                <p className="text-sm font-black text-cyan-500 uppercase tracking-wider">Translating...</p>
-                <p className="text-xs text-black/40 mt-1">Converting Spanish → English via Gemini</p>
+                <p className="text-sm font-black text-cyan-500 uppercase tracking-wider">{tr("Translating...")}</p>
+                <p className="text-xs text-black/40 mt-1">{tr("Converting Spanish → English via Gemini")}</p>
               </div>
             </>
           ) : (
             <>
               <FileSpreadsheet size={48} className="text-black/20" strokeWidth={1.5} />
               <div className="text-center">
-                <p className="text-sm font-black text-black/70 uppercase tracking-wider">Drop XLSX file here</p>
+                <p className="text-sm font-black text-black/70 uppercase tracking-wider">{tr("Drop XLSX file here")}</p>
                 <p className="text-xs text-black/40 mt-1">or click to browse</p>
               </div>
               <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-black/5 rounded-lg">
                 <Languages size={12} className="text-black/30" />
-                <span className="text-[9px] font-bold text-black/40 uppercase tracking-wider">Auto-translates ES → EN</span>
+                <span className="text-[9px] font-bold text-black/40 uppercase tracking-wider">{tr("Auto-translates ES → EN")}</span>
               </div>
             </>
           )}
@@ -471,7 +472,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
         )}
 
         <p className="text-[10px] text-black/30 uppercase tracking-wider max-w-lg text-center">
-          Columns: cantidad · forma · tipo · color · material · ancho · alto · fondo · precio
+          {tr("Columns: cantidad · forma · tipo · color · material · ancho · alto · fondo · precio")}
         </p>
       </div>
     );
@@ -489,7 +490,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
               <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${saveProgress}%` }} />
             </div>
             <span className="text-xs font-black uppercase tracking-widest text-black/60">
-              Saving {saveResults.success + saveResults.errors} / {batchItems.length}...
+              {tr("Saving")} {saveResults.success + saveResults.errors} / {batchItems.length}...
             </span>
             <div className="flex gap-4 text-[10px] font-black uppercase tracking-wider">
               <span className="text-green-600">{saveResults.success} ✓</span>
@@ -502,17 +503,17 @@ Return ONLY the JSON array, no markdown, no explanation.`;
               <Check size={32} className="text-green-500" strokeWidth={3} />
             </div>
             <div className="text-center">
-              <p className="text-lg font-black text-black/80">{saveResults.success} Items Saved</p>
+              <p className="text-lg font-black text-black/80">{saveResults.success} {tr("Items Saved")}</p>
               {saveResults.errors > 0 && <p className="text-sm text-red-500 font-bold mt-1">{saveResults.errors} failed</p>}
             </div>
 
             {/* Saved items stay committed, so name the rows that didn't make it. */}
             {failedItems.length > 0 && (
               <div className="w-full max-w-md max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-red-50/50 p-3 flex flex-col gap-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-500">Not saved — re-enter these</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-500">{tr("Not saved — re-enter these")}</p>
                 {failedItems.map(f => (
                   <div key={f.row} className="text-left">
-                    <p className="text-[11px] font-black text-black/70">Row {f.row} · {f.label}</p>
+                    <p className="text-[11px] font-black text-black/70">{tr("Row")} {f.row} · {f.label}</p>
                     <p className="text-[10px] text-red-500/80 font-medium break-words">{f.reason}</p>
                   </div>
                 ))}
@@ -521,7 +522,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
             <button type="button" onClick={handleReset}
               className="px-6 py-2 bg-black/5 hover:bg-black/10 rounded-lg text-xs font-black uppercase tracking-wider transition-all">
-              New Batch
+              {tr("New Batch")}
             </button>
           </>
         )}
@@ -538,14 +539,14 @@ Return ONLY the JSON array, no markdown, no explanation.`;
       <div className="flex items-center justify-between gap-4">
         <button type="button" onClick={() => setStep(1)}
           className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-black/40 hover:text-black/70 transition-colors">
-          <ChevronLeft size={14} /> Back
+          <ChevronLeft size={14} /> {tr("Back")}
         </button>
         <span className="text-[10px] font-black uppercase tracking-widest text-black/40">
           {batchItems.length} item{batchItems.length !== 1 ? 's' : ''} loaded
         </span>
         <button type="button" onClick={handleBatchSave} disabled={batchItems.length === 0}
           className="flex items-center gap-1.5 px-4 py-2 bg-cyan-400 text-white rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-cyan-500 transition-all disabled:opacity-40 disabled:grayscale shadow-sm">
-          <Save size={12} strokeWidth={3} /> Save All
+          <Save size={12} strokeWidth={3} /> {tr("Save All")}
         </button>
       </div>
 
@@ -572,7 +573,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                     {vendorKey} 826
                   </span>
                   <span className="text-xs font-black text-black">{item.itemNumber}</span>
-                  <span className="text-xs font-black text-black">{codes.bookLandCode || 'XXXX'}</span>
+                  <span className="text-xs font-black text-black">{codes.bookLandCode || tr("XXXX")}</span>
                 </div>
 
                 {/* Description summary */}
@@ -593,8 +594,8 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                 <div className="shrink-0 text-right">
                   <p className="text-sm font-black text-black">${item.price || '0'}<span className="text-[8px] text-black/40 ml-0.5">MXN</span></p>
                   <div className="flex items-center gap-1.5 justify-end text-[8px] font-bold text-black/30">
-                    <span>AQ:{codes.bookAqCode}</span>
-                    <span>LC:{codes.bookLandCode}</span>
+                    <span>{tr("AQ:")}{codes.bookAqCode}</span>
+                    <span>{tr("LC:")}{codes.bookLandCode}</span>
                     <span className="text-green-600">${codes.bookRetail}</span>
                   </div>
                 </div>
@@ -644,7 +645,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
               {isEditing && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t border-black/5 animate-in slide-in-from-top-2 duration-200">
                   <div>
-                    <label className={lbl}>SHAPE</label>
+                    <label className={lbl}>{tr("SHAPE")}</label>
                     <input type="text" value={item.shape} onChange={e => updateItem(item.id, 'shape', e.target.value)} className={inp} />
                     {suggestions.shape.length > 0 && (
                       <div className="flex flex-wrap gap-0.5 mt-0.5">
@@ -656,7 +657,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                     )}
                   </div>
                   <div>
-                    <label className={lbl}>TYPE</label>
+                    <label className={lbl}>{tr("TYPE")}</label>
                     <input type="text" value={item.itemType} onChange={e => updateItem(item.id, 'itemType', e.target.value)} className={inp} />
                     {suggestions.itemType.length > 0 && (
                       <div className="flex flex-wrap gap-0.5 mt-0.5">
@@ -668,7 +669,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                     )}
                   </div>
                   <div>
-                    <label className={lbl}>COLOR</label>
+                    <label className={lbl}>{tr("COLOR")}</label>
                     <input type="text" value={item.color} onChange={e => updateItem(item.id, 'color', e.target.value)} className={inp} />
                     {suggestions.color.length > 0 && (
                       <div className="flex flex-wrap gap-0.5 mt-0.5">
@@ -680,7 +681,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                     )}
                   </div>
                   <div>
-                    <label className={lbl}>MATERIAL</label>
+                    <label className={lbl}>{tr("MATERIAL")}</label>
                     <input type="text" value={item.material} onChange={e => updateItem(item.id, 'material', e.target.value)} className={inp} />
                     {suggestions.material.length > 0 && (
                       <div className="flex flex-wrap gap-0.5 mt-0.5">
@@ -692,31 +693,31 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                     )}
                   </div>
                   <div>
-                    <label className={lbl}>WIDTH CM</label>
+                    <label className={lbl}>{tr("WIDTH CM")}</label>
                     <input type="number" min="0" value={item.widthCm} onChange={e => updateItem(item.id, 'widthCm', e.target.value)} className={inp + ' text-center'} />
                   </div>
                   <div>
-                    <label className={lbl}>HEIGHT CM</label>
+                    <label className={lbl}>{tr("HEIGHT CM")}</label>
                     <input type="number" min="0" value={item.heightCm} onChange={e => updateItem(item.id, 'heightCm', e.target.value)} className={inp + ' text-center'} />
                   </div>
                   <div>
-                    <label className={lbl}>DEPTH CM</label>
+                    <label className={lbl}>{tr("DEPTH CM")}</label>
                     <input type="number" min="0" value={item.lengthCm} onChange={e => updateItem(item.id, 'lengthCm', e.target.value)} className={inp + ' text-center'} />
                   </div>
                   <div>
-                    <label className={lbl}>WEIGHT KG</label>
+                    <label className={lbl}>{tr("WEIGHT KG")}</label>
                     <input type="number" min="0" value={item.weightKg} onChange={e => updateItem(item.id, 'weightKg', e.target.value)} className={inp + ' text-center'} />
                   </div>
                   <div>
-                    <label className={lbl}>QTY</label>
+                    <label className={lbl}>{tr("QTY")}</label>
                     <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} className={inp + ' text-center'} />
                   </div>
                   <div>
-                    <label className={lbl}>PRICE MXN</label>
+                    <label className={lbl}>{tr("PRICE MXN")}</label>
                     <input type="number" min="0" value={item.price} onChange={e => updateItem(item.id, 'price', e.target.value)} className={inp + ' text-center font-black'} />
                   </div>
                   <div className="col-span-2">
-                    <label className={lbl}>DESCRIPTION</label>
+                    <label className={lbl}>{tr("DESCRIPTION")}</label>
                     <input type="text" value={item.description} onChange={e => updateItem(item.id, 'description', e.target.value)} className={inp} />
                   </div>
                 </div>
@@ -729,10 +730,10 @@ Return ONLY the JSON array, no markdown, no explanation.`;
       {/* Bottom summary bar */}
       <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] rounded-lg border border-black/5 mt-1">
         <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-wider text-black/40">
-          <span>Items: {batchItems.length}</span>
-          <span>Qty: {batchItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0)}</span>
-          <span>MXN: ${batchItems.reduce((acc, i) => acc + ((Number(i.price) || 0) * (Number(i.quantity) || 1)), 0).toLocaleString()}</span>
-          <span>Images: {batchItems.filter(i => i.mediaFiles.length > 0).length}</span>
+          <span>{tr("Items:")} {batchItems.length}</span>
+          <span>{tr("Qty:")} {batchItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0)}</span>
+          <span>{tr("MXN: $")}{batchItems.reduce((acc, i) => acc + ((Number(i.price) || 0) * (Number(i.quantity) || 1)), 0).toLocaleString()}</span>
+          <span>{tr("Images:")} {batchItems.filter(i => i.mediaFiles.length > 0).length}</span>
         </div>
       </div>
     </div>

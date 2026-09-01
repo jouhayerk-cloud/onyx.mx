@@ -9,6 +9,7 @@ import { marketMultiSelectItemsAtom, userAtom, InventoryVersionAtom } from '../.
 import { InventoryItem } from '../../lib/Types';
 import { SCRIPT_URL } from '../../lib/consts';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { tr } from '../../lib/i18n';
 
 
 
@@ -161,7 +162,7 @@ export const SceneComposerView = () => {
         const imageY = pointY - offsetY;
 
         if (imageX < 0 || imageX > renderedWidth || imageY < 0 || imageY > renderedHeight) {
-            toast.error("Dropped outside of the scene image.");
+            toast.error(tr("Dropped outside of the scene image."));
             return;
         }
         
@@ -205,10 +206,10 @@ export const SceneComposerView = () => {
     
     const handleSaveScene = async () => {
         if (!sceneImage || selectedProducts.length === 0) {
-            toast.error('No scene to save or no initial product selected.');
+            toast.error(tr("No scene to save or no initial product selected."));
             return;
         }
-        const toastId = toast.loading('Saving scene to Drive...');
+        const toastId = toast.loading(tr("Saving scene to Drive..."));
         try {
             const firstProduct = selectedProducts[0];
             const sceneDataUrl = await fileToDataUrl(sceneImage);
@@ -227,7 +228,7 @@ export const SceneComposerView = () => {
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message);
 
-            toast.success('Scene saved successfully!', { id: toastId });
+            toast.success(tr("Scene saved successfully!"), { id: toastId });
             setInventoryVersion(v => v + 1);
         } catch (error: any) {
             toast.error(`Save failed: ${error.message}`, { id: toastId });
@@ -236,7 +237,7 @@ export const SceneComposerView = () => {
 
     const handleDownloadScene = () => {
         if (!sceneImage) {
-            toast.error('No generated image to download.');
+            toast.error(tr("No generated image to download."));
             return;
         }
         const url = URL.createObjectURL(sceneImage);
@@ -247,7 +248,7 @@ export const SceneComposerView = () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast.success('Image downloaded!');
+        toast.success(tr("Image downloaded!"));
     };
     
     useEffect(() => {
@@ -258,7 +259,7 @@ export const SceneComposerView = () => {
     }, [sceneImageUrl]);
 
     if(selectedProducts.length === 0) {
-        return <div className="flex items-center justify-center h-full text-[var(--text-color-secondary)]">Use the "Select" button in the inventory to choose products.</div>;
+        return <div className="flex items-center justify-center h-full text-[var(--text-color-secondary)]">{tr("Use the \"Select\" button in the inventory to choose products.")}</div>;
     }
 
     return (
@@ -285,11 +286,11 @@ export const SceneComposerView = () => {
                     <img 
                         ref={sceneImgRef}
                         src={sceneImageUrl}
-                        alt="Scene"
+                        alt={tr("Scene")}
                         className="w-full h-full object-contain pointer-events-none"
                     />
                 ) : (
-                    <p className="text-[var(--text-color-secondary)]">Upload a scene image to begin</p>
+                    <p className="text-[var(--text-color-secondary)]">{tr("Upload a scene image to begin")}</p>
                 )}
                 
                 <div 
@@ -327,11 +328,11 @@ export const SceneComposerView = () => {
                 </div>
                  <div className="flex items-center gap-2">
                     <label htmlFor="scene-upload-input" className="button secondary cursor-pointer !min-h-0 text-xs py-2">
-                        {sceneImage ? 'Change Scene' : 'Upload Scene'}
+                        {sceneImage ? tr("Change Scene") : tr("Upload Scene")}
                     </label>
                     <input id="scene-upload-input" type="file" accept="image/*" className="hidden" onChange={handleSceneUpload} />
-                    <button className="button secondary !min-h-0 text-xs py-2" onClick={handleDownloadScene} disabled={!sceneImage || isLoading}>Download</button>
-                    <button className="button !min-h-0 text-xs py-2" onClick={handleSaveScene} disabled={!sceneImage || isLoading}>Save Scene</button>
+                    <button className="button secondary !min-h-0 text-xs py-2" onClick={handleDownloadScene} disabled={!sceneImage || isLoading}>{tr("Download")}</button>
+                    <button className="button !min-h-0 text-xs py-2" onClick={handleSaveScene} disabled={!sceneImage || isLoading}>{tr("Save Scene")}</button>
                 </div>
             </div>
         </div>

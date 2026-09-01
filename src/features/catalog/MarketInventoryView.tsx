@@ -26,6 +26,7 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { InventoryItem, InventoryItemData } from '../../lib/Types';
 import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, onyxRound } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
+import { tr } from '../../lib/i18n';
 
 const getTextColorForBg = (hexColor: string | undefined): string => {
   if (!hexColor) return '#000000';
@@ -95,7 +96,7 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
           })
           .catch(e => {
             console.error(`Failed to fetch image:`, e);
-            if (isActive) toast.error("Failed to load an item image.");
+            if (isActive) toast.error(tr("Failed to load an item image."));
           })
           .finally(() => { if (isActive) setIsLoading(false) });
       }
@@ -170,8 +171,8 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
           {norm.price && (
             <div className="flex gap-2 items-center">
               <div className="flex flex-col text-[9px] text-right font-mono opacity-80 leading-none">
-                <span>AQ: {calculated.bookAqCode}</span>
-                <span>LD: {calculated.bookLandCode}</span>
+                <span>{tr("AQ:")} {calculated.bookAqCode}</span>
+                <span>{tr("LD:")} {calculated.bookLandCode}</span>
               </div>
               <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
                 <span className="font-bold text-green-300 text-sm">{fmtUSD(onyxRound(parseFloat(String(norm.price)) / exchangeRate))}</span>
@@ -249,7 +250,7 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
   return (
     <div className="glass-panel rounded-xl shrink-0 w-full h-full p-4 flex flex-col gap-4">
       <div className="flex justify-between items-center">
-        <h2 className="uppercase font-bold text-sm">Market Inventory</h2>
+        <h2 className="uppercase font-bold text-sm">{tr("Market Inventory")}</h2>
         <button
           onClick={() => {
             setIsMarketSelect(!isMarketSelect);
@@ -257,14 +258,14 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
           }}
           className={`button secondary min-h-0! text-xs py-1 ${!isMarketSelect && 'opacity-60'}`}
         >
-          {isMarketSelect ? 'Cancel' : 'Select'}
+          {isMarketSelect ? tr("Cancel") : tr("Select")}
         </button>
       </div>
 
       {isMarketSelect && marketSelected.length > 0 && (
         <div className="flex items-center justify-between p-2 rounded-lg bg-black/20">
           <span className="text-xs font-semibold">{marketSelected.length} selected</span>
-          <button onClick={() => setMarketSelected([])} className="text-xs underline opacity-70 hover:opacity-100">Clear</button>
+          <button onClick={() => setMarketSelected([])} className="text-xs underline opacity-70 hover:opacity-100">{tr("Clear")}</button>
         </div>
       )}
 

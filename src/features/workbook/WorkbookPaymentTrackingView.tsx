@@ -3,7 +3,9 @@ import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai/react';
 import { workbookPropertiesDataAtom } from '../../lib/atoms';
 import { getTextColorForBg } from '../../lib/utils';
-import { vendors } from '../../lib/consts';
+import { vendors } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
+
 interface PaymentSummary {
     rate: string;
     totalAq: string;
@@ -17,7 +19,8 @@ interface TrackingRow {
 }
 
 export const WorkbookPaymentTrackingView: React.FC = () => {
-    const propertiesData = useAtomValue(workbookPropertiesDataAtom);
+    const propertiesData = useAtomValue(workbookPropertiesDataAtom);
+
     const paymentSheet = useMemo(() => {
         return propertiesData.find(s => s.sheetName === '-vPayment');
     }, [propertiesData]);
@@ -27,14 +30,17 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
             return { summary: null, trackingData: [], vendorColumns: [] };
         }
 
-        const data = paymentSheet.data;
+        const data = paymentSheet.data;
+
         const rate = parseFloat(data[2]?.[0] || '0').toFixed(2);
         const totalAq = parseFloat(data[2]?.[1] || '0').toLocaleString('en-US', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-        const shipping: { label: string; amount: string }[] = [];
+        const shipping: { label: string; amount: string }[] = [];
+
         for (let i = 4; i < data.length; i++) {
             const label = data[i]?.[0];
-            const amount = data[i]?.[1];
+            const amount = data[i]?.[1];
+
             if (!label) continue;
 
             shipping.push({
@@ -43,7 +49,8 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
             });
 
             if (String(label) === 'IN WAREHOUSE') break;
-        }
+        }
+
         const vendorCols: { id: string; name: string; index: number }[] = [];
         let colIdx = 4;
         while (colIdx < data[0].length) {
@@ -56,12 +63,15 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                 });
             }
             colIdx += 2; // Pairs of columns
-        }
+        }
+
         const rows: TrackingRow[] = [];
         for (let i = 4; i < data.length; i++) {
             const rowData = data[i];
             const notes = rowData[2]; // Col C
-            const date = rowData[3];  // Col D
+            const date = rowData[3];  // Col D
+
+
             if (!notes && !date) continue;
 
             const vendorValues: { [key: string]: { payment: string; balance: string } } = {};
@@ -87,10 +97,11 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
             trackingData: rows,
             vendorColumns: vendorCols
         };
-    }, [paymentSheet]);
+    }, [paymentSheet]);
+
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
 
-    if (!paymentSheet) return <div>No -vPayment sheet found.</div>;
+    if (!paymentSheet) return <div>{tr("No -vPayment sheet found.")}</div>;
 
     return (
         <div className="flex h-full gap-4 overflow-hidden p-2">
@@ -114,11 +125,11 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                     {/* Rate & Total */}
                     <div className="glass-panel p-6 rounded-xl flex flex-col gap-4 shrink-0 whitespace-nowrap">
                         <div>
-                            <p className="text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-wider">USD / MXN Rate</p>
+                            <p className="text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-wider">{tr("USD / MXN Rate")}</p>
                             <p className="text-3xl font-bold font-mono text-[var(--main-color)]">{summary?.rate}</p>
                         </div>
                         <div>
-                            <p className="text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-wider">Total AQ MXN</p>
+                            <p className="text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-wider">{tr("Total AQ MXN")}</p>
                             <p className="text-2xl font-bold font-mono text-white">{summary?.totalAq}</p>
                         </div>
                     </div>
@@ -126,20 +137,23 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                     {/* Shipping Summary */}
                     <div className="glass-panel p-0 rounded-xl flex-grow overflow-hidden flex flex-col whitespace-nowrap">
                         <div className="p-4 border-b border-[var(--border-color)] bg-[var(--glass-bg)] flex justify-between items-center">
-                            <h3 className="font-bold text-[var(--text-color)] uppercase tracking-wider text-sm">Shipping Record</h3>
+                            <h3 className="font-bold text-[var(--text-color)] uppercase tracking-wider text-sm">{tr("Shipping Record")}</h3>
                         </div>
                         <div className="overflow-y-auto p-2">
                             <table className="w-full text-sm">
                                 <tbody>
-                                    {summary?.shipping.map((item, i) => {
-                                        const isTotal = item.label.includes('TOTAL') || item.label.includes('SHIPPED') || item.label.includes('WAREHOUSE');
+                                    {summary?.shipping.map((item, i) => {
+
+                                        const isTotal = item.label.includes('TOTAL') || item.label.includes('SHIPPED') || item.label.includes('WAREHOUSE');
+
                                         const trkColors: Record<string, string> = {
                                             'TRK1': '#ff0099', // Pink/Magenta
                                             'TRK2': '#ffff00', // Yellow
                                             'TRK3': '#00b0f0', // Cyan
                                             'TRK4': '#99ff99', // Light Green
                                             'T SHIPPED': '#ffffff' // White
-                                        };
+                                        };
+
                                         const trkKey = Object.keys(trkColors).find(k => item.label.includes(k));
                                         const bgColor = trkKey ? trkColors[trkKey] : undefined;
 
@@ -166,7 +180,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                 {!isSidebarOpen && (
                     <div className="absolute inset-0 flex flex-col items-center pt-20 gap-4 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onClick={() => setIsSidebarOpen(true)}>
                         <div className="writing-mode-vertical text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>
-                            Summary & Shipping
+                            {tr("Summary & Shipping")}
                         </div>
                     </div>
                 )}
@@ -180,10 +194,10 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                             {/* Vendor Headers */}
                             <tr>
                                 <th className="sticky left-0 z-30 p-2 min-w-[250px] bg-[#0f1115] border-b border-r border-[var(--border-color)] text-left font-bold text-[var(--text-color-secondary)] uppercase">
-                                    TYPE
+                                    {tr("TYPE")}
                                 </th>
                                 <th className="sticky left-[250px] z-30 p-2 min-w-[100px] bg-[#0f1115] border-b border-r border-[var(--border-color)] text-center font-bold text-[var(--text-color-secondary)] uppercase">
-                                    Date
+                                    {tr("Date")}
                                 </th>
                                 {vendorColumns.map(v => (
                                     <th key={v.id} colSpan={2} className="p-2 border-b border-r border-[var(--border-color)] text-center text-[var(--text-color)] font-bold uppercase min-w-[200px]" style={{
@@ -202,25 +216,30 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                                 <th className="sticky left-[250px] z-30 bg-[#0f1115] border-b border-r border-[var(--border-color)]"></th>
                                 {vendorColumns.map(v => (
                                     <React.Fragment key={v.id}>
-                                        <th className="p-2 border-b border-r border-[var(--border-color)] text-[10px] uppercase text-[var(--text-color-secondary)] bg-[var(--glass-bg)]">Payment</th>
-                                        <th className="p-2 border-b border-r border-[var(--border-color)] text-[10px] uppercase text-[var(--text-color-secondary)] bg-[var(--glass-bg)]">Balance</th>
+                                        <th className="p-2 border-b border-r border-[var(--border-color)] text-[10px] uppercase text-[var(--text-color-secondary)] bg-[var(--glass-bg)]">{tr("Payment")}</th>
+                                        <th className="p-2 border-b border-r border-[var(--border-color)] text-[10px] uppercase text-[var(--text-color-secondary)] bg-[var(--glass-bg)]">{tr("Balance")}</th>
                                     </React.Fragment>
                                 ))}
                             </tr>
                         </thead>
                         <tbody className="font-mono">
-                            {trackingData.map((row, idx) => {
+                            {trackingData.map((row, idx) => {
+
                                 let activeVendorId: string | null = null;
                                 for (const vid in row.vendorData) {
-                                    const payment = row.vendorData[vid].payment;
+                                    const payment = row.vendorData[vid].payment;
+
                                     if (payment && payment !== '-' && payment !== '0' && payment !== '0.00') {
                                         activeVendorId = vid;
                                         break; // Assuming one vendor payment per row for the main color coding
                                     }
-                                }
+                                }
+
                                 const vendorColor = activeVendorId && vendors[activeVendorId as keyof typeof vendors]?.color
                                     ? vendors[activeVendorId as keyof typeof vendors].color
-                                    : null;
+                                    : null;
+
+
                                 const textColor = vendorColor ? '#000000' : 'var(--text-color)';
                                 const secondaryTextColor = vendorColor ? '#000000' : 'var(--text-color-secondary)';
 
@@ -246,7 +265,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                                                 color: secondaryTextColor,
                                                 fontWeight: vendorColor ? 'bold' : 'normal'
                                             }}>
-                                            {typeof row.date === 'number' ? new Date((row.date - 25569) * 86400 * 1000).toLocaleDateString('es-MX') : row.date}
+                                            {typeof row.date === 'number' ? new Date((row.date - 25569) * 86400 * 1000).toLocaleDateString("es-MX") : row.date}
                                         </td>
 
                                         {vendorColumns.map(v => {

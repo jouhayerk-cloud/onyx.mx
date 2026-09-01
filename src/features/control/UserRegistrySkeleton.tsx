@@ -1,9 +1,10 @@
 import React from 'react';
 import { SkeletonText, SkeletonAvatar, SkeletonBadge, SkeletonBox } from '../../components/Skeleton';
+import { tr } from '../../lib/i18n';
 
 /** Skeleton for UserRegistryPanel user list */
 export const UserRegistrySkeleton = () => (
-    <div role="status" aria-busy="true" aria-label="Loading users" className="flex flex-col gap-2">
+    <div role="status" aria-busy="true" aria-label={tr("Loading users")} className="flex flex-col gap-2">
         {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/3 border border-white/5">
                 <SkeletonAvatar size={36} />
@@ -18,6 +19,6 @@ export const UserRegistrySkeleton = () => (
                 <SkeletonBox className="w-5 h-5 rounded-lg shrink-0" />
             </div>
         ))}
-        <span className="sr-only">Loading user list…</span>
+        <span className="sr-only">{tr("Loading user list…")}</span>
     </div>
 );

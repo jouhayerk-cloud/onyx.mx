@@ -11,7 +11,7 @@ import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { PullToRefresh } from '../../components/ui/PullToRefresh';
 import { sentTruckIdAtom } from '../../lib/atoms';
 import { useSyncEngine } from '../../lib/syncEngine';
-import { setI18nLang } from '../../lib/i18n';
+import { setI18nLang, tr } from '../../lib/i18n';
 import { SyncProgressBar } from '../../components/SyncProgressBar';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -275,7 +275,7 @@ export default function App() {
             <button 
               onClick={() => { setView('app'); setSentTruckId(null); }}
               className="absolute top-8 right-8 p-4 rounded-full bg-black/5 hover:bg-black/10 transition-all text-black/40 hover:text-black z-[10001] group"
-              title="Close 3D Viewer"
+              title={tr("Close 3D Viewer")}
             >
               <svg className="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -296,9 +296,9 @@ export default function App() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
                   <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" /></svg>
                 </div>
-                <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
+                <h2 className="text-xl font-bold text-white mb-2">{tr("Access Denied")}</h2>
                 <p className="text-sm text-(--text-color-secondary) mb-6">
-                  Your email is not registered for Onyx.mx access. Contact your system administrator.
+                  {tr("Your email is not registered for Onyx.mx access. Contact your system administrator.")}
                 </p>
                 <button
                   onClick={async () => {
@@ -308,7 +308,7 @@ export default function App() {
                   }}
                   className="button w-full py-3! text-sm"
                 >
-                  Return to Login
+                  {tr("Return to Login")}
                 </button>
               </div>
             </div>

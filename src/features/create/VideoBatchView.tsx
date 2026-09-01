@@ -8,6 +8,7 @@ import { userAtom, batchActionItemsDataAtom, isBatchActionsModalOpenAtom, Invent
 import { SCRIPT_URL, vendors } from '../../lib/consts';
 import toast from 'react-hot-toast';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { tr } from '../../lib/i18n';
 
 const UploadIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -136,7 +137,7 @@ export function VideoBatchView() {
 
     const handleStartAnalysis = useCallback(async () => {
         if (!videoFile || !formState.shape || !formState.vendorId) {
-            return toast.error("Please provide a video, vendor ID, and shape.");
+            return toast.error(tr("Please provide a video, vendor ID, and shape."));
         }
         setViewStep('analyzing');
         setStatusText("Initializing...");
@@ -197,7 +198,7 @@ export function VideoBatchView() {
 
     const handleCreateItems = async () => {
         if (selectedFrames.length === 0) {
-            return toast.error("Please select at least one frame to create.");
+            return toast.error(tr("Please select at least one frame to create."));
         }
         setViewStep('creating');
         setStatusText(`Creating ${selectedFrames.length} items...`);
@@ -251,43 +252,43 @@ export function VideoBatchView() {
             <div className="flex flex-col md:flex-row gap-8 h-full min-h-0">
                 {/* Form Panel */}
                 <div className="glass-panel p-6 space-y-4 md:w-1/3 flex flex-col">
-                    <h2 className="text-xl font-bold">Video Batch Creation</h2>
+                    <h2 className="text-xl font-bold">{tr("Video Batch Creation")}</h2>
                     <div className="flex-grow overflow-y-auto pr-2 -mr-6 space-y-4">
                         <label htmlFor="video-upload" className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-[var(--border-color)] border-dashed rounded-md cursor-pointer hover:border-[var(--accent-color)]">
-                            <div className="space-y-1 text-center"><UploadIcon className="mx-auto h-12 w-12 text-[var(--text-color-secondary)]" /><p className="text-sm text-[var(--text-color-secondary)]">{fileName || 'Select a video file'}</p></div>
+                            <div className="space-y-1 text-center"><UploadIcon className="mx-auto h-12 w-12 text-[var(--text-color-secondary)]" /><p className="text-sm text-[var(--text-color-secondary)]">{fileName || tr("Select a video file")}</p></div>
                         </label>
                         <input id="video-upload" type="file" className="sr-only" accept="video/*" onChange={handleFileChange} />
                         
                         <div className="grid grid-cols-2 gap-4">
-                            <input name="numItems" type="number" placeholder="Number of Items" value={formState.numItems} onChange={handleInputChange} />
+                            <input name="numItems" type="number" placeholder={tr("Number of Items")} value={formState.numItems} onChange={handleInputChange} />
                             <select name="vendorId" value={formState.vendorId} onChange={handleInputChange} disabled={user?.role === 'Vendor'}>
-                                <option value="">Select Vendor</option>
+                                <option value="">{tr("Select Vendor")}</option>
                                 {Object.keys(vendors).map(v => <option key={v} value={v}>{v}</option>)}
                             </select>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <input name="shape" type="text" placeholder="Shape" value={formState.shape} onChange={handleInputChange} />
-                            <input name="material" type="text" placeholder="Material" value={formState.material} onChange={handleInputChange} />
+                            <input name="shape" type="text" placeholder={tr("Shape")} value={formState.shape} onChange={handleInputChange} />
+                            <input name="material" type="text" placeholder={tr("Material")} value={formState.material} onChange={handleInputChange} />
                         </div>
                          <div className="grid grid-cols-3 gap-4">
-                            <input name="widthCm" type="number" placeholder="W (cm)" value={formState.widthCm} onChange={handleInputChange} />
-                            <input name="heightCm" type="number" placeholder="H (cm)" value={formState.heightCm} onChange={handleInputChange} />
-                            <input name="lengthCm" type="number" placeholder="L (cm)" value={formState.lengthCm} onChange={handleInputChange} />
+                            <input name="widthCm" type="number" placeholder={tr("W (cm)")} value={formState.widthCm} onChange={handleInputChange} />
+                            <input name="heightCm" type="number" placeholder={tr("H (cm)")} value={formState.heightCm} onChange={handleInputChange} />
+                            <input name="lengthCm" type="number" placeholder={tr("L (cm)")} value={formState.lengthCm} onChange={handleInputChange} />
                         </div>
                          <div className="grid grid-cols-2 gap-4">
-                            <input name="price" type="number" placeholder="Price (MXN)" value={formState.price} onChange={handleInputChange} />
-                            <textarea name="description" rows={1} placeholder="Description" value={formState.description} onChange={handleInputChange} className="col-span-2 !rounded-lg" />
+                            <input name="price" type="number" placeholder={tr("Price (MXN)")} value={formState.price} onChange={handleInputChange} />
+                            <textarea name="description" rows={1} placeholder={tr("Description")} value={formState.description} onChange={handleInputChange} className="col-span-2 !rounded-lg" />
                         </div>
     
                         <label className="flex items-center gap-2 cursor-pointer pt-2">
                             <input type="checkbox" name="runPostProcessing" checked={formState.runPostProcessing} onChange={handleInputChange} />
-                            <span className="text-sm">Run AI analysis after creation (masks, descriptions)</span>
+                            <span className="text-sm">{tr("Run AI analysis after creation (masks, descriptions)")}</span>
                         </label>
                     </div>
 
                     <div className="shrink-0 pt-4">
                         <button onClick={handleStartAnalysis} disabled={isAnalyzing || !videoFile} className="button w-full">
-                            {isAnalyzing ? statusText : 'Scan Video for Items'}
+                            {isAnalyzing ? statusText : tr("Scan Video for Items")}
                         </button>
                         {(viewStep === 'analyzing') && (
                             <div className="w-full bg-[var(--input-color)] rounded-full h-2.5 mt-2"><div className="bg-[var(--accent-color)] h-2.5 rounded-full" style={{ width: `${progress}%` }}></div></div>
@@ -298,12 +299,12 @@ export function VideoBatchView() {
                 {/* Results Panel */}
                 <div className="glass-panel p-6 flex-1 flex flex-col overflow-hidden">
                     <div className="flex justify-between items-center mb-4 shrink-0">
-                        <h2 className="text-xl font-bold">Results</h2>
+                        <h2 className="text-xl font-bold">{tr("Results")}</h2>
                         {(viewStep === 'selection' || viewStep === 'creating') && (
                             <div className="flex items-center gap-2">
-                                <button onClick={handleReset} className="button secondary !min-h-0 text-xs py-1 px-3">Reset</button>
+                                <button onClick={handleReset} className="button secondary !min-h-0 text-xs py-1 px-3">{tr("Reset")}</button>
                                 <button onClick={handleCreateItems} disabled={selectedFrames.length === 0 || viewStep === 'creating'} className="button !min-h-0 text-xs py-1 px-3">
-                                    {viewStep === 'creating' ? 'Creating...' : `Create ${selectedFrames.length} Items`}
+                                    {viewStep === 'creating' ? tr("Creating...") : `Create ${selectedFrames.length} Items`}
                                 </button>
                             </div>
                         )}
@@ -314,7 +315,7 @@ export function VideoBatchView() {
                             <div className="flex flex-col items-center justify-center h-full text-center">
                                 <LoadingIndicator />
                                 <p className="mt-4 font-semibold">{statusText}</p>
-                                <p className="text-sm text-[var(--text-color-secondary)]">This may take several minutes depending on video length.</p>
+                                <p className="text-sm text-[var(--text-color-secondary)]">{tr("This may take several minutes depending on video length.")}</p>
                             </div>
                         )}
                         {viewStep === 'creating' && (
@@ -325,7 +326,7 @@ export function VideoBatchView() {
                         )}
                         {viewStep === 'selection' && (
                             <>
-                                <p className="mb-4 text-center text-sm text-[var(--text-color-secondary)]">{statusText} ({selectedFrames.length}/{formState.numItems} selected)</p>
+                                <p className="mb-4 text-center text-sm text-[var(--text-color-secondary)]">{statusText} ({selectedFrames.length}/{formState.numItems} {tr("selected)")}</p>
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                     {potentialFrames.map(({ imageDataUrl, timestamp }) => (
                                         <div key={timestamp} className="relative aspect-video rounded-lg overflow-hidden cursor-pointer" onClick={() => handleFrameSelection(imageDataUrl)}>
@@ -349,9 +350,9 @@ export function VideoBatchView() {
                                     <svg className="mx-auto h-16 w-16 text-[var(--text-color-secondary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 15.75-2.489-2.489m0 0a3.375 3.375 0 1 0-4.773-4.773 3.375 3.375 0 0 0 4.774 4.774ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                     </svg>
-                                    <h3 className="mt-4 text-xl font-bold">Awaiting Analysis</h3>
+                                    <h3 className="mt-4 text-xl font-bold">{tr("Awaiting Analysis")}</h3>
                                     <p className="mt-2 text-[var(--text-color-secondary)]">
-                                        Fill out the form and scan a video to see potential items here.
+                                        {tr("Fill out the form and scan a video to see potential items here.")}
                                     </p>
                                 </div>
                             </div>

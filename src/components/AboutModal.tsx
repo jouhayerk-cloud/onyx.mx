@@ -6,6 +6,7 @@ import { OnyxMiniLogo } from './OnyxLogo';
 
 // Import markdown files as raw strings from assets to ensure bundling
 import changelogText from '../assets/CHANGELOG.md?raw';
+import { tr } from '../lib/i18n';
 
 interface AboutModalProps {
     isOpen: boolean;
@@ -23,7 +24,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
             return (
                 <div className="flex flex-col items-center justify-center py-20 text-white/20 gap-4">
                     <AlertCircle size={40} strokeWidth={1} />
-                    <p className="text-xs font-black uppercase tracking-[0.2em]">Documentation Offline</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em]">{tr("Documentation Offline")}</p>
                 </div>
             );
         }
@@ -107,10 +108,10 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             <OnyxMiniLogo className="w-12 h-12 transition-all group-hover:rotate-12 drop-shadow-[0_0_15px_rgba(255,255,255,0.15)]" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black uppercase tracking-[0.25em] text-white leading-none mb-1 shadow-sm">Onyx.mx Studio</h1>
+                            <h1 className="text-2xl font-black uppercase tracking-[0.25em] text-white leading-none mb-1 shadow-sm">{tr("Onyx.mx Studio")}</h1>
                             <div className="flex items-center gap-3">
-                                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-[10px] font-black text-blue-300 uppercase tracking-widest">Version v{__APP_VERSION__}</span>
-                                <span className="text-[10px] text-white/40 font-bold tracking-widest uppercase">System Log</span>
+                                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-[10px] font-black text-blue-300 uppercase tracking-widest">{tr("Version v")}{__APP_VERSION__}</span>
+                                <span className="text-[10px] text-white/40 font-bold tracking-widest uppercase">{tr("System Log")}</span>
                             </div>
                         </div>
                     </div>
@@ -132,14 +133,14 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                 {/* Footer */}
                 <div className="p-5 bg-white/5 border-t border-white/10 flex items-center justify-between shadow-xs">
                     <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-white/30">
-                        <span className="flex items-center gap-2 hover:text-white/60 transition-colors"><Info size={14} /> Technical Preview</span>
-                        <span className="flex items-center gap-2 hover:text-white/60 transition-colors"><Sparkles size={14} /> Studio v4 Engine</span>
+                        <span className="flex items-center gap-2 hover:text-white/60 transition-colors"><Info size={14} /> {tr("Technical Preview")}</span>
+                        <span className="flex items-center gap-2 hover:text-white/60 transition-colors"><Sparkles size={14} /> {tr("Studio v4 Engine")}</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <a href="https://github.com/jouhayerk-cloud/onyx.mx" target="_blank" rel="noreferrer" 
                            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-black/40 border border-white/5 text-[11px] font-black uppercase tracking-widest text-white/50 hover:text-white hover:border-white/20 hover:bg-black/60 transition-all shadow-xl active:scale-95">
                             <Github size={15} />
-                            Repository
+                            {tr("Repository")}
                         </a>
                     </div>
                 </div>

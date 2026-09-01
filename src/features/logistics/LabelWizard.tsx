@@ -38,6 +38,7 @@ import { supabase } from '../../lib/supabase';
 /* ─── NFC Tags HUD Component ─── */
 import { ScannerCenter } from '../../components/ScannerCenter';
 import { PreviewLabels } from '../../components/PreviewLabels';
+import { tr } from '../../lib/i18n';
 
 export const NFCWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isPackingNFCWizardOpenAtom);
@@ -217,7 +218,7 @@ export const NFCWizard: React.FC = () => {
                                 </div>
                                 <div className="flex flex-col">
                                     <h2 className="text-2xl font-black text-white tracking-[0.3em] uppercase leading-none">NFC</h2>
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.8em] mt-2">SYSTEM_NFC_PROTOCOL</span>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.8em] mt-2">{tr("SYSTEM_NFC_PROTOCOL")}</span>
                                 </div>
                             </div>
 
@@ -228,8 +229,8 @@ export const NFCWizard: React.FC = () => {
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     {[
                                         { label: 'LND', value: currentItem?.codes.bookLandCode },
-                                        { label: 'ACQ', value: currentItem?.codes.bookAqCode },
-                                        { label: 'BOOK', value: cleanBookV }
+                                        { label: tr("ACQ"), value: currentItem?.codes.bookAqCode },
+                                        { label: tr("BOOK"), value: cleanBookV }
                                     ].map((t, i) => (
                                         <div key={i} className="flex items-center gap-2 md:gap-3 bg-white/[0.04] px-2 md:px-3 py-1.5 md:py-2 rounded-sm border border-white/10">
                                             <span className="text-[7px] md:text-[9px] font-black text-white/40 uppercase tracking-widest">{t.label}</span>
@@ -238,7 +239,7 @@ export const NFCWizard: React.FC = () => {
                                     ))}
                                 </div>
                                 <div className="bg-white p-0.5 rounded-sm shadow-2xl w-[60%] md:w-[35%] h-6 md:h-7 flex items-center justify-center overflow-hidden border-b border-black/10 transition-all hover:scale-[1.01]">
-                                    <img src={barcodeUrl} className="w-full h-full object-fill mix-blend-multiply" alt="Barcode" />
+                                    <img src={barcodeUrl} className="w-full h-full object-fill mix-blend-multiply" alt={tr("Barcode")} />
                                 </div>
                             </div>
                         </div>
@@ -265,9 +266,9 @@ export const NFCWizard: React.FC = () => {
                                     }`}
                                 >
                                     {isVerified ? (
-                                        <><ShieldCheck size={14} /> <span className="text-[10px] uppercase tracking-widest">Verified</span></>
+                                        <><ShieldCheck size={14} /> <span className="text-[10px] uppercase tracking-widest">{tr("Verified")}</span></>
                                     ) : (
-                                        <><QrCode size={14} /> <span className="text-[10px] uppercase tracking-widest">Verify QR</span></>
+                                        <><QrCode size={14} /> <span className="text-[10px] uppercase tracking-widest">{tr("Verify QR")}</span></>
                                     )}
                                 </button>
                             </div>
@@ -282,15 +283,15 @@ export const NFCWizard: React.FC = () => {
                                 {!isSupported && status !== 'success' && status !== 'writing' ? (
                                     <>
                                         <ZapOff size={20} className="md:w-[24px] md:h-[24px] text-white/20" />
-                                        <span className="text-[6px] md:text-[8px] font-black text-white/40 uppercase tracking-[0.2em] leading-none">NO_HW</span>
+                                        <span className="text-[6px] md:text-[8px] font-black text-white/40 uppercase tracking-[0.2em] leading-none">{tr("NO_HW")}</span>
                                     </>
                                 ) : status === 'success' ? (
-                                    <><CheckCircle size={28} className="md:w-[32px] md:h-[32px] text-black" /><span className="text-[9px] font-black text-black uppercase tracking-[0.2em]">LOCKED</span></>
+                                    <><CheckCircle size={28} className="md:w-[32px] md:h-[32px] text-black" /><span className="text-[9px] font-black text-black uppercase tracking-[0.2em]">{tr("LOCKED")}</span></>
                                 ) : (
                                     <>
                                         <Nfc size={28} className={`md:w-[36px] md:h-[36px] transition-all duration-700 ${isWriting ? 'animate-pulse scale-110 text-white' : 'text-(--main-color) group-hover:scale-110'}`} />
                                         <span className={`text-[6px] md:text-[8px] font-black uppercase tracking-[0.3em] mt-2 ${isWriting ? 'text-white' : 'text-(--main-color) opacity-60'}`}>
-                                            {isWriting ? 'ENCODING' : 'WRITE'}
+                                            {isWriting ? tr("ENCODING") : tr("WRITE")}
                                         </span>
                                     </>
                                 )}
@@ -301,30 +302,30 @@ export const NFCWizard: React.FC = () => {
                     {/* Specification Matrix */}
                     <div className="grid grid-cols-2 gap-y-6 md:gap-y-8 gap-x-8 md:gap-x-12 mb-8 md:mb-10 border-t border-white/5 pt-8 md:pt-10">
                         <div className="flex flex-col">
-                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CORE_SPEC</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">{tr("CORE_SPEC")}</span>
                             <div className="flex flex-col">
-                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.color || 'CLR_NULL'}</span>
-                                <span className="text-[10px] md:text-base font-bold text-white/40 uppercase tracking-widest leading-none mt-0.5">{currentItem?.normData.material || 'MAT_NULL'}</span>
+                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.color || tr("CLR_NULL")}</span>
+                                <span className="text-[10px] md:text-base font-bold text-white/40 uppercase tracking-widest leading-none mt-0.5">{currentItem?.normData.material || tr("MAT_NULL")}</span>
                             </div>
                         </div>
 
                         <div className="flex flex-col">
-                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">DESCRIPTOR</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">{tr("DESCRIPTOR")}</span>
                             <div className="flex flex-col">
-                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.shape || 'SHAPE_NULL'}</span>
+                                <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.shape || tr("SHAPE_NULL")}</span>
                                 <span className="text-[10px] md:text-base font-medium text-white/30 uppercase tracking-tight truncate">{currentItem?.normData.shortDescription || '---'}</span>
                             </div>
                         </div>
 
                         <div className="flex flex-col col-span-2 group">
-                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">GEOMETRY_PROTO</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">{tr("GEOMETRY_PROTO")}</span>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-baseline gap-2 md:gap-5">
                                     <span className="text-2xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-(--main-color) transition-colors">{currentItem?.normData.dims || '0×0×0'}</span>
                                     <span className="text-sm md:text-2xl font-black text-(--main-color) uppercase tracking-tighter opacity-30">CM</span>
                                 </div>
                                 <div className="flex flex-col items-end border-l border-white/10 pl-4 md:pl-6">
-                                    <span className="text-[7px] md:text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">WEIGHT</span>
+                                    <span className="text-[7px] md:text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">{tr("WEIGHT")}</span>
                                     <span className="text-xl md:text-4xl font-black text-white tabular-nums tracking-tighter">{currentItem?.normData.weightKg || 0}KG</span>
                                 </div>
                             </div>
@@ -357,7 +358,7 @@ export const NFCWizard: React.FC = () => {
                         setTimeout(() => setIsQRScannerOpen(false), 800);
                     }}
                     onClose={() => setIsQRScannerOpen(false)}
-                    title="Verify Artifact"
+                    title={tr("Verify Artifact")}
                     subtitle={`Authenticating ${currentItem?.codes.bookBarcode}`}
                 />
             )}
@@ -1054,7 +1055,7 @@ export const LabelWizard: React.FC = () => {
                                     className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_var(--main-color)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                                 >
                                     <Printer size={18} />
-                                    {progress.printer > 0 && progress.printer < 100 ? 'GENERATING...' : 'LAUNCH PRINT ENGINE'}
+                                    {progress.printer > 0 && progress.printer < 100 ? tr("GENERATING...") : tr("LAUNCH PRINT ENGINE")}
                                 </button>
                             </div>
                             
@@ -1064,7 +1065,7 @@ export const LabelWizard: React.FC = () => {
                                         <div className="flex flex-1 gap-2">
                                             {/* Vertical Text */}
                                             <div className="w-4 flex flex-col justify-between items-center py-1">
-                                                {Array.from("MADE IN MEXICO").map((char, i) => (
+                                                {Array.from(tr("MADE IN MEXICO")).map((char, i) => (
                                                     <span key={i} className="text-[6px] font-black leading-none">{char}</span>
                                                 ))}
                                             </div>
@@ -1269,7 +1270,7 @@ export const LabelWizard: React.FC = () => {
                                                 className="w-full py-3 bg-red-500/10 border border-red-500/30 text-red-400 font-black uppercase tracking-[0.1em] text-xs rounded-xl hover:bg-red-500/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                             >
                                                 {progress.pdf > 0 && progress.pdf < 100 ? <div className="w-4 h-4 border-2 border-red-500/20 border-t-red-500 animate-spin rounded-full" /> : <ListChecks size={16} />}
-                                                {progress.pdf === 100 ? 'RE-GENERATE PDF' : 'CONTROL PDF'}
+                                                {progress.pdf === 100 ? tr("RE-GENERATE PDF") : tr("CONTROL PDF")}
                                             </button>
                                             {progress.pdf === 100 && urls.pdf && (
                                                 <button 
@@ -1289,7 +1290,7 @@ export const LabelWizard: React.FC = () => {
                                                 className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black uppercase tracking-[0.1em] text-xs rounded-xl hover:bg-emerald-500/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                             >
                                                 {progress.xlsx > 0 && progress.xlsx < 100 ? <div className="w-4 h-4 border-2 border-emerald-500/20 border-t-emerald-500 animate-spin rounded-full" /> : <Sheet size={16} />}
-                                                {progress.xlsx === 100 ? 'RE-GENERATE XLS' : 'XLS LABELS'}
+                                                {progress.xlsx === 100 ? tr("RE-GENERATE XLS") : tr("XLS LABELS")}
                                             </button>
                                             {progress.xlsx === 100 && urls.xlsx && (
                                                 <button 
@@ -1309,7 +1310,7 @@ export const LabelWizard: React.FC = () => {
                                             className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(var(--main-color-rgb),0.6)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                                         >
                                             {progress.printer > 0 && progress.printer < 100 ? <div className="w-4 h-4 border-2 border-black/20 border-t-black animate-spin rounded-full" /> : <Printer size={18} />}
-                                            {progress.printer > 0 && progress.printer < 100 ? 'GENERATING...' : 'LAUNCH PRINT ENGINE'}
+                                            {progress.printer > 0 && progress.printer < 100 ? tr("GENERATING...") : tr("LAUNCH PRINT ENGINE")}
                                         </button>
                                     </div>
                                 </div>
@@ -1322,7 +1323,7 @@ export const LabelWizard: React.FC = () => {
                                         <div className="flex flex-1 gap-2">
                                             {/* Vertical Text */}
                                             <div className="w-4 flex flex-col justify-between items-center py-1">
-                                                {Array.from("MADE IN MEXICO").map((char, i) => (
+                                                {Array.from(tr("MADE IN MEXICO")).map((char, i) => (
                                                     <span key={i} className="text-[6px] font-black leading-none">{char}</span>
                                                 ))}
                                             </div>
@@ -1443,7 +1444,7 @@ export const LabelWizard: React.FC = () => {
                                         className="w-full py-4 bg-blue-500 border border-blue-400 text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                                     >
                                         {progress.catalog > 0 && progress.catalog < 100 ? <div className="w-4 h-4 border-2 border-black/20 border-t-black animate-spin rounded-full" /> : <BookOpen size={18} />}
-                                        {progress.catalog === 100 ? 'RE-GENERATE CATALOG' : 'GENERATE CATALOG'}
+                                        {progress.catalog === 100 ? tr("RE-GENERATE CATALOG") : tr("GENERATE CATALOG")}
                                     </button>
                                     
                                     {progress.catalog === 100 && urls.catalog && (

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { workbookPayLogDataAtom } from '../../lib/atoms';
 import { vendors as vendorConfigs } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
 
 type PayLogEntry = {
     reqDate: any;
@@ -21,7 +22,8 @@ export const WorkbookPayLogView: React.FC = () => {
     const [filter, setFilter] = useState<string>('ALL');
 
     const payLogInfo = useMemo(() => {
-        if (!rawData || rawData.length === 0) return [];
+        if (!rawData || rawData.length === 0) return [];
+
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';
@@ -104,12 +106,12 @@ export const WorkbookPayLogView: React.FC = () => {
         <div className="p-6 flex flex-col gap-6 h-full overflow-y-auto custom-scrollbar relative z-10">
             <div className="flex justify-between items-end border-b border-white/10 pb-4">
                 <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Financials</span>
-                    <h2 className="text-3xl font-black text-white italic font-display">PAYMENT LOG</h2>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">{tr("Financials")}</span>
+                    <h2 className="text-3xl font-black text-white italic font-display">{tr("PAYMENT LOG")}</h2>
                 </div>
                 <div className="flex gap-4">
                     <div className="flex flex-col items-end">
-                        <span className="text-[9px] uppercase tracking-widest text-white/30">Showing {stats.count} entries</span>
+                        <span className="text-[9px] uppercase tracking-widest text-white/30">{tr("Showing")} {stats.count} entries</span>
                         <span className="text-lg font-mono font-bold text-[#00AEEF]">{fmt(stats.total)}</span>
                     </div>
                 </div>
@@ -131,11 +133,11 @@ export const WorkbookPayLogView: React.FC = () => {
                 <table className="w-full text-left">
                     <thead className="bg-white/[0.02] border-b border-white/5">
                         <tr className="text-[10px] uppercase tracking-widest text-white/40 font-bold">
-                            <th className="p-4">Req/Pay Date</th>
-                            <th className="p-4">Type / Vendor</th>
-                            <th className="p-4">Account</th>
-                            <th className="p-4 text-right">Amount (MXN)</th>
-                            <th className="p-4">Description</th>
+                            <th className="p-4">{tr("Req/Pay Date")}</th>
+                            <th className="p-4">{tr("Type / Vendor")}</th>
+                            <th className="p-4">{tr("Account")}</th>
+                            <th className="p-4 text-right">{tr("Amount (MXN)")}</th>
+                            <th className="p-4">{tr("Description")}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 font-mono text-[11px]">
@@ -148,8 +150,8 @@ export const WorkbookPayLogView: React.FC = () => {
                                 <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
                                     <td className="p-4">
                                         <div className="flex flex-col gap-0.5">
-                                            <span className="text-white/60">{e.reqDate ? (typeof e.reqDate === 'number' ? new Date(Math.round((e.reqDate - 25569) * 864e5)).toLocaleDateString('es-MX') : String(e.reqDate)) : '-'}</span>
-                                            <span className="text-[9px] text-white/20 italic">Paid: {e.payDate ? (typeof e.payDate === 'number' ? new Date(Math.round((e.payDate - 25569) * 864e5)).toLocaleDateString('es-MX') : String(e.payDate)) : 'TBD'}</span>
+                                            <span className="text-white/60">{e.reqDate ? (typeof e.reqDate === 'number' ? new Date(Math.round((e.reqDate - 25569) * 864e5)).toLocaleDateString("es-MX") : String(e.reqDate)) : '-'}</span>
+                                            <span className="text-[9px] text-white/20 italic">{tr("Paid:")} {e.payDate ? (typeof e.payDate === 'number' ? new Date(Math.round((e.payDate - 25569) * 864e5)).toLocaleDateString("es-MX") : String(e.payDate)) : tr("TBD")}</span>
                                         </div>
                                     </td>
                                     <td className="p-4">
@@ -169,7 +171,7 @@ export const WorkbookPayLogView: React.FC = () => {
                                     <td className="p-4 text-right">
                                         <div className="flex flex-col items-end gap-0.5">
                                             <span className="text-white font-bold">{fmt(e.total)}</span>
-                                            <span className="text-[9px] text-white/20">Tax: {fmt(e.taxCom)}</span>
+                                            <span className="text-[9px] text-white/20">{tr("Tax:")} {fmt(e.taxCom)}</span>
                                         </div>
                                     </td>
                                     <td className="p-4">

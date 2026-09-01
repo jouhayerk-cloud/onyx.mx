@@ -52,6 +52,8 @@ const SuggestChips: React.FC<{
 };
 
 import { CloudUpload, Check } from 'lucide-react';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 export function UploadEntryForm() {
     const [itemData, setItemData] = useAtom(uploadItemDataAtom);
@@ -356,7 +358,7 @@ export function UploadEntryForm() {
             <div className="flex flex-col lg:flex-row gap-12 items-start">
                 {/* ── Entry Status (Frameless) ── */}
                 <div className="flex flex-col gap-3 min-w-[240px]">
-                    <label className={`${lbl} text-[10px]`}>Entry Status</label>
+                    <label className={`${lbl} text-[10px]`}>{tr("Entry Status")}</label>
                     <div className="flex flex-wrap gap-2.5 items-center">
                         {(['Available', 'Production', 'Acquisition'] as EntryStatus[]).map(status => (
                             <button
@@ -366,7 +368,7 @@ export function UploadEntryForm() {
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${itemData.status === status ? 'bg-(--main-color) text-black shadow-lg scale-105' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}
                             >
                                 <div className={`w-1.5 h-1.5 rounded-full ${itemData.status === status ? 'bg-black' : 'bg-white/20'}`} />
-                                {status}
+                                {el(status)}
                             </button>
                         ))}
                     </div>
@@ -374,7 +376,7 @@ export function UploadEntryForm() {
 
                 {/* ── Vendor Selector (Frameless) ── */}
                 <div className="flex-1 w-full">
-                    <label className={lbl}>Vendor Selection</label>
+                    <label className={lbl}>{tr("Vendor Selection")}</label>
                     {canSelectVendor ? (
                         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-4 items-center">
                             {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
@@ -406,13 +408,13 @@ export function UploadEntryForm() {
             <div className="flex flex-col xl:flex-row gap-8 items-start">
                 <div className="grid grid-cols-5 gap-0 items-end min-w-[280px] bg-white/[0.02] border border-white/5 rounded-2xl p-4">
                     <div className="col-span-2">
-                        <label className={lbl + " text-[10px]"}>Num</label>
+                        <label className={lbl + " text-[10px]"}>{tr("Num")}</label>
                         <input type="number" min="1" name="itemNumber"
                             value={itemData.itemNumber || ''} onChange={handleChange}
                             className={inpNum + " text-center! bg-transparent border-none!"} placeholder="1" />
                     </div>
                     <div className="col-span-3 pl-4 border-l border-white/10">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) block mb-1.5">Qty</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) block mb-1.5">{tr("Qty")}</label>
                         <input required type="number" min="1" name="quantity"
                             value={itemData.quantity || '1'} onChange={handleChange}
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-base font-black font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition-all" placeholder="1" />
@@ -421,8 +423,8 @@ export function UploadEntryForm() {
 
                 <div className="flex-1 w-full flex flex-col gap-4">
                     <div className="flex items-center justify-between">
-                        <label className={lbl}>Media Attachments</label>
-                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{mediaFiles.length} Files</span>
+                        <label className={lbl}>{tr("Media Attachments")}</label>
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{mediaFiles.length} {tr("Files")}</span>
                     </div>
 
                     <div className="flex flex-col lg:flex-row gap-6 w-full">
@@ -431,7 +433,7 @@ export function UploadEntryForm() {
                                 <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-(--main-color)/30 transition-all shadow-xl">
                                     <svg className="w-6 h-6 text-white/40 group-hover:text-(--main-color) transition-all"><use href="#upload" /></svg>
                                 </div>
-                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 group-hover:text-white transition-all">Attach Studio Assets</span>
+                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/30 group-hover:text-white transition-all">{tr("Attach Studio Assets")}</span>
                             </div>
                             <input type="file" className="sr-only" onChange={handleFileChange} accept="image/*,video/*" multiple />
                         </label>
@@ -465,44 +467,44 @@ export function UploadEntryForm() {
             {/* ── DNA & Metrics Panel (Combined Horizon) ── */}
             <div className="flex flex-col lg:grid lg:grid-cols-12 gap-12">
                 <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                    <p className="col-span-full text-[9px] font-black uppercase tracking-widest text-white/20 mb-[-1.5rem]">DNA Characteristics</p>
+                    <p className="col-span-full text-[9px] font-black uppercase tracking-widest text-white/20 mb-[-1.5rem]">{tr("DNA Characteristics")}</p>
                     
                     <div>
-                        <label className={lbl}>Color</label>
+                        <label className={lbl}>{tr("Color")}</label>
                         <input type="text" name="color" value={itemData.color || ''} onChange={handleChange}
-                            list="color-list" placeholder="Cream" className={inp} autoComplete="off" />
+                            list="color-list" placeholder={tr("Cream")} className={inp} autoComplete="off" />
                         <datalist id="color-list">{suggestions.color.map(v => <option key={v} value={v} />)}</datalist>
                         <SuggestChips values={suggestions.color} current={itemData.color || ''} query={itemData.color || ''} onSelect={v => set('color', v)} />
                     </div>
                     <div>
-                        <label className={lbl}>Mat</label>
+                        <label className={lbl}>{tr("Mat")}</label>
                         <input type="text" name="material" value={itemData.material || ''} onChange={handleChange}
-                            list="material-list" placeholder="Ceramic" className={inp} autoComplete="off" />
+                            list="material-list" placeholder={tr("Ceramic")} className={inp} autoComplete="off" />
                         <datalist id="material-list">{suggestions.material.map(v => <option key={v} value={v} />)}</datalist>
                         <SuggestChips values={suggestions.material} current={itemData.material || ''} query={itemData.material || ''} onSelect={v => set('material', v)} />
                     </div>
                     <div>
-                        <label className={lbl}>Shape</label>
+                        <label className={lbl}>{tr("Shape")}</label>
                         <input type="text" name="shape" value={itemData.shape || ''} onChange={handleChange}
-                            list="shape-list" placeholder="Vase" className={inp} autoComplete="off" />
+                            list="shape-list" placeholder={tr("Vase")} className={inp} autoComplete="off" />
                         <datalist id="shape-list">{suggestions.shape.map(v => <option key={v} value={v} />)}</datalist>
                         <SuggestChips values={suggestions.shape} current={itemData.shape || ''} query={itemData.shape || ''} onSelect={v => set('shape', v)} />
                     </div>
                     <div>
-                        <label className={lbl}>Type</label>
+                        <label className={lbl}>{tr("Type")}</label>
                         <input type="text" name="itemType" value={itemData.itemType || ''} onChange={handleChange}
-                            list="type-list" placeholder="Decorative" className={inp} autoComplete="off" />
+                            list="type-list" placeholder={tr("Decorative")} className={inp} autoComplete="off" />
                         <datalist id="type-list">{suggestions.itemType.map(v => <option key={v} value={v} />)}</datalist>
                         <SuggestChips values={suggestions.itemType} current={itemData.itemType || ''} query={itemData.itemType || ''} onSelect={v => set('itemType', v)} />
                     </div>
                     <div className="col-span-full">
-                        <label className={lbl}>Metrics (Kg / W / H / L)</label>
+                        <label className={lbl}>{tr("Metrics (Kg / W / H / L)")}</label>
                         <div className="grid grid-cols-4 gap-2">
                             {[
-                                { name: 'weightKg', placeholder: 'kg', suggestions: suggestions.weightKg },
-                                { name: 'widthCm', placeholder: 'W', suggestions: suggestions.widthCm },
-                                { name: 'heightCm', placeholder: 'H', suggestions: suggestions.heightCm },
-                                { name: 'lengthCm', placeholder: 'L', suggestions: suggestions.lengthCm },
+                                { name: tr("weightKg"), placeholder: 'kg', suggestions: suggestions.weightKg },
+                                { name: tr("widthCm"), placeholder: 'W', suggestions: suggestions.widthCm },
+                                { name: tr("heightCm"), placeholder: 'H', suggestions: suggestions.heightCm },
+                                { name: tr("lengthCm"), placeholder: 'L', suggestions: suggestions.lengthCm },
                             ].map(f => (
                                 <div key={f.name}>
                                     <input type="number" step="0.01" min="0" name={f.name}
@@ -518,11 +520,11 @@ export function UploadEntryForm() {
                 </div>
 
                 <div className="lg:col-span-4 flex flex-col gap-8">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-[-1rem]">Registry & Notes</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-[-1rem]">{tr("Registry & Notes")}</p>
                     
                     <div className="grid grid-cols-2 gap-4 items-start">
                         <div>
-                            <label className={lbl}>Cost</label>
+                            <label className={lbl}>{tr("Cost")}</label>
                             <div className="relative">
                                 <span className="absolute left-4 top-2.5 text-white/25 text-sm">$</span>
                                 <input required type="number" step="0.01" name="price"
@@ -532,15 +534,15 @@ export function UploadEntryForm() {
                             </div>
                         </div>
                         <div className="flex flex-col justify-end pb-1 h-[42px]">
-                            <span className="text-[8px] font-black text-white/15 uppercase tracking-widest leading-none mb-1">≈ USD</span>
+                            <span className="text-[8px] font-black text-white/15 uppercase tracking-widest leading-none mb-1">{tr("≈ USD")}</span>
                             <span className="text-xl font-mono font-black text-white/30 leading-none">${priceUsd}</span>
                         </div>
                     </div>
 
                     <div>
-                        <label className={lbl}>Notes</label>
+                        <label className={lbl}>{tr("Notes")}</label>
                         <textarea name="description" rows={4} value={itemData.description || ''} onChange={handleChange}
-                            placeholder="Technical specs..."
+                            placeholder={tr("Technical specs...")}
                             className={inp + " resize-none h-full min-h-[120px]"} />
                     </div>
                 </div>
@@ -554,7 +556,7 @@ export function UploadEntryForm() {
             {/* ── Submit ── */}
             <button type="submit" disabled={isSubmitting}
                 className="button w-full bg-(--main-color) border-(--main-color) text-black hover:opacity-90 disabled:opacity-50">
-                {isSubmitting ? <><LoadingIndicator /> WAIT</> : '✓ SAVE'}
+                {isSubmitting ? <><LoadingIndicator /> {tr("WAIT")}</> : tr("✓ SAVE")}
             </button>
             {/* ── Progress Overlay ── */}
             {isSaving && (
@@ -573,7 +575,7 @@ export function UploadEntryForm() {
 
                         <div className="w-full space-y-4 relative">
                             <div className="flex justify-between items-end">
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Synchronization</span>
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{tr("Synchronization")}</span>
                                 <span className="text-sm font-mono font-black text-(--main-color)">{savingProgress}%</span>
                             </div>
                             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
@@ -585,7 +587,7 @@ export function UploadEntryForm() {
                         </div>
 
                         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
-                            {savingProgress < 10 ? 'Initializing...' : savingProgress < 75 ? 'Uploading Media...' : savingProgress < 95 ? 'Updating Registry...' : 'Artifact Synced'}
+                            {savingProgress < 10 ? tr("Initializing...") : savingProgress < 75 ? tr("Uploading Media...") : savingProgress < 95 ? tr("Updating Registry...") : tr("Artifact Synced")}
                         </p>
                     </div>
                 </div>

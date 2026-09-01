@@ -19,6 +19,8 @@ type VendorGroup = {
 };
 
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
 
@@ -109,8 +111,8 @@ const DestinationCard: React.FC<{
             <p className="font-black uppercase tracking-widest text-xs text-(--text-color)">{config.name}</p>
             {baseAmount !== undefined && (
                 <div className="text-xs text-center mt-2">
-                    {commission !== null && <p className="text-(--text-color-secondary)">Comm: {formatCurrency(commission, 'MXN')}</p>}
-                    {total !== null && <p className="font-bold">Total: {formatCurrency(total, 'MXN')}</p>}
+                    {commission !== null && <p className="text-(--text-color-secondary)">{tr("Comm:")} {formatCurrency(commission, 'MXN')}</p>}
+                    {total !== null && <p className="font-bold">{tr("Total:")} {formatCurrency(total, 'MXN')}</p>}
                 </div>
             )}
         </div>
@@ -129,11 +131,11 @@ const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ i
         e.preventDefault();
         const numericAmount = parseFloat(amount);
         if (!description || isNaN(numericAmount) || numericAmount <= 0 || !destination) {
-            return toast.error("Please provide a valid description, amount, and destination.");
+            return toast.error(tr("Please provide a valid description, amount, and destination."));
         }
 
         setIsSaving(true);
-        const toastId = toast.loading('Adding general expense...');
+        const toastId = toast.loading(tr("Adding general expense..."));
         try {
             const commission = destinationsConfig[destination].calculateCommission(numericAmount);
             await apiCall('appendExpense', {
@@ -146,7 +148,7 @@ const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ i
                     date: new Date().toISOString(),
                 }
             }, db);
-            toast.success('General expense added!', { id: toastId });
+            toast.success(tr("General expense added!"), { id: toastId });
             setPaymentsVersion(v => v + 1);
             onClose();
         } catch (error: any) {
@@ -161,11 +163,11 @@ const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ i
         <div className="modal-overlay">
             <div className="modal-content">
                 <form onSubmit={handleSubmit}>
-                    <h2 className="modal-header">Add General Expense</h2>
+                    <h2 className="modal-header">{tr("Add General Expense")}</h2>
                     <div className="modal-body">
-                        <input type="text" placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} required />
-                        <input type="number" placeholder="Amount (MXN)" value={amount} onChange={e => setAmount(e.target.value)} required step="0.01" />
-                        <h3 className="text-lg font-bold mt-4 mb-2">Select Payment Destination</h3>
+                        <input type="text" placeholder={tr("Description")} value={description} onChange={e => setDescription(e.target.value)} required />
+                        <input type="number" placeholder={tr("Amount (MXN)")} value={amount} onChange={e => setAmount(e.target.value)} required step="0.01" />
+                        <h3 className="text-lg font-bold mt-4 mb-2">{tr("Select Payment Destination")}</h3>
                         <div className="flex gap-2">
                             {Object.entries(destinationsConfig).map(([key, config]) => (
                                 <DestinationCard
@@ -180,8 +182,8 @@ const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ i
                         </div>
                     </div>
                     <div className="modal-footer">
-                        <button type="button" onClick={onClose} className="button secondary" disabled={isSaving}>Cancel</button>
-                        <button type="submit" className="button" disabled={isSaving || !destination}>{isSaving ? 'Saving...' : 'Add Expense'}</button>
+                        <button type="button" onClick={onClose} className="button secondary" disabled={isSaving}>{tr("Cancel")}</button>
+                        <button type="submit" className="button" disabled={isSaving || !destination}>{isSaving ? tr("Saving...") : tr("Add Expense")}</button>
                     </div>
                 </form>
             </div>
@@ -204,8 +206,8 @@ const RequestPaymentModal: React.FC<{
             <div className="modal-content">
                 <h2 className="modal-header">Request Payment for {appUsers[vendorGroup.vendorId as keyof typeof appUsers]?.name || vendorGroup.vendorId}</h2>
                 <div className="modal-body">
-                    <p>Total for {vendorGroup.items.length} items: <strong>{formatCurrency(vendorGroup.total, 'MXN')}</strong></p>
-                    <h3 className="text-lg font-bold mt-4 mb-2">Select Payment Destination</h3>
+                    <p>Total for {vendorGroup.items.length} {tr("items:")} <strong>{formatCurrency(vendorGroup.total, 'MXN')}</strong></p>
+                    <h3 className="text-lg font-bold mt-4 mb-2">{tr("Select Payment Destination")}</h3>
                     <div className="grid grid-cols-2 gap-4">
                         {Object.entries(destinationsConfig).map(([key, config]) => (
                             <DestinationCard
@@ -220,13 +222,13 @@ const RequestPaymentModal: React.FC<{
                     </div>
                 </div>
                 <div className="modal-footer">
-                    <button onClick={onClose} className="button secondary">Cancel</button>
+                    <button onClick={onClose} className="button secondary">{tr("Cancel")}</button>
                     <button
                         onClick={() => selectedDestination && onConfirm(selectedDestination)}
                         className="button"
                         disabled={!selectedDestination}
                     >
-                        Confirm Request
+                        {tr("Confirm Request")}
                     </button>
                 </div>
             </div>
@@ -332,7 +334,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     };
 
     const handleMarkAsPaid = async (expense: FinanceRecord) => {
-        const toastId = toast.loading(`Marking as paid...`);
+        const toastId = toast.loading(tr("Marking as paid..."));
         try {
             await apiCall('updateExpense', {
                 row: expense.id,
@@ -341,7 +343,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                     pay_date: new Date().toISOString(),
                 }
             }, db);
-            toast.success('Payment marked as paid.', { id: toastId });
+            toast.success(tr("Payment marked as paid."), { id: toastId });
             setInventoryVersion(v => v + 1);
             setPaymentsVersion(v => v + 1);
         } catch (error: any) {
@@ -398,7 +400,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                                         </div>
                                         <div className="text-right">
                                             <p className="font-bold font-mono">{formatCurrency(group.total, 'MXN')}</p>
-                                            <button onClick={() => setRequestingGroup(group)} className={`mt-1 text-xs py-1 px-3 rounded-lg border-none! min-h-0! ${buttonBg}`} style={{ color: textColor }}>Request Payment</button>
+                                            <button onClick={() => setRequestingGroup(group)} className={`mt-1 text-xs py-1 px-3 rounded-lg border-none! min-h-0! ${buttonBg}`} style={{ color: textColor }}>{tr("Request Payment")}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -410,9 +412,9 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
 
             <div className="grow min-h-0! glass-panel">
                 <div className="p-4 border-b border-(--border-color) flex justify-between items-center">
-                    <h2 className="font-black text-[12px] uppercase tracking-[0.2em] text-(--text-color)">Payment Timeline</h2>
-                    <button onClick={() => setIsAddExpenseModalOpen(true)} className="button min-h-0! text-[10px] font-black uppercase tracking-widest py-1.5 px-3 flex items-center gap-2" title="Add General Expense">
-                        <svg className="w-4 h-4"><use href="#file-plus"></use></svg> Add Expense
+                    <h2 className="font-black text-[12px] uppercase tracking-[0.2em] text-(--text-color)">{tr("Payment Timeline")}</h2>
+                    <button onClick={() => setIsAddExpenseModalOpen(true)} className="button min-h-0! text-[10px] font-black uppercase tracking-widest py-1.5 px-3 flex items-center gap-2" title={tr("Add General Expense")}>
+                        <svg className="w-4 h-4"><use href="#file-plus"></use></svg> {tr("Add Expense")}
                     </button>
                 </div>
 
@@ -439,10 +441,10 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                                         </>
                                     ) : (
                                         <>
-                                            <span className="timeline-status-badge pending">Pending</span>
+                                            <span className="timeline-status-badge pending">{tr("Pending")}</span>
                                             <div className="flex items-center gap-4">
                                                 <span className="timeline-amount">{formatCurrency((expense.amount || 0) + (expense.commission || 0), 'MXN')}</span>
-                                                <button onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(expense); }} className="button secondary min-h-0! text-xs py-1 px-3">Mark as Paid</button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(expense); }} className="button secondary min-h-0! text-xs py-1 px-3">{tr("Mark as Paid")}</button>
                                             </div>
                                         </>
                                     )}
@@ -450,7 +452,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                             </div>
                         </div>
                     ))}
-                    {sortedTimeline.length === 0 && <p className="text-center text-sm p-8 text-(--text-color-secondary)">No payments found for the selected filters.</p>}
+                    {sortedTimeline.length === 0 && <p className="text-center text-sm p-8 text-(--text-color-secondary)">{tr("No payments found for the selected filters.")}</p>}
                 </div>
             </div>
 
@@ -463,7 +465,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
 
                         <div className="absolute right-4 top-4 z-101 flex gap-2">
                             <button onClick={() => setSelectedExpense(null)} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-(--text-color)/5 hover:bg-(--text-color)/10 border border-(--text-color)/10 rounded-xl text-(--text-color)/80 transition-all text-xs font-black uppercase tracking-widest">
-                                <X className="w-3.5 h-3.5" /> Close
+                                <X className="w-3.5 h-3.5" /> {tr("Close")}
                             </button>
                         </div>
 
@@ -474,50 +476,50 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                             </div>
                             <h2 className="text-2xl font-black text-center text-(--text-color)">{selectedExpense.description}</h2>
                             <div className="mt-4 px-4 py-1.5 rounded-full border border-(--text-color)/20 text-xs font-bold uppercase tracking-widest text-(--text-color)">
-                                {selectedExpense.status}
+                                {el(selectedExpense.status)}
                             </div>
                         </div>
 
                         {/* Drawer Content */}
                         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col gap-6">
                             <div className="p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)' }}>
-                                <h4 className="text-xs font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Payment Breakdown</h4>
+                                <h4 className="text-xs font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">{tr("Payment Breakdown")}</h4>
                                 <div className="grid grid-cols-2 gap-y-4">
                                     <div className="flex flex-col">
-                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Base Amount</span>
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">{tr("Base Amount")}</span>
                                         <span className="text-[15px] font-bold text-(--text-color)">{formatCurrency(selectedExpense.amount || 0, 'MXN')}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Commission</span>
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">{tr("Commission")}</span>
                                         <span className="text-[15px] font-bold text-(--text-color)">{formatCurrency(selectedExpense.commission || 0, 'MXN')}</span>
                                     </div>
                                     <div className="flex flex-col col-span-2 pt-4 mt-2 border-t border-(--text-color)/10">
-                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Total Needed</span>
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">{tr("Total Needed")}</span>
                                         <span className="text-xl font-black text-(--main-color) font-mono">{formatCurrency((selectedExpense.amount || 0) + (selectedExpense.commission || 0), 'MXN')}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)' }}>
-                                <h4 className="text-xs font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Details</h4>
+                                <h4 className="text-xs font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">{tr("Details")}</h4>
                                 <div className="grid grid-cols-2 gap-y-4">
                                     <div className="flex flex-col">
-                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Date Created</span>
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">{tr("Date Created")}</span>
                                         <span className="text-[14px] font-bold text-(--text-color)">{new Date(selectedExpense.date || '').toLocaleDateString()}</span>
                                     </div>
                                     {selectedExpense.pay_date && (
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Pay Date</span>
+                                            <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">{tr("Pay Date")}</span>
                                             <span className="text-[14px] font-bold text-green-500">{new Date(selectedExpense.pay_date).toLocaleDateString()}</span>
                                         </div>
                                     )}
                                     <div className="flex flex-col">
-                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Destination</span>
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">{tr("Destination")}</span>
                                         <span className="text-[14px] font-bold text-(--text-color)">{selectedExpense.destination}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Category</span>
-                                        <span className="text-[14px] font-bold text-(--text-color)">{selectedExpense.category}</span>
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">{tr("Category")}</span>
+                                        <span className="text-[14px] font-bold text-(--text-color)">{el(selectedExpense.category)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -528,7 +530,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                                         onClick={() => handleMarkAsPaid(selectedExpense)}
                                         className="w-full h-12 flex items-center justify-center gap-2 bg-(--main-color) hover:bg-(--main-color-hover) text-white rounded-xl font-black uppercase tracking-widest transition-all shadow-lg"
                                     >
-                                        <CreditCard size={18} /> Mark as Paid
+                                        <CreditCard size={18} /> {tr("Mark as Paid")}
                                     </button>
                                 </div>
                             )}

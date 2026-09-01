@@ -80,6 +80,7 @@ const DeployedTrailerCard = React.lazy(() => import('../logistics/TruckingModule
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { normalizeInventoryData } from '../../lib/utils';
+import { tr } from '../../lib/i18n';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -126,7 +127,7 @@ const ActiveRequestGridItem: React.FC<{
                 <span className="text-[28px] font-black text-white leading-none tracking-tighter">
                     {currencyMode === 'MXN' ? fmtMXN(amount) : fmtUSD(finalAmount)}
                 </span>
-                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mt-2 truncate">{type || 'General'}</span>
+                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mt-2 truncate">{type || tr("General")}</span>
             </div>
 
             {/* Progress Bar for Partial Production */}
@@ -206,7 +207,7 @@ const SectionHeader: React.FC<{
                     <span className={`${minimal ? 'text-[11px]' : 'text-[16px]'} font-black text-white uppercase tracking-[0.3em]`}>{title}</span>
                     {!minimal && (
                         <div className="flex items-center gap-4">
-                            {count !== undefined && <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{count} UNITS</span>}
+                            {count !== undefined && <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{count} {tr("UNITS")}</span>}
                             {amount !== undefined && (
                                 <>
                                     <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
@@ -267,8 +268,8 @@ const SmartFilterGroup: React.FC<{
                 {activeCount > 0 && (
                     <button onClick={onClear}
                         className="smart-clear text-[8px] font-black uppercase tracking-[0.16em] px-2 py-0.5 rounded-md"
-                        title="Clear this filter">
-                        Clear {activeCount}
+                        title={tr("Clear this filter")}>
+                        {tr("Clear")} {activeCount}
                     </button>
                 )}
             </div>
@@ -444,13 +445,13 @@ export const UniversalToolsBar: React.FC = () => {
     };
 
     const handleDeleteShipment = async (id: string) => {
-        if (!confirm('Delete this shipment record permanently?')) return;
+        if (!confirm(tr("Delete this shipment record permanently?"))) return;
         try {
             const { error } = await supabase.from('shipments').delete().eq('id', id);
             if (error) throw error;
             setRecentShipments(s => s.filter(x => x.id !== id));
-            toast.success('Shipment deleted');
-        } catch (e) { toast.error('Failed to delete shipment'); }
+            toast.success(tr("Shipment deleted"));
+        } catch (e) { toast.error(tr("Failed to delete shipment")); }
     };
 
     // Inventory Atoms for Filtering
@@ -597,7 +598,7 @@ export const UniversalToolsBar: React.FC = () => {
                         {isInventory && toolsOpen && isInvSearchOpen && (
                             <div className="flex items-center gap-6 group transition-all shrink-0">
                                 <Search size={24} strokeWidth={3} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
-                                <input autoFocus type="text" value={invSearchTerm} onChange={(e) => setInvSearchTerm(e.target.value)} placeholder="SEARCH INVENTORY..." className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
+                                <input autoFocus type="text" value={invSearchTerm} onChange={(e) => setInvSearchTerm(e.target.value)} placeholder={tr("SEARCH INVENTORY...")} className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
                                 {invSearchTerm && <button onClick={() => setInvSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={24} strokeWidth={3} /></button>}
                             </div>
                         )}
@@ -625,9 +626,9 @@ export const UniversalToolsBar: React.FC = () => {
                                                  }} />
                                         </button>
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] leading-none mb-1">Density</span>
+                                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] leading-none mb-1">{tr("Density")}</span>
                                             <span className="text-[14px] font-black text-white uppercase tracking-tighter">
-                                                {invSlider <= 33 ? 'Compact' : invSlider <= 66 ? 'Standard' : 'Spacious'}
+                                                {invSlider <= 33 ? tr("Compact") : invSlider <= 66 ? tr("Standard") : tr("Spacious")}
                                             </span>
                                         </div>
                                     </div>
@@ -654,15 +655,15 @@ export const UniversalToolsBar: React.FC = () => {
                                 <div className="flex items-center gap-6 shrink-0 sm:justify-end overflow-x-auto no-scrollbar">
                                     <div className="flex items-center gap-2 text-white/20 uppercase font-black text-[9px] tracking-[0.2em] shrink-0">
                                         <ArrowUpDown size={14} />
-                                        <span>SORT BY</span>
+                                        <span>{tr("SORT BY")}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {[
-                                            { key: 'Date', label: 'DATE' },
+                                            { key: 'Date', label: tr("DATE") },
                                             { key: 'Vendor', label: 'VENDOR' },
-                                            { key: 'Status', label: 'STATUS' },
-                                            { key: 'Number', label: 'NUM' },
-                                            { key: 'Value', label: 'VALUE' },
+                                            { key: 'Status', label: tr("STATUS") },
+                                            { key: 'Number', label: tr("NUM") },
+                                            { key: 'Value', label: tr("VALUE") },
                                             { key: 'Qty', label: 'QTY' }
                                         ].map(sort => (
                                         <div key={sort.key} className="tool-cell flex flex-col items-center gap-1 shrink-0">
@@ -688,7 +689,7 @@ export const UniversalToolsBar: React.FC = () => {
                         {isFinance && isFinSearchOpen && (
                             <div className="flex items-center gap-6 group transition-all shrink-0">
                                 <Search size={24} strokeWidth={3} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
-                                <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder="SEARCH PAYMENTS..." className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
+                                <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS...")} className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
                                 {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={24} strokeWidth={3} /></button>}
                             </div>
                         )}
@@ -705,10 +706,10 @@ export const UniversalToolsBar: React.FC = () => {
                                 <SquareCheckBig size={24} strokeWidth={2.5} />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] leading-none mb-1">Batch Management</span>
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] leading-none mb-1">{tr("Batch Management")}</span>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-2xl font-black text-white tracking-tighter">{selectedIds.length}</span>
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Items Selected</span>
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Items Selected")}</span>
                                 </div>
                             </div>
                         </div>
@@ -721,18 +722,18 @@ export const UniversalToolsBar: React.FC = () => {
                                 <div className="w-5 h-5 rounded-md border-2 border-white/20 group-hover:border-white/40 flex items-center justify-center transition-all">
                                     <div className="w-2 h-2 rounded-sm bg-white scale-0 group-hover:scale-100 transition-transform" />
                                 </div>
-                                <span className="text-[11px] font-black uppercase tracking-[0.2em]">Select All</span>
+                                <span className="text-[11px] font-black uppercase tracking-[0.2em]">{tr("Select All")}</span>
                             </button>
 
                             <button 
                                 onClick={() => {
                                     setSelectedIds([]);
-                                    toast.success("Selection Cleared");
+                                    toast.success(tr("Selection Cleared"));
                                 }}
                                 className="flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20 transition-all font-black text-[11px] tracking-widest uppercase active:scale-95"
                             >
                                 <X size={16} strokeWidth={3} />
-                                <span>Clear</span>
+                                <span>{tr("Clear")}</span>
                             </button>
                         </div>
                     </div>
@@ -753,8 +754,8 @@ export const UniversalToolsBar: React.FC = () => {
                                     { id: 'Supplies', icon: Box, color: '#f59e0b' },
                                     { id: 'Labor', icon: Users, color: '#ec4899' },
                                     { id: 'Packing', icon: Archive, color: '#a855f7' },
-                                    { id: 'Operations', icon: Activity, color: '#ef4444' },
-                                    { id: 'Logistics', icon: Truck, color: '#06b6d4' }
+                                    { id: tr("Operations"), icon: Activity, color: '#ef4444' },
+                                    { id: tr("Logistics"), icon: Truck, color: '#06b6d4' }
                                 ].map(s => {
                                     const Icon = s.icon;
                                     const isActive = finCategoryFilter === s.id;
@@ -781,11 +782,11 @@ export const UniversalToolsBar: React.FC = () => {
                     )}
                     {isFinActionOpen && (
                         <div className="w-full border-t border-white/5 px-8 py-4 animate-in slide-in-from-top-4 duration-500 overflow-hidden">
-                            <SectionHeader icon={Heartbeat} title="Requested" count={activeQueueRecords.length} amount={activeQueueTotal} isOpen={isFinQueueOpen} onToggle={() => setIsFinQueueOpen(!isFinQueueOpen)} currencyMode={currencyMode} exRate={exRate} />
+                            <SectionHeader icon={Heartbeat} title={tr("Requested")} count={activeQueueRecords.length} amount={activeQueueTotal} isOpen={isFinQueueOpen} onToggle={() => setIsFinQueueOpen(!isFinQueueOpen)} currencyMode={currencyMode} exRate={exRate} />
                             {isFinQueueOpen && (
                                 <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 ${activeQueueRecords.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
-                                    {activeQueueRecords.length === 0 ? <div className="py-6 text-center border border-white/5 rounded-2xl"><span className="text-[11px] font-black uppercase tracking-[0.6em]">QUEUE EMPTY</span></div> : activeQueueRecords.map(r => {
-                                        const v = r.vendor_id || 'Unknown';
+                                    {activeQueueRecords.length === 0 ? <div className="py-6 text-center border border-white/5 rounded-2xl"><span className="text-[11px] font-black uppercase tracking-[0.6em]">{tr("QUEUE EMPTY")}</span></div> : activeQueueRecords.map(r => {
+                                        const v = r.vendor_id || tr("Unknown");
                                         const color = vendors[v as keyof typeof vendors]?.color || '#888';
                                         return <ActiveRequestGridItem key={r.id} label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMode} exRate={exRate} onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: [r.id], title: `Detail: ${v}` })} />;
                                     })}
@@ -801,7 +802,7 @@ export const UniversalToolsBar: React.FC = () => {
                 <div className="w-full px-8 py-4 animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5">
                     <SectionHeader 
                         icon={Hourglass} 
-                        title="Upcoming Payments" 
+                        title={tr("Upcoming Payments")} 
                         count={combinedUpcoming.length} 
                         amount={combinedUpcomingTotal} 
                         isOpen={isFinUpcomingOpen} 
@@ -813,10 +814,10 @@ export const UniversalToolsBar: React.FC = () => {
                         <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 mt-2 ${combinedUpcoming.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
                             {combinedUpcoming.length === 0 ? (
                                 <div className="py-6 text-center border border-white/5 rounded-2xl">
-                                    <span className="text-[11px] font-black uppercase tracking-[0.6em]">NO UPCOMING PAYMENTS</span>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.6em]">{tr("NO UPCOMING PAYMENTS")}</span>
                                 </div>
                             ) : combinedUpcoming.map(r => {
-                                const v = r.vendor_id || 'Unknown';
+                                const v = r.vendor_id || tr("Unknown");
                                 const color = vendors[v as keyof typeof vendors]?.color || '#888';
                                 const isAuto = (r as any).is_auto_gen;
                                 return (
@@ -887,26 +888,26 @@ export const UniversalToolsBar: React.FC = () => {
                             onClick={() => setMaterialColorOpen(!materialColorOpen)}
                             aria-pressed={materialColorOpen}
                             className="smart-deploy-key flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.16em]"
-                            title="Material / Colour — main filter"
+                            title={tr("Material / Colour — main filter")}
                         >
                             <Palette size={13} strokeWidth={2.4} />
-                            Material / Colour
+                            {tr("Material / Colour")}
                         </button>
                         <button
                             onClick={() => setShapeFilterOpen(!shapeFilterOpen)}
                             aria-pressed={shapeFilterOpen}
                             className="smart-deploy-key flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.16em]"
-                            title="Shape — sub filter"
+                            title={tr("Shape — sub filter")}
                         >
                             <Shapes size={13} strokeWidth={2.4} />
-                            Shape
+                            {tr("Shape")}
                         </button>
                     </div>
 
                     {materialColorOpen && (
                         <div className="smart-filters-main px-4 py-3 min-w-max">
                             <SmartFilterGroup
-                                title="Material / Colour — Main Filter"
+                                title={tr("Material / Colour — Main Filter")}
                                 tree={materialColorTree}
                                 selected={materialColorSel}
                                 onToggle={(k: string) => setMaterialColorSel(prev => toggleKey(prev || [], k))}
@@ -919,7 +920,7 @@ export const UniversalToolsBar: React.FC = () => {
                     {shapeFilterOpen && (
                         <div className="smart-filters-shape px-4 py-3 min-w-max">
                             <SmartFilterGroup
-                                title="Shape — Sub Filter"
+                                title={tr("Shape — Sub Filter")}
                                 tree={shapeTree}
                                 selected={shapeSel}
                                 onToggle={(k: string) => setShapeSel(prev => toggleKey(prev || [], k))}
@@ -966,10 +967,10 @@ export const UniversalToolsBar: React.FC = () => {
                                 );
                             })}
                         </div>
-                        <button onClick={() => { setInvVersion(v => v + 1); toast.success('Syncing...'); }} className="flex items-center gap-2 px-4 py-2 text-white/40 hover:text-white text-[9px] font-black uppercase tracking-widest"><Heartbeat size={14} /> SYNC REGISTRY</button>
+                        <button onClick={() => { setInvVersion(v => v + 1); toast.success(tr("Syncing...")); }} className="flex items-center gap-2 px-4 py-2 text-white/40 hover:text-white text-[9px] font-black uppercase tracking-widest"><Heartbeat size={14} /> {tr("SYNC REGISTRY")}</button>
                     </div>
                     <div className="w-full px-6 py-3 flex items-center gap-6 overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-700">
-                        <button onClick={() => setInvVendorFilter(['All'])} className={`text-[10px] font-black uppercase transition-all shrink-0 ${invVendorFilter.includes('All') ? 'text-white' : 'text-zinc-600 hover:text-white'}`}>ALL<br/>VENDORS</button>
+                        <button onClick={() => setInvVendorFilter(['All'])} className={`text-[10px] font-black uppercase transition-all shrink-0 ${invVendorFilter.includes('All') ? 'text-white' : 'text-zinc-600 hover:text-white'}`}>{tr("ALL")}<br/>{tr("VENDORS")}</button>
                         <div className="flex items-center gap-6 shrink-0 py-1">
                             {activeVendors.map(v => {
                                 const vendorColor = (vendors as any)[v]?.color || '#ffffff';

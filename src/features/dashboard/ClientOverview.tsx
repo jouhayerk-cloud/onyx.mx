@@ -19,6 +19,8 @@ import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils
 import { supabase } from '../../lib/supabase';
 import { EChart } from '../../components/EChart';
 import type { EChartsOption } from 'echarts';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 interface ClientVendorSummary {
     vendorId: string;
@@ -498,10 +500,10 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                     await supabase.from('inventory').update({ pay_req: perc ? `paid ${perc}%` : true }).in('id', ids);
                 }
             }
-            toast.success('Payment finalized.', { id: toastId });
+            toast.success(tr("Payment finalized."), { id: toastId });
         } catch (err) {
             console.error(err);
-            toast.error('Failed to mark as paid', { id: toastId });
+            toast.error(tr("Failed to mark as paid"), { id: toastId });
         }
     };
 
@@ -548,11 +550,11 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                         <div className={`md:col-span-9 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isQueueCollapsed ? 'bg-(--text-color)/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
-                                icon={Activity} title="Active Request Queue" color="#F43F5E" 
+                                icon={Activity} title={tr("Active Request Queue")} color="#F43F5E" 
                                 onToggle={() => setIsQueueCollapsed(!isQueueCollapsed)} isCollapsed={isQueueCollapsed}
                                 compactSummary={
                                     <div className="flex flex-wrap gap-3 items-center">
-                                        <span className="text-[12px] font-black text-rose-500">{requisitions.length} <span className="opacity-30 text-[8px] uppercase">Dests</span></span>
+                                        <span className="text-[12px] font-black text-rose-500">{requisitions.length} <span className="opacity-30 text-[8px] uppercase">{tr("Dests")}</span></span>
                                         <div className="h-3 w-px bg-(--text-color)/10" />
                                         <CurrencyTag type="USD" amount={activeDestReqNetMXN / currentExchangeRate} className="scale-90 origin-left" />
                                         <CurrencyTag type="MXN" amount={activeDestReqNetMXN} className="opacity-40 scale-90 origin-left" />
@@ -561,7 +563,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                             />
                             {!isQueueCollapsed && (
                                 <div className="mt-4 space-y-2 animate-in fade-in duration-300">
-                                    {requisitions.length === 0 ? <p className="text-[10px] font-black text-(--text-color)/20 uppercase text-center py-6">Queue Empty</p> : requisitions.map((req) => {
+                                    {requisitions.length === 0 ? <p className="text-[10px] font-black text-(--text-color)/20 uppercase text-center py-6">{tr("Queue Empty")}</p> : requisitions.map((req) => {
                                         const destReqMXN = req.docs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
                                         const destReqUSD = destReqMXN / currentExchangeRate;
                                         const isExpanded = expandedDests[req.key] !== false;
@@ -582,11 +584,11 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                         if (docIds.length) setArtifactConfig({ isOpen: true, itemIds: docIds, title: `${req.cfg.name} items` });
                                                     }}>
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{vendorId || 'Mixed'}</div>
+                                                            <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{vendorId || tr("Mixed")}</div>
                                                             <p className="text-[11px] font-black text-(--text-color)/80 uppercase truncate tracking-widest">{req.cfg.name}</p>
                                                         </div>
                                                         <div className="flex items-center gap-3">
-                                                            <p className="text-[9px] font-mono text-(--text-color)/30 truncate max-w-[300px]">{req.docs[0]?.description || 'Multiple units'}</p>
+                                                            <p className="text-[9px] font-mono text-(--text-color)/30 truncate max-w-[300px]">{req.docs[0]?.description || tr("Multiple units")}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-1 shrink-0 px-2 min-w-[100px]">
@@ -599,7 +601,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <button onClick={e => { e.stopPropagation(); handleMarkAsPaid(req.key, destReqMXN, req.docs); }} className="px-3 py-1.5 h-full rounded-lg bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest ml-1 self-stretch shadow-lg">Paid</button>
+                                                    <button onClick={e => { e.stopPropagation(); handleMarkAsPaid(req.key, destReqMXN, req.docs); }} className="px-3 py-1.5 h-full rounded-lg bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest ml-1 self-stretch shadow-lg">{tr("Paid")}</button>
                                                 </div>
                                                 {isExpanded && (
                                                     <div className="px-3 pb-3 pt-2 space-y-2 border-t border-(--text-color)/5">
@@ -638,14 +640,14 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                                         <div className="flex flex-col min-w-0">
                                                                             <div className="flex items-center gap-2 mb-1">
                                                                                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vColor }}>
-                                                                                    {rowVendorId || 'UNK'}
+                                                                                    {rowVendorId || tr("UNK")}
                                                                                 </span>
                                                                                 <span className="text-[9px] font-black text-(--text-color)/30 uppercase tracking-widest">
-                                                                                    {(!isMerch && isVendorPayment) ? null : (d.category || 'General')}
-                                                                                    {d.subcategory && <>{(!isMerch && isVendorPayment) ? '' : ' • '}{d.subcategory}</>}
+                                                                                    {(!isMerch && isVendorPayment) ? null : (d.category || tr("General"))}
+                                                                                    {d.subcategory && <>{(!isMerch && isVendorPayment) ? '' : ' • '}{el(d.subcategory)}</>}
                                                                                 </span>
                                                                             </div>
-                                                                            <span className="text-[11px] font-medium text-(--text-color)/70 truncate max-w-[400px] mb-2">{d.description || 'Payment'}</span>
+                                                                            <span className="text-[11px] font-medium text-(--text-color)/70 truncate max-w-[400px] mb-2">{d.description || tr("Payment")}</span>
                                                                             
                                                                             {ids.length > 0 && (
                                                                                 <button 
@@ -657,7 +659,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                                                 >
                                                                                     <Layers size={10} className="text-(--main-color) group-hover/btn:scale-110 transition-transform" />
                                                                                     <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest">
-                                                                                        View {ids.length} Item{ids.length !== 1 ? 's' : ''}
+                                                                                        {tr("View")} {ids.length} {tr("Item")}{ids.length !== 1 ? 's' : ''}
                                                                                     </span>
                                                                                 </button>
                                                                             )}
@@ -667,13 +669,13 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                                         {(d.commission || 0) > 0 && (
                                                                             <div className="hidden sm:flex items-center gap-3 mr-2">
                                                                                 <div className="flex flex-col items-end gap-0.5">
-                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">Net Paid</span>
+                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">{tr("Net Paid")}</span>
                                                                                     <span className="text-[9px] font-mono font-bold text-(--text-color)/70">
                                                                                         {currencyMode === 'MXN' ? fmtMXN(d.amount || 0) : fmtUSD((d.amount || 0) / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE))}
                                                                                     </span>
                                                                                 </div>
                                                                                 <div className="flex flex-col items-end gap-0.5">
-                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">Taxes/Fees</span>
+                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">{tr("Taxes/Fees")}</span>
                                                                                     <span className="text-[9px] font-mono font-bold text-red-400/80">
                                                                                         {currencyMode === 'MXN' ? fmtMXN(d.commission || 0) : fmtUSD((d.commission || 0) / (d.exchange_rate || currentExchangeRate || DEFAULT_EXCHANGE_RATE))}
                                                                                     </span>
@@ -681,7 +683,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                                             </div>
                                                                         )}
                                                                         <div className={`flex flex-col items-end shrink-0 ${(d.commission || 0) > 0 ? 'sm:border-l sm:border-(--text-color)/10 sm:pl-3' : ''}`}>
-                                                                            <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${(d.commission || 0) > 0 ? 'text-sky-400/50' : 'text-(--text-color)/30'}`}>Total {currencyMode}</span>
+                                                                            <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${(d.commission || 0) > 0 ? 'text-sky-400/50' : 'text-(--text-color)/30'}`}>{tr("Total")} {currencyMode}</span>
                                                                             <div className="flex flex-col items-end leading-none">
                                                                                 <div className="flex items-center gap-1.5 mb-1">
                                                                                     <span className="text-[13px] font-black font-mono text-(--text-color) tracking-tighter">
@@ -692,7 +694,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                                                     </span>
                                                                                 </div>
                                                                                 <span className="text-[8px] font-mono font-black text-(--text-color)/30 opacity-70">
-                                                                                    Eq: {currencyMode === 'MXN' ? fmtUSD(rowUsd) : fmtMXN(rowMxn)}
+                                                                                    {tr("Eq:")} {currencyMode === 'MXN' ? fmtUSD(rowUsd) : fmtMXN(rowMxn)}
                                                                                 </span>
                                                                             </div>
                                                                         </div>
@@ -711,9 +713,9 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
 
                         <div className={`md:col-span-3 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isPaymentsCollapsed ? 'bg-(--text-color)/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
-                                icon={Wallet} title="Upcoming Payments" color="#FBBF24" 
+                                icon={Wallet} title={tr("Upcoming Payments")} color="#FBBF24" 
                                 onToggle={() => setIsPaymentsCollapsed(!isPaymentsCollapsed)} isCollapsed={isPaymentsCollapsed}
-                                compactSummary={<div className="flex gap-4"><span className="text-[12px] font-black text-amber-500">{comingPaymentsByVendor.length} <span className="opacity-30 text-[8px] uppercase">Vendors</span></span></div>}
+                                compactSummary={<div className="flex gap-4"><span className="text-[12px] font-black text-amber-500">{comingPaymentsByVendor.length} <span className="opacity-30 text-[8px] uppercase">{tr("Vendors")}</span></span></div>}
                             />
                             {!isPaymentsCollapsed && (
                                 <div className="mt-4 grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-2 animate-in fade-in duration-300">
@@ -732,7 +734,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                         <span className="text-[10px] font-black uppercase tracking-widest leading-none" style={{ color: contrastColor }}>
                                                             {(vendors as any)[group.vendorId]?.name || group.vendorId}
                                                         </span>
-                                                        <span className="text-[8px] font-black opacity-40 uppercase" style={{ color: contrastColor }}>{group.partials.length ? `Part.` : 'Full'}</span>
+                                                        <span className="text-[8px] font-black opacity-40 uppercase" style={{ color: contrastColor }}>{group.partials.length ? tr("Part.") : tr("Full")}</span>
                                                     </div>
                                                     
                                                     <div className="space-y-1">

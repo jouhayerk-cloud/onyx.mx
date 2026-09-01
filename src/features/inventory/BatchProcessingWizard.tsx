@@ -43,6 +43,7 @@ import { extractDominantColorsFromImage, getStoneStyleColors, generateFallbackMa
 import { SquareCropModal } from '../../components/SquareCropModal';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { vendors } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
 
 const resolveVendorColor = (inputStr: string | undefined | null) => {
     if (!inputStr) return '#ffffff';
@@ -900,7 +901,7 @@ Instructions:
 
     const handleSaveDescription = async (op: BatchOp) => {
         if (!op.result?.description && !op.result?.marketingDescription) return;
-        const toastId = toast.loading('Saving description...');
+        const toastId = toast.loading(tr("Saving description..."));
         try {
             const itemId = op.item.data?.id || op.item.id || op.item.row;
             const updatePayload: any = {};
@@ -976,7 +977,7 @@ Instructions:
                     throw sbErr;
                 }
             }
-            toast.success('Description saved!', { id: toastId });
+            toast.success(tr("Description saved!"), { id: toastId });
             setInventoryVersion(Date.now());
         } catch (e: any) {
             toast.error('Failed to save description: ' + (e.message || ''), { id: toastId });
@@ -1551,12 +1552,12 @@ Instructions:
     };
 
     const handleOptimizeLegacyPNGs = async () => {
-        const toastId = toast.loading('Finding masks to optimize...');
+        const toastId = toast.loading(tr("Finding masks to optimize..."));
         try {
             const { data, error } = await supabase.from('inventory').select('*').not('processed_media_urls', 'is', null);
             if (error) throw error;
             if (!data || data.length === 0) {
-                toast.success('No masks found!', { id: toastId });
+                toast.success(tr("No masks found!"), { id: toastId });
                 return;
             }
 
@@ -1614,7 +1615,7 @@ Instructions:
                 toast.success(`Optimized ${optimizedCount} masks successfully!`, { id: toastId });
                 setInventoryVersion(Date.now());
             } else {
-                toast.success('All masks are already optimized!', { id: toastId });
+                toast.success(tr("All masks are already optimized!"), { id: toastId });
             }
         } catch (e: any) {
             toast.error(`Optimization failed: ${e.message}`, { id: toastId });
@@ -1654,13 +1655,13 @@ Instructions:
         setIsProcessing(false);
         setInventoryVersion(v => v + 1);
         if (!isAborted) {
-            toast.success("AI Batch Processing Complete!");
+            toast.success(tr("AI Batch Processing Complete!"));
         }
     };
 
     const handleClose = () => {
         if (isProcessing) {
-            const ok = window.confirm("Processing is active. Are you sure you want to abort and close?");
+            const ok = window.confirm(tr("Processing is active. Are you sure you want to abort and close?"));
             if (!ok) return;
             setIsAborted(true);
         }
@@ -1713,7 +1714,7 @@ Instructions:
                 logs: [...op.logs, '[ WAIT ] Re-queued for forced AI description & color generation']
             };
         }));
-        toast.success("All items enabled for AI description & color regeneration! Click START ENGINE to begin.");
+        toast.success(tr("All items enabled for AI description & color regeneration! Click START ENGINE to begin."));
     };
 
     const completedOps = queue.filter(op => op.status === 'completed');
@@ -1777,8 +1778,8 @@ Instructions:
                             <Bot size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black uppercase tracking-tight text-white">Onyx.mx - Catalog Hub</h2>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Batch segmentation & description logic</p>
+                            <h2 className="text-xl font-black uppercase tracking-tight text-white">{tr("Onyx.mx - Catalog Hub")}</h2>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{tr("Batch segmentation & description logic")}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1789,26 +1790,26 @@ Instructions:
                                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' 
                                     : 'bg-(--main-color)/20 text-(--main-color) border-(--main-color)/40 hover:bg-(--main-color)/30'
                             }`}
-                            title="Toggle Image Processing (Masks & Transparency) ON/OFF for ALL items"
+                            title={tr("Toggle Image Processing (Masks & Transparency) ON/OFF for ALL items")}
                         >
                             <UploadCloud size={16} className={allSkippingImage ? 'text-amber-300' : 'text-(--main-color)'} />
-                            <span>{allSkippingImage ? 'IMG PROCESSING: OFF (ORIGINALS)' : 'IMG PROCESSING: ON (MASKS)'}</span>
+                            <span>{allSkippingImage ? tr("IMG PROCESSING: OFF (ORIGINALS)") : tr("IMG PROCESSING: ON (MASKS)")}</span>
                         </button>
                         <button 
                             onClick={handleRegenerateAllDescriptions}
                             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
-                            title="Regenerate ALL Descriptions (Force AI body descriptions and color info for all active items)"
+                            title={tr("Regenerate ALL Descriptions (Force AI body descriptions and color info for all active items)")}
                         >
                             <Sparkles size={16} className="text-emerald-300" />
-                            <span>REGENERATE DESCRIPTIONS</span>
+                            <span>{tr("REGENERATE DESCRIPTIONS")}</span>
                         </button>
-                        <button onClick={handleClearGen} title="Clear AI Generated Data" className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-rose-500 transition-all">
+                        <button onClick={handleClearGen} title={tr("Clear AI Generated Data")} className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-rose-500 transition-all">
                             <Trash2 size={24} />
                         </button>
-                        <button onClick={handleOptimizeLegacyPNGs} title="Optimize Legacy PNG Masks to WebP" className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-amber-400 transition-all">
+                        <button onClick={handleOptimizeLegacyPNGs} title={tr("Optimize Legacy PNG Masks to WebP")} className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-amber-400 transition-all">
                             <Sparkles size={24} />
                         </button>
-                        <button onClick={() => setShowApiModal(true)} title="API Settings" className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition-all">
+                        <button onClick={() => setShowApiModal(true)} title={tr("API Settings")} className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition-all">
                             <Settings2 size={24} />
                         </button>
                         <button onClick={handleClose} className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition-all">
@@ -1831,7 +1832,7 @@ Instructions:
                             {(op.imageIndex || 0) === 0 && (!op.result?.description || !op.result?.dominantColors?.length || !op.result?.hexString || !op.result?.generatedType) && (
                                 <div 
                                     className="absolute top-4 right-4 z-20 w-4 h-4 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.8)]" 
-                                    title="Incomplete Data: Missing Description, Colors, Hex Map, or Type"
+                                    title={tr("Incomplete Data: Missing Description, Colors, Hex Map, or Type")}
                                 />
                             )}
                             
@@ -1850,7 +1851,7 @@ Instructions:
                                         if (!thumbUrl) return (
                                             <div className="w-full h-full flex flex-col items-center justify-center text-white/20">
                                                 <UploadCloud size={24} />
-                                                <span className="text-[10px] font-black uppercase mt-2">No Image</span>
+                                                <span className="text-[10px] font-black uppercase mt-2">{tr("No Image")}</span>
                                             </div>
                                         );
                                         
@@ -1881,11 +1882,11 @@ Instructions:
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 md:gap-4">
                                             <button onClick={(e) => { e.stopPropagation(); handleUploadMask(op); }} className="flex flex-col items-center text-white/80 hover:text-white hover:scale-110 transition-all">
                                                 <UploadCloud size={16} />
-                                                <span className="text-[8px] font-black uppercase mt-1">Upload</span>
+                                                <span className="text-[8px] font-black uppercase mt-1">{tr("Upload")}</span>
                                             </button>
                                             <button onClick={(e) => { e.stopPropagation(); setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!); }} className="flex flex-col items-center text-white/80 hover:text-white hover:scale-110 transition-all">
                                                 <ZoomIn size={16} />
-                                                <span className="text-[8px] font-black uppercase mt-1">View</span>
+                                                <span className="text-[8px] font-black uppercase mt-1">{tr("View")}</span>
                                             </button>
                                         </div>
                                     </div>
@@ -1896,11 +1897,11 @@ Instructions:
                                 {/* Progress Line */}
                                 <div className="flex items-center gap-1.5 text-[8px] md:text-[9px] font-black uppercase tracking-widest mb-3 whitespace-nowrap overflow-x-auto scrollbar-none">
                                     <div className={`flex items-center gap-1.5 transition-all ${op.progress >= 5 ? 'text-(--main-color)' : 'text-white/20'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${op.progress >= 5 ? 'bg-(--main-color) shadow-[0_0_8px_var(--main-color)]' : 'bg-white/20'}`} /> IMG
+                                        <div className={`w-1.5 h-1.5 rounded-full ${op.progress >= 5 ? 'bg-(--main-color) shadow-[0_0_8px_var(--main-color)]' : 'bg-white/20'}`} /> {tr("IMG")}
                                     </div>
                                     <div className="w-4 h-[1px] bg-white/5" />
                                     <div className={`flex items-center gap-1.5 transition-all ${op.progress >= 15 ? 'text-(--main-color)' : 'text-white/20'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${op.progress >= 15 ? 'bg-(--main-color) shadow-[0_0_8px_var(--main-color)]' : 'bg-white/20'}`} /> MASK
+                                        <div className={`w-1.5 h-1.5 rounded-full ${op.progress >= 15 ? 'bg-(--main-color) shadow-[0_0_8px_var(--main-color)]' : 'bg-white/20'}`} /> {tr("MASK")}
                                     </div>
                                     <div className="w-4 h-[1px] bg-white/5" />
                                     <div className={`flex items-center gap-1.5 transition-all ${op.progress >= 70 ? 'text-(--main-color)' : 'text-white/20'}`}>
@@ -1908,7 +1909,7 @@ Instructions:
                                     </div>
                                     <div className="w-4 h-[1px] bg-white/5" />
                                     <div className={`flex items-center gap-1.5 transition-all ${op.status === 'completed' ? 'text-emerald-400' : 'text-white/20'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${op.status === 'completed' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,1)]' : 'bg-white/20'}`} /> DONE
+                                        <div className={`w-1.5 h-1.5 rounded-full ${op.status === 'completed' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,1)]' : 'bg-white/20'}`} /> {tr("DONE")}
                                     </div>
                                 </div>
                                 
@@ -1969,9 +1970,9 @@ Instructions:
                                                     ? 'text-rose-400 hover:text-rose-300 bg-black/40 hover:bg-white/10'
                                                     : 'text-white/40 hover:text-white/60 bg-black/40 hover:bg-white/10'
                                             } ${op.status !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            title="Toggle Image Processing"
+                                            title={tr("Toggle Image Processing")}
                                         >
-                                            <UploadCloud size={14} /> IMG
+                                            <UploadCloud size={14} /> {tr("IMG")}
                                         </button>
                                         <button 
                                             onClick={() => toggleProcessingMode(op.id)}
@@ -1983,19 +1984,19 @@ Instructions:
                                                     ? 'text-blue-400 hover:text-blue-300 bg-black/40 hover:bg-white/10'
                                                     : 'text-(--main-color) hover:text-(--main-color) bg-black/40 hover:bg-white/10'
                                             } ${op.status !== 'idle' || op.skipImageProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            title="Toggle Local / Cloud / Hybrid Processing"
+                                            title={tr("Toggle Local / Cloud / Hybrid Processing")}
                                         >
                                             {op.processingMode === 'hybrid' ? <Layers size={14} className="animate-pulse" /> : op.processingMode === 'cloud' ? <Cloud size={14} /> : <Cpu size={14} />}
-                                            {op.processingMode === 'hybrid' ? 'HYBRID' : op.processingMode === 'cloud' ? 'CLOUD' : 'LOCAL'}
+                                            {op.processingMode === 'hybrid' ? tr("HYBRID") : op.processingMode === 'cloud' ? tr("CLOUD") : tr("LOCAL")}
                                         </button>
                                         
                                         {op.status === 'processing' && (
                                             <button 
                                                 onClick={() => handleAbort(op.id)}
                                                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-red-400 hover:text-red-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                title="Abort Processing"
+                                                title={tr("Abort Processing")}
                                             >
-                                                <XCircle size={14} /> ABORT
+                                                <XCircle size={14} /> {tr("ABORT")}
                                             </button>
                                         )}
                                         {op.status === 'completed' && (
@@ -2003,16 +2004,16 @@ Instructions:
                                                 <button 
                                                     onClick={() => handleRegenerate(op.id)}
                                                     className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-amber-400 hover:text-amber-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                    title="Re-Generate Mask"
+                                                    title={tr("Re-Generate Mask")}
                                                 >
-                                                    <RefreshCw size={14} /> RE-GENERATE
+                                                    <RefreshCw size={14} /> {tr("RE-GENERATE")}
                                                 </button>
                                                 <button 
                                                     onClick={() => handleRegenerateAI(op.id)}
                                                     className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-blue-400 hover:text-blue-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                    title="Re-Generate AI Info"
+                                                    title={tr("Re-Generate AI Info")}
                                                 >
-                                                    <RefreshCw size={14} /> RE-GEN INFO
+                                                    <RefreshCw size={14} /> {tr("RE-GEN INFO")}
                                                 </button>
                                                 <button 
                                                     onClick={() => {
@@ -2021,9 +2022,9 @@ Instructions:
                                                         setCropModalState({ isOpen: true, opId: op.id, imageSrc: cleanUrl });
                                                     }}
                                                     className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-purple-400 hover:text-purple-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                    title="1:1 Square Crop Tool"
+                                                    title={tr("1:1 Square Crop Tool")}
                                                 >
-                                                    <Maximize2 size={14} /> 1:1 CROP
+                                                    <Maximize2 size={14} /> {tr("1:1 CROP")}
                                                 </button>
                                             </>
                                         )}
@@ -2036,8 +2037,8 @@ Instructions:
                                                     <Sparkles size={12} className="text-amber-400"/> {op.result.cols || 20}x{op.result.rows || 20}
                                                 </span>
                                                 <img src={op.result.bitmapUrl} className="h-10 md:h-12 w-auto rounded-lg border border-white/20 shadow-lg" style={{ imageRendering: 'pixelated' }} />
-                                                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(op.result?.hexString || ''); toast.success('Hexadecimal pixel map copied to clipboard!'); }} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white/90 transition-all cursor-pointer">
-                                                    Copy Map
+                                                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(op.result?.hexString || ''); toast.success(tr("Hexadecimal pixel map copied to clipboard!")); }} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white/90 transition-all cursor-pointer">
+                                                    {tr("Copy Map")}
                                                 </button>
                                             </div>
                                         )}
@@ -2056,13 +2057,13 @@ Instructions:
                                             return (
                                                 <div className="flex flex-col gap-2 bg-black/40 p-2 rounded-xl border border-white/10 animate-in fade-in zoom-in-95">
                                                     <span className="text-[10px] font-black uppercase text-purple-400 flex items-center gap-1.5 pl-1">
-                                                        <Video size={12} className="text-purple-400"/> AI Generated Video{clipUrls.length > 1 ? ` — ${clipUrls.length} Clips` : ''}
+                                                        <Video size={12} className="text-purple-400"/> {tr("AI Generated Video")}{clipUrls.length > 1 ? ` — ${clipUrls.length} Clips` : ''}
                                                     </span>
                                                     <div className={`flex gap-2 ${clipUrls.length > 1 ? 'overflow-x-auto pb-1' : ''}`}>
                                                         {clipUrls.map((url, ci) => (
                                                             <div key={ci} className="flex flex-col items-center gap-1 shrink-0">
                                                                 {clipUrls.length > 1 && (
-                                                                    <span className="text-[9px] font-bold text-white/40 uppercase">Clip {ci + 1}</span>
+                                                                    <span className="text-[9px] font-bold text-white/40 uppercase">{tr("Clip")} {ci + 1}</span>
                                                                 )}
                                                                 <video
                                                                     src={url}
@@ -2084,7 +2085,7 @@ Instructions:
                                 {/* Step Label & Progress text */}
                                 {op.status === 'processing' && (
                                     <div className="mt-4 flex items-center justify-between text-[10px] md:text-xs font-black uppercase tracking-widest text-(--main-color)">
-                                        <span className="flex items-center gap-2 animate-pulse"><Loader2 size={12} className="animate-spin"/> {op.stepLabel || 'Processing...'}</span>
+                                        <span className="flex items-center gap-2 animate-pulse"><Loader2 size={12} className="animate-spin"/> {op.stepLabel || tr("Processing...")}</span>
                                         <span>{Math.round(op.progress)}%</span>
                                     </div>
                                 )}
@@ -2105,7 +2106,7 @@ Instructions:
                                         <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-white/5">
                                             {op.result.generatedType && (
                                                 <div className="flex items-center gap-1.5 shrink-0">
-                                                    <span className="text-[9px] font-black uppercase text-white/40">AI:</span>
+                                                    <span className="text-[9px] font-black uppercase text-white/40">{tr("AI:")}</span>
                                                     <span className="px-2 py-0.5 rounded bg-(--main-color)/20 border border-(--main-color)/40 text-[9px] font-extrabold text-(--main-color) uppercase tracking-wider">
                                                         {op.result.generatedType}
                                                     </span>
@@ -2114,7 +2115,7 @@ Instructions:
                                             
                                             {op.result.dominantColors && op.result.dominantColors.length > 0 && (
                                                 <div className="flex items-center gap-1.5 shrink-0">
-                                                    <span className="text-[9px] font-black uppercase text-white/40">Colors:</span>
+                                                    <span className="text-[9px] font-black uppercase text-white/40">{tr("Colors:")}</span>
                                                     <div className="flex items-center gap-1">
                                                         {op.result.dominantColors.map((c, i) => (
                                                             <span key={i} className="px-1.5 py-0.5 rounded bg-white/10 border border-white/10 text-[8px] font-bold text-white/90 whitespace-nowrap">
@@ -2126,7 +2127,7 @@ Instructions:
                                             )}
                                         </div>
                                         <div className="max-w-4xl">
-                                            <label className="text-[9px] font-black uppercase tracking-wider text-white/40 block mb-1">Title Description</label>
+                                            <label className="text-[9px] font-black uppercase tracking-wider text-white/40 block mb-1">{tr("Title Description")}</label>
                                             <textarea 
                                                 value={op.result.description || ''}
                                                 onChange={(e) => {
@@ -2134,14 +2135,14 @@ Instructions:
                                                     setHasUnsavedChanges(true);
                                                 }}
                                                 className="w-full min-h-[44px] bg-black/30 border border-white/5 hover:border-white/20 rounded-xl p-3 text-xs md:text-sm text-white/90 font-mono leading-relaxed focus:outline-none focus:border-(--main-color) transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
-                                                placeholder="AI generated title description..."
+                                                placeholder={tr("AI generated title description...")}
                                             />
                                         </div>
                                         {op.result.marketingDescription !== undefined && (
                                             <div className="max-w-5xl">
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <label className="text-[9px] font-black uppercase tracking-wider text-amber-400/90 flex items-center gap-1.5">
-                                                        <Sparkles size={12}/> Marketing Description (Embedded HTML Review)
+                                                        <Sparkles size={12}/> {tr("Marketing Description (Embedded HTML Review)")}
                                                     </label>
                                                     <button 
                                                         onClick={(e) => {
@@ -2150,7 +2151,7 @@ Instructions:
                                                         }}
                                                         className="text-[9px] font-black text-amber-400 hover:text-amber-300 underline uppercase tracking-wider cursor-pointer bg-white/5 px-2 py-0.5 rounded border border-white/10"
                                                     >
-                                                        {editHtmlId === op.id ? 'View Styled Preview' : 'Edit Source HTML'}
+                                                        {editHtmlId === op.id ? tr("View Styled Preview") : tr("Edit Source HTML")}
                                                     </button>
                                                 </div>
                                                 {editHtmlId === op.id ? (
@@ -2161,7 +2162,7 @@ Instructions:
                                                             setHasUnsavedChanges(true);
                                                         }}
                                                         className="w-full min-h-[100px] bg-black/60 border border-amber-500/40 rounded-xl p-3 text-xs text-amber-200/90 font-mono leading-relaxed focus:outline-none focus:border-amber-400 transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
-                                                        placeholder="AI generated HTML marketing description..."
+                                                        placeholder={tr("AI generated HTML marketing description...")}
                                                     />
                                                 ) : (
                                                     <div className="w-full min-h-[60px] bg-black/50 border border-white/15 rounded-xl p-4 text-xs md:text-sm text-white/90 leading-relaxed overflow-y-auto max-h-[220px] space-y-3 font-sans shadow-inner">
@@ -2182,7 +2183,7 @@ Instructions:
                                                 className="flex items-center gap-2 px-4 py-2 bg-(--main-color)/20 hover:bg-(--main-color) text-(--main-color) hover:text-black text-[10px] font-black uppercase tracking-widest rounded-lg border border-(--main-color)/30 transition-all"
                                             >
                                                 <Save size={14} />
-                                                Save Description & Colors
+                                                {tr("Save Description & Colors")}
                                             </button>
                                         </div>
                                     </div>
@@ -2193,7 +2194,7 @@ Instructions:
                                 {op.status === 'processing' && <Loader2 size={24} className="text-(--main-color) animate-spin" />}
                                 {op.status === 'completed' && <CheckCircle2 size={24} className="text-emerald-500" />}
                                 {op.status === 'failed' && <AlertCircle size={24} className="text-rose-500" />}
-                                {op.status === 'idle' && <span className="text-[9px] md:text-[10px] font-black text-white/20">WAIT</span>}
+                                {op.status === 'idle' && <span className="text-[9px] md:text-[10px] font-black text-white/20">{tr("WAIT")}</span>}
                             </div>
                         </div>
                     ))}
@@ -2202,7 +2203,7 @@ Instructions:
                 {/* Global Progress Bar */}
                 <div className="w-full bg-black/40 border-t border-white/5 p-4 flex flex-col gap-2 relative z-20">
                     <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-white/60 px-4">
-                        <span>{isSavingDb ? 'Saving to DB...' : 'Total Progress'}</span>
+                        <span>{isSavingDb ? tr("Saving to DB...") : tr("Total Progress")}</span>
                         <span>{Math.round(overallProgress)}%</span>
                     </div>
                     <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden mx-4 w-[calc(100%-2rem)]">
@@ -2217,14 +2218,14 @@ Instructions:
                 <div className="px-8 pb-8 pt-4 bg-black/60 flex flex-col md:flex-row items-center justify-end gap-6 relative z-20">
                     <div className="flex flex-wrap items-center justify-end gap-4 w-full">
                         <div className="flex items-center gap-2 border border-white/10 p-2 rounded-2xl bg-black/40">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/50 whitespace-nowrap ml-2">PDF BRAND</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-white/50 whitespace-nowrap ml-2">{tr("PDF BRAND")}</label>
                             <select 
                                 value={pdfBrand} 
                                 onChange={(e) => setPdfBrand(e.target.value as any)} 
                                 className="bg-black/50 text-white text-xs font-bold px-3 py-2 rounded-xl outline-none border border-white/5 focus:border-(--main-color)"
                             >
-                                <option value="ArtOfDecor">ART OF DECOR</option>
-                                <option value="RareEarth">RARE EARTH GALLERY</option>
+                                <option value="ArtOfDecor">{tr("ART OF DECOR")}</option>
+                                <option value="RareEarth">{tr("RARE EARTH GALLERY")}</option>
                             </select>
                         </div>
                         
@@ -2234,7 +2235,7 @@ Instructions:
                             className={`flex items-center gap-3 px-6 py-4 font-black uppercase tracking-widest rounded-2xl transition-all shrink-0 ${(!hasUnsavedChanges && completedOps.length > 0) ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500 hover:bg-blue-400 text-black shadow-[0_0_20px_rgba(59,130,246,0.3)]'} ${(completedOps.length === 0 || !hasUnsavedChanges) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             {(!hasUnsavedChanges && completedOps.length > 0) ? <CheckCircle2 size={20} /> : <Save size={20} />}
-                            {(!hasUnsavedChanges && completedOps.length > 0) ? 'SAVED TO DB' : 'SAVE TO DB'}
+                            {(!hasUnsavedChanges && completedOps.length > 0) ? tr("SAVED TO DB") : tr("SAVE TO DB")}
                         </button>
                         
                             <>
@@ -2245,7 +2246,7 @@ Instructions:
                                         className="flex items-center gap-3 px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 shrink-0"
                                     >
                                         {isGeneratingXlsx ? <Loader2 size={20} className="animate-spin" /> : <Settings2 size={20} />}
-                                        Generate XLSX
+                                        {tr("Generate XLSX")}
                                     </button>
                                 ) : (
                                     <a 
@@ -2254,7 +2255,7 @@ Instructions:
                                         className="flex items-center gap-3 px-6 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-widest rounded-2xl transition-all shrink-0"
                                     >
                                         <Save size={20} />
-                                        Download XLSX
+                                        {tr("Download XLSX")}
                                     </a>
                                 )}
                                 
@@ -2265,7 +2266,7 @@ Instructions:
                                         className="flex items-center gap-3 px-6 py-4 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 shrink-0"
                                     >
                                         {isGeneratingPdf ? <Loader2 size={20} className="animate-spin" /> : <Settings2 size={20} />}
-                                        Generate PDF
+                                        {tr("Generate PDF")}
                                     </button>
                                 ) : (
                                     <a 
@@ -2274,7 +2275,7 @@ Instructions:
                                         className="flex items-center gap-3 px-6 py-4 bg-rose-500 hover:bg-rose-400 text-black font-black uppercase tracking-widest rounded-2xl transition-all shrink-0"
                                     >
                                         <Save size={20} />
-                                        Download PDF
+                                        {tr("Download PDF")}
                                     </a>
                                 )}
                             </>
@@ -2285,7 +2286,7 @@ Instructions:
                             className="flex items-center gap-3 px-8 py-4 bg-(--main-color) hover:bg-(--main-color)/80 text-black font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                         >
                             {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} />}
-                            {isProcessing ? 'Processing...' : 'Start Engine'}
+                            {isProcessing ? tr("Processing...") : tr("Start Engine")}
                         </button>
                     </div>
                 </div>
@@ -2297,18 +2298,18 @@ Instructions:
                 <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in">
                     <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-sm w-full flex flex-col gap-6 shadow-2xl">
                         <div>
-                            <h3 className="text-lg font-black text-white uppercase tracking-tight">API Key Required</h3>
-                            <p className="text-xs text-white/40 mt-2 font-mono">Please enter your Gemini API Key. It will be stored securely in your local device storage.</p>
+                            <h3 className="text-lg font-black text-white uppercase tracking-tight">{tr("API Key Required")}</h3>
+                            <p className="text-xs text-white/40 mt-2 font-mono">{tr("Please enter your Gemini API Key. It will be stored securely in your local device storage.")}</p>
                         </div>
                         <input 
                             ref={apiInputRef}
                             type="password"
-                            placeholder="AIzaSy..."
+                            placeholder={tr("AIzaSy...")}
                             className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-(--main-color) transition-all"
                         />
                         <div className="flex justify-end gap-3 mt-2">
-                            <button onClick={() => setShowApiModal(false)} className="px-4 py-2 text-xs font-bold text-white/60 hover:text-white uppercase tracking-wider">Cancel</button>
-                            <button onClick={saveApiKey} className="px-6 py-2 bg-(--main-color) text-black text-xs font-black uppercase tracking-wider rounded-lg hover:bg-white transition-all">Save & Start</button>
+                            <button onClick={() => setShowApiModal(false)} className="px-4 py-2 text-xs font-bold text-white/60 hover:text-white uppercase tracking-wider">{tr("Cancel")}</button>
+                            <button onClick={saveApiKey} className="px-6 py-2 bg-(--main-color) text-black text-xs font-black uppercase tracking-wider rounded-lg hover:bg-white transition-all">{tr("Save & Start")}</button>
                         </div>
                     </div>
                 </div>
@@ -2327,7 +2328,7 @@ Instructions:
                         }
                     });
                     setHasUnsavedChanges(true);
-                    toast.success("1:1 Square crop applied!");
+                    toast.success(tr("1:1 Square crop applied!"));
                 }}
             />
         </div>

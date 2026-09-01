@@ -34,6 +34,7 @@ import { BoundingBoxMaskType, InventoryItemData, UploadedFile } from '../../lib/
 import { createCurvePath, imageCache, normalizeInventoryData, calculateCodesAndPrices, handleFileUpload, extractFileId, fetchImageBatch, resizeImage } from '../../lib/utils';
 import { exchangeRateAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
 
 
 
@@ -144,10 +145,10 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
             spatial_masks: {}
         }).eq('id', data.id);
         
-        toast.success("Generated image removed from database.");
+        toast.success(tr("Generated image removed from database."));
         setInventoryVersion(Date.now());
     } catch (e) {
-        toast.error("Failed to remove image from DB");
+        toast.error(tr("Failed to remove image from DB"));
     }
   };
 
@@ -162,17 +163,17 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
 
   const handleEditMasks = async () => {
     if (!data.spatialMasks) {
-      toast.error("No masks available to edit for this item.");
+      toast.error(tr("No masks available to edit for this item."));
       return;
     }
 
     const originalImageUrl = data.mediaUrls?.split(',')[0].trim();
     if (!originalImageUrl) {
-      toast.error("Original source image not found for this item.");
+      toast.error(tr("Original source image not found for this item."));
       return;
     }
 
-    const toastId = toast.loading("Loading original image for editor...");
+    const toastId = toast.loading(tr("Loading original image for editor..."));
 
     try {
       const url = new URL(originalImageUrl);
@@ -198,7 +199,7 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
 
       const parsedMasks = JSON.parse(data.spatialMasks);
       if (parsedMasks.length === 0) {
-        toast.error("No masks found to edit.");
+        toast.error(tr("No masks found to edit."));
         return;
       }
       const parsedBoxes = data.spatialBoxes2d ? JSON.parse(data.spatialBoxes2d) : [];
@@ -255,7 +256,7 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
                    <button 
                        onClick={(e) => { e.stopPropagation(); handleDeleteGeneratedImage(); }}
                        className="bg-red-500/60 hover:bg-red-500 backdrop-blur-md p-2 rounded-full border border-white/20 text-white transition-colors"
-                       title="Remove Generated Image"
+                       title={tr("Remove Generated Image")}
                    >
                        <Trash2 size={16} />
                    </button>
@@ -336,10 +337,10 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
         </div>
       )}
       <div className="flex gap-2">
-        <DetailRow label="Vendor" value={data.itemId} />
+        <DetailRow label={tr("Vendor")} value={data.itemId} />
         {calculated.bookBardcode && (
           <div className="ml-auto">
-            <p className="text-[10px] font-bold uppercase text-(--text-color-secondary) tracking-widest">TAG ID</p>
+            <p className="text-[10px] font-bold uppercase text-(--text-color-secondary) tracking-widest">{tr("TAG ID")}</p>
             <span
               className="px-2 py-0.5 text-[10px] font-black tracking-wider rounded border border-black text-black shadow-sm"
               style={{ backgroundColor: vendorColor }}
@@ -349,26 +350,26 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
           </div>
         )}
       </div>
-      <DetailRow label="Num" value={data.itemNumber} />
-      <DetailRow label="Shape" value={data.shape} />
-      <DetailRow label="Mat" value={data.material} />
-      <DetailRow label="Desc" value={data.description} />
-      <DetailRow label="Dims" value={dimensions ? `${dimensions} cm` : '—'} />
-      <DetailRow label="Wght" value={data.weightKg ? `${data.weightKg} kg` : '—'} />
-      <DetailRow label="Cost" value={data.price ? `$${Math.ceil(Number(data.price))} MXN` : '—'} />
-      <DetailRow label="Qty" value={data.quantity} />
+      <DetailRow label={tr("Num")} value={data.itemNumber} />
+      <DetailRow label={tr("Shape")} value={data.shape} />
+      <DetailRow label={tr("Mat")} value={data.material} />
+      <DetailRow label={tr("Desc")} value={data.description} />
+      <DetailRow label={tr("Dims")} value={dimensions ? `${dimensions} cm` : '—'} />
+      <DetailRow label={tr("Wght")} value={data.weightKg ? `${data.weightKg} kg` : '—'} />
+      <DetailRow label={tr("Cost")} value={data.price ? `$${Math.ceil(Number(data.price))} MXN` : '—'} />
+      <DetailRow label={tr("Qty")} value={data.quantity} />
       {data.color && (
         <div className="flex items-center gap-2">
-          <p className="text-[10px] font-bold uppercase text-(--text-color-secondary) tracking-widest">Color</p>
+          <p className="text-[10px] font-bold uppercase text-(--text-color-secondary) tracking-widest">{tr("Color")}</p>
           <div className="w-10 h-5 rounded" style={{ background: data.color }}></div>
         </div>
       )}
-      {data.shortDescription && <DetailRow label="Short" value={data.shortDescription} />}
-      {data.generatedDescription && <DetailRow label="Points" value={<div className="whitespace-pre-wrap">{data.generatedDescription}</div>} />}
-      {data.detailedDescription && <DetailRow label="Details" value={<div className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: data.detailedDescription }}></div>} />}
+      {data.shortDescription && <DetailRow label={tr("Short")} value={data.shortDescription} />}
+      {data.generatedDescription && <DetailRow label={tr("Points")} value={<div className="whitespace-pre-wrap">{data.generatedDescription}</div>} />}
+      {data.detailedDescription && <DetailRow label={tr("Details")} value={<div className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: data.detailedDescription }}></div>} />}
       {data.spatialMasks && (
         <div className="pt-4 border-t border-(--border-color)">
-          <button onClick={handleEditMasks} className="button w-full"><Edit3 size={14} className="inline-block mr-2" />Masks</button>
+          <button onClick={handleEditMasks} className="button w-full"><Edit3 size={14} className="inline-block mr-2" />{tr("Masks")}</button>
         </div>
       )}
     </div>
@@ -416,7 +417,7 @@ export function DetailsPanel() {
       if (itemData?.spatialMasks || itemData?.generatedSvgUrl) {
         setIs3DViewerOpen(true);
       } else {
-        toast.error('3D preview requires generated mask or SVG data.');
+        toast.error(tr("3D preview requires generated mask or SVG data."));
       }
     } else {
       setActiveTab(tab as any);
@@ -470,7 +471,7 @@ export function DetailsPanel() {
 
       setItemData(prev => prev ? { ...prev, ...payload } : null);
       setGeneratedDesc('');
-      toast.success('Description saved!');
+      toast.success(tr("Description saved!"));
     } catch (error: any) {
       toast.error(`Save failed: ${error.message}`);
     } finally {
@@ -485,7 +486,7 @@ export function DetailsPanel() {
     try {
       let uploadedUrls: string[] = [];
       if (newFiles.length > 0) {
-        toast.loading("Uploading new files to Drive...", { id: toastId });
+        toast.loading(tr("Uploading new files to Drive..."), { id: toastId });
         for (const file of newFiles) {
           const fileToUpload = file.originalFile;
           if (fileToUpload) {
@@ -587,7 +588,7 @@ export function DetailsPanel() {
       if (isDeveloper) {
         const { error } = await supabase.from('inventory').delete().eq('id', itemRow);
         if (error) throw error;
-        toast.success('Item deleted permanently', { id: toastId });
+        toast.success(tr("Item deleted permanently"), { id: toastId });
       } else {
         const { error } = await supabase.from('inventory').update({
           status: 'Pending Deletion',
@@ -595,7 +596,7 @@ export function DetailsPanel() {
           updated_at: new Date().toISOString()
         }).eq('id', itemRow);
         if (error) throw error;
-        toast.success('Deletion requested', { id: toastId });
+        toast.success(tr("Deletion requested"), { id: toastId });
       }
 
       setInventoryVersion(v => v + 1);
@@ -616,7 +617,7 @@ export function DetailsPanel() {
 
   const renderContent = () => {
     if (mode === 'market') {
-      if (!data) return <div className="p-4 text-center text-sm text-(--text-color-secondary)">Select an item to see its details.</div>;
+      if (!data) return <div className="p-4 text-center text-sm text-(--text-color-secondary)">{tr("Select an item to see its details.")}</div>;
       return <FullDetailsDisplay data={data as InventoryItemData} />;
     }
 
@@ -634,7 +635,7 @@ export function DetailsPanel() {
             isEditMode={mode === 'edit'}
           />;
         }
-        if (!itemData) return <div className="p-4 text-center text-sm text-(--text-color-secondary)">Select an item to see its details.</div>;
+        if (!itemData) return <div className="p-4 text-center text-sm text-(--text-color-secondary)">{tr("Select an item to see its details.")}</div>;
         return <FullDetailsDisplay data={itemData} />;
     }
   };
@@ -661,14 +662,14 @@ export function DetailsPanel() {
         </div>
         {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer')) && (
           <div className="p-4 border-t border-(--border-color) shrink-0 flex gap-2">
-            <button className="button w-full" onClick={() => setMode('edit')}><svg className="w-4 h-4 inline-block mr-2"><use href="#edit" /></svg>Edit</button>
+            <button className="button w-full" onClick={() => setMode('edit')}><svg className="w-4 h-4 inline-block mr-2"><use href="#edit" /></svg>{tr("Edit")}</button>
           </div>
         )}
         {(mode === 'edit' && (user?.role === 'Admin' || user?.role === 'Developer')) && (
           <div className={`p-4 border-(--border-color) shrink-0 flex gap-2 ${isFullscreen ? 'border-t-0 pb-8' : 'border-t'}`}>
             <button className={`button ${user?.role === 'Developer' ? 'bg-red-600!' : 'bg-orange-500!'} grow`} onClick={handleDelete} disabled={isSaving}>
               <svg className="w-4 h-4 inline-block mr-2"><use href="#trash" /></svg>
-              {user?.role === 'Developer' ? 'DELETE' : 'Mark Del'}
+              {user?.role === 'Developer' ? 'DELETE' : tr("Mark Del")}
             </button>
           </div>
         )}
@@ -679,7 +680,7 @@ export function DetailsPanel() {
               onClick={async () => {
                 if (!itemData || !itemRow) return;
                 setIsSaving(true);
-                const toastId = toast.loading('Marking as Acquired...');
+                const toastId = toast.loading(tr("Marking as Acquired..."));
                 try {
                   const payload = {
                     status: 'Acquired',
@@ -697,7 +698,7 @@ export function DetailsPanel() {
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);
-                  toast.success('Acquired!', { id: toastId });
+                  toast.success(tr("Acquired!"), { id: toastId });
                   handleClose();
                 } catch (e: any) {
                   toast.error(`Acquisition failed: ${e.message}`, { id: toastId });
@@ -707,7 +708,7 @@ export function DetailsPanel() {
               }}
               disabled={isSaving}
             >
-              <svg className="w-4 h-4 inline-block mr-2"><use href="#check" /></svg>Acquire
+              <svg className="w-4 h-4 inline-block mr-2"><use href="#check" /></svg>{tr("Acquire")}
             </button>
           </div>
         )}
@@ -718,7 +719,7 @@ export function DetailsPanel() {
               onClick={async () => {
                 if (!itemData || !itemRow) return;
                 setIsSaving(true);
-                const toastId = toast.loading('Marking as Archive...');
+                const toastId = toast.loading(tr("Marking as Archive..."));
                 try {
                   const payload = {
                     status: 'Archive',
@@ -732,7 +733,7 @@ export function DetailsPanel() {
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);
-                  toast.success('Archived!', { id: toastId });
+                  toast.success(tr("Archived!"), { id: toastId });
                   handleClose();
                 } catch (e: any) {
                   toast.error(`Archive failed: ${e.message}`, { id: toastId });
@@ -742,7 +743,7 @@ export function DetailsPanel() {
               }}
               disabled={isSaving}
             >
-              <svg className="w-4 h-4 inline-block mr-2"><use href="#archive" /></svg>Archive
+              <svg className="w-4 h-4 inline-block mr-2"><use href="#archive" /></svg>{tr("Archive")}
             </button>
           </div>
         )}
@@ -753,7 +754,7 @@ export function DetailsPanel() {
               onClick={async () => {
                 if (!itemData || !itemRow) return;
                 setIsSaving(true);
-                const toastId = toast.loading('Marking as Shipped...');
+                const toastId = toast.loading(tr("Marking as Shipped..."));
                 try {
                   const payload = {
                     status: 'Shipped',
@@ -766,7 +767,7 @@ export function DetailsPanel() {
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);
-                  toast.success('Shipped!', { id: toastId });
+                  toast.success(tr("Shipped!"), { id: toastId });
                   handleClose();
                 } catch (e: any) {
                   toast.error(`Shipping failed: ${e.message}`, { id: toastId });
@@ -776,13 +777,13 @@ export function DetailsPanel() {
               }}
               disabled={isSaving}
             >
-              <svg className="w-4 h-4 inline-block mr-2"><use href="#truck" /></svg>Ship
+              <svg className="w-4 h-4 inline-block mr-2"><use href="#truck" /></svg>{tr("Ship")}
             </button>
           </div>
         )}
         {mode === 'edit' && (
           <div className="p-4 border-t border-(--border-color) shrink-0 flex gap-2">
-            <button className="button secondary grow" onClick={handleClose}>Cancel</button>
+            <button className="button secondary grow" onClick={handleClose}>{tr("Cancel")}</button>
           </div>
         )}
       </div>

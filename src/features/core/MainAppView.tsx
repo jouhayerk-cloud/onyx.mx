@@ -48,6 +48,7 @@ import { InventorySelectionDock } from './InventorySelectionDock';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { ViewSkeleton } from '../../components/ui/ViewSkeleton';
 import { useRemoteControl } from '../pico/useRemoteControl';
+import { tr } from '../../lib/i18n';
 
 // ── Lazy-loaded route views ────────────────────────────────────────────────────
 // These chunks are only downloaded when the user navigates to that view.
@@ -378,7 +379,7 @@ export function MainAppView() {
                         <div
                             className={`sidebar-logo p-0! cursor-pointer! hover:scale-105 active:scale-95 transition-all flex items-center w-full ${sidebarState === 'expanded' ? 'flex-col gap-2' : 'justify-center'}`}
                             onClick={handleSidebarStateToggle}
-                            title="Toggle Sidebar"
+                            title={tr("Toggle Sidebar")}
                         >
                             {sidebarState === 'expanded' && (
                                 <>
@@ -408,7 +409,7 @@ export function MainAppView() {
                         {user?.role === 'Developer' && (
                             <NavItemWithSubmenu 
                                 viewId="admin"
-                                label="Admin"
+                                label={tr("Admin")}
                                 icon="shield"
                                 subItems={[
                                     { id: 'control', label: 'Control Center', icon: 'shield', action: () => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'control' }
@@ -421,9 +422,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <BadgeDollarSign size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Finances</span>
+                                    <span className="sidebar-list-item-text">{tr("Finances")}</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">Finances</span>
+                                <span className="sidebar-compact-tooltip">{tr("Finances")}</span>
                             </li>
                         )}
                         {/* ── ONYX.MX-REG (Store UI Clone) - HIDDEN ── */}
@@ -443,9 +444,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'devices' ? 'active' : ''}`} onClick={() => { setActiveView('devices'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Cpu size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Devices</span>
+                                    <span className="sidebar-list-item-text">{tr("Devices")}</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">Devices</span>
+                                <span className="sidebar-compact-tooltip">{tr("Devices")}</span>
                             </li>
                         )}
                         {/* ── INVENTORY ── */}
@@ -453,9 +454,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Album size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Inventory</span>
+                                    <span className="sidebar-list-item-text">{tr("Inventory")}</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">Inventory</span>
+                                <span className="sidebar-compact-tooltip">{tr("Inventory")}</span>
                             </li>
                         )}
 
@@ -465,9 +466,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'warehouse' ? 'active' : ''}`} onClick={() => { setActiveView('warehouse'); setLogisticsSubTab('empty'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Package size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Warehouse</span>
+                                    <span className="sidebar-list-item-text">{tr("Warehouse")}</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">Warehouse</span>
+                                <span className="sidebar-compact-tooltip">{tr("Warehouse")}</span>
                             </li>
                         )}
 
@@ -476,9 +477,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'trucking' ? 'active' : ''}`} onClick={() => { setActiveView('trucking'); setLogisticsSubTab('shipping'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Truck size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Trucking</span>
+                                    <span className="sidebar-list-item-text">{tr("Trucking")}</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">Trucking</span>
+                                <span className="sidebar-compact-tooltip">{tr("Trucking")}</span>
                             </li>
                         )}
 
@@ -486,7 +487,7 @@ export function MainAppView() {
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
                             <NavItemWithSubmenu 
                                 viewId="labs"
-                                label="Labs"
+                                label={tr("Labs")}
                                 icon="layers"
                                 subItems={[
                                     { id: 'process', label: 'Process', icon: 'pipette', action: () => { setActiveView('process'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'process' },
@@ -500,9 +501,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'viewer' ? 'active' : ''}`} onClick={() => { setActiveView('viewer'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Shell size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Viewer</span>
+                                    <span className="sidebar-list-item-text">{tr("Viewer")}</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">Viewer</span>
+                                <span className="sidebar-compact-tooltip">{tr("Viewer")}</span>
                             </li>
                         )}
                     </ul>
@@ -511,7 +512,7 @@ export function MainAppView() {
                     <div 
                         className={`mt-auto flex flex-col items-center justify-center p-4 pb-8 border-t border-(--border-color) shrink-0 relative overflow-hidden cursor-pointer transition-all group ${isSettingsOpen ? 'bg-white/10' : 'hover:bg-white/5 active:bg-white/10'}`}
                         onClick={() => setIsSettingsOpen(true)}
-                        title="Studio Settings & Manifesto"
+                        title={tr("Studio Settings & Manifesto")}
                     >
                         {sidebarState === 'expanded' && (
                             <>

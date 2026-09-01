@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PicoScanEvent } from '../../../lib/picoAtoms';
 import { Radio, QrCode, Barcode, Shield, Trash2, Filter, CheckCircle2, ArrowRight } from 'lucide-react';
+import { tr } from '../../../lib/i18n';
 
 interface PicoLiveLogProps {
   logs: (PicoScanEvent & { actionTaken?: string })[];
@@ -51,8 +52,8 @@ export const PicoLiveLog: React.FC<PicoLiveLogProps> = ({ logs, onClearLogs }) =
             <Radio size={16} className="text-emerald-400 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white tracking-wide uppercase">Live Hardware Feed</h3>
-            <p className="text-[10px] font-mono text-neutral-400">Real-time scan interception & event triggers</p>
+            <h3 className="text-sm font-bold text-white tracking-wide uppercase">{tr("Live Hardware Feed")}</h3>
+            <p className="text-[10px] font-mono text-neutral-400">{tr("Real-time scan interception & event triggers")}</p>
           </div>
         </div>
 
@@ -70,7 +71,7 @@ export const PicoLiveLog: React.FC<PicoLiveLogProps> = ({ logs, onClearLogs }) =
                     : 'text-neutral-500 hover:text-neutral-300'
                 }`}
               >
-                {type === 'ALL' ? 'All Scans' : type.replace('_', ' ')}
+                {type === 'ALL' ? tr("All Scans") : type.replace('_', ' ')}
               </button>
             ))}
           </div>
@@ -78,7 +79,7 @@ export const PicoLiveLog: React.FC<PicoLiveLogProps> = ({ logs, onClearLogs }) =
           {onClearLogs && logs.length > 0 && (
             <button
               onClick={onClearLogs}
-              title="Clear Feed"
+              title={tr("Clear Feed")}
               className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/10 text-neutral-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/20 transition-all"
             >
               <Trash2 size={14} />
@@ -92,9 +93,9 @@ export const PicoLiveLog: React.FC<PicoLiveLogProps> = ({ logs, onClearLogs }) =
         {filteredLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Radio size={32} className="text-neutral-700 mb-3 animate-pulse" />
-            <p className="text-xs font-semibold text-neutral-500">No telemetry intercepted yet</p>
+            <p className="text-xs font-semibold text-neutral-500">{tr("No telemetry intercepted yet")}</p>
             <p className="text-[10px] font-mono text-neutral-600 mt-1">
-              Trigger a scan from a connected M5Stack terminal or run a simulation.
+              {tr("Trigger a scan from a connected M5Stack terminal or run a simulation.")}
             </p>
           </div>
         ) : (
@@ -115,15 +116,15 @@ export const PicoLiveLog: React.FC<PicoLiveLogProps> = ({ logs, onClearLogs }) =
                     </span>
                     {log.rssi !== undefined && (
                       <span className="text-[10px] font-mono text-neutral-500">
-                        ({log.rssi} dBm)
+                        ({log.rssi} {tr("dBm)")}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-[11px] font-mono text-neutral-400">
-                    <span className="text-neutral-600">Action:</span>
+                    <span className="text-neutral-600">{tr("Action:")}</span>
                     <span className="text-emerald-400 flex items-center gap-1 font-semibold">
                       <CheckCircle2 size={12} />
-                      {log.actionTaken || 'LOGGED_TO_AUDIT'}
+                      {log.actionTaken || tr("LOGGED_TO_AUDIT")}
                     </span>
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { X, Terminal, Camera, Nfc, Activity, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { tr } from '../lib/i18n';
 
 interface ScannerCenterProps {
     initialMode?: 'qr' | 'nfc';
@@ -135,9 +136,9 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
                     if (isMounted) {
                         setIsScanning(false);
                         if (err.name === 'NotAllowedError') {
-                            toast.error('Camera permission denied. Please allow access in your browser settings.');
+                            toast.error(tr("Camera permission denied. Please allow access in your browser settings."));
                         } else {
-                            toast.error('Failed to initialize camera scanner.');
+                            toast.error(tr("Failed to initialize camera scanner."));
                         }
                     }
                 }
@@ -209,7 +210,7 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-3 mb-1 opacity-20">
                             <Terminal size={12} className="text-(--main-color)" />
-                            <span className="text-[8px] font-black text-white uppercase tracking-[1em]">SCAN_PROTOCOL</span>
+                            <span className="text-[8px] font-black text-white uppercase tracking-[1em]">{tr("SCAN_PROTOCOL")}</span>
                         </div>
                         <h2 className="text-2xl font-black text-white uppercase tracking-tighter">{title}</h2>
                         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{subtitle}</p>
@@ -227,14 +228,14 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
                             className={`flex items-center gap-3 px-8 py-3 rounded-2xl transition-all ${mode === 'qr' ? 'bg-white text-black font-black' : 'text-white/20 hover:text-white/40'}`}
                         >
                             <Camera size={18} />
-                            <span className="text-[11px] uppercase tracking-widest">QR Reader</span>
+                            <span className="text-[11px] uppercase tracking-widest">{tr("QR Reader")}</span>
                         </button>
                         <button 
                             onClick={() => setMode('nfc')}
                             className={`flex items-center gap-3 px-8 py-3 rounded-2xl transition-all ${mode === 'nfc' ? 'bg-white text-black font-black' : 'text-white/20 hover:text-white/40'}`}
                         >
                             <Nfc size={18} />
-                            <span className="text-[11px] uppercase tracking-widest">NFC Link</span>
+                            <span className="text-[11px] uppercase tracking-widest">{tr("NFC Link")}</span>
                         </button>
                     </div>
 
@@ -251,8 +252,8 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
                                     <Nfc size={120} strokeWidth={0.5} className="text-(--main-color) relative" />
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    <h3 className="text-xl font-black text-white uppercase tracking-widest">Awaiting Proximity</h3>
-                                    <p className="text-sm text-white/30 font-medium max-w-[280px]">Hold the tag near the top-back of your device to establish secure handshake.</p>
+                                    <h3 className="text-xl font-black text-white uppercase tracking-widest">{tr("Awaiting Proximity")}</h3>
+                                    <p className="text-sm text-white/30 font-medium max-w-[280px]">{tr("Hold the tag near the top-back of your device to establish secure handshake.")}</p>
                                 </div>
                                 {nfcError && (
                                     <div className="flex items-center gap-3 px-6 py-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl animate-in zoom-in duration-300">
@@ -285,14 +286,14 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
                                         <div className="w-32 h-32 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_0_80px_rgba(16,185,129,0.4)] animate-in zoom-in duration-500">
                                             <ShieldCheck size={64} className="text-black" />
                                         </div>
-                                        <h3 className="mt-8 text-3xl font-black text-emerald-400 uppercase tracking-tighter">Verified</h3>
+                                        <h3 className="mt-8 text-3xl font-black text-emerald-400 uppercase tracking-tighter">{tr("Verified")}</h3>
                                     </>
                                 ) : (
                                     <>
                                         <div className="w-32 h-32 rounded-full bg-red-500 flex items-center justify-center shadow-[0_0_80px_rgba(239,68,68,0.4)] animate-in zoom-in duration-500">
                                             <AlertTriangle size={64} className="text-black" />
                                         </div>
-                                        <h3 className="mt-8 text-3xl font-black text-red-400 uppercase tracking-tighter">Mismatch Error</h3>
+                                        <h3 className="mt-8 text-3xl font-black text-red-400 uppercase tracking-tighter">{tr("Mismatch Error")}</h3>
                                     </>
                                 )}
                             </div>
@@ -302,11 +303,11 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
                     {/* Scanned Footer */}
                     <div className="flex items-center justify-between px-2">
                         <div className="flex flex-col gap-1">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.5em]">BUFFER_STATUS</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.5em]">{tr("BUFFER_STATUS")}</span>
                             <div className="flex items-center gap-3">
                                 <Activity size={12} className={isScanning ? "text-(--main-color) animate-pulse" : "text-white/10"} />
                                 <span className="text-sm font-black text-white tabular-nums tracking-tighter">
-                                    {scannedIds.length} <span className="text-white/20 uppercase tracking-[0.2em] text-[10px] ml-1">Items Captured</span>
+                                    {scannedIds.length} <span className="text-white/20 uppercase tracking-[0.2em] text-[10px] ml-1">{tr("Items Captured")}</span>
                                 </span>
                             </div>
                         </div>
@@ -317,7 +318,7 @@ export const ScannerCenter: React.FC<ScannerCenterProps> = ({
                                 className="px-10 py-4 bg-(--main-color) text-black rounded-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-xl font-black text-[11px] uppercase tracking-widest"
                             >
                                 <CheckCircle2 size={18} />
-                                Finalize Batch
+                                {tr("Finalize Batch")}
                             </button>
                         )}
                     </div>

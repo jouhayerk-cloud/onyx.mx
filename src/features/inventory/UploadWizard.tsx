@@ -52,6 +52,8 @@ import {
     BookOpen, AlertTriangle, RefreshCw, ChevronDown, Save
 } from 'lucide-react';
 import { compressAndTrimVideo } from '../../lib/videoCompressor';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
@@ -210,7 +212,7 @@ const SmartInput = memo(({ label, field, value, type = 'text', icon: Icon, field
                             </button>
                         ))
                     ) : (
-                        <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em] p-2">No Suggestions Found</span>
+                        <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em] p-2">{tr("No Suggestions Found")}</span>
                     )}
                 </div>
             )}
@@ -328,7 +330,7 @@ export const UploadWizard: React.FC = () => {
         if (!isOpen || !isNewEntry || !draftReady) return;
         if (!restoredDraft || !hasEntryContent(restoredDraft)) return;
         setState(prev => ({ ...prev, ...restoredDraft }));
-        toast.success('Restored your unsaved entry');
+        toast.success(tr("Restored your unsaved entry"));
     }, [isOpen, draftReady]);
     const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
     const [globalSuggestionIndex, setGlobalSuggestionIndex] = useState(0);
@@ -502,7 +504,7 @@ export const UploadWizard: React.FC = () => {
     const triggerRefresh = () => {
         setIsRefreshing(true);
         setGlobalSuggestionIndex(prev => prev + 1);
-        toast.success('Suggestions Refreshed', { icon: '🔄', duration: 1000 });
+        toast.success(tr("Suggestions Refreshed"), { icon: '🔄', duration: 1000 });
         setTimeout(() => setIsRefreshing(false), 800);
     };
 
@@ -539,7 +541,7 @@ export const UploadWizard: React.FC = () => {
     }, []);
 
     const doSave = async (): Promise<boolean> => {
-        if (!state.vendorId || !state.itemNumber) { toast.error('Missing Vendor or Index'); return false; }
+        if (!state.vendorId || !state.itemNumber) { toast.error(tr("Missing Vendor or Index")); return false; }
         
         // Only warn about duplicates for NEW entries
         if (!itemData?.id && state.existingNumbers.includes(state.itemNumber)) {
@@ -559,7 +561,7 @@ export const UploadWizard: React.FC = () => {
                     await new Promise(r => setTimeout(r, 150));
                     setSavingProgress(i);
                 }
-                toast.success('Artifact Synced (Demo)', { id: tid });
+                toast.success(tr("Artifact Synced (Demo)"), { id: tid });
                 return true;
             }
 
@@ -589,7 +591,7 @@ export const UploadWizard: React.FC = () => {
                 }
             } catch (mediaErr) {
                 console.error('[UploadWizard] Media upload failed:', mediaErr);
-                toast.error('Media upload failed, but attempting to save metadata...', { id: tid });
+                toast.error(tr("Media upload failed, but attempting to save metadata..."), { id: tid });
             }
 
             // --- CODE CALCULATION ---
@@ -748,7 +750,7 @@ export const UploadWizard: React.FC = () => {
                     style={{ opacity: pullDistance / 100, transform: `translateY(-${100 - pullDistance}px)` }}
                 >
                     <RefreshCw size={32} className={`text-(--main-color) ${isRefreshing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${pullDistance * 2}deg)` }} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white mt-4">Pull to Shuffle Suggestions</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white mt-4">{tr("Pull to Shuffle Suggestions")}</span>
                 </div>
                 
                 <div 
@@ -765,7 +767,7 @@ export const UploadWizard: React.FC = () => {
                                     <div className="flex items-center gap-4">
                                         <div className="w-2 h-2 rounded-full bg-(--main-color) animate-pulse" />
                                         <h1 className="text-[20px] font-black uppercase tracking-[0.6em] text-white/40 leading-none">
-                                            {itemData?.id ? 'Edit Entry' : 'Add Entry'}
+                                            {itemData?.id ? tr("Edit Entry") : tr("Add Entry")}
                                         </h1>
                                     </div>
                                     
@@ -784,13 +786,13 @@ export const UploadWizard: React.FC = () => {
                                                     setIsOpen(false);
                                                     setUploadTab('entry');
                                                     setActiveView('upload');
-                                                    toast('Book 826 entries are created in Create Item', { icon: '→' });
+                                                    toast(tr("Book 826 entries are created in Create Item"), { icon: '→' });
                                                     return;
                                                 }
                                                 setItemData(prev => ({ ...prev, workbook: v as any }));
                                             }}
                                                 className={`text-3xl font-black uppercase tracking-tighter transition-all relative group whitespace-nowrap ${itemData.workbook === v ? 'text-(--main-color)' : 'text-white/20 hover:text-white/40'}`}>
-                                                BOOK {v.slice(1)}
+                                                {tr("BOOK")} {v.slice(1)}
                                                 {itemData.workbook === v && (
                                                     <div className="absolute -bottom-2 left-0 right-0 h-1 bg-(--main-color) rounded-full animate-in zoom-in duration-300 shadow-[0_0_20px_rgba(var(--main-color-rgb),0.6)]" />
                                                 )}
@@ -799,7 +801,7 @@ export const UploadWizard: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 whitespace-nowrap opacity-50">
-                                    <span className="text-[8px] font-black uppercase tracking-[0.8em] text-white/40">Onyx Intelligence Engine</span>
+                                    <span className="text-[8px] font-black uppercase tracking-[0.8em] text-white/40">{tr("Onyx Intelligence Engine")}</span>
                                     <button onClick={(e) => { e.stopPropagation(); triggerRefresh(); }} className={`p-1 rounded-full hover:bg-white/5 text-white/10 hover:text-(--main-color) transition-all duration-500 ${isRefreshing ? 'animate-spin text-(--main-color)' : ''}`}>
                                         <RefreshCw size={8} />
                                     </button>
@@ -809,7 +811,7 @@ export const UploadWizard: React.FC = () => {
                             <div className="flex items-center gap-6 self-end lg:self-auto">
                                 <div className="flex items-center gap-6 px-6 py-3 bg-white/[0.03] rounded-3xl border border-white/10 backdrop-blur-xl">
                                     <div className="flex flex-col items-end">
-                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Preview Artifact</span>
+                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Preview Artifact")}</span>
                                         <span className={`text-2xl font-black tracking-tighter uppercase tabular-nums transition-colors duration-200 ${isDuplicate ? 'text-red-500' : 'text-white'}`}>
                                             {state.vendorId || '???'}-{String(state.itemNumber).padStart(3, '0')}
                                         </span>
@@ -828,7 +830,7 @@ export const UploadWizard: React.FC = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
                             {/* Status Selection - Dynamic Panel */}
                             <div className="lg:col-span-4 space-y-3">
-                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Protocol Status</label>
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">{tr("Protocol Status")}</label>
                                 {!isStatusExpanded && state.status ? (
                                     <button 
                                         onClick={() => setIsStatusExpanded(true)}
@@ -839,7 +841,7 @@ export const UploadWizard: React.FC = () => {
                                                 {state.status === 'Available' ? <LayoutGrid size={24} /> : state.status === 'Production' ? <Zap size={24} /> : <Database size={24} />}
                                             </div>
                                             <div className="flex flex-col items-start">
-                                                <span className="text-xl font-black uppercase tracking-tight text-white">{state.status}</span>
+                                                <span className="text-xl font-black uppercase tracking-tight text-white">{el(state.status)}</span>
                                             </div>
                                         </div>
                                         <ChevronDown size={20} className="text-white/20 group-hover:text-white transition-colors" />
@@ -863,7 +865,7 @@ export const UploadWizard: React.FC = () => {
 
                             {/* Vendors Panel */}
                             <div className="lg:col-span-5 space-y-3">
-                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Active Vendor</label>
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">{tr("Active Vendor")}</label>
                                 {state.vendorId ? (
                                     <button 
                                         onClick={() => set('vendorId', '')}
@@ -889,9 +891,9 @@ export const UploadWizard: React.FC = () => {
 
                             {/* Index Selection - LARGE */}
                             <div className="lg:col-span-3 space-y-3">
-                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Index # Protocol</label>
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">{tr("Index # Protocol")}</label>
                                 <div className="h-20 flex items-center bg-white/[0.03] border border-white/10 rounded-3xl px-6 hover:border-(--main-color) transition-all">
-                                    <SmartInput label="Index #" field="itemNumber" value={state.itemNumber} icon={Hash} type="number" warning={isDuplicate} className="border-b-0 py-0 w-full" onSet={set} suggestionIndex={globalSuggestionIndex} />
+                                    <SmartInput label={tr("Index #")} field="itemNumber" value={state.itemNumber} icon={Hash} type="number" warning={isDuplicate} className="border-b-0 py-0 w-full" onSet={set} suggestionIndex={globalSuggestionIndex} />
                                 </div>
                             </div>
                         </div>
@@ -899,9 +901,9 @@ export const UploadWizard: React.FC = () => {
                         {/* Evidence Hub - Collapsible */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">Evidence</label>
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">{tr("Evidence")}</label>
                                 <button onClick={(e) => { e.preventDefault(); handleUrlAdd(); }} className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.4em] hover:text-white transition-all">
-                                    + ADD URL
+                                    {tr("+ ADD URL")}
                                 </button>
                             </div>
                             <div className="flex flex-col gap-3">
@@ -910,7 +912,7 @@ export const UploadWizard: React.FC = () => {
                                     <div onClick={() => fileInputRef.current?.click()} className="w-full h-24 rounded-2xl border-2 border-dashed border-white/10 hover:border-(--main-color) hover:bg-(--main-color)/5 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer group">
                                         
                                         <Upload size={20} strokeWidth={4} className="text-white/20 group-hover:text-(--main-color) transition-all" />
-                                        <span className="text-[8px] font-black text-white/20 group-hover:text-(--main-color) uppercase tracking-[0.5em]">Capture Evidence</span>
+                                        <span className="text-[8px] font-black text-white/20 group-hover:text-(--main-color) uppercase tracking-[0.5em]">{tr("Capture Evidence")}</span>
                                     </div>
                                 ) : (
                                     <div className="flex flex-wrap gap-3 p-3 bg-black/20 rounded-2xl border border-white/5 animate-in fade-in duration-300">
@@ -935,22 +937,22 @@ export const UploadWizard: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                            <SmartInput label="Shape" field="shape" value={state.shape} icon={Box} fieldSuggestions={suggestions.shape} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="Type" field="type" value={state.type} icon={Database} fieldSuggestions={suggestions.type} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label={tr("Shape")} field="shape" value={state.shape} icon={Box} fieldSuggestions={suggestions.shape} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label={tr("Type")} field="type" value={state.type} icon={Database} fieldSuggestions={suggestions.type} onSet={set} suggestionIndex={globalSuggestionIndex} />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                            <SmartInput label="Color" field="color" value={state.color} icon={Info} fieldSuggestions={suggestions.color} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="Material" field="material" value={state.material} icon={Sparkles} fieldSuggestions={suggestions.material} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label={tr("Color")} field="color" value={state.color} icon={Info} fieldSuggestions={suggestions.color} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label={tr("Material")} field="material" value={state.material} icon={Sparkles} fieldSuggestions={suggestions.material} onSet={set} suggestionIndex={globalSuggestionIndex} />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                            <SmartInput label="Qty" field="quantity" value={state.quantity} icon={Hash} type="number" onSet={set} fieldSuggestions={suggestions.quantity} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label={tr("Qty")} field="quantity" value={state.quantity} icon={Hash} type="number" onSet={set} fieldSuggestions={suggestions.quantity} suggestionIndex={globalSuggestionIndex} />
                             <div className="flex flex-col gap-2">
-                                <SmartInput label="ACQ MXN" field="price" value={state.price} icon={Hash} type="number" fieldSuggestions={suggestions.price} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                                <SmartInput label={tr("ACQ MXN")} field="price" value={state.price} icon={Hash} type="number" fieldSuggestions={suggestions.price} onSet={set} suggestionIndex={globalSuggestionIndex} />
                                 {state.price && exchangeRate && (
                                     <div className="flex justify-between items-center px-4 py-2 bg-(--main-color)/5 rounded-xl border border-(--main-color)/10 animate-in slide-in-from-right-4 duration-200">
-                                        <span className="text-[8px] font-black text-(--main-color) uppercase tracking-[0.3em]">USD Protocol</span>
+                                        <span className="text-[8px] font-black text-(--main-color) uppercase tracking-[0.3em]">{tr("USD Protocol")}</span>
                                         <span className="text-xl font-black text-white tracking-tighter tabular-nums">{formatCurrency(parseFloat(state.price) / exchangeRate, 'USD')}</span>
                                     </div>
                                 )}
@@ -958,20 +960,20 @@ export const UploadWizard: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <SmartInput label="W (CM)" field="widthCm" value={state.widthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.widthCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="H (CM)" field="heightCm" value={state.heightCm} icon={Ruler} type="number" fieldSuggestions={suggestions.heightCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
-                            <SmartInput label="D (CM)" field="lengthCm" value={state.lengthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.lengthCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label={tr("W (CM)")} field="widthCm" value={state.widthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.widthCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label={tr("H (CM)")} field="heightCm" value={state.heightCm} icon={Ruler} type="number" fieldSuggestions={suggestions.heightCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
+                            <SmartInput label={tr("D (CM)")} field="lengthCm" value={state.lengthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.lengthCm} onSet={set} suggestionIndex={globalSuggestionIndex} />
                             <SmartInput label="KG" field="weightKg" value={state.weightKg} icon={Dna} type="number" fieldSuggestions={suggestions.weightKg} onSet={set} suggestionIndex={globalSuggestionIndex} />
                         </div>
 
                         <div className="py-2 border-b border-white/5 hover:border-white/20 transition-all duration-200">
-                            <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] block mb-1">Detailed Specifications</label>
+                            <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] block mb-1">{tr("Detailed Specifications")}</label>
                             <input 
                                 type="text"
                                 value={state.notes} 
                                 onChange={e => set('notes', e.target.value)}
                                 onClick={(e) => e.stopPropagation()} 
-                                placeholder="ENTER TECHNICAL DETAILS..."
+                                placeholder={tr("ENTER TECHNICAL DETAILS...")}
                                 className="bg-transparent border-none text-base font-black text-white outline-none placeholder:text-white/10 uppercase w-full transition-all tracking-widest" 
                             />
                         </div>
@@ -1015,7 +1017,7 @@ export const UploadWizard: React.FC = () => {
                         </div>
                         <div className="w-full space-y-10">
                             <div className="flex justify-between items-end">
-                                <span className="text-[14px] font-black text-white uppercase tracking-[0.6em]">Master Sync</span>
+                                <span className="text-[14px] font-black text-white uppercase tracking-[0.6em]">{tr("Master Sync")}</span>
                                 <span className="text-7xl font-black text-(--main-color) tracking-tighter tabular-nums">{savingProgress}%</span>
                             </div>
                             <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
@@ -1023,7 +1025,7 @@ export const UploadWizard: React.FC = () => {
                             </div>
                         </div>
                         <p className="text-[10px] font-black text-white uppercase tracking-[1.5em] animate-pulse">
-                            {uploadProgressMsg || 'Syncing Protocols...'}
+                            {uploadProgressMsg || tr("Syncing Protocols...")}
                         </p>
                     </div>
                 </div>

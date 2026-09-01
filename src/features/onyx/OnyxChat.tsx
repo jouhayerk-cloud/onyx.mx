@@ -17,6 +17,7 @@ import { onyxToolDefinitions, onyxToolHandlers } from './onyxTools';
 import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, Package, CreditCard, Truck, Languages, Layout, RefreshCw, X, ChevronRight, Database, ShieldAlert, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { BotOrb } from './BotOrb';
+import { tr } from '../../lib/i18n';
 
 const VENDOR_COLORS: Record<string, string> = {
     // Codes (from consts.tsx)
@@ -524,7 +525,7 @@ export function OnyxChatHistory({ messages, isTyping }: { messages: any[], isTyp
                     <div key={idx} className="flex flex-col items-end text-right animate-in fade-in slide-in-from-right duration-700 pointer-events-auto">
                         <div className="flex items-center gap-3 mb-2 opacity-20">
                             <span className="text-[9px] font-black uppercase tracking-widest text-white">
-                                {m.role === 'user' ? userName : 'Neural Core'}
+                                {m.role === 'user' ? userName : tr("Neural Core")}
                             </span>
                             <div className="h-px w-6 bg-white/40" />
                         </div>
@@ -603,7 +604,7 @@ export function OnyxChatControls(props: {
                             (e.target as HTMLInputElement).blur();
                         }
                     }}
-                    placeholder="NEURAL QUERY..."
+                    placeholder={tr("NEURAL QUERY...")}
                     autoComplete="off"
                     autoCorrect="off"
                     spellCheck="false"
@@ -635,7 +636,7 @@ export function OnyxChatControls(props: {
                                 stopVoice?.();
                             }}
                             className="flex items-center justify-center text-red-500 hover:scale-110 transition-all duration-300 animate-in fade-in zoom-in h-20 md:h-14 w-20 md:w-14 bg-red-500/10 rounded-full border border-red-500/20"
-                            title="Stop Neural Response"
+                            title={tr("Stop Neural Response")}
                         >
                             <Square size={32} strokeWidth={2.5} fill="currentColor" className="md:w-6 md:h-6" />
                         </button>
@@ -678,7 +679,7 @@ export function OnyxChat(props: OnyxChatProps) {
             {getApiKeyInfo().isDefault && (
                 <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 px-6 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 backdrop-blur-xl animate-in fade-in slide-in-from-top-4 duration-1000">
                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-500/90 text-center">
-                        ⚠️ SYSTEM NEURAL KEY ACTIVE • RESTRICT KEY IN CLOUD CONSOLE FOR PRODUCTION
+                        {tr("⚠️ SYSTEM NEURAL KEY ACTIVE • RESTRICT KEY IN CLOUD CONSOLE FOR PRODUCTION")}
                     </p>
                 </div>
             )}

@@ -14,6 +14,7 @@ import {
 import {LoadingIndicator} from '../../components/LoadingIndicator';
 import { createCurvePath, imageCache, fetchImageBatch } from '../../lib/utils';
 import { BoundingBoxMaskType } from '../../lib/Types';
+import { tr } from '../../lib/i18n';
 
 const MediaThumbnail: React.FC<{
   url: string;
@@ -131,7 +132,7 @@ export function ItemMediaPanel() {
   if (mediaUrls.length === 0) {
     return (
       <div className="text-center text-xs text-[var(--text-color-secondary)] h-full flex items-center justify-center">
-        No media found for this item.
+        {tr("No media found for this item.")}
       </div>
     );
   }
@@ -139,7 +140,7 @@ export function ItemMediaPanel() {
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-sm font-bold uppercase text-[var(--text-color-secondary)]">
-        Media Gallery
+        {tr("Media Gallery")}
       </h3>
       <div className="flex items-center gap-2 overflow-x-auto pb-2">
         {mediaUrls.map((url, index) => (

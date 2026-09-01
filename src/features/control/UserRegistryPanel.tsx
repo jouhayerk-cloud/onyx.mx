@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { UserRegistrySkeleton } from './UserRegistrySkeleton';
+import { tr } from '../../lib/i18n';
 import { 
     UserCog, UserKey, UserPen, UserStar, UserSearch, UserPlus, 
     Trash2, Mail, CheckCircle2, History, Info, SquarePen,
@@ -97,7 +98,7 @@ export function UserRegistryPanel() {
             setNewEmail(''); setNewRole('Vendor'); setNewName(''); setNewNotes('');
             setShowAddForm(false);
             fetchUsers();
-            toast.success('Registration Finalized');
+            toast.success(tr("Registration Finalized"));
         }
         setSubmitting(false);
     };
@@ -110,9 +111,9 @@ export function UserRegistryPanel() {
         const { error } = await supabase.from('app_users').update({ display_name: editName.trim() || null }).eq('id', id);
         if (error) {
             setUsers(prev => prev.map(u => u.id === id ? { ...u, display_name: user.display_name } : u));
-            toast.error('Failed to update name');
+            toast.error(tr("Failed to update name"));
         } else {
-            toast.success('Identity Updated');
+            toast.success(tr("Identity Updated"));
             setEditingUserId(null);
         }
     };
@@ -124,7 +125,7 @@ export function UserRegistryPanel() {
             toast.error(`Update Failed: ${error.message}`);
             fetchUsers(); 
         } else {
-            toast.success('Hierarchy Updated');
+            toast.success(tr("Hierarchy Updated"));
         }
     };
 
@@ -133,20 +134,20 @@ export function UserRegistryPanel() {
         const { error } = await supabase.from('app_users').update({ is_active: !user.is_active }).eq('id', user.id);
         if (error) {
             setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: user.is_active } : u));
-            toast.error('Failed to update status');
+            toast.error(tr("Failed to update status"));
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Purge this identity from the central registry? This action is irreversible.')) return;
+        if (!confirm(tr("Purge this identity from the central registry? This action is irreversible."))) return;
         const snapshot = users.find(u => u.id === id);
         setUsers(prev => prev.filter(u => u.id !== id));
         const { error } = await supabase.from('app_users').delete().eq('id', id);
         if (error) {
             if (snapshot) setUsers(prev => [snapshot, ...prev.filter(u => u.id !== id)]);
-            toast.error('Failed to purge user');
+            toast.error(tr("Failed to purge user"));
         } else {
-            toast.success('Identity Purged');
+            toast.success(tr("Identity Purged"));
         }
     };
 
@@ -166,13 +167,13 @@ export function UserRegistryPanel() {
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-6">
                     <h2 className="text-[14px] font-black uppercase tracking-[0.4em] text-white flex items-center gap-4">
-                        Registry
+                        {tr("Registry")}
                         <span className="text-[10px] font-mono text-(--main-color) bg-neutral-900 px-3 py-1 rounded-full border border-(--main-color)/30 tracking-normal leading-none">{users.length}</span>
                     </h2>
                     <button 
                         onClick={() => fetchUsers()} 
                         className={`p-2 rounded-full hover:bg-white/10 text-neutral-500 hover:text-(--main-color) transition-all ${loading ? 'animate-spin text-(--main-color)' : ''}`}
-                        title="SYNC REGISTRY"
+                        title={tr("SYNC REGISTRY")}
                     >
                         <History size={14} className={loading ? 'animate-spin' : ''} />
                     </button>
@@ -185,7 +186,7 @@ export function UserRegistryPanel() {
                     <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center group-hover:border-(--main-color)/40 group-hover:bg-(--main-color)/5 transition-all duration-500">
                         <UserPlus size={14} className="text-neutral-500 group-hover:text-(--main-color) transition-all transform group-hover:rotate-12" />
                     </div>
-                    <span className="text-[9px] font-black tracking-[0.3em] text-neutral-500 group-hover:text-white transition-all uppercase">Enrollment</span>
+                    <span className="text-[9px] font-black tracking-[0.3em] text-neutral-500 group-hover:text-white transition-all uppercase">{tr("Enrollment")}</span>
                 </button>
             </div>
 
@@ -194,22 +195,22 @@ export function UserRegistryPanel() {
                 <form onSubmit={handleAdd} className="animate-in fade-in slide-in-from-top-4 duration-700 max-w-2xl">
                     <div className="flex items-center gap-4 mb-8">
                         <div className="h-px grow bg-gradient-to-r from-(--main-color) to-transparent" />
-                        <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-(--main-color)">Identity Provisioning</h3>
+                        <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-(--main-color)">{tr("Identity Provisioning")}</h3>
                         <div className="h-px w-16 bg-(--main-color)/30" />
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
                         <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">Protocol Address</label>
+                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">{tr("Protocol Address")}</label>
                             <input 
                                 type="email" required value={newEmail} 
                                 onChange={e => setNewEmail(e.target.value)} 
-                                placeholder="USER@DOMAIN.COM" 
+                                placeholder={tr("USER@DOMAIN.COM")} 
                                 className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/50 transition-all placeholder:text-white/5 uppercase tracking-tight" 
                             />
                         </div>
                         <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">Access Tier</label>
+                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">{tr("Access Tier")}</label>
                             <select 
                                 value={newRole} 
                                 onChange={e => setNewRole(e.target.value as UserRole)} 
@@ -221,31 +222,31 @@ export function UserRegistryPanel() {
                             </select>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">Display handle</label>
+                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">{tr("Display handle")}</label>
                             <input 
                                 type="text" value={newName} 
                                 onChange={e => setNewName(e.target.value)} 
-                                placeholder="OPERATIVE DESIGNATION" 
+                                placeholder={tr("OPERATIVE DESIGNATION")} 
                                 className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/50 transition-all placeholder:text-white/5 uppercase tracking-tight" 
                             />
                         </div>
                         <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">Internal observations</label>
+                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">{tr("Internal observations")}</label>
                             <input 
                                 type="text" value={newNotes} 
                                 onChange={e => setNewNotes(e.target.value)} 
-                                placeholder="OPTIONAL METADATA..." 
+                                placeholder={tr("OPTIONAL METADATA...")} 
                                 className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/50 transition-all placeholder:text-white/5 uppercase tracking-tight" 
                             />
                         </div>
                     </div>
                     <div className="flex gap-8 justify-end mt-12">
-                        <button type="button" onClick={() => setShowAddForm(false)} className="text-[9px] font-black tracking-[0.3em] text-neutral-500 hover:text-white transition-all uppercase">Abort</button>
+                        <button type="button" onClick={() => setShowAddForm(false)} className="text-[9px] font-black tracking-[0.3em] text-neutral-500 hover:text-white transition-all uppercase">{tr("Abort")}</button>
                         <button 
                             type="submit" disabled={submitting} 
                             className="bg-(--main-color) text-black px-10 py-2.5 rounded-full text-[10px] font-black tracking-[0.3em] hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.2)] uppercase"
                         >
-                            {submitting ? 'Encrypting…' : 'Finalize Registry'}
+                            {submitting ? tr("Encrypting…") : tr("Finalize Registry")}
                         </button>
                     </div>
                 </form>
@@ -259,7 +260,7 @@ export function UserRegistryPanel() {
             ) : users.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 gap-4 opacity-10">
                     <UserSearch size={48} strokeWidth={1} />
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em]">Empty Registry</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em]">{tr("Empty Registry")}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-12 gap-y-16">
@@ -276,7 +277,7 @@ export function UserRegistryPanel() {
                                         <button 
                                             onClick={() => { setEditingUserId(editingUserId === user.id ? null : user.id); setEditName(user.display_name || ''); }}
                                             className="text-neutral-500 hover:text-(--main-color) transition-all"
-                                            title="Modify Designation"
+                                            title={tr("Modify Designation")}
                                         >
                                             <SquarePen size={14} />
                                         </button>
@@ -290,7 +291,7 @@ export function UserRegistryPanel() {
                                         <button 
                                             onClick={() => sendInvite(user)}
                                             className="text-neutral-500 hover:text-blue-400 transition-all"
-                                            title="Dispatch Creds"
+                                            title={tr("Dispatch Creds")}
                                         >
                                             <Mail size={14} />
                                         </button>
@@ -298,7 +299,7 @@ export function UserRegistryPanel() {
                                     <button 
                                         onClick={() => handleDelete(user.id)}
                                         className="text-red-500/40 hover:text-red-500 transition-all"
-                                        title="Purge"
+                                        title={tr("Purge")}
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -323,7 +324,7 @@ export function UserRegistryPanel() {
                                                         type="text" value={editName} 
                                                         onChange={(e) => setEditName(e.target.value)}
                                                         className="bg-transparent border-none p-0 text-[11px] font-black text-white focus:ring-0 w-full uppercase tracking-tight"
-                                                        placeholder="NEW DESIGNATION"
+                                                        placeholder={tr("NEW DESIGNATION")}
                                                         autoFocus
                                                     />
                                                     <button onClick={() => handleUpdateName(user.id)} className="text-(--main-color) hover:scale-125 transition-all">
@@ -332,7 +333,7 @@ export function UserRegistryPanel() {
                                                 </div>
                                             ) : (
                                                 <h4 className="text-[12px] font-black text-white truncate tracking-tight uppercase leading-none mb-1.5">
-                                                    {user.display_name || 'UNIDENTIFIED UNIT'}
+                                                    {user.display_name || tr("UNIDENTIFIED UNIT")}
                                                 </h4>
                                             )}
                                             <p className="text-[9px] font-mono text-neutral-500 truncate tracking-widest uppercase">{user.email}</p>
@@ -342,7 +343,7 @@ export function UserRegistryPanel() {
                                     {/* HUD Data Matrix */}
                                     <div className="space-y-4 pt-1">
                                         <div className="flex flex-col gap-1">
-                                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">Hierarchy Control</span>
+                                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">{tr("Hierarchy Control")}</span>
                                             <select 
                                                 value={user.role} 
                                                 onChange={(e) => handleUpdateRole(user.id, e.target.value as UserRole)}
@@ -356,13 +357,13 @@ export function UserRegistryPanel() {
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">Last Sync</span>
+                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">{tr("Last Sync")}</span>
                                                 <span className="text-[9px] font-black text-neutral-500 uppercase tracking-tighter">
-                                                    {user.last_submit_at ? new Date(user.last_submit_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'NONE'}
+                                                    {user.last_submit_at ? new Date(user.last_submit_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: '2-digit' }) : tr("NONE")}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col gap-1 items-end text-right">
-                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">Log History</span>
+                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">{tr("Log History")}</span>
                                                 <div className="flex items-center gap-1.5 justify-end">
                                                     <Activity size={10} className="text-neutral-600" />
                                                     <span className="text-[9px] font-mono text-neutral-500 font-bold">{user.total_submits || 0}</span>

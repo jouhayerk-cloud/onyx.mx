@@ -14,6 +14,8 @@ import {
     Users, Box, Archive, Cpu 
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 export const PaymentsArtifact: React.FC = () => {
     const [config, setConfig] = useAtom(paymentsArtifactConfigAtom);
@@ -117,10 +119,10 @@ export const PaymentsArtifact: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white">
-                                {config.title || 'Payments Artifact'}
+                                {config.title || tr("Payments Artifact")}
                             </h2>
                             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-0.5">
-                                {filteredPayments.length} {filteredPayments.length === 1 ? 'Record' : 'Records'} Found
+                                {filteredPayments.length} {filteredPayments.length === 1 ? tr("Record") : tr("Records")} {tr("Found")}
                             </p>
                         </div>
                     </div>
@@ -137,7 +139,7 @@ export const PaymentsArtifact: React.FC = () => {
                     {filteredPayments.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-20">
                             <Receipt size={48} strokeWidth={1} />
-                            <p className="text-xs font-black uppercase tracking-widest mt-4">No matching records</p>
+                            <p className="text-xs font-black uppercase tracking-widest mt-4">{tr("No matching records")}</p>
                         </div>
                     ) : (
                         filteredPayments.map((pay, idx) => {
@@ -155,19 +157,19 @@ export const PaymentsArtifact: React.FC = () => {
                                 try {
                                     const d = new Date(dateStr);
                                     if (isNaN(d.getTime())) return dateStr;
-                                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    return d.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
                                 } catch { return dateStr; }
                             };
 
                             // 2. DISPERSAL ICON & LABEL MAPPING
                             const getDispersalInfo = (dest: string) => {
                                 const d = (dest || '').toLowerCase();
-                                if (d.includes('martha') && d.includes('bbva')) return { icon: Landmark, label: 'Martha BBVA', color: '#4f2068' };
-                                if (d.includes('ramses') && d.includes('bbva')) return { icon: Landmark, label: 'Ramses BBVA', color: '#737104' };
-                                if (d.includes('boa') || d.includes('employee')) return { icon: Landmark, label: 'BoA Employee', color: '#0047AB' };
-                                if (d.includes('wire')) return { icon: Send, label: 'Direct Wire', color: '#0ea5e9' };
-                                if (d.includes('cash')) return { icon: DollarSign, label: 'Cash Payment', color: '#22c55e' };
-                                return { icon: Smartphone, label: dest || 'Transfer', color: '#64748b' };
+                                if (d.includes('martha') && d.includes('bbva')) return { icon: Landmark, label: tr("Martha BBVA"), color: '#4f2068' };
+                                if (d.includes('ramses') && d.includes('bbva')) return { icon: Landmark, label: tr("Ramses BBVA"), color: '#737104' };
+                                if (d.includes('boa') || d.includes('employee')) return { icon: Landmark, label: tr("BoA Employee"), color: '#0047AB' };
+                                if (d.includes('wire')) return { icon: Send, label: tr("Direct Wire"), color: '#0ea5e9' };
+                                if (d.includes('cash')) return { icon: DollarSign, label: tr("Cash Payment"), color: '#22c55e' };
+                                return { icon: Smartphone, label: dest || tr("Transfer"), color: '#64748b' };
                             };
 
                             const dispersal = getDispersalInfo(pay.destination);
@@ -201,11 +203,11 @@ export const PaymentsArtifact: React.FC = () => {
                                                     return (
                                                         <div className="flex flex-col gap-1.5">
                                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-black text-[9px] font-black uppercase tracking-tighter shadow-sm w-fit" style={{ backgroundColor: vColor }}>
-                                                                {vId || 'MISC'}
+                                                                {vId || tr("MISC")}
                                                             </span>
                                                             <div className="flex items-center gap-1 opacity-40">
                                                                 <Tag size={8} />
-                                                                <span className="text-[7px] font-black uppercase">Acquisition</span>
+                                                                <span className="text-[7px] font-black uppercase">{tr("Acquisition")}</span>
                                                             </div>
                                                         </div>
                                                     );
@@ -214,7 +216,7 @@ export const PaymentsArtifact: React.FC = () => {
                                                 // Contextual Icon for Non-Merch (Operational)
                                                 let Icon = Cpu;
                                                 let bgColor = 'bg-sky-500/10 text-sky-400';
-                                                let label = 'Operation';
+                                                let label = tr("Operation");
                                                 
                                                 if (sub.includes('month') || cat === 'monthly') { Icon = Calendar; bgColor = 'bg-blue-500/10 text-blue-400'; label = 'Monthly'; }
                                                 else if (sub.includes('suppl') || cat === 'sppl') { Icon = Box; bgColor = 'bg-emerald-500/10 text-emerald-400'; label = 'Supplies'; }
@@ -235,7 +237,7 @@ export const PaymentsArtifact: React.FC = () => {
                                         {/* Description */}
                                         <div className="flex flex-col justify-center flex-1 min-w-0">
                                             <h3 className="text-[11px] sm:text-[13px] font-bold text-white truncate uppercase tracking-tight group-hover:text-(--main-color) transition-colors">
-                                                {pay.description || 'No Description'}
+                                                {pay.description || tr("No Description")}
                                             </h3>
                                             <div className="flex items-center gap-4 mt-2">
                                                 <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-white/20">
@@ -244,7 +246,7 @@ export const PaymentsArtifact: React.FC = () => {
                                                 </div>
                                                 {pay.category && (
                                                   <div className="flex items-center gap-1 text-[8px] text-white/10 uppercase tracking-widest font-black border-l border-white/5 pl-3">
-                                                      {pay.category}
+                                                      {el(pay.category)}
                                                   </div>
                                                 )}
                                             </div>
@@ -254,7 +256,7 @@ export const PaymentsArtifact: React.FC = () => {
                                         <div className="flex items-center gap-4 sm:gap-6 shrink-0 ml-auto justify-end">
                                             <div className="flex flex-col items-end justify-center opacity-60">
                                                 <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${isUSD ? 'text-emerald-400/60' : 'text-sky-400/60'}`}>
-                                                    Net {isUSD ? 'USD' : 'MXN'}
+                                                    {tr("Net")} {isUSD ? 'USD' : 'MXN'}
                                                 </span>
                                                 <span className="text-[11px] font-bold font-mono text-white">
                                                     {showFinancials ? `$${netAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
@@ -263,7 +265,7 @@ export const PaymentsArtifact: React.FC = () => {
 
                                             <div className="flex flex-col items-end justify-center opacity-60">
                                                 <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${isUSD ? 'text-emerald-400/60' : 'text-sky-400/60'}`}>
-                                                    Fees {isUSD ? 'USD' : 'MXN'}
+                                                    {tr("Fees")} {isUSD ? 'USD' : 'MXN'}
                                                 </span>
                                                 <span className="text-[11px] font-bold font-mono text-red-400">
                                                     {showFinancials ? `$${feesAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
@@ -272,7 +274,7 @@ export const PaymentsArtifact: React.FC = () => {
 
                                             <div className="flex flex-col items-end justify-center border-l border-white/10 pl-4 sm:pl-6 min-w-[70px]">
                                                 <span className={`text-[8px] font-black uppercase tracking-[0.18em] mb-1 leading-none ${isUSD ? 'text-emerald-400/80' : 'text-sky-400/80'}`}>
-                                                    Total {isUSD ? 'USD' : 'MXN'}
+                                                    {tr("Total")} {isUSD ? 'USD' : 'MXN'}
                                                 </span>
                                                 <span className={`text-[15px] font-black font-mono tracking-tight ${isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>
                                                     {showFinancials ? `$${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
@@ -295,7 +297,7 @@ export const PaymentsArtifact: React.FC = () => {
                 <div className="px-6 py-4 bg-black/40 border-t border-white/5 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-8">
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Total MXN Summary</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">{tr("Total MXN Summary")}</span>
                             <div className="flex items-baseline gap-2">
                                 <span className={`text-xl font-mono font-black text-sky-400`}>
                                     {showFinancials ? `$${Math.ceil(totals.mxn).toLocaleString()}` : '***'}
@@ -304,7 +306,7 @@ export const PaymentsArtifact: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Total USD Summary</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">{tr("Total USD Summary")}</span>
                             <div className="flex items-baseline gap-2">
                                 <span className={`text-xl font-mono font-black text-emerald-400`}>
                                     {showFinancials ? `$${totals.usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '***'}
@@ -317,7 +319,7 @@ export const PaymentsArtifact: React.FC = () => {
                         onClick={onClose}
                         className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-(--main-color)/20 hover:scale-105 active:scale-95 transition-all"
                     >
-                        Dismiss
+                        {tr("Dismiss")}
                     </button>
                 </div>
             </div>

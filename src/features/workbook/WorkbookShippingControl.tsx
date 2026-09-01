@@ -21,6 +21,7 @@ import {
 import { vendors, SCRIPT_URL } from '../../lib/consts';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
+import { tr } from '../../lib/i18n';
 
 const getTextColorForBg = (hexColor: string | undefined): string => {
     if (!hexColor) return '#000000';
@@ -166,7 +167,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
         });
 
         setCrates(updatedCrates); // Optimistic UI update
-        const toastId = toast.loading(`Unloading item...`);
+        const toastId = toast.loading(tr("Unloading item..."));
 
         try {
             const res = await fetch(SCRIPT_URL, {
@@ -186,7 +187,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
     };
 
     const handleCreateCrate = () => {
-        if (!newCrateDesc.trim()) return toast.error("Description is required.");
+        if (!newCrateDesc.trim()) return toast.error(tr("Description is required."));
         const newId = `WB-CRATE-${Date.now().toString().slice(-6)}`;
         const crateDimsMeters = { w: newCrateDims.w / 100, d: newCrateDims.d / 100 };
         const { x, z } = calculateNextWarehousePosition(warehouseCrates, crateDimsMeters, warehouseDims);
@@ -232,7 +233,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
     return (
         <>
             <div className="shipping-sidebar-section">
-                <h2>Ready to Ship (Workbook)</h2>
+                <h2>{tr("Ready to Ship (Workbook)")}</h2>
                 <div className="vendor-filter-buttons">
                     {uniqueVendors.map(vendor => (
                         <button key={vendor} onClick={() => setSelectedVendor(vendor)}
@@ -256,17 +257,17 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
                 </button>
             </div>
             <div className="shipping-sidebar-section">
-                <h2>Crate Manager</h2>
+                <h2>{tr("Crate Manager")}</h2>
                 <div className="space-y-2 p-2 border border-[var(--border-color)] rounded-lg">
-                    <h3 className="font-bold text-sm">Create New Crate</h3>
-                    <input type="text" value={newCrateDesc} onChange={e => setNewCrateDesc(e.target.value)} placeholder="New Crate Name..." />
+                    <h3 className="font-bold text-sm">{tr("Create New Crate")}</h3>
+                    <input type="text" value={newCrateDesc} onChange={e => setNewCrateDesc(e.target.value)} placeholder={tr("New Crate Name...")} />
                     <div className="grid grid-cols-3 gap-2">
-                        <input type="number" value={newCrateDims.w} onChange={e => setNewCrateDims(d => ({ ...d, w: Number(e.target.value) }))} placeholder="W (cm)" />
-                        <input type="number" value={newCrateDims.h} onChange={e => setNewCrateDims(d => ({ ...d, h: Number(e.target.value) }))} placeholder="H (cm)" />
-                        <input type="number" value={newCrateDims.d} onChange={e => setNewCrateDims(d => ({ ...d, d: Number(e.target.value) }))} placeholder="D (cm)" />
+                        <input type="number" value={newCrateDims.w} onChange={e => setNewCrateDims(d => ({ ...d, w: Number(e.target.value) }))} placeholder={tr("W (cm)")} />
+                        <input type="number" value={newCrateDims.h} onChange={e => setNewCrateDims(d => ({ ...d, h: Number(e.target.value) }))} placeholder={tr("H (cm)")} />
+                        <input type="number" value={newCrateDims.d} onChange={e => setNewCrateDims(d => ({ ...d, d: Number(e.target.value) }))} placeholder={tr("D (cm)")} />
                     </div>
-                    <input type="number" value={newCrateBaseWeight} onChange={e => setNewCrateBaseWeight(e.target.value)} placeholder="Base Wt (kg)" />
-                    <button className="button w-full" onClick={handleCreateCrate}>Create</button>
+                    <input type="number" value={newCrateBaseWeight} onChange={e => setNewCrateBaseWeight(e.target.value)} placeholder={tr("Base Wt (kg)")} />
+                    <button className="button w-full" onClick={handleCreateCrate}>{tr("Create")}</button>
                 </div>
                 <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-2">
                     {warehouseCrates.map(crate => (
@@ -280,7 +281,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
             </div>
             {selectedCrate && selectedCrate.location === 'warehouse' && selectedCrate.inventoryItems.length > 0 && (
                 <div className="shipping-sidebar-section">
-                    <h2>Contents: {selectedCrate.id}</h2>
+                    <h2>{tr("Contents:")} {selectedCrate.id}</h2>
                     <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-2">
                         {selectedCrate.inventoryItems.map(item => (
                             <div key={item.row} className="flex items-center justify-between gap-2 p-2 rounded-md bg-black/20 text-xs">
@@ -293,7 +294,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
                                     className="button danger !p-1 !min-h-0 !text-xs !py-0.5 shrink-0"
                                     title={`Unload ${item.itemId}-${item.itemNumber}`}
                                 >
-                                    Unload
+                                    {tr("Unload")}
                                 </button>
                             </div>
                         ))}
@@ -337,7 +338,7 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
 
         const nextPosition = findNextTruckPosition(truckCrates, crateToLoad, truckDims);
         if (!nextPosition) {
-            return toast.error("No available space in truck.");
+            return toast.error(tr("No available space in truck."));
         }
 
         const updatedCrates = crates.map(c => c.id === truckCrateId ? { ...c, location: 'truck' as 'truck', x: nextPosition.x, z: nextPosition.z + truckPositionZ, y: 0 } : c);
@@ -379,7 +380,7 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
     return (
         <>
             <div className="shipping-sidebar-section">
-                <h2>Warehouse Crates</h2>
+                <h2>{tr("Warehouse Crates")}</h2>
                 <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2">
                     {warehouseCrates.map(crate => (
                         <div key={crate.id} onClick={() => setTruckCrateId(crate.id)}
@@ -389,10 +390,10 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
                         </div>
                     ))}
                 </div>
-                <button className="button" onClick={handleLoadToTruck} disabled={!truckCrateId}>Load to Truck</button>
+                <button className="button" onClick={handleLoadToTruck} disabled={!truckCrateId}>{tr("Load to Truck")}</button>
             </div>
             <div className="shipping-sidebar-section">
-                <h2>Crates in Truck</h2>
+                <h2>{tr("Crates in Truck")}</h2>
                 <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2">
                     {truckCrates.map(crate => (
                         <div key={crate.id} onClick={() => setSelectedCrateId(crate.id)}
@@ -403,19 +404,19 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
                 </div>
                 {selectedCrateInTruck && tempPosition && (
                     <div className="space-y-2 p-2 border border-[var(--main-color)] rounded-lg">
-                        <h3 className="font-bold text-sm">Position: {selectedCrateId}</h3>
+                        <h3 className="font-bold text-sm">{tr("Position:")} {selectedCrateId}</h3>
                         <div>
-                            <label className="text-xs">X (Front/Back): {tempPosition.x.toFixed(2)}m</label>
+                            <label className="text-xs">{tr("X (Front/Back):")} {tempPosition.x.toFixed(2)}m</label>
                             <input type="range" min={-truckDims.length / 2 + selectedCrateInTruck.w / 2} max={truckDims.length / 2 - selectedCrateInTruck.w / 2} step="0.01" value={tempPosition.x} onChange={e => setTempPosition(p => p ? ({ ...p, x: parseFloat(e.target.value) }) : null)} />
                         </div>
                         <div>
-                            <label className="text-xs">Z (Left/Right): {tempPosition.z.toFixed(2)}m</label>
+                            <label className="text-xs">{tr("Z (Left/Right):")} {tempPosition.z.toFixed(2)}m</label>
                             <input type="range" min={-truckDims.width / 2 + selectedCrateInTruck.d / 2} max={truckDims.width / 2 - selectedCrateInTruck.d / 2} step="0.01" value={tempPosition.z} onChange={e => setTempPosition(p => p ? ({ ...p, z: parseFloat(e.target.value) }) : null)} />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                            <button className="button secondary" onClick={handleUnloadFromTruck}>Unload</button>
-                            <button className="button secondary" onClick={handleRotateCrate}>Rotate Crate</button>
-                            <button className="button col-span-2" onClick={handleSavePosition}>Save Position</button>
+                            <button className="button secondary" onClick={handleUnloadFromTruck}>{tr("Unload")}</button>
+                            <button className="button secondary" onClick={handleRotateCrate}>{tr("Rotate Crate")}</button>
+                            <button className="button col-span-2" onClick={handleSavePosition}>{tr("Save Position")}</button>
                         </div>
                     </div>
                 )}
@@ -436,7 +437,7 @@ export const WorkbookShippingControl = ({ isVisible }: { isVisible: boolean }) =
 
     const saveCratesToBackend = useCallback(async (updatedCrates: Crate[], successMessage: string) => {
         setIsSaving(true);
-        const toastId = toast.loading('Saving...');
+        const toastId = toast.loading(tr("Saving..."));
         try {
             const res = await fetch(SCRIPT_URL, {
                 method: 'POST', body: JSON.stringify({ action: 'batchUpdateCrates', crates: updatedCrates, user, source: 'workbook' }),
@@ -543,12 +544,12 @@ export const WorkbookShippingControl = ({ isVisible }: { isVisible: boolean }) =
             <div className="shipping-sidebar-footer">
                 <div className="flex items-center justify-between mb-2">
                     <label className="flex items-center gap-2 cursor-pointer text-sm">
-                        <input type="checkbox" checked={areLabelsVisible} onChange={() => setAreLabelsVisible(v => !v)} /> Show Labels
+                        <input type="checkbox" checked={areLabelsVisible} onChange={() => setAreLabelsVisible(v => !v)} /> {tr("Show Labels")}
                     </label>
                 </div>
                 <div className="shipping-actions-grid">
-                    <button className="button export" onClick={handleExportPackingList}>Export List</button>
-                    <button className="button ship col-span-2" disabled={isSaving}>Ship Truck</button>
+                    <button className="button export" onClick={handleExportPackingList}>{tr("Export List")}</button>
+                    <button className="button ship col-span-2" disabled={isSaving}>{tr("Ship Truck")}</button>
                 </div>
             </div>
         </aside>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, Check, Download, FileText, LayoutGrid, Tag, Share2, X, ChevronRight, AlertCircle } from 'lucide-react';
+import { tr } from '../lib/i18n';
 
 interface ExportConfig {
     title: string;
@@ -75,10 +76,10 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                 <div className="p-10 pb-6 flex justify-between items-start shrink-0">
                     <div className="flex flex-col gap-2">
                         <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                            {step === 'config' ? 'Export Configuration' : step === 'progress' ? 'Generating PDF' : 'Export Complete'}
+                            {step === 'config' ? tr("Export Configuration") : step === 'progress' ? tr("Generating PDF") : tr("Export Complete")}
                         </h2>
                         <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">
-                            {step === 'config' ? `Preparing ${moduleName} Manifest` : step === 'progress' ? status : 'Process finished successfully'}
+                            {step === 'config' ? `Preparing ${moduleName} Manifest` : step === 'progress' ? status : tr("Process finished successfully")}
                         </p>
                     </div>
                     {step !== 'progress' && (
@@ -93,7 +94,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                         <div className="flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-500">
                             {/* Title Input */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Export Title</label>
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Export Title")}</label>
                                 <input 
                                     autoFocus
                                     type="text" 
@@ -105,7 +106,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
 
                             {/* Method Selection */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Layout Methodology</label>
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Layout Methodology")}</label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button 
                                         onClick={() => setConfig({ ...config, method: 'grid' })}
@@ -115,8 +116,8 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                             <LayoutGrid size={20} className={config.method === 'grid' ? 'text-(--main-color)' : 'text-white/40'} />
                                         </div>
                                         <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest ${config.method === 'grid' ? 'text-white' : 'text-white/40'}`}>Catalog Grid</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Multi-image rows</p>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${config.method === 'grid' ? 'text-white' : 'text-white/40'}`}>{tr("Catalog Grid")}</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">{tr("Multi-image rows")}</p>
                                         </div>
                                     </button>
                                     <button 
@@ -127,8 +128,8 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                             <FileText size={20} className={config.method === 'single' ? 'text-(--main-color)' : 'text-white/40'} />
                                         </div>
                                         <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest ${config.method === 'single' ? 'text-white' : 'text-white/40'}`}>Per Image</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">High fidelity cards</p>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${config.method === 'single' ? 'text-white' : 'text-white/40'}`}>{tr("Per Image")}</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">{tr("High fidelity cards")}</p>
                                         </div>
                                     </button>
                                 </div>
@@ -136,19 +137,19 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
 
                             {/* Branding Selection */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Document Branding</label>
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Document Branding")}</label>
                                 <div className="flex gap-3 h-16">
                                     <button 
                                         onClick={() => setConfig({ ...config, branding: 'ArtOfDecor' })}
                                         className={`flex-1 flex items-center justify-center rounded-2xl transition-all duration-300 ${config.branding === 'ArtOfDecor' ? 'bg-white/[0.08] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]' : 'bg-transparent hover:bg-white/[0.04]'}`}
                                     >
-                                        <img src={`${import.meta.env.BASE_URL}ArtOfDecorLogo.png`} alt="Art Of Decor" className={`h-8 object-contain transition-all duration-300 ${config.branding === 'ArtOfDecor' ? 'opacity-100 scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-100'}`} />
+                                        <img src={`${import.meta.env.BASE_URL}ArtOfDecorLogo.png`} alt={tr("Art Of Decor")} className={`h-8 object-contain transition-all duration-300 ${config.branding === 'ArtOfDecor' ? 'opacity-100 scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-100'}`} />
                                     </button>
                                     <button 
                                         onClick={() => setConfig({ ...config, branding: 'RareEarth' })}
                                         className={`flex-1 flex items-center justify-center rounded-2xl transition-all duration-300 ${config.branding === 'RareEarth' ? 'bg-white/[0.08] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]' : 'bg-transparent hover:bg-white/[0.04]'}`}
                                     >
-                                        <img src={`${import.meta.env.BASE_URL}REG_Logo.png`} alt="Rare Earth Gallery" className={`h-8 object-contain transition-all duration-300 ${config.branding === 'RareEarth' ? 'opacity-100 scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-100'}`} />
+                                        <img src={`${import.meta.env.BASE_URL}REG_Logo.png`} alt={tr("Rare Earth Gallery")} className={`h-8 object-contain transition-all duration-300 ${config.branding === 'RareEarth' ? 'opacity-100 scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-100'}`} />
                                     </button>
                                 </div>
                             </div>
@@ -156,23 +157,23 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                             {/* Additional Fields */}
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Notes</label>
+                                    <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Notes")}</label>
                                     <textarea 
                                         value={config.notes} 
                                         onChange={e => setConfig({ ...config, notes: e.target.value })}
                                         className="w-full h-28 p-5 bg-white/[0.04] border border-white/10 rounded-2xl text-xs font-bold text-white outline-none focus:border-(--main-color)/30 focus:bg-white/5 transition-all resize-none"
-                                        placeholder="Add manifest notes..."
+                                        placeholder={tr("Add manifest notes...")}
                                     />
                                 </div>
                                 <div className="flex flex-col gap-8">
                                     {showBruteWeight && (
                                         <div className="space-y-3">
-                                            <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Brute Weight (KG)</label>
+                                            <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Brute Weight (KG)")}</label>
                                             <input 
                                                 type="text" 
                                                 value={config.bruteWeight} 
                                                 onChange={e => setConfig({ ...config, bruteWeight: e.target.value })}
-                                                placeholder="Total cargo mass..."
+                                                placeholder={tr("Total cargo mass...")}
                                                 className="w-full h-14 px-6 bg-white/[0.04] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-(--main-color)/30 focus:bg-white/5 transition-all"
                                             />
                                         </div>
@@ -185,7 +186,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                             onChange={e => setConfig({ ...config, includeImages: e.target.checked })}
                                             className="w-5 h-5 rounded-lg border-2 border-white/20 bg-transparent checked:bg-(--main-color) checked:border-(--main-color) transition-all cursor-pointer"
                                         />
-                                        <label htmlFor="includeImages" className="text-xs font-black uppercase tracking-widest text-white/60 cursor-pointer">Include Images</label>
+                                        <label htmlFor="includeImages" className="text-xs font-black uppercase tracking-widest text-white/60 cursor-pointer">{tr("Include Images")}</label>
                                     </div>
                                 </div>
                             </div>
@@ -194,7 +195,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                 onClick={handleStart}
                                 className="w-full h-16 rounded-[24px] bg-(--main-color) text-black text-sm font-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl flex items-center justify-center gap-4"
                             >
-                                Start Generation <ChevronRight size={20} />
+                                {tr("Start Generation")} <ChevronRight size={20} />
                             </button>
                         </div>
                     )}
@@ -209,7 +210,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
 
                             <div className="w-full space-y-4">
                                 <div className="flex justify-between items-end">
-                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em]">Processing Assets</span>
+                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em]">{tr("Processing Assets")}</span>
                                     <span className="text-2xl font-black text-white font-mono">{Math.round(progress)}%</span>
                                 </div>
                                 <div className="h-2 w-full bg-white/5 rounded-full p-1 border border-white/5 relative overflow-hidden">
@@ -226,10 +227,10 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">
-                                        High-Res Assembly
+                                        {tr("High-Res Assembly")}
                                     </span>
                                     <span className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">
-                                        Optimizing vector layouts and image layers...
+                                        {tr("Optimizing vector layouts and image layers...")}
                                     </span>
                                 </div>
                             </div>
@@ -246,8 +247,8 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                             </div>
 
                             <div className="flex flex-col gap-2">
-                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Manifest Ready</h3>
-                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Your export has been successfully generated</p>
+                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">{tr("Manifest Ready")}</h3>
+                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">{tr("Your export has been successfully generated")}</p>
                             </div>
 
                             <div className="w-full flex gap-4 pt-4">
@@ -255,13 +256,13 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                     onClick={onClose}
                                     className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
                                 >
-                                    Dismiss
+                                    {tr("Dismiss")}
                                 </button>
                                 <button 
                                     onClick={onClose}
                                     className="flex-[2] h-14 rounded-full bg-white text-black text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-2"
                                 >
-                                    <Download size={16} /> Open Document
+                                    <Download size={16} /> {tr("Open Document")}
                                 </button>
                             </div>
                         </div>

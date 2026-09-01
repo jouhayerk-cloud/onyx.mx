@@ -2,12 +2,14 @@ import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai';
 import { workbookProductionDataAtom } from '../../lib/atoms';
 import { vendors as vendorConfigs } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
 
 export const WorkbookProductionView: React.FC = () => {
     const rawData = useAtomValue(workbookProductionDataAtom);
 
     const productionItems = useMemo(() => {
-        if (!rawData || rawData.length === 0) return [];
+        if (!rawData || rawData.length === 0) return [];
+
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';
@@ -58,7 +60,7 @@ export const WorkbookProductionView: React.FC = () => {
     if (productionItems.length === 0) {
         return (
             <div className="flex items-center justify-center h-full text-[var(--text-color-secondary)]">
-                No active production orders found in -Production sheet.
+                {tr("No active production orders found in -Production sheet.")}
             </div>
         );
     }
@@ -67,10 +69,10 @@ export const WorkbookProductionView: React.FC = () => {
         <div className="p-6 flex flex-col gap-6 h-full overflow-y-auto custom-scrollbar relative z-10">
             <div className="flex justify-between items-center border-b border-white/10 pb-4">
                 <h2 className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold border-l-2 border-[#FFED00] pl-3">
-                    Active Production <span className="text-white/20 ml-2 font-mono">[{productionItems.length}]</span>
+                    {tr("Active Production")} <span className="text-white/20 ml-2 font-mono">[{productionItems.length}]</span>
                 </h2>
                 <div className="flex gap-4">
-                    <span className="text-[10px] text-white/30 uppercase tracking-widest">v326 Operational</span>
+                    <span className="text-[10px] text-white/30 uppercase tracking-widest">{tr("v326 Operational")}</span>
                 </div>
             </div>
 
@@ -100,29 +102,29 @@ export const WorkbookProductionView: React.FC = () => {
                                         )}
                                     </div>
                                     <h3 className="text-sm font-bold text-white mt-1 group-hover:text-[#FFED00] transition-colors line-clamp-1">
-                                        {item.description || 'Unnamed Order'}
+                                        {item.description || tr("Unnamed Order")}
                                     </h3>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-[10px] text-white/30 uppercase">Total</div>
+                                    <div className="text-[10px] text-white/30 uppercase">{tr("Total")}</div>
                                     <div className="text-sm font-mono font-bold text-white">{fmt(item.total)}</div>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 text-[10px]">
                                 <div>
-                                    <div className="text-white/30 uppercase mb-1">Price Unit</div>
+                                    <div className="text-white/30 uppercase mb-1">{tr("Price Unit")}</div>
                                     <div className="text-white/60 font-mono">{fmt(item.price)}</div>
                                 </div>
                                 <div>
-                                    <div className="text-white/30 uppercase mb-1">Quantity</div>
+                                    <div className="text-white/30 uppercase mb-1">{tr("Quantity")}</div>
                                     <div className="text-white/60 font-mono">x {item.qty}</div>
                                 </div>
                             </div>
 
                             <div className="flex flex-col gap-1.5 mt-2">
                                 <div className="flex justify-between items-center text-[10px]">
-                                    <span className="text-white/30 uppercase">Advance Payment</span>
+                                    <span className="text-white/30 uppercase">{tr("Advance Payment")}</span>
                                     <span className="font-mono text-white/60">{fmt(item.advance)}</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -135,9 +137,9 @@ export const WorkbookProductionView: React.FC = () => {
 
                             <div className="mt-2 pt-3 border-t border-white/5 flex justify-between items-center">
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] text-white/20 uppercase">Ready Date</span>
+                                    <span className="text-[9px] text-white/20 uppercase">{tr("Ready Date")}</span>
                                     <span className="text-xs text-white/60 font-mono">
-                                        {item.readyDate ? (typeof item.readyDate === 'number' ? new Date(Math.round((item.readyDate - 25569) * 864e5)).toLocaleDateString('es-MX') : String(item.readyDate)) : 'TBD'}
+                                        {item.readyDate ? (typeof item.readyDate === 'number' ? new Date(Math.round((item.readyDate - 25569) * 864e5)).toLocaleDateString("es-MX") : String(item.readyDate)) : tr("TBD")}
                                     </span>
                                 </div>
                                 <button className="p-2 rounded-full hover:bg-white/10 text-white/20 hover:text-white transition-all">
