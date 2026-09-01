@@ -232,7 +232,22 @@ export const onyxApiKeyAtom = atomWithStorage<string>('onyxApiKey', '');
 export const isBotOrbOpenAtom = atom<boolean>(false);
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
-export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'Production' | 'Acquired' | 'New' | 'Shipped' | 'Packed' | 'Not Packed' | 'Not Shipped'>('inventoryStatusFilter', 'All', sessionJSONStorage);
+export type InventoryStatusFilter = 'All' | 'Requested' | 'Paid' | 'Acquired' | 'New' | 'Shipped' | 'Packed' | 'Not Packed' | 'Not Shipped';
+
+/** 'Production' and 'Partial' were retired from the filter bar. Their chips
+ *  are gone, but this atom persists, so a session holding either value would
+ *  sit behind an active filter with no control left to clear it — the list
+ *  would look broken with nothing to click. Fold them back to 'All' on read,
+ *  the same way the retired themes are handled above. */
+const rawStatusStorage = createJSONStorage<InventoryStatusFilter>(() => sessionStorage);
+const statusFilterStorage = {
+  ...rawStatusStorage,
+  getItem: (key: string, initialValue: InventoryStatusFilter) => {
+    const stored = rawStatusStorage.getItem(key, initialValue) as InventoryStatusFilter | 'Production' | 'Partial';
+    return (stored === 'Production' || stored === 'Partial') ? 'All' : stored;
+  },
+};
+export const inventoryStatusFilterAtom = atomWithStorage<InventoryStatusFilter>('inventoryStatusFilter', 'All', statusFilterStorage);
 export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Number' | 'Shape+Type' | 'Color+Material' | 'Value' | 'Qty'>('inventorySortKey', 'Date', sessionJSONStorage);
 export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc', sessionJSONStorage);
 export const inventoryCategoryFilterAtom = atomWithStorage<string>('inventoryCategoryFilter', 'All', sessionJSONStorage);
@@ -754,4 +769,9 @@ export const isInventoryShapeFilterOpenAtom = atomWithStorage<boolean>('invShape
  *  and silently changing what it means under an unchanged name is the kind
  *  of drift that produces a filter that looks like it does one thing and
  *  quietly does another. */
+/** Which enrichment stages an item must carry. Keys from lib/aiContent
+ *  ('enriched' | 'vision' | 'copy' | 'cutout' | 'none'), OR-ed together. */
+export const inventoryContentFilterAtom = atomWithStorage<string[]>('inventoryContentFilter', [], sessionJSONStorage);
+export const isInventoryContentFilterOpenAtom = atomWithStorage<boolean>('invContentFilterOpen', false, sessionJSONStorage);
+
 export const inventoryShapeFilterAtom = atomWithStorage<string[]>('inventoryShapeFilter', [], sessionJSONStorage);

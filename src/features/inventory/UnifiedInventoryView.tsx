@@ -51,11 +51,13 @@ import {
     logisticsDataAtom,
     visibleWorkbooksAtom,
     inventoryShapeFilterAtom,
+    inventoryContentFilterAtom,
     inventoryMaterialColorFilterAtom
 } from '../../lib/atoms';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { rowWorkbook } from '../../lib/seasons';
 import { rowMatchesShape, rowMatchesMaterialColor } from '../../lib/smartFilters';
+import { rowMatchesContent } from '../../lib/aiContent';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
@@ -1262,6 +1264,7 @@ export const UnifiedInventoryView = () => {
 
     const visibleWorkbooks = useAtomValue(visibleWorkbooksAtom);
     const shapeFilter = useAtomValue(inventoryShapeFilterAtom);
+    const contentFilter = useAtomValue(inventoryContentFilterAtom);
     const materialColorFilter = useAtomValue(inventoryMaterialColorFilterAtom);
 
     const filteredItems = useMemo(() => {
@@ -1290,7 +1293,10 @@ export const UnifiedInventoryView = () => {
                 if (statusFilter === 'Packed' && !isPacked) return false;
                 if (statusFilter === 'Not Packed' && isPacked) return false;
                 
-                if (statusFilter === 'Partial' && status !== 'RED') return false;
+                // 'Partial' and 'Production' were retired from the filter bar;
+                // their branches went with them. A session holding either
+                // persisted value is folded back to 'All' on read in atoms.tsx,
+                // so nothing can reach here asking for them.
                 if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
                 if (statusFilter === 'Paid' && status !== 'GREEN') return false;
                 if (statusFilter === 'New' && status !== 'BLUE') return false;
@@ -1325,6 +1331,7 @@ export const UnifiedInventoryView = () => {
             // parents from short_description free text, so "parent" was
             // dozens of near-duplicate strings and the bar was unusable.
             if (!rowMatchesShape(item.data, shapeFilter)) return false;
+            if (!rowMatchesContent(item.data, contentFilter)) return false;
             if (!rowMatchesMaterialColor(item.data, materialColorFilter)) return false;
             if (deferredSearchTerm) {
                 const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
@@ -1393,7 +1400,7 @@ export const UnifiedInventoryView = () => {
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, visibleWorkbooks, user, categoryFilter, materialFilter, shapeFilter, materialColorFilter, deployedItemsMap, logisticsDocs]);
+    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, visibleWorkbooks, user, categoryFilter, materialFilter, shapeFilter, contentFilter, materialColorFilter, deployedItemsMap, logisticsDocs]);
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);
