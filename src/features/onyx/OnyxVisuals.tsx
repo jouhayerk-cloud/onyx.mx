@@ -207,7 +207,7 @@ export const OnyxVisuals: React.FC<OnyxVisualsProps> = ({ isProcessing = false, 
             frameId = requestAnimationFrame(animate);
             time += 0.015;
 
-            const isLightTheme = theme === 'nacar' || theme === 'aqua';
+            const isLightTheme = theme === 'aqua'; // only light theme left standing (nacar retired)
             const root = getComputedStyle(document.documentElement);
             
             const processColor = (val: string, fallback: string) => {

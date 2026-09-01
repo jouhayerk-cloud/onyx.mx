@@ -38,15 +38,16 @@ const getTextColorForBg = (hexColor: string | undefined): string => {
     }
 }
 
+// nacar/fluorite entries removed with their themes (see lib/atoms.tsx) — theme
+// is only ever 'talan' or 'aqua' now, and neither has a key here, so both
+// already fell through to .concrete before this cleanup and still do.
 const themeColors: { [key: string]: { bg: number, fog: number } } = {
     concrete: { bg: 0x222222, fog: 0x222222 },
-    nacar: { bg: 0xdbe2e1, fog: 0xdbe2e1 },
     orange: { bg: 0xd4cec6, fog: 0xd4cec6 },
     cherry: { bg: 0xe7d8d7, fog: 0xe7d8d7 },
     forest: { bg: 0x2a3025, fog: 0x2a3025 },
     terra: { bg: 0x343e40, fog: 0x343e40 },
     calcite: { bg: 0x415e8e, fog: 0x415e8e },
-    fluorite: { bg: 0x4c5069, fog: 0x4c5069 },
 };
 
 

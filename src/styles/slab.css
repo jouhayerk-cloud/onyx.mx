@@ -1,10 +1,10 @@
 /* ==========================================================================
-   SLAB — neumorphic style (ROCK / PAPER / SLAB)
+   SLAB — neumorphic style (ROCK / SLAB)
    --------------------------------------------------------------------------
-   ROCK stacks translucent glass in layers. PAPER is flat ink on a sheet.
-   SLAB is the third: one continuous block of stone with the controls carved
-   into it. Nothing floats and nothing overlaps — every control is either
-   raised out of the surface or pressed into it.
+   ROCK stacks translucent glass in layers. SLAB is the other: one continuous
+   block of stone with the controls carved into it. Nothing floats and
+   nothing overlaps — every control is either raised out of the surface or
+   pressed into it.
 
    The entire system is two shadow recipes and one surface colour. Ground and
    control share that colour; the sameness is the point. Light source is fixed
@@ -28,10 +28,8 @@
       colours and material swatches are a printed physical standard — they are
       left completely untouched. "Monochromatic surface" applies to chrome.
 
-   NOTE: this file must never weaken paper.css. The two styles are mutually
-   exclusive by construction — PAPER kills all box-shadow globally, which is
-   the one thing SLAB is made of — so every selector here is scoped to
-   html.style-slab and the two never load together.
+   NOTE: every selector here is scoped to html.style-slab so ROCK — which
+   depends on box-shadow meaning "glow", not "bevel" — is never touched by it.
    ========================================================================== */
 
 html.style-slab {
@@ -106,20 +104,9 @@ html.style-slab {
 
 /* ── Per-theme slabs ──────────────────────────────────────────────────────
    A neumorphic surface MUST sit mid-tone. The raised form needs a highlight
-   lighter than the surface and a shadow darker than it; on #ffffff there is
-   no headroom above and the bevel collapses into a one-sided drop shadow.
-   This is exactly why SLAB could not be folded into PAPER, whose #root is
-   pure white (paper.css:14). Each theme therefore gets its own mid-tone. */
-
-/* NACAR — warm near-white stone */
-html.style-slab.theme-nacar {
-    --slab:      #EDE9DF;
-    --slab-hi:   #FDFBF5;
-    --slab-sh:   #C6BFAF;
-    --slab-ink:  #2A2624;
-    --slab-dim:  #4E4740;
-    --slab-edge: rgba(69, 58, 42, 0.14);
-}
+   lighter than the surface and a shadow darker than it; on pure #ffffff (or
+   #000000) there is no headroom on one side and the bevel collapses into a
+   one-sided drop shadow. Each theme therefore gets its own mid-tone. */
 
 /* AQUA — cool light coastal */
 html.style-slab.theme-aqua {
@@ -141,16 +128,6 @@ html.style-slab.theme-talan {
     --slab-edge: rgba(245, 245, 240, 0.13);
 }
 
-/* FLUORITE — cool dark violet */
-html.style-slab.theme-fluorite {
-    --slab:      #241536;
-    --slab-hi:   #2F1C46;
-    --slab-sh:   #140B20;
-    --slab-ink:  #FFFFFF;
-    --slab-dim:  #C4B8DE;
-    --slab-edge: rgba(0, 229, 255, 0.18);
-}
-
 /* ── The ground ───────────────────────────────────────────────────────────
    One colour, edge to edge. The mesh gradient behind the app is the ROCK
    metaphor and is suppressed — a slab has no atmosphere behind it. */
@@ -165,8 +142,8 @@ html.style-slab #root {
 
     /* Feed the existing token layer so component classNames that already read
        these variables land on the slab without being rewritten. --main-color
-       and --accent-color are deliberately NOT overridden, exactly as paper.css
-       leaves them, so the four themes keep their identity. */
+       and --accent-color are deliberately NOT overridden, so the two themes
+       keep their identity. */
     --app-bg-solid:         var(--slab);
     --bg-color:             var(--slab);
     --sidebar-bg:           var(--slab);
@@ -218,8 +195,8 @@ html.style-slab [class*="border-black/"] {
 
 /* ── Text ─────────────────────────────────────────────────────────────────
    ~6,000 hardcoded text-white utilities bypass the token layer entirely, so
-   they are remapped here the same way paper.css does it. On the dark slabs
-   they are remapped back — see the dark section at the bottom.
+   they are remapped here. On the dark slab they are remapped back — see the
+   dark section at the bottom.
 
    The low-opacity tiers are floored at --slab-dim rather than being carried
    across proportionally. 648 uses of 8–10px type at 20–40% opacity would fail
@@ -408,12 +385,10 @@ html.style-slab button[aria-pressed="true"],
 html.style-slab button[data-active="true"],
 html.style-slab [role="button"][aria-pressed="true"],
 /* The dark-slab .text-white restore at the bottom of this file is (0,3,1) and
-   would otherwise repaint an ON control back to --slab-ink. These theme-scoped
-   duplicates are (0,3,2) so the accent survives on Talan and Fluorite too. */
+   would otherwise repaint an ON control back to --slab-ink. This theme-scoped
+   duplicate is (0,3,2) so the accent survives on Talan too. */
 html.style-slab.theme-talan button[aria-pressed="true"],
-html.style-slab.theme-talan button[data-active="true"],
-html.style-slab.theme-fluorite button[aria-pressed="true"],
-html.style-slab.theme-fluorite button[data-active="true"] {
+html.style-slab.theme-talan button[data-active="true"] {
     box-shadow: var(--slab-pressed) !important;
     background-color: var(--slab-tint-on) !important;
     border-color: var(--slab-edge-on) !important;
@@ -425,8 +400,7 @@ html.style-slab.theme-fluorite button[data-active="true"] {
    animate the same direction as an idle one, or the two states blur. */
 html.style-slab button[aria-pressed="true"]:not(:disabled):hover,
 html.style-slab button[data-active="true"]:not(:disabled):hover,
-html.style-slab.theme-talan button[aria-pressed="true"]:hover,
-html.style-slab.theme-fluorite button[aria-pressed="true"]:hover {
+html.style-slab.theme-talan button[aria-pressed="true"]:hover {
     box-shadow: var(--slab-pressed-deep) !important;
     background-color: var(--slab-tint-on-hi) !important;
 }
@@ -703,9 +677,9 @@ html.style-slab .toast-liquid-glass {
 }
 
 /* ==========================================================================
-   DARK SLABS — Talan and Fluorite
+   DARK SLAB — Talan
    --------------------------------------------------------------------------
-   The remaps above assume a light ground. On the dark slabs the text tiers
+   The remaps above assume a light ground. On the dark slab the text tiers
    must stay light, so they are restored here. The shadow primitives need no
    inversion: --slab-hi and --slab-sh are already redefined per theme, so the
    same top-left light source produces a correct dark bevel.
@@ -713,10 +687,7 @@ html.style-slab .toast-liquid-glass {
 
 html.style-slab.theme-talan .text-white,
 html.style-slab.theme-talan .text-white\/90,
-html.style-slab.theme-talan .text-white\/80,
-html.style-slab.theme-fluorite .text-white,
-html.style-slab.theme-fluorite .text-white\/90,
-html.style-slab.theme-fluorite .text-white\/80 {
+html.style-slab.theme-talan .text-white\/80 {
     color: var(--slab-ink) !important;
 }
 
@@ -726,21 +697,13 @@ html.style-slab.theme-talan .text-white\/30,
 html.style-slab.theme-talan .text-white\/40,
 html.style-slab.theme-talan .text-white\/50,
 html.style-slab.theme-talan .text-white\/60,
-html.style-slab.theme-talan .text-white\/70,
-html.style-slab.theme-fluorite .text-white\/10,
-html.style-slab.theme-fluorite .text-white\/20,
-html.style-slab.theme-fluorite .text-white\/30,
-html.style-slab.theme-fluorite .text-white\/40,
-html.style-slab.theme-fluorite .text-white\/50,
-html.style-slab.theme-fluorite .text-white\/60,
-html.style-slab.theme-fluorite .text-white\/70 {
+html.style-slab.theme-talan .text-white\/70 {
     color: var(--slab-dim) !important;
 }
 
-/* Dark slabs have less tonal headroom than light ones, so the bevel is
+/* The dark slab has less tonal headroom than the light one, so the bevel is
    tightened rather than being left to smear. */
-html.style-slab.theme-talan,
-html.style-slab.theme-fluorite {
+html.style-slab.theme-talan {
     --slab-lift:         -2px -2px 5px var(--slab-hi), 2px 2px 5px var(--slab-sh);
     --slab-raised:       -4px -4px 9px var(--slab-hi), 4px 4px 9px var(--slab-sh);
     --slab-float:        -6px -6px 14px var(--slab-hi), 6px 6px 14px var(--slab-sh);
@@ -789,8 +752,8 @@ html.style-slab .stats-readout * {
    and the colour coding was lost.
 
    Light slabs composite normally at full strength, which restores the item
-   colour. Dark slabs keep screen, where it still reads as it does on ROCK. */
-html.style-slab:not(.theme-talan):not(.theme-fluorite) .mix-blend-screen {
+   colour. The dark slab keeps screen, where it still reads as it does on ROCK. */
+html.style-slab:not(.theme-talan) .mix-blend-screen {
     mix-blend-mode: normal;
     opacity: 1;
 }
@@ -798,7 +761,7 @@ html.style-slab:not(.theme-talan):not(.theme-fluorite) .mix-blend-screen {
 /* The media cell behind the icon is bg-black/40, flattened to the slab above.
    On a light slab that leaves the coloured wireframe on its own ground, which
    is what makes the hue readable rather than merely present. */
-html.style-slab:not(.theme-talan):not(.theme-fluorite) .group\/listimg {
+html.style-slab:not(.theme-talan) .group\/listimg {
     background-color: color-mix(in srgb, var(--slab-sh) 22%, var(--slab)) !important;
 }
 
@@ -1311,8 +1274,7 @@ html.style-slab .tool-btn.vendor-btn,
 html.style-slab .tool-btn.vendor-btn:hover,
 html.style-slab .tool-btn.vendor-btn[aria-pressed="true"],
 html.style-slab .tool-btn.vendor-btn[aria-pressed="false"],
-html.style-slab.theme-talan .tool-btn.vendor-btn[aria-pressed="true"],
-html.style-slab.theme-fluorite .tool-btn.vendor-btn[aria-pressed="true"] {
+html.style-slab.theme-talan .tool-btn.vendor-btn[aria-pressed="true"] {
     background-image: none !important;
 }
 
@@ -1558,4 +1520,67 @@ html.style-slab .smart-clear:hover {
 
 html.style-slab .smart-count {
     font-variant-numeric: tabular-nums;
+}
+/* ── Smart filter bars: independent deployment ────────────────────────────
+   The original chaos was structural, not visual: Type->Shape and
+   Material->Colour rendered side by side in ONE disclosure, so opening
+   filters at all meant both hierarchies landed on screen together, and
+   either one's branches expanding grew the shared row further. The fix is
+   two bars that deploy on their own switches — this block is the deploy row
+   itself plus the two bar bodies it reveals. Nothing here targets a new
+   palette; every colour is one of the tokens already defined at the top of
+   this file, so it inherits whichever of the two live themes (talan, aqua)
+   is active without a separate rule per theme. */
+/* The deploy row: two keys, same ON grammar as .tool-btn (raised -> lifts on
+   hover -> seats + accent when ON) but with the label inline in the button
+   rather than beside it in a separate .tool-label, because these are named
+   FILTER BARS ("Material / Colour", "Shape"), not icon-first single actions
+   — reading the words matters more here than in the icon-only tool row. */
+html.style-slab .smart-deploy-key {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-lift);
+    color: var(--slab-dim);
+    transition: box-shadow var(--slab-ease), background-color var(--slab-ease), color var(--slab-ease);
+}
+html.style-slab .smart-deploy-key:hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+    color: var(--slab-ink);
+}
+html.style-slab .smart-deploy-key[aria-pressed="true"] {
+    box-shadow: var(--slab-pressed) !important;
+    background-image: var(--slab-sheen-on) !important;
+    background-color: var(--slab-tint-on) !important;
+    border-color: var(--slab-edge-on) !important;
+    color: var(--main-color) !important;
+}
+/* Each bar body is its own pressed well once deployed, with a hairline seam
+   between them when both are open — two bars stacked with nothing marking
+   the join would read as the same old single bar again. */
+html.style-slab .smart-filters-main,
+html.style-slab .smart-filters-shape {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen-in) !important;
+    box-shadow: var(--slab-pressed);
+}
+html.style-slab .smart-filters-main + .smart-filters-shape {
+    border-top: 1px solid var(--slab-edge);
+}
+/* Material/Colour is the MAIN filter and reads as one: a stronger tint than
+   the default ON state (tint-on-hi rather than tint-on, the same escalation
+   .tool-btn's theme-scoped ON rule and the vendor "selected" state both use
+   elsewhere in this file for "this is the important one"), and it is not
+   competing with expand chevrons at the same visual weight since it is the
+   first thing shown and the only one open by default. */
+html.style-slab .smart-chip-primary[aria-pressed="true"] {
+    background-color: var(--slab-tint-on-hi) !important;
+}
+/* Geometry icon inside a Shape parent chip: sized to sit on the chip's own
+   baseline rather than as a separate block, and coloured by the chip's own
+   `color` (currentColor) so the icon and the label always agree — pressed,
+   hovered, or at rest — without a second rule to keep in sync. */
+html.style-slab .smart-chip svg {
+    flex-shrink: 0;
 }

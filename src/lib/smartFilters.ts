@@ -3,17 +3,21 @@
  *
  * Auto-generated, nested attribute filters for Inventory.
  *
- * Two hierarchies, both derived from the data rather than configured:
+ * Two live hierarchies:
  *
- *     Type (short_description)  ->  Shape
- *     Material                  ->  Color
+ *     Geometry (classifyGeometry, 8 bounded values)  ->  free-text shape/type
+ *     Material                                       ->  Color
  *
- * Why these pairings: UnifiedInventoryView already filtered on a combined
- * `shape + short_description` and `color + material` string, which is the same
- * relationship expressed flatly. Flattening lost the containment — "Bowl" and
- * "Round Bowl" became unrelated strings — so a user could not select a type and
- * see every shape within it. Nesting restores that, and the counts make the
- * distribution visible while choosing.
+ * The first shipped as Type (short_description) -> Shape, both free text. That
+ * failed for a structural reason, not a cosmetic one: `short_description` as
+ * the PARENT is not a bounded set — it's dozens of near-duplicate strings
+ * typed by several people in two languages, so the top of the hierarchy was
+ * itself a wall of chips before a single child ever expanded. Heading it with
+ * classifyGeometry() (lib/geometry.ts) instead bounds the parent to eight
+ * fixed values that already have a rendered icon each, and demotes the free
+ * text — still useful, just not fit to be a top-level chip — to a child.
+ * Material -> Color keeps its original shape: Material is already a
+ * reasonably bounded vocabulary, so it didn't have this problem.
  *
  * Selection encoding is a single flat Set of keys:
  *
@@ -24,6 +28,8 @@
  * serialisable for atomWithStorage, and makes "is this row included?" a pair of
  * Set lookups instead of a tree walk per row across 500 rows.
  */
+
+import { classifyItem, GEOMETRIES, GEOMETRY_LABELS, type Geometry } from './geometry';
 
 export interface SmartFilterChild {
     label: string;
@@ -50,7 +56,6 @@ export const canonical = (raw: unknown): string => {
 const readType = (d: any): string =>
     canonical(d?.shortDescription ?? d?.short_description ?? d?.itemType ?? d?.type);
 
-const readShape = (d: any): string => canonical(d?.shape);
 const readMaterial = (d: any): string => canonical(d?.material);
 const readColor = (d: any): string => canonical(d?.color);
 
@@ -96,11 +101,74 @@ const buildTree = (
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 };
 
-export const buildTypeShapeTree = (rows: any[]): SmartFilterNode[] =>
-    buildTree(rows, readType, readShape);
+/* buildTypeShapeTree / rowMatchesTypeShape lived here and were removed once
+ * the geometry-headed bar replaced them. They took the hierarchy's PARENT from
+ * `short_description` free text, which reproduced the exact problem this
+ * rework exists to fix: dozens of near-duplicate strings as top-level chips.
+ * Bounding the top of the hierarchy — not restyling it — is the fix, and
+ * buildGeometryTree below does that. */
 
 export const buildMaterialColorTree = (rows: any[]): SmartFilterNode[] =>
     buildTree(rows, readMaterial, readColor);
+
+/**
+ * The free-text descriptor nested under a geometry bucket. `shape` is
+ * preferred over `short_description` because it is usually the more specific
+ * of the two ("Round Bowl" vs "Bowl"); short_description only stands in when
+ * shape itself is blank, which happens throughout the older rows.
+ */
+const readShapeText = (d: any): string =>
+    canonical(d?.shape) || readType(d);
+
+/**
+ * Shape hierarchy, headed by the eight bounded geometry classes from
+ * geometry.ts instead of free text. This is the actual fix for the chaos
+ * described when this file was first built: buildTypeShapeTree's PARENT was
+ * `short_description`, unbounded free text typed by several people in two
+ * languages, so the top of that hierarchy was itself dozens of near-duplicate
+ * chips — restyling never had a chance against that. classifyGeometry()
+ * collapses the same text into eight fixed values, so every one of the ~500
+ * rows lands in exactly one of eight buckets, and the messy free text is
+ * demoted to a CHILD (a sub-filter) instead of heading the list.
+ *
+ * Order is the fixed GEOMETRIES order, not frequency: a bounded taxonomy's
+ * whole value is a stable set of chips (with a stable icon each) a user
+ * learns to recognise. Sorting by count would reshuffle that set on every
+ * data change for no benefit — there are only eight, so "most common first"
+ * buys nothing a fixed order doesn't already give.
+ */
+export const buildGeometryTree = (rows: any[]): SmartFilterNode[] => {
+    const buckets = new Map<Geometry, { count: number; children: Map<string, number> }>();
+    for (const g of GEOMETRIES) buckets.set(g, { count: 0, children: new Map() });
+
+    for (const row of rows) {
+        const d = row?.data ?? row;
+        const { geom } = classifyItem(d);
+        const bucket = buckets.get(geom)!;
+        bucket.count += 1;
+
+        const child = readShapeText(d);
+        if (child) bucket.children.set(child, (bucket.children.get(child) ?? 0) + 1);
+    }
+
+    return GEOMETRIES.map(g => {
+        const label = GEOMETRY_LABELS[g];
+        const bucket = buckets.get(g)!;
+        return {
+            label,
+            key: label,
+            count: bucket.count,
+            children: Array.from(bucket.children.entries())
+                .map(([cl, cc]) => ({ label: cl, count: cc, key: childKey(label, cl) }))
+                .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+        };
+    });
+    // Every row is classified (classifyGeometry defaults to 'box'), so unlike
+    // buildTree above, nothing is ever skipped here and all eight buckets are
+    // always present — including at count 0, which is itself information: it
+    // tells the user the vocabulary is bounded and complete, not that the
+    // bucket doesn't exist yet.
+};
 
 /**
  * Does a row pass the selection?
@@ -125,11 +193,15 @@ export const matchesSelection = (
     return child ? set.has(childKey(parent, child)) : false;
 };
 
-export const rowMatchesTypeShape = (d: any, selected: string[] | undefined): boolean =>
-    matchesSelection(selected, readType(d), readShape(d));
-
 export const rowMatchesMaterialColor = (d: any, selected: string[] | undefined): boolean =>
     matchesSelection(selected, readMaterial(d), readColor(d));
+
+/** Shape counterpart. The parent is the item's geometry LABEL rather than its
+ *  raw class, because that label is what buildGeometryTree puts on the chip and
+ *  therefore what a stored selection key holds — matching on the class would
+ *  silently never hit. */
+export const rowMatchesShape = (d: any, selected: string[] | undefined): boolean =>
+    matchesSelection(selected, GEOMETRY_LABELS[classifyItem(d).geom], readShapeText(d));
 
 /**
  * Toggling a parent clears its children. Leaving them behind would make the

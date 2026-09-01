@@ -31,13 +31,43 @@ export type User = {
 };
 export const userAtom = atomWithStorage<User | null>('userSession', null);
 
-export const themeAtom = atomWithStorage<string>('appTheme', 'talan');
-/** ROCK = layered glass · PAPER = flat ink · SLAB = neumorphic carved stone.
- *  Widening this union is backwards-compatible: browsers holding a stored
- *  'rock' or 'paper' keep it, and only opt into 'slab' via the Settings toggle. */
-export type AppStyle = 'rock' | 'paper' | 'slab';
-export const APP_STYLES: AppStyle[] = ['rock', 'paper', 'slab'];
-export const appStyleAtom = atomWithStorage<AppStyle>('appStyle', 'rock');
+/** TALAN and AQUA are the only themes left; FLUORITE (dark violet) and NACAR
+ *  (light stone) were retired — see themes-assets.ts and slab.css/tokens.css,
+ *  which no longer carry palette blocks for either. themeAtom persists a raw
+ *  string via atomWithStorage, so a browser that saved 'fluorite' or 'nacar'
+ *  would otherwise load into a theme class with no matching palette and every
+ *  --main-color / --slab-* token would resolve to nothing. Fold each retired
+ *  theme onto the survivor with the same brightness (dark -> talan, light ->
+ *  aqua) at the storage boundary, so every consumer of themeAtom — this file,
+ *  Settings, App.tsx's classList effect — only ever sees a valid value. */
+const rawThemeStorage = createJSONStorage<string>();
+const themeStorage = {
+  ...rawThemeStorage,
+  getItem: (key: string, initialValue: string) => {
+    const stored = rawThemeStorage.getItem(key, initialValue);
+    if (stored === 'fluorite') return 'talan';
+    if (stored === 'nacar') return 'aqua';
+    return stored;
+  },
+};
+export const themeAtom = atomWithStorage<string>('appTheme', 'talan', themeStorage);
+
+/** ROCK = layered glass · SLAB = neumorphic carved stone. PAPER (flat ink) was
+ *  retired along with its stylesheet (styles/paper.css, deleted). A browser
+ *  holding the persisted string 'paper' falls back to ROCK — the original
+ *  style, and the same safe default StudioSettingsPortal already used for an
+ *  unrecognized value — at the storage boundary, same reasoning as themeStorage. */
+export type AppStyle = 'rock' | 'slab';
+export const APP_STYLES: AppStyle[] = ['rock', 'slab'];
+const rawStyleStorage = createJSONStorage<AppStyle>();
+const appStyleStorage = {
+  ...rawStyleStorage,
+  getItem: (key: string, initialValue: AppStyle) => {
+    const stored = rawStyleStorage.getItem(key, initialValue) as AppStyle | 'paper';
+    return stored === 'paper' ? 'rock' : stored;
+  },
+};
+export const appStyleAtom = atomWithStorage<AppStyle>('appStyle', 'rock', appStyleStorage);
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v2', true);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 // NOTE: atomWithStorage persists, so a browser that stored an older rate keeps it
@@ -207,9 +237,9 @@ export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status'
 export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc', sessionJSONStorage);
 export const inventoryCategoryFilterAtom = atomWithStorage<string>('inventoryCategoryFilter', 'All', sessionJSONStorage);
 export const isInventoryCategoryFilterOpenAtom = atom<boolean>(false);
-/** Nested smart filters. Flat key lists: "Bowl" selects a whole type,
- *  "Bowl>Round" one shape within it. See lib/smartFilters.ts. */
-export const inventoryTypeShapeFilterAtom = atomWithStorage<string[]>('inventoryTypeShapeFilter', [], sessionJSONStorage);
+/** Nested smart filters. Flat key lists: "Onyx" selects a whole material,
+ *  "Onyx>Verde" one colour within it. See lib/smartFilters.ts. The shape
+ *  counterpart is inventoryShapeFilterAtom, further down. */
 export const inventoryMaterialColorFilterAtom = atomWithStorage<string[]>('inventoryMaterialColorFilter', [], sessionJSONStorage);
 
 export const inventoryMaterialFilterAtom = atomWithStorage<string>('inventoryMaterialFilter', 'All', sessionJSONStorage);
@@ -701,3 +731,27 @@ export const visibleWorkbooksAtom = atomWithStorage<WorkbookVisibility>(
     'visibleWorkbooks_v1',
     { v825: true, v326: true, v826: true }
 );
+/**
+ * Smart-filter bars, split from the single "Tags" disclosure so each one is
+ * deployable on its own — the earlier version had one toggle unfolding both
+ * hierarchies at once, which is exactly the "everything on screen together"
+ * failure this rework exists to undo. Appended here rather than placed beside
+ * isInventorySmartFiltersOpenAtom/inventoryTypeShapeFilterAtom above: those two
+ * still back UnifiedInventoryView.tsx's existing import and the old Tags
+ * button wiring, both owned by other in-flight edits, so this file only adds.
+ *
+ * Material -> Colour defaults OPEN: the user named it the MAIN filter, so it
+ * should be visible the moment the Tags group is disclosed, without an extra
+ * click to drill in. Shape defaults CLOSED — it is the sub filter, deployed
+ * on request, same as every other panel behind the Tools disclosure.
+ */
+export const isInventoryMaterialColorFilterOpenAtom = atomWithStorage<boolean>('invMaterialColorFilterOpen', true, sessionJSONStorage);
+export const isInventoryShapeFilterOpenAtom = atomWithStorage<boolean>('invShapeFilterOpen', false, sessionJSONStorage);
+/** Selection for the geometry-headed Shape bar. Same flat-Set encoding as
+ *  inventoryTypeShapeFilterAtom above ("Box", "Box>Round Bowl") but a
+ *  separate atom rather than a repurposing of that one: the old atom's name
+ *  and its still-live consumer in UnifiedInventoryView.tsx both say "type",
+ *  and silently changing what it means under an unchanged name is the kind
+ *  of drift that produces a filter that looks like it does one thing and
+ *  quietly does another. */
+export const inventoryShapeFilterAtom = atomWithStorage<string[]>('inventoryShapeFilter', [], sessionJSONStorage);

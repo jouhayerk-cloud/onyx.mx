@@ -62,53 +62,6 @@ html.theme-talan {
   color-scheme: dark;
 }
 
-/* FLUORITE (Dark) */
-html.theme-fluorite {
-  --c1: #2a0a4a;
-  --c2: #1c0e3a;
-  --c3: #0a2a40;
-  --c4: #0a4a50;
-  --c5: #003b36;
-  --c6: #1a0a30;
-  --app-bg: rgba(20, 10, 35, 0.25);
-  --app-bg-solid: #1e0f32;
-  --sidebar-bg: rgba(30, 15, 50, 0.45);
-  --main-color: #00e5ff;
-  --secondary-color: #00b0ff;
-  --text-color: #ffffff;
-  --text-color-primary: #ffffff;
-  --secondary-text-color: #a0f0ef;
-  --text-color-secondary: #a0f0ef;
-  --border-color: rgba(0, 229, 255, 0.2);
-  --input-color: rgba(0, 0, 0, 0.4);
-  --performance-bg: linear-gradient(135deg, #1c0e3a 0%, #0a2a40 100%);
-  color-scheme: dark;
-}
-
-/* NACAR (Light Stone) - Photographic Accuracy Refinement */
-html.theme-nacar {
-  --c1: #fffcf5;
-  --c2: #fdfcf0;
-  --c3: #fff7e6;
-  --c4: #f4f1de;
-  --c5: #d4a373;
-  --c6: #ffffff;
-  --app-bg: rgba(255, 252, 245, 0.35);
-  --app-bg-solid: #fffcf5;
-  --sidebar-bg: rgba(253, 252, 240, 0.55);
-  --main-color: #d4a373;
-  --secondary-color: #8a8e85;
-  --text-color: #453e3a;
-  --text-color-primary: #2a2624;
-  --secondary-text-color: #8a8e85;
-  --text-color-secondary: #8a8e85;
-  --border-color: rgba(212, 163, 115, 0.3);
-  --input-color: rgba(255, 255, 255, 0.85);
-  --glass-bg: rgba(255, 252, 245, 0.25);
-  --performance-bg: linear-gradient(135deg, #fffcf5 0%, #f4f1de 100%);
-  color-scheme: light;
-}
-
 /* AQUA (Light Coastal Stone) */
 html.theme-aqua {
   --c1: #fdfcf0;
@@ -136,7 +89,6 @@ html.theme-aqua {
 /* Theme Gradient Tokens */
 :root {
   --gradient-talan: linear-gradient(135deg, #0d0b0a, #b8860b, #161210);
-  --gradient-fluorite: linear-gradient(135deg, #2a0a4a, #1c0e3a, #0a2a40);
   --gradient-studio: linear-gradient(135deg, #000000, #18181B, #09090B);
 }
 

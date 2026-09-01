@@ -151,10 +151,11 @@ import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 
 declare const __APP_VERSION__: string;
 
+// Fluorite and Nacar were retired; lib/atoms.tsx folds a persisted value for
+// either one back to the surviving theme of the same brightness, so nothing
+// here needs to keep a placeholder for them.
 const DEFAULT_THEMES = [
     { name: 'talan', swatch: null as string | null },
-    { name: 'fluorite', swatch: null as string | null },
-    { name: 'nacar', swatch: null as string | null },
     { name: 'aqua', swatch: null as string | null },
 ];
 

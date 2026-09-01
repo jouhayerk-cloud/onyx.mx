@@ -17,7 +17,7 @@ import { useSyncEngine } from '../../lib/syncEngine';
 import {
     X, AlertCircle, LogOut,
     Shield, Activity, Palette, Zap, Terminal,
-    Wifi, WifiOff, Layers, FileText, Box
+    Wifi, WifiOff, Layers, Box
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -27,23 +27,25 @@ import changelogText from '../../assets/CHANGELOG.md?raw';
 
 declare const __APP_VERSION__: string;
 
-const LIGHT_THEMES = ['nacar', 'aqua'];
+// FLUORITE and NACAR were retired (lib/atoms.tsx migrates any browser that
+// still has one persisted), leaving AQUA the only light theme.
+const LIGHT_THEMES = ['aqua'];
 
-/** ROCK → PAPER → SLAB → ROCK. One button cycles the three; the row it sits in
- *  already carries four controls, so a segmented control would not survive the
- *  mobile breakpoint. Order follows APP_STYLES in lib/atoms — adding a fourth
- *  style means one entry here and one there, nothing else. */
-const STYLE_META: Record<AppStyle, { label: string; icon: LucideIcon; tint: string; chip: string | null }> = {
-    rock:  { label: 'ROCK',  icon: Layers,   tint: 'text-white/20 hover:bg-white/10',     chip: null },
-    paper: { label: 'PAPER', icon: FileText, tint: 'text-blue-500 hover:bg-blue-500/10',  chip: 'bg-blue-500 text-white' },
-    slab:  { label: 'SLAB',  icon: Box,      tint: 'text-teal-400 hover:bg-teal-400/10',  chip: 'bg-teal-400 text-black' },
+/** ROCK ↔ SLAB. PAPER (flat ink) was retired along with its stylesheet
+ *  (styles/paper.css, deleted) — lib/atoms.tsx folds a persisted 'paper' back
+ *  to ROCK at the storage boundary. One button still cycles the style list;
+ *  order follows APP_STYLES in lib/atoms — adding a third style means one
+ *  entry here and one there, nothing else. The colored "chip" label this used
+ *  to carry is gone: the tool-cell/tool-label convention below already says
+ *  which control is which without a second colour system layered on top. */
+const STYLE_META: Record<AppStyle, { label: string; icon: LucideIcon }> = {
+    rock: { label: 'ROCK', icon: Layers },
+    slab: { label: 'SLAB', icon: Box },
 };
 
 const themes = [
-    { name: 'talan',    swatch: THEME_ASSETS.talan.swatch },
-    { name: 'fluorite', swatch: THEME_ASSETS.fluorite.swatch },
-    { name: 'nacar',    swatch: THEME_ASSETS.nacar.swatch },
-    { name: 'aqua',     swatch: THEME_ASSETS.aqua.swatch },
+    { name: 'talan', swatch: THEME_ASSETS.talan.swatch },
+    { name: 'aqua',  swatch: THEME_ASSETS.aqua.swatch },
 ];
 
 export const StudioSettingsPortal: React.FC = () => {
@@ -62,8 +64,10 @@ export const StudioSettingsPortal: React.FC = () => {
 
     const L = LIGHT_THEMES.includes(theme); // true = light theme
 
-    // Fall back to ROCK if storage holds a style this build no longer knows —
-    // appStyleAtom persists raw JSON, so an unknown value must not crash Settings.
+    // appStyleAtom already migrates a persisted 'paper' to 'rock' at the storage
+    // boundary (lib/atoms.tsx), but this stays as a second line of defense for
+    // any other unrecognized value reaching Settings — an unknown key here must
+    // render as ROCK, never throw.
     const styleMeta  = STYLE_META[appStyle] ?? STYLE_META.rock;
     const StyleIcon  = styleMeta.icon;
     const nextStyle  = APP_STYLES[(APP_STYLES.indexOf(appStyle) + 1) % APP_STYLES.length];
@@ -159,98 +163,134 @@ export const StudioSettingsPortal: React.FC = () => {
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-center gap-4 md:gap-8 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
-                                            {/* Style Toggle (Rock/Paper/Slab) */}
-                                            <button
-                                                onClick={() => setAppStyle(nextStyle)}
-                                                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-150 ${styleMeta.tint}`}
-                                                title={`${styleMeta.label} STYLE — CLICK FOR ${STYLE_META[nextStyle].label}`}
-                                                aria-label={`Interface style: ${styleMeta.label}. Activate to switch to ${STYLE_META[nextStyle].label}.`}
-                                            >
-                                                <StyleIcon size={20} />
-                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded transition-all duration-150 ${styleMeta.chip ?? (L ? 'bg-black/10 text-black' : 'bg-white/10 text-white')} uppercase tracking-wider`}>
+                                        {/* Icon-in-key, label-on-panel — the same tool-cell/tool-btn/tool-label
+                                            convention the tools bar uses (UniversalToolsBar.tsx), so this row
+                                            reads as part of the app rather than a settings dialog's own widget
+                                            kit. aria-pressed drives SLAB's carved-in ON state for the three
+                                            actual toggles; Logout is an action and carries none. */}
+                                        <div className="flex items-center gap-2.5 md:gap-3 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
+                                            <div className="tool-cell flex flex-col items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAppStyle(nextStyle)}
+                                                    aria-pressed={appStyle === 'slab'}
+                                                    aria-label={`Interface style: ${styleMeta.label}. Activate to switch to ${STYLE_META[nextStyle].label}.`}
+                                                    title={`${styleMeta.label} STYLE — CLICK FOR ${STYLE_META[nextStyle].label}`}
+                                                    className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
+                                                >
+                                                    <StyleIcon size={18} className={appStyle === 'slab' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')} />
+                                                </button>
+                                                <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${appStyle === 'slab' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')}`}>
                                                     {styleMeta.label}
                                                 </span>
-                                            </button>
+                                            </div>
 
-                                            {/* Performance Toggle */}
-                                            <button 
-                                                onClick={() => setPerf(!performanceMode)} 
-                                                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-150 ${performanceMode ? 'text-yellow-500 hover:bg-yellow-500/10' : 'text-white/20 hover:bg-white/10'}`}
-                                                title={performanceMode ? 'MAX PERFORMANCE' : 'STANDARD PERFORMANCE'}
-                                            >
-                                                <Zap size={20} />
-                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded transition-all duration-150 ${performanceMode ? 'bg-yellow-500 text-black' : L ? 'bg-black/10 text-black' : 'bg-white/10 text-white'}`}>
+                                            <div className="tool-cell flex flex-col items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPerf(!performanceMode)}
+                                                    aria-pressed={performanceMode}
+                                                    title={performanceMode ? 'MAX PERFORMANCE — click for standard' : 'STANDARD PERFORMANCE — click for max'}
+                                                    className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
+                                                >
+                                                    <Zap size={18} className={performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')} />
+                                                </button>
+                                                <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')}`}>
                                                     {performanceMode ? 'MAX' : 'STD'}
                                                 </span>
-                                            </button>
+                                            </div>
 
-                                            <button 
-                                                onClick={isOffline ? goOnline : goOffline} 
-                                                className={`p-3 rounded-xl transition-all duration-150 ${isOffline ? 'text-green-500 hover:bg-green-500/10' : 'text-amber-500 hover:bg-amber-500/10'}`}
-                                                title={isOffline ? 'GO ONLINE' : 'GO OFFLINE'}
-                                            >
-                                                {isOffline ? <Wifi size={20} /> : <WifiOff size={20} />}
-                                            </button>
+                                            <div className="tool-cell flex flex-col items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={isOffline ? goOnline : goOffline}
+                                                    aria-pressed={isOffline}
+                                                    title={isOffline ? 'GO ONLINE' : 'GO OFFLINE'}
+                                                    className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
+                                                >
+                                                    {isOffline ? <Wifi size={18} className="text-green-500" /> : <WifiOff size={18} className="text-amber-500" />}
+                                                </button>
+                                                <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${isOffline ? 'text-green-500' : 'text-amber-500'}`}>
+                                                    {isOffline ? 'OFFLINE' : 'ONLINE'}
+                                                </span>
+                                            </div>
 
-                                            <button 
-                                                onClick={logout} 
-                                                className="p-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-all duration-150"
-                                                title="TERMINATE SESSION"
-                                            >
-                                                <LogOut size={20} />
-                                            </button>
+                                            <div className="tool-cell flex flex-col items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={logout}
+                                                    title="TERMINATE SESSION"
+                                                    className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-red-500/10"
+                                                >
+                                                    <LogOut size={18} className="text-red-500" />
+                                                </button>
+                                                <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none text-red-500">
+                                                    EXIT
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* ── VISUAL CALIBRATION: Theme + Color integration ── */}
-                                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-12 md:gap-16">
+                                    {/* ── VISUAL CALIBRATION: Theme + Color integration ──
+                                        Two themes no longer need a multi-column grid to compare —
+                                        both selector and swatches shrink to the app's own icon-key
+                                        scale (tool-cell/tool-btn/tool-label, ~44px) instead of the
+                                        oversized cards a four-theme picker used to need. */}
+                                    <div className="flex flex-col md:flex-row md:items-start gap-10 md:gap-16">
 
                                         {/* Theme selector */}
-                                        <div className="xl:col-span-4">
-                                            <div className="flex items-center gap-3 pb-4 mb-8">
+                                        <div className="shrink-0">
+                                            <div className="flex items-center gap-3 pb-4 mb-4">
                                                 <Palette size={14} className="text-blue-500" />
-                                                <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>Themes</h3>
+                                                <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>Theme</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-4 md:gap-6">
+                                            <div className="flex items-center gap-5 md:gap-6">
                                                 {themes.map(th => {
-                                                    const themeData = THEME_ASSETS[th.name as keyof typeof THEME_ASSETS];
-                                                    const colors    = themeData?.hexInfo;
-                                                    const isSel     = theme === th.name;
+                                                    const isSel = theme === th.name;
                                                     return (
-                                                        <div
-                                                            key={th.name}
-                                                            onClick={() => setTheme(th.name)}
-                                                            className={`group relative aspect-square transition-all duration-150 cursor-pointer ${isSel ? 'opacity-100' : 'opacity-20 hover:opacity-100 grayscale hover:grayscale-0'}`}
-                                                        >
-                                                            {isSel && <div className="absolute -inset-3 rounded-2xl bg-blue-500/5 animate-pulse" />}
-                                                            <div
-                                                                className={`w-full h-full rounded-2xl bg-cover bg-center transition-all duration-150 ${isSel ? 'scale-100 rotate-0' : 'scale-90 -rotate-2 group-hover:rotate-0 group-hover:scale-100'}`}
-                                                                style={{ backgroundImage: `url(${th.swatch})` }}
-                                                            />
-                                                            <div className="absolute inset-x-0 -bottom-8 flex flex-col items-center gap-1.5 transition-all duration-150">
-                                                                <span className={`text-[12px] md:text-[14px] font-black uppercase tracking-[0.6em] transition-colors duration-150 ${isSel ? (L ? 'text-black' : 'text-white') : (L ? 'text-black/30 group-hover:text-black' : 'text-white/30 group-hover:text-white')}`}>
-                                                                    {th.name}
-                                                                </span>
-                                                                <div className="flex gap-1">
-                                                                    {colors?.accents.map((c, i) => (
-                                                                        <div key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
-                                                                    ))}
-                                                                </div>
-                                                            </div>
+                                                        <div key={th.name} className="tool-cell flex flex-col items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setTheme(th.name)}
+                                                                aria-pressed={isSel}
+                                                                aria-label={`Theme: ${th.name}`}
+                                                                title={th.name.toUpperCase()}
+                                                                className={`tool-btn relative w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden p-0 transition-all duration-150 ${
+                                                                    // SLAB tells ON apart with a hairline border colour change
+                                                                    // (--slab-edge-on) plus its carved shadow, so it needs no ring
+                                                                    // here; ROCK has no such border, so the ring below is what
+                                                                    // keeps "selected" legible under ROCK without relying on the
+                                                                    // photo's own opacity alone.
+                                                                    isSel ? 'ring-2 ring-(--main-color)' : (L ? 'ring-1 ring-black/10 hover:ring-black/20' : 'ring-1 ring-white/10 hover:ring-white/20')
+                                                                }`}
+                                                            >
+                                                                {/* Dimming lives on this inner layer, never on the button's own
+                                                                    filter/opacity — a filter there would flatten SLAB's bevel
+                                                                    (box-shadow is filterable) exactly like brightness-* does
+                                                                    elsewhere in this file's history. */}
+                                                                <span
+                                                                    className="absolute inset-0 bg-cover bg-center transition-opacity duration-150"
+                                                                    style={{ backgroundImage: `url(${th.swatch})`, opacity: isSel ? 1 : 0.4 }}
+                                                                />
+                                                            </button>
+                                                            <span className={`tool-label text-[9px] font-black uppercase tracking-[0.25em] transition-colors duration-150 ${isSel ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')}`}>
+                                                                {th.name}
+                                                            </span>
                                                         </div>
                                                     );
                                                 })}
                                             </div>
                                         </div>
 
-                                        {/* Color tokens */}
-                                        <div className="xl:col-span-8 space-y-8">
-                                            <div className="flex items-center gap-3 pb-4">
+                                        {/* Color tokens — same swatch scale as the theme selector above,
+                                            so the two rows read as one system rather than two grids sized
+                                            for a settings panel that no longer exists. */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-3 pb-4 mb-4">
                                                 <Palette size={14} className="text-cyan-500" />
                                                 <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>Colors</h3>
                                             </div>
-                                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 md:gap-4">
+                                            <div className="flex flex-wrap gap-4 md:gap-5">
                                                 {[
                                                     { label: 'Surface',  key: '--app-bg-solid' },
                                                     { label: 'Neural',   key: '--main-color' },
@@ -265,26 +305,20 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     { label: 'Base',     key: '--bg-color' },
                                                     { label: 'Accent',   key: '--accent-color' },
                                                 ].map((token) => (
-                                                    <div key={`${token.key}-${theme}`} className="group flex flex-col gap-0">
-                                                        {/* Hex above */}
-                                                        <span className={`text-[8px] font-mono uppercase tracking-tighter truncate mb-1 transition-colors duration-150 ${L ? 'text-black/50 group-hover:text-black' : 'text-white/50 group-hover:text-white'}`}>
-                                                            {getComputedStyle(document.documentElement).getPropertyValue(token.key).trim() || '#---'}
-                                                        </span>
-                                                        {/* Swatch */}
+                                                    <div key={`${token.key}-${theme}`} className="flex flex-col items-center gap-1.5 w-12">
                                                         <div
-                                                            className={`w-full aspect-square rounded-lg transition-all duration-150 group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.2)]`}
+                                                            className={`w-8 h-8 md:w-9 md:h-9 rounded-lg transition-transform duration-150 hover:scale-110 ${L ? 'ring-1 ring-black/10' : 'ring-1 ring-white/10'}`}
                                                             style={{ backgroundColor: `var(${token.key})` }}
+                                                            title={`${token.label}: ${getComputedStyle(document.documentElement).getPropertyValue(token.key).trim() || '#---'}`}
                                                         />
-                                                         {/* Label below */}
-                                                         <span className={`text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] truncate mt-2 transition-colors duration-150 ${L ? 'text-black' : 'text-white'}`}>
-                                                             {token.label}
-                                                         </span>
+                                                        <span className={`text-[8px] font-black uppercase tracking-[0.1em] truncate w-full text-center ${L ? 'text-black/50' : 'text-white/50'}`}>
+                                                            {token.label}
+                                                        </span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     </div>
-
 
                                 </div>
                             ) : (

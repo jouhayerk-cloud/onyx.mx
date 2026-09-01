@@ -50,12 +50,12 @@ import {
     uploadItemDataAtom,
     logisticsDataAtom,
     visibleWorkbooksAtom,
-    inventoryTypeShapeFilterAtom,
+    inventoryShapeFilterAtom,
     inventoryMaterialColorFilterAtom
 } from '../../lib/atoms';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { rowWorkbook } from '../../lib/seasons';
-import { rowMatchesTypeShape, rowMatchesMaterialColor } from '../../lib/smartFilters';
+import { rowMatchesShape, rowMatchesMaterialColor } from '../../lib/smartFilters';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
@@ -277,7 +277,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const theme = useAtomValue(themeAtom);
-    const qrColor = (theme === 'nacar' || theme === 'aqua') ? '#000000' : '#FFFFFF';
+    const qrColor = theme === 'aqua' ? '#000000' : '#FFFFFF'; // aqua is the only light theme left
     
     // Store Bag Implementation
     const [bag, setBag] = useAtom(storeShoppingBagAtom);
@@ -1260,7 +1260,7 @@ export const UnifiedInventoryView = () => {
     }, [items, setUploadItemData, setIsUploadWizardOpen]);
 
     const visibleWorkbooks = useAtomValue(visibleWorkbooksAtom);
-    const typeShapeFilter = useAtomValue(inventoryTypeShapeFilterAtom);
+    const shapeFilter = useAtomValue(inventoryShapeFilterAtom);
     const materialColorFilter = useAtomValue(inventoryMaterialColorFilterAtom);
 
     const filteredItems = useMemo(() => {
@@ -1315,11 +1315,15 @@ export const UnifiedInventoryView = () => {
             if (categoryFilter !== 'All' && catNormalized !== categoryFilter.toUpperCase()) return false;
             if (materialFilter !== 'All' && matNormalized !== materialFilter.toUpperCase()) return false;
 
-            // Nested smart filters. These sit alongside the flat combined
-            // filters above rather than replacing them: the flat pair is what
-            // the chips in the header still drive, and removing it would break
-            // any stored selection mid-session.
-            if (!rowMatchesTypeShape(item.data, typeShapeFilter)) return false;
+            // Nested smart filters, sitting alongside the flat combined filters
+            // above rather than replacing them — the flat pair is what the
+            // header chips still drive.
+            //
+            // Shape is headed by the eight bounded classes from lib/geometry,
+            // which replaced the old type-headed tree: that one took its
+            // parents from short_description free text, so "parent" was
+            // dozens of near-duplicate strings and the bar was unusable.
+            if (!rowMatchesShape(item.data, shapeFilter)) return false;
             if (!rowMatchesMaterialColor(item.data, materialColorFilter)) return false;
             if (deferredSearchTerm) {
                 const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
@@ -1388,7 +1392,7 @@ export const UnifiedInventoryView = () => {
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, visibleWorkbooks, user, categoryFilter, materialFilter, typeShapeFilter, materialColorFilter, deployedItemsMap, logisticsDocs]);
+    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, visibleWorkbooks, user, categoryFilter, materialFilter, shapeFilter, materialColorFilter, deployedItemsMap, logisticsDocs]);
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);
