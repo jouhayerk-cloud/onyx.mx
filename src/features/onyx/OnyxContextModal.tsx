@@ -4,6 +4,7 @@ import { ONYX_CONTEXT } from './onyxBusinessRules';
 import { Database, Info, Tag, CreditCard, ShieldCheck, X, RefreshCw } from 'lucide-react';
 import { useAtom } from 'jotai';
 import { onyxApiKeyAtom } from '../../lib/atoms';
+import { tr } from '../../lib/i18n';
 
 interface OnyxContextModalProps {
     isOpen: boolean;
@@ -31,8 +32,8 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
                             <ShieldCheck className="text-(--main-color)" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-wider">Onyx Intelligence Context</h2>
-                            <p className="text-xs text-white/40 font-bold uppercase tracking-widest mt-1">Grounding & Logic Rules</p>
+                            <h2 className="text-xl font-black text-white uppercase tracking-wider">{tr("Onyx Intelligence Context")}</h2>
+                            <p className="text-xs text-white/40 font-bold uppercase tracking-widest mt-1">{tr("Grounding & Logic Rules")}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
@@ -46,7 +47,7 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
                     <section>
                         <div className="flex items-center gap-3 mb-4">
                             <Database className="text-(--main-color)" size={18} />
-                            <h3 className="text-sm font-black text-white/90 uppercase tracking-widest">Inventory Logic</h3>
+                            <h3 className="text-sm font-black text-white/90 uppercase tracking-widest">{tr("Inventory Logic")}</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {Object.entries(ONYX_CONTEXT.tables.inventory.key_columns).map(([col, desc]) => (
@@ -57,7 +58,7 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
                             ))}
                         </div>
                         <div className="mt-4 p-4 bg-(--main-color)/5 border border-(--main-color)/10 rounded-xl">
-                            <h4 className="text-[10px] font-black text-(--main-color) uppercase tracking-widest mb-2">Hard Rules</h4>
+                            <h4 className="text-[10px] font-black text-(--main-color) uppercase tracking-widest mb-2">{tr("Hard Rules")}</h4>
                             <ul className="space-y-2">
                                 {ONYX_CONTEXT.tables.inventory.rules.map((rule, i) => (
                                     <li key={i} className="flex gap-3 text-xs text-white/70 italic">
@@ -73,16 +74,16 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
                     <section>
                         <div className="flex items-center gap-3 mb-4">
                             <CreditCard className="text-pink-500" size={18} />
-                            <h3 className="text-sm font-black text-white/90 uppercase tracking-widest">Financial Context</h3>
+                            <h3 className="text-sm font-black text-white/90 uppercase tracking-widest">{tr("Financial Context")}</h3>
                         </div>
                         <div className="p-4 bg-white/5 border border-white/5 rounded-xl space-y-4">
                             <p className="text-xs text-white/60 italic">
-                                Onyx monitors the <code className="text-pink-400">expenses</code> table to correlate payments with physical inventory.
+                                Onyx monitors the <code className="text-pink-400">expenses</code> {tr("table to correlate payments with physical inventory.")}
                             </p>
                             <div className="flex flex-wrap gap-2">
-                                <span className="px-2 py-1 bg-red-500/20 text-red-400 text-[10px] font-black rounded border border-red-500/20">PARTIAL = RED</span>
-                                <span className="px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-black rounded border border-green-500/20">PAID = GREEN</span>
-                                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-[10px] font-black rounded border border-blue-500/20">NEW = BLUE</span>
+                                <span className="px-2 py-1 bg-red-500/20 text-red-400 text-[10px] font-black rounded border border-red-500/20">{tr("PARTIAL = RED")}</span>
+                                <span className="px-2 py-1 bg-green-500/20 text-green-400 text-[10px] font-black rounded border border-green-500/20">{tr("PAID = GREEN")}</span>
+                                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-[10px] font-black rounded border border-blue-500/20">{tr("NEW = BLUE")}</span>
                             </div>
                         </div>
                     </section>
@@ -91,7 +92,7 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
                     <section>
                         <div className="flex items-center gap-3 mb-4">
                             <Tag className="text-yellow-500" size={18} />
-                            <h3 className="text-sm font-black text-white/90 uppercase tracking-widest">Vendor Mapping</h3>
+                            <h3 className="text-sm font-black text-white/90 uppercase tracking-widest">{tr("Vendor Mapping")}</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {Object.entries(ONYX_CONTEXT.vendor_mapping).map(([id, info]: [string, any]) => (
@@ -115,13 +116,13 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
 
                 {/* Footer */}
                 <div className="p-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between bg-black gap-4">
-                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em]">Active Model: GEMINI-1.5-PRO-ONYX-V1</p>
+                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em]">{tr("Active Model: GEMINI-1.5-PRO-ONYX-V1")}</p>
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <button 
                             onClick={onClose}
                             className="flex-1 md:flex-none px-8 py-2 bg-(--main-color) text-black text-xs font-black uppercase tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(var(--main-color-rgb),0.3)]"
                         >
-                            Sync Intelligence
+                            {tr("Sync Intelligence")}
                         </button>
                     </div>
                 </div>

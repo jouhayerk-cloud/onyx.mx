@@ -20,6 +20,7 @@ import {
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { WireframeCrate } from '../../components/CrateVisuals';
+import { tr } from '../../lib/i18n';
 
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
@@ -153,10 +154,10 @@ const AddPaymentModal: React.FC<{
     const handleSubmit = async () => {
         const amt = parseFloat(form.amount);
         if (!form.description || isNaN(amt) || amt <= 0 || !form.destination) {
-            return notify.error('Fill in description, amount, and select an account.');
+            return notify.error(tr("Fill in description, amount, and select an account."));
         }
         setSaving(true);
-        const toastId = notify.loading('Saving artifact…');
+        const toastId = notify.loading(tr("Saving artifact…"));
         try {
             const manualFeeAmt = parseFloat(form.manualFee) || 0;
             const ivaAmt = form.includeIva ? calculateIVA(amt) : 0;
@@ -212,7 +213,7 @@ const AddPaymentModal: React.FC<{
                 linkedRows: (form.subcategory === 'Prod' || form.subcategory === 'Packing' || form.vendor_id.includes('%')) ? inventoryItemRows : null
             }, db);
 
-            notify.success('Record added!', { id: toastId });
+            notify.success(tr("Record added!"), { id: toastId });
             onSaved();
             onClose();
         } catch (err: any) {
@@ -241,7 +242,7 @@ const AddPaymentModal: React.FC<{
                             </div>
                             <div className="flex flex-col">
                                 <div className="flex items-center gap-4 mb-1">
-                                    <h1 className="text-xl md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">PAYMENTS</h1>
+                                    <h1 className="text-xl md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">{tr("PAYMENTS")}</h1>
                                 </div>
                             </div>
                         </div>
@@ -286,7 +287,7 @@ const AddPaymentModal: React.FC<{
                                             <Layers size={120} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_20px_rgba(249,115,22,0.5)]" />
                                             <div className="absolute inset-0 bg-orange-500/20 blur-[100px] opacity-0 group-hover:opacity-60 transition-opacity" />
                                         </div>
-                                        <span className="relative text-2xl font-black text-white uppercase tracking-[0.8em] group-hover:text-orange-400 transition-all">MERCHANDISE</span>
+                                        <span className="relative text-2xl font-black text-white uppercase tracking-[0.8em] group-hover:text-orange-400 transition-all">{tr("MERCHANDISE")}</span>
                                     </button>
 
                                     <button onClick={() => setStep(2.2)}
@@ -295,7 +296,7 @@ const AddPaymentModal: React.FC<{
                                             <DollarSign size={120} strokeWidth={1} className="opacity-100 transition-all drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
                                             <div className="absolute inset-0 bg-blue-500/20 blur-[100px] opacity-0 group-hover:opacity-60 transition-opacity" />
                                         </div>
-                                        <span className="relative text-2xl font-black text-white uppercase tracking-[0.8em] group-hover:text-blue-400 transition-all">OPERATIONS</span>
+                                        <span className="relative text-2xl font-black text-white uppercase tracking-[0.8em] group-hover:text-blue-400 transition-all">{tr("OPERATIONS")}</span>
                                     </button>
                                 </div>
                             </div>
@@ -306,7 +307,7 @@ const AddPaymentModal: React.FC<{
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
                                     <button onClick={() => setStep(1)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
-                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> {tr("BACK")}
                                     </button>
                                 </div>
 
@@ -317,7 +318,7 @@ const AddPaymentModal: React.FC<{
                                             <PackageIcon size={120} className="text-orange-500 drop-shadow-[0_0_20px_rgba(249,115,22,0.5)]" />
                                             <div className="absolute inset-0 bg-orange-500/20 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-xl font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">ACQUISITIONS</span>
+                                        <span className="text-xl font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">{tr("ACQUISITIONS")}</span>
                                     </button>
 
                                     <button onClick={() => { set('subcategory', 'Prod'); setStep(3.1); }}
@@ -326,7 +327,7 @@ const AddPaymentModal: React.FC<{
                                             <Cpu size={120} className="text-blue-500 drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
                                             <div className="absolute inset-0 bg-blue-500/20 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-xl font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">PRODUCTION</span>
+                                        <span className="text-xl font-black text-white/40 uppercase tracking-[0.8em] group-hover:text-white">{tr("PRODUCTION")}</span>
                                     </button>
                                 </div>
                             </div>
@@ -337,7 +338,7 @@ const AddPaymentModal: React.FC<{
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
                                     <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
-                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> {tr("BACK")}
                                     </button>
                                 </div>
 
@@ -348,7 +349,7 @@ const AddPaymentModal: React.FC<{
                                     }).length === 0 ? (
                                         <div className="col-span-full py-40 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-[64px] bg-white/[0.02]">
                                             <AlertCircle size={48} className="text-white/10 mb-6" />
-                                            <p className="text-white/20 text-[12px] font-black tracking-[0.8em] uppercase">No artifacts pending request</p>
+                                            <p className="text-white/20 text-[12px] font-black tracking-[0.8em] uppercase">{tr("No artifacts pending request")}</p>
                                         </div>
                                     ) : (
                                         pendingGroups
@@ -391,7 +392,7 @@ const AddPaymentModal: React.FC<{
                                                         </div>
                                                         {paidPerc > 0 && (
                                                             <div className="absolute top-6 right-6 px-5 py-3 rounded-2xl bg-blue-500 border border-blue-400 text-[12px] font-black text-white uppercase tracking-widest shadow-2xl">
-                                                                {paidPerc}% PAID
+                                                                {paidPerc}{tr("% PAID")}
                                                             </div>
                                                         )}
                                                     </button>
@@ -407,7 +408,7 @@ const AddPaymentModal: React.FC<{
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
                                     <button onClick={() => setStep(1)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
-                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> {tr("BACK")}
                                     </button>
                                 </div>
 
@@ -418,7 +419,7 @@ const AddPaymentModal: React.FC<{
                                             <Box size={120} className="text-green-500 drop-shadow-[0_0_20px_rgba(34,197,94,0.5)]" />
                                             <div className="absolute inset-0 bg-green-500/20 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-xl font-black text-white uppercase tracking-[0.8em] group-hover:text-green-500 transition-all">CRATES</span>
+                                        <span className="text-xl font-black text-white uppercase tracking-[0.8em] group-hover:text-green-500 transition-all">{tr("CRATES")}</span>
                                     </button>
                                     
                                     <button onClick={() => setStep(3.2)}
@@ -427,7 +428,7 @@ const AddPaymentModal: React.FC<{
                                             <Filter size={120} className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]" />
                                             <div className="absolute inset-0 bg-white/10 blur-[80px] opacity-0 group-hover:opacity-40 transition-opacity" />
                                         </div>
-                                        <span className="text-xl font-black text-white uppercase tracking-[0.8em] group-hover:text-(--main-color) transition-all">OTHER</span>
+                                        <span className="text-xl font-black text-white uppercase tracking-[0.8em] group-hover:text-(--main-color) transition-all">{tr("OTHER")}</span>
                                     </button>
                                 </div>
                             </div>
@@ -438,7 +439,7 @@ const AddPaymentModal: React.FC<{
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
                                     <button onClick={() => setStep(2.2)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
-                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> {tr("BACK")}
                                     </button>
                                 </div>
 
@@ -470,20 +471,20 @@ const AddPaymentModal: React.FC<{
                             <div className="flex flex-col items-center max-w-5xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-16">
                                     <p className="text-xl text-white uppercase tracking-[1.2em] font-black drop-shadow-lg">
-                                        PAYMENT DETAILS
+                                        {tr("PAYMENT DETAILS")}
                                     </p>
                                 </div>
 
                                 <div className="grid gap-12 max-w-4xl">
                                     <div className="space-y-8">
-                                        <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">Transactional Description</label>
+                                        <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">{tr("Transactional Description")}</label>
                                         <input value={form.description} onChange={e => set('description', e.target.value)}
-                                            className="w-full h-24 px-10 rounded-[40px] bg-white/[0.03] border border-white/5 text-2xl font-bold text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all outline-none shadow-inner" placeholder="Session summary" />
+                                            className="w-full h-24 px-10 rounded-[40px] bg-white/[0.03] border border-white/5 text-2xl font-bold text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all outline-none shadow-inner" placeholder={tr("Session summary")} />
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                         <div className="space-y-8">
-                                            <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">Volume (MXN)</label>
+                                            <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">{tr("Volume (MXN)")}</label>
                                             <div className="relative group">
                                                 <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
                                                     className="w-full h-24 px-10 pl-16 font-mono text-5xl font-black bg-white/[0.03] border border-white/5 rounded-[40px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" />
@@ -491,9 +492,9 @@ const AddPaymentModal: React.FC<{
                                             </div>
                                         </div>
                                         <div className="space-y-8">
-                                            <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">Reference Payments</label>
+                                            <label className="text-xl text-white/30 font-black uppercase tracking-[0.8em] block ml-6">{tr("Reference Payments")}</label>
                                             <input value={form.reference} onChange={e => set('reference', e.target.value)}
-                                                className="w-full h-24 px-10 rounded-[40px] bg-white/[0.03] border border-white/5 text-2xl font-bold text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" placeholder="Optional identifier" />
+                                                className="w-full h-24 px-10 rounded-[40px] bg-white/[0.03] border border-white/5 text-2xl font-bold text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" placeholder={tr("Optional identifier")} />
                                         </div>
                                     </div>
 
@@ -503,8 +504,8 @@ const AddPaymentModal: React.FC<{
                                                 <Calendar size={64} strokeWidth={1} />
                                             </div>
                                             <div className="flex flex-col text-left">
-                                                <span className="text-xl font-black text-white uppercase tracking-widest mb-1">RECURRING DISBURSEMENT</span>
-                                                <span className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">Automatic monthly persistence</span>
+                                                <span className="text-xl font-black text-white uppercase tracking-widest mb-1">{tr("RECURRING DISBURSEMENT")}</span>
+                                                <span className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">{tr("Automatic monthly persistence")}</span>
                                             </div>
                                         </div>
                                         <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
@@ -515,7 +516,7 @@ const AddPaymentModal: React.FC<{
 
                                     {form.recurring && (
                                         <div className="animate-in slide-in-from-top-4 duration-700 space-y-6 pl-6 border-l-2 border-(--main-color)/20 ml-10">
-                                            <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block">Persistence Window Day</label>
+                                            <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block">{tr("Persistence Window Day")}</label>
                                             <div className="flex items-center gap-8">
                                                 <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
                                                     className="w-48 h-20 font-mono text-4xl font-black bg-white/[0.03] border border-(--main-color)/30 rounded-[32px] text-white outline-none focus:border-(--main-color) transition-all text-center shadow-inner" />
@@ -531,11 +532,11 @@ const AddPaymentModal: React.FC<{
                                         else if (form.vendor_id) setStep(3.1);
                                         else if (['Sppl', 'Labr', 'Packing', 'Oprt'].includes(form.subcategory)) setStep(3.2);
                                         else setStep(2.2);
-                                    }} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
+                                    }} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">{tr("BACK")}</button>
                                     <button onClick={() => {
-                                        if (!form.amount || parseFloat(form.amount) <= 0) return notify.error('Enter valid amount');
+                                        if (!form.amount || parseFloat(form.amount) <= 0) return notify.error(tr("Enter valid amount"));
                                         setStep(5);
-                                    }} className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 uppercase">PROCEED_TO_SOURCE →</button>
+                                    }} className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 uppercase">{tr("PROCEED_TO_SOURCE →")}</button>
                                 </div>
                             </div>
                         )}
@@ -545,12 +546,12 @@ const AddPaymentModal: React.FC<{
                             <div className="flex flex-col items-center max-w-6xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-20">
                                     <button onClick={() => setStep(3.1)} className="group flex items-center gap-6 text-2xl font-black text-white uppercase tracking-[0.4em] mb-12 hover:text-(--main-color) transition-all">
-                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> BACK
+                                        <ChevronLeft size={32} strokeWidth={3} className="group-hover:-translate-x-2 transition-transform" /> {tr("BACK")}
                                     </button>
                                     <h2 className="text-7xl md:text-9xl font-black text-white tracking-tighter uppercase leading-[0.8] mb-6">
-                                        SOURCE<br /><span className="opacity-20">PAYMENTS</span>
+                                        {tr("SOURCE")}<br /><span className="opacity-20">{tr("PAYMENTS")}</span>
                                     </h2>
-                                    <p className="text-[14px] text-white/30 uppercase tracking-[0.6em] font-medium">Select disbursement node</p>
+                                    <p className="text-[14px] text-white/30 uppercase tracking-[0.6em] font-medium">{tr("Select disbursement node")}</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -573,10 +574,10 @@ const AddPaymentModal: React.FC<{
                                 </div>
 
                                 <div className="flex gap-8 mt-24 max-w-4xl">
-                                    <button onClick={() => setStep(4)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
+                                    <button onClick={() => setStep(4)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">{tr("BACK")}</button>
                                     <button onClick={() => setStep(6)} disabled={!form.destination}
                                         className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-10 uppercase shadow-2xl shadow-(--main-color)/20">
-                                        CALIBRATE_ADJUSTMENTS →
+                                        {tr("CALIBRATE_ADJUSTMENTS →")}
                                     </button>
                                 </div>
                             </div>
@@ -587,9 +588,9 @@ const AddPaymentModal: React.FC<{
                             <div className="flex flex-col items-center max-w-5xl mx-auto animate-in fade-in slide-in-from-top-12 duration-1000 pt-6">
                                 <div className="mb-20">
                                     <h2 className="text-7xl md:text-9xl font-black text-white tracking-tighter uppercase leading-[0.8] mb-6">
-                                        ADJUST<br /><span className="opacity-20">FACTORS</span>
+                                        {tr("ADJUST")}<br /><span className="opacity-20">{tr("FACTORS")}</span>
                                     </h2>
-                                    <p className="text-[14px] text-white/30 uppercase tracking-[0.6em] font-medium">Fiscal & platform calibration</p>
+                                    <p className="text-[14px] text-white/30 uppercase tracking-[0.6em] font-medium">{tr("Fiscal & platform calibration")}</p>
                                 </div>
 
                                 <div className="grid gap-12 max-w-4xl">
@@ -597,8 +598,8 @@ const AddPaymentModal: React.FC<{
                                         <button onClick={() => { set('includeIva', !form.includeIva); if (!form.includeIva) set('includeComm', false); }}
                                             className={`flex items-center justify-between p-10 rounded-[48px] border transition-all duration-700 ${form.includeIva ? 'bg-green-500/10 border-green-500/40 text-green-500' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40 hover:bg-white/5'}`}>
                                             <div className="flex flex-col text-left">
-                                                <span className="text-xl font-black uppercase tracking-widest mb-1">ADD 16% IVA</span>
-                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Value added tax</span>
+                                                <span className="text-xl font-black uppercase tracking-widest mb-1">{tr("ADD 16% IVA")}</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{tr("Value added tax")}</span>
                                             </div>
                                             <div className={`w-16 h-10 rounded-full relative transition-all ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
                                                 <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeIva ? 'left-7.5' : 'left-1.5'}`} />
@@ -608,8 +609,8 @@ const AddPaymentModal: React.FC<{
                                         <button onClick={() => { set('includeComm', !form.includeComm); if (!form.includeComm) set('includeIva', false); }}
                                             className={`flex items-center justify-between p-10 rounded-[48px] border transition-all duration-700 ${form.includeComm ? 'bg-blue-500/10 border-blue-500/40 text-blue-500' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40 hover:bg-white/5'}`}>
                                             <div className="flex flex-col text-left">
-                                                <span className="text-xl font-black uppercase tracking-widest mb-1">BANK FEE (10%)</span>
-                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Processing overhead</span>
+                                                <span className="text-xl font-black uppercase tracking-widest mb-1">{tr("BANK FEE (10%)")}</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{tr("Processing overhead")}</span>
                                             </div>
                                             <div className={`w-16 h-10 rounded-full relative transition-all ${form.includeComm ? 'bg-blue-500' : 'bg-white/10'}`}>
                                                 <div className={`absolute top-1.5 w-7 h-7 rounded-full bg-white transition-all ${form.includeComm ? 'left-7.5' : 'left-1.5'}`} />
@@ -618,7 +619,7 @@ const AddPaymentModal: React.FC<{
                                     </div>
 
                                     <div className="space-y-6">
-                                        <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">Manual commission / fee (MXN)</label>
+                                        <label className="text-[11px] text-white/30 font-black uppercase tracking-[0.8em] block ml-4">{tr("Manual commission / fee (MXN)")}</label>
                                         <div className="relative group">
                                             <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
                                                 className="w-full h-24 px-10 pl-16 font-mono text-5xl font-black bg-white/[0.03] border border-white/5 rounded-[40px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.06] transition-all shadow-inner" />
@@ -631,15 +632,15 @@ const AddPaymentModal: React.FC<{
                                         <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
                                         <div className="relative flex justify-between items-center mb-10">
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] font-black text-white/30 uppercase tracking-[1em] mb-2">ARTIFACT TOTAL DISBURSEMENT</span>
+                                                <span className="text-[11px] font-black text-white/30 uppercase tracking-[1em] mb-2">{tr("ARTIFACT TOTAL DISBURSEMENT")}</span>
                                                 <div className="flex items-center gap-4">
-                                                    <span className="text-[12px] font-mono font-black text-white/40 tracking-widest bg-white/5 px-4 py-1 rounded-full">{fmtMXN(parseFloat(form.amount) || 0)} BASE_VAL</span>
+                                                    <span className="text-[12px] font-mono font-black text-white/40 tracking-widest bg-white/5 px-4 py-1 rounded-full">{fmtMXN(parseFloat(form.amount) || 0)} {tr("BASE_VAL")}</span>
                                                 </div>
                                             </div>
                                             <div className="flex flex-col items-end opacity-40 gap-2">
-                                                {form.includeIva && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-green-500">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
-                                                {form.includeComm && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
-                                                {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
+                                                {form.includeIva && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-green-500">{tr("+ IVA")} {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                                {form.includeComm && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">{tr("+ BNK")} {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
+                                                {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white">{tr("+ FEE")} {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
                                             </div>
                                         </div>
                                         <div className="relative text-7xl md:text-9xl font-mono font-black text-white tracking-tighter leading-none drop-shadow-2xl">
@@ -649,7 +650,7 @@ const AddPaymentModal: React.FC<{
                                 </div>
 
                                 <div className="flex gap-8 mt-24 max-w-4xl pb-12">
-                                    <button onClick={() => setStep(5)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
+                                    <button onClick={() => setStep(5)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">{tr("BACK")}</button>
                                     <button onClick={handleSubmit} disabled={saving}
                                         className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 disabled:opacity-20 uppercase">
                                         {saving ? 'RECORDING ARTIFACT…' : 'CONFIRM DISBURSEMENT PAYMENTS'}
@@ -710,7 +711,7 @@ const RequestPaymentModal: React.FC<{
                             {paidPerc > 0 && percentage === 100 ? 'LIQUIDATION' : 'REQUEST'}
                         </h3>
                         <p className="text-[10px] text-white/20 uppercase tracking-[0.5em] font-black">
-                            {group.type} PAYMENTS · {group.vendorId}
+                            {group.type} {tr("PAYMENTS ·")} {group.vendorId}
                         </p>
                     </div>
                     <button onClick={onClose} className="w-14 h-14 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-500">
@@ -723,12 +724,12 @@ const RequestPaymentModal: React.FC<{
                         {/* High-Level Overview Cards */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-8 rounded-[40px] bg-white/[0.03] border border-white/5">
-                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">CONTRACT TOTAL</p>
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">{tr("CONTRACT TOTAL")}</p>
                                 <p className="text-3xl font-mono font-black text-white leading-none">{fmtMXN(group.total)}</p>
                             </div>
                             <div className="p-8 rounded-[40px] bg-white/[0.03] border border-white/5 flex flex-col justify-center">
-                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">ASSET COUNT</p>
-                                <p className="text-xl font-black text-(--main-color) uppercase tracking-widest">{group.items.length} ITEMS</p>
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">{tr("ASSET COUNT")}</p>
+                                <p className="text-xl font-black text-(--main-color) uppercase tracking-widest">{group.items.length} {tr("ITEMS")}</p>
                             </div>
                         </div>
 
@@ -736,11 +737,11 @@ const RequestPaymentModal: React.FC<{
                         <div className="bg-white/5 rounded-[48px] p-10 border border-white/5">
                             <div className="flex justify-between items-end mb-6">
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">CUMULATIVE PROGRESS</span>
-                                    <span className="text-4xl font-mono font-black text-white leading-none">{paidPerc}% COMPLETE</span>
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">{tr("CUMULATIVE PROGRESS")}</span>
+                                    <span className="text-4xl font-mono font-black text-white leading-none">{paidPerc}{tr("% COMPLETE")}</span>
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">STAKED</span>
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">{tr("STAKED")}</span>
                                     <span className="text-xl font-mono font-black text-white/40">{fmtMXN(group.paidTotal)}</span>
                                 </div>
                             </div>
@@ -757,11 +758,11 @@ const RequestPaymentModal: React.FC<{
                             <div className="space-y-8">
                                 <div className="flex justify-between items-center">
                                     <div className="flex flex-col">
-                                        <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">TARGET PERCENTAGE</label>
+                                        <label className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">{tr("TARGET PERCENTAGE")}</label>
                                         <span className="text-4xl font-mono font-black text-(--main-color) leading-none tracking-tighter">{percentage}%</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">DELTA TO DISBURSE</span>
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1">{tr("DELTA TO DISBURSE")}</span>
                                         <span className="text-2xl font-mono font-black text-white leading-none">{fmtMXN(amountToRequest)}</span>
                                     </div>
                                 </div>
@@ -772,7 +773,7 @@ const RequestPaymentModal: React.FC<{
                             </div>
                         ) : (
                             <div className="p-10 rounded-[48px] bg-white/5 border border-white/5 text-center flex flex-col items-center">
-                                <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] mb-4">TOTAL LIQUIDATION PAYMENTS</p>
+                                <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] mb-4">{tr("TOTAL LIQUIDATION PAYMENTS")}</p>
                                 <p className="text-5xl font-mono font-black text-white tracking-tighter leading-none">{fmtMXN(amountToRequest)}</p>
                             </div>
                         )}
@@ -794,23 +795,23 @@ const RequestPaymentModal: React.FC<{
                             <button onClick={() => { setIncludeIva(!includeIva); if (!includeIva) setIncludeComm(false); }}
                                 className={`flex flex-col items-center justify-center p-8 rounded-[40px] border-2 transition-all duration-700 ${includeIva ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40'}`}>
                                 <Percent size={24} className="mb-2" />
-                                <span className="text-[9px] font-black uppercase tracking-widest">ADD 16% IVA</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest">{tr("ADD 16% IVA")}</span>
                             </button>
                             <button onClick={() => { setIncludeComm(!includeComm); if (!includeComm) setIncludeIva(false); }}
                                 className={`flex flex-col items-center justify-center p-8 rounded-[40px] border-2 transition-all duration-700 ${includeComm ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-white/[0.03] border-white/5 text-white/20 hover:text-white/40'}`}>
                                 <DollarSign size={24} className="mb-2" />
-                                <span className="text-[9px] font-black uppercase tracking-widest">BANK (10%)</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest">{tr("BANK (10%)")}</span>
                             </button>
                         </div>
 
                         <div className="relative group/fee">
-                            <label className="text-[9px] text-white/20 font-black uppercase tracking-[0.4em] mb-4 block text-center">MANUAL FEE (MXN)</label>
+                            <label className="text-[9px] text-white/20 font-black uppercase tracking-[0.4em] mb-4 block text-center">{tr("MANUAL FEE (MXN)")}</label>
                             <input type="number" step="0.01" value={manualFee} onChange={e => setManualFee(e.target.value)}
                                 className="w-full h-16 px-8 font-mono text-xl font-black bg-white/[0.03] border border-white/10 rounded-[32px] text-white text-center outline-none focus:border-(--main-color) focus:bg-white/[0.08] transition-all" placeholder="0.00" />
                         </div>
 
                         <div className="pt-8 flex gap-6">
-                            <button onClick={onClose} className="flex-1 py-7 border-2 border-white/10 text-white font-black rounded-[32px] text-[10px] tracking-[0.4em] hover:bg-white/10 transition-all uppercase">TERMINATE</button>
+                            <button onClick={onClose} className="flex-1 py-7 border-2 border-white/10 text-white font-black rounded-[32px] text-[10px] tracking-[0.4em] hover:bg-white/10 transition-all uppercase">{tr("TERMINATE")}</button>
                             <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva, includeComm)} disabled={!dest || amountToRequest <= 0}
                                 className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[10px] font-black tracking-[0.4em] disabled:opacity-20 uppercase transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)] hover:scale-[1.02] active:scale-95">
                                 {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM REQUEST'}
@@ -888,10 +889,10 @@ const EditPaymentModal: React.FC<{
     const handleUpdate = async () => {
         const amt = parseFloat(form.amount);
         if (!form.description || isNaN(amt) || amt <= 0 || !form.destination) {
-            return toast.error('Fill in description, amount, and select an account.');
+            return toast.error(tr("Fill in description, amount, and select an account."));
         }
         setSaving(true);
-        const toastId = toast.loading('Updating payment…');
+        const toastId = toast.loading(tr("Updating payment…"));
         try {
             const manualFeeAmt = parseFloat(form.manualFee) || 0;
             const ivaAmt = form.includeIva ? calculateIVA(amt) : 0;
@@ -924,7 +925,7 @@ const EditPaymentModal: React.FC<{
                 } catch (e) { console.error('Local sync failed', e); }
             }
 
-            toast.success('Payment updated!', { id: toastId });
+            toast.success(tr("Payment updated!"), { id: toastId });
             onSaved();
             onClose();
         } catch (err: any) {
@@ -951,7 +952,7 @@ const EditPaymentModal: React.FC<{
                             <Edit3 size={24} />
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-1">Editing Payment Record</p>
+                            <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-1">{tr("Editing Payment Record")}</p>
                             <p className="text-xl font-black text-white/90 truncate max-w-[350px] tracking-tight">{record.description || 'Unnamed Transaction'}</p>
                         </div>
                     </div>
@@ -965,27 +966,27 @@ const EditPaymentModal: React.FC<{
                     {step === 4 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-12 pt-4">
                             <div className="flex flex-col">
-                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">DETAILS</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">Refine transactional metadata</p>
+                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">{tr("DETAILS")}</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">{tr("Refine transactional metadata")}</p>
                             </div>
 
                             <div className="grid gap-10">
                                 <div className="space-y-4">
-                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">DESCRIPTION</label>
+                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">{tr("DESCRIPTION")}</label>
                                     <input value={form.description} onChange={e => set('description', e.target.value)}
-                                        className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all outline-none" placeholder="Brief summary" />
+                                        className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all outline-none" placeholder={tr("Brief summary")} />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-8">
                                     <div className="space-y-4">
-                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">AMOUNT (MXN)</label>
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">{tr("AMOUNT (MXN)")}</label>
                                         <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
                                             className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
                                     </div>
                                     <div className="space-y-4">
-                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">REFERENCE</label>
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">{tr("REFERENCE")}</label>
                                         <input value={form.reference} onChange={e => set('reference', e.target.value)}
-                                            className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" placeholder="Optional #" />
+                                            className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" placeholder={tr("Optional #")} />
                                     </div>
                                 </div>
 
@@ -995,8 +996,8 @@ const EditPaymentModal: React.FC<{
                                             <Calendar size={28} />
                                         </div>
                                         <div>
-                                            <span className="text-[13px] font-black text-white uppercase tracking-widest block mb-1">RECURRING DISBURSEMENT</span>
-                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Automatic monthly persistence</span>
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest block mb-1">{tr("RECURRING DISBURSEMENT")}</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">{tr("Automatic monthly persistence")}</span>
                                         </div>
                                     </div>
                                     <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
@@ -1007,7 +1008,7 @@ const EditPaymentModal: React.FC<{
 
                                 {form.recurring && (
                                     <div className="animate-in slide-in-from-top-4 duration-500 space-y-4">
-                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">MONTHLY PERSISTENCE DAY</label>
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">{tr("MONTHLY PERSISTENCE DAY")}</label>
                                         <div className="flex items-center gap-6">
                                             <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
                                                 className="w-40 h-16 font-mono text-2xl font-black bg-white/5 border border-(--main-color)/30 rounded-[28px] text-white outline-none focus:border-(--main-color)/60 transition-all text-center" />
@@ -1017,13 +1018,13 @@ const EditPaymentModal: React.FC<{
                                 )}
 
                                 <div className="space-y-4">
-                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">NOTES / CONTEXT</label>
+                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">{tr("NOTES / CONTEXT")}</label>
                                     <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
-                                        className="w-full h-32 px-8 py-6 rounded-[32px] bg-white/5 border border-white/5 text-lg font-medium text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all outline-none resize-none" placeholder="Additional context…" />
+                                        className="w-full h-32 px-8 py-6 rounded-[32px] bg-white/5 border border-white/5 text-lg font-medium text-white placeholder:text-white/10 focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all outline-none resize-none" placeholder={tr("Additional context…")} />
                                 </div>
                             </div>
 
-                            <button onClick={() => setStep(5)} className="w-full py-8 bg-(--main-color) text-black rounded-[32px] text-[13px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl uppercase mt-8">CONTINUE TO SOURCE →</button>
+                            <button onClick={() => setStep(5)} className="w-full py-8 bg-(--main-color) text-black rounded-[32px] text-[13px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl uppercase mt-8">{tr("CONTINUE TO SOURCE →")}</button>
                         </div>
                     )}
 
@@ -1031,8 +1032,8 @@ const EditPaymentModal: React.FC<{
                     {step === 5 && (
                         <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-12 flex flex-col items-center max-w-4xl mx-auto pt-6">
                             <div className="flex flex-col">
-                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">SOURCE</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">Select disbursement payments</p>
+                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">{tr("SOURCE")}</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">{tr("Select disbursement payments")}</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-6">
@@ -1051,9 +1052,9 @@ const EditPaymentModal: React.FC<{
                             </div>
 
                             <div className="flex gap-6 mt-16">
-                                <button onClick={() => setStep(4)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
+                                <button onClick={() => setStep(4)} className="flex-1 py-7 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">{tr("BACK")}</button>
                                 <button onClick={() => setStep(6)} disabled={!form.destination}
-                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 uppercase">CONTINUE TO TAXES</button>
+                                    className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 uppercase">{tr("CONTINUE TO TAXES")}</button>
                             </div>
                         </div>
                     )}
@@ -1062,16 +1063,16 @@ const EditPaymentModal: React.FC<{
                     {step === 6 && (
                         <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-12 flex flex-col items-center max-w-4xl mx-auto pt-6">
                             <div className="flex flex-col">
-                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">ADJUSTMENTS</h2>
-                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">Tax & fee calibration</p>
+                                <h2 className="text-5xl font-black text-white mb-2 tracking-tighter uppercase leading-none">{tr("ADJUSTMENTS")}</h2>
+                                <p className="text-[11px] text-white/20 uppercase tracking-[0.3em] font-black">{tr("Tax & fee calibration")}</p>
                             </div>
 
                             <div className="grid gap-10">
                                 <div className="grid gap-4">
                                     <div className="flex items-center justify-between p-8 rounded-[40px] bg-white/5 border border-white/5">
                                         <div className="flex flex-col">
-                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">ADD 16% IVA</span>
-                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Value added tax calculation</span>
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">{tr("ADD 16% IVA")}</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">{tr("Value added tax calculation")}</span>
                                         </div>
                                         <button onClick={() => { set('includeIva', !form.includeIva); if (!form.includeIva) set('includeComm', false); }}
                                             className={`w-16 h-10 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
@@ -1080,8 +1081,8 @@ const EditPaymentModal: React.FC<{
                                     </div>
                                     <div className="flex items-center justify-between p-8 rounded-[40px] bg-white/5 border border-white/5">
                                         <div className="flex flex-col">
-                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">BANK COMISION (10%)</span>
-                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Platform processing fee</span>
+                                            <span className="text-[13px] font-black text-white uppercase tracking-widest">{tr("BANK COMISION (10%)")}</span>
+                                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">{tr("Platform processing fee")}</span>
                                         </div>
                                         <button onClick={() => { set('includeComm', !form.includeComm); if (!form.includeComm) set('includeIva', false); }}
                                             className={`w-16 h-10 rounded-full transition-all relative ${form.includeComm ? 'bg-blue-500' : 'bg-white/10'}`}>
@@ -1091,7 +1092,7 @@ const EditPaymentModal: React.FC<{
                                 </div>
 
                                 <div className="space-y-4">
-                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
+                                    <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">{tr("MANUAL COMMISSION / FEE (MXN)")}</label>
                                     <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
                                         className="w-full h-20 px-8 font-mono text-3xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" />
                                 </div>
@@ -1099,22 +1100,22 @@ const EditPaymentModal: React.FC<{
                                 <div className="p-14 rounded-[64px] bg-white/[0.03] border border-white/5 relative overflow-hidden group">
                                     <div className="absolute inset-0 bg-(--main-color)/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                                     <div className="relative flex justify-between items-center mb-6">
-                                        <span className="text-[12px] font-black text-white/30 uppercase tracking-[0.6em]">ARTIFACT TOTAL</span>
-                                        <span className="text-[14px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
+                                        <span className="text-[12px] font-black text-white/30 uppercase tracking-[0.6em]">{tr("ARTIFACT TOTAL")}</span>
+                                        <span className="text-[14px] font-mono font-bold text-white/40 tracking-widest">{fmtMXN(parseFloat(form.amount) || 0)} {tr("BASE")}</span>
                                     </div>
                                     <div className="relative text-8xl font-mono font-black text-white tracking-tighter leading-none mb-8">
                                         {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
                                     </div>
                                     <div className="relative flex gap-10 opacity-60">
-                                        {form.includeIva && <span className="text-[12px] font-black uppercase tracking-widest text-green-500">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
-                                        {form.includeComm && <span className="text-[12px] font-black uppercase tracking-widest text-blue-500">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
-                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[12px] font-black uppercase tracking-widest text-white">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
+                                        {form.includeIva && <span className="text-[12px] font-black uppercase tracking-widest text-green-500">{tr("+ IVA")} {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                        {form.includeComm && <span className="text-[12px] font-black uppercase tracking-widest text-blue-500">{tr("+ BNK")} {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
+                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[12px] font-black uppercase tracking-widest text-white">{tr("+ FEE")} {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
                                     </div>
                                 </div>
                             </div>
 
                             <div className="flex gap-8 mt-16 w-full max-w-2xl">
-                                <button onClick={() => setStep(5)} className="flex-1 py-8 border border-white/10 text-white/40 rounded-[32px] text-xl font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">BACK</button>
+                                <button onClick={() => setStep(5)} className="flex-1 py-8 border border-white/10 text-white/40 rounded-[32px] text-xl font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">{tr("BACK")}</button>
                                 <button onClick={handleUpdate} disabled={saving}
                                     className="flex-[2] py-8 bg-(--main-color) text-black rounded-[32px] text-xl font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl disabled:opacity-20 uppercase">
                                     {saving ? 'UPDATING…' : 'CONFIRM'}
@@ -1344,13 +1345,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
     const handleRequestPayment = async (dest: PaymentDestination, percentage: number, manualFee: number = 0, includeIva: boolean = false, includeComm: boolean = false) => {
         if (!requestGroup) return;
-        const toastId = toast.loading('Sending request…');
+        const toastId = toast.loading(tr("Sending request…"));
         try {
             const targetAmount = requestGroup.total * (percentage / 100);
             const amount = Number(Math.max(0, targetAmount - requestGroup.paidTotal).toFixed(2));
 
             if (amount <= 0 && percentage < 100) {
-                toast.error('No balance remaining at this percentage.', { id: toastId });
+                toast.error(tr("No balance remaining at this percentage."), { id: toastId });
                 return;
             }
 
@@ -1412,7 +1413,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     };
 
     const handleDeletePayment = async (r: any) => {
-        if (!confirm('Are you sure you want to delete this payment record?')) return;
+        if (!confirm(tr("Are you sure you want to delete this payment record?"))) return;
         const { error } = await supabase.from('finance').delete().eq('id', r.id);
         if (error) {
             toast.error(error.message);
@@ -1450,7 +1451,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             } catch (e) {
                 console.error('Error updating local docs', e);
             }
-            toast.success('Payment deleted');
+            toast.success(tr("Payment deleted"));
             setPaymentsVersion(v => v + 1);
             setInventoryVersion(v => v + 1);
             onRefresh();
@@ -1608,7 +1609,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     {filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-20">
                             <Info size={40} className="mb-4" />
-                            <p className="text-xs font-black uppercase tracking-[0.3em]">No Records Found</p>
+                            <p className="text-xs font-black uppercase tracking-[0.3em]">{tr("No Records Found")}</p>
                         </div>
                     ) : ( 
                         filtered.map(r => {
@@ -1654,22 +1655,22 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                     const isPaid = r.status === 'Paid';
                                                     if (isPartial && isPaid) return (
                                                         <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-wider bg-orange-500/15 text-orange-400 border border-orange-500/20">
-                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-orange-400 animate-pulse" />PARTIAL
+                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-orange-400 animate-pulse" />{tr("PARTIAL")}
                                                         </span>
                                                     );
                                                     if (isPaid) return (
                                                         <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-wider bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/20">
-                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-[#22c55e]" />PAID
+                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-[#22c55e]" />{tr("PAID")}
                                                         </span>
                                                     );
                                                     if (isPartial) return (
                                                         <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/20">
-                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-red-400 animate-pulse" />PARTIAL
+                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-red-400 animate-pulse" />{tr("PARTIAL")}
                                                         </span>
                                                     );
                                                     return (
                                                         <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-wider bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20">
-                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-[#eab308] animate-pulse" />PENDING
+                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-[#eab308] animate-pulse" />{tr("PENDING")}
                                                         </span>
                                                     );
                                                 })()}
@@ -1682,7 +1683,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                              {r.vendor_id === 'CRATES' ? (
                                                  <div className="flex items-center gap-1 py-1 sm:py-1.5 px-2 rounded bg-white/5 border border-white/10 shrink-0">
                                                      <Box size={10} className="text-white/40" />
-                                                     <span className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">CRATES</span>
+                                                     <span className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">{tr("CRATES")}</span>
                                                  </div>
                                              ) : r.vendor_id && (
                                                  <span className="px-1.5 sm:px-3 py-0.5 sm:py-1 rounded text-[8px] sm:text-[11px] font-black uppercase tracking-tight whitespace-nowrap shrink-0 shadow-sm" 
@@ -1703,13 +1704,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 {(r.commission || 0) > 0 && (
                                                      <>
                                                          <div className="hidden xl:flex flex-col items-end gap-0.5">
-                                                             <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">Net Paid</span>
+                                                             <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">{tr("Net Paid")}</span>
                                                              <span className="text-[10px] sm:text-[11px] font-mono font-bold text-(--text-color)/70">
                                                                  {currencyMode === 'MXN' ? fmtMXN(r.amount || 0) : fmtUSD((r.amount || 0) / (liveExchangeRate || exchangeRate))}
                                                              </span>
                                                          </div>
                                                          <div className="hidden xl:flex flex-col items-end gap-0.5">
-                                                             <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">Taxes</span>
+                                                             <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">{tr("Taxes")}</span>
                                                              <span className="text-[10px] sm:text-[11px] font-mono font-bold text-red-400/80">
                                                                  {currencyMode === 'MXN' ? fmtMXN(r.commission || 0) : fmtUSD((r.commission || 0) / (liveExchangeRate || exchangeRate))}
                                                              </span>
@@ -1717,7 +1718,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                      </>
                                                 )}
                                                 <div className={`flex flex-col items-end gap-0.5 ${(r.commission || 0) > 0 ? 'xl:border-l xl:border-(--text-color)/10 xl:pl-4' : ''}`}>
-                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${(r.commission || 0) > 0 ? 'text-sky-400/50' : 'text-(--text-color)/30'}`}>Total {currencyMode}</span>
+                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${(r.commission || 0) > 0 ? 'text-sky-400/50' : 'text-(--text-color)/30'}`}>{tr("Total")} {currencyMode}</span>
                                                     <div className="flex items-center justify-end gap-1 sm:gap-1.5 leading-none">
                                                         <span className="text-[13px] sm:text-[16px] font-black font-mono text-(--text-color) tracking-tighter">
                                                             {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalUSD)}
@@ -1758,7 +1759,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             <div className="flex items-center gap-6 overflow-x-auto no-scrollbar pb-3 mb-2 px-1">
                                                 {/* Detail Block 1: Notes/Description */}
                                                 <div className="shrink-0 min-w-[180px] sm:min-w-[240px]">
-                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Transactional Context</span>
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">{tr("Transactional Context")}</span>
                                                     <p className="text-[10px] sm:text-[12px] font-medium text-(--text-color)/60 leading-tight italic truncate max-w-[300px]">"{r.notes || r.description || 'No additional notes.'}"</p>
                                                 </div>
 
@@ -1766,7 +1767,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                                                 {/* Detail Block 2: Taxes/Fees */}
                                                 <div className="shrink-0 text-right">
-                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Tax</span>
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">{tr("Tax")}</span>
                                                     <span className="text-[9px] sm:text-[11px] font-mono font-bold text-red-500/60 whitespace-nowrap">
                                                         {currencyMode === 'MXN' ? fmtMXN(r.commission || 0) : fmtUSD((r.commission || 0) / (liveExchangeRate || exchangeRate))}
                                                     </span>
@@ -1776,7 +1777,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             {/* Linked Assets Strip (Asset Hub) */}
                                             <div className="pt-2 border-t border-(--text-color)/5 mt-2">
                                                 <div className="flex items-center justify-between mb-2 px-1">
-                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-[0.3em] block">Linked Assets & Traceability</span>
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-[0.3em] block">{tr("Linked Assets & Traceability")}</span>
                                                 </div>
                                                     {(() => {
                                                         const rel = r.related_ids || r.related_inventory_ids || '';
@@ -1784,7 +1785,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                                                         if (rawIds.length === 0) return (
                                                             <div className="py-8 border border-dashed border-(--text-color)/10 rounded-xl flex items-center justify-center opacity-20">
-                                                                <span className="text-[10px] font-mono uppercase tracking-[0.2em]">No direct items linked</span>
+                                                                <span className="text-[10px] font-mono uppercase tracking-[0.2em]">{tr("No direct items linked")}</span>
                                                             </div>
                                                         );
 
@@ -1896,7 +1897,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                                                                             {/* Identity Hub Pill */}
                                                                             <div className={`flex flex-col shrink-0 min-w-[80px] transition-opacity ${logCrate ? 'opacity-0 pointer-events-none' : ''}`}>
-                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Tag ID</span>
+                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Tag ID")}</span>
                                                                                 <span className="px-2 py-1 rounded-[6px] text-[9px] font-black uppercase tracking-tight shadow-lg" style={{ backgroundColor: vColor, color: getTextColorForBg(vColor) }}>
                                                                                     {tagId}
                                                                                 </span>
@@ -1904,7 +1905,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                                                                             {/* Technical Spec Column */}
                                                                             <div className="flex flex-col shrink-0 min-w-[200px]">
-                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Size / Weight</span>
+                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Size / Weight")}</span>
                                                                                 <div className="flex flex-col">
                                                                                     <span className="text-[11px] font-black text-(--text-color)/60 uppercase leading-tight tracking-widest">{dims || 'N/A'}</span>
                                                                                     {logCrate ? (
@@ -1919,7 +1920,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                                                                             {/* Financial Column: Price */}
                                                                             <div className="flex flex-col shrink-0 min-w-[100px]">
-                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Unit Price</span>
+                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Unit Price")}</span>
                                                                                 <span className="text-[11px] font-black text-(--text-color)/70 uppercase tracking-widest leading-none">
                                                                                     {fmtMXN(priceNum)}
                                                                                 </span>
@@ -1927,7 +1928,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                                                                             {/* Financial Column: Total */}
                                                                             <div className="flex flex-col shrink-0 min-w-[120px]">
-                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Line Total</span>
+                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Line Total")}</span>
                                                                                 <span className="text-[12px] font-black text-(--main-color) uppercase tracking-widest leading-none">
                                                                                     {fmtMXN(totalLine)}
                                                                                 </span>
@@ -1936,18 +1937,18 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                             {/* Diagnostic Columns: AQ/LD Codes */}
                                                                             <div className="flex items-center gap-8 ml-auto pr-4">
                                                                                 <div className="flex flex-col items-center">
-                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">AQ Code</span>
+                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("AQ Code")}</span>
                                                                                     <span className="text-[11px] font-black text-(--text-color)/60 font-mono">{codes?.bookAqCode || '—'}</span>
                                                                                 </div>
                                                                                 <div className="flex flex-col items-center">
-                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">LD Code</span>
+                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("LD Code")}</span>
                                                                                     <span className="text-[11px] font-black text-(--main-color) font-mono opacity-80">{codes?.bookLandCode || '—'}</span>
                                                                                 </div>
                                                                                 <div className="flex flex-col items-end">
-                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Status</span>
+                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Status")}</span>
                                                                                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20">
                                                                                         <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                                                                                        <span className="text-[8px] font-black text-[#22c55e] uppercase">Paid</span>
+                                                                                        <span className="text-[8px] font-black text-[#22c55e] uppercase">{tr("Paid")}</span>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -1966,7 +1967,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                 onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
                                                                 className={`flex items-center gap-2 h-8 px-4 rounded-lg border transition-all hover:scale-105 active:scale-95 ${r.status === 'Paid' ? 'bg-[#22c55e]/10 border-[#22c55e]/20 text-[#22c55e]' : 'bg-[#eab308]/10 border-[#eab308]/20 text-[#eab308]'}`}>
                                                                 {r.status === 'Requested' ? <Clock size={14} /> : <CheckCircle size={14} />}
-                                                                <span className="text-[9px] font-black uppercase tracking-widest">Mark as {r.status === 'Requested' ? 'Paid' : 'Requested'}</span>
+                                                                <span className="text-[9px] font-black uppercase tracking-widest">{tr("Mark as")} {r.status === 'Requested' ? 'Paid' : 'Requested'}</span>
                                                             </button>
                                                             {(user?.role === 'Admin' || user?.role === 'Developer') && (
                                                                 <button
@@ -1977,7 +1978,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                     }}
                                                                     className="flex items-center gap-2 h-8 px-4 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 text-(--text-color)/40 hover:text-(--text-color) hover:bg-(--text-color)/10 transition-all hover:scale-105 active:scale-95">
                                                                     <Pencil size={14} />
-                                                                    <span className="text-[9px] font-black uppercase tracking-widest">Edit Payment</span>
+                                                                    <span className="text-[9px] font-black uppercase tracking-widest">{tr("Edit Payment")}</span>
                                                                 </button>
                                                             )}
                                                         </div>
@@ -1985,7 +1986,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                             <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
                                                                 className="flex items-center gap-2 h-8 px-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500/60 hover:text-red-500 transition-all hover:scale-105 active:scale-95">
                                                                 <Trash2 size={14} />
-                                                                <span className="text-[9px] font-black uppercase tracking-widest">Delete Payment</span>
+                                                                <span className="text-[9px] font-black uppercase tracking-widest">{tr("Delete Payment")}</span>
                                                             </button>
                                                         )}
                                                     </div>
@@ -2009,8 +2010,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 <div className="absolute -inset-2 bg-(--main-color)/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                             <div className="flex flex-col items-start text-left">
-                                <span className="text-sm sm:text-base font-black uppercase tracking-[0.5em] leading-none">New Request</span>
-                                <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-1">Launch Payment Wizard</span>
+                                <span className="text-sm sm:text-base font-black uppercase tracking-[0.5em] leading-none">{tr("New Request")}</span>
+                                <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-1">{tr("Launch Payment Wizard")}</span>
                             </div>
                         </button>
                     </div>

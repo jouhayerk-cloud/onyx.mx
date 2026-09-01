@@ -7,6 +7,7 @@ import { useTranslation } from '../../lib/hooks';
 import { appUsers, vendors } from '../../lib/consts';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import userIcons from '../../components/userIcons';
+import { tr } from '../../lib/i18n';
 
 export function Login() {
   const t = useTranslation();
@@ -64,25 +65,25 @@ export function Login() {
           <OnyxLogo className="w-24 h-24 mx-auto mb-4" />
           <h1 className="text-2xl font-bold">{t.welcome}</h1>
           <p className="text-[var(--text-color-secondary)] text-sm mt-2">
-            Secure Enterprise Access
+            {tr("Secure Enterprise Access")}
           </p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs uppercase font-bold tracking-wider opacity-60">Email Address</label>
+            <label className="text-xs uppercase font-bold tracking-wider opacity-60">{tr("Email Address")}</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="name@company.com"
+              placeholder={tr("name@company.com")}
               className="login-search-input !text-base"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs uppercase font-bold tracking-wider opacity-60">Security Key</label>
+            <label className="text-xs uppercase font-bold tracking-wider opacity-60">{tr("Security Key")}</label>
             <input
               type="password"
               value={password}
@@ -106,7 +107,7 @@ export function Login() {
 
         <div className="mt-8 pt-6 border-t border-white/10 text-center">
           <p className="text-sm text-[var(--text-color-secondary)]">
-            Need access? Contact your administrator.
+            {tr("Need access? Contact your administrator.")}
           </p>
         </div>
       </div>

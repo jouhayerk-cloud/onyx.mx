@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai';
 import { workbookCratesFileDataAtom } from '../../lib/atoms';
 import { vendors as vendorConfigs } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
 
 export const WorkbookCratesView: React.FC = () => {
     const rawData = useAtomValue(workbookCratesFileDataAtom);
@@ -71,7 +72,7 @@ export const WorkbookCratesView: React.FC = () => {
     if (!cratesInfo || cratesInfo.items.length === 0) {
         return (
             <div className="flex items-center justify-center h-full text-[var(--text-color-secondary)]">
-                No pallets or crates data found in -Crates sheet.
+                {tr("No pallets or crates data found in -Crates sheet.")}
             </div>
         );
     }
@@ -80,12 +81,12 @@ export const WorkbookCratesView: React.FC = () => {
         <div className="p-6 flex flex-col gap-6 h-full overflow-y-auto custom-scrollbar relative z-10">
             <div className="flex justify-between items-end border-b border-white/10 pb-4">
                 <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Logistics</span>
-                    <h2 className="text-3xl font-black text-white italic font-display">PALLETS & CRATES</h2>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">{tr("Logistics")}</span>
+                    <h2 className="text-3xl font-black text-white italic font-display">{tr("PALLETS & CRATES")}</h2>
                 </div>
                 <div className="flex gap-6">
                     <div className="flex flex-col items-end">
-                        <span className="text-[9px] uppercase tracking-widest text-white/30">Owed to Simona</span>
+                        <span className="text-[9px] uppercase tracking-widest text-white/30">{tr("Owed to Simona")}</span>
                         <span className="text-lg font-mono font-bold text-[#8DC63F]">{fmt(cratesInfo.balanceSimona)}</span>
                     </div>
                 </div>
@@ -113,7 +114,7 @@ export const WorkbookCratesView: React.FC = () => {
                                     <h3 className="text-sm font-bold text-white mt-1 group-hover:text-[#8DC63F] transition-colors">{item.description || 'Logistics Entry'}</h3>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-[10px] text-white/30 uppercase">Date</div>
+                                    <div className="text-[10px] text-white/30 uppercase">{tr("Date")}</div>
                                     <div className="text-xs font-mono text-white/60">
                                         {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString('es-MX') : String(item.date)) : '-'}
                                     </div>
@@ -122,24 +123,24 @@ export const WorkbookCratesView: React.FC = () => {
 
                             <div className="grid grid-cols-3 gap-2 py-3 border-y border-white/5 bg-white/[0.01] px-3 -mx-5">
                                 <div className="flex flex-col items-center">
-                                    <span className="text-[9px] uppercase text-white/20">Weight</span>
+                                    <span className="text-[9px] uppercase text-white/20">{tr("Weight")}</span>
                                     <span className="text-xs font-bold text-white font-mono">{item.kg || '-'} <span className="text-[8px] opacity-40">kg</span></span>
                                     <span className="text-[8px] text-white/20">{item.lbs || '-'} lbs</span>
                                 </div>
                                 <div className="flex flex-col items-center border-x border-white/5">
-                                    <span className="text-[9px] uppercase text-white/20">Quantity</span>
+                                    <span className="text-[9px] uppercase text-white/20">{tr("Quantity")}</span>
                                     <span className="text-xs font-bold text-white font-mono">{item.qty || '1'}</span>
-                                    <span className="text-[8px] text-white/20">Units</span>
+                                    <span className="text-[8px] text-white/20">{tr("Units")}</span>
                                 </div>
                                 <div className="flex flex-col items-center">
-                                    <span className="text-[9px] uppercase text-white/20">Cost</span>
+                                    <span className="text-[9px] uppercase text-white/20">{tr("Cost")}</span>
                                     <span className="text-xs font-bold text-[#8DC63F] font-mono">{fmt(item.total)}</span>
                                 </div>
                             </div>
 
                             <div className="flex flex-col gap-2">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] uppercase tracking-wider text-white/30">Dimensions (CM)</span>
+                                    <span className="text-[10px] uppercase tracking-wider text-white/30">{tr("Dimensions (CM)")}</span>
                                     <div className="flex gap-1">
                                         <span className="px-1.5 py-0.5 rounded bg-white/5 text-[10px] font-mono text-white/80 border border-white/10">{item.l || '0'}×{item.w || '0'}×{item.d || '0'}</span>
                                     </div>

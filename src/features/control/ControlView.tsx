@@ -7,6 +7,7 @@ import { DatabaseStatsPanel } from './DatabaseStatsPanel';
 import { StoreSettingsPanel } from './StoreSettingsPanel';
 import { DataBaseArtifact } from './DataBaseArtifact';
 import { Shield, Database, Users, ShoppingBag, Terminal } from 'lucide-react';
+import { tr } from '../../lib/i18n';
 
 type ControlTab = 'users' | 'database' | 'store';
 
@@ -31,10 +32,10 @@ export function ControlView() {
                     </div>
                     <div>
                         <div className="flex items-center gap-3 mb-1">
-                            <h1 className="text-[16px] font-black uppercase tracking-[0.5em] text-white">Control</h1>
-                            <div className="px-2 py-0.5 rounded bg-(--main-color) text-black text-[8px] font-black tracking-widest uppercase">System Core</div>
+                            <h1 className="text-[16px] font-black uppercase tracking-[0.5em] text-white">{tr("Control")}</h1>
+                            <div className="px-2 py-0.5 rounded bg-(--main-color) text-black text-[8px] font-black tracking-widest uppercase">{tr("System Core")}</div>
                         </div>
-                        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.3em]">Developer & Administrator Override Hub</p>
+                        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.3em]">{tr("Developer & Administrator Override Hub")}</p>
                     </div>
                 </div>
 
@@ -65,11 +66,11 @@ export function ControlView() {
 
                     <button
                         onClick={() => setActiveView('pico-bridge')}
-                        title="Launch PicoBridge Hardware Gateway (Hidden)"
+                        title={tr("Launch PicoBridge Hardware Gateway (Hidden)")}
                         className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/20 to-indigo-600/20 hover:from-purple-600/40 hover:to-indigo-600/40 border border-purple-500/30 text-purple-300 hover:text-white text-[10px] font-bold tracking-wider uppercase transition-all flex items-center gap-2 shadow-sm"
                     >
                         <Terminal size={14} className="text-purple-400" />
-                        <span className="hidden lg:inline">PicoBridge</span>
+                        <span className="hidden lg:inline">{tr("PicoBridge")}</span>
                     </button>
                 </div>
             </div>

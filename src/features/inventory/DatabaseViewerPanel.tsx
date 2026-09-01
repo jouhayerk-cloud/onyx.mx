@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { tr } from '../../lib/i18n';
 
 const DB_COLLECTIONS = ['inventory', 'finance', 'logistics', 'production'] as const;
 type DBCollectionName = typeof DB_COLLECTIONS[number];
@@ -95,7 +96,7 @@ export const DatabaseViewerPanel: React.FC<{ db: any }> = ({ db }) => {
             if (error) throw error;
             const local = await db[col].findOne(id).exec();
             if (local) await local.remove();
-            toast.success('Record deleted');
+            toast.success(tr("Record deleted"));
         } catch (e: any) {
             toast.error('Delete failed: ' + e.message);
         }
@@ -131,7 +132,7 @@ export const DatabaseViewerPanel: React.FC<{ db: any }> = ({ db }) => {
                     <input
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        placeholder="Search any field…"
+                        placeholder={tr("Search any field…")}
                         className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-[#AEE6F5]/40 transition-colors"
                     />
                 </div>
@@ -139,9 +140,9 @@ export const DatabaseViewerPanel: React.FC<{ db: any }> = ({ db }) => {
                 {/* Stats */}
                 <div className="ml-auto text-right">
                     <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">
-                        {filtered.length} / {docs.length} rows · {fields.length} cols
+                        {filtered.length} / {docs.length} {tr("rows ·")} {fields.length} cols
                     </p>
-                    <p className="text-[9px] text-[#AEE6F5]/50 font-mono">click cell to edit · ↵ save · esc cancel</p>
+                    <p className="text-[9px] text-[#AEE6F5]/50 font-mono">{tr("click cell to edit · ↵ save · esc cancel")}</p>
                 </div>
             </div>
 
@@ -153,7 +154,7 @@ export const DatabaseViewerPanel: React.FC<{ db: any }> = ({ db }) => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
                                 d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
                         </svg>
-                        <p className="text-xs text-white/20 font-black uppercase tracking-widest">Syncing…</p>
+                        <p className="text-xs text-white/20 font-black uppercase tracking-widest">{tr("Syncing…")}</p>
                     </div>
                 ) : (
                     <table className="text-left border-collapse text-[11px]"
@@ -211,7 +212,7 @@ export const DatabaseViewerPanel: React.FC<{ db: any }> = ({ db }) => {
                                         <button
                                             onClick={() => deleteRow(row.id)}
                                             className="opacity-0 group-hover:opacity-100 text-red-400/50 hover:text-red-400 transition-all text-xs font-black"
-                                            title="Delete row">
+                                            title={tr("Delete row")}>
                                             ✕
                                         </button>
                                     </td>
@@ -238,7 +239,7 @@ export const DatabaseViewerPanel: React.FC<{ db: any }> = ({ db }) => {
                     </button>
                     <button onClick={cancelEdit}
                         className="px-3 py-1 rounded-lg bg-white/5 text-white/40 text-[10px] font-black">
-                        Cancel
+                        {tr("Cancel")}
                     </button>
                 </div>
             )}

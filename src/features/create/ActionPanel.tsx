@@ -26,6 +26,7 @@ import {
   PointingType,
 } from '../../lib/Types';
 import { createCurvePath, findContour, loadImage, simplifyContour } from '../../lib/utils';
+import { tr } from '../../lib/i18n';
 
 
 
@@ -48,14 +49,14 @@ export function ActionPanel() {
 
   const handleSend = async () => {
     if (!imageSrc) {
-      notify.error('Please select an image first.');
+      notify.error(tr("Please select an image first."));
       return;
     }
     setIsLoading(true);
 
     if (workflowStep === 'idle') {
       if (!creationVendorId) {
-        notify.error('Please select a vendor ID in the top bar.');
+        notify.error(tr("Please select a vendor ID in the top bar."));
         setIsLoading(false);
         return;
       }

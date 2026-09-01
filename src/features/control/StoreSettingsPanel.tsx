@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { tr } from '../../lib/i18n';
 
 interface StoreUser {
     id: string;
@@ -49,22 +50,22 @@ export function StoreSettingsPanel() {
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <span className="text-sm text-(--text-color-secondary) font-bold uppercase tracking-widest">
-                    ACTIVATE STORE / CATALOG
+                    {tr("ACTIVATE STORE / CATALOG")}
                 </span>
                 <button
                     onClick={fetchUsers}
                     className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-(--text-color-secondary) hover:text-white"
-                    title="SYNC"
+                    title={tr("SYNC")}
                 >
                     <svg className="w-4 h-4"><use href="#refresh" /></svg>
                 </button>
             </div>
             {/* The catalog settings for each user */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-                <p className="text-xs text-white/50 mb-4">Select users to activate their store catalog and add a custom logo.</p>
+                <p className="text-xs text-white/50 mb-4">{tr("Select users to activate their store catalog and add a custom logo.")}</p>
                 {loading ? (
                     <div className="flex items-center justify-center h-40">
-                        <span className="text-sm font-bold text-white/50 tracking-widest uppercase">Loading users...</span>
+                        <span className="text-sm font-bold text-white/50 tracking-widest uppercase">{tr("Loading users...")}</span>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-3">
@@ -73,7 +74,7 @@ export function StoreSettingsPanel() {
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center p-1 overflow-hidden">
                                         {u.store_logo ? (
-                                            <img src={u.store_logo} alt="Logo" className="w-full h-full object-contain" />
+                                            <img src={u.store_logo} alt={tr("Logo")} className="w-full h-full object-contain" />
                                         ) : (
                                             <svg className="w-5 h-5 opacity-20"><use href="#image" /></svg>
                                         )}
@@ -94,7 +95,7 @@ export function StoreSettingsPanel() {
                                         className="button py-1.5! px-3! bg-transparent! border! border-white/20 hover:bg-white/5! text-[10px] font-black tracking-widest flex items-center gap-1.5"
                                     >
                                         <svg className="w-3.5 h-3.5"><use href="#image" /></svg>
-                                        LOGO
+                                        {tr("LOGO")}
                                     </button>
                                     <button
                                         onClick={() => toggleStoreAccess(u)}

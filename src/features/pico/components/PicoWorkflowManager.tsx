@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAtom } from 'jotai';
 import { picoWorkflowStateAtom, activePicoSessionAtom } from '../../../lib/picoAtoms';
 import { Play, Square, Volume2, Lightbulb, MessageSquare, Send, CheckCircle2, AlertTriangle, Layers, Package, Tag, Compass } from 'lucide-react';
+import { tr } from '../../../lib/i18n';
 
 interface PicoWorkflowManagerProps {
   onSendFeedback?: (payload: { beep?: string; ledColor?: string; displayMsg?: string }) => void;
@@ -63,13 +64,13 @@ export const PicoWorkflowManager: React.FC<PicoWorkflowManagerProps> = ({ onSend
             <Layers size={16} className="text-indigo-400" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white tracking-wide uppercase">Terminal Workflow Suite</h3>
-            <p className="text-[10px] font-mono text-neutral-400">Configure active warehouse mode & broadcast feedback commands</p>
+            <h3 className="text-sm font-bold text-white tracking-wide uppercase">{tr("Terminal Workflow Suite")}</h3>
+            <p className="text-[10px] font-mono text-neutral-400">{tr("Configure active warehouse mode & broadcast feedback commands")}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono font-bold uppercase text-neutral-300">
-          <span>Active:</span>
+          <span>{tr("Active:")}</span>
           <span className="text-indigo-400">{activeWorkflow.toUpperCase()}</span>
         </div>
       </div>
@@ -77,7 +78,7 @@ export const PicoWorkflowManager: React.FC<PicoWorkflowManagerProps> = ({ onSend
       {/* Workflow Mode Cards */}
       <div>
         <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
-          Select Operational Mode
+          {tr("Select Operational Mode")}
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {workflows.map(w => {
@@ -114,8 +115,8 @@ export const PicoWorkflowManager: React.FC<PicoWorkflowManagerProps> = ({ onSend
           <div className="flex items-center gap-3">
             <Package size={20} className="text-amber-400 shrink-0" />
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Target Crate Assignment</h4>
-              <p className="text-[10px] font-mono text-neutral-400">Scanned UHF RFID / Barcodes will be auto-appended to this crate manifest</p>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">{tr("Target Crate Assignment")}</h4>
+              <p className="text-[10px] font-mono text-neutral-400">{tr("Scanned UHF RFID / Barcodes will be auto-appended to this crate manifest")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -123,14 +124,14 @@ export const PicoWorkflowManager: React.FC<PicoWorkflowManagerProps> = ({ onSend
               type="text"
               value={targetCrateId}
               onChange={e => setTargetCrateId(e.target.value)}
-              placeholder="e.g., CRATE-2026-001"
+              placeholder={tr("e.g., CRATE-2026-001")}
               className="px-3 py-1.5 rounded-lg bg-neutral-900 border border-white/10 text-white text-xs font-mono uppercase focus:outline-none focus:border-indigo-500"
             />
             <button
               onClick={() => handleWorkflowChange('packing')}
               className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase transition-colors"
             >
-              Bind Crate
+              {tr("Bind Crate")}
             </button>
           </div>
         </div>
@@ -139,7 +140,7 @@ export const PicoWorkflowManager: React.FC<PicoWorkflowManagerProps> = ({ onSend
       {/* Direct Hardware Feedback Suite */}
       <div className="pt-4 border-t border-white/5">
         <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">
-          Transmit Hardware Feedback Command (OLED Screen / Buzzer / RGB LED)
+          {tr("Transmit Hardware Feedback Command (OLED Screen / Buzzer / RGB LED)")}
         </label>
         
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -147,16 +148,16 @@ export const PicoWorkflowManager: React.FC<PicoWorkflowManagerProps> = ({ onSend
           <div className="p-3 rounded-xl bg-black/30 border border-white/5 flex flex-col justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300 mb-2">
               <Volume2 size={14} className="text-cyan-400" />
-              <span>Audio Buzzer Alert</span>
+              <span>{tr("Audio Buzzer Alert")}</span>
             </div>
             <select
               value={beepPattern}
               onChange={e => setBeepPattern(e.target.value as any)}
               className="w-full px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-white/10 text-white text-xs font-mono focus:outline-none"
             >
-              <option value="success">Success (2 Short Beeps)</option>
-              <option value="error">Error (Long Low Buzz)</option>
-              <option value="double">Double Alert Beep</option>
+              <option value="success">{tr("Success (2 Short Beeps)")}</option>
+              <option value="error">{tr("Error (Long Low Buzz)")}</option>
+              <option value="double">{tr("Double Alert Beep")}</option>
             </select>
           </div>
 
@@ -164,7 +165,7 @@ export const PicoWorkflowManager: React.FC<PicoWorkflowManagerProps> = ({ onSend
           <div className="p-3 rounded-xl bg-black/30 border border-white/5 flex flex-col justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300 mb-2">
               <Lightbulb size={14} className="text-amber-400" />
-              <span>RGB LED Strip Color</span>
+              <span>{tr("RGB LED Strip Color")}</span>
             </div>
             <div className="flex items-center gap-2">
               {(['#10B981', '#F43F5E', '#3B82F6', '#F59E0B', '#8B5CF6'] as const).map(color => (
@@ -191,21 +192,21 @@ export const PicoWorkflowManager: React.FC<PicoWorkflowManagerProps> = ({ onSend
           <div className="p-3 rounded-xl bg-black/30 border border-white/5 flex flex-col justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300 mb-2">
               <MessageSquare size={14} className="text-emerald-400" />
-              <span>LCD / OLED Screen Text</span>
+              <span>{tr("LCD / OLED Screen Text")}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <input
                 type="text"
                 value={displayMsg}
                 onChange={e => setDisplayMsg(e.target.value)}
-                placeholder="e.g., Verified: Art #104"
+                placeholder={tr("e.g., Verified: Art #104")}
                 className="w-full px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-white/10 text-white text-xs font-mono focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleTransmitFeedback}
                 className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shrink-0 transition-colors shadow-md shadow-indigo-500/20"
-                title="Send Command to Hardware"
+                title={tr("Send Command to Hardware")}
               >
                 <Send size={14} />
               </button>

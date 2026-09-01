@@ -27,6 +27,7 @@ import { useDatabase } from '../../lib/hooks';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { ImageOff, LayoutGrid, CheckCircle } from 'lucide-react';
 import { ExportWizard } from '../../components/ExportWizard';
+import { tr } from '../../lib/i18n';
 
 /* ─── ONYX MASTER TEMPLATE (V3) ─── */
 const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
@@ -283,8 +284,8 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
             >
                 <div className="flex justify-between items-start">
                     <div>
-                        <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Printables Wizard</h3>
-                        <p className="text-[10px] text-white/40 mt-1 uppercase tracking-widest font-bold">Generate Assets for {items.length} Labels</p>
+                        <h3 className="text-2xl font-black uppercase tracking-tighter text-white">{tr("Printables Wizard")}</h3>
+                        <p className="text-[10px] text-white/40 mt-1 uppercase tracking-widest font-bold">Generate Assets for {items.length} {tr("Labels")}</p>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
                         <X size={20} />
@@ -293,7 +294,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
 
                 <div className="flex flex-col gap-6">
                     <div className="flex flex-col gap-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Batch Identity</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">{tr("Batch Identity")}</label>
                         <input
                             type="text"
                             value={name}
@@ -304,8 +305,8 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
 
                     <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Include Visuals</span>
-                            <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Add images to PDF catalog</span>
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">{tr("Include Visuals")}</span>
+                            <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">{tr("Add images to PDF catalog")}</span>
                         </div>
                         <button 
                             onClick={() => setIncludeImages(!includeImages)}
@@ -323,8 +324,8 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                             <FileSpreadsheet size={24} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <span className="block text-sm font-black text-white uppercase tracking-tight">inventory.xlsx</span>
-                            <span className="block text-[9px] text-white/30 uppercase font-bold tracking-widest mt-0.5">Master spreadsheet (Legacy)</span>
+                            <span className="block text-sm font-black text-white uppercase tracking-tight">{tr("inventory.xlsx")}</span>
+                            <span className="block text-[9px] text-white/30 uppercase font-bold tracking-widest mt-0.5">{tr("Master spreadsheet (Legacy)")}</span>
                             {progress.xlsx >= 0 && (
                                 <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
                                     <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress.xlsx}%` }} />
@@ -332,7 +333,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                             )}
                         </div>
                         {progress.xlsx === 100 ? (
-                            <button onClick={() => triggerDownload(urls.xlsx, `${name}.xlsx`)} className="px-4 py-2 bg-emerald-500 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Download</button>
+                            <button onClick={() => triggerDownload(urls.xlsx, `${name}.xlsx`)} className="px-4 py-2 bg-emerald-500 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">{tr("Download")}</button>
                         ) : (
                             <button onClick={handleGenerateXLSX} disabled={progress.xlsx >= 0} className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
                                 {progress.xlsx >= 0 ? 'Building...' : 'Generate'}
@@ -346,8 +347,8 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                             <FileText size={24} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <span className="block text-sm font-black text-white uppercase tracking-tight">catalog.pdf</span>
-                            <span className="block text-[9px] text-white/30 uppercase font-bold tracking-widest mt-0.5">Packing list manifest</span>
+                            <span className="block text-sm font-black text-white uppercase tracking-tight">{tr("catalog.pdf")}</span>
+                            <span className="block text-[9px] text-white/30 uppercase font-bold tracking-widest mt-0.5">{tr("Packing list manifest")}</span>
                             {progress.pdf >= 0 && (
                                 <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
                                     <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${progress.pdf}%` }} />
@@ -355,7 +356,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                             )}
                         </div>
                         {progress.pdf === 100 ? (
-                            <button onClick={() => triggerDownload(urls.pdf, `${name}.pdf`)} className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Download</button>
+                            <button onClick={() => triggerDownload(urls.pdf, `${name}.pdf`)} className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">{tr("Download")}</button>
                         ) : (
                             <button onClick={handleGeneratePDF} disabled={progress.pdf >= 0} className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
                                 {progress.pdf >= 0 ? 'Rendering...' : 'Generate'}
@@ -365,7 +366,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                 </div>
 
                 <div className="text-center">
-                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.4em]">OnyxLabels Printables Engine v2.5</p>
+                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.4em]">{tr("OnyxLabels Printables Engine v2.5")}</p>
                 </div>
             </div>
         </div>
@@ -597,8 +598,8 @@ export const PackingModule: React.FC = () => {
 
     /* ── Export PDF (Manifesto Style) ── */
     const handleStartExport = async (cfg: any) => {
-        if (selectedIds.size === 0) return toast.error('Select items first');
-        const tid = toast.loading('Generating Manifesto PDF...');
+        if (selectedIds.size === 0) return toast.error(tr("Select items first"));
+        const tid = toast.loading(tr("Generating Manifesto PDF..."));
         try {
             const manifestoItems: ManifestoItem[] = selectedItems.map((item, idx) => {
                 const d = item.normData;
@@ -646,10 +647,10 @@ export const PackingModule: React.FC = () => {
                 setExportStatus(`Assembling page vectors: ${pct}%`);
             });
             
-            toast.success('Manifesto PDF Downloaded', { id: tid });
+            toast.success(tr("Manifesto PDF Downloaded"), { id: tid });
         } catch (e) {
             console.error('Manifesto Export Error:', e);
-            toast.error('Failed to generate PDF', { id: tid });
+            toast.error(tr("Failed to generate PDF"), { id: tid });
             setIsExportProgressOpen(false);
         }
     };
@@ -691,11 +692,11 @@ export const PackingModule: React.FC = () => {
             const { type, timestamp } = event.data || {};
 
             if (type === 'ONYX_PRINT_JOB_STARTED' && lastPrintedIds.length > 0 && db) {
-                const toastId = toast.loading('Recording Print Event...');
+                const toastId = toast.loading(tr("Recording Print Event..."));
                 try {
                     if (isDummyMode) {
                         await new Promise(r => setTimeout(r, 1000));
-                        toast.success('Print job simulated (Demo Mode)', { id: toastId, icon: '🧪' });
+                        toast.success(tr("Print job simulated (Demo Mode)"), { id: toastId, icon: '🧪' });
                         return;
                     }
                     const updatePromises = lastPrintedIds.map(async (id) => {
@@ -708,10 +709,10 @@ export const PackingModule: React.FC = () => {
                         }
                     });
                     await Promise.all(updatePromises);
-                    toast.success('Print dates recorded to database', { id: toastId });
+                    toast.success(tr("Print dates recorded to database"), { id: toastId });
                 } catch (e: any) {
                     console.error('Failed to update print dates:', e);
-                    toast.error('Failed to save print tracking data', { id: toastId });
+                    toast.error(tr("Failed to save print tracking data"), { id: toastId });
                 }
             }
         };
@@ -738,7 +739,7 @@ export const PackingModule: React.FC = () => {
             localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
             window.open('https://jouhayerk-cloud.github.io/phomemo-designer/index.html', '_blank');
         } catch(storageError) {
-            toast.error('Batch is too large for Fullscreen Mode. Please use the Print Wizard internal view instead.');
+            toast.error(tr("Batch is too large for Fullscreen Mode. Please use the Print Wizard internal view instead."));
         }
     };
 
@@ -748,7 +749,7 @@ export const PackingModule: React.FC = () => {
             if (selectedIds.size > 0) {
                 handlePrintLabels();
             } else {
-                toast.error('Please select items to print');
+                toast.error(tr("Please select items to print"));
                 setIsPrintWizardOpen(false);
             }
         }
@@ -757,7 +758,7 @@ export const PackingModule: React.FC = () => {
     // Open NFC Wizard effect
     useEffect(() => {
         if (isNFCWizardOpen && selectedItems.length === 0) {
-            toast.error("Select items first to write NFC tags");
+            toast.error(tr("Select items first to write NFC tags"));
             setIsNFCWizardOpen(false);
         }
     }, [isNFCWizardOpen, selectedItems, setIsNFCWizardOpen]);
@@ -765,7 +766,7 @@ export const PackingModule: React.FC = () => {
     useEffect(() => {
         if (exportPDFTrigger > 0) {
             if (selectedIds.size > 0) setIsExportProgressOpen(true);
-            else toast.error('Select items to export PDF');
+            else toast.error(tr("Select items to export PDF"));
             setExportPDFTrigger(0);
         }
     }, [exportPDFTrigger]);
@@ -773,7 +774,7 @@ export const PackingModule: React.FC = () => {
     useEffect(() => {
         if (exportXLSXTrigger > 0) {
             if (selectedIds.size > 0) handleExportXLSX();
-            else toast.error('Please select items to export');
+            else toast.error(tr("Please select items to export"));
             setExportXLSXTrigger(0);
         }
     }, [exportXLSXTrigger]);
@@ -781,7 +782,7 @@ export const PackingModule: React.FC = () => {
     useEffect(() => {
         if (exportJSONTrigger > 0) {
             if (selectedIds.size > 0) handleExportJSON();
-            else toast.error('Please select items to export');
+            else toast.error(tr("Please select items to export"));
             setExportJSONTrigger(0);
         }
     }, [exportJSONTrigger]);
@@ -868,7 +869,7 @@ export const PackingModule: React.FC = () => {
                                 className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
                                     !vendorFilter ? 'bg-white text-black border-white shadow-xl' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
                                 }`}
-                            >ALL VENDORS</button>
+                            >{tr("ALL VENDORS")}</button>
                             {availableVendors.map(v => {
                                 const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
                                 const isActive = vendorFilter === v;
@@ -905,7 +906,7 @@ export const PackingModule: React.FC = () => {
                             <div className="w-24 h-24 rounded-full border border-dashed border-white/8 flex items-center justify-center">
                                 <Package size={36} strokeWidth={1} />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.5em] italic">No Artifacts Found</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.5em] italic">{tr("No Artifacts Found")}</span>
                         </div>
                     ) : viewMode === 'grid' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 content-start">
@@ -947,10 +948,10 @@ export const PackingModule: React.FC = () => {
                                 <Eye size={15} strokeWidth={2.5} className="text-(--main-color)" />
                             </div>
                             <div>
-                                <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] leading-none mb-0.5">OnyxLabels Engine</p>
+                                <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] leading-none mb-0.5">{tr("OnyxLabels Engine")}</p>
                                 <p className="text-xs font-black text-white uppercase tracking-widest leading-none">
-                                    Batch Preview
-                                    <span className="text-(--main-color) ml-1.5">— {selectedIds.size} Labels</span>
+                                    {tr("Batch Preview")}
+                                    <span className="text-(--main-color) ml-1.5">— {selectedIds.size} {tr("Labels")}</span>
                                 </p>
                             </div>
                         </div>
@@ -967,7 +968,7 @@ export const PackingModule: React.FC = () => {
                                 }}
                                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/50 uppercase tracking-widest hover:bg-white/10 hover:text-(--main-color) hover:border-(--main-color)/30 transition-all"
                             >
-                                <Edit size={13} /> Edit Labels
+                                <Edit size={13} /> {tr("Edit Labels")}
                             </button>
                             <button
                                 onClick={() => {
@@ -979,9 +980,9 @@ export const PackingModule: React.FC = () => {
                                     );
                                 }}
                                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/50 uppercase tracking-widest hover:bg-white/10 hover:text-white hover:border-white/20 transition-all"
-                                title="Back to Preview Grid"
+                                title={tr("Back to Preview Grid")}
                             >
-                                <Eye size={13} /> Preview
+                                <Eye size={13} /> {tr("Preview")}
                             </button>
                             <div className="w-px h-5 bg-white/10 mx-1" />
                             <button
@@ -999,7 +1000,7 @@ export const PackingModule: React.FC = () => {
                             ref={iframeRef}
                             src={`phomemo-designer/index.html?mini=true&v=${selectedIds.size}`}
                             className="w-full h-full border-none"
-                            title="OnyxLabels Designer"
+                            title={tr("OnyxLabels Designer")}
                             allow="bluetooth"
                             onLoad={handleIframeLoad}
                         />
@@ -1019,7 +1020,7 @@ export const PackingModule: React.FC = () => {
                             onClick={() => setIsPrintablesWizardOpen(true)}
                             className="relative z-10 flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all active:scale-90 hover:scale-110 shadow-lg cursor-pointer"
                             style={{ background: 'var(--secondary-color)', color: 'black' }}
-                            title="Print Labels"
+                            title={tr("Print Labels")}
                         >
                             <Printer size={28} strokeWidth={2} />
                         </button>
@@ -1030,7 +1031,7 @@ export const PackingModule: React.FC = () => {
                             onClick={() => setIsNFCWizardOpen(true)}
                             className="relative z-10 flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all active:scale-95 hover:scale-110 shadow-xl cursor-pointer"
                             style={{ background: 'var(--main-color)', color: 'black' }}
-                            title="NFC Wizard"
+                            title={tr("NFC Wizard")}
                         >
                             <Nfc size={30} strokeWidth={2.5} />
                         </button>
@@ -1120,7 +1121,7 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
                                     const wbStr = String(d.workbook || '').replace(/v/gi, '');
                                     const fullText = `${item.codes.bookBarcode}|${(d.color || '')} ${(d.material || '')}`.trim() + `|${(d.shape || '')} ${(d.shortDescription || d.description || '')}`.trim() + `|${item.codes.bookAqCode || ''}${wbStr}${item.codes.bookRetail || ''}`;
                                     navigator.clipboard.writeText(fullText); 
-                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                    toast.success(tr("Full Metadata Copied"), { icon: '📋' }); 
                                 }}
                                 className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase shadow-lg hover:scale-110 active:scale-90 transition-all border border-black/10" 
                                 style={{ 
@@ -1147,28 +1148,28 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-white/5">
                     <div className="flex flex-col gap-1">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Dimensions</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">{tr("Dimensions")}</span>
                         <span className="text-xs font-mono font-bold text-white/80">{dimsCm ? `${dimsCm}cm` : '—'}</span>
                     </div>
                     <div className="flex flex-col gap-1 items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Weight</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">{tr("Weight")}</span>
                         <span className="text-xs font-mono font-bold text-(--main-color)/80">{d.weightKg ? `${d.weightKg}kg` : '—'}</span>
                     </div>
                     <div className="flex flex-col gap-1">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Acquisition</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">{tr("Acquisition")}</span>
                         <span className="text-xs font-mono font-black text-white/60">{item.codes.bookAqCode || '—'}</span>
                     </div>
                     <div className="flex flex-col gap-1 items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Landed</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">{tr("Landed")}</span>
                         <span className="text-xs font-mono font-black text-yellow-500/80">{item.codes.bookLandCode || '—'}</span>
                     </div>
                 </div>
 
                 {/* Footer Quantity */}
                 <div className="mt-auto pt-3 flex items-center justify-between border-t border-white/5">
-                     <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">Stock Level</span>
+                     <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{tr("Stock Level")}</span>
                      <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5">
-                        <span className="text-[11px] font-black font-mono text-white/60 tracking-tighter">QTY</span>
+                        <span className="text-[11px] font-black font-mono text-white/60 tracking-tighter">{tr("QTY")}</span>
                         <span className="text-[13px] font-black font-mono text-(--main-color)">{d.quantity || 1}</span>
                      </div>
                 </div>
@@ -1239,7 +1240,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
 
                     {/* Tag ID Cluster */}
                     <div className="flex flex-col min-w-[110px] shrink-0 border-r border-white/5 pr-6 justify-center h-full gap-1 group/tag">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Tag ID</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">{tr("Tag ID")}</span>
                         <div className="flex items-center gap-2">
                             <button 
                                 onClick={(e) => { 
@@ -1247,7 +1248,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                     const wbStr = String(d.workbook || '').replace(/v/gi, '');
                                     const fullText = `${item.codes.bookBarcode}|${(d.color || '')} ${(d.material || '')}`.trim() + `|${(d.shape || '')} ${(d.shortDescription || d.description || '')}`.trim() + `|${item.codes.bookAqCode || ''}${wbStr}${item.codes.bookRetail || ''}`;
                                     navigator.clipboard.writeText(fullText); 
-                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                    toast.success(tr("Full Metadata Copied"), { icon: '📋' }); 
                                 }}
                                 className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all border border-black/10"
                                 style={{ 
@@ -1261,10 +1262,10 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBarcode}`);
-                                    toast.success('Trace Link Copied');
+                                    toast.success(tr("Trace Link Copied"));
                                 }}
                                 className="p-1.5 text-white/10 hover:text-(--main-color) transition-all opacity-0 group-hover/tag:opacity-100"
-                                title="Copy Trace Link"
+                                title={tr("Copy Trace Link")}
                             >
                                 <Copy size={14} />
                             </button>
@@ -1273,7 +1274,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
 
                     {/* Price / Qty */}
                     <div className="flex flex-col min-w-[85px] shrink-0 border-r border-white/5 pr-6 justify-center h-full gap-1">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Value / Qty</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">{tr("Value / Qty")}</span>
                         <div className="flex items-baseline gap-2">
                             <span className="text-[14px] font-black text-white leading-none">${itemPriceMXN.toLocaleString()}</span>
                             <span className="text-[11px] text-white/40 font-mono font-bold">×{itemQuantity}</span>
@@ -1282,7 +1283,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
 
                     {/* AQ / LD */}
                     <div className="flex flex-col min-w-[70px] shrink-0 border-r border-white/5 pr-6 justify-center h-full gap-1">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Codes</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">{tr("Codes")}</span>
                         <div className="flex items-center gap-3">
                             <span className="text-[12px] text-white/80 font-mono font-black">{item.codes.bookAqCode || '—'}</span>
                             <span className="text-[12px] text-yellow-500 font-mono font-black">{item.codes.bookLandCode || '—'}</span>
@@ -1291,7 +1292,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
 
                     {/* Dims / Wt */}
                     <div className="flex flex-col min-w-[120px] shrink-0 justify-center h-full gap-1">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Specs</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">{tr("Specs")}</span>
                         <div className="flex items-center gap-3">
                             <span className="text-[11px] text-white/60 font-mono font-bold whitespace-nowrap">{dimsCm ? `${dimsCm}cm` : '—'}</span>
                             {weightKg && <span className="text-[11px] text-(--main-color)/80 font-mono font-bold whitespace-nowrap">{weightKg}kg</span>}
@@ -1315,18 +1316,18 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                 <div className="ml-4 sm:ml-[94px] mr-1 px-4 pb-4 pt-3 bg-black/40 border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300">
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-4">
                         <div className="sm:hidden flex flex-col gap-1 col-span-2 pb-2 border-b border-white/5 mb-2">
-                             <span className="text-[7px] font-black text-white/25 uppercase tracking-widest">Price / Qty</span>
+                             <span className="text-[7px] font-black text-white/25 uppercase tracking-widest">{tr("Price / Qty")}</span>
                              <div className="flex items-baseline gap-2">
                                 <span className="text-[14px] font-black text-(--main-color)">${itemPriceMXN}</span>
                                 <span className="text-[11px] text-white/40 font-mono">×{itemQuantity}</span>
                              </div>
                         </div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Material</p><p className="text-[11px] font-black text-(--text-color)/80 uppercase tracking-wide">{d.material || '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Dimensions</p><p className="text-[11px] font-mono font-black text-white/70">{dimsCm ? `${dimsCm}cm` : '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Weight</p><p className="text-[11px] font-mono font-black text-white/70">{weightKg ? `${weightKg}kg` : '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Quantity</p><p className="text-[11px] font-mono font-black text-white/70">{d.quantity || 1}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Status</p><p className="text-[11px] font-black text-white/70 uppercase tracking-wide">{d.status || '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Book Retail</p><p className="text-[12px] font-mono font-black text-emerald-400">${item.codes.bookRetail || '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">{tr("Material")}</p><p className="text-[11px] font-black text-(--text-color)/80 uppercase tracking-wide">{d.material || '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">{tr("Dimensions")}</p><p className="text-[11px] font-mono font-black text-white/70">{dimsCm ? `${dimsCm}cm` : '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">{tr("Weight")}</p><p className="text-[11px] font-mono font-black text-white/70">{weightKg ? `${weightKg}kg` : '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">{tr("Quantity")}</p><p className="text-[11px] font-mono font-black text-white/70">{d.quantity || 1}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">{tr("Status")}</p><p className="text-[11px] font-black text-white/70 uppercase tracking-wide">{d.status || '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">{tr("Book Retail")}</p><p className="text-[12px] font-mono font-black text-emerald-400">${item.codes.bookRetail || '—'}</p></div>
                     </div>
                     {/* Consolidated Artifact Identity Hub */}
                     <div className="mt-8 max-w-2xl mx-auto">
@@ -1344,7 +1345,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                                 const wbStr = String(d.workbook || '').replace(/v/gi, '');
                                                 const fullText = `${item.codes.bookBarcode}|${(d.color || '')} ${(d.material || '')}`.trim() + `|${(d.shape || '')} ${(d.shortDescription || d.description || '')}`.trim() + `|${item.codes.bookAqCode || ''}${wbStr}${item.codes.bookRetail || ''}`;
                                                 navigator.clipboard.writeText(fullText); 
-                                                toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                                toast.success(tr("Full Metadata Copied"), { icon: '📋' }); 
                                             }}
                                             className="px-2 py-1 rounded-none text-[9px] font-black uppercase tracking-widest shadow-sm border border-black/10 hover:scale-105 active:scale-95 transition-all" 
                                             style={{ 
@@ -1379,7 +1380,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                     fgColor="var(--main-color)"
                                     bgColor="transparent"
                                 />
-                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.3em]">Logistics Trace</div>
+                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.3em]">{tr("Logistics Trace")}</div>
                             </div>
                         </div>
                     </div>

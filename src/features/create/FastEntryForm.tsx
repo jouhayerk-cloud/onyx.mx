@@ -11,6 +11,7 @@ import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/
 import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask, handleFileUpload } from '../../lib/utils';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { CheckCircle2, XCircle, Search } from 'lucide-react';
+import { tr } from '../../lib/i18n';
 
 const API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({ apiKey: API_KEY });
@@ -95,7 +96,7 @@ export function FastEntryForm() {
     useEffect(() => {
         if (!draftReady || !restoredDraft || !hasEntryContent(restoredDraft)) return;
         setFormState(prev => ({ ...prev, ...restoredDraft }));
-        notify.success('Restored your unsaved entry');
+        notify.success(tr("Restored your unsaved entry"));
     }, [draftReady]);
 
     const [detectionStatus, setDetectionStatus] = useState<AIStatus>('idle');
@@ -232,7 +233,7 @@ export function FastEntryForm() {
 
         try {
             setDetectionStatus('loading');
-            notify.loading('Detecting objects...', { id: 'detection' });
+            notify.loading(tr("Detecting objects..."), { id: 'detection' });
             const prompt1 = `Detect and tag ${formState.shape}. Output a single JSON object with two keys: "boxes" and "points". "boxes" is a list of {"box_2d": [y_min, x_min, y_max, x_max], "label": "..."}. "points" is a list of {"point": [y, x], "label": "..."}. Coordinates are normalized to 1000.`;
             let result1 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt1 }] }, config: { responseMimeType: 'application/json' } });
             const data1 = JSON.parse(result1.text);
@@ -240,12 +241,12 @@ export function FastEntryForm() {
             const points: PointingType[] = (data1.points || []).map((p: any) => ({ point: { x: p.point[1] / 1000, y: p.point[0] / 1000 }, label: p.label }));
             setGeneratedData(prev => ({ ...prev, boxes, points }));
             setDetectionStatus('success');
-            notify.success('Objects detected!', { id: 'detection' });
+            notify.success(tr("Objects detected!"), { id: 'detection' });
 
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             setSegmentationStatus('loading');
-            notify.loading('Generating masks...', { id: 'segmentation' });
+            notify.loading(tr("Generating masks..."), { id: 'segmentation' });
             const prompt2 = `Give segmentation masks for ${formState.shape}. Output a JSON list of masks, each with "box_2d", "mask" (base64 string), and "label".`;
             const image = await loadImage(imageSrc);
             const imageDimensions = { width: image.width, height: image.height };
@@ -268,12 +269,12 @@ export function FastEntryForm() {
             setGeneratedData(prev => ({ ...prev, masks, pngData, svgData }));
             if (gradientColor) setFormState(prev => ({ ...prev, color: gradientColor }));
             setSegmentationStatus('success');
-            notify.success('Masks generated!', { id: 'segmentation' });
+            notify.success(tr("Masks generated!"), { id: 'segmentation' });
 
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             setFormFillStatus('loading');
-            notify.loading('Generating details...', { id: 'details' });
+            notify.loading(tr("Generating details..."), { id: 'details' });
             const prompt3 = `Analyze the product in the image, a ${formState.shape} made of ${formState.material}. Estimate its dimensions (widthCm, heightCm, lengthCm), weightKg, and provide three descriptions: a "shortDescription" (one sentence), "generatedDescription" (3-5 bullet points as a single string), and a "detailedDescription" (HTML format). Return a single JSON object.`;
             const schema3 = { type: Type.OBJECT, properties: { widthCm: { type: Type.STRING }, heightCm: { type: Type.STRING }, lengthCm: { type: Type.STRING }, weightKg: { type: Type.STRING }, shortDescription: { type: Type.STRING }, generatedDescription: { type: Type.STRING }, detailedDescription: { type: Type.STRING } } };
             let result3 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt3 }] }, config: { responseMimeType: 'application/json', responseSchema: schema3 } });
@@ -283,10 +284,10 @@ export function FastEntryForm() {
             setFloatingText(dimensionText);
             setTimeout(() => setFloatingText(null), 4000);
             setFormFillStatus('success');
-            notify.success('Details generated!', { id: 'details' });
+            notify.success(tr("Details generated!"), { id: 'details' });
         } catch (error) {
             console.error('AI Analysis Chain Error:', error);
-            notify.error('An AI analysis step failed.', { id: 'detection' });
+            notify.error(tr("An AI analysis step failed."), { id: 'detection' });
             setDetectionStatus(s => s === 'loading' ? 'error' : s);
             setSegmentationStatus(s => s === 'loading' ? 'error' : s);
             setFormFillStatus(s => s === 'loading' ? 'error' : s);
@@ -305,7 +306,7 @@ export function FastEntryForm() {
     const handleSubmit = async () => {
         if (formSubmitted.current || !selectedItemRow || !db) return;
         formSubmitted.current = true;
-        const toastId = notify.loading('Saving item...');
+        const toastId = notify.loading(tr("Saving item..."));
 
         try {
 
@@ -334,7 +335,7 @@ export function FastEntryForm() {
 
             try {
                 if (user?.role === 'Vendor' && (formState.shape || formState.material || formState.description)) {
-                    notify.loading('Translating to Standard English...', { id: toastId });
+                    notify.loading(tr("Translating to Standard English..."), { id: toastId });
                     const promptText = `Translate the following product attributes from Spanish to standard English and autocorrect spelling errors. Return a JSON object with only the properties provided:
                     shape: "${formState.shape || ''}",
                     material: "${formState.material || ''}",
@@ -399,7 +400,7 @@ export function FastEntryForm() {
             // for restore next time the form opens.
             await clearDraft();
 
-            notify.success('Item saved!', { id: toastId });
+            notify.success(tr("Item saved!"), { id: toastId });
             handleCancel();
         } catch (error: any) {
             console.error('Save failed:', error);
@@ -419,15 +420,15 @@ export function FastEntryForm() {
             {floatingText && <div className="floating-ai-text">{floatingText}</div>}
 
             <div className="ai-status-indicators">
-                <AIStatusIndicator status={detectionStatus} label="Detect & Tag" />
-                <AIStatusIndicator status={segmentationStatus} label="Segmentation" />
-                <AIStatusIndicator status={formFillStatus} label="Details" />
+                <AIStatusIndicator status={detectionStatus} label={tr("Detect & Tag")} />
+                <AIStatusIndicator status={segmentationStatus} label={tr("Segmentation")} />
+                <AIStatusIndicator status={formFillStatus} label={tr("Details")} />
             </div>
 
             <button onClick={handleCancel} className="absolute top-4 right-4 z-20 text-3xl opacity-70 hover:opacity-100">&times;</button>
             <div className="fast-entry-nav">
-                <button type="button" onClick={() => handleNavigation('prev')} title="Previous"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg></button>
-                <button type="button" onClick={() => handleNavigation('next')} title="Next"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                <button type="button" onClick={() => handleNavigation('prev')} title={tr("Previous")}><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg></button>
+                <button type="button" onClick={() => handleNavigation('next')} title={tr("Next")}><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></button>
             </div>
             <form className="fast-entry-form" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
                 {formFields.map(field => (
@@ -437,16 +438,16 @@ export function FastEntryForm() {
                             <div className="w-full h-64 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center">
                                 <input id={field.name} name={field.name} type="file" className="sr-only" onChange={handleFileChange} accept="image/*" ref={el => { if (el) inputRefs.current[field.name] = el; }} onFocus={() => setActiveInput(field.name)} />
                                 <label htmlFor={field.name} className="w-full h-full cursor-pointer flex items-center justify-center">
-                                    {imageSrc ? <img src={imageSrc} alt="Preview" className="max-w-full max-h-full object-contain" /> : <div className="text-gray-400"><svg className="w-12 h-12 mx-auto"><use href="#camera"></use></svg><span>Click to upload</span></div>}
+                                    {imageSrc ? <img src={imageSrc} alt={tr("Preview")} className="max-w-full max-h-full object-contain" /> : <div className="text-gray-400"><svg className="w-12 h-12 mx-auto"><use href="#camera"></use></svg><span>{tr("Click to upload")}</span></div>}
                                 </label>
                             </div>
                         ) : field.type === 'submit' ? (
                             <button type="submit" className="button text-2xl! px-12!" onFocus={() => setActiveInput(field.name)} ref={el => { if (el) inputRefs.current[field.name] = el; }} disabled={formSubmitted.current}>{field.placeholder}</button>
                         ) : field.type === 'group' ? (
                             <div className="flex gap-4" ref={el => { if (el) inputRefs.current[field.name] = el; }} onFocus={() => setActiveInput(field.name)} tabIndex={-1}>
-                                <input type="number" name="widthCm" value={formState.widthCm} onChange={handleInputChange} placeholder="W cm" className="text-xl!" />
-                                <input type="number" name="heightCm" value={formState.heightCm} onChange={handleInputChange} placeholder="H cm" className="text-xl!" />
-                                <input type="number" name="lengthCm" value={formState.lengthCm} onChange={handleInputChange} placeholder="L cm" className="text-xl!" />
+                                <input type="number" name="widthCm" value={formState.widthCm} onChange={handleInputChange} placeholder={tr("W cm")} className="text-xl!" />
+                                <input type="number" name="heightCm" value={formState.heightCm} onChange={handleInputChange} placeholder={tr("H cm")} className="text-xl!" />
+                                <input type="number" name="lengthCm" value={formState.lengthCm} onChange={handleInputChange} placeholder={tr("L cm")} className="text-xl!" />
                                 <input type="number" name="weightKg" value={formState.weightKg} onChange={handleInputChange} placeholder="kg" className="text-xl!" />
                             </div>
                         ) : (
@@ -454,10 +455,10 @@ export function FastEntryForm() {
                                 id: field.name, name: field.name, onFocus: () => setActiveInput(field.name), onChange: handleInputChange, value: (formState as any)[field.name],
                                 ref: (el: any) => { if (el) inputRefs.current[field.name] = el; }, autoComplete: "off",
                                 list: suggestions[field.name] ? `${field.name}-suggestions` : undefined,
-                                children: field.type === 'select' ? [<option key="" value="" disabled>Select...</option>, ...(field.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)] : null
+                                children: field.type === 'select' ? [<option key="" value="" disabled>{tr("Select...")}</option>, ...(field.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)] : null
                             })
                         )}
-                        <span className="fast-entry-tip">Press Enter or ↓ to continue</span>
+                        <span className="fast-entry-tip">{tr("Press Enter or ↓ to continue")}</span>
                         {suggestions[field.name] && <datalist id={`${field.name}-suggestions`}>{suggestions[field.name].map(s => <option key={s} value={s} />)}</datalist>}
                     </div>
                 ))}

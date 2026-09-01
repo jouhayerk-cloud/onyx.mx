@@ -21,6 +21,7 @@ import { CrateEditPanel, CrateRecord } from './CratesInventoryView';
 import { logisticsDocsAtom, inventoryAtom, liveExchangeRateAtom } from '../../lib/atoms';
 import { useAtomValue } from 'jotai';
 import { useNotify } from '../../lib/hooks';
+import { tr } from '../../lib/i18n';
 
 export const DeployedView: React.FC = () => {
     const [shipments, setShipments] = useState<any[]>([]);
@@ -150,7 +151,7 @@ export const DeployedView: React.FC = () => {
     };
 
     const handleSaveCrate = async (id: string, updates: any) => {
-        const tid = notify.loading('Synchronizing Matrix...');
+        const tid = notify.loading(tr("Synchronizing Matrix..."));
         try {
             const { error } = await supabase
                 .from('logistics')
@@ -159,7 +160,7 @@ export const DeployedView: React.FC = () => {
             
             if (error) throw error;
             
-            notify.success('Matrix Synchronized', { id: tid });
+            notify.success(tr("Matrix Synchronized"), { id: tid });
             setEditingCrate(null);
         } catch (err: any) {
             notify.error(`Sync Failed: ${err.message}`, { id: tid });
@@ -170,7 +171,7 @@ export const DeployedView: React.FC = () => {
         return (
             <div className="flex-1 flex flex-col items-center justify-center bg-black/20 backdrop-blur-3xl h-full">
                 <div className="w-16 h-16 border-4 border-white/5 border-t-emerald-500 rounded-full animate-spin mb-6 shadow-[0_0_40px_rgba(16,185,129,0.2)]" />
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em] animate-pulse">Syncing Fleet Registry</span>
+                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em] animate-pulse">{tr("Syncing Fleet Registry")}</span>
             </div>
         );
     }
@@ -191,13 +192,13 @@ export const DeployedView: React.FC = () => {
                     <div className="flex flex-col gap-1">
                         {selectedShipment && (
                             <h1 className="text-3xl font-black uppercase tracking-tighter leading-none text-white/90">
-                                Manifest {selectedShipment.manifest_id}
+                                {tr("Manifest")} {selectedShipment.manifest_id}
                             </h1>
                         )}
                         <div className="flex items-center gap-4 mt-2">
                             <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Digital Twin Active</span>
+                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">{tr("Digital Twin Active")}</span>
                             </div>
                             <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">
                                 {selectedShipment ? `Protocol Synchronized ${new Date(selectedShipment.timestamp).toLocaleDateString()}` : `Registry tracking ${shipments.length} units`}
@@ -214,7 +215,7 @@ export const DeployedView: React.FC = () => {
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder="SEARCH REGISTRY..."
+                                placeholder={tr("SEARCH REGISTRY...")}
                                 className="pl-16 pr-8 py-4 bg-white/[0.03] border border-white/5 rounded-[2rem] w-[400px] text-[12px] font-black tracking-widest placeholder:text-white/10 focus:bg-white/[0.07] focus:border-white/10 focus:ring-4 focus:ring-emerald-500/5 outline-none transition-all uppercase"
                             />
                         </div>
@@ -244,7 +245,7 @@ export const DeployedView: React.FC = () => {
                                         {/* Info Block */}
                                         <div className="flex flex-col gap-4 w-96 shrink-0 border-r border-white/10 pr-12">
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-1">Deployment Record</span>
+                                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-1">{tr("Deployment Record")}</span>
                                                 <span className="text-4xl font-black uppercase tracking-tighter text-white/90 group-hover:text-white transition-colors">
                                                     {s.manifest_id}
                                                 </span>
@@ -280,7 +281,7 @@ export const DeployedView: React.FC = () => {
                                         {/* Stats Grid */}
                                         <div className="flex items-center gap-6 shrink-0 border-l border-white/10 pl-12">
                                             <div className="flex flex-col gap-1 text-right">
-                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Payload</span>
+                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Payload")}</span>
                                                 <div className="flex items-baseline gap-2 justify-end">
                                                     <span className="text-4xl font-black tracking-tighter text-white/90">{Math.round(weight).toLocaleString()}</span>
                                                     <span className="text-[12px] font-black text-white/20">KG</span>
@@ -288,10 +289,10 @@ export const DeployedView: React.FC = () => {
                                             </div>
                                             <div className="w-px h-12 bg-white/10" />
                                             <div className="flex flex-col gap-1 text-right">
-                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Units</span>
+                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Units")}</span>
                                                 <div className="flex items-baseline gap-2 justify-end">
                                                     <span className="text-4xl font-black tracking-tighter text-white/90">{crateCount}</span>
-                                                    <span className="text-[12px] font-black text-white/20">UNITS</span>
+                                                    <span className="text-[12px] font-black text-white/20">{tr("UNITS")}</span>
                                                 </div>
                                             </div>
                                             
@@ -304,7 +305,7 @@ export const DeployedView: React.FC = () => {
                             }) : (
                                 <div className="col-span-full flex flex-col items-center justify-center py-40 text-white/10">
                                     <Database size={64} strokeWidth={1} className="mb-6 opacity-20" />
-                                    <span className="text-sm font-black uppercase tracking-[0.5em]">No Records Found in Registry</span>
+                                    <span className="text-sm font-black uppercase tracking-[0.5em]">{tr("No Records Found in Registry")}</span>
                                 </div>
                             )}
                         </div>
@@ -318,7 +319,7 @@ export const DeployedView: React.FC = () => {
                             {!selectedCrateId && (
                                 <div className="absolute top-12 left-1/2 -translate-x-1/2 flex items-center gap-4 px-6 py-3 rounded-full bg-white/[0.05] border border-white/10 backdrop-blur-3xl animate-bounce z-50">
                                     <Zap size={14} className="text-emerald-500" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60">SELECT ANY UNIT FOR REGISTRY FOCUS</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60">{tr("SELECT ANY UNIT FOR REGISTRY FOCUS")}</span>
                                 </div>
                             )}
 
@@ -375,24 +376,24 @@ export const DeployedView: React.FC = () => {
                             <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-10 animate-in slide-in-from-bottom-12 duration-1000 ease-out">
                                 <div className="px-14 py-8 rounded-[3.5rem] bg-black/60 backdrop-blur-[80px] border border-white/10 flex items-center gap-14 shadow-2xl">
                                     <div className="flex flex-col gap-2">
-                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">Net Cargo Weight</span>
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">{tr("Net Cargo Weight")}</span>
                                         <span className="text-3xl font-black tracking-tighter text-white">{Math.round(payload?.truckStats?.totalWeight || 0).toLocaleString()} KG</span>
                                     </div>
                                     <div className="w-px h-12 bg-white/10" />
                                     <div className="flex flex-col gap-2">
-                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">Tractor Unit</span>
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">{tr("Tractor Unit")}</span>
                                         <span className="text-3xl font-black tracking-tighter text-white">{selectedShipment.metadata?.tractorNumber || 'ALPHA-1'}</span>
                                     </div>
                                     <div className="w-px h-12 bg-white/10" />
                                     <div className="flex flex-col gap-2">
-                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">Trailer ID</span>
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">{tr("Trailer ID")}</span>
                                         <span className="text-3xl font-black tracking-tighter text-white">{selectedShipment.metadata?.trailerNumber || 'TR-772'}</span>
                                     </div>
                                     <div className="w-px h-12 bg-white/10" />
                                     <div className="px-6 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
                                         <div className="flex flex-col gap-1 items-center">
-                                            <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Protocol</span>
-                                            <span className="text-[14px] font-black text-emerald-500 uppercase tracking-tight">OPTIMAL</span>
+                                            <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">{tr("Protocol")}</span>
+                                            <span className="text-[14px] font-black text-emerald-500 uppercase tracking-tight">{tr("OPTIMAL")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -420,7 +421,7 @@ export const DeployedView: React.FC = () => {
                                                 onClick={handleEditCrate}
                                                 className="px-6 py-3 rounded-2xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all border border-(--main-color)/20 text-[9px] font-black uppercase tracking-widest"
                                             >
-                                                Edit Protocol
+                                                {tr("Edit Protocol")}
                                             </button>
                                             <button onClick={() => setSelectedCrateId(null)} className="w-12 h-12 rounded-full flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">
                                                 <X size={28} />
@@ -432,7 +433,7 @@ export const DeployedView: React.FC = () => {
                                         <div className="flex flex-col gap-10">
                                             <div className="flex flex-col gap-5">
                                                 <div className="flex items-center gap-6 mb-2">
-                                                    <h3 className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] whitespace-nowrap leading-none">Internal Artifacts</h3>
+                                                    <h3 className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em] whitespace-nowrap leading-none">{tr("Internal Artifacts")}</h3>
                                                     <div className="h-px bg-white/10 flex-1" />
                                                 </div>
                                                 {(selectedCrate.items || []).map((it: any, idx: number) => (
@@ -442,7 +443,7 @@ export const DeployedView: React.FC = () => {
                                                             <div className="flex items-center gap-3">
                                                                 <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{it.desc || 'Standard Protocol Unit'}</span>
                                                                 <div className="w-1 h-1 rounded-full bg-white/5" />
-                                                                <span className="text-[9px] font-black text-emerald-500/40 uppercase tracking-widest">Verified</span>
+                                                                <span className="text-[9px] font-black text-emerald-500/40 uppercase tracking-widest">{tr("Verified")}</span>
                                                             </div>
                                                         </div>
                                                         <div className="flex flex-col items-end">
@@ -456,10 +457,10 @@ export const DeployedView: React.FC = () => {
                                             <div className="p-8 rounded-[3rem] bg-emerald-500/5 border border-emerald-500/10 flex flex-col gap-4">
                                                 <div className="flex items-center gap-3">
                                                     <ShieldCheck size={18} className="text-emerald-500" />
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500/80">Security Protocol</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500/80">{tr("Security Protocol")}</span>
                                                 </div>
                                                 <p className="text-[11px] font-bold text-white/40 leading-relaxed uppercase tracking-tight">
-                                                    Unit integrity verified via NFC handshake. All internal artifact IDs match manifest deployment signature.
+                                                    {tr("Unit integrity verified via NFC handshake. All internal artifact IDs match manifest deployment signature.")}
                                                 </p>
                                             </div>
                                         </div>
@@ -468,7 +469,7 @@ export const DeployedView: React.FC = () => {
                                     <div className="p-12 border-t border-white/5 bg-black/40 backdrop-blur-3xl">
                                         <button className="w-full py-6 rounded-[2.5rem] bg-white text-black font-black text-[14px] tracking-[0.3em] uppercase hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center gap-4 shadow-[0_25px_60px_rgba(255,255,255,0.15)] group">
                                             <Download size={22} className="group-hover:-translate-y-1 transition-transform" /> 
-                                            Generate High-Fidelity Manifest
+                                            {tr("Generate High-Fidelity Manifest")}
                                         </button>
                                     </div>
                                 </>

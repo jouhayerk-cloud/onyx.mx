@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useDeviceControl, OnyxChanFace, VENDOR_COLORS } from './useDeviceControl';
 import { useBleDevice } from './useBleDevice';
+import { tr } from '../../lib/i18n';
 
 const ALL_EXPRESSIONS: StackChanExpression[] = [
   'Neutral', 'Happy', 'Angry', 'Sad', 'Sleepy', 'Doubt',
@@ -218,13 +219,13 @@ export function PicoBridgeView() {
           </div>
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-lg font-black tracking-widest text-white uppercase">Device Management</h1>
+              <h1 className="text-lg font-black tracking-widest text-white uppercase">{tr("Device Management")}</h1>
               <span className="text-[10px] font-bold tracking-widest uppercase text-neutral-400">
-                PicoBridge v2.5
+                {tr("PicoBridge v2.5")}
               </span>
             </div>
             <p className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
-              onyx.mx/app/ pico bridge • Dual-Channel Active
+              {tr("onyx.mx/app/ pico bridge • Dual-Channel Active")}
             </p>
           </div>
         </div>
@@ -238,7 +239,7 @@ export function PicoBridgeView() {
             className={`text-xs font-bold tracking-wider uppercase transition-all flex items-center gap-2 ${isDirectConnected ? 'text-white hover:text-purple-400' : 'text-neutral-600 cursor-not-allowed'}`}
           >
             <Volume2 size={15} />
-            Record
+            {tr("Record")}
           </button>
 
           {/* Stop Recording Button */}
@@ -248,7 +249,7 @@ export function PicoBridgeView() {
             className={`text-xs font-bold tracking-wider uppercase transition-all flex items-center gap-2 ${isDirectConnected ? 'text-rose-400 hover:text-rose-300' : 'text-neutral-600 cursor-not-allowed'}`}
           >
             <Unplug size={15} />
-            Stop
+            {tr("Stop")}
           </button>
 
           <div className="mx-1 text-white/20 font-light select-none">|</div>
@@ -268,13 +269,13 @@ export function PicoBridgeView() {
             className="text-neutral-400 hover:text-white text-xs font-bold tracking-wider uppercase transition-all flex items-center gap-2"
           >
             <Zap size={15} className="text-neutral-400" />
-            <span>Test Harness</span>
+            <span>{tr("Test Harness")}</span>
           </button>
 
           {/* Signal Settings Button */}
           <button
             onClick={() => setShowSettings(!showSettings)}
-            title="Antenna & Signal Settings"
+            title={tr("Antenna & Signal Settings")}
             className={`transition-all ${
               showSettings 
                 ? 'text-white' 
@@ -290,7 +291,7 @@ export function PicoBridgeView() {
             className="text-white hover:text-neutral-300 text-xs font-black tracking-widest uppercase transition-all flex items-center gap-2"
           >
             <Plus size={16} className="text-neutral-700" />
-            Link Device
+            {tr("Link Device")}
           </button>
         </div>
       </div>
@@ -311,9 +312,9 @@ export function PicoBridgeView() {
           <div className="flex items-center gap-3">
             <Radio size={22} className="text-cyan-400 shrink-0" />
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">UHF RFID Signal Cutoff (RSSI Threshold)</h4>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">{tr("UHF RFID Signal Cutoff (RSSI Threshold)")}</h4>
               <p className="text-[11px] font-mono text-neutral-400">
-                Ignore UHF RFID tag reads below this signal strength to prevent reading distant warehouse crates.
+                {tr("Ignore UHF RFID tag reads below this signal strength to prevent reading distant warehouse crates.")}
               </p>
             </div>
           </div>
@@ -326,7 +327,7 @@ export function PicoBridgeView() {
               onChange={e => setRssiThreshold(Number(e.target.value))}
               className="w-full accent-purple-500 cursor-pointer"
             />
-            <span className="text-xs font-mono text-cyan-400 min-w-[50px]">{rssiThreshold} dBm</span>
+            <span className="text-xs font-mono text-cyan-400 min-w-[50px]">{rssiThreshold} {tr("dBm")}</span>
           </div>
         </div>
       )}
@@ -342,9 +343,9 @@ export function PicoBridgeView() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">Simulator & Gimbal</span>
+                <span className="text-xs font-bold text-white uppercase tracking-wider">{tr("Simulator & Gimbal")}</span>
                 <span className="text-[8px] font-black uppercase tracking-widest text-neutral-500">
-                  Interactive Core
+                  {tr("Interactive Core")}
                 </span>
               </div>
               <span className="text-[10px] font-mono text-neutral-500">
@@ -363,10 +364,10 @@ export function PicoBridgeView() {
                   ? 'text-purple-400' 
                   : 'text-neutral-400 hover:text-white'
               }`}
-              title="Mirror Mode (Invert Avatar Gaze / Camera)"
+              title={tr("Mirror Mode (Invert Avatar Gaze / Camera)")}
             >
               {mirrorMode ? <Eye size={13} className="text-purple-300" /> : <EyeOff size={13} />}
-              <span>Mirror: {mirrorMode ? 'ON' : 'OFF'}</span>
+              <span>{tr("Mirror:")} {mirrorMode ? 'ON' : 'OFF'}</span>
             </button>
 
             {/* Theme Selector */}
@@ -417,7 +418,7 @@ export function PicoBridgeView() {
 
             {/* Sub-HUD Gaze Info */}
             <div className="mt-3 flex items-center justify-between w-full max-w-[400px] text-[10px] font-mono text-neutral-400">
-              <span>👁 Interactive cursor tracking active</span>
+              <span>{tr("👁 Interactive cursor tracking active")}</span>
               <span className="text-purple-300">{mirrorMode ? '🪞 Mirror Mode' : 'Direct View'}</span>
             </div>
 
@@ -427,7 +428,7 @@ export function PicoBridgeView() {
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors text-[11px] font-bold uppercase tracking-wider"
               >
                 <Eye size={14} />
-                Enable Camera Stream
+                {tr("Enable Camera Stream")}
               </button>
             </div>
           </div>
@@ -469,21 +470,21 @@ export function PicoBridgeView() {
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-bold text-neutral-300 uppercase tracking-widest flex items-center gap-1.5">
                   <Compass size={12} className="text-cyan-400" />
-                  Pan & Tilt Dual Servo Gimbal
+                  {tr("Pan & Tilt Dual Servo Gimbal")}
                 </label>
                 <button
                   onClick={() => handlePresetMotion('center')}
                   className="text-[9px] font-mono text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-wider flex items-center gap-1"
                 >
                   <RotateCw size={10} />
-                  Reset (0°,0°)
+                  {tr("Reset (0°,0°)")}
                 </button>
               </div>
 
               {/* Yaw (Pan) Slider */}
               <div>
                 <div className="flex justify-between text-[10px] font-mono text-neutral-400 mb-1">
-                  <span>Pan / Yaw (Horizontal):</span>
+                  <span>{tr("Pan / Yaw (Horizontal):")}</span>
                   <span className="text-cyan-400 font-bold">{panAngle}° {panAngle < 0 ? '(Left)' : panAngle > 0 ? '(Right)' : '(Center)'}</span>
                 </div>
                 <input
@@ -499,7 +500,7 @@ export function PicoBridgeView() {
               {/* Pitch (Tilt) Slider */}
               <div>
                 <div className="flex justify-between text-[10px] font-mono text-neutral-400 mb-1">
-                  <span>Tilt / Pitch (Vertical):</span>
+                  <span>{tr("Tilt / Pitch (Vertical):")}</span>
                   <span className="text-purple-400 font-bold">{tiltAngle}° {tiltAngle > 0 ? '(Up)' : tiltAngle < 0 ? '(Down)' : '(Level)'}</span>
                 </div>
                 <input
@@ -518,25 +519,25 @@ export function PicoBridgeView() {
                   onClick={() => handlePresetMotion('nod')}
                   className="text-[10px] font-mono font-bold text-neutral-400 hover:text-white text-left transition-colors"
                 >
-                  Nod Head
+                  {tr("Nod Head")}
                 </button>
                 <button
                   onClick={() => handlePresetMotion('shake')}
                   className="text-[10px] font-mono font-bold text-neutral-400 hover:text-white text-left transition-colors"
                 >
-                  Shake Head
+                  {tr("Shake Head")}
                 </button>
                 <button
                   onClick={() => handlePresetMotion('curious')}
                   className="text-[10px] font-mono font-bold text-neutral-400 hover:text-white text-left transition-colors"
                 >
-                  Curious
+                  {tr("Curious")}
                 </button>
                 <button
                   onClick={() => handlePresetMotion('sweep')}
                   className="text-[10px] font-mono font-bold text-neutral-400 hover:text-white text-left transition-colors"
                 >
-                  Sweep 360
+                  {tr("Sweep 360")}
                 </button>
               </div>
             </div>
@@ -546,7 +547,7 @@ export function PicoBridgeView() {
               <div className="flex items-center justify-between mb-2">
                 <label className="text-[10px] font-bold text-neutral-300 uppercase tracking-widest flex items-center gap-1.5">
                   <Volume2 size={12} className="text-amber-400" />
-                  Text to Speech Synthesizer
+                  {tr("Text to Speech Synthesizer")}
                 </label>
                 {/* Language Selector */}
                 <div className="flex items-center gap-2 text-[9px] font-mono">
@@ -592,7 +593,7 @@ export function PicoBridgeView() {
                     onKeyDown={e => {
                       if (e.key === 'Enter') handleSpeakSubmit();
                     }}
-                    placeholder="Type words for the robot to speak aloud..."
+                    placeholder={tr("Type words for the robot to speak aloud...")}
                     className="w-full bg-transparent pl-8 py-1 text-xs text-white placeholder:text-neutral-600 focus:outline-none font-mono"
                   />
                 </div>
@@ -601,7 +602,7 @@ export function PicoBridgeView() {
                   className="text-purple-400 hover:text-purple-300 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0"
                 >
                   <Send size={13} />
-                  <span>Speak</span>
+                  <span>{tr("Speak")}</span>
                 </button>
               </div>
             </div>
@@ -618,7 +619,7 @@ export function PicoBridgeView() {
             Linked Hardware Terminals ({activeDevicesList.length})
           </h2>
           <span className="text-[11px] font-mono text-neutral-500">
-            Role-mapped permissions active
+            {tr("Role-mapped permissions active")}
           </span>
         </div>
 
@@ -627,9 +628,9 @@ export function PicoBridgeView() {
             <div className="w-16 h-16 flex items-center justify-center mb-4">
               <Bot size={32} className="text-purple-400" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">No Devices Linked Yet</h3>
+            <h3 className="text-lg font-bold text-white mb-2">{tr("No Devices Linked Yet")}</h3>
             <p className="text-sm text-neutral-400 max-w-md mb-6">
-              Link your <strong>StackChan AI Desktop Robot</strong>, M5StickS3, or ATOM scanner to receive real-time inventory telemetry and command hardware remotely.
+              {tr("Link your")} <strong>{tr("StackChan AI Desktop Robot")}</strong>{tr(", M5StickS3, or ATOM scanner to receive real-time inventory telemetry and command hardware remotely.")}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
@@ -637,14 +638,14 @@ export function PicoBridgeView() {
                 className="text-purple-400 hover:text-purple-300 text-sm font-bold tracking-wider uppercase transition-all flex items-center gap-2"
               >
                 <Bluetooth size={18} />
-                Pair via Web Bluetooth
+                {tr("Pair via Web Bluetooth")}
               </button>
               <button
                 onClick={() => setIsRegistryOpen(true)}
                 className="text-neutral-400 hover:text-white text-sm font-bold tracking-wider uppercase transition-all flex items-center gap-2"
               >
                 <Bot size={18} />
-                Manual Link
+                {tr("Manual Link")}
               </button>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { vendors } from '../../lib/consts';
 import { getTextColorForBg } from '../../lib/utils';
 import { WorkbookItemViewer } from './WorkbookItemViewer';
 import { useDatabase } from '../../lib/hooks';
+import { tr } from '../../lib/i18n';
 
 interface DashboardEXPProps { }
 
@@ -58,15 +59,15 @@ const DashboardEXP: React.FC<DashboardEXPProps> = () => {
   }, [db, setAllSheetsRawData]);
 
   if (loading) {
-    return <div className="p-4 text-center">Loading dashboard data...</div>;
+    return <div className="p-4 text-center">{tr("Loading dashboard data...")}</div>;
   }
 
   if (error) {
-    return <div className="p-4 text-center text-red-500">Error: {error}</div>;
+    return <div className="p-4 text-center text-red-500">{tr("Error:")} {error}</div>;
   }
 
   if (!allSheetsRawData || Object.keys(allSheetsRawData).length === 0) {
-    return <div className="p-4 text-center">No data available for workbook.</div>;
+    return <div className="p-4 text-center">{tr("No data available for workbook.")}</div>;
   }
 
   const processedData = useMemo(() => {
@@ -78,14 +79,14 @@ const DashboardEXP: React.FC<DashboardEXPProps> = () => {
 
   return (
     <div className="flex flex-col h-full gap-4">
-      <h2 className="text-2xl font-bold mb-4">Workbook</h2>
+      <h2 className="text-2xl font-bold mb-4">{tr("Workbook")}</h2>
       <div className="dashboard-stats">
         <div className="stat-card">
-          <label htmlFor="exchange-rate">Exchange Rate (MXN to USD)</label>
+          <label htmlFor="exchange-rate">{tr("Exchange Rate (MXN to USD)")}</label>
           <input id="exchange-rate" type="number" value={exchangeRate} onChange={e => setExchangeRate(parseFloat(e.target.value))} step="0.1" />
         </div>
         <div className="stat-card">
-          <label htmlFor="workbook-prefix">Workbook Prefix</label>
+          <label htmlFor="workbook-prefix">{tr("Workbook Prefix")}</label>
           <input id="workbook-prefix" type="text" value={workbookPrefix} onChange={e => setWorkbookPrefix(e.target.value)} />
         </div>
       </div>
@@ -110,8 +111,8 @@ const DashboardEXP: React.FC<DashboardEXPProps> = () => {
         <div className="projects-section">
           <div className="projects-section-header">
             <p className="text-sm font-semibold">
-              {activeSheet} Data
-              <span className="ml-2 text-xs font-normal text-[var(--secondary-text-color)]">({processedData.length} items)</span>
+              {activeSheet} {tr("Data")}
+              <span className="ml-2 text-xs font-normal text-[var(--secondary-text-color)]">({processedData.length} {tr("items)")}</span>
             </p>
           </div>
           <div className="project-boxes">

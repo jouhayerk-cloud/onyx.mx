@@ -14,6 +14,7 @@ import {
     LayoutGrid, List, Database, Weight, Globe
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { tr } from '../../lib/i18n';
 
 const SentTruckViewer: React.FC = () => {
     const sentTruckId = useAtomValue(sentTruckIdAtom);
@@ -317,8 +318,8 @@ const SentTruckViewer: React.FC = () => {
             <div className="flex flex-col items-center gap-6">
                 <div className="w-16 h-16 border-4 border-white/5 border-t-emerald-500 rounded-full animate-spin shadow-[0_0_40px_rgba(16,185,129,0.2)]" />
                 <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em] animate-pulse">Initializing Digital Twin</span>
-                    <span className="text-[8px] font-bold text-white/10 uppercase tracking-widest">Secure Cloud Registry Sync</span>
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em] animate-pulse">{tr("Initializing Digital Twin")}</span>
+                    <span className="text-[8px] font-bold text-white/10 uppercase tracking-widest">{tr("Secure Cloud Registry Sync")}</span>
                 </div>
             </div>
         </div>
@@ -342,26 +343,26 @@ const SentTruckViewer: React.FC = () => {
                         <div className="flex items-center gap-5">
                             <div className="px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2.5 backdrop-blur-xl">
                                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
-                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Live Registry Protocol</span>
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">{tr("Live Registry Protocol")}</span>
                             </div>
                             <h1 className="text-2xl font-black tracking-tighter uppercase leading-none text-white/90 group-hover:text-white transition-colors">
-                                Manifest {sentTruckId}
+                                {tr("Manifest")} {sentTruckId}
                             </h1>
                         </div>
                         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-1 ml-1">
-                            Onyx Mirror v3.1 · Synchronized {shipment?.timestamp}
+                            {tr("Onyx Mirror v3.1 · Synchronized")} {shipment?.timestamp}
                         </p>
                     </div>
 
                     <div className="flex items-center gap-5 pointer-events-auto">
                          <div className="px-8 py-4 rounded-3xl bg-white/[0.03] border border-white/5 backdrop-blur-3xl flex items-center gap-10 shadow-2xl transition-all hover:bg-white/[0.05] hover:border-white/10">
                             <div className="flex flex-col gap-1">
-                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-none">Net Weight</span>
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-none">{tr("Net Weight")}</span>
                                 <span className="text-lg font-black tracking-tight">{Math.round(truckStats?.totalWeight || 0).toLocaleString()} KG</span>
                             </div>
                             <div className="w-px h-8 bg-white/10" />
                             <div className="flex flex-col gap-1">
-                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-none">Load Status</span>
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-none">{tr("Load Status")}</span>
                                 <span className="text-lg font-black text-emerald-400 tracking-tight">{truckStats?.status || 'OPTIMAL'}</span>
                             </div>
                          </div>
@@ -404,17 +405,17 @@ const SentTruckViewer: React.FC = () => {
                                 {/* High-Contrast Stats Card */}
                                 <div className="grid grid-cols-2 gap-5">
                                     <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 shadow-xl">
-                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">Payload Weight</span>
+                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">{tr("Payload Weight")}</span>
                                         <div className="flex items-baseline gap-2">
                                             <span className="text-3xl font-black text-white">{(selectedCrate.items?.reduce((s:number,i:any)=>s+((i.weightKg || i.weight_kg || 0)*(i.qty||1)),0) || 0).toFixed(1)}</span>
                                             <span className="text-sm font-black text-white/20">KG</span>
                                         </div>
                                     </div>
                                     <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 shadow-xl">
-                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">Inventory Count</span>
+                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">{tr("Inventory Count")}</span>
                                         <div className="flex items-baseline gap-2">
                                             <span className="text-3xl font-black text-white">{(selectedCrate.items || []).length}</span>
-                                            <span className="text-sm font-black text-white/20">UNITS</span>
+                                            <span className="text-sm font-black text-white/20">{tr("UNITS")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -422,7 +423,7 @@ const SentTruckViewer: React.FC = () => {
                                 {/* Dynamic Inventory Table */}
                                 <div className="flex flex-col gap-5">
                                     <div className="flex items-center gap-6 mb-2">
-                                        <h3 className="text-[11px] font-black text-white/30 uppercase tracking-[0.5em] whitespace-nowrap">Internal Registry</h3>
+                                        <h3 className="text-[11px] font-black text-white/30 uppercase tracking-[0.5em] whitespace-nowrap">{tr("Internal Registry")}</h3>
                                         <div className="h-px bg-white/10 flex-1" />
                                     </div>
                                     
@@ -435,7 +436,7 @@ const SentTruckViewer: React.FC = () => {
                                                         <div className="w-2 h-8 rounded-full" style={{ backgroundColor: tagCol }} />
                                                         <div className="flex flex-col">
                                                             <span className="font-mono text-[12px] font-black text-white/90 tracking-tight">{it.itemId}</span>
-                                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-0.5">{it.vendorPrefix || 'Onyx'} Registry</span>
+                                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-0.5">{it.vendorPrefix || 'Onyx'} {tr("Registry")}</span>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-end">
@@ -463,7 +464,7 @@ const SentTruckViewer: React.FC = () => {
                         {/* Sidebar Interactive Footer */}
                         <div className="p-10 border-t border-white/5 bg-black/40 backdrop-blur-2xl">
                             <button className="w-full py-5 rounded-[2rem] bg-white text-black font-black text-[12px] tracking-[0.2em] uppercase hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_60px_rgba(255,255,255,0.2)] flex items-center justify-center gap-4">
-                                <Download size={20} /> Generate Digital Manifesto
+                                <Download size={20} /> {tr("Generate Digital Manifesto")}
                             </button>
                         </div>
                     </>
@@ -479,22 +480,22 @@ const SentTruckViewer: React.FC = () => {
                                 <Box size={28} strokeWidth={1.5} />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20">Payload Deployment</span>
-                                <span className="text-xl font-black uppercase text-white/90 tracking-tighter">{cratesData.length} Registry Units Loaded</span>
+                                <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/20">{tr("Payload Deployment")}</span>
+                                <span className="text-xl font-black uppercase text-white/90 tracking-tighter">{cratesData.length} {tr("Registry Units Loaded")}</span>
                             </div>
                          </div>
                          <div className="w-full h-px bg-white/10" />
                          <div className="flex items-center gap-12 px-2">
                              <div className="flex flex-col gap-1">
-                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Tractor No</span>
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Tractor No")}</span>
                                 <span className="text-[13px] font-black uppercase text-white/80">{metadata?.tractorNumber || '—'}</span>
                              </div>
                              <div className="flex flex-col gap-1">
-                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Trailer No</span>
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Trailer No")}</span>
                                 <span className="text-[13px] font-black uppercase text-white/80">{metadata?.trailerNumber || '—'}</span>
                              </div>
                              <div className="flex flex-col gap-1">
-                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Security Seal</span>
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Security Seal")}</span>
                                 <span className="text-[13px] font-black uppercase text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]">{metadata?.sealNumber || 'NOT SEALED'}</span>
                              </div>
                          </div>
@@ -507,10 +508,10 @@ const SentTruckViewer: React.FC = () => {
                 <div className="absolute bottom-12 right-12 text-right animate-in fade-in duration-1000 delay-700">
                     <div className="flex flex-col items-end gap-3">
                         <div className="flex items-center gap-4">
-                            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em]">Orbit Controls Active</span>
+                            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em]">{tr("Orbit Controls Active")}</span>
                             <div className="w-12 h-px bg-white/20" />
                         </div>
-                        <p className="text-lg font-black text-white/40 uppercase tracking-[0.1em]">Select any unit for registry focus</p>
+                        <p className="text-lg font-black text-white/40 uppercase tracking-[0.1em]">{tr("Select any unit for registry focus")}</p>
                     </div>
                 </div>
             )}

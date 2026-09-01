@@ -3,6 +3,7 @@ import { useAtomValue, useSetAtom } from 'jotai/react';
 import { userAtom, activeViewAtom, sidebarStateAtom } from '../../lib/atoms';
 import { Album, ArrowRight, Lightbulb } from 'lucide-react';
 import { InventoryTutorial } from '../inventory/InventoryTutorial';
+import { tr } from '../../lib/i18n';
 
 export function WelcomeView() {
     const user = useAtomValue(userAtom);
@@ -39,7 +40,7 @@ export function WelcomeView() {
                         {getGreeting()}, <span className="text-(--main-color)">{displayName}</span>
                     </h1>
                     <p className="text-xl md:text-2xl text-white/60 font-medium tracking-tight max-w-2xl mx-auto">
-                        Welcome to Onyx. Access your inventory, manage operations, and explore your workspace.
+                        {tr("Welcome to Onyx. Access your inventory, manage operations, and explore your workspace.")}
                     </p>
                 </div>
 
@@ -53,11 +54,11 @@ export function WelcomeView() {
                             <div className="w-14 h-14 rounded-2xl bg-(--main-color)/20 flex items-center justify-center mb-6 text-(--main-color) group-hover:scale-110 transition-transform">
                                 <Album size={28} strokeWidth={2} />
                             </div>
-                            <h3 className="text-2xl font-bold text-white mb-2">Inventory</h3>
-                            <p className="text-left text-sm text-white/50 mb-8">Manage and track your products, edit items, and view collections.</p>
+                            <h3 className="text-2xl font-bold text-white mb-2">{tr("Inventory")}</h3>
+                            <p className="text-left text-sm text-white/50 mb-8">{tr("Manage and track your products, edit items, and view collections.")}</p>
                             
                             <div className="mt-auto flex items-center gap-2 text-(--main-color) font-bold text-sm uppercase tracking-wider group-hover:gap-4 transition-all">
-                                Open Module <ArrowRight size={16} />
+                                {tr("Open Module")} <ArrowRight size={16} />
                             </div>
                         </div>
                     </button>
@@ -70,11 +71,11 @@ export function WelcomeView() {
                             <div className="w-14 h-14 rounded-2xl bg-yellow-500/20 flex items-center justify-center mb-6 text-yellow-500 group-hover:scale-110 transition-transform">
                                 <Lightbulb size={28} strokeWidth={2} />
                             </div>
-                            <h3 className="text-2xl font-bold text-white mb-2">Tutorial</h3>
-                            <p className="text-left text-sm text-white/50 mb-8">Learn the basics of using the Inventory module and its features.</p>
+                            <h3 className="text-2xl font-bold text-white mb-2">{tr("Tutorial")}</h3>
+                            <p className="text-left text-sm text-white/50 mb-8">{tr("Learn the basics of using the Inventory module and its features.")}</p>
                             
                             <div className="mt-auto flex items-center gap-2 text-yellow-500 font-bold text-sm uppercase tracking-wider group-hover:gap-4 transition-all">
-                                Start Tutorial <ArrowRight size={16} />
+                                {tr("Start Tutorial")} <ArrowRight size={16} />
                             </div>
                         </div>
                     </button>

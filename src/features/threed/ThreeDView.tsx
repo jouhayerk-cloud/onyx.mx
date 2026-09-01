@@ -14,6 +14,7 @@ import { SCRIPT_URL } from '../../lib/consts';
 import { InventoryItem, InventoryItemData, Crate, CameraView } from '../../lib/Types';
 import { MarketInventoryView } from '../catalog/MarketInventoryView';
 import { fetchImageBatch, imageCache } from '../../lib/utils';
+import { tr } from '../../lib/i18n';
 
 const loadTextureAsync = (url: string): Promise<THREE.Texture> => {
   return new Promise((resolve, reject) => {
@@ -322,14 +323,14 @@ const ItemImage = ({ imageUrl }: { imageUrl: string | null }) => {
     }
 
     if (isLoading) {
-        return <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><p className="text-xs text-gray-400">Loading Image...</p></div>;
+        return <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><p className="text-xs text-gray-400">{tr("Loading Image...")}</p></div>;
     }
 
     if (!dataUrl) {
-        return <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><p className="text-xs text-red-400">Failed to load image</p></div>;
+        return <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><p className="text-xs text-red-400">{tr("Failed to load image")}</p></div>;
     }
 
-    return <img loading="lazy" src={dataUrl} alt="Item" className="w-full h-auto rounded-lg object-contain bg-black/20" />;
+    return <img loading="lazy" src={dataUrl} alt={tr("Item")} className="w-full h-auto rounded-lg object-contain bg-black/20" />;
 };
 
 const DetailRow = ({ label, value }: { label: string, value: any }) => {
@@ -348,7 +349,7 @@ const ItemDetailsDisplay = () => {
     if (!itemData) {
         return (
             <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-(--text-color-secondary)">No item selected.</p>
+                <p className="text-sm text-(--text-color-secondary)">{tr("No item selected.")}</p>
             </div>
         );
     }
@@ -362,16 +363,16 @@ const ItemDetailsDisplay = () => {
             </div>
             <div className="grow overflow-y-auto p-4 space-y-4">
                 <ItemImage imageUrl={itemData.generatedPngUrl || null} />
-                <DetailRow label="Vendor ID" value={itemData.itemId} />
-                <DetailRow label="Item #" value={itemData.itemNumber} />
-                <DetailRow label="Description" value={itemData.description} />
-                <DetailRow label="Short Description" value={itemData.shortDescription} />
-                <DetailRow label="Dimensions" value={dimensions ? `${dimensions} cm` : null} />
-                <DetailRow label="Weight" value={itemData.weightKg ? `${itemData.weightKg} kg` : null} />
-                <DetailRow label="Price" value={itemData.price ? `$${itemData.price} MXN` : null} />
-                <DetailRow label="Quantity" value={itemData.quantity} />
+                <DetailRow label={tr("Vendor ID")} value={itemData.itemId} />
+                <DetailRow label={tr("Item #")} value={itemData.itemNumber} />
+                <DetailRow label={tr("Description")} value={itemData.description} />
+                <DetailRow label={tr("Short Description")} value={itemData.shortDescription} />
+                <DetailRow label={tr("Dimensions")} value={dimensions ? `${dimensions} cm` : null} />
+                <DetailRow label={tr("Weight")} value={itemData.weightKg ? `${itemData.weightKg} kg` : null} />
+                <DetailRow label={tr("Price")} value={itemData.price ? `$${itemData.price} MXN` : null} />
+                <DetailRow label={tr("Quantity")} value={itemData.quantity} />
                 {itemData.color && <div className="flex items-center gap-2">
-                     <p className="text-xs font-bold uppercase text-(--text-color-secondary)">Color</p>
+                     <p className="text-xs font-bold uppercase text-(--text-color-secondary)">{tr("Color")}</p>
                      <div className="w-10 h-5 rounded" style={{background: itemData.color}}></div>
                 </div>}
             </div>
@@ -599,7 +600,7 @@ export function ThreeDViewer() {
       
       <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-panel p-2 px-4 w-full max-w-sm z-10">
         <div className="flex items-center gap-3">
-            <label htmlFor="height-slider" className="text-sm font-semibold">Camera Height</label>
+            <label htmlFor="height-slider" className="text-sm font-semibold">{tr("Camera Height")}</label>
             <input 
                 id="height-slider"
                 type="range" 
@@ -628,7 +629,7 @@ export function ThreeDViewer() {
              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.8L19.4 8 12 11.2 4.6 8 12 4.8zM4 15.2V9.3L11 12.8v5.9L4 15.2zm16 0L13 18.7v-5.9l7-3.5v5.9z"/>
              </svg>
-             <span className="font-bold uppercase tracking-widest">View in Room (AR)</span>
+             <span className="font-bold uppercase tracking-widest">{tr("View in Room (AR)")}</span>
            </a>
         </div>
       )}
@@ -662,7 +663,7 @@ export function ThreeDWorkspace() {
                             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.8L19.4 8 12 11.2 4.6 8 12 4.8zM4 15.2V9.3L11 12.8v5.9L4 15.2zm16 0L13 18.7v-5.9l7-3.5v5.9z"/>
                             </svg>
-                            <span className="font-bold uppercase tracking-widest text-white">View in Room (AR)</span>
+                            <span className="font-bold uppercase tracking-widest text-white">{tr("View in Room (AR)")}</span>
                         </a>
                     </div>
                 )}
@@ -685,7 +686,7 @@ export function ThreeDWorkspace() {
             {/* Top-Center Controls: Camera Height */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-panel p-2 px-4 w-full max-w-sm z-50">
                 <div className="flex items-center gap-3">
-                    <label htmlFor="height-slider" className="text-sm font-semibold">Camera Height</label>
+                    <label htmlFor="height-slider" className="text-sm font-semibold">{tr("Camera Height")}</label>
                     <input 
                         id="height-slider"
                         type="range" 
@@ -723,7 +724,7 @@ export function ThreeDWorkspace() {
                 <button
                     onClick={() => setIsOpen(false)}
                     className="button p-2.5! min-h-0! bg-red-500/50! hover:bg-red-500!"
-                    title="Close Showroom"
+                    title={tr("Close Showroom")}
                 >
                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -749,11 +750,11 @@ function ThreeDCatalogGrid({ onSelect }: { onSelect: (item: InventoryItem) => vo
 
     return (
         <div className="w-full h-full bg-black/50 overflow-y-auto p-8 relative">
-            <h1 className="text-2xl font-black uppercase tracking-widest mb-6 border-b border-white/10 pb-4">3D & AR Artifact Catalog</h1>
+            <h1 className="text-2xl font-black uppercase tracking-widest mb-6 border-b border-white/10 pb-4">{tr("3D & AR Artifact Catalog")}</h1>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {validItems.length === 0 ? (
                     <div className="col-span-full flex items-center justify-center h-64 text-white/40 uppercase tracking-widest font-black text-sm">
-                        No 3D Models Configured
+                        {tr("No 3D Models Configured")}
                     </div>
                 ) : (
                     validItems.map((item) => (
@@ -768,7 +769,7 @@ function ThreeDCatalogGrid({ onSelect }: { onSelect: (item: InventoryItem) => vo
                                 )}
                                 {(item.data.usdzUrl || item.data.glbUrl) && (
                                     <div className="absolute top-2 right-2 bg-indigo-500/80 backdrop-blur text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full">
-                                        AR Ready
+                                        {tr("AR Ready")}
                                     </div>
                                 )}
                             </div>
@@ -824,13 +825,13 @@ export function ThreeDAppView() {
                     onClick={() => setActiveTab('catalog')}
                     className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'catalog' ? 'bg-(--main-color) text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
                 >
-                    3D Catalog
+                    {tr("3D Catalog")}
                 </button>
                 <button 
                     onClick={() => setActiveTab('showroom')}
                     className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'showroom' ? 'bg-(--main-color) text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
                 >
-                    Showroom
+                    {tr("Showroom")}
                 </button>
             </div>
 
@@ -855,7 +856,7 @@ export function ThreeDAppView() {
                             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.8L19.4 8 12 11.2 4.6 8 12 4.8zM4 15.2V9.3L11 12.8v5.9L4 15.2zm16 0L13 18.7v-5.9l7-3.5v5.9z"/>
                             </svg>
-                            <span className="font-bold uppercase tracking-widest text-white">View in Room (AR)</span>
+                            <span className="font-bold uppercase tracking-widest text-white">{tr("View in Room (AR)")}</span>
                         </a>
                     </div>
                 )}
@@ -878,7 +879,7 @@ export function ThreeDAppView() {
             {/* Top-Center Controls: Camera Height */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-panel p-2 px-4 w-full max-w-sm z-50">
                 <div className="flex items-center gap-3">
-                    <label htmlFor="app-height-slider" className="text-sm font-semibold whitespace-nowrap">Camera Height</label>
+                    <label htmlFor="app-height-slider" className="text-sm font-semibold whitespace-nowrap">{tr("Camera Height")}</label>
                     <input 
                         id="app-height-slider"
                         type="range" 

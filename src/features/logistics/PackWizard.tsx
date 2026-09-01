@@ -16,6 +16,7 @@ import { vendors } from '../../lib/consts';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
+import { tr } from '../../lib/i18n';
 
 type WizardStep = 'SELECT_CRATE' | 'REVIEW_PACK';
 
@@ -165,7 +166,7 @@ export const PackWizard: React.FC = () => {
     const handleConfirmPack = async () => {
         if (!selectedCrate) return;
         setIsPacking(true);
-        const tid = toast.loading('Synchronizing container manifest...');
+        const tid = toast.loading(tr("Synchronizing container manifest..."));
         try {
             const existingIds = (selectedCrate.inventory_ids || '').split(',').filter(Boolean);
             const newIds = selectedItems.map(item => `${item.row}:${packQuantities[item.row] ?? (item.norm.quantity || 1)}`);
@@ -227,17 +228,17 @@ export const PackWizard: React.FC = () => {
                             {step === 'SELECT_CRATE' ? <LayoutGrid size={24} strokeWidth={2.5} /> : <PackagePlus size={24} strokeWidth={2.5} />}
                         </div>
                         <div className="flex flex-col">
-                            <h2 className="text-3xl font-black text-white tracking-[0.3em] uppercase leading-none">PACK</h2>
+                            <h2 className="text-3xl font-black text-white tracking-[0.3em] uppercase leading-none">{tr("PACK")}</h2>
                             <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.5em] mt-3 flex items-center gap-3">
-                                <span className={step === 'SELECT_CRATE' ? 'text-(--main-color)' : ''}>01 Container</span>
+                                <span className={step === 'SELECT_CRATE' ? 'text-(--main-color)' : ''}>{tr("01 Container")}</span>
                                 <ChevronRight size={10} strokeWidth={3} />
-                                <span className={step === 'REVIEW_PACK' ? 'text-(--main-color)' : ''}>02 Manifest</span>
+                                <span className={step === 'REVIEW_PACK' ? 'text-(--main-color)' : ''}>{tr("02 Manifest")}</span>
                             </p>
                         </div>
                     </div>
                 </div>
                 <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[1em] mb-2">STAGED_UNITS</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[1em] mb-2">{tr("STAGED_UNITS")}</span>
                     <span className="text-6xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter">{selectedIds.length}</span>
                 </div>
             </div>
@@ -253,7 +254,7 @@ export const PackWizard: React.FC = () => {
                             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-(--main-color) transition-colors" size={18} />
                             <input
                                 type="text"
-                                placeholder="SEARCH CONTAINER · VENDOR · ID"
+                                placeholder={tr("SEARCH CONTAINER · VENDOR · ID")}
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 className="w-full bg-white/[0.04] border-0 border-b border-white/10 focus:border-(--main-color)/60 pl-12 pr-6 py-4 text-sm text-white focus:outline-none transition-all font-black uppercase tracking-[0.2em] bg-transparent placeholder:text-white/20"
@@ -265,7 +266,7 @@ export const PackWizard: React.FC = () => {
                             {isLoadingCrates ? (
                                 <div className="flex flex-col items-center justify-center h-64 gap-4 opacity-20">
                                     <Loader2 className="animate-spin" size={48} />
-                                    <span className="text-[11px] font-black uppercase tracking-[0.5em]">Scanning Registry</span>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.5em]">{tr("Scanning Registry")}</span>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 pb-32">
@@ -373,8 +374,8 @@ export const PackWizard: React.FC = () => {
                             <div className="w-full lg:w-1/2 flex flex-col pr-0 lg:pr-12 overflow-hidden">
                                 <div className="flex justify-between items-end pb-5 shrink-0">
                                     <div>
-                                        <h3 className="text-xl font-black text-white tracking-tighter uppercase">Staging List</h3>
-                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.3em] mt-1">Ready for insertion</p>
+                                        <h3 className="text-xl font-black text-white tracking-tighter uppercase">{tr("Staging List")}</h3>
+                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.3em] mt-1">{tr("Ready for insertion")}</p>
                                     </div>
                                     <span className="text-4xl font-black tabular-nums leading-none" style={{ color: primaryColor }}>{selectedItems.length}</span>
                                 </div>
@@ -396,7 +397,7 @@ export const PackWizard: React.FC = () => {
                                                     </div>
                                                     <h5 className="text-xs font-black text-white uppercase truncate">{item.norm.shortDescription || 'Inventory Item'}</h5>
                                                     <p className="text-[8px] font-bold text-white/25 uppercase tracking-tight mt-0.5">
-                                                        {item.norm.widthCm}×{item.norm.lengthCm}×{item.norm.heightCm} CM · {item.norm.weightKg} KG
+                                                        {item.norm.widthCm}×{item.norm.lengthCm}×{item.norm.heightCm} {tr("CM ·")} {item.norm.weightKg} KG
                                                     </p>
                                                 </div>
                                                 
@@ -419,7 +420,7 @@ export const PackWizard: React.FC = () => {
                                                         </button>
                                                     </div>
                                                     <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mr-1">
-                                                        {item.norm.quantity || 1} Tot · {Math.max(0, (item.norm.quantity || 1) - (packQuantities[item.row] ?? (item.norm.quantity || 1)))} Left
+                                                        {item.norm.quantity || 1} {tr("Tot ·")} {Math.max(0, (item.norm.quantity || 1) - (packQuantities[item.row] ?? (item.norm.quantity || 1)))} {tr("Left")}
                                                     </span>
                                                 </div>
                                             </div>
@@ -432,7 +433,7 @@ export const PackWizard: React.FC = () => {
                             <div className="w-full lg:w-1/2 flex flex-col justify-center pb-32 pl-0 lg:pl-12 border-t lg:border-t-0 lg:border-l border-white/5 mt-4 lg:mt-0 pt-8 lg:pt-0">
                                 {/* Crate ID + vendor tags */}
                                 <div className="mb-12">
-                                    <p className="text-[9px] font-black uppercase tracking-[0.5em] mb-3" style={{ color: primaryColor }}>Target Container</p>
+                                    <p className="text-[9px] font-black uppercase tracking-[0.5em] mb-3" style={{ color: primaryColor }}>{tr("Target Container")}</p>
                                     <div className="flex items-center gap-4 mb-4">
                                         <WireframeCrate w={selectedCrate.width_cm} l={selectedCrate.length_cm} h={selectedCrate.height_cm} type={selectedCrate.type} selected vibrant size={90} />
                                         <div>
@@ -455,7 +456,7 @@ export const PackWizard: React.FC = () => {
                                     <div>
                                         <div className="flex items-center gap-2 mb-2">
                                             <Layers className="text-blue-400" size={14} />
-                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Volumetric Fill</span>
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{tr("Volumetric Fill")}</span>
                                         </div>
                                         <div className="flex items-baseline gap-1 mb-2">
                                             <span className={`text-5xl font-black tabular-nums ${logisticsMetrics!.fillPct > 90 ? 'text-rose-500' : 'text-white'}`}>
@@ -471,7 +472,7 @@ export const PackWizard: React.FC = () => {
                                     <div>
                                         <div className="flex items-center gap-2 mb-2">
                                             <Weight className="text-emerald-400" size={14} />
-                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Total Weight</span>
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{tr("Total Weight")}</span>
                                         </div>
                                         <div className="flex items-baseline gap-1">
                                             <span className="text-5xl font-black tabular-nums text-white">{logisticsMetrics!.totalWeight.toFixed(1)}</span>
@@ -484,9 +485,9 @@ export const PackWizard: React.FC = () => {
                                     <div className="mt-8 p-5 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-4 animate-pulse">
                                         <Maximize2 className="text-rose-500 shrink-0" size={20} />
                                         <div>
-                                            <p className="text-sm font-black text-rose-500 uppercase">Volume Overload</p>
+                                            <p className="text-sm font-black text-rose-500 uppercase">{tr("Volume Overload")}</p>
                                             <p className="text-[9px] text-rose-400/60 font-bold uppercase tracking-tight">
-                                                {(logisticsMetrics!.fillPct - 100).toFixed(0)}% over capacity
+                                                {(logisticsMetrics!.fillPct - 100).toFixed(0)}{tr("% over capacity")}
                                             </p>
                                         </div>
                                     </div>
@@ -503,18 +504,18 @@ export const PackWizard: React.FC = () => {
                     {step === 'REVIEW_PACK' && (
                         <button onClick={() => setStep('SELECT_CRATE')} className="flex items-center gap-2 text-[10px] font-black text-white/30 uppercase tracking-[0.3em] hover:text-white transition-all group">
                             <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                            Back
+                            {tr("Back")}
                         </button>
                     )}
                     <div className="hidden lg:flex items-center gap-2 text-white/15 text-[9px] font-black uppercase tracking-widest">
                         <Info size={12} />
-                        Persisted to global logistics manifest
+                        {tr("Persisted to global logistics manifest")}
                     </div>
                 </div>
 
                 <div className="flex gap-3">
                     <button onClick={() => setIsOpen(false)} className="px-8 h-14 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-[0.4em] text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-95">
-                        Abort
+                        {tr("Abort")}
                     </button>
                     {step === 'SELECT_CRATE' ? (
                         <button
@@ -522,7 +523,7 @@ export const PackWizard: React.FC = () => {
                             disabled={!selectedCrate}
                             className="px-10 h-14 rounded-full bg-white text-black text-[10px] font-black uppercase tracking-[0.4em] hover:scale-105 active:scale-95 transition-all disabled:opacity-20 flex items-center gap-3"
                         >
-                            Review Manifest <ChevronRight size={16} strokeWidth={3} />
+                            {tr("Review Manifest")} <ChevronRight size={16} strokeWidth={3} />
                         </button>
                     ) : (
                         <button
@@ -530,7 +531,7 @@ export const PackWizard: React.FC = () => {
                             disabled={isPacking}
                             className="px-12 h-14 rounded-full text-black text-[10px] font-black uppercase tracking-[0.4em] hover:scale-105 active:scale-95 transition-all disabled:opacity-30 flex items-center gap-3 shadow-[0_0_50px_rgba(var(--main-color-rgb),0.3)] bg-(--main-color)"
                         >
-                            {isPacking ? <><Loader2 className="animate-spin" size={18} />Syncing...</> : <><Zap size={18} />Confirm Packing</>}
+                            {isPacking ? <><Loader2 className="animate-spin" size={18} />{tr("Syncing...")}</> : <><Zap size={18} />{tr("Confirm Packing")}</>}
                         </button>
                     )}
                 </div>
@@ -542,12 +543,12 @@ export const PackWizard: React.FC = () => {
                             setManagerTargetCrateId(selectedCrate!.id);
                             setIsManagerOpen(true);
                             setIsOpen(false);
-                            toast.success('Entering 3D Workspace', { icon: '📦' });
+                            toast.success(tr("Entering 3D Workspace"), { icon: '📦' });
                         }}
                         className="hidden lg:flex items-center gap-3 px-8 h-14 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-[0.4em] text-white/60 hover:text-white hover:bg-white/5 transition-all active:scale-95"
                     >
                         <Rotate3d size={18} className="text-blue-400" />
-                        3D Workspace
+                        {tr("3D Workspace")}
                     </button>
                 )}
             </div>

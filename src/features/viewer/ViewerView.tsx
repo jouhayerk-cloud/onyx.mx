@@ -17,6 +17,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import gsap from 'gsap';
 import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
+import { tr } from '../../lib/i18n';
 
 declare global { interface Window { jspdf?: any; } }
 
@@ -145,7 +146,7 @@ const FullscreenViewer: React.FC<{
             onTouchEnd={onTouchEnd}>
             <div className="absolute top-0 inset-x-0 flex items-center justify-between px-6 py-6 z-10 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em] mb-1">Navigation</span>
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em] mb-1">{tr("Navigation")}</span>
                     <span className="text-xs font-black text-white/80 tabular-nums">{idx + 1} / {images.length}</span>
                 </div>
                 <button onClick={onClose} className="w-12 h-12 flex items-center justify-center text-white/40 hover:text-white transition-all pointer-events-auto rounded-full bg-white/5 border border-white/10 active:scale-90">
@@ -196,7 +197,7 @@ const ImageGrid: React.FC<{ images: string[]; onOpenViewer: (idx: number) => voi
             {visibleUrls.map((url, i) => (
                 <div key={i} className="relative overflow-hidden aspect-square cursor-zoom-in group/img" onClick={() => onOpenViewer(i)}>
                     <img src={getCleanImageUrl(url)} className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
-                    {i === visibleUrls.length - 1 && remaining > 0 && <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center"><div className="flex flex-col items-center"><span className="text-2xl font-black text-white">+{remaining}</span><span className="text-[8px] font-black text-white/40 uppercase tracking-widest mt-0.5">More</span></div></div>}
+                    {i === visibleUrls.length - 1 && remaining > 0 && <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center"><div className="flex flex-col items-center"><span className="text-2xl font-black text-white">+{remaining}</span><span className="text-[8px] font-black text-white/40 uppercase tracking-widest mt-0.5">{tr("More")}</span></div></div>}
                 </div>
             ))}
         </div>
@@ -245,11 +246,11 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
                                 <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[9px] font-black text-white/50 uppercase tracking-widest">{detailStr}</div>
                             )}
                             <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/8">
-                                <span className="text-[8px] font-black text-white/20 uppercase">AQ</span>
+                                <span className="text-[8px] font-black text-white/20 uppercase">{tr("AQ")}</span>
                                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{codes.bookAqCode || '—'}</span>
                             </div>
                             <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/8">
-                                <span className="text-[8px] font-black text-white/20 uppercase">LD</span>
+                                <span className="text-[8px] font-black text-white/20 uppercase">{tr("LD")}</span>
                                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{codes.bookLandCode || '—'}</span>
                             </div>
                         </div>
@@ -259,19 +260,19 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
                             </h3>
                         </div>
                     </div>
-                    <div className="shrink-0 flex flex-col items-end"><span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">QTY</span><span className="text-2xl font-black text-white/60 leading-none">{norm.quantity || 1}</span></div>
+                    <div className="shrink-0 flex flex-col items-end"><span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">{tr("QTY")}</span><span className="text-2xl font-black text-white/60 leading-none">{norm.quantity || 1}</span></div>
                 </div>
-                <div className="flex items-center justify-between py-4 border-t border-b border-white/5"><div className="flex flex-col gap-1"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">USD Retail</span><span className="text-3xl font-black text-white font-mono">{retailUsd}</span></div><div className="flex flex-col items-end gap-1"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">Images</span><span className="text-lg font-black text-white/40 font-mono">{item.images.length}</span></div></div>
+                <div className="flex items-center justify-between py-4 border-t border-b border-white/5"><div className="flex flex-col gap-1"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">{tr("USD Retail")}</span><span className="text-3xl font-black text-white font-mono">{retailUsd}</span></div><div className="flex flex-col items-end gap-1"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">{tr("Images")}</span><span className="text-lg font-black text-white/40 font-mono">{item.images.length}</span></div></div>
                 <div className="grid grid-cols-2 gap-5">
                     <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Dimensions</span>
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">{tr("Dimensions")}</span>
                         <span className="text-sm font-mono font-bold text-white/50 leading-tight">
                             {dimensionsCmStr ? `${dimensionsCmStr}cm` : '—'} 
                             {dimensionsInchStr && <span className="text-[10px] text-white/20 block">({dimensionsInchStr})</span>}
                         </span>
                     </div>
                     <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span>
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">{tr("Weight")}</span>
                         <span className="text-sm font-mono font-bold text-white/50 leading-tight">
                             {weightKg || '—'}
                             {weightLbs && <span className="text-[10px] text-white/20 block">({weightLbs})</span>}
@@ -443,8 +444,8 @@ const ScannerCenter: React.FC<{
                 <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#b8860b]/40 to-transparent" />
                 <div className="p-8 pb-4 flex items-center justify-between">
                     <div className="flex flex-col gap-1">
-                        <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Scanner Center</h2>
-                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Batch ID Capture</p>
+                        <h2 className="text-2xl font-black text-white uppercase tracking-tighter">{tr("Scanner Center")}</h2>
+                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{tr("Batch ID Capture")}</p>
                     </div>
                     <button onClick={onClose} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90">
                         <X size={20} />
@@ -453,39 +454,39 @@ const ScannerCenter: React.FC<{
                 <div className="px-8 flex gap-3 mb-6">
                     <button onClick={() => setMode('qr')} className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl border transition-all ${mode === 'qr' ? 'bg-[#b8860b]/10 border-[#b8860b]/30 text-[#b8860b]' : 'bg-white/2 border-white/5 text-white/20 hover:text-white/40'}`}>
                         <QrCode size={18} />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">QR Scan</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{tr("QR Scan")}</span>
                     </button>
                     <button onClick={() => setMode('nfc')} className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl border transition-all ${mode === 'nfc' ? 'bg-[#b8860b]/10 border-[#b8860b]/30 text-[#b8860b]' : 'bg-white/2 border-white/5 text-white/20 hover:text-white/40'}`}>
                         <Smartphone size={18} />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">NFC Scan</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{tr("NFC Scan")}</span>
                     </button>
                 </div>
                 <div className="flex-1 min-h-[300px] bg-black/40 relative flex items-center justify-center">
                     {mode === 'qr' ? <div id={qrRegionId} className="w-full h-full" /> : (
                         <div className="flex flex-col items-center gap-6 p-10 text-center">
                             <div className={`w-24 h-24 rounded-full flex items-center justify-center border transition-all duration-500 ${nfcError ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-[#b8860b]/10 border-[#b8860b]/20 text-[#b8860b] animate-pulse'}`}><Smartphone size={40} /></div>
-                            <div><p className="text-sm font-black text-white uppercase tracking-widest mb-2">{nfcError || "Scanning for Tags..."}</p><p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Hold device near NFC tag</p></div>
+                            <div><p className="text-sm font-black text-white uppercase tracking-widest mb-2">{nfcError || "Scanning for Tags..."}</p><p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">{tr("Hold device near NFC tag")}</p></div>
                         </div>
                     )}
                     {lastScan && (
                         <div className="absolute top-6 inset-x-0 flex justify-center pointer-events-none px-4 animate-in slide-in-from-top-4 duration-300">
-                            <div className="bg-green-500/20 border border-green-500/40 backdrop-blur-xl px-4 py-2 rounded-full flex items-center gap-2 shadow-xl"><CheckCircle2 size={12} className="text-green-400" /><span className="text-[10px] font-black text-green-400 uppercase tracking-widest">Captured: {lastScan}</span></div>
+                            <div className="bg-green-500/20 border border-green-500/40 backdrop-blur-xl px-4 py-2 rounded-full flex items-center gap-2 shadow-xl"><CheckCircle2 size={12} className="text-green-400" /><span className="text-[10px] font-black text-green-400 uppercase tracking-widest">{tr("Captured:")} {lastScan}</span></div>
                         </div>
                     )}
                 </div>
                 <div className="p-8 bg-black/20 flex flex-col gap-6">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Batch List</span><div className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono font-black text-[#b8860b]">{scannedIds.length}</div></div>
-                        {scannedIds.length > 0 && <button onClick={() => setScannedIds([])} className="text-[9px] font-black text-rose-500/40 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-1.5"><Trash2 size={12} /> Clear List</button>}
+                        <div className="flex items-center gap-3"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{tr("Batch List")}</span><div className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono font-black text-[#b8860b]">{scannedIds.length}</div></div>
+                        {scannedIds.length > 0 && <button onClick={() => setScannedIds([])} className="text-[9px] font-black text-rose-500/40 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-1.5"><Trash2 size={12} /> {tr("Clear List")}</button>}
                     </div>
                     <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto no-scrollbar">
-                        {scannedIds.length === 0 ? <div className="w-full py-8 border border-dashed border-white/5 rounded-2xl flex items-center justify-center"><p className="text-[10px] font-black text-white/10 uppercase tracking-widest">No tags scanned yet</p></div> : scannedIds.map(id => (
+                        {scannedIds.length === 0 ? <div className="w-full py-8 border border-dashed border-white/5 rounded-2xl flex items-center justify-center"><p className="text-[10px] font-black text-white/10 uppercase tracking-widest">{tr("No tags scanned yet")}</p></div> : scannedIds.map(id => (
                             <div key={id} className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2 group/tag"><span className="text-[10px] font-mono font-black text-white/60 tracking-tight">{id}</span><button onClick={() => setScannedIds(prev => prev.filter(x => x !== id))} className="opacity-0 group-hover/tag:opacity-100 transition-opacity"><X size={10} className="text-white/20 hover:text-rose-500" /></button></div>
                         ))}
                     </div>
                     <div className="flex gap-4">
-                        <button onClick={onClose} className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all">Cancel</button>
-                        <button disabled={scannedIds.length === 0} onClick={() => onComplete(scannedIds)} className="flex-[2] h-14 rounded-full bg-[#b8860b] disabled:bg-white/5 disabled:text-white/10 text-[10px] font-black text-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#b8860b]/10">Generate Results</button>
+                        <button onClick={onClose} className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all">{tr("Cancel")}</button>
+                        <button disabled={scannedIds.length === 0} onClick={() => onComplete(scannedIds)} className="flex-[2] h-14 rounded-full bg-[#b8860b] disabled:bg-white/5 disabled:text-white/10 text-[10px] font-black text-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#b8860b]/10">{tr("Generate Results")}</button>
                     </div>
                 </div>
             </div>
@@ -556,10 +557,10 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                 setExportProgress(p);
                 setExportStatus(s);
             }); 
-            toast.success('Catalog exported successfully');
+            toast.success(tr("Catalog exported successfully"));
         } catch (e) { 
             console.error('PDF export failed:', e); 
-            toast.error('Failed to generate PDF. Please try again.');
+            toast.error(tr("Failed to generate PDF. Please try again."));
         } finally {
             setExporting(false);
         }
@@ -577,7 +578,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                             <button 
                                 onClick={() => setScannerMode('qr')}
                                 className="group transition-all hover:scale-110 active:scale-90"
-                                title="Open QR Scanner"
+                                title={tr("Open QR Scanner")}
                             >
                                 <div className="text-white group-hover:text-[#b8860b] transition-all drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
                                     <QrCode size={48} strokeWidth={1.5} />
@@ -594,7 +595,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                             <button 
                                 onClick={() => setScannerMode('nfc')}
                                 className="group transition-all hover:scale-110 active:scale-90"
-                                title="Scan NFC Tag"
+                                title={tr("Scan NFC Tag")}
                             >
                                 <div className="text-white group-hover:text-[#b8860b] transition-all drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
                                     <Smartphone size={48} strokeWidth={1.5} />
@@ -606,7 +607,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                     <div className="flex flex-col gap-10">
                         <div className="relative group max-w-2xl mx-auto w-full">
                             <div className="absolute inset-y-0 left-8 flex items-center pointer-events-none text-white/20 group-focus-within:text-[#b8860b] transition-colors"><Search size={24} strokeWidth={2.5} /></div>
-                            <input type="text" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') performSearch(query); }} placeholder="INPUT BARCODES..." className={`w-full transition-all duration-700 bg-transparent border-2 border-white/20 rounded-full font-black uppercase tracking-tight placeholder:text-white/10 focus:border-[#b8860b] focus:bg-white/5 outline-none ${isInitial && results.length === 0 ? 'h-24 sm:h-32 px-24 text-xl sm:text-3xl' : 'h-14 px-14 text-sm sm:text-base'}`} />
+                            <input type="text" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') performSearch(query); }} placeholder={tr("INPUT BARCODES...")} className={`w-full transition-all duration-700 bg-transparent border-2 border-white/20 rounded-full font-black uppercase tracking-tight placeholder:text-white/10 focus:border-[#b8860b] focus:bg-white/5 outline-none ${isInitial && results.length === 0 ? 'h-24 sm:h-32 px-24 text-xl sm:text-3xl' : 'h-14 px-14 text-sm sm:text-base'}`} />
                             <div className={`absolute inset-y-0 flex items-center transition-all duration-700 ${isInitial && results.length === 0 ? 'right-10' : 'right-4'}`}>
                                 {loading && <Loader2 size={24} className="animate-spin text-[#b8860b]" />}
                             </div>
@@ -616,9 +617,9 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                         {query.includes(' ') && (
                             <div className="flex justify-center">
                                 <div className="px-4 py-1.5 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                                    <span className="text-[10px] font-black text-[#b8860b] uppercase tracking-[0.2em]">Batch Search Active</span>
+                                    <span className="text-[10px] font-black text-[#b8860b] uppercase tracking-[0.2em]">{tr("Batch Search Active")}</span>
                                     <div className="w-1 h-1 rounded-full bg-[#b8860b]/40" />
-                                    <span className="text-[10px] font-mono font-black text-[#b8860b]">{query.split(' ').filter(Boolean).length} ITEMS</span>
+                                    <span className="text-[10px] font-mono font-black text-[#b8860b]">{query.split(' ').filter(Boolean).length} {tr("ITEMS")}</span>
                                 </div>
                             </div>
                         )}
@@ -650,7 +651,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                             <>
                                 <div className="flex items-center justify-between mb-8">
                                     <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">
-                                        {results.length} Artifact{results.length !== 1 ? 's' : ''}
+                                        {results.length} {tr("Artifact")}{results.length !== 1 ? 's' : ''}
                                     </span>
                                     <div className="flex items-center gap-4">
                                         <button 
@@ -658,7 +659,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                                             className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white hover:bg-white/10 hover:border-[#b8860b]/40 transition-all active:scale-95 group/btn"
                                         >
                                             <Download size={14} className="group-hover/btn:text-[#b8860b] transition-colors" />
-                                            Export Catalog
+                                            {tr("Export Catalog")}
                                         </button>
                                         
                                         <ExportWizard 
@@ -678,7 +679,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                                     })}
                                 </div>
                             </>
-                        ) : !loading && <div className="flex flex-col items-center justify-center py-40 gap-6 opacity-20"><Package size={72} strokeWidth={0.5} /><p className="text-sm font-black uppercase tracking-[0.3em]">No Artifacts Found</p></div>}
+                        ) : !loading && <div className="flex flex-col items-center justify-center py-40 gap-6 opacity-20"><Package size={72} strokeWidth={0.5} /><p className="text-sm font-black uppercase tracking-[0.3em]">{tr("No Artifacts Found")}</p></div>}
                     </div>
                 </div>
             )}

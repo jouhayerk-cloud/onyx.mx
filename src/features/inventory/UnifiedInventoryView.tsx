@@ -66,6 +66,7 @@ import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleto
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeIcon } from './InventoryArtifact';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, Truck, CreditCard, Link } from 'lucide-react';
+import { tr } from '../../lib/i18n';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -232,7 +233,7 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
         }
         return (
             <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-black text-teal-400 uppercase tracking-widest leading-none flex items-center gap-1"><Truck size={12} strokeWidth={3} /> DEPLOYED</span>
+                <span className="text-[10px] font-black text-teal-400 uppercase tracking-widest leading-none flex items-center gap-1"><Truck size={12} strokeWidth={3} /> {tr("DEPLOYED")}</span>
                 <span className="text-[11px] font-mono font-bold text-teal-400/80">{crateId || 'Unknown'}</span>
             </div>
         );
@@ -286,10 +287,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         e.stopPropagation();
         if (inBag) {
             setBag(bag.filter((b: any) => b.row !== item.row));
-            toast.error('Removed from Store Bag', { icon: '🗑️' });
+            toast.error(tr("Removed from Store Bag"), { icon: '🗑️' });
         } else {
             setBag([...bag, item]);
-            toast.success('Added to Store Bag', { style: { background: 'var(--main-color)', color: '#000' }, icon: '🛍️' });
+            toast.success(tr("Added to Store Bag"), { style: { background: 'var(--main-color)', color: '#000' }, icon: '🛍️' });
         }
     };
 
@@ -391,7 +392,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         if (!itemPayments || itemPayments.length === 0) return null;
         return (
             <div className="payment-history col-span-full pt-6 mt-2 border-t border-(--border-color) space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-40 mb-3 ml-1">Payment History (MXN)</h4>
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-40 mb-3 ml-1">{tr("Payment History (MXN)")}</h4>
                 <div className="flex flex-col gap-2">
                     {itemPayments.map((p: any) => {
                         const net = p.amount || 0;
@@ -407,15 +408,15 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 </div>
                                 <div className="flex items-center gap-6 sm:gap-12 w-full sm:w-auto no-scrollbar justify-between sm:justify-end">
                                     <div className="flex flex-col items-end">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color) opacity-30 mb-0.5">Net Paid</span>
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color) opacity-30 mb-0.5">{tr("Net Paid")}</span>
                                         <span className="text-[11px] font-mono font-bold text-(--text-color) opacity-80">{format(net)}</span>
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color) opacity-30 mb-0.5">Taxes/Fees</span>
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color) opacity-30 mb-0.5">{tr("Taxes/Fees")}</span>
                                         <span className="text-[11px] font-mono font-bold text-red-400 opacity-80">{format(fees)}</span>
                                     </div>
                                     <div className="flex flex-col items-end border-l border-(--border-color) pl-6 sm:pl-12 min-w-[100px]">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--main-color) opacity-50 mb-0.5">Total</span>
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--main-color) opacity-50 mb-0.5">{tr("Total")}</span>
                                         <span className="text-[13px] font-mono font-black text-(--main-color)">{format(total)}</span>
                                     </div>
                                 </div>
@@ -441,12 +442,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     };
 
     const handleDelete = async (e: React.MouseEvent) => {
-        e.stopPropagation(); if (!window.confirm('PERMANENTLY REMOVE this item from registry?')) return;
-        const tid = toast.loading('Removing Artifact...');
+        e.stopPropagation(); if (!window.confirm(tr("PERMANENTLY REMOVE this item from registry?"))) return;
+        const tid = toast.loading(tr("Removing Artifact..."));
         try {
             const tbl = item.source === 'production' ? 'production' : 'inventory';
             const { error } = await supabase.from(tbl).update({ is_hidden: true }).eq('id', item.row);
-            if (error) throw error; toast.success('Removed', { id: tid }); setInventoryVersion(v => v + 1);
+            if (error) throw error; toast.success(tr("Removed"), { id: tid }); setInventoryVersion(v => v + 1);
         } catch (err: any) { toast.error(err.message, { id: tid }); }
     };
 
@@ -542,22 +543,22 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             <span className="text-[14px] font-mono font-bold text-(--text-color)/80">{metricWeightStr || '-'}</span>
                         </div>
                         <div className="flex flex-col min-w-[90px] shrink-0">
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">Price / Qty</span>
+                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">{tr("Price / Qty")}</span>
                             <div className="flex items-baseline gap-1.5">
                                 <span className="text-[15px] font-black text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span>
                                 <span className="text-[12px] font-black text-cyan-500 font-mono">x{norm.quantity || 1}</span>
                             </div>
                         </div>
                         <div className="flex flex-col min-w-[90px] shrink-0">
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">Total MXN</span>
+                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">{tr("Total MXN")}</span>
                             <span className="text-[14px] font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span>
                         </div>
                         <div className="flex flex-col min-w-[70px] shrink-0">
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">AQ Code</span>
+                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">{tr("AQ Code")}</span>
                             <span className="text-[14px] text-(--text-color)/80 font-mono font-black">{calculated.bookAqCode || '-'}</span>
                         </div>
                         <div className="flex flex-col min-w-[70px] shrink-0">
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">LD Code</span>
+                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">{tr("LD Code")}</span>
                             <span className="text-[14px] text-yellow-500/90 font-mono font-black">{calculated.bookLandCode || '-'}</span>
                         </div>
                         
@@ -565,7 +566,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             {norm.packingStatus === 'Packed' ? (
                                 <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} />
                             ) : (
-                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-widest leading-none">UNPACKED</span>
+                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-widest leading-none">{tr("UNPACKED")}</span>
                             )}
                         </div>
                         
@@ -597,11 +598,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     <span className="text-[12px] font-mono font-bold text-(--text-color)/50">{weightStr || '-'}</span>
                                 </div>
                                 <div className="flex flex-col gap-1.5">
-                                    <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.2em]">Landed</span>
+                                    <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.2em]">{tr("Landed")}</span>
                                     <span className="text-[15px] font-black text-yellow-500 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span>
                                 </div>
                                 <div className="flex flex-col gap-1.5">
-                                    <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.2em]">Retail</span>
+                                    <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.2em]">{tr("Retail")}</span>
                                     <span className="text-[15px] font-black text-green-500 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span>
                                 </div>
                             </div>
@@ -622,20 +623,20 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
-                                        toast.success('Trace Link Copied');
+                                        toast.success(tr("Trace Link Copied"));
                                     }}
                                     className="p-2 text-cyan-400 hover:text-cyan-300 transition-all"
-                                    title="Copy Trace Link"
+                                    title={tr("Copy Trace Link")}
                                 >
                                     <Copy size={22} strokeWidth={2} />
                                 </button>
                                 {isEditable && (
-                                    <button onClick={handleEdit} className="p-2 text-cyan-400 hover:text-cyan-300 transition-all" title="Edit Item">
+                                    <button onClick={handleEdit} className="p-2 text-cyan-400 hover:text-cyan-300 transition-all" title={tr("Edit Item")}>
                                         <Pencil size={22} strokeWidth={2} />
                                     </button>
                                 )}
                                 {isInternalUser && (
-                                    <button onClick={handleDelete} className="p-2 text-red-400 hover:text-red-300 transition-all" title="Remove Artifact">
+                                    <button onClick={handleDelete} className="p-2 text-red-400 hover:text-red-300 transition-all" title={tr("Remove Artifact")}>
                                         <Trash2 size={22} strokeWidth={2} />
                                     </button>
                                 )}
@@ -681,7 +682,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                             fgColor={qrColor}
                                             bgColor="transparent"
                                         />
-                                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[7px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.3em]">Identity Hub</div>
+                                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[7px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.3em]">{tr("Identity Hub")}</div>
                                     </div>
                                 </div>
                             </div>
@@ -699,8 +700,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         <div className="fixed inset-0 z-90 bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onClick={() => onToggleExpand()}>
             <div className="relative w-full max-w-6xl bg-[#0e0e0e] rounded-[40px] overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
                 <div className="absolute top-6 right-6 z-10 flex gap-2">
-                    {isEditable && <button onClick={handleEdit} className="h-10 px-4 rounded-xl bg-(--main-color)/20 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all">Edit Item</button>}
-                    <button onClick={() => onToggleExpand()} className="h-10 px-4 rounded-xl bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">Close</button>
+                    {isEditable && <button onClick={handleEdit} className="h-10 px-4 rounded-xl bg-(--main-color)/20 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all">{tr("Edit Item")}</button>}
+                    <button onClick={() => onToggleExpand()} className="h-10 px-4 rounded-xl bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">{tr("Close")}</button>
                 </div>
                 <div className="h-72 sm:h-96 bg-black relative shrink-0 group/hero isolate">
                     {mediaUrls[modalIdx] ? (
@@ -743,18 +744,18 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 <div className="p-8 overflow-y-auto grow custom-scrollbar flex flex-col gap-8">
                     <div><h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[13px] font-bold text-white/50 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/2 border border-white/5">
-                        <div><p className={lbl}>AQ Code</p><p className="text-2xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
-                        <div><p className={lbl}>LD Code</p><p className="text-2xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
-                        <div><p className={lbl}>Acq. MXN</p><p className="text-2xl font-black text-green-400">{showFinancials ? `$${itemPriceMXN}` : '***'}</p></div>
-                        <div><p className={lbl}>Acq. USD</p><p className="text-2xl font-black text-cyan-400">{showFinancials ? `$${calculated.bookAcquisition}` : '***'}</p></div>
-                        <div><p className={lbl}>Landed USD</p><p className="text-2xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
-                        <div><p className={lbl}>Retail USD</p><p className="text-2xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
-                        <div><p className={lbl}>Dimensions</p><p className="text-[15px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
-                        <div><p className={lbl}>Weight</p><p className="text-[15px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
+                        <div><p className={lbl}>{tr("AQ Code")}</p><p className="text-2xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
+                        <div><p className={lbl}>{tr("LD Code")}</p><p className="text-2xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
+                        <div><p className={lbl}>{tr("Acq. MXN")}</p><p className="text-2xl font-black text-green-400">{showFinancials ? `$${itemPriceMXN}` : '***'}</p></div>
+                        <div><p className={lbl}>{tr("Acq. USD")}</p><p className="text-2xl font-black text-cyan-400">{showFinancials ? `$${calculated.bookAcquisition}` : '***'}</p></div>
+                        <div><p className={lbl}>{tr("Landed USD")}</p><p className="text-2xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
+                        <div><p className={lbl}>{tr("Retail USD")}</p><p className="text-2xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
+                        <div><p className={lbl}>{tr("Dimensions")}</p><p className="text-[15px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
+                        <div><p className={lbl}>{tr("Weight")}</p><p className="text-[15px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
                         
                         {norm.detailedDescription && (
                             <div className="col-span-full border-t border-white/5 pt-6 mt-2">
-                                <p className={lbl}>AI Visual Analysis</p>
+                                <p className={lbl}>{tr("AI Visual Analysis")}</p>
                                 <p className="text-sm font-mono text-white/70 leading-relaxed mt-2 whitespace-pre-wrap">{norm.detailedDescription}</p>
                             </div>
                         )}
@@ -764,15 +765,15 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
-                                    toast.success('Trace Link Copied');
+                                    toast.success(tr("Trace Link Copied"));
                                 }}
                                 className="flex items-center gap-2 h-10 px-4 rounded-xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all text-[10px] font-black uppercase tracking-widest"
-                                title="Copy Trace Link"
+                                title={tr("Copy Trace Link")}
                             >
-                                <Copy size={16} /> COPY TRACE LINK
+                                <Copy size={16} /> {tr("COPY TRACE LINK")}
                             </button>
                             {isInternalUser && (
-                                <button onClick={handleDelete} className="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><Trash2 size={16} /> REMOVE ARTIFACT</button>
+                                <button onClick={handleDelete} className="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><Trash2 size={16} /> {tr("REMOVE ARTIFACT")}</button>
                             )}
                         </div>
                     </div>
@@ -826,7 +827,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                         bgColor="transparent"
                                     />
                                 )}
-                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.4em] whitespace-nowrap">Secure Identity Artifact</div>
+                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.4em] whitespace-nowrap">{tr("Secure Identity Artifact")}</div>
                             </div>
                         </div>
                     </div>
@@ -888,7 +889,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
                                             <div className="flex flex-col items-center">
                                                 <span className="text-xl font-black text-white">+{remaining}</span>
-                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mt-1">More</span>
+                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mt-1">{tr("More")}</span>
                                             </div>
                                         </div>
                                     )}
@@ -925,12 +926,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                              <div className="text-[12px] text-(--text-color)/70 uppercase tracking-widest font-black mt-1.5">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
                         <div className="flex flex-col items-end ml-4 shrink-0">
-                            <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.3em] mb-1">TOTAL MXN</span>
+                            <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.3em] mb-1">{tr("TOTAL MXN")}</span>
                             <span className="text-3xl font-mono font-black text-(--main-color) whitespace-nowrap leading-none">
                                 {showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}
                             </span>
                             <div className="flex items-center gap-2 mt-2.5">
-                                <span className="text-[12px] font-black text-(--text-color)/40 uppercase tracking-[0.3em]">QTY {norm.quantity || 1}</span>
+                                <span className="text-[12px] font-black text-(--text-color)/40 uppercase tracking-[0.3em]">{tr("QTY")} {norm.quantity || 1}</span>
                                 <span className="w-px h-3 bg-white/10" />
                                 <span className="text-[12px] font-mono font-bold text-(--text-color)/60">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
                             </div>
@@ -939,12 +940,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     
                     <div className="flex items-center gap-4 py-3 border-y border-white/5">
                         <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">Dimensions</span>
+                            <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">{tr("Dimensions")}</span>
                             <span className="text-[14px] font-mono font-black text-(--text-color)">{metricDimensionsStr || '—'}</span>
                         </div>
                         <div className="w-px h-6 bg-white/5" />
                         <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">Weight</span>
+                            <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">{tr("Weight")}</span>
                             <span className="text-[14px] font-mono font-black text-(--text-color)">{metricWeightStr || '—'}</span>
                         </div>
                     </div>
@@ -1054,11 +1055,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 {/* Financial Summary Overlay */}
                 <div className="flex flex-col gap-0.5 pt-2 mb-1 border-t border-white/5">
                     <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-tight">
-                        <span className="text-(--text-color)/30">Cost MXN</span>
+                        <span className="text-(--text-color)/30">{tr("Cost MXN")}</span>
                         <span className="text-(--text-color)/80 font-mono">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
                     </div>
                     <div className="flex justify-between items-center text-[13px] font-black uppercase tracking-tight">
-                        <span className="text-(--main-color)/40">Total MXN</span>
+                        <span className="text-(--main-color)/40">{tr("Total MXN")}</span>
                         <span className="text-(--main-color) font-mono">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span>
                     </div>
                 </div>
@@ -1164,7 +1165,7 @@ export const UnifiedInventoryView = () => {
 
     const handleCopyShareLink = () => {
         const idsToShare = selectedIds.length > 0 ? selectedIds : filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
-        if (idsToShare.length === 0) return toast.error('No items to share.');
+        if (idsToShare.length === 0) return toast.error(tr("No items to share."));
         const idsParam = encodeURIComponent(idsToShare.join(','));
         const viewParam = viewMode;
         const selectionParam = selectedIds.length > 0 ? '&selection=true' : '';
@@ -1176,7 +1177,7 @@ export const UnifiedInventoryView = () => {
     };
     
     const handleCopyTags = () => {
-        if (selectedIds.length === 0) return toast.error('No items selected.');
+        if (selectedIds.length === 0) return toast.error(tr("No items selected."));
         
         const tags = selectedIds.map(id => {
             const item = items.find(i => (i.row ?? i.data?.id) === id);
@@ -1186,7 +1187,7 @@ export const UnifiedInventoryView = () => {
             return calculated.bookBarcode;
         }).filter(Boolean);
 
-        if (tags.length === 0) return toast.error('No tags found for selection.');
+        if (tags.length === 0) return toast.error(tr("No tags found for selection."));
         
         const tagString = tags.join(' ');
         navigator.clipboard.writeText(tagString).then(() => {
@@ -1198,7 +1199,7 @@ export const UnifiedInventoryView = () => {
     };
 
     const handleBulkRemove = async () => {
-        if (selectedIds.length === 0) return toast.error('No items selected.');
+        if (selectedIds.length === 0) return toast.error(tr("No items selected."));
         if (!window.confirm(`Are you sure you want to REMOVE ${selectedIds.length} items to Store?`)) return;
 
         const tid = toast.loading(`Moving ${selectedIds.length} items to Store...`);

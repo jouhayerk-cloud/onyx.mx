@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PicoDevice, PicoSession } from '../../../lib/picoAtoms';
 import { useDeviceControl, OnyxChanFace } from '../useDeviceControl';
 import { Cpu, Wifi, BatteryCharging, Radio, Shield, Zap, Terminal, Activity, CheckCircle2, AlertCircle, Unplug, Bot, Box, Smartphone, Monitor, User, Smile, MessageSquare, Send, Sparkles } from 'lucide-react';
+import { tr } from '../../../lib/i18n';
 
 interface PicoRoleHardwareCardProps {
   device: PicoDevice;
@@ -85,14 +86,14 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
               </span>
             </div>
             <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-2">
-              <span>MAC: {device.device_mac || '24:D7:EB:00:00:01'}</span>
+              <span>{tr("MAC:")} {device.device_mac || '24:D7:EB:00:00:01'}</span>
               <span>•</span>
               <span className="text-neutral-500">{device.hardware_model}</span>
             </div>
             {device.owner_email && (
               <div className="text-[10px] font-mono text-purple-400/80 mt-0.5 flex items-center gap-1">
                 <User size={10} />
-                <span>Assigned to: <strong className="text-purple-300">{device.owner_email}</strong></span>
+                <span>{tr("Assigned to:")} <strong className="text-purple-300">{device.owner_email}</strong></span>
               </div>
             )}
           </div>
@@ -102,12 +103,12 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
           {isConnected ? (
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold tracking-wider uppercase border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Connected
+              {tr("Connected")}
             </span>
           ) : (
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-400 text-[10px] font-bold tracking-wider uppercase border border-white/5">
               <span className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
-              Offline
+              {tr("Offline")}
             </span>
           )}
         </div>
@@ -118,30 +119,30 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
         <div>
           <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
             <BatteryCharging size={10} className="text-emerald-400" />
-            Battery
+            {tr("Battery")}
           </div>
           <div className="text-xs font-mono font-bold text-emerald-400">{session?.battery ?? 88}%</div>
         </div>
         <div>
           <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
             <Wifi size={10} className="text-cyan-400" />
-            Signal (RSSI)
+            {tr("Signal (RSSI)")}
           </div>
-          <div className="text-xs font-mono font-bold text-cyan-400">{session?.rssi ?? -48} dBm</div>
+          <div className="text-xs font-mono font-bold text-cyan-400">{session?.rssi ?? -48} {tr("dBm")}</div>
         </div>
         <div>
           <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
             <Shield size={10} className="text-purple-400" />
-            Firmware
+            {tr("Firmware")}
           </div>
           <div className="text-xs font-mono font-bold text-neutral-300">v{device.firmware_version}</div>
         </div>
         <div>
           <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
             <Zap size={10} className="text-amber-400" />
-            Accessories
+            {tr("Accessories")}
           </div>
-          <div className="text-xs font-mono font-bold text-neutral-300">{device.accessories.length} Unit(s)</div>
+          <div className="text-xs font-mono font-bold text-neutral-300">{device.accessories.length} {tr("Unit(s)")}</div>
         </div>
       </div>
 
@@ -164,7 +165,7 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <Bot size={14} className="text-purple-400" />
-              <span className="text-xs font-bold text-white uppercase tracking-wider">Robot Remote</span>
+              <span className="text-xs font-bold text-white uppercase tracking-wider">{tr("Robot Remote")}</span>
             </div>
             <span className={`text-[9px] font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${
               isDirectConnected
@@ -178,7 +179,7 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
           
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Face Expression</label>
+              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">{tr("Face Expression")}</label>
               <div className="flex items-center gap-2">
                 <Smile size={14} className="text-neutral-400 shrink-0" />
                 <select 
@@ -195,17 +196,17 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
                   {/* value is the wire protocol the onChange handler and the
                       hardware read — it stays English. Only the label is
                       translated. */}
-                  <option value="Neutral">Neutral</option>
-                  <option value="Happy">Happy</option>
-                  <option value="Angry">Angry</option>
-                  <option value="Sad">Sad</option>
-                  <option value="Sleepy">Sleepy</option>
-                  <option value="Doubt">Doubt</option>
+                  <option value="Neutral">{tr("Neutral")}</option>
+                  <option value="Happy">{tr("Happy")}</option>
+                  <option value="Angry">{tr("Angry")}</option>
+                  <option value="Sad">{tr("Sad")}</option>
+                  <option value="Sleepy">{tr("Sleepy")}</option>
+                  <option value="Doubt">{tr("Doubt")}</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Vendor Action</label>
+              <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">{tr("Vendor Action")}</label>
               <button 
                 onClick={() => {
                   showVendorCard('Ramses', device.device_name, [
@@ -217,13 +218,13 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
                 }}
                 className="w-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-lg px-2 py-1 text-[11px] font-bold tracking-wider uppercase transition-colors"
               >
-                Push Display Card
+                {tr("Push Display Card")}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Text to Speech (TTS)</label>
+            <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">{tr("Text to Speech (TTS)")}</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <MessageSquare size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -238,7 +239,7 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
                       setTtsMessage('');
                     }
                   }}
-                  placeholder="Say something..." 
+                  placeholder={tr("Say something...")} 
                   className="w-full bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none"
                 />
               </div>
@@ -253,7 +254,7 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
                 className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1.5 transition-colors"
               >
                 <Send size={12} />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Send</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{tr("Send")}</span>
               </button>
             </div>
           </div>
@@ -263,7 +264,7 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
       {/* Bottom Actions Bar */}
       <div className="flex items-center justify-between pt-2">
         <div className="text-[10px] font-mono text-neutral-500">
-          Last seen: <span className="text-neutral-400">{new Date(device.last_seen_at).toLocaleTimeString()}</span>
+          {tr("Last seen:")} <span className="text-neutral-400">{new Date(device.last_seen_at).toLocaleTimeString()}</span>
         </div>
         <div className="flex items-center gap-2">
           {onConfigure && (
@@ -271,13 +272,13 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
               onClick={() => onConfigure(device.id)}
               className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 text-[11px] font-semibold tracking-wider transition-colors border border-white/5"
             >
-              Configure
+              {tr("Configure")}
             </button>
           )}
           {isConnected && onDisconnect && (
             <button
               onClick={() => onDisconnect(device.id)}
-              title="Disconnect Session"
+              title={tr("Disconnect Session")}
               className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors"
             >
               <Unplug size={14} />
