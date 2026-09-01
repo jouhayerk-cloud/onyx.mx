@@ -34,7 +34,7 @@ import {
     getProductCategoryAndType,
     formatProductTitle
 } from '../../lib/utils';
-import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2, Layers, Video, Maximize2 } from 'lucide-react';
+import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2, Layers, Video, Maximize2, Image as ImageIcon, Wand2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { removeBackground } from '@imgly/background-removal';
 import ExcelJS from 'exceljs';
@@ -82,6 +82,10 @@ interface BatchOp {
     processingMode?: ProcessingMode;
     skipImageProcessing?: boolean;
     forceRegenerateDescription?: boolean;
+    /** Re-clean this image even if the cache key still matches. Separate from
+     *  forceRegenerateDescription: forcing a description should not pay for a
+     *  fresh generation of an image that has not changed. */
+    forceRecleanImage?: boolean;
     result?: {
         description?: string;
         marketingDescription?: string;
@@ -141,8 +145,19 @@ export const BatchProcessingWizard: React.FC = () => {
     const [isAborted, setIsAborted] = useState(false);
     /** 2K costs ~2.6x 1K per image but source photos are ~4000px, so 1K is a visible downgrade. */
     const [bgQuality, setBgQuality] = useState<BgQuality>('2K');
-    /** Only the first image of each item gets a new background by default — it is the one the catalogue shows. */
-    const [heroOnly, setHeroOnly] = useState(true);
+    /**
+     * Restrict a run to each item's first image.
+     *
+     * This defaulted to true and had no control anywhere in the UI, which is
+     * why multi-image items only ever came back with one cleaned photo — the
+     * queue built an op per image correctly, and then the run silently dropped
+     * every op with imageIndex > 0. Now off by default, because "clean this
+     * item's photos" should mean all of them, and exposed as a toggle so the
+     * cheaper hero-only run is still available deliberately.
+     */
+    const [heroOnly, setHeroOnly] = useState(false);
+    /** Run the image stage only — no descriptions, colours or type. */
+    const [imagesOnly, setImagesOnly] = useState(false);
     /**
      * Abort has to be a ref: handleStartBatch's loop closes over the render it
      * started in, so reading the isAborted STATE there is always false and the
@@ -441,7 +456,10 @@ export const BatchProcessingWizard: React.FC = () => {
                 dominantColors: op.result?.dominantColors || [],
                 generatedType: op.result?.generatedType || ''
             };
-            if ((op.imageIndex || 0) === 0 && (!processed.description || !processed.marketingDescription || !processed.dominantColors?.length || !processed.generatedType || op.forceRegenerateDescription)) {
+            // imagesOnly short-circuits the Gemini text call entirely. Checked
+            // here rather than by filtering the queue, so an item still runs its
+            // image stage instead of being dropped from the run.
+            if (!imagesOnly && (op.imageIndex || 0) === 0 && (!processed.description || !processed.marketingDescription || !processed.dominantColors?.length || !processed.generatedType || op.forceRegenerateDescription)) {
                 updateOp(op.id, { progress: 30 });
                 logOp(op.id, '[ WAIT ] Analyzing via Gemini...');
                 
@@ -546,7 +564,7 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
                     // no findContour — every one of those is a place where a dark
                     // vein or a rough edge gets mistaken for background.
                     const cacheKey = bgCacheKey(imageUrl, bgQuality);
-                    if (op.result?.cleanedKey === cacheKey && op.result?.cleanedUrl && !op.forceRegenerateDescription) {
+                    if (op.result?.cleanedKey === cacheKey && op.result?.cleanedUrl && !op.forceRecleanImage) {
                         logOp(op.id, '[ SKIP ] Background already replaced for this image');
                         localMaskUrl = null;
                     } else {
@@ -942,6 +960,7 @@ Instructions:
                 status: 'completed', 
                 progress: 100, 
                 forceRegenerateDescription: false,
+                forceRecleanImage: false,
                 result: {
                     ...op.result,
                     description: processed.description,
@@ -1785,10 +1804,17 @@ Instructions:
         setOverallProgress(0);
 
         const pending = queue.filter(op => {
-            const needsContent = (op.imageIndex || 0) === 0 && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription);
-            if (op.status === 'completed' && !needsContent) return false;
-            // Only the hero shot is what the catalogue renders. At 2.07 images per
-            // item, skipping the rest halves the generation bill for no visible loss.
+            // In an images-only run, missing text is not a reason to include an
+            // op — nothing here will write text.
+            const needsContent = !imagesOnly && (op.imageIndex || 0) === 0
+                && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription);
+            const needsImage = !!op.imageUrl && !op.skipImageProcessing
+                && (op.forceRecleanImage || !op.result?.cleanedUrl);
+            if (imagesOnly && !needsImage) return false;
+            if (op.status === 'completed' && !needsContent && !needsImage) return false;
+            // Hero-only is a deliberate economy, not the default: at ~2 images an
+            // item it halves the bill, but it also means the other photos never
+            // get cleaned, which is the bug this flag used to cause silently.
             if (heroOnly && (op.imageIndex || 0) > 0 && !needsContent) return false;
             return true;
         });
@@ -1864,6 +1890,39 @@ Instructions:
             skipImageProcessing: nextState
         })));
         toast.success(nextState ? "Image Processing OFF for all items (Using original images)" : "Image Processing ON for all items (Masks enabled)");
+    };
+
+    /**
+     * Force a fresh background replacement on every image in the queue.
+     *
+     * Deliberately does NOT filter to imageIndex 0 the way the descriptions
+     * handler does: a description belongs to the item, so regenerating it once
+     * is right, but a cleaned photo belongs to the image, and there is one per
+     * photo. Hero-only is turned off here for the same reason — asking to
+     * re-clean everything and then silently skipping the second photo of every
+     * item is the behaviour this whole change exists to remove.
+     */
+    const handleRecleanAllImages = () => {
+        const targets = queue.filter(op => op.imageUrl && !op.skipImageProcessing);
+        if (targets.length === 0) {
+            toast.error(tr("No images in the queue to re-clean."));
+            return;
+        }
+        const items = new Set(targets.map(op => String(op.item?.id ?? op.item?.row ?? op.id))).size;
+        if (!confirm(`Force a new background replacement on all ${targets.length} images across ${items} items? This regenerates every one, including images that already have a cleaned version.`)) return;
+        setHeroOnly(false);
+        setHasUnsavedChanges(true);
+        setQueue(prev => prev.map(op => {
+            if (!op.imageUrl || op.skipImageProcessing) return op;
+            return {
+                ...op,
+                forceRecleanImage: true,
+                status: 'idle',
+                progress: 0,
+                logs: [...op.logs, '[ WAIT ] Re-queued for forced background replacement']
+            };
+        }));
+        toast.success(tr("All images queued for re-cleaning. Click START ENGINE to begin."));
     };
 
     const handleRegenerateAllDescriptions = () => {
@@ -1960,6 +2019,52 @@ Instructions:
                             <UploadCloud size={16} className={allSkippingImage ? 'text-amber-300' : 'text-(--main-color)'} />
                             <span>{allSkippingImage ? tr("IMG PROCESSING: OFF (ORIGINALS)") : tr("IMG PROCESSING: ON (MASKS)")}</span>
                         </button>
+                        {/* Force a fresh clean on every image. Sits beside
+                            REGENERATE DESCRIPTIONS because it is the same kind of
+                            control — force the work again — for the other half of
+                            the pipeline. */}
+                        <button
+                            onClick={handleRecleanAllImages}
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30"
+                            title={tr("Re-clean ALL images (force a new background replacement on every image of every item, not just the first)")}
+                        >
+                            <ImageIcon size={16} className="text-sky-300" />
+                            <span>{tr("RE-CLEAN IMAGES")}</span>
+                        </button>
+
+                        {/* Scope, not force. Off, a run does descriptions and
+                            images; on, it does images only. */}
+                        <button
+                            onClick={() => setImagesOnly(v => !v)}
+                            aria-pressed={imagesOnly}
+                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg ${
+                                imagesOnly
+                                    ? 'bg-sky-500/25 text-sky-200 border-sky-400/50 hover:bg-sky-500/35'
+                                    : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10'
+                            }`}
+                            title={tr("Clean Images only — the run skips descriptions, colours and type, and does the image stage alone")}
+                        >
+                            <Wand2 size={16} className={imagesOnly ? 'text-sky-200' : 'text-white/40'} />
+                            <span>{imagesOnly ? tr("CLEAN IMAGES ONLY") : tr("IMAGES + DESCRIPTIONS")}</span>
+                        </button>
+
+                        {/* Which images a run covers. This was hardcoded to
+                            hero-only with no control, which is why multi-image
+                            items only ever came back with one cleaned photo. */}
+                        <button
+                            onClick={() => setHeroOnly(v => !v)}
+                            aria-pressed={!heroOnly}
+                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg ${
+                                heroOnly
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                                    : 'bg-(--main-color)/20 text-(--main-color) border-(--main-color)/40 hover:bg-(--main-color)/30'
+                            }`}
+                            title={tr("All images per item, or only the first. Hero-only is cheaper — roughly half the images — but leaves the rest uncleaned.")}
+                        >
+                            <Layers size={16} className={heroOnly ? 'text-amber-300' : 'text-(--main-color)'} />
+                            <span>{heroOnly ? tr("HERO IMAGE ONLY") : tr("ALL IMAGES")}</span>
+                        </button>
+
                         <button 
                             onClick={handleRegenerateAllDescriptions}
                             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
