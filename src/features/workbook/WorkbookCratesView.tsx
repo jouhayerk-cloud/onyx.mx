@@ -8,10 +8,13 @@ export const WorkbookCratesView: React.FC = () => {
     const rawData = useAtomValue(workbookCratesFileDataAtom);
 
     const cratesInfo = useMemo(() => {
-        if (!rawData || rawData.length === 0) return null;
+        if (!rawData || rawData.length === 0) return null;
+
+
         const owedToSimona = rawData[1]?.[9] || 0; // TBP total
         const paidSimona = rawData[2]?.[9] || 0;
-        const balanceSimona = parseFloat(owedToSimona) - parseFloat(paidSimona);
+        const balanceSimona = parseFloat(owedToSimona) - parseFloat(paidSimona);
+
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';
@@ -116,7 +119,7 @@ export const WorkbookCratesView: React.FC = () => {
                                 <div className="text-right">
                                     <div className="text-[10px] text-white/30 uppercase">{tr("Date")}</div>
                                     <div className="text-xs font-mono text-white/60">
-                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString(tr("es-MX")) : String(item.date)) : '-'}
+                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString("es-MX") : String(item.date)) : '-'}
                                     </div>
                                 </div>
                             </div>

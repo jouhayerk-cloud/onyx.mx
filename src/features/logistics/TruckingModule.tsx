@@ -4632,7 +4632,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                                 <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Deployed")}</span>
                                             </div>
                                             <span className="text-[12px] font-black text-white/80 uppercase tracking-tighter leading-none">
-                                                {new Date(recalledShipment.timestamp).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric' }).toUpperCase()}
+                                                {new Date(recalledShipment.timestamp).toLocaleDateString("en-US", { month: 'short', day: 'numeric' }).toUpperCase()}
                                             </span>
                                             <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">
                                                 {new Date(recalledShipment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -7,10 +7,13 @@ export const WorkbookSuppliesView: React.FC = () => {
     const rawData = useAtomValue(workbookSuppliesDataAtom);
 
     const suppliesInfo = useMemo(() => {
-        if (!rawData || rawData.length === 0) return null;
+        if (!rawData || rawData.length === 0) return null;
+
+
         const totalOut = rawData[2]?.[7] || 0;
         const totalIn = rawData[2]?.[9] || 0;
-        const remaining = parseFloat(totalIn) - parseFloat(totalOut);
+        const remaining = parseFloat(totalIn) - parseFloat(totalOut);
+
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';
@@ -106,7 +109,7 @@ export const WorkbookSuppliesView: React.FC = () => {
                             return (
                                 <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
                                     <td className="p-4 text-white/30">
-                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString(tr("es-MX")) : String(item.date)) : '-'}
+                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString("es-MX") : String(item.date)) : '-'}
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col">

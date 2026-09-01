@@ -8,7 +8,8 @@ export const WorkbookProductionView: React.FC = () => {
     const rawData = useAtomValue(workbookProductionDataAtom);
 
     const productionItems = useMemo(() => {
-        if (!rawData || rawData.length === 0) return [];
+        if (!rawData || rawData.length === 0) return [];
+
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';
@@ -138,7 +139,7 @@ export const WorkbookProductionView: React.FC = () => {
                                 <div className="flex flex-col">
                                     <span className="text-[9px] text-white/20 uppercase">{tr("Ready Date")}</span>
                                     <span className="text-xs text-white/60 font-mono">
-                                        {item.readyDate ? (typeof item.readyDate === 'number' ? new Date(Math.round((item.readyDate - 25569) * 864e5)).toLocaleDateString(tr("es-MX")) : String(item.readyDate)) : tr("TBD")}
+                                        {item.readyDate ? (typeof item.readyDate === 'number' ? new Date(Math.round((item.readyDate - 25569) * 864e5)).toLocaleDateString("es-MX") : String(item.readyDate)) : tr("TBD")}
                                     </span>
                                 </div>
                                 <button className="p-2 rounded-full hover:bg-white/10 text-white/20 hover:text-white transition-all">
