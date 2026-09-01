@@ -42,7 +42,7 @@ import { loadImage } from './utils';
  * atmospheric, raise colorExtractor's threshold in the same commit -- but note
  * that raising it costs dark stone, which is why the prompt moved instead.
  */
-export const BG_PROMPT_VERSION = 'dark-room-v3';
+export const BG_PROMPT_VERSION = 'dark-room-v4';
 
 export type BgQuality = '1K' | '2K';
 
@@ -116,18 +116,26 @@ export interface BgSubject {
  * reads dark veining as grime and lightens it, and flattens the glow out of a
  * backlit shade. Those are exactly the features the stock is sold on.
  *
- * The SUPPORT clause is the second thing that matters, and it is the reason
- * for v2. v1 listed "cardboard" among the props to remove and the model kept
- * it anyway — because the piece is STANDING ON IT. Read together, "keep the
- * subject exactly as photographed" and a sheet of cardboard in contact with
- * the subject are ambiguous about where the subject ends, and the model
- * resolved that by promoting the cardboard to floor and lighting it. Naming
- * cardboard harder does not fix an ambiguity; the fix is to say what the
- * subject is NOT before saying to preserve it, and to say what goes in the
- * removed floor's place. Hence packing material is disowned in its own
- * paragraph ahead of the fidelity list, and the floor clause pins the new
- * floor to the height the piece already rests at — otherwise removing a
- * 20cm stack of boxes leaves the piece hovering.
+ * HOW TO CHANGE THIS PROMPT, learned by breaking it. v2 and v3 tried to stop
+ * the model keeping the cardboard the piece stands on, by rewriting this
+ * whole block: the positive scene description ("a deep charcoal room with a
+ * soft floor-to-wall falloff") was replaced with prohibitions -- no lit wall,
+ * no horizon, no grey gradient, no charcoal, every pixel below RGB 30, never
+ * brighten the floor, do not invent, do not reframe. The result was WORSE
+ * than the bug being fixed: the model stopped replacing the background at all
+ * and returned the input with a little haze and a slightly punchier stone.
+ *
+ * Image models render nouns, not negations. A stack of prohibitions plus a
+ * numeric pixel constraint makes "change almost nothing" the safest move.
+ * v4 is therefore v1 verbatim plus exactly two edits -- one word for the
+ * backdrop, one bullet for the cardboard -- both phrased as things to draw.
+ * Keep it that way: add scenery, not rules, and change one thing at a time.
+ *
+ * "near-black" is also a contract with colorExtractor.ts, which drops
+ * background pixels at <= RGB 45. Charcoal sits just above that line, so the
+ * backdrop was being measured as the stone's colour. If you make the
+ * background lighter, raise that threshold in the same commit -- but it costs
+ * dark stone, which is why the wording moved instead.
  */
 export function buildDarkRoomPrompt(subject: BgSubject): string {
     const piece = [subject.material, subject.shape].filter(Boolean).join(' ').trim()
@@ -135,8 +143,6 @@ export function buildDarkRoomPrompt(subject: BgSubject): string {
     const detail = subject.description ? ` (${subject.description})` : '';
 
     return `Replace ONLY the background of this photograph. The subject is a handmade ${piece}${detail} in natural Mexican stone.
-
-The subject is the stone piece and nothing else. Everything it stands on, leans against, rests in or is surrounded by is warehouse packing material, NOT part of the subject, and must be removed even where it touches the piece. This includes flattened boxes and cardboard sheets laid on the floor beneath the piece, pallets, wooden crates, foam, blankets, plastic wrap, straps, loose tape and tools, together with any printed logos, arrows or handling symbols on them.
 
 Keep the subject exactly as photographed:
 - Reproduce it pixel-for-pixel. Do not restyle, retouch, straighten, recolour, relight or "improve" it.
@@ -146,11 +152,10 @@ Keep the subject exactly as photographed:
 - Keep every component: bases, arms, fittings, hardware, cabling, mirror glass and each separate piece in a set.
 
 Replace the surroundings with an empty dark studio room:
-- A seamless NEAR-BLACK studio void, the same pure black sweep used in professional stone catalogue photography. It must read as black, not as dark grey: keep every background pixel below RGB(30,30,30). No lit wall, no visible horizon line, no grey gradient, no charcoal.
-- Where cardboard, boxes or pallets lie under the piece, put clean black studio floor in their place, level with the height the piece already rests at, so it stands directly on the floor. Do not move, tilt, rescale or reframe the piece to meet a new floor, and never leave it floating.
-- If packing material hid part of the base, the new floor line takes its place at that same height. Do not invent stone that was not photographed.
-- Add a soft contact shadow exactly where the piece meets that floor, consistent with the existing lighting direction. Keep the floor black around it -- never brighten the floor so the shadow reads.
-- Remove all people, hands, background text and watermarks.
+- A seamless, unlit near-black studio room with a soft floor-to-wall falloff behind the subject.
+- The piece is usually standing on flattened cardboard boxes or packing sheets. Those are floor covering, not part of the piece: put the studio floor in their place at the height the piece already rests at, so it stands directly on the floor.
+- Add a soft contact shadow where the piece meets the floor, consistent with the existing lighting direction.
+- Remove all props, packing material, cardboard, pallets, tools, people, hands, text and watermarks.
 - Add nothing new: no furniture, plants, decor, reflections or text.
 
 Keep the original framing, crop, scale and camera angle. Output the full scene at the same aspect ratio.`;
