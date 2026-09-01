@@ -624,7 +624,7 @@ export function AdminDashboard() {
                                         <p className="text-2xl font-mono font-black text-(--text-color) tracking-tighter">
                                             <span className="text-[10px] text-(--text-color-secondary) mr-1">{currencyMode}</span>
                                             {showFinancials
-                                                ? (currencyMode === 'MXN' ? pillar.val : pillar.val / currentExchangeRate).toLocaleString(tr("en-US"), { maximumFractionDigits: 0 })
+                                                ? (currencyMode === 'MXN' ? pillar.val : pillar.val / currentExchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })
                                                 : '***'
                                             }
                                         </p>
@@ -651,7 +651,7 @@ export function AdminDashboard() {
                                             </div>
                                             <p className="text-lg font-mono font-black text-(--text-color) tracking-tight">
                                                 <span className="text-[9px] text-(--text-color-secondary) mr-1">{currencyMode}</span>
-                                                {(currencyMode === 'MXN' ? cat.val.mxn : cat.val.usd).toLocaleString(tr("en-US"), { maximumFractionDigits: 0 })}
+                                                {(currencyMode === 'MXN' ? cat.val.mxn : cat.val.usd).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                                             </p>
                                         </div>
                                     ))}
@@ -776,7 +776,7 @@ export function AdminDashboard() {
                                     <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#6BCEBB]">{tr("Logistics Ledger Accumulation")}</p>
                                     <p className="text-4xl font-mono font-black text-(--text-color) tracking-tighter leading-none group-hover/spend:translate-x-2 transition-transform">
                                         <span className="text-[14px] text-(--text-color-secondary) mr-3 font-black h-fit mb-auto">{currencyMode}</span>
-                                        {currencyMode === 'MXN' ? globalTotals.logisticsSpendMxn.toLocaleString(tr("en-US"), { maximumFractionDigits: 0 }) : globalTotals.logisticsSpendUsd.toLocaleString(tr("en-US"), { maximumFractionDigits: 0 })}
+                                        {currencyMode === 'MXN' ? globalTotals.logisticsSpendMxn.toLocaleString("en-US", { maximumFractionDigits: 0 }) : globalTotals.logisticsSpendUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                                     </p>
                                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--text-color-secondary) mt-2 leading-tight">{tr("Comprehensive Overhead Strategy")}</p>
                                 </div>
@@ -836,7 +836,7 @@ export function AdminDashboard() {
                         badge="Network Intelligence" 
                         right={
                             <div className="hidden sm:flex gap-4">
-                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">{tr("Acq. Balance:")} {showFinancials ? '$' + globalTotals.totalAcqValueUsd.toLocaleString(tr("en-US"), { maximumFractionDigits: 0 }) : '***'}</span>
+                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">{tr("Acq. Balance:")} {showFinancials ? '$' + globalTotals.totalAcqValueUsd.toLocaleString("en-US", { maximumFractionDigits: 0 }) : '***'}</span>
                             </div>
                         }
                     />

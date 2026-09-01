@@ -10,6 +10,7 @@ import {
     APP_STYLES,
     performanceModeAtom,
     userAtom,
+    languageAtom,
     isOfflineModeAtom
 } from '../../lib/atoms';
 import type { AppStyle } from '../../lib/atoms';
@@ -17,7 +18,7 @@ import { useSyncEngine } from '../../lib/syncEngine';
 import {
     X, AlertCircle, LogOut,
     Shield, Activity, Palette, Zap, Terminal,
-    Wifi, WifiOff, Layers, Box
+    Wifi, WifiOff, Layers, Box, Languages
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -57,6 +58,7 @@ export const StudioSettingsPortal: React.FC = () => {
     const [performanceMode, setPerf]      = useAtom(performanceModeAtom);
     const [user]                          = useAtom(userAtom);
     const [isOffline]                     = useAtom(isOfflineModeAtom);
+    const [language, setLanguage]         = useAtom(languageAtom);
     const { goOffline, goOnline }         = useSyncEngine();
     const logout                          = useLogout();
     const { t }                           = useTranslation();
@@ -170,6 +172,34 @@ export const StudioSettingsPortal: React.FC = () => {
                                             kit. aria-pressed drives SLAB's carved-in ON state for the three
                                             actual toggles; Logout is an action and carries none. */}
                                         <div className="flex items-center gap-2.5 md:gap-3 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
+
+                                            {/* Language. App.tsx keys the tree on languageAtom and pushes the
+                                                value into the i18n runtime, so setting the atom is the whole
+                                                switch — tr() reads a module-level language rather than
+                                                subscribing, and the remount is what carries the change into
+                                                the ~120 files that never read the atom themselves.
+
+                                                The label shows the language you are IN, not the one you would
+                                                get; a control that names the other option reads as a statement
+                                                about the current state and gets toggled the wrong way. The
+                                                title carries the destination instead. Both strings stay
+                                                untranslated on purpose: a language name is the one label that
+                                                must stay legible to someone who cannot read the current UI. */}
+                                            <div className="tool-cell flex flex-col items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLanguage(language === 'es' ? 'en' : 'es')}
+                                                    aria-pressed={language === 'es'}
+                                                    aria-label={`Language: ${language === 'es' ? 'Espanol' : 'English'}. Activate to switch to ${language === 'es' ? 'English' : 'Espanol'}.`}
+                                                    title={language === 'es' ? 'ESPANOL — CLICK FOR ENGLISH' : 'ENGLISH — CLICK FOR ESPANOL'}
+                                                    className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
+                                                >
+                                                    <Languages size={18} className={language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')} />
+                                                </button>
+                                                <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')}`}>
+                                                    {language === 'es' ? 'ES' : 'EN'}
+                                                </span>
+                                            </div>
                                             <div className="tool-cell flex flex-col items-center gap-1.5">
                                                 <button
                                                     type="button"

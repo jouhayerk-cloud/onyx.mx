@@ -157,7 +157,7 @@ export const PaymentsArtifact: React.FC = () => {
                                 try {
                                     const d = new Date(dateStr);
                                     if (isNaN(d.getTime())) return dateStr;
-                                    return d.toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric' });
+                                    return d.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
                                 } catch { return dateStr; }
                             };
 
