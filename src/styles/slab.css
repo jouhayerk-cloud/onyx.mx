@@ -897,6 +897,33 @@ html.style-slab [class*="bg-blue-500/10"] {
    pressable — it runs the database sync, and what that sync updates is
    exactly the figures shown, so the number you want refreshed is the thing
    you press. */
+/* The pull-tab that stands in for the readout once it no longer fits on the
+   key row. Deliberately tiny and edge-mounted: it is a handle, not a control,
+   and on the viewport where it appears every pixel it takes is one the keys
+   needed. Radius only on the bottom corners so it reads as hanging off the
+   top edge rather than floating on it. */
+html.style-slab .info-notch-tab {
+    background-color: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge);
+    border-top: none;
+    box-shadow: var(--slab-lift);
+    color: var(--slab-dim);
+    transition: color var(--slab-ease), box-shadow var(--slab-ease);
+}
+
+html.style-slab .info-notch-tab:hover {
+    box-shadow: var(--slab-raised);
+    color: var(--slab-ink);
+}
+
+/* Pulled open, the tab is seated — it reads as held down while the readout
+   it controls is on screen. */
+html.style-slab .info-notch-tab[aria-expanded="true"] {
+    box-shadow: var(--slab-pressed) !important;
+    color: var(--main-color);
+}
+
 html.style-slab .info-notch {
     background-color: var(--slab) !important;
     background-image: var(--slab-sheen-in) !important;
