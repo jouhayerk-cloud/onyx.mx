@@ -1,0 +1,1 @@
+const i=new WeakMap;function o(e){const n=new Map;for(const t of e){const r=String(t?.row);n.has(r)||n.set(r,t)}return n}function f(e){if(!Array.isArray(e))return new Map;let n=i.get(e);return n||(n=o(e),i.set(e,n)),n}function s(e,n){return f(e).get(String(n))}export{s as f};
