@@ -192,12 +192,15 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
                   }}
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:border-purple-500 outline-none"
                 >
-                  <option>Neutral</option>
-                  <option>Happy</option>
-                  <option>Angry</option>
-                  <option>Sad</option>
-                  <option>Sleepy</option>
-                  <option>Doubt</option>
+                  {/* value is the wire protocol the onChange handler and the
+                      hardware read — it stays English. Only the label is
+                      translated. */}
+                  <option value="Neutral">Neutral</option>
+                  <option value="Happy">Happy</option>
+                  <option value="Angry">Angry</option>
+                  <option value="Sad">Sad</option>
+                  <option value="Sleepy">Sleepy</option>
+                  <option value="Doubt">Doubt</option>
                 </select>
               </div>
             </div>
