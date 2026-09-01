@@ -24,7 +24,7 @@ Verified against the live `onyx.mx` database (497 items, 241 with media, 498 ima
 | 6 | `resizeImage` letterboxes with 10% padding but the un-normalisation assumes none → 25% scale error on every Gemini polygon | `utils.tsx:501` vs `BatchProcessingWizard.tsx:508,688` |
 | 7 | `generatePngAndSvgFromMasks` passes scaled-space crop coords as the full-res source rect → top-left crop of any photo > 1600px | `utils.tsx:1763` |
 | 8 | Cloud mode references undeclared `processedSdrUrl` → `ReferenceError`, caught, "Cloud Mask failed". Cloud/hybrid discard Gemini's output and reuse the local contour anyway | `BatchProcessingWizard.tsx:526,565,700` |
-| 9 | Payload writes `local_segmentation_masks` / `cloud_segmentation_masks`, which **do not exist** in Postgres → every masked save hits `42703` and the recovery path silently drops `generated_color`, `generated_type`, `product_category`, `product_type` | `BatchProcessingWizard.tsx:967,1155` |
+| 9 | Payload writes `local_segmentation_masks` / `cloud_segmentation_masks`, which **do not exist** in Postgres → any save carrying them hits `42703` and the recovery path drops `generated_color`, `generated_type`, `product_category`, `product_type`. **Latent, not yet observed:** the audit below shows `generated_color` at 397/397, so no colour has actually been lost | `BatchProcessingWizard.tsx:967,1155` |
 | 10 | `svgData` generated every run, never persisted — `generated_svg_url` is 0/497 | `BatchProcessingWizard.tsx:1122` |
 | 11 | `handleStartBatch` is serial with `sleep(1000)`; `if (isAborted) break` reads a stale closure so abort cannot stop the loop | `BatchProcessingWizard.tsx:1637` |
 | 12 | `callGemini` sets no `responseMimeType`/`responseSchema`, so four call sites strip ```json fences by hand; copy pass runs on `gemini-2.5-pro` | `BatchProcessingWizard.tsx:236` |
@@ -32,6 +32,37 @@ Verified against the live `onyx.mx` database (497 items, 241 with media, 498 ima
 Defects 1–7 are all *post-processing*. Background replacement removes the need for every one of them: the model never answers "keep or delete this pixel", so a mistake is a slightly-wrong room rather than a hole in the product.
 
 **Display contract to preserve:** `UnifiedInventoryView.tsx:314` renders `processedMap[cleanSourceUrl]`. The new cleaned image must be stored under that exact key. No schema change is needed for the image itself.
+
+---
+
+## Live database audit (2026-09-01, `onyx.mx` prod)
+
+Run directly against Postgres, not inferred from code.
+
+**Shape of `processed_media_urls`** — 397 rows, **all 397 in JSON-map form**, zero legacy comma-separated, zero empty maps. The map holds two kinds of entry: metadata keys prefixed `_` (`_generated_color`, `_generated_type`, `_product_category`…) and image keys.
+
+| Measure | Count |
+|---|---|
+| Rows with `processed_media_urls` | 397 |
+| — of those, rows carrying **at least one cleaned image** | **116** |
+| — of those, rows carrying **only `_` metadata, no image** | **281** |
+| Total image entries across all maps | 294 |
+| Image-entry values hosted on Google Drive | 294 (100%) |
+| Image-entry values on Supabase Storage | 0 |
+| Map keys in `lh3.googleusercontent.com/d/{id}` form | 294 (100%) |
+| Map keys in raw `drive.google.com` form | 0 |
+
+**Three conclusions that change the plan:**
+
+1. **`aiContent.ts` overcounts image cleanup by 3.4×.** Its header asserts "397 image cleanup" and treats `processed_media_urls` as the funnel's entry gate. Only **116** rows actually have a cleaned image; the other 281 have colour/type metadata parked in the same column. The `enriched` filter chip is counting metadata as imagery. There is far less good processed output to preserve than the column count suggests — migration risk is low.
+
+2. **The key format is already correct.** Keys are stored in the `lh3` form that `getCleanImageUrl()` produces, which is exactly what `UnifiedInventoryView`'s `images.map(img => processedMap[img])` looks up. New writes MUST use `getCleanImageUrl(sourceUrl)` as the key, not the raw URL.
+
+3. **Defect #9 is latent, not active.** `generated_color` is populated on **397/397** rows including all 176 with masks, so the `42703` recovery has not in fact eaten any colour. It remains a live trap — any save carrying those two columns *will* fail into the lossy retry — but it is not the cause of missing data today. `generated_type` is the sparse one (83/397), and that is explained by the field post-dating most runs, not by the retry.
+
+**Storage:** the entire processed corpus lives in Google Drive via the Apps Script `uploadMedia` action. The `inventory-media` Supabase bucket holds only generated video. New cleaned images go to Supabase (public read, authenticated write); Drive stays readable for the legacy 294.
+
+**RxDB mismatch:** `spatial_masks` is stored as a JSON **object** on all 176 rows, while `database.ts:165` declares `{ type: ['array','null'] }`. Not caused by this work, but it is a standing sync-validation hazard on exactly the rows this pipeline writes.
 
 ---
 
