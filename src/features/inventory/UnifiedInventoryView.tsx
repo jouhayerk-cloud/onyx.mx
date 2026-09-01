@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useDeferredValue, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Barcode from 'react-barcode';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
@@ -1425,12 +1425,97 @@ export const UnifiedInventoryView = () => {
 
     const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
+    // ── Scroll-container geometry shared by every virtualized mode ──────────────
+    // The cards do not own their scrollbar: `.app-content` in MainAppView does, and
+    // the sticky header sits above this container inside it. Without scrollMargin
+    // the virtualizer computes its window from scrollTop alone and is off by the
+    // header's height — previously masked by a large overscan.
+    const scrollHostRef = useRef<HTMLDivElement | null>(null);
+    const [hostWidth, setHostWidth] = useState(0);
+    const [scrollMargin, setScrollMargin] = useState(0);
+    const getScrollElement = useCallback(() => document.querySelector('.app-content') as HTMLDivElement | null, []);
+
+    // Layout effect, not a plain effect: the virtualizers need the width and the
+    // offset before the first paint, or the opening frame renders the wrong window.
+    useLayoutEffect(() => {
+        const el = scrollHostRef.current;
+        if (!el) return;
+        const measure = () => {
+            const scroller = getScrollElement();
+            setHostWidth(el.clientWidth);
+            if (scroller) {
+                setScrollMargin(el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop);
+            }
+        };
+        measure();
+        // Observing the host is safe against feedback loops: we only read its width
+        // and its offset, and React bails out when the primitives are unchanged.
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        window.addEventListener('resize', measure);
+        return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+    }, [viewMode, getScrollElement]);
+
     const listVirtualizer = useVirtualizer({
         count: viewMode === 'list' ? filteredItems.length : 0,
-        getScrollElement: () => document.querySelector('.app-content') as HTMLDivElement | null,
+        getScrollElement,
         estimateSize: () => 120, // Better baseline estimate for list cards
         overscan: 10,
+        scrollMargin,
     });
+
+    // ── Grid virtualization ────────────────────────────────────────────────────
+    // Grid is the one uniform layout of the three, so it virtualizes by row. The
+    // column count has to be derived by hand because the CSS uses
+    // `repeat(auto-fill, minmax(Npx, 1fr))` — the browser decides how many columns
+    // fit and never tells JS, so we reproduce auto-fill's arithmetic from the
+    // measured host width.
+    const GRID_GAP = 32; // Tailwind `gap-8`
+    const gridMinColumn = 200 * gridScale;
+    const gridColumns = Math.max(1, Math.floor((hostWidth + GRID_GAP) / (gridMinColumn + GRID_GAP)));
+    const gridRowEstimate = useMemo(() => {
+        const colWidth = hostWidth > 0 ? (hostWidth - (gridColumns - 1) * GRID_GAP) / gridColumns : gridMinColumn;
+        // 4:3 media block + the fixed-height info block under it + the row gap.
+        return colWidth * 0.75 + 170 + GRID_GAP;
+    }, [hostWidth, gridColumns, gridMinColumn]);
+
+    const gridVirtualizer = useVirtualizer({
+        count: viewMode === 'grid' ? Math.ceil(filteredItems.length / gridColumns) : 0,
+        getScrollElement,
+        estimateSize: () => gridRowEstimate,
+        overscan: 3,
+        scrollMargin,
+    });
+
+    // estimateSize changing does not invalidate rows the virtualizer has already
+    // measured, so a zoom-slider or resize change has to drop the cache explicitly.
+    useEffect(() => {
+        if (viewMode === 'grid') gridVirtualizer.measure();
+    }, [gridColumns, gridRowEstimate, viewMode]);
+
+    // ── Gallery windowing ──────────────────────────────────────────────────────
+    // Gallery is NOT virtualizable the same way: items opt into `col-span-full` or
+    // `md:col-span-2` based on how many photos they carry, and rows are
+    // `auto-rows-max`, so positions come out of the browser's grid packer and
+    // cannot be predicted from an index. Instead we render a growing window. That
+    // still bounds the thing that actually hurts here — a gallery card mounts up to
+    // 24 remote <img> elements, so 500 cards is ~12k images.
+    const GALLERY_PAGE = 40;
+    const [galleryLimit, setGalleryLimit] = useState(GALLERY_PAGE);
+    const gallerySentinelRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => { setGalleryLimit(GALLERY_PAGE); }, [viewMode, filteredItems]);
+    useEffect(() => {
+        if (viewMode !== 'gallery') return;
+        const el = gallerySentinelRef.current;
+        if (!el || galleryLimit >= filteredItems.length) return;
+        const io = new IntersectionObserver((entries) => {
+            if (entries.some(e => e.isIntersecting)) {
+                setGalleryLimit(prev => Math.min(prev + GALLERY_PAGE, filteredItems.length));
+            }
+        }, { root: getScrollElement(), rootMargin: '800px' });
+        io.observe(el);
+        return () => io.disconnect();
+    }, [viewMode, galleryLimit, filteredItems.length, getScrollElement]);
 
     // Fix for overlapping cards in list view due to virtualization caching heights during CSS transitions
     // We must force the virtualizer to actually read the DOM element's getBoundingClientRect()
@@ -1480,23 +1565,43 @@ export const UnifiedInventoryView = () => {
         else copy[id] = next;
         return copy;
     }), []);
+
+    // UnifiedInventoryCard is React.memo'd, but `onToggleExpand={(stage) => ...}`
+    // written inline at the call site handed it a brand-new function on every
+    // parent render, so memo never bailed out and all mounted cards re-rendered on
+    // every keystroke, filter change and selection toggle. Hand out one stable
+    // closure per row id instead. `toggleExpandCard` has an empty dep list, so
+    // these stay valid for the life of the view.
+    const toggleHandlers = useRef(new Map<string, (stage?: number) => void>());
+    const getToggleHandler = useCallback((id: string) => {
+        let handler = toggleHandlers.current.get(id);
+        if (!handler) {
+            handler = (stage?: number) => toggleExpandCard(id, stage);
+            toggleHandlers.current.set(id, handler);
+        }
+        return handler;
+    }, [toggleExpandCard]);
+
     return (
         <div className="flex-1 flex flex-col relative m-0 gap-0">
             {/* ── INFO PANEL ── */}
             <div className="flex-1 relative">
                 {/* ── MAIN INVENTORY CONTENT ── */}
                 <div 
+                    ref={scrollHostRef}
                     className={`transition-all duration-700 ease-in-out ${
-                        viewMode === 'grid' 
-                            ? "grid gap-8 pb-32" 
-                            : viewMode === 'gallery' 
-                                ? "grid gap-10 pb-32 auto-rows-max" 
+                        viewMode === 'grid'
+                            // Grid is virtualized: this host is now just the positioning
+                            // context, and each virtual ROW carries the grid template.
+                            ? "relative w-full pb-32"
+                            : viewMode === 'gallery'
+                                ? "grid gap-10 pb-32 auto-rows-max"
                                 : "flex flex-col gap-4 pb-32 max-w-[1600px] mx-auto w-full"
                     }`}
                     style={
-                        viewMode === 'grid' 
-                            ? { gridTemplateColumns: `repeat(auto-fill, minmax(${200 * gridScale}px, 1fr))` } 
-                            : viewMode === 'list' 
+                        viewMode === 'grid'
+                            ? {}
+                            : viewMode === 'list'
                                 ? {} // Removed zoom here to prevent virtualization double-scale distortion
                                 : { gridTemplateColumns: `repeat(auto-fill, minmax(${300 * galleryScale}px, 1fr))` }
                     }
@@ -1531,7 +1636,7 @@ export const UnifiedInventoryView = () => {
                                                 top: 0,
                                                 left: 0,
                                                 width: '100%',
-                                                transform: `translate3d(0, ${virtualRow.start}px, 0)`,
+                                                transform: `translate3d(0, ${virtualRow.start - listVirtualizer.options.scrollMargin}px, 0)`,
                                                 willChange: 'transform',
                                                 backfaceVisibility: 'hidden',
                                                 zIndex: expandedCards[String(item.row)] ? 10 : 1,
@@ -1544,17 +1649,17 @@ export const UnifiedInventoryView = () => {
                                                 willChange: 'transform',
                                                 backfaceVisibility: 'hidden',
                                             }}>
-                                                <UnifiedInventoryCard 
-                                                    item={item} 
-                                                    isExpanded={expandedCards[String(item.row)] || 0} 
-                                                    onToggleExpand={(stage?: number) => toggleExpandCard(String(item.row), stage)} 
-                                                    exchangeRate={exchangeRate} 
-                                                    showFinancials={showFinancials} 
-                                                    viewMode={viewMode} 
-                                                    partialPayIds={partialPayIds} 
-                                                    fullPayIds={fullPayIds} 
+                                                <UnifiedInventoryCard
+                                                    item={item}
+                                                    isExpanded={expandedCards[String(item.row)] || 0}
+                                                    onToggleExpand={getToggleHandler(String(item.row))}
+                                                    exchangeRate={exchangeRate}
+                                                    showFinancials={showFinancials}
+                                                    viewMode={viewMode}
+                                                    partialPayIds={partialPayIds}
+                                                    fullPayIds={fullPayIds}
                                                     requestedAcqIds={requestedAcqIds}
-                                                    onEdit={handleEditItem} 
+                                                    onEdit={handleEditItem}
                                                     financeDocs={financeDocs}
                                                     deployedItemsMap={deployedItemsMap}
                                                     logisticsDocs={logisticsDocs}
@@ -1565,29 +1670,85 @@ export const UnifiedInventoryView = () => {
                                     );
                                 })}
                             </div>
+                        ) : viewMode === 'grid' ? (
+                            <div style={{ height: `${gridVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+                                {gridVirtualizer.getVirtualItems().map(virtualRow => {
+                                    const start = virtualRow.index * gridColumns;
+                                    const rowItems = filteredItems.slice(start, start + gridColumns);
+                                    if (rowItems.length === 0) return null;
+                                    return (
+                                        <div
+                                            key={virtualRow.key}
+                                            data-index={virtualRow.index}
+                                            ref={gridVirtualizer.measureElement}
+                                            className="grid gap-8"
+                                            style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                width: '100%',
+                                                // scrollMargin is in the virtualizer's coordinate space (offsets
+                                                // from the top of .app-content); this container starts below the
+                                                // sticky header, so subtract it back out.
+                                                transform: `translate3d(0, ${virtualRow.start - gridVirtualizer.options.scrollMargin}px, 0)`,
+                                                // Explicit column count instead of auto-fill: the row must agree
+                                                // with the count the virtualizer sliced by, or the last column
+                                                // silently wraps onto a second line and rows overlap.
+                                                gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+                                                // The row gap lives inside the measured element so measureElement
+                                                // reports a height that already accounts for it.
+                                                paddingBottom: `${GRID_GAP}px`,
+                                            }}
+                                        >
+                                            {rowItems.map(item => (
+                                                <UnifiedInventoryCard
+                                                    key={item.row}
+                                                    item={item}
+                                                    isExpanded={expandedCards[String(item.row)] || 0}
+                                                    onToggleExpand={getToggleHandler(String(item.row))}
+                                                    exchangeRate={exchangeRate}
+                                                    showFinancials={showFinancials}
+                                                    viewMode={viewMode}
+                                                    partialPayIds={partialPayIds}
+                                                    fullPayIds={fullPayIds}
+                                                    requestedAcqIds={requestedAcqIds}
+                                                    onEdit={handleEditItem}
+                                                    financeDocs={financeDocs}
+                                                    deployedItemsMap={deployedItemsMap}
+                                                    logisticsDocs={logisticsDocs}
+                                                    allInventory={items}
+                                                />
+                                            ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         ) : (
-                            filteredItems.map(item => {
+                            <>
+                            {filteredItems.slice(0, galleryLimit).map(item => {
                                 const mediaCount = ((item.data.generatedPngUrl ? item.data.generatedPngUrl + ',' : '') + (item.data.mediaUrls || '')).split(',').map((u: string) => u.trim()).filter(Boolean).length;
                                 const isLarge = mediaCount >= 1 && mediaCount < 10;
                                 const isFull = mediaCount >= 10;
-                                
+
                                 return (
-                                    <div key={item.row} className={
-                                        viewMode === 'gallery' 
-                                            ? `break-inside-avoid ${isFull ? 'col-span-full' : isLarge ? 'md:col-span-2' : ''}` 
-                                            : ""
-                                    }>
-                                        <UnifiedInventoryCard 
-                                            item={item} 
-                                            isExpanded={expandedCards[String(item.row)] || 0} 
-                                            onToggleExpand={(stage?: number) => toggleExpandCard(String(item.row), stage)} 
-                                            exchangeRate={exchangeRate} 
-                                            showFinancials={showFinancials} 
-                                            viewMode={viewMode} 
-                                            partialPayIds={partialPayIds} 
-                                            fullPayIds={fullPayIds} 
+                                    // Deliberately NOT `content-visibility: auto` here, tempting as it is:
+                                    // it implies paint containment, which would clip the card's
+                                    // `hover:-translate-y-1` lift and its hover shadow at the wrapper's
+                                    // border box. The growing window below is what bounds the cost.
+                                    <div key={item.row}
+                                        className={`break-inside-avoid ${isFull ? 'col-span-full' : isLarge ? 'md:col-span-2' : ''}`}
+                                    >
+                                        <UnifiedInventoryCard
+                                            item={item}
+                                            isExpanded={expandedCards[String(item.row)] || 0}
+                                            onToggleExpand={getToggleHandler(String(item.row))}
+                                            exchangeRate={exchangeRate}
+                                            showFinancials={showFinancials}
+                                            viewMode={viewMode}
+                                            partialPayIds={partialPayIds}
+                                            fullPayIds={fullPayIds}
                                             requestedAcqIds={requestedAcqIds}
-                                            onEdit={handleEditItem} 
+                                            onEdit={handleEditItem}
                                             financeDocs={financeDocs}
                                             deployedItemsMap={deployedItemsMap}
                                             logisticsDocs={logisticsDocs}
@@ -1595,7 +1756,11 @@ export const UnifiedInventoryView = () => {
                                         />
                                     </div>
                                 );
-                            })
+                            })}
+                            {galleryLimit < filteredItems.length && (
+                                <div ref={gallerySentinelRef} className="col-span-full h-1" aria-hidden="true" />
+                            )}
+                            </>
                         )
                     )}
                 </div>

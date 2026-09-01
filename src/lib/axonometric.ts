@@ -1,3 +1,6 @@
+import { classifyGeometry } from './geometry';
+import type { Geometry } from './geometry';
+
 export function resolveItemColor(item: any): string {
     const textToSearch = [
         item.color, item.color_en, item.color_es,
@@ -28,6 +31,75 @@ export function resolveItemColor(item: any): string {
     return '#71717A'; // default neutral
 }
 
+export type AxoGeom = Geometry;
+
+export interface ResolvedAxoGeometry {
+    W: number;
+    H: number;
+    D: number;
+    geom: AxoGeom;
+    isMirror: boolean;
+}
+
+/**
+ * Resolves an item to the mesh the rasteriser will draw: its CLASS (delegated to
+ * geometry.ts, which the tag filters share) plus the DIMENSIONS that class
+ * implies.
+ *
+ * Split out of generateAxonometricDataUrl so callers can build a cache key from
+ * what actually drives the drawing rather than from the raw row. Shape and
+ * description are free text — ~500 rows carry a few hundred distinct strings, but
+ * they collapse to 8 geometries and a normalised W/H/D triple here. Keying a
+ * cache on the *resolved* output is what turns "one 400x400 canvas per card" into
+ * "one per distinct silhouette".
+ *
+ * The two dimension adjustments below stay here rather than in geometry.ts
+ * because they are about mesh proportions, not class, and no other consumer of
+ * the taxonomy wants them.
+ *
+ * Pure — no canvas, no DOM. Safe to call on every render.
+ */
+export function resolveAxoGeometry(
+    w_cm: number, h_cm: number, d_cm: number,
+    shapeStr: string = '', descStr: string = ''
+): ResolvedAxoGeometry {
+    let W = w_cm;
+    let H = h_cm;
+    let D = d_cm;
+
+    const s = (shapeStr || '').toLowerCase();
+    const t = (descStr || '').toLowerCase();
+
+    if (!W) W = D || H || 10;
+    // Plates are forced shallow and round regardless of what was measured, so this
+    // test cannot be folded into classifyGeometry — it rewrites dimensions, and it
+    // runs before classification because the mirror pass below reads the result.
+    if (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) {
+        if (!H) H = 5;
+        // Force shallow round shape
+        H = 5;
+        W = Math.max(W, D);
+        D = W;
+    } else {
+        if (!H) H = W;
+    }
+    if (!D) D = W;
+
+    const { geom, isMirror } = classifyGeometry(shapeStr, descStr);
+
+    // A round mirror is drawn as a disc, so it needs a square face and a thin
+    // depth whatever the row claims.
+    if (geom === 'mirror') {
+        const maxVal = Math.max(W, H, D);
+        const minVal = Math.min(W, H, D);
+        W = maxVal;
+        H = maxVal;
+        D = minVal;
+    }
+
+    return { W, H, D, geom, isMirror };
+}
+
 export async function generateAxonometricDataUrl(
     w_cm: number, h_cm: number, d_cm: number,
     shapeStr: string = '', descStr: string = '',
@@ -36,60 +108,7 @@ export async function generateAxonometricDataUrl(
     hexMapString?: string
 ): Promise<string> {
     return new Promise((resolve) => {
-        let W = w_cm;
-        let H = h_cm;
-        let D = d_cm;
-
-        const s = shapeStr.toLowerCase();
-        const t = descStr.toLowerCase();
-
-        if (!W) W = D || H || 10;
-        if (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) {
-            if (!H) H = 5;
-            // Force shallow round shape
-            H = 5;
-            W = Math.max(W, D);
-            D = W;
-        } else {
-            if (!H) H = W;
-        }
-        if (!D) D = W;
-        
-        let geom = 'box';
-        let isMirror = false;
-        
-        if (s.includes('bowl') || t.includes('bowl') || s.includes('canoe') || t.includes('canoe') || s.includes('canoa') || t.includes('canoa')) geom = 'bowl';
-        else if (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) geom = 'plate';
-        else if (s.includes('mirror') || t.includes('mirror')) {
-            isMirror = true;
-            if (s.includes('rectangular') || t.includes('rectangular') || s.includes('squared') || t.includes('squared')) {
-                geom = 'box';
-            } else if (s.includes('round') || t.includes('round') || s.includes('circle') || t.includes('circle') || s.includes('redondo') || t.includes('redondo') || s.includes('oval') || t.includes('oval')) {
-                geom = 'mirror';
-            } else {
-                geom = 'box';
-            }
-        }
-        else if (s.includes('cylinder') || t.includes('cylinder') || t.includes('cilinder') || s.includes('round') || t.includes('round') || s.includes('pendant') || t.includes('pendant')) {
-            geom = 'cylinder';
-        }
-        else if (s.includes('sphere') || t.includes('sphere') || s.includes('esfera') || t.includes('esfera')) {
-            geom = 'sphere';
-        }
-        else if (s.includes('sculpture') || t.includes('sculpture')) {
-            geom = 'octahedron';
-        }
-        else if (s.includes('rock') || t.includes('rock') || s.includes('fountain') || t.includes('fountain')) {
-            geom = 'polyhedron';
-        }
-
-        if (geom === 'mirror') {
-            const maxVal = Math.max(W, H, D);
-            const minVal = Math.min(W, H, D);
-            W = maxVal;
-            H = maxVal;
-            D = minVal;
-        }
+        const { W, H, D, geom, isMirror } = resolveAxoGeometry(w_cm, h_cm, d_cm, shapeStr, descStr);
 
         const cos30 = Math.cos(Math.PI / 6);
         const sin30 = Math.sin(Math.PI / 6);

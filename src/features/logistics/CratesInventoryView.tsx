@@ -11,6 +11,7 @@ import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '..
 import { ExportWizard } from '../../components/ExportWizard';
 import { ExportCratesWizard } from './ExportCratesWizard';
 import { vendors } from '../../lib/consts';
+import { findInventoryByRow } from '../../lib/inventoryIndex';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
 export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number; fillPct?: number }> = ({
@@ -163,7 +164,7 @@ function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[
     const vSet = new Set<string>();
     crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
         const [id] = entry.split(':');
-        const inv = allInventory.find((i: any) => String(i.row) === id);
+        const inv = findInventoryByRow(allInventory, id);
         if (inv?.data) {
             const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
             if (p) vSet.add(p.toUpperCase());
@@ -177,7 +178,7 @@ function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[
         const cVSet = new Set<string>();
         c.inventory_ids.split(',').filter(Boolean).forEach(entry => {
             const [id] = entry.split(':');
-            const inv = allInventory.find((i: any) => String(i.row) === id);
+            const inv = findInventoryByRow(allInventory, id);
             if (inv?.data) {
                 const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
                 if (p) cVSet.add(p.toUpperCase());
@@ -283,7 +284,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                 c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
                     const [id, qtyStr] = entry.split(':');
                     const qty = parseInt(qtyStr || '1', 10) || 1;
-                    const inv = allInventory.find(i => String(i.row) === id);
+                    const inv = findInventoryByRow(allInventory, id);
                     if (inv) {
                         const norm = normalizeInventoryData(inv.data);
                         const urls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
@@ -316,7 +317,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                 c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
                     const [id, qtyStr] = entry.split(':');
                     const qty = parseInt(qtyStr || '1', 10) || 1;
-                    const inv = allInventory.find(i => String(i.row) === id);
+                    const inv = findInventoryByRow(allInventory, id);
                     if (inv) v += getItemPaddedVolume(inv.data, qty);
                 });
             }
@@ -339,7 +340,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                 c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
                     const [id, qtyStr] = entry.split(':');
                     const qty = parseInt(qtyStr || '1', 10) || 1;
-                    const inv = allInventory.find(i => String(i.row) === id);
+                    const inv = findInventoryByRow(allInventory, id);
                     if (inv) {
                         const norm = normalizeInventoryData(inv.data);
                         w += (parseFloat(norm.weightKg || norm.weight_kg) || 0) * qty;
@@ -1572,7 +1573,7 @@ export const CratesInventoryView: React.FC = () => {
                 const vSet = new Set<string>();
                 c.inventory_ids.split(',').filter(Boolean).forEach(entry => {
                     const [id] = entry.split(':');
-                    const inv = allInventory.find((i: any) => String(i.row) === id);
+                    const inv = findInventoryByRow(allInventory, id);
                     if (inv && inv.data) {
                         const prefix = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0] || 'UNK';
                         if (prefix) vSet.add(prefix.toUpperCase());

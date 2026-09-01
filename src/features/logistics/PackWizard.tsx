@@ -15,6 +15,7 @@ import { normalizeInventoryData, getCleanImageUrl, calculateCodesAndPrices, getC
 import { vendors } from '../../lib/consts';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeCrate } from '../../components/CrateVisuals';
+import { findInventoryByRow } from '../../lib/inventoryIndex';
 
 type WizardStep = 'SELECT_CRATE' | 'REVIEW_PACK';
 
@@ -49,7 +50,7 @@ function getCrateVendors(crate: CrateRecord, allInventory: any[]): { prefix: str
     const result: { prefix: string; color: string; name: string }[] = [];
     crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
         const [id] = entry.split(':');
-        const inv = allInventory.find((i: any) => String(i.row) === id);
+        const inv = findInventoryByRow(allInventory, id);
         if (inv?.data) {
             const norm = normalizeInventoryData(inv.data);
             const raw = (norm.itemId || norm.tag_id || '').toUpperCase();
