@@ -23,9 +23,9 @@
  * fullscreenView, NULL, UNDEFINED, and operator names (JUAN, SIMONA).
  */
 
-import { getI18nLang } from './i18n';
+import { getI18nLang } from './i18nLang';
 
-const LABELS: Record<string, string> = {
+export const ENUM_LABELS: Record<string, string> = {
   // ── Inventory / logistics status ─────────────────────────────────────────
   'Available': 'Disponible',
   'Acquired': 'Adquirido',
@@ -94,6 +94,17 @@ const LABELS: Record<string, string> = {
   'New Arrivals': 'Novedades',
   'Fountains': 'Fuentes',
 
+  // ── OnyxChan face expressions ────────────────────────────────────────────
+  // The <select> in PicoRoleHardwareCard was given explicit English `value`
+  // attributes so its onChange comparisons and the hardware protocol keep
+  // seeing English while these labels are shown.
+  'Neutral': 'Neutral',
+  'Happy': 'Feliz',
+  'Angry': 'Enojado',
+  'Sad': 'Triste',
+  'Sleepy': 'Somnoliento',
+  'Doubt': 'Duda',
+
   // ── Connection / capacity state ──────────────────────────────────────────
   'ONLINE': 'EN LÍNEA',
   'OPTIMAL': 'ÓPTIMO',
@@ -135,10 +146,10 @@ const LABELS: Record<string, string> = {
 export function el<T>(value: T): T | string {
   if (getI18nLang() === 'en') return value;
   if (typeof value !== 'string') return value;
-  return LABELS[value] ?? value;
+  return ENUM_LABELS[value] ?? value;
 }
 
 /** True when a value has a Spanish label — useful for tests and audits. */
 export function hasEnumLabel(value: string): boolean {
-  return Object.prototype.hasOwnProperty.call(LABELS, value);
+  return Object.prototype.hasOwnProperty.call(ENUM_LABELS, value);
 }

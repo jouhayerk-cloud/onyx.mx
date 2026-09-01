@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 const DB_COLLECTIONS = ['inventory', 'finance', 'logistics', 'production'] as const;
 type DBCollectionName = typeof DB_COLLECTIONS[number];
@@ -119,7 +120,7 @@ export const DatabaseViewerPanel: React.FC<{ db: any }> = ({ db }) => {
                             onClick={() => { setCol(c); setSearch(''); setSortKey(''); cancelEdit(); }}
                             className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${col === c ? 'bg-[#AEE6F5] text-black shadow' : 'text-white/30 hover:text-white/70'
                                 }`}>
-                            {c}
+                            {el(c)}
                         </button>
                     ))}
                 </div>
