@@ -122,7 +122,7 @@ const ActiveRequestGridItem: React.FC<{
         >
             <div className="flex items-start justify-between">
                 <span className="text-[12px] font-black text-white/60 uppercase tracking-[0.2em] truncate max-w-[80%]">{label}</span>
-                <Icon size={28} strokeWidth={3} style={{ color: color }} className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
+                <Icon size={32} strokeWidth={3} style={{ color: color }} className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
             </div>
             
             <div className="flex flex-col">
@@ -181,7 +181,7 @@ const UpcomingGridItem: React.FC<{
             
             {/* Selection indicator overlay */}
             <div className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ChevronRight size={10} className="text-white/40" />
+                <ChevronRight size={12} className="text-white/40" />
             </div>
         </div>
     );
@@ -305,7 +305,7 @@ const SmartFilterGroup: React.FC<{
                                         className="smart-expand flex items-center justify-center px-1.5 rounded-r-lg"
                                         title={`${node.children.length} sub-filter${node.children.length !== 1 ? 's' : ''}`}
                                     >
-                                        <ChevronDown size={11} strokeWidth={3}
+                                        <ChevronDown size={13} strokeWidth={3}
                                             className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
                                     </button>
                                 )}
@@ -600,9 +600,9 @@ export const UniversalToolsBar: React.FC = () => {
                     <div className="w-full mx-auto px-6 py-3 flex flex-col gap-4">
                         {isInventory && toolsOpen && isInvSearchOpen && (
                             <div className="flex items-center gap-6 group transition-all shrink-0">
-                                <Search size={24} strokeWidth={3} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
+                                <Search size={28} strokeWidth={3} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
                                 <input autoFocus type="text" value={invSearchTerm} onChange={(e) => setInvSearchTerm(e.target.value)} placeholder={tr("SEARCH INVENTORY...")} className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
-                                {invSearchTerm && <button onClick={() => setInvSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={24} strokeWidth={3} /></button>}
+                                {invSearchTerm && <button onClick={() => setInvSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={28} strokeWidth={3} /></button>}
                             </div>
                         )}
                         {isInventory && toolsOpen && isInvViewSliderOpen && (
@@ -618,9 +618,9 @@ export const UniversalToolsBar: React.FC = () => {
                                                      transform: `scale(${1 + (invSlider / 100) * 0.8})`,
                                                      color: invSlider > 66 ? 'var(--main-color)' : 'white'
                                                  }}>
-                                                {invSlider <= 33 ? <LayoutList size={20} strokeWidth={2.5} /> : 
-                                                 invSlider <= 66 ? <LayoutGrid size={20} strokeWidth={2.5} /> : 
-                                                 <Layout size={20} strokeWidth={2.5} />}
+                                                {invSlider <= 33 ? <LayoutList size={24} strokeWidth={2.5} /> : 
+                                                 invSlider <= 66 ? <LayoutGrid size={24} strokeWidth={2.5} /> : 
+                                                 <Layout size={24} strokeWidth={2.5} />}
                                             </div>
                                             <div className="absolute inset-0 opacity-20 transition-all duration-500"
                                                  style={{ 
@@ -657,7 +657,7 @@ export const UniversalToolsBar: React.FC = () => {
                                 </div>
                                 <div className="flex items-center gap-6 shrink-0 sm:justify-end overflow-x-auto no-scrollbar">
                                     <div className="flex items-center gap-2 text-white/20 uppercase font-black text-[9px] tracking-[0.2em] shrink-0">
-                                        <ArrowUpDown size={14} />
+                                        <ArrowUpDown size={17} />
                                         <span>{tr("SORT BY")}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -679,8 +679,8 @@ export const UniversalToolsBar: React.FC = () => {
                                                 }}
                                                 className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
                                                 {invSortKey === sort.key
-                                                    ? (invSortOrder === 'asc' ? <ArrowUp size={26} strokeWidth={3} /> : <ArrowDown size={26} strokeWidth={3} />)
-                                                    : <ArrowUpDown size={25} strokeWidth={2.2} />}
+                                                    ? (invSortOrder === 'asc' ? <ArrowUp size={30} strokeWidth={3} /> : <ArrowDown size={30} strokeWidth={3} />)
+                                                    : <ArrowUpDown size={29} strokeWidth={2.2} />}
                                             </button>
                                             <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{sort.label}</span>
                                         </div>
@@ -691,9 +691,9 @@ export const UniversalToolsBar: React.FC = () => {
                         )}
                         {isFinance && isFinSearchOpen && (
                             <div className="flex items-center gap-6 group transition-all shrink-0">
-                                <Search size={24} strokeWidth={3} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
+                                <Search size={28} strokeWidth={3} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
                                 <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS...")} className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
-                                {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={24} strokeWidth={3} /></button>}
+                                {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={28} strokeWidth={3} /></button>}
                             </div>
                         )}
                     </div>
@@ -706,7 +706,7 @@ export const UniversalToolsBar: React.FC = () => {
                     <div className="w-full mx-auto px-6 py-4 flex items-center justify-between gap-4 overflow-x-auto no-scrollbar">
                         <div className="flex items-center gap-6">
                             <div className="w-12 h-12 rounded-xl bg-(--color-inventory)/10 border border-(--color-inventory)/20 flex items-center justify-center text-(--color-inventory) drop-shadow-[0_0_15px_rgba(var(--color-inventory-rgb),0.3)]">
-                                <SquareCheckBig size={24} strokeWidth={2.5} />
+                                <SquareCheckBig size={28} strokeWidth={2.5} />
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] leading-none mb-1">{tr("Batch Management")}</span>
@@ -735,7 +735,7 @@ export const UniversalToolsBar: React.FC = () => {
                                 }}
                                 className="flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20 transition-all font-black text-[11px] tracking-widest uppercase active:scale-95"
                             >
-                                <X size={16} strokeWidth={3} />
+                                <X size={19} strokeWidth={3} />
                                 <span>{tr("Clear")}</span>
                             </button>
                         </div>
@@ -766,7 +766,7 @@ export const UniversalToolsBar: React.FC = () => {
                                         <div key={s.id} className="tool-cell flex flex-col items-center gap-1 shrink-0">
                                             <button aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
                                                 className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
-                                                <Icon size={29} strokeWidth={isActive ? 3.5 : 2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
+                                                <Icon size={33} strokeWidth={isActive ? 3.5 : 2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
                                             </button>
                                             <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
                                         </div>
@@ -961,7 +961,7 @@ export const UniversalToolsBar: React.FC = () => {
                                         <button aria-pressed={isActive} title={s.id} onClick={() => setInvStatusFilter(s.id as any)}
                                             className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
                                             style={{ color: isActive ? s.color : undefined }}>
-                                            <Icon size={28} strokeWidth={isActive ? 3.5 : 2.5} />
+                                            <Icon size={32} strokeWidth={isActive ? 3.5 : 2.5} />
                                         </button>
                                         <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
                                     </div>

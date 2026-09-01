@@ -137,9 +137,9 @@ import {
     Globe, Languages, Cpu, Clock, ArrowRight, Lock, Unlock, Printer,
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
-    Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
+    Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, Archive,
     PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup, CloudUpload,
-    Wrench, ClipboardClock, LayoutTemplate, Tag, ChevronDown
+    Wrench, ClipboardClock, LayoutTemplate, Tag, ChevronDown, Pointer
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -216,7 +216,7 @@ const SubTabPills: React.FC<{
                         title={t.label}
                         className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all select-none"
                         style={active === t.id ? { color: accentColor } : {}}>
-                        {TabIcon ? <TabIcon size={30} strokeWidth={2.2} /> : <span className="text-[10px] font-black">{t.label}</span>}
+                        {TabIcon ? <TabIcon size={34} strokeWidth={2.2} /> : <span className="text-[10px] font-black">{t.label}</span>}
                     </button>
                     {TabIcon && (
                         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">{t.label}</span>
@@ -245,7 +245,7 @@ const StudioAction: React.FC<{
             aria-pressed={active}
             className={`tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all select-none disabled:opacity-30 disabled:pointer-events-none ${className}`}
         >
-            <Icon size={30} strokeWidth={2.2} style={{ color: active ? color : undefined }} />
+            <Icon size={34} strokeWidth={2.2} style={{ color: active ? color : undefined }} />
         </button>
         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">{label}</span>
     </div>
@@ -266,7 +266,7 @@ const DeployableSearch: React.FC<{
             </button>
         ) : (
             <div className="flex-1 flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
-                <Search size={28} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-80" />
+                <Search size={32} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-80" />
                 <input
                     autoFocus
                     type="text"
@@ -278,11 +278,11 @@ const DeployableSearch: React.FC<{
                 />
                 {value && (
                     <button onClick={() => onChange('')} className="p-3 text-(--text-color)/30 hover:text-(--text-color) transition-colors">
-                        <X size={28} strokeWidth={2.5} />
+                        <X size={32} strokeWidth={2.5} />
                     </button>
                 )}
                 <button onClick={() => setIsOpen(false)} className="p-3 text-(--text-color)/30 hover:text-(--text-color) transition-all hover:scale-125">
-                    <X size={26} strokeWidth={3} />
+                    <X size={30} strokeWidth={3} />
                 </button>
             </div>
         )}
@@ -296,7 +296,7 @@ const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({
     const BadgeIcon = iconToLucide[icon] || Store;
     return (
         <div className="hidden sm:flex items-center gap-4 pr-6 border-r border-white/5 shrink-0 truncate">
-            <BadgeIcon size={28} strokeWidth={2} style={{ color }} />
+            <BadgeIcon size={32} strokeWidth={2} style={{ color }} />
         </div>
     );
 };
@@ -452,7 +452,7 @@ const ToolButton: React.FC<{
             className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
             style={active && tone ? { color: tone } : undefined}
         >
-            <Icon size={30} strokeWidth={2.2} />
+            <Icon size={34} strokeWidth={2.2} />
         </button>
         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">
             {label}
@@ -610,7 +610,13 @@ const InventoryBar: React.FC = () => {
     return (
         <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
             <div className="flex items-end gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
-                <ToolButton icon={SquareCheckBig} label={tr("Select")} active={isSelectionMode}
+                {/* Named for what it does, not for the mode it enters. The key
+                    turns the list into something you act ON — select rows, then
+                    pack, pay, print or export them — and "Select" described only
+                    the first half of that. The pointing hand carries the same
+                    idea without needing the word. */}
+                <ToolButton icon={Pointer} label={tr("Actions")} active={isSelectionMode}
+                    title={tr("Select items to act on")}
                     onClick={handleToggleSelectionMode} />
 
                 {/* TOOLS — a disclosure for the whole tool set. Off hides the
@@ -722,7 +728,7 @@ const FinanceBar: React.FC = () => {
                 className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
                 title={tr("Search Payments")}
             >
-                <Search size={28} strokeWidth={2} />
+                <Search size={32} strokeWidth={2} />
             </button>
 
             <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
@@ -731,14 +737,14 @@ const FinanceBar: React.FC = () => {
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
                     title={tr("Filter Payments")}
                 >
-                    <Filter size={28} strokeWidth={2} />
+                    <Filter size={32} strokeWidth={2} />
                 </button>
                 <button 
                     onClick={() => setIsActionOpen(!isActionOpen)}
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isActionOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
                     title={tr("Settings & Logic")}
                 >
-                    <SlidersHorizontal size={28} strokeWidth={2} />
+                    <SlidersHorizontal size={32} strokeWidth={2} />
                 </button>
 
                 <button 
@@ -746,7 +752,7 @@ const FinanceBar: React.FC = () => {
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isUpcomingOpen ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-white/50 hover:text-white'}`}
                     title={tr("Upcoming Payments")}
                 >
-                    <Hourglass size={28} strokeWidth={2} className={isUpcomingOpen ? 'animate-pulse' : ''} />
+                    <Hourglass size={32} strokeWidth={2} className={isUpcomingOpen ? 'animate-pulse' : ''} />
                 </button>
 
                 <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
@@ -756,7 +762,7 @@ const FinanceBar: React.FC = () => {
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 text-white/50 hover:text-white`}
                     title={`Switch to ${currencyMode === 'MXN' ? 'USD' : 'MXN'}`}
                 >
-                    <DollarSign size={28} strokeWidth={2} className={currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'} />
+                    <DollarSign size={32} strokeWidth={2} className={currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'} />
                 </button>
             </div>
         </div>
@@ -836,7 +842,7 @@ const LogisticsBar: React.FC = () => {
                                 className="flex flex-col items-center justify-center w-16 h-16 text-(--main-color) hover:text-white transition-all cursor-pointer hover:bg-white/5 rounded-2xl group/action"
                                 title={tr("Initialize Storage Protocol")}
                             >
-                                <PackagePlus size={28} strokeWidth={2} className="group-hover/action:scale-110 transition-transform mb-1" />
+                                <PackagePlus size={32} strokeWidth={2} className="group-hover/action:scale-110 transition-transform mb-1" />
                                 <span className="text-[8px] font-black uppercase tracking-widest leading-none">{tr("New Unit")}</span>
                             </button>
                             <button 
@@ -844,7 +850,7 @@ const LogisticsBar: React.FC = () => {
                                 className={`flex flex-col items-center justify-center w-16 h-16 transition-all cursor-pointer hover:bg-white/5 rounded-2xl group/search ${isWarehouseSearchOpen || search ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
                                 title={tr("Search Units")}
                             >
-                                <Search size={28} strokeWidth={2} className="group-hover/search:scale-110 transition-transform mb-1" />
+                                <Search size={32} strokeWidth={2} className="group-hover/search:scale-110 transition-transform mb-1" />
                                 <span className="text-[8px] font-black uppercase tracking-widest leading-none">{tr("Search")}</span>
                             </button>
 
@@ -865,7 +871,7 @@ const LogisticsBar: React.FC = () => {
                                         className={`flex flex-col items-center justify-center w-16 h-16 transition-all cursor-pointer hover:bg-white/5 rounded-2xl group/select ${isWarehouseSelectionMode ? 'text-amber-500' : 'text-white/20 hover:text-white'}`}
                                         title={isWarehouseSelectionMode ? 'Cancel Selection' : 'Select Crates'}
                                     >
-                                        <FolderUp size={28} strokeWidth={2} className="group-hover/select:scale-110 transition-transform mb-1" />
+                                        <FolderUp size={32} strokeWidth={2} className="group-hover/select:scale-110 transition-transform mb-1" />
                                         <span className="text-[8px] font-black uppercase tracking-widest leading-none">{tr("Select")}</span>
                                     </button>
 
@@ -874,7 +880,7 @@ const LogisticsBar: React.FC = () => {
                                             onClick={() => setShowWarehouseExportWizard(true)}
                                             className="ml-2 flex items-center gap-2 px-6 py-2 rounded-xl transition-all font-black text-[10px] tracking-widest uppercase shadow-xl bg-amber-500 text-black hover:scale-105 active:scale-95 animate-in slide-in-from-left-4"
                                         >
-                                            <Download size={20} strokeWidth={3} />
+                                            <Download size={24} strokeWidth={3} />
                                             <span>Start Exportation ({warehouseSelectedIds.size})</span>
                                         </button>
                                     )}
@@ -904,7 +910,7 @@ const LogisticsBar: React.FC = () => {
                                 className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isPackingFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
                                 title={tr("Configuration")}
                             >
-                                <ListFilter size={28} />
+                                <ListFilter size={32} />
                             </button>
                         </>
                     )}
@@ -917,7 +923,7 @@ const LogisticsBar: React.FC = () => {
                                 title={showPanels ? 'Hide all panels' : 'Show all panels'}
                                 className={`flex items-center justify-center w-12 h-12 transition-all cursor-pointer rounded-2xl hover:bg-white/5 ${showPanels ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
                             >
-                                {showPanels ? <PanelTopClose size={28} /> : <PanelTop size={28} />}
+                                {showPanels ? <PanelTopClose size={32} /> : <PanelTop size={32} />}
                             </button>
                         </>
                     )}
@@ -926,15 +932,15 @@ const LogisticsBar: React.FC = () => {
                         <>
                             <div className="flex items-center gap-2 px-4 border-l border-white/5">
                                 <button onClick={() => setShowOpenDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group" title={tr("Load Draft")}>
-                                    <Archive size={18} className="group-hover:scale-110 transition-transform" />
+                                    <Archive size={22} className="group-hover:scale-110 transition-transform" />
                                     <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{tr("Drafts")}</span>
                                 </button>
                                 <button onClick={() => setShowSaveDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group px-2" title={tr("Save Draft")}>
-                                    <Save size={18} className="group-hover:scale-110 transition-transform" />
+                                    <Save size={22} className="group-hover:scale-110 transition-transform" />
                                     <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{tr("Save")}</span>
                                 </button>
                                 <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 text-white/30 hover:text-(--main-color) transition-all group pr-2" title={tr("Export Manifest")}>
-                                    <SlidersHorizontal size={18} className="group-hover:scale-110 transition-transform" />
+                                    <SlidersHorizontal size={22} className="group-hover:scale-110 transition-transform" />
                                     <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{tr("Export")}</span>
                                 </button>
                                 <button 
@@ -943,7 +949,7 @@ const LogisticsBar: React.FC = () => {
                                     className={`flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all font-black text-[9px] tracking-widest uppercase shadow-xl
                                         ${truckBusy ? 'bg-white/5 text-white/20' : 'bg-(--main-color) text-black hover:scale-105 active:scale-95'}`}
                                 >
-                                    {truckBusy ? <Activity size={18} className="animate-spin" /> : <Truck size={18} strokeWidth={3} />}
+                                    {truckBusy ? <Activity size={22} className="animate-spin" /> : <Truck size={22} strokeWidth={3} />}
                                     <span className="hidden sm:block">{truckBusy ? tr("Processing...") : tr("Ready Truck")}</span>
                                 </button>
                             </div>
@@ -954,7 +960,7 @@ const LogisticsBar: React.FC = () => {
                                 title={tr("Deployed Crates Library")}
                                 className={`flex flex-col items-center justify-center w-16 h-16 transition-all cursor-pointer rounded-2xl hover:bg-white/5 group/library ${subTab === 'crates' ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
                             >
-                                <SquareLibrary size={28} strokeWidth={1.5} className="group-hover/library:scale-110 transition-transform" />
+                                <SquareLibrary size={32} strokeWidth={1.5} className="group-hover/library:scale-110 transition-transform" />
                                 <span className="text-[7px] font-black tracking-widest mt-1 opacity-40 group-hover/library:opacity-100 uppercase">{tr("Library")}</span>
                             </button>
                         </>
@@ -1022,7 +1028,7 @@ const PackingBar: React.FC = () => {
                         className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
                         title={tr("Configuration")}
                     >
-                        <ListFilter size={28} />
+                        <ListFilter size={32} />
                     </button>
 
                     <div className="w-px h-5 bg-white/10 mx-2" />
@@ -1052,7 +1058,7 @@ const ProcessBar: React.FC = () => {
                     ${activeTab === 'workspace' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
                 title={tr("Engine Workspace")}
             >
-                <Target size={28} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                <Target size={32} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
                 {activeTab === 'workspace' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
             </button>
             <button 
@@ -1061,7 +1067,7 @@ const ProcessBar: React.FC = () => {
                     ${activeTab === 'vault' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
                 title={tr("Inventory Vault")}
             >
-                <Library size={28} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                <Library size={32} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
                 {activeTab === 'vault' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
             </button>
             <button 
@@ -1070,7 +1076,7 @@ const ProcessBar: React.FC = () => {
                     ${activeTab === 'batch' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
                 title={tr("Batch Telemetry")}
             >
-                <FolderKanban size={28} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                <FolderKanban size={32} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
                 {activeTab === 'batch' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
             </button>
         </div>
@@ -3721,7 +3727,7 @@ export function MainHeader() {
                                 className="w-11 h-11 flex items-center justify-center text-(--main-color) animate-pulse drop-shadow-[0_0_10px_var(--main-color)] hover:scale-110 transition-all"
                                 title={tr("Active Crate Deployment")}
                             >
-                                <Truck size={28} strokeWidth={2.5} />
+                                <Truck size={32} strokeWidth={2.5} />
                             </button>
                         )}
 
@@ -3731,7 +3737,7 @@ export function MainHeader() {
                                 className={`w-11 h-11 flex items-center justify-center transition-all active:scale-90 hover:scale-110 ${artifactConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white/40 hover:text-white'}`}
                                 title={tr("Toggle Neural Manifest")}
                             >
-                                <Package size={26} strokeWidth={2.5} />
+                                <Package size={30} strokeWidth={2.5} />
                             </button>
                         )}
                         
@@ -3757,7 +3763,7 @@ export function MainHeader() {
                                     className="w-11 h-11 flex items-center justify-center text-white/20 hover:text-red-500 transition-all active:scale-90 hover:scale-110"
                                     title={tr("Reset Neural Credentials")}
                                 >
-                                    <RefreshCw size={22} strokeWidth={2.5} />
+                                    <RefreshCw size={26} strokeWidth={2.5} />
                                 </button>
                             </>
                         )}
@@ -3779,7 +3785,7 @@ export function MainHeader() {
                                 }`}
                                 title={tr("Download Shopify XLSX")}
                             >
-                                <ShoppingBag size={26} strokeWidth={2.5} className={isShopifyExporting ? 'animate-bounce text-[#96bf48]' : 'group-hover/shopify:scale-110 transition-transform text-[#96bf48]/70 group-hover/shopify:text-[#96bf48]'} />
+                                <ShoppingBag size={30} strokeWidth={2.5} className={isShopifyExporting ? 'animate-bounce text-[#96bf48]' : 'group-hover/shopify:scale-110 transition-transform text-[#96bf48]/70 group-hover/shopify:text-[#96bf48]'} />
                             </button>
                         )}
 
@@ -3793,7 +3799,7 @@ export function MainHeader() {
                             style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
                             title="Download Full Workbook XLSX"
                         >
-                            <FileSpreadsheet size={26} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
+                            <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                             <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Workbook</span>
                         </button>
                         */}
@@ -3811,7 +3817,7 @@ export function MainHeader() {
                             style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
                             title={tr("Download Workbook V2 (Rare Earth Format)")}
                         >
-                            <FileSpreadsheet size={26} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
+                            <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                         </button>
                             </div>
                         )}

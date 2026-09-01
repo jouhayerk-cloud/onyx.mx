@@ -33,6 +33,12 @@
  */
 
 export const esCatalog: Record<string, string> = {
+  // Main top bar. 'Acciones' rather than 'Seleccionar': the key opens the
+  // mode where rows are chosen and then acted on, and the Spanish noun
+  // carries that better than the verb does.
+  'Actions': 'Acciones',
+  'Select items to act on': 'Selecciona artículos para trabajar',
+
   // ── Shared chrome — strings that appear in more than one feature ──────────
   // Actions
   'Save': 'Guardar',
