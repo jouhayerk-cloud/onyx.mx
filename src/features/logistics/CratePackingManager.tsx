@@ -25,6 +25,7 @@ import { WireframeCrate } from '../../components/CrateVisuals';
 import { NFCTagCard } from '../../components/LabelVisuals';
 import { CratePackingWorkspace } from './CratePackingWorkspace';
 import { InventoryArtifactInner } from '../inventory/InventoryArtifact';
+import { findInventoryByRow } from '../../lib/inventoryIndex';
 
 // ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
 // Backward compat: entries without ":qty" default to full quantity
@@ -180,7 +181,7 @@ function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[
     const vSet = new Set<string>();
     crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
         const [id] = entry.split(':');
-        const inv = allInventory.find((i: any) => String(i.row) === id);
+        const inv = findInventoryByRow(allInventory, id);
         if (inv?.data) {
             const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
             if (p) vSet.add(p.toUpperCase());
@@ -194,7 +195,7 @@ function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[
         const cVSet = new Set<string>();
         c.inventory_ids.split(',').filter(Boolean).forEach(entry => {
             const [id] = entry.split(':');
-            const inv = allInventory.find((i: any) => String(i.row) === id);
+            const inv = findInventoryByRow(allInventory, id);
             if (inv?.data) {
                 const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
                 if (p) cVSet.add(p.toUpperCase());
@@ -248,7 +249,7 @@ const ActiveCrateHUD: React.FC<{
 }) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
-            const inv = allInventory.find((i: any) => String(i.row) === id);
+            const inv = findInventoryByRow(allInventory, id);
             if (!inv) return [];
             const norm = normalizeInventoryData(inv.data);
             const qty = selectedQtys[id] ?? 1;
@@ -265,7 +266,7 @@ const ActiveCrateHUD: React.FC<{
     const alreadyPackedPaddedVol = useMemo(() => {
         let v = 0;
         alreadyPackedMap.forEach((qty, id) => {
-            const inv = allInventory.find((i: any) => String(i.row) === id);
+            const inv = findInventoryByRow(allInventory, id);
             if (!inv) return;
             v += getItemPaddedVolume(inv.data, qty === -1 ? 1 : qty);
         });
@@ -1228,7 +1229,7 @@ export const CratePackingManager: React.FC = () => {
 
     const itemsWithPositions = useMemo(() => {
         return Array.from(selectedItemIds).map(id => {
-            const inv = allInventory.find(i => String(i.row) === id);
+            const inv = findInventoryByRow(allInventory, id);
             return {
                 item: inv as InventoryItem,
                 position: itemPositions[id] || { x: 0, y: 0, z: 0, rotation: 0, isFlipped: false }

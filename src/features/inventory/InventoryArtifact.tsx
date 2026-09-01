@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtomValue, useAtom } from 'jotai';
 import { 
@@ -38,27 +38,47 @@ interface InventoryArtifactProps {
 
 import { inventoryArtifactConfigAtom } from '../../lib/atoms';
 
+import { describeAxoIcon, getAxoIcon, peekAxoIcon } from '../../lib/axoIconCache';
+
 export const WireframeIcon = ({ item, color }: { item: any, color?: string }) => {
-    const [src, setSrc] = useState<string | null>(null);
+    // Cheap and pure, so the key is available before the first paint. Depending on
+    // `item` (a memoised `norm` object at every call site) keeps this to one run
+    // per card rather than one per render.
+    const req = useMemo(() => describeAxoIcon(item), [item]);
+
+    // Seed from the cache synchronously: a card scrolling back into view reuses the
+    // already-rasterised silhouette with no fallback flash and no state update.
+    const [src, setSrc] = useState<string | null>(() => peekAxoIcon(req.key));
+    const hostRef = useRef<any>(null);
 
     useEffect(() => {
-        let active = true;
-        import('../../lib/axonometric').then(({ generateAxonometricDataUrl, resolveItemColor }) => {
-            const w = parseFloat(item.width_cm || item.widthCm) || 40;
-            const h = parseFloat(item.height_cm || item.heightCm) || 40;
-            const d = parseFloat(item.length_cm || item.lengthCm) || parseFloat(item.depth_cm || item.depthCm) || w;
-            
-            const itemColor = resolveItemColor(item);
-            
-            generateAxonometricDataUrl(w, h, d, item.shape || '', item.shortDescription || item.description || '', itemColor).then(url => {
-                if (active) setSrc(url);
-            });
-        });
-        return () => { active = false; };
-    }, [item]);
+        const cached = peekAxoIcon(req.key);
+        if (cached) { setSrc(cached); return; }
+        setSrc(null);
 
-    if (!src) return <Package size={32} strokeWidth={1} />;
-    return <img src={src} className="w-[80%] h-[80%] object-contain opacity-80 drop-shadow-md mix-blend-screen" />;
+        let active = true;
+        const start = () => {
+            getAxoIcon(req).then(url => { if (active && url) setSrc(url); });
+        };
+
+        // Rasterising costs a 400x400 canvas — ~640 KB of backing store — that stays
+        // alive until GC. Firing it from a plain mount effect meant every row in the
+        // list allocated one in the same tick, which is what exhausted memory. Gate
+        // it on visibility so concurrent allocations track what is on screen, not
+        // the row count. rootMargin pre-warms just ahead of the scroll.
+        const host = hostRef.current;
+        if (!host || typeof IntersectionObserver === 'undefined') { start(); return () => { active = false; }; }
+
+        const io = new IntersectionObserver((entries) => {
+            if (entries.some(e => e.isIntersecting)) { io.disconnect(); start(); }
+        }, { rootMargin: '400px' });
+        io.observe(host);
+
+        return () => { active = false; io.disconnect(); };
+    }, [req]);
+
+    if (!src) return <Package ref={hostRef} size={32} strokeWidth={1} />;
+    return <img ref={hostRef} src={src} className="w-[80%] h-[80%] object-contain opacity-80 drop-shadow-md mix-blend-screen" />;
 };
 
 export const InventoryArtifact = () => {
@@ -176,13 +196,25 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     }, [filteredItems, financeDocs, targetIds]);
 
     const [fetchedItems, setFetchedItems] = useState<any[]>([]);
+    // An id can be requested as an item_id or a book_barcode, but a row that comes
+    // back is stored under its numeric `row`. The requested id therefore never
+    // appears in resolvedIds, so the effect saw it as still missing, refetched it,
+    // appended a duplicate, and — because `fetchedItems` is a dependency — ran
+    // again. That is an unbounded fetch loop and an array that grows until the tab
+    // dies. Remember which ids have been asked for, keyed on the id we asked with.
+    const attemptedIdsRef = useRef<Set<string>>(new Set());
     useEffect(() => {
         const resolvedIds = new Set([...filteredItems.map(fi => String(fi.row)), ...filteredItems.map(fi => String(fi.data?.id)), ...fetchedItems.map(fi => String(fi.row))]);
-        const missingIds = targetIds.filter(id => !resolvedIds.has(id));
+        const missingIds = targetIds.filter(id => !resolvedIds.has(id) && !attemptedIdsRef.current.has(id));
         if (missingIds.length > 0) {
+            missingIds.forEach(id => attemptedIdsRef.current.add(id));
             import('../../lib/supabase').then(async ({ supabase }) => {
                 const { data } = await supabase.from('inventory').select('*').or(`id.in.(${missingIds.join(',')}),item_id.in.(${missingIds.join(',')}),book_barcode.in.(${missingIds.join(',')})`);
-                if (data) setFetchedItems(prev => [...prev, ...data.map(d => ({ row: d.id, data: d }))]);
+                if (data) setFetchedItems(prev => {
+                    const known = new Set(prev.map(p => String(p.row)));
+                    const additions = data.filter(d => !known.has(String(d.id))).map(d => ({ row: d.id, data: d }));
+                    return additions.length > 0 ? [...prev, ...additions] : prev;
+                });
             });
         }
     }, [targetIds, filteredItems, fetchedItems]);

@@ -11,6 +11,7 @@ import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, getCrateDisplayName } from '../../lib/utils';
 import { exportCombinedTruckManifesto } from '../../lib/crateManifesto';
 import { generateCratesListHtml } from './generateCratesListHtml';
+import { findInventoryByRow } from '../../lib/inventoryIndex';
 
 export const ExportCard: React.FC<{
     id: string;
@@ -94,7 +95,7 @@ export const ExportCratesWizard: React.FC<{
             crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
                 const [id, qtyStr] = e.split(':');
                 const qty = parseInt(qtyStr || '1', 10) || 1;
-                const inv = allInventory.find((i: any) => String(i.row) === id);
+                const inv = findInventoryByRow(allInventory, id);
                 if (inv) results.push({ id, qty, inv, packetIn: floorLabel, boxLabel: nextBoxLabel });
             });
         }

@@ -33,6 +33,7 @@ import * as THREE from 'three';
 import { CrateEditPanel, WireframeCrate } from './CratesInventoryView';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import gsap from 'gsap';
+import { findInventoryByRow } from '../../lib/inventoryIndex';
 
 export const TRUCK_L_CM = 1615;
 export const TRUCK_W_CM = 244;
@@ -73,7 +74,7 @@ export function computeCrateWeight(crate: any, allInventory: any[], allCrates: a
         crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
             const [id, qtyStr] = e.split(':');
             const qty = parseInt(qtyStr || '1', 10) || 1;
-            const inv = allInventory.find((i: any) => String(i.row) === id);
+            const inv = findInventoryByRow(allInventory, id);
             const w = inv?.data?.weight_kg ?? inv?.data?.weightKg;
             if (w != null && !isNaN(Number(w))) {
                 total += Number(w) * qty;
@@ -200,7 +201,7 @@ function getDynamicCrateIdComponents(crate: any, allCrates: any[], allInventory:
     const vSet = new Set<string>();
     crate.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
         const [id] = entry.split(':');
-        const inv = allInventory.find((i: any) => String(i.row) === id);
+        const inv = findInventoryByRow(allInventory, id);
         if (inv?.data) {
             const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
             if (p) vSet.add(p.toUpperCase());
@@ -214,7 +215,7 @@ function getDynamicCrateIdComponents(crate: any, allCrates: any[], allInventory:
         const cVSet = new Set<string>();
         c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
             const [id] = entry.split(':');
-            const inv = allInventory.find((i: any) => String(i.row) === id);
+            const inv = findInventoryByRow(allInventory, id);
             if (inv?.data) {
                 const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
                 if (p) cVSet.add(p.toUpperCase());
@@ -1889,7 +1890,7 @@ const TruckExportModal: React.FC<{
             crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
                 const [id, qtyStr] = e.split(':');
                 const qty = parseInt(qtyStr || '1', 10) || 1;
-                const inv = allInventory.find((i: any) => String(i.row) === id);
+                const inv = findInventoryByRow(allInventory, id);
                 if (inv) {
                     results.push({ id, qty, inv, packetIn: floorLabel, boxLabel: nextBoxLabel });
                 }
@@ -2561,7 +2562,7 @@ const ReadyTruckWizard: React.FC<{
             crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
                 const [id, qtyStr] = e.split(':');
                 const qty = parseInt(qtyStr || '1', 10) || 1;
-                const inv = allInventory.find((i: any) => String(i.row) === id);
+                const inv = findInventoryByRow(allInventory, id);
                 if (inv) results.push({ id, qty, inv, packetIn: floorLabel, boxLabel: nextBoxLabel });
             });
         }
@@ -3541,7 +3542,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
                 const [id, qtyStr] = e.split(':');
                 const qty = parseInt(qtyStr || '1', 10) || 1;
-                const inv = allInventory.find((i: any) => String(i.row) === id);
+                const inv = findInventoryByRow(allInventory, id);
                 if (inv) results.push({ id, qty, inv, packetIn: floorLabel, boxLabel: nextBoxLabel });
             });
         }
