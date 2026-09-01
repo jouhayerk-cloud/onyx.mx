@@ -139,8 +139,7 @@ import {
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig, Archive,
     PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup, CloudUpload,
-    Wrench, ClipboardClock, LayoutTemplate
-, Tag
+    Wrench, ClipboardClock, LayoutTemplate, Tag, ChevronDown
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -3545,22 +3544,82 @@ export function MainHeader() {
     const isInventory = activeView === 'inventory';
     const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
 
+    /* Does the readout fit on the same line as the keys?
+     *
+     * Measured from the two CLUSTERS and the container, never from the notch
+     * itself. Measuring the notch would oscillate: it is wide, so its presence
+     * can be what causes the overflow, and hiding it then restores the room
+     * that brings it back. Asking instead whether the gap the clusters leave
+     * behind is wide enough makes the answer independent of the outcome.
+     *
+     * A hard breakpoint would have been simpler but wrong — the left cluster
+     * grows and shrinks as tool bars deploy, so the same viewport fits the
+     * readout at one moment and not the next. */
+    const headerRef = React.useRef<HTMLDivElement | null>(null);
+    const leftRef   = React.useRef<HTMLDivElement | null>(null);
+    const rightRef  = React.useRef<HTMLDivElement | null>(null);
+    const [notchFits, setNotchFits] = useState(true);
+    const [notchOpen, setNotchOpen] = useState(false);
+
+    React.useLayoutEffect(() => {
+        const measure = () => {
+            const host = headerRef.current;
+            if (!host) return;
+            const room = host.clientWidth
+                - (leftRef.current?.offsetWidth ?? 0)
+                - (rightRef.current?.offsetWidth ?? 0);
+            // The readout's own natural width, plus breathing room on each side.
+            // 40px of hysteresis so a cluster animating by a pixel cannot flip
+            // the layout back and forth.
+            setNotchFits(prev => (prev ? room >= 340 : room >= 380));
+        };
+        measure();
+        const ro = new ResizeObserver(measure);
+        if (headerRef.current) ro.observe(headerRef.current);
+        if (leftRef.current)   ro.observe(leftRef.current);
+        if (rightRef.current)  ro.observe(rightRef.current);
+        window.addEventListener('resize', measure);
+        return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+    }, [activeView]);
+
+    // Nothing to reopen once it is back in the row.
+    React.useEffect(() => { if (notchFits) setNotchOpen(false); }, [notchFits]);
+
     return (
         <>
             {/* Double height, two-line tool grid. overflow-y-hidden is required, not
                 cosmetic: with overflow-x:auto and overflow-y:visible the spec forces
                 overflow-y to compute to auto, so the bar scrolled vertically too. */}
-            {/* The notch sits OUTSIDE the scrolling row on purpose: .main-header is
-                a horizontal scroll container, so anything absolutely positioned
-                inside it would slide away with the content and be clipped by
-                overflow-y-hidden. This wrapper is the positioning context. */}
-            <div className="w-full shrink-0 flex flex-col">
-            {activeView === 'inventory' && (
-                <div className="flex justify-center shrink-0 pt-1 pb-0.5">
-                    <InfoNotch />
-                </div>
+            {/* The collapsed readout is positioned against THIS wrapper, not
+                against .main-header: the bar is a horizontal scroll container,
+                so anything absolute inside it slides away with the content and
+                is clipped by overflow-y-hidden. */}
+            <div className="w-full shrink-0 relative">
+
+            {/* Collapsed: a tab on the top edge, and the readout deployed over
+                the bar when it is pulled down. It overlays rather than pushing
+                the bar down because on a phone the row it would add is the
+                whole reason it had to collapse. */}
+            {activeView === 'inventory' && !notchFits && (
+                <>
+                    <button
+                        onClick={() => setNotchOpen(o => !o)}
+                        aria-expanded={notchOpen}
+                        aria-label={notchOpen ? 'Hide inventory totals' : 'Show inventory totals'}
+                        title={notchOpen ? 'Hide totals' : 'Show totals'}
+                        className="info-notch-tab absolute left-1/2 -translate-x-1/2 top-0 z-40 flex items-center justify-center h-4 w-14 rounded-b-lg"
+                    >
+                        <ChevronDown size={13} strokeWidth={3} className={notchOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                    </button>
+                    {notchOpen && (
+                        <div className="absolute left-1/2 -translate-x-1/2 top-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <InfoNotch />
+                        </div>
+                    )}
+                </>
             )}
-            <div className={`main-header h-20 max-h-20 flex items-start pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
+
+            <div ref={headerRef} className={`main-header h-20 max-h-20 flex items-start pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -3583,7 +3642,7 @@ export function MainHeader() {
                     (Workbook, Export, user) stayed pinned and could never be reached
                     by scrolling. The .main-header above is the single scroller now,
                     so every control in the bar scrolls as one row. */}
-                <div className="flex items-center justify-start shrink-0">
+                <div ref={leftRef} className="flex items-center justify-start shrink-0">
                     {/* Two rows, flowing in columns, growing right — the only layout that
                         gives exactly two lines AND unbounded horizontal growth. The
                         [&>*] variants push the same grid one level down onto each Bar's
@@ -3641,10 +3700,18 @@ export function MainHeader() {
                     </div>
                 </div>
 
-                {/* Top-right corner of the header: the readout sits on the first
-                    row and the tool icons on the second, so the two never fight
-                    for the same horizontal space on a narrow viewport. */}
-                <div className="flex items-start justify-end shrink-0 pl-2 sm:pl-4 ml-auto">
+                {/* The readout, on the same line as the keys. mx-auto is what
+                    centres it in the gap the two clusters leave; it is dropped
+                    entirely rather than hidden when that gap is too narrow, so
+                    it never contributes width to a bar that is already
+                    overflowing. */}
+                {activeView === 'inventory' && notchFits && (
+                    <div className="flex items-start shrink-0 mx-auto px-4">
+                        <InfoNotch />
+                    </div>
+                )}
+
+                <div ref={rightRef} className={`flex items-start justify-end shrink-0 pl-2 sm:pl-4 ${activeView === 'inventory' && notchFits ? '' : 'ml-auto'}`}>
                     <div className="flex items-start gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
