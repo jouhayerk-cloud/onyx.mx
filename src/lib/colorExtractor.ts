@@ -368,6 +368,23 @@ export async function generateBitmapAndHexMap(
                             const pa = imgData[idx + 3];
 
                             let hex = '#FFFFFF';
+                            // Drop the studio backdrop before it is measured as stone.
+                            //
+                            // THE 45 IS A CONTRACT WITH bgReplace.ts, not a free
+                            // constant. It was tuned for the black cloth in the
+                            // original photographs, and the generated backdrop is
+                            // now specified as near-black (under RGB 30) to stay
+                            // inside it. Raising it is not free: dark veining and
+                            // black onyx are STONE and would start being discarded
+                            // here, which is the failure the whole background
+                            // replacement path exists to avoid. If a lighter
+                            // backdrop is ever wanted, change both files together.
+                            //
+                            // What happens when they disagree: at rgb(46,46,46) the
+                            // backdrop survives this guard, gains the +58.8
+                            // brightness offset below, and matches "Gray" in
+                            // COLOR_PALETTE -- so the room gets reported as the
+                            // item's colour.
                             const isBlackBg = pr <= 45 && pg <= 45 && pb <= 45 && (Math.max(pr, pg, pb) - Math.min(pr, pg, pb)) <= 15;
                             if (pa >= 50 && !isBlackBg) {
                                 // Apply Brightness

@@ -25,8 +25,24 @@ import { ai } from './ai';
 import { supabase } from './supabase';
 import { loadImage } from './utils';
 
-/** Bumped whenever the prompt changes, so cached results are invalidated. */
-export const BG_PROMPT_VERSION = 'dark-room-v2';
+/**
+ * Bumped whenever the prompt changes, so cached results are invalidated.
+ *
+ * v3 IS COUPLED TO colorExtractor.ts. That file drops background pixels with
+ * `pr <= 45 && pg <= 45 && pb <= 45`, a constant tuned for the black studio
+ * cloth in the original photographs. v1 and v2 asked for a "deep charcoal
+ * room", which lands just above it: rgb(46,46,46) survives the guard, picks up
+ * the sampler's +58.8 brightness offset, and matches "Gray" in COLOR_PALETTE.
+ * The backdrop was being counted as stone, unconditionally poisoning
+ * _pixel_map_hex and reaching generated_color whenever the text pass returned
+ * no colours.
+ *
+ * So the backdrop is now specified as near-black with an explicit ceiling
+ * BELOW that guard. If you ever make the background lighter or more
+ * atmospheric, raise colorExtractor's threshold in the same commit -- but note
+ * that raising it costs dark stone, which is why the prompt moved instead.
+ */
+export const BG_PROMPT_VERSION = 'dark-room-v3';
 
 export type BgQuality = '1K' | '2K';
 
@@ -130,10 +146,10 @@ Keep the subject exactly as photographed:
 - Keep every component: bases, arms, fittings, hardware, cabling, mirror glass and each separate piece in a set.
 
 Replace the surroundings with an empty dark studio room:
-- A seamless, unlit deep charcoal room with a soft floor-to-wall falloff behind the subject.
-- Where cardboard, boxes or pallets lie under the piece, put clean studio floor in their place, level with the height the piece already rests at, so it stands directly on the floor. Do not move, tilt, rescale or reframe the piece to meet a new floor, and never leave it floating.
+- A seamless NEAR-BLACK studio void, the same pure black sweep used in professional stone catalogue photography. It must read as black, not as dark grey: keep every background pixel below RGB(30,30,30). No lit wall, no visible horizon line, no grey gradient, no charcoal.
+- Where cardboard, boxes or pallets lie under the piece, put clean black studio floor in their place, level with the height the piece already rests at, so it stands directly on the floor. Do not move, tilt, rescale or reframe the piece to meet a new floor, and never leave it floating.
 - If packing material hid part of the base, the new floor line takes its place at that same height. Do not invent stone that was not photographed.
-- Add a soft contact shadow exactly where the piece meets that floor, consistent with the existing lighting direction.
+- Add a soft contact shadow exactly where the piece meets that floor, consistent with the existing lighting direction. Keep the floor black around it -- never brighten the floor so the shadow reads.
 - Remove all people, hands, background text and watermarks.
 - Add nothing new: no furniture, plants, decor, reflections or text.
 
