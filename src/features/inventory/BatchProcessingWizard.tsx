@@ -116,7 +116,7 @@ interface BatchOp {
  * before writing so Postgres and the local cache agree.
  */
 const safeParseMasks = (raw: string): any => {
-    try { return JSON.parse(raw); } catch { return null; }
+    try { return JSON.parse(raw); } catch { return undefined; }
 };
 
 const getApiKey = () => {
@@ -1075,7 +1075,10 @@ Instructions:
             // recovery path retried without generated_color and generated_type -
             // silently downgrading the save. Write the column that does exist.
             if (op.result.cloudSegmentationMasks) {
-                updatePayload.spatial_masks = safeParseMasks(op.result.cloudSegmentationMasks);
+                // Assign only on a successful parse. Writing the failure value
+                // would blank spatial_masks on a row that already had one.
+                const parsed = safeParseMasks(op.result.cloudSegmentationMasks);
+                if (parsed !== undefined) updatePayload.spatial_masks = parsed;
             }
             
             // Generate and save Classification and Type
@@ -1085,8 +1088,13 @@ Instructions:
                 type: op.result.generatedType || itemData.type
             });
             if (catAndType) {
-                updatePayload.product_category = catAndType.category;
-                updatePayload.product_type = catAndType.type;
+                // product_category / product_type are NOT columns on inventory.
+                // Sending them failed the update with 42703; the old recovery
+                // retried without them, which is the only reason these saves ever
+                // worked. Removing that recovery without auditing every column
+                // turned a silent degradation into a total save failure. The map
+                // is where these two actually live, and normalizeInventoryData
+                // already reads them back from it.
                 processedMap['_product_category'] = catAndType.category;
                 processedMap['_product_type'] = catAndType.type;
             }
@@ -1286,7 +1294,8 @@ Instructions:
                 }
                 // Only spatial_masks exists in Postgres; see handleSaveDescription.
                 if (lastCloudMasks) {
-                    updatePayload.spatial_masks = safeParseMasks(lastCloudMasks);
+                    const parsedMasks = safeParseMasks(lastCloudMasks);
+                    if (parsedMasks !== undefined) updatePayload.spatial_masks = parsedMasks;
                 }
                 if (lastSvgUrl) {
                     // generated_svg_url was 0/497 because the SVG was rendered on
