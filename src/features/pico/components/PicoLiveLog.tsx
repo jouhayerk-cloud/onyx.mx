@@ -71,7 +71,7 @@ export const PicoLiveLog: React.FC<PicoLiveLogProps> = ({ logs, onClearLogs }) =
                     : 'text-neutral-500 hover:text-neutral-300'
                 }`}
               >
-                {type === 'ALL' ? 'All Scans' : type.replace('_', ' ')}
+                {type === 'ALL' ? tr("All Scans") : type.replace('_', ' ')}
               </button>
             ))}
           </div>
@@ -124,7 +124,7 @@ export const PicoLiveLog: React.FC<PicoLiveLogProps> = ({ logs, onClearLogs }) =
                     <span className="text-neutral-600">{tr("Action:")}</span>
                     <span className="text-emerald-400 flex items-center gap-1 font-semibold">
                       <CheckCircle2 size={12} />
-                      {log.actionTaken || 'LOGGED_TO_AUDIT'}
+                      {log.actionTaken || tr("LOGGED_TO_AUDIT")}
                     </span>
                   </div>
                 </div>

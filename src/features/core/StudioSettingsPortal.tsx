@@ -158,7 +158,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                             <div className="flex flex-col">
                                                 <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] mb-1 ${L ? 'text-black' : 'text-white'}`}>{tr("Operator")}</span>
                                                 <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4">
-                                                    <span className={`text-xl md:text-2xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || 'ROOT'}</span>
+                                                    <span className={`text-xl md:text-2xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || tr("ROOT")}</span>
                                                     <span className="text-[10px] md:text-[11px] font-black text-blue-500 lowercase tracking-[0.2em] opacity-60">{user?.email?.toLowerCase()}</span>
                                                 </div>
                                             </div>
@@ -197,7 +197,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     <Zap size={18} className={performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')} />
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')}`}>
-                                                    {performanceMode ? 'MAX' : 'STD'}
+                                                    {performanceMode ? tr("MAX") : tr("STD")}
                                                 </span>
                                             </div>
 
@@ -212,7 +212,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     {isOffline ? <Wifi size={18} className="text-green-500" /> : <WifiOff size={18} className="text-amber-500" />}
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${isOffline ? 'text-green-500' : 'text-amber-500'}`}>
-                                                    {isOffline ? 'OFFLINE' : 'ONLINE'}
+                                                    {isOffline ? tr("OFFLINE") : 'ONLINE'}
                                                 </span>
                                             </div>
 
@@ -293,18 +293,18 @@ export const StudioSettingsPortal: React.FC = () => {
                                             </div>
                                             <div className="flex flex-wrap gap-4 md:gap-5">
                                                 {[
-                                                    { label: 'Surface',  key: '--app-bg-solid' },
-                                                    { label: 'Neural',   key: '--main-color' },
-                                                    { label: 'Static',   key: '--secondary-color' },
-                                                    { label: 'Text P',   key: '--text-color-primary' },
-                                                    { label: 'Text S',   key: '--text-color-secondary' },
-                                                    { label: 'Boundary', key: '--border-color' },
-                                                    { label: 'Input',    key: '--input-color' },
-                                                    { label: 'Sidebar',  key: '--sidebar-bg' },
-                                                    { label: 'Portal',   key: '--app-bg' },
-                                                    { label: 'Glass',    key: '--glass-bg' },
-                                                    { label: 'Base',     key: '--bg-color' },
-                                                    { label: 'Accent',   key: '--accent-color' },
+                                                    { label: tr("Surface"),  key: '--app-bg-solid' },
+                                                    { label: tr("Neural"),   key: '--main-color' },
+                                                    { label: tr("Static"),   key: '--secondary-color' },
+                                                    { label: tr("Text P"),   key: '--text-color-primary' },
+                                                    { label: tr("Text S"),   key: '--text-color-secondary' },
+                                                    { label: tr("Boundary"), key: '--border-color' },
+                                                    { label: tr("Input"),    key: '--input-color' },
+                                                    { label: tr("Sidebar"),  key: '--sidebar-bg' },
+                                                    { label: tr("Portal"),   key: '--app-bg' },
+                                                    { label: tr("Glass"),    key: '--glass-bg' },
+                                                    { label: tr("Base"),     key: '--bg-color' },
+                                                    { label: tr("Accent"),   key: '--accent-color' },
                                                 ].map((token) => (
                                                     <div key={`${token.key}-${theme}`} className="flex flex-col items-center gap-1.5 w-12">
                                                         <div

@@ -43,7 +43,7 @@ const ColorSwatch: React.FC<{ hex: string; name: string }> = ({ hex, name }) => 
                 <p className="text-[8px] text-white/30 truncate">{name}</p>
             </div>
             <span className="ml-auto text-[8px] font-black text-white/20 group-hover:text-(--main-color) transition-colors shrink-0">
-                {copied ? '✓' : 'COPY'}
+                {copied ? '✓' : tr("COPY")}
             </span>
         </div>
     );
@@ -255,7 +255,7 @@ export function UploadAIPanel() {
                 <label className="flex items-center gap-3 border border-dashed border-white/12 rounded-xl px-4 py-3 cursor-pointer hover:border-white/25 hover:bg-white/2 transition-all">
                     <svg className="w-5 h-5 text-white/20 shrink-0"><use href="#camera" /></svg>
                     <span className="text-xs text-white/30">
-                        {imageSrc ? '✓ Image loaded — click to change' : 'Upload image for AI processing'}
+                        {imageSrc ? tr("✓ Image loaded — click to change") : tr("Upload image for AI processing")}
                     </span>
                     <input ref={fileRef} type="file" className="sr-only" accept="image/*" onChange={handleFile} />
                 </label>

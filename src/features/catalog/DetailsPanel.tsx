@@ -669,7 +669,7 @@ export function DetailsPanel() {
           <div className={`p-4 border-(--border-color) shrink-0 flex gap-2 ${isFullscreen ? 'border-t-0 pb-8' : 'border-t'}`}>
             <button className={`button ${user?.role === 'Developer' ? 'bg-red-600!' : 'bg-orange-500!'} grow`} onClick={handleDelete} disabled={isSaving}>
               <svg className="w-4 h-4 inline-block mr-2"><use href="#trash" /></svg>
-              {user?.role === 'Developer' ? 'DELETE' : 'Mark Del'}
+              {user?.role === 'Developer' ? 'DELETE' : tr("Mark Del")}
             </button>
           </div>
         )}

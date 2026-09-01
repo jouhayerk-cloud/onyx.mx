@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 interface DBItem {
     id: string;
@@ -208,7 +209,7 @@ export function DataBaseArtifact() {
                                     style={{ borderColor: isActive ? (vData?.color || 'white') : (vData?.color ? `${vData.color}33` : 'rgba(255,255,255,0.05)') }}
                                 >
                                     {v !== 'All' && <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vData?.color }} />}
-                                    {v === 'All' ? 'ALL ORIGINS' : vData?.name || v}
+                                    {v === 'All' ? tr("ALL ORIGINS") : vData?.name || v}
                                 </button>
                             );
                         })}
@@ -284,7 +285,7 @@ export function DataBaseArtifact() {
                                                 item.status === 'Requested' ? 'bg-yellow-500/5 text-yellow-500/50 border-yellow-500/10' :
                                                 'bg-green-500/5 text-green-500/50 border-green-500/10'
                                             }`}>
-                                                {item.status}
+                                                {el(item.status)}
                                             </span>
                                         )}
                                     </td>
@@ -299,7 +300,7 @@ export function DataBaseArtifact() {
                                                 className="bg-transparent border-b border-white/10 py-1 text-[10px] w-full text-white/60 focus:outline-none focus:border-(--main-color)/40"
                                             />
                                         ) : (
-                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-tighter group-hover:text-white/60 transition-all">{item.shape || 'UNK'}</span>
+                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-tighter group-hover:text-white/60 transition-all">{item.shape || tr("UNK")}</span>
                                         )}
                                     </td>
 
@@ -417,7 +418,7 @@ export function DataBaseArtifact() {
                                             />
                                         ) : (
                                             <span className={`text-[10px] font-mono leading-none ${item.pay_req ? 'text-yellow-500/40' : 'text-white/5'}`}>
-                                                {item.pay_req || 'NULL_SIGNAL'}
+                                                {item.pay_req || tr("NULL_SIGNAL")}
                                             </span>
                                         )}
                                     </td>
@@ -446,7 +447,7 @@ export function DataBaseArtifact() {
                                                 className="bg-transparent border-b border-white/10 py-1 text-[10px] w-full text-white/60 focus:outline-none focus:border-(--main-color)/40"
                                             />
                                         ) : (
-                                            <span className="text-[10px] text-neutral-500 font-bold uppercase truncate block max-w-xs group-hover:text-neutral-300 transition-all">{item.description || item.short_description || 'NO_METADATA_EXTRACTED'}</span>
+                                            <span className="text-[10px] text-neutral-500 font-bold uppercase truncate block max-w-xs group-hover:text-neutral-300 transition-all">{item.description || item.short_description || tr("NO_METADATA_EXTRACTED")}</span>
                                         )}
                                     </td>
 

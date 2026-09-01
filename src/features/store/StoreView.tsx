@@ -347,7 +347,7 @@ export function StoreView() {
                                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} {tr("SELECTED")}</span>
                                 <div className="flex items-center gap-3 border-l border-white/5 pl-4 ml-2">
                                     <button onClick={handleSelectAll} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-(--main-color) transition-colors">
-                                        {filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id)) ? 'DESELECT ALL' : 'SELECT ALL'}
+                                        {filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id)) ? tr("DESELECT ALL") : tr("SELECT ALL")}
                                     </button>
                                     <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-red-400 transition-colors">{tr("CLEAR")}</button>
                                 </div>
@@ -621,7 +621,7 @@ export function StoreView() {
                             <div className="pt-16 flex gap-6 pb-4">
                                 <button type="button" onClick={() => setEditData(null)} className="h-20 px-10 rounded-3xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.4em] uppercase text-white/30 hover:text-white hover:bg-white/10 transition-all">{tr("ABORT SYNC")}</button>
                                 <button type="submit" disabled={isSaving} className="flex-1 h-20 rounded-3xl bg-(--main-color) text-black text-[13px] font-black tracking-[0.5em] uppercase shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
-                                    {isSaving ? 'SYNCING ARTIFACT...' : 'COMMIT CHANGES →'}
+                                    {isSaving ? tr("SYNCING ARTIFACT...") : tr("COMMIT CHANGES →")}
                                 </button>
                             </div>
                         </form>
@@ -658,7 +658,7 @@ export function StoreView() {
                         </div>
 
                         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
-                            {savingProgress < 80 ? 'Uploading Media...' : savingProgress < 100 ? 'Updating Registry...' : 'Artifact Synced'}
+                            {savingProgress < 80 ? tr("Uploading Media...") : savingProgress < 100 ? tr("Updating Registry...") : tr("Artifact Synced")}
                         </p>
                     </div>
                 </div>
@@ -892,7 +892,7 @@ const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay, isSelected, is
                         onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all border ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_10px_var(--main-color)]' : 'bg-transparent border-white/20 text-white/50'}`}
                     >
-                        {inBag ? 'IN BAG' : 'ADD TO BAG'}
+                        {inBag ? tr("IN BAG") : tr("ADD TO BAG")}
                     </button>
                 </div>
             </div>
@@ -1408,7 +1408,7 @@ const GalleryFullItem = ({ item, onClick, inBag, onToggleBag, isSelectionMode, i
                             onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
                             className={`flex items-center gap-3 px-8 py-4 rounded-[24px] border border-white/10 backdrop-blur-md hover:scale-105 transition-all w-[240px] justify-between text-white ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_20px_var(--main-color)]' : 'bg-black/40 hover:bg-white/10'}`}
                         >
-                            <span className="text-sm font-black uppercase tracking-[0.4em]">{inBag ? 'IN BAG' : 'ADD TO BAG'}</span>
+                            <span className="text-sm font-black uppercase tracking-[0.4em]">{inBag ? tr("IN BAG") : tr("ADD TO BAG")}</span>
                             {inBag ? <Check size={20} strokeWidth={2.5} /> : <ShoppingBag size={20} strokeWidth={2} />}
                         </button>
                     </div>

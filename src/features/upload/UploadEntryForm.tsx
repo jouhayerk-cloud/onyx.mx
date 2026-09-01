@@ -53,6 +53,7 @@ const SuggestChips: React.FC<{
 
 import { CloudUpload, Check } from 'lucide-react';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 export function UploadEntryForm() {
     const [itemData, setItemData] = useAtom(uploadItemDataAtom);
@@ -367,7 +368,7 @@ export function UploadEntryForm() {
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${itemData.status === status ? 'bg-(--main-color) text-black shadow-lg scale-105' : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'}`}
                             >
                                 <div className={`w-1.5 h-1.5 rounded-full ${itemData.status === status ? 'bg-black' : 'bg-white/20'}`} />
-                                {status}
+                                {el(status)}
                             </button>
                         ))}
                     </div>
@@ -500,10 +501,10 @@ export function UploadEntryForm() {
                         <label className={lbl}>{tr("Metrics (Kg / W / H / L)")}</label>
                         <div className="grid grid-cols-4 gap-2">
                             {[
-                                { name: 'weightKg', placeholder: 'kg', suggestions: suggestions.weightKg },
-                                { name: 'widthCm', placeholder: 'W', suggestions: suggestions.widthCm },
-                                { name: 'heightCm', placeholder: 'H', suggestions: suggestions.heightCm },
-                                { name: 'lengthCm', placeholder: 'L', suggestions: suggestions.lengthCm },
+                                { name: tr("weightKg"), placeholder: 'kg', suggestions: suggestions.weightKg },
+                                { name: tr("widthCm"), placeholder: 'W', suggestions: suggestions.widthCm },
+                                { name: tr("heightCm"), placeholder: 'H', suggestions: suggestions.heightCm },
+                                { name: tr("lengthCm"), placeholder: 'L', suggestions: suggestions.lengthCm },
                             ].map(f => (
                                 <div key={f.name}>
                                     <input type="number" step="0.01" min="0" name={f.name}
@@ -555,7 +556,7 @@ export function UploadEntryForm() {
             {/* ── Submit ── */}
             <button type="submit" disabled={isSubmitting}
                 className="button w-full bg-(--main-color) border-(--main-color) text-black hover:opacity-90 disabled:opacity-50">
-                {isSubmitting ? <><LoadingIndicator /> {tr("WAIT")}</> : '✓ SAVE'}
+                {isSubmitting ? <><LoadingIndicator /> {tr("WAIT")}</> : tr("✓ SAVE")}
             </button>
             {/* ── Progress Overlay ── */}
             {isSaving && (
@@ -586,7 +587,7 @@ export function UploadEntryForm() {
                         </div>
 
                         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
-                            {savingProgress < 10 ? 'Initializing...' : savingProgress < 75 ? 'Uploading Media...' : savingProgress < 95 ? 'Updating Registry...' : 'Artifact Synced'}
+                            {savingProgress < 10 ? tr("Initializing...") : savingProgress < 75 ? tr("Uploading Media...") : savingProgress < 95 ? tr("Updating Registry...") : tr("Artifact Synced")}
                         </p>
                     </div>
                 </div>

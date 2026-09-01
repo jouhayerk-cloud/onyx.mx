@@ -236,14 +236,14 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                     <div className="projects-section">
                         <div className="projects-section-header">
                             <p className="text-sm font-semibold">
-                                {activeVendor ? `${activeVendor} Acquisitions` : 'All Acquisitions'}
+                                {activeVendor ? `${activeVendor} Acquisitions` : tr("All Acquisitions")}
                                 <span className="ml-2 text-xs font-normal text-(--secondary-text-color)">({filteredAcquisitions.length} {tr("items)")}</span>
                             </p>
                             {selectedRows.length > 0 && (
                                 <div className="flex items-center gap-4">
                                     <span className="text-sm font-bold">{selectedRows.length} selected</span>
                                     <button onClick={handleCommitSelected} className="button secondary min-h-0! text-xs py-1 px-3" disabled={isSaving}>
-                                        {isSaving ? 'Committing...' : 'Commit Selected'}
+                                        {isSaving ? tr("Committing...") : tr("Commit Selected")}
                                     </button>
                                 </div>
                             )}

@@ -445,11 +445,11 @@ const AddPaymentModal: React.FC<{
 
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-12">
                                     {[
-                                        { id: 'Sppl', t: 'SUPPLIES', s: 'Tools & Assets', i: TrendingUp, c: 'text-cyan-500' },
-                                        { id: 'Labr', t: 'LABOR', s: 'Workforce Cycles', i: Users, c: 'text-purple-500' },
-                                        { id: 'Packing', t: 'PACKAGING', s: 'Transit Materials', i: Box, c: 'text-green-500' },
-                                        { id: 'Oprt', t: 'OPERATIONS', s: 'Service General', i: Activity, c: 'text-blue-500' },
-                                        { id: 'Monthly', t: 'MONTHLY', s: 'Fixed Recurring', i: Calendar, c: 'text-pink-500' }
+                                        { id: 'Sppl', t: 'SUPPLIES', s: tr("Tools & Assets"), i: TrendingUp, c: 'text-cyan-500' },
+                                        { id: 'Labr', t: tr("LABOR"), s: tr("Workforce Cycles"), i: Users, c: 'text-purple-500' },
+                                        { id: 'Packing', t: tr("PACKAGING"), s: tr("Transit Materials"), i: Box, c: 'text-green-500' },
+                                        { id: 'Oprt', t: tr("OPERATIONS"), s: tr("Service General"), i: Activity, c: 'text-blue-500' },
+                                        { id: 'Monthly', t: 'MONTHLY', s: tr("Fixed Recurring"), i: Calendar, c: 'text-pink-500' }
                                     ].map(cat => (
                                         <button key={cat.id}
                                             onClick={() => { set('subcategory', cat.id); setStep(4); }}
@@ -653,7 +653,7 @@ const AddPaymentModal: React.FC<{
                                     <button onClick={() => setStep(5)} className="flex-1 h-20 border border-white/10 text-white/40 rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:bg-white/5 hover:text-white transition-all uppercase">{tr("BACK")}</button>
                                     <button onClick={handleSubmit} disabled={saving}
                                         className="flex-[2] h-20 bg-(--main-color) text-black rounded-[32px] text-[11px] font-black tracking-[0.8em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 disabled:opacity-20 uppercase">
-                                        {saving ? 'RECORDING ARTIFACT…' : 'CONFIRM DISBURSEMENT PAYMENTS'}
+                                        {saving ? tr("RECORDING ARTIFACT…") : tr("CONFIRM DISBURSEMENT PAYMENTS")}
                                     </button>
                                 </div>
                             </div>
@@ -708,7 +708,7 @@ const RequestPaymentModal: React.FC<{
                 <div className="px-12 pt-12 pb-6 flex justify-between items-start shrink-0">
                     <div className="flex flex-col gap-2">
                         <h3 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">
-                            {paidPerc > 0 && percentage === 100 ? 'LIQUIDATION' : 'REQUEST'}
+                            {paidPerc > 0 && percentage === 100 ? tr("LIQUIDATION") : tr("REQUEST")}
                         </h3>
                         <p className="text-[10px] text-white/20 uppercase tracking-[0.5em] font-black">
                             {group.type} {tr("PAYMENTS ·")} {group.vendorId}
@@ -814,7 +814,7 @@ const RequestPaymentModal: React.FC<{
                             <button onClick={onClose} className="flex-1 py-7 border-2 border-white/10 text-white font-black rounded-[32px] text-[10px] tracking-[0.4em] hover:bg-white/10 transition-all uppercase">{tr("TERMINATE")}</button>
                             <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva, includeComm)} disabled={!dest || amountToRequest <= 0}
                                 className="flex-[2] py-7 bg-(--main-color) text-black rounded-[32px] text-[10px] font-black tracking-[0.4em] disabled:opacity-20 uppercase transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)] hover:scale-[1.02] active:scale-95">
-                                {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM REQUEST'}
+                                {paidPerc > 0 && percentage === 100 ? tr("CONFIRM LIQUIDATION") : tr("CONFIRM REQUEST")}
                             </button>
                         </div>
                     </div>
@@ -953,7 +953,7 @@ const EditPaymentModal: React.FC<{
                         </div>
                         <div>
                             <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] mb-1">{tr("Editing Payment Record")}</p>
-                            <p className="text-xl font-black text-white/90 truncate max-w-[350px] tracking-tight">{record.description || 'Unnamed Transaction'}</p>
+                            <p className="text-xl font-black text-white/90 truncate max-w-[350px] tracking-tight">{record.description || tr("Unnamed Transaction")}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="w-14 h-14 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all duration-500">
@@ -1118,7 +1118,7 @@ const EditPaymentModal: React.FC<{
                                 <button onClick={() => setStep(5)} className="flex-1 py-8 border border-white/10 text-white/40 rounded-[32px] text-xl font-black tracking-[0.4em] hover:bg-white/5 hover:text-white transition-all uppercase">{tr("BACK")}</button>
                                 <button onClick={handleUpdate} disabled={saving}
                                     className="flex-[2] py-8 bg-(--main-color) text-black rounded-[32px] text-xl font-black tracking-[0.4em] hover:scale-[1.02] active:scale-95 transition-all shadow-2xl disabled:opacity-20 uppercase">
-                                    {saving ? 'UPDATING…' : 'CONFIRM'}
+                                    {saving ? tr("UPDATING…") : tr("CONFIRM")}
                                 </button>
                             </div>
                         </div>
@@ -1621,12 +1621,12 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             
                             const labels: Record<string, { label: string; icon: any; color: string }> = {
                                 'All': { label: 'All', icon: LayoutGrid, color: '#888' },
-                                'Acq': { label: 'Acquis', icon: DollarSign, color: '#10b981' },
-                                'Prod': { label: 'Produc', icon: Cpu, color: '#6366f1' },
+                                'Acq': { label: tr("Acquis"), icon: DollarSign, color: '#10b981' },
+                                'Prod': { label: tr("Produc"), icon: Cpu, color: '#6366f1' },
                                 'Monthly': { label: 'Monthly', icon: Calendar, color: '#38bdf8' },
-                                'Oprt': { label: 'Operat', icon: Activity, color: '#818cf8' },
+                                'Oprt': { label: tr("Operat"), icon: Activity, color: '#818cf8' },
                                 'Packing': { label: 'Packing', icon: Archive, color: '#fb7185' },
-                                'Sppl': { label: 'Supply', icon: Box, color: '#34d399' },
+                                'Sppl': { label: tr("Supply"), icon: Box, color: '#34d399' },
                                 'Labr': { label: 'Labor', icon: Users, color: '#fbbf24' }
                             };
                             const cat = labels[normalizeSubcat(r.subcategory || r.category)] || labels['All'];
@@ -1648,7 +1648,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         <div className="shrink-0 flex items-center gap-2 sm:gap-3 border-r border-(--text-color)/5 pr-2 sm:pr-4 min-w-[80px] sm:min-w-[120px]">
                                             <cat.icon size={14} style={{ color: cat.color }} className="shrink-0 opacity-80" />
                                             <div className="flex flex-col items-start justify-center gap-1">
-                                                <span className="text-[10px] sm:text-[11px] font-black tracking-tighter text-(--text-color) opacity-80 leading-none">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                                                <span className="text-[10px] sm:text-[11px] font-black tracking-tighter text-(--text-color) opacity-80 leading-none">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric' }) : 'N/A'}</span>
                                                 {/* Payment Status Indicator Pill */}
                                                 {(() => {
                                                     const isPartial = String(r.description || '').includes('%');
@@ -1693,7 +1693,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                              )}
 
                                             <div className="min-w-0 flex-1 flex items-center gap-2">
-                                                <h4 className="text-[12px] sm:text-[14px] font-black text-white uppercase tracking-wider truncate leading-none">{r.description || r.notes || 'Unnamed Transaction'}</h4>
+                                                <h4 className="text-[12px] sm:text-[14px] font-black text-white uppercase tracking-wider truncate leading-none">{r.description || r.notes || tr("Unnamed Transaction")}</h4>
                                                 {r.recurring && <Clock size={10} className="text-orange-500 opacity-50 shrink-0" />}
                                             </div>
                                         </div>
@@ -1760,7 +1760,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 {/* Detail Block 1: Notes/Description */}
                                                 <div className="shrink-0 min-w-[180px] sm:min-w-[240px]">
                                                     <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">{tr("Transactional Context")}</span>
-                                                    <p className="text-[10px] sm:text-[12px] font-medium text-(--text-color)/60 leading-tight italic truncate max-w-[300px]">"{r.notes || r.description || 'No additional notes.'}"</p>
+                                                    <p className="text-[10px] sm:text-[12px] font-medium text-(--text-color)/60 leading-tight italic truncate max-w-[300px]">"{r.notes || r.description || tr("No additional notes.")}"</p>
                                                 </div>
 
                                                 <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
@@ -1830,15 +1830,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                     const norm = invItem ? normalizeInventoryData(invItem.data) : null;
                                                                     const codes = norm ? calculateCodesAndPrices(norm, liveExchangeRate || exchangeRate, '326') : null;
                                                                     
-                                                                    const subcat = invItem?.data.category || logCrate?.type || 'Asset';
+                                                                    const subcat = invItem?.data.category || logCrate?.type || tr("Asset");
                                                                     const img = invItem?.imageUrl || (invItem?.data.mediaUrls ? invItem.data.mediaUrls.split(',')[0] : null);
                                                                     const priceNum = parseFloat(String(invItem?.data.price_mxn || invItem?.data.price || logCrate?.cost_mxn || '0'));
-                                                                    const vId = invItem?.data.vendor_id || invItem?.data.vendorId || logCrate?.vendor_id || r.vendor_id || 'UNKNOWN';
+                                                                    const vId = invItem?.data.vendor_id || invItem?.data.vendorId || logCrate?.vendor_id || r.vendor_id || tr("UNKNOWN");
                                                                     const vColor = vendors[vId as keyof typeof vendors]?.color || '#888';
                                                                     
                                                                     const baseTag = codes?.bookBarcode || id;
                                                                     const tagId = groupCount > 1 ? `${baseTag.slice(0, 10)}... +${groupCount - 1}` : baseTag;
-                                                                    const shape = norm?.shape || (logCrate?.type === 'pallet' ? 'Pallet' : 'Crate');
+                                                                    const shape = norm?.shape || (logCrate?.type === 'pallet' ? tr("Pallet") : 'Crate');
                                                                     const material = norm?.material || '';
                                                                     const color = norm?.color || '';
                                                                     
@@ -1891,7 +1891,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                                     <span className="text-[12px] font-black text-(--main-color) ml-2">x{totalQty} {logCrate ? 'units' : ''}</span>
                                                                                 </div>
                                                                                 <span className="text-[9px] font-bold text-(--text-color)/20 uppercase tracking-[0.2em] leading-none truncate">
-                                                                                    {invItem ? [color, material].filter(Boolean).join(' • ') : (logCrate?.description || 'LOGISTICS UNIT')}
+                                                                                    {invItem ? [color, material].filter(Boolean).join(' • ') : (logCrate?.description || tr("LOGISTICS UNIT"))}
                                                                                 </span>
                                                                             </div>
 

@@ -465,7 +465,7 @@ const ScannerCenter: React.FC<{
                     {mode === 'qr' ? <div id={qrRegionId} className="w-full h-full" /> : (
                         <div className="flex flex-col items-center gap-6 p-10 text-center">
                             <div className={`w-24 h-24 rounded-full flex items-center justify-center border transition-all duration-500 ${nfcError ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-[#b8860b]/10 border-[#b8860b]/20 text-[#b8860b] animate-pulse'}`}><Smartphone size={40} /></div>
-                            <div><p className="text-sm font-black text-white uppercase tracking-widest mb-2">{nfcError || "Scanning for Tags..."}</p><p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">{tr("Hold device near NFC tag")}</p></div>
+                            <div><p className="text-sm font-black text-white uppercase tracking-widest mb-2">{nfcError || tr("Scanning for Tags...")}</p><p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">{tr("Hold device near NFC tag")}</p></div>
                         </div>
                     )}
                     {lastScan && (

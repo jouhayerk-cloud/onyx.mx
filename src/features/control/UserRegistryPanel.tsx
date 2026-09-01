@@ -246,7 +246,7 @@ export function UserRegistryPanel() {
                             type="submit" disabled={submitting} 
                             className="bg-(--main-color) text-black px-10 py-2.5 rounded-full text-[10px] font-black tracking-[0.3em] hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.2)] uppercase"
                         >
-                            {submitting ? 'Encrypting…' : 'Finalize Registry'}
+                            {submitting ? tr("Encrypting…") : tr("Finalize Registry")}
                         </button>
                     </div>
                 </form>
@@ -333,7 +333,7 @@ export function UserRegistryPanel() {
                                                 </div>
                                             ) : (
                                                 <h4 className="text-[12px] font-black text-white truncate tracking-tight uppercase leading-none mb-1.5">
-                                                    {user.display_name || 'UNIDENTIFIED UNIT'}
+                                                    {user.display_name || tr("UNIDENTIFIED UNIT")}
                                                 </h4>
                                             )}
                                             <p className="text-[9px] font-mono text-neutral-500 truncate tracking-widest uppercase">{user.email}</p>
@@ -359,7 +359,7 @@ export function UserRegistryPanel() {
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">{tr("Last Sync")}</span>
                                                 <span className="text-[9px] font-black text-neutral-500 uppercase tracking-tighter">
-                                                    {user.last_submit_at ? new Date(user.last_submit_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'NONE'}
+                                                    {user.last_submit_at ? new Date(user.last_submit_at).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric', year: '2-digit' }) : tr("NONE")}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col gap-1 items-end text-right">

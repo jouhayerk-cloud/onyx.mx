@@ -3,6 +3,7 @@ import { PicoDevice, PicoSession } from '../../../lib/picoAtoms';
 import { useDeviceControl, OnyxChanFace } from '../useDeviceControl';
 import { Cpu, Wifi, BatteryCharging, Radio, Shield, Zap, Terminal, Activity, CheckCircle2, AlertCircle, Unplug, Bot, Box, Smartphone, Monitor, User, Smile, MessageSquare, Send, Sparkles } from 'lucide-react';
 import { tr } from '../../../lib/i18n';
+import { el } from '../../../lib/i18nEnums';
 
 interface PicoRoleHardwareCardProps {
   device: PicoDevice;
@@ -82,11 +83,11 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-base font-bold text-white tracking-wide">{device.device_name}</h3>
               <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getRoleBadgeStyle(device.assigned_role)}`}>
-                {device.assigned_role}
+                {el(device.assigned_role)}
               </span>
             </div>
             <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-2">
-              <span>{tr("MAC:")} {device.device_mac || '24:D7:EB:00:00:01'}</span>
+              <span>{tr("MAC:")} {device.device_mac || tr("24:D7:EB:00:00:01")}</span>
               <span>•</span>
               <span className="text-neutral-500">{device.hardware_model}</span>
             </div>
@@ -173,7 +174,7 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
                 : 'text-purple-300 bg-purple-500/20 border-purple-500/30'
             }`}>
               <span className={`w-1.5 h-1.5 rounded-full ${isDirectConnected ? 'bg-cyan-400 animate-pulse' : 'bg-amber-400'}`} />
-              {isDirectConnected ? `WS: ${device.local_ip || 'LAN'}` : 'Supabase Only'}
+              {isDirectConnected ? `WS: ${device.local_ip || tr("LAN")}` : tr("Supabase Only")}
             </span>
           </div>
           

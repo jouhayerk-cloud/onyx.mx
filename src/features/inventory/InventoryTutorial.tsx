@@ -122,7 +122,7 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
                                     }}
                                     className="flex items-center gap-3 px-8 py-4 bg-(--main-color)/20 hover:bg-(--main-color) text-(--main-color) hover:text-white rounded-xl transition-all duration-300 font-bold tracking-widest uppercase text-xs shadow-lg border border-(--main-color)/30 hover:border-transparent"
                                 >
-                                    {step < steps.length - 1 ? 'Next Step' : 'Get Started'}
+                                    {step < steps.length - 1 ? tr("Next Step") : tr("Get Started")}
                                     {step < steps.length - 1 && <ChevronRight size={16} />}
                                 </button>
                             </div>

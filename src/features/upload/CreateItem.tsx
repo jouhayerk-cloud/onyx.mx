@@ -297,7 +297,7 @@ export function CreateItem() {
             <div className="flex flex-col gap-4">
                 {!selectedVendorKey ? (
                     <div className="flex gap-1 overflow-x-auto no-scrollbar animate-in fade-in zoom-in-95 duration-300 pb-1">
-                        {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C', 'ON', 'SIMONA', 'JUAN'].includes(k)).sort().map(id => {
+                        {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C', tr("ON"), 'SIMONA', 'JUAN'].includes(k)).sort().map(id => {
                             const v = vendors[id as keyof typeof vendors];
                             return (
                                 <button
@@ -322,7 +322,7 @@ export function CreateItem() {
                                 <span>{tagPreview?.vendor} {tagPreview?.season}</span>
                             </button>
                             <div className="flex items-center gap-2 px-2">
-                                <span className="text-2xl font-black text-black">{mode === 'single' ? tagPreview?.count : 'BATCH'}</span>
+                                <span className="text-2xl font-black text-black">{mode === 'single' ? tagPreview?.count : tr("BATCH")}</span>
                                 <span className="text-2xl font-black text-black">{mode === 'single' ? tagPreview?.cypher : ''}</span>
                             </div>
                         </div>

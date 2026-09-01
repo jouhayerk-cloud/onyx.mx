@@ -101,7 +101,7 @@ export function Login() {
             disabled={loading}
             className="button w-full !py-4 font-bold uppercase tracking-widest mt-4"
           >
-            {loading ? 'Authenticating...' : 'Enter System'}
+            {loading ? tr("Authenticating...") : tr("Enter System")}
           </button>
         </form>
 

@@ -20,6 +20,7 @@ type VendorGroup = {
 
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
 
@@ -182,7 +183,7 @@ const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ i
                     </div>
                     <div className="modal-footer">
                         <button type="button" onClick={onClose} className="button secondary" disabled={isSaving}>{tr("Cancel")}</button>
-                        <button type="submit" className="button" disabled={isSaving || !destination}>{isSaving ? 'Saving...' : 'Add Expense'}</button>
+                        <button type="submit" className="button" disabled={isSaving || !destination}>{isSaving ? tr("Saving...") : tr("Add Expense")}</button>
                     </div>
                 </form>
             </div>
@@ -475,7 +476,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                             </div>
                             <h2 className="text-2xl font-black text-center text-(--text-color)">{selectedExpense.description}</h2>
                             <div className="mt-4 px-4 py-1.5 rounded-full border border-(--text-color)/20 text-xs font-bold uppercase tracking-widest text-(--text-color)">
-                                {selectedExpense.status}
+                                {el(selectedExpense.status)}
                             </div>
                         </div>
 
@@ -518,7 +519,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">{tr("Category")}</span>
-                                        <span className="text-[14px] font-bold text-(--text-color)">{selectedExpense.category}</span>
+                                        <span className="text-[14px] font-bold text-(--text-color)">{el(selectedExpense.category)}</span>
                                     </div>
                                 </div>
                             </div>

@@ -246,7 +246,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                 <div className="flex items-center gap-6">
                     <Package size={24} className="text-white/20" />
                     <div className="flex flex-col">
-                        <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">{propTitle || "Manifest"}</h2>
+                        <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">{propTitle || tr("Manifest")}</h2>
                         <span className="text-[8px] font-black uppercase tracking-[0.6em] text-white/10">{allResolvedItems.length} {tr("Linked Assets")}</span>
                     </div>
                 </div>
@@ -282,8 +282,8 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                             id: data.id,
                             price: data.cost_mxn,
                             quantity: data.quantity || 1,
-                            shape: String(data.type || 'Unit').toUpperCase(),
-                            shortDescription: data.description || 'Logistic Unit',
+                            shape: String(data.type || tr("Unit")).toUpperCase(),
+                            shortDescription: data.description || tr("Logistic Unit"),
                             color: data.vendors || 'N/A',
                             material: data.status || 'N/A',
                             vendor: data.vendors,
@@ -333,7 +333,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                             <span className="text-xs font-black text-white">x{norm.quantity || 1}</span>
                                         </div>
                                         <div className="flex flex-col border-l border-white/5 pl-6">
-                                            <span className="text-[6px] font-black text-white/40 uppercase">{isLog ? 'Unit ID' : 'Tag'}</span>
+                                            <span className="text-[6px] font-black text-white/40 uppercase">{isLog ? tr("Unit ID") : tr("Tag")}</span>
                                             <span className="text-xs font-black text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]">{calculated.bookBarcode}</span>
                                         </div>
                                         {norm.vendor && (

@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase';
 import { EChart } from '../../components/EChart';
 import type { EChartsOption } from 'echarts';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 interface ClientVendorSummary {
     vendorId: string;
@@ -583,11 +584,11 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                         if (docIds.length) setArtifactConfig({ isOpen: true, itemIds: docIds, title: `${req.cfg.name} items` });
                                                     }}>
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{vendorId || 'Mixed'}</div>
+                                                            <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{vendorId || tr("Mixed")}</div>
                                                             <p className="text-[11px] font-black text-(--text-color)/80 uppercase truncate tracking-widest">{req.cfg.name}</p>
                                                         </div>
                                                         <div className="flex items-center gap-3">
-                                                            <p className="text-[9px] font-mono text-(--text-color)/30 truncate max-w-[300px]">{req.docs[0]?.description || 'Multiple units'}</p>
+                                                            <p className="text-[9px] font-mono text-(--text-color)/30 truncate max-w-[300px]">{req.docs[0]?.description || tr("Multiple units")}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-1 shrink-0 px-2 min-w-[100px]">
@@ -639,14 +640,14 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                                         <div className="flex flex-col min-w-0">
                                                                             <div className="flex items-center gap-2 mb-1">
                                                                                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vColor }}>
-                                                                                    {rowVendorId || 'UNK'}
+                                                                                    {rowVendorId || tr("UNK")}
                                                                                 </span>
                                                                                 <span className="text-[9px] font-black text-(--text-color)/30 uppercase tracking-widest">
-                                                                                    {(!isMerch && isVendorPayment) ? null : (d.category || 'General')}
-                                                                                    {d.subcategory && <>{(!isMerch && isVendorPayment) ? '' : ' • '}{d.subcategory}</>}
+                                                                                    {(!isMerch && isVendorPayment) ? null : (d.category || tr("General"))}
+                                                                                    {d.subcategory && <>{(!isMerch && isVendorPayment) ? '' : ' • '}{el(d.subcategory)}</>}
                                                                                 </span>
                                                                             </div>
-                                                                            <span className="text-[11px] font-medium text-(--text-color)/70 truncate max-w-[400px] mb-2">{d.description || 'Payment'}</span>
+                                                                            <span className="text-[11px] font-medium text-(--text-color)/70 truncate max-w-[400px] mb-2">{d.description || tr("Payment")}</span>
                                                                             
                                                                             {ids.length > 0 && (
                                                                                 <button 
@@ -733,7 +734,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                                                         <span className="text-[10px] font-black uppercase tracking-widest leading-none" style={{ color: contrastColor }}>
                                                             {(vendors as any)[group.vendorId]?.name || group.vendorId}
                                                         </span>
-                                                        <span className="text-[8px] font-black opacity-40 uppercase" style={{ color: contrastColor }}>{group.partials.length ? `Part.` : 'Full'}</span>
+                                                        <span className="text-[8px] font-black opacity-40 uppercase" style={{ color: contrastColor }}>{group.partials.length ? tr("Part.") : tr("Full")}</span>
                                                     </div>
                                                     
                                                     <div className="space-y-1">

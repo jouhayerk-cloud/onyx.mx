@@ -76,10 +76,10 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                 <div className="p-10 pb-6 flex justify-between items-start shrink-0">
                     <div className="flex flex-col gap-2">
                         <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                            {step === 'config' ? 'Export Configuration' : step === 'progress' ? 'Generating PDF' : 'Export Complete'}
+                            {step === 'config' ? tr("Export Configuration") : step === 'progress' ? tr("Generating PDF") : tr("Export Complete")}
                         </h2>
                         <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">
-                            {step === 'config' ? `Preparing ${moduleName} Manifest` : step === 'progress' ? status : 'Process finished successfully'}
+                            {step === 'config' ? `Preparing ${moduleName} Manifest` : step === 'progress' ? status : tr("Process finished successfully")}
                         </p>
                     </div>
                     {step !== 'progress' && (

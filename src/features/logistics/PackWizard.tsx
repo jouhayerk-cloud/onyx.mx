@@ -17,6 +17,7 @@ import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 type WizardStep = 'SELECT_CRATE' | 'REVIEW_PACK';
 
@@ -333,7 +334,7 @@ export const PackWizard: React.FC = () => {
                                                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-[3px] rounded-sm ${
                                                             crate.status === 'Empty' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/40'
                                                         }`}>
-                                                            {crate.status}
+                                                            {el(crate.status)}
                                                         </span>
                                                     </div>
                                                 )}
@@ -395,7 +396,7 @@ export const PackWizard: React.FC = () => {
                                                         {vendorKey && <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-[2px] rounded-sm" style={{ backgroundColor: vColor, color: getTextContrast(vColor) }}>{vendorKey}</span>}
                                                         <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{item.norm.itemId}</span>
                                                     </div>
-                                                    <h5 className="text-xs font-black text-white uppercase truncate">{item.norm.shortDescription || 'Inventory Item'}</h5>
+                                                    <h5 className="text-xs font-black text-white uppercase truncate">{item.norm.shortDescription || tr("Inventory Item")}</h5>
                                                     <p className="text-[8px] font-bold text-white/25 uppercase tracking-tight mt-0.5">
                                                         {item.norm.widthCm}×{item.norm.lengthCm}×{item.norm.heightCm} {tr("CM ·")} {item.norm.weightKg} KG
                                                     </p>

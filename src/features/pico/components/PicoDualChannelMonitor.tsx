@@ -62,7 +62,7 @@ export const PicoDualChannelMonitor: React.FC<PicoDualChannelMonitorProps> = ({
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                     : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
                 }`}>
-                  {isDirectConnected ? 'Active / 0-Latency' : directSocket.status.toUpperCase()}
+                  {isDirectConnected ? tr("Active / 0-Latency") : directSocket.status.toUpperCase()}
                 </span>
               </div>
               <p className="text-[10px] font-mono text-neutral-400">{tr("Local ESP32 WebSocket bridge (Factory & Custom)")}</p>

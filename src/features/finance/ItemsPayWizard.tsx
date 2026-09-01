@@ -202,7 +202,7 @@ export const ItemsPayWizard: React.FC = () => {
                                 <span className="text-[10px] font-black text-(--main-color) tracking-[0.5em] uppercase px-3 py-1 bg-(--main-color)/10 rounded-full border border-(--main-color)/20">
                                     {tr("ENGINE_ACTIVE")}
                                 </span>
-                                <span className="text-[9px] font-black uppercase tracking-[0.8em] text-white/30">{tr("ID:")} {selectedIds.length > 0 ? `BATCH_0x${selectedIds.length.toString(16).toUpperCase()}` : 'NULL_SESSION'}</span>
+                                <span className="text-[9px] font-black uppercase tracking-[0.8em] text-white/30">{tr("ID:")} {selectedIds.length > 0 ? `BATCH_0x${selectedIds.length.toString(16).toUpperCase()}` : tr("NULL_SESSION")}</span>
                             </div>
                         </div>
                     </div>
@@ -227,10 +227,10 @@ export const ItemsPayWizard: React.FC = () => {
                                 <div className="flex flex-col">
                                     <span className="text-[9px] font-black uppercase tracking-[1em] mb-2 text-white/40">{tr("Verified Operator")}</span>
                                     <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
-                                        <span className="text-2xl md:text-4xl font-black uppercase tracking-[0.1em] text-white">{user?.name || 'ROOT'}</span>
+                                        <span className="text-2xl md:text-4xl font-black uppercase tracking-[0.1em] text-white">{user?.name || tr("ROOT")}</span>
                                         <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-2xl border border-white/10">
                                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                            <span className="text-[10px] font-black text-white/60 lowercase tracking-widest">{user?.email || 'admin@onyx.mx'}</span>
+                                            <span className="text-[10px] font-black text-white/60 lowercase tracking-widest">{user?.email || tr("admin@onyx.mx")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -279,7 +279,7 @@ export const ItemsPayWizard: React.FC = () => {
                                             {tr("Executing batch requests will generate immediate financial artifacts in the main ledger. Ensure all inventory counts have been physically verified.")}
                                         </p>
                                         <div className="flex flex-col gap-4">
-                                            {['TRANSACTION_LOGGING', 'IDENTITY_VERIFIED', 'ENCRYPTION_ACTIVE'].map(txt => (
+                                            {[tr("TRANSACTION_LOGGING"), tr("IDENTITY_VERIFIED"), tr("ENCRYPTION_ACTIVE")].map(txt => (
                                                 <div key={txt} className="flex items-center gap-3">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
                                                     <span className="text-[8px] font-black uppercase tracking-[0.5em] text-white/10">{txt}</span>
@@ -332,7 +332,7 @@ export const ItemsPayWizard: React.FC = () => {
                                                                 {vId}
                                                             </div>
                                                             <div className="flex flex-col">
-                                                                <h4 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter mb-4 drop-shadow-xl">{vInfo?.name || 'Unknown Source'}</h4>
+                                                                <h4 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter mb-4 drop-shadow-xl">{vInfo?.name || tr("Unknown Source")}</h4>
                                                                 <div className="flex items-center gap-4">
                                                                     <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10">
                                                                         <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{items.length} {tr("Units")}</span>

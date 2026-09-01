@@ -304,7 +304,7 @@ export const VideoAnalysisView: React.FC = () => {
                             </span>
                             <p className="pl-1">or drag and drop</p>
                         </div>
-                        <p className="text-xs text-[var(--text-color-secondary)]">{fileName || 'MP4, MOV, etc.'}</p>
+                        <p className="text-xs text-[var(--text-color-secondary)]">{fileName || tr("MP4, MOV, etc.")}</p>
                     </div>
                 </label>
                 <input id="video-upload" name="video-upload" type="file" className="sr-only" accept="video/*" onChange={handleFileChange} />
@@ -325,7 +325,7 @@ export const VideoAnalysisView: React.FC = () => {
 
             <div className="mt-auto pt-6">
                 <button onClick={handleAnalysis} disabled={isAnalyzing || !videoFile || !itemsToFind.trim()} className="button w-full">
-                    {isAnalyzing ? 'Analyzing...' : 'Start Analysis'}
+                    {isAnalyzing ? tr("Analyzing...") : tr("Start Analysis")}
                 </button>
             </div>
         </aside>
@@ -339,7 +339,7 @@ export const VideoAnalysisView: React.FC = () => {
                         <button onClick={() => exportToCsv(results, fileName)} className="button secondary !min-h-0 text-xs py-1 px-3 flex items-center gap-2"><CsvIcon className="w-4 h-4" /> CSV</button>
                         <button onClick={() => downloadImagesAsZip(results, fileName, setIsExporting)} disabled={isExporting} className="button secondary !min-h-0 text-xs py-1 px-3 flex items-center gap-2">
                             {isExporting ? <ImageIcon className="w-4 h-4 animate-spin" /> : <DownloadIcon className="w-4 h-4"/>}
-                            {isExporting ? 'Zipping...' : 'Images'}
+                            {isExporting ? tr("Zipping...") : tr("Images")}
                         </button>
                         <button onClick={handleReset} className="button secondary !min-h-0 text-xs py-1 px-3 flex items-center gap-2"><RestartIcon className="w-4 h-4" /> {tr("New")}</button>
                     </div>
