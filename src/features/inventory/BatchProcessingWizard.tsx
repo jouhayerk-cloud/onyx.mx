@@ -13,6 +13,7 @@ import {
 import { SCRIPT_URL , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { ai } from '../../lib/ai';
 import { processVideoWithGemini } from '../../lib/videoAI';
+import { replaceBackgroundWithDarkRoom, uploadCleanedImage, bgCacheKey, type BgQuality } from '../../lib/bgReplace';
 import { supabase } from '../../lib/supabase';
 
 import { 
@@ -58,6 +59,16 @@ const resolveVendorColor = (inputStr: string | undefined | null) => {
     return '#ffffff';
 };
 
+/**
+ * `bgreplace` is the default: it repaints the background instead of cutting the
+ * subject out, which is the only one of the four that cannot punch holes in a
+ * translucent or dark-veined stone piece. The other three remain reachable from
+ * the mode chip for the minority of items that genuinely need transparency.
+ */
+type ProcessingMode = 'bgreplace' | 'local' | 'cloud' | 'hybrid';
+
+const MODE_CYCLE: ProcessingMode[] = ['bgreplace', 'local', 'cloud', 'hybrid'];
+
 interface BatchOp {
     id: string;
     item: any;
@@ -66,7 +77,9 @@ interface BatchOp {
     status: 'idle' | 'processing' | 'completed' | 'failed';
     progress: number;
     logs: string[];
-    processingMode?: 'local' | 'cloud' | 'hybrid';
+    /** Sub-step caption under the progress bar. Was written all over this file without ever being declared. */
+    stepLabel?: string;
+    processingMode?: ProcessingMode;
     skipImageProcessing?: boolean;
     forceRegenerateDescription?: boolean;
     result?: {
@@ -74,6 +87,18 @@ interface BatchOp {
         marketingDescription?: string;
         dominantColors?: string[];
         generatedType?: string;
+        /**
+         * The background-replaced catalogue photo. Distinct from maskUrl: this is
+         * an opaque image that replaces the shot, not a transparent cutout, so it
+         * goes into processed_media_urls and never into generated_png_url.
+         */
+        cleanedUrl?: string;
+        /** Identifies what produced cleanedUrl, so a rerun can skip unchanged work. */
+        cleanedKey?: string;
+        /** Uploaded vector outline, persisted to generated_svg_url. */
+        svgUrl?: string;
+        /** Whole processed_media_urls map, assembled by the video branch. */
+        processedMap?: Record<string, string>;
         maskUrl?: string;
         bitmapUrl?: string;
         hexString?: string;
@@ -84,6 +109,15 @@ interface BatchOp {
         videoGen?: string;
     };
 }
+
+/**
+ * spatial_masks is jsonb. Handing it a JSON *string* stores a string scalar,
+ * which the RxDB mirror (declared as an array/object) then chokes on. Parse
+ * before writing so Postgres and the local cache agree.
+ */
+const safeParseMasks = (raw: string): any => {
+    try { return JSON.parse(raw); } catch { return null; }
+};
 
 const getApiKey = () => {
     const key = localStorage.getItem('ONYX_GEMINI_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -105,6 +139,16 @@ export const BatchProcessingWizard: React.FC = () => {
     const [queue, setQueue] = useState<BatchOp[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isAborted, setIsAborted] = useState(false);
+    /** 2K costs ~2.6x 1K per image but source photos are ~4000px, so 1K is a visible downgrade. */
+    const [bgQuality, setBgQuality] = useState<BgQuality>('2K');
+    /** Only the first image of each item gets a new background by default — it is the one the catalogue shows. */
+    const [heroOnly, setHeroOnly] = useState(true);
+    /**
+     * Abort has to be a ref: handleStartBatch's loop closes over the render it
+     * started in, so reading the isAborted STATE there is always false and the
+     * stop button never stops anything.
+     */
+    const abortRef = useRef(false);
     const cancelTokens = useRef<Record<string, boolean>>({});
     const [overallProgress, setOverallProgress] = useState(0);
     const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -183,7 +227,7 @@ export const BatchProcessingWizard: React.FC = () => {
                         status: hasData ? 'completed' : 'idle',
                         progress: hasData ? 100 : 0,
                         logs: hasData ? ['[  OK  ] Loaded saved DB content'] : ['[ WAIT ] Ready for AI processing'],
-                        processingMode: 'local',
+                        processingMode: 'bgreplace',
                         skipImageProcessing: true,
                         result: baseResultObj
                     });
@@ -199,7 +243,7 @@ export const BatchProcessingWizard: React.FC = () => {
                             status: hasData ? 'completed' : 'idle',
                             progress: hasData ? 100 : 0,
                             logs: hasData ? ['[  OK  ] Loaded saved DB content'] : ['[ WAIT ] Ready for AI processing'],
-                            processingMode: 'local',
+                            processingMode: 'bgreplace',
                             skipImageProcessing: false,
                             result: (baseResultObj || maskUrl) ? {
                                 ...(baseResultObj || { description: norm.description || '' }),
@@ -233,7 +277,13 @@ export const BatchProcessingWizard: React.FC = () => {
         updateOp(id, prev => ({ logs: [...prev.logs, text] }));
     };
 
-    const callGemini = async (prompt: string, imgData: string, timeoutMs: number = 40000, modelId: string = "gemini-2.5-pro") => {
+    const callGemini = async (
+        prompt: string,
+        imgData: string,
+        timeoutMs: number = 40000,
+        modelId: string = "gemini-2.5-flash",
+        responseSchema?: any,
+    ) => {
         const API_KEY = getApiKey();
         if (!API_KEY) throw new Error("API Key missing");
         
@@ -253,7 +303,14 @@ export const BatchProcessingWizard: React.FC = () => {
                             { text: prompt }, 
                             { inlineData: { mimeType: 'image/jpeg', data: imgData } }
                         ] 
-                    }] 
+                    }],
+                    // Structured output, per the OnyxMX-AIPipelineOptimization skill.
+                    // Without it the model wraps JSON in markdown fences and every
+                    // call site has to strip them by hand.
+                    generationConfig: {
+                        responseMimeType: 'application/json',
+                        ...(responseSchema ? { responseSchema } : {}),
+                    },
                 })
             });
             
@@ -432,7 +489,16 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
   "generatedType": "Home Decor > Decorative Bowls"
 }`;
 
-                const data = await callGemini(prompt, base64);
+                const data = await callGemini(prompt, base64, 40000, "gemini-2.5-flash", {
+                    type: 'object',
+                    properties: {
+                        description: { type: 'string' },
+                        marketingDescription: { type: 'string' },
+                        dominantColors: { type: 'array', items: { type: 'string' } },
+                        generatedType: { type: 'string' },
+                    },
+                    required: ['description', 'marketingDescription', 'dominantColors', 'generatedType'],
+                });
                 logOp(op.id, '[  OK  ] Received Gemini response');
                 
                 let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -474,7 +540,48 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
 
             let localMaskUrl = null;
             if (!op.skipImageProcessing && !isVideo) {
-                if (op.processingMode === 'cloud') {
+                if (op.processingMode === 'bgreplace') {
+                    // Deliberately short-circuits the entire mask path below. No
+                    // preprocessForMasking, no removeBackground, no applyAlphaMask,
+                    // no findContour — every one of those is a place where a dark
+                    // vein or a rough edge gets mistaken for background.
+                    const cacheKey = bgCacheKey(imageUrl, bgQuality);
+                    if (op.result?.cleanedKey === cacheKey && op.result?.cleanedUrl && !op.forceRegenerateDescription) {
+                        logOp(op.id, '[ SKIP ] Background already replaced for this image');
+                        localMaskUrl = null;
+                    } else {
+                        try {
+                            updateOp(op.id, { progress: 20, stepLabel: 'Replacing background...' });
+                            const { dataUrl, modelUsed } = await checkAbort(
+                                op.id,
+                                replaceBackgroundWithDarkRoom(
+                                    imageUrl,
+                                    {
+                                        shape: itemData.shape,
+                                        material: itemData.material,
+                                        description: itemData.shortDescription || itemData.type,
+                                    },
+                                    { quality: bgQuality, onLog: (m) => logOp(op.id, m) },
+                                ),
+                                180000,
+                            );
+
+                            updateOp(op.id, { progress: 75, stepLabel: 'Uploading cleaned image...' });
+                            const publicUrl = await checkAbort(
+                                op.id,
+                                uploadCleanedImage(dataUrl, `${op.id}_${cacheKey}.png`),
+                            );
+
+                            op.result = op.result || {};
+                            op.result.cleanedUrl = publicUrl;
+                            op.result.cleanedKey = cacheKey;
+                            logOp(op.id, `[  OK  ] Cleaned image stored (${modelUsed})`);
+                        } catch (err: any) {
+                            logOp(op.id, `[ FAIL ] Background replacement failed: ${err.message}`);
+                            console.error(err);
+                        }
+                    }
+                } else if (op.processingMode === 'cloud') {
                     logOp(op.id, '[ WAIT ] Running Cloud AI for segmentation...');
                 const shape = itemData.shape || 'object';
                 // Pass 1: Only ask for bounding boxes, NOT masks! Asking for multiple base64 masks in one pass blows past the 8192 token limit!
@@ -497,7 +604,7 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
 
                 try {
                     // Use the latest 2.5 model for unparalleled detection logic
-                    const data = await callGemini(instruction, base64, 40000, "gemini-2.5-pro");
+                    const data = await callGemini(instruction, base64, 40000, "gemini-2.5-flash");
                     let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (!resultText) throw new Error("Empty response from Engine");
                     
@@ -515,15 +622,37 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                     const originalHeight = img.height;
                     const targetSize = 1024;
                     
-                    let drawW, drawH;
-                    if (originalWidth > originalHeight) { drawW = targetSize; drawH = Math.round(originalHeight * (targetSize / originalWidth)); } 
-                    else { drawH = targetSize; drawW = Math.round(originalWidth * (targetSize / originalHeight)); }
+                    // resizeImage() letterboxes onto a 1024 square with 10% padding
+                    // per side, so the photo occupies AVAILABLE, not targetSize.
+                    // Assuming otherwise scaled every returned polygon by 1024/819
+                    // and offset it - a 25% error on every mirror_glass trace.
+                    const available = targetSize * 0.8;
+                    let drawW = available, drawH = available;
+                    if (originalWidth > originalHeight) { drawH = Math.round(available * (originalHeight / originalWidth)); }
+                    else { drawW = Math.round(available * (originalWidth / originalHeight)); }
                     const offsetX = (targetSize - drawW) / 2;
                     const offsetY = (targetSize - drawH) / 2;
 
                     const masks: any[] = [];
                     logOp(op.id, `[ WAIT ] Extracting high-res global boundary on GPU...`);
-                    const bgBlobFull = await checkAbort(op.id, removeBackground(processedSdrUrl, {
+                    // This branch never declared its own SDR frame, so it threw a
+                    // ReferenceError on every run and the catch below logged it as
+                    // "Cloud Mask failed". Cloud mode has never produced a mask.
+                    const sdrDataUrl = await new Promise<string>((resolve, reject) => {
+                        const sdrImg = new Image();
+                        sdrImg.crossOrigin = 'anonymous';
+                        sdrImg.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = sdrImg.width; canvas.height = sdrImg.height;
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) return reject(new Error('Canvas error'));
+                            ctx.drawImage(sdrImg, 0, 0, sdrImg.width, sdrImg.height);
+                            resolve(canvas.toDataURL('image/jpeg', 1.0));
+                        };
+                        sdrImg.onerror = () => reject(new Error('Image load failed'));
+                        sdrImg.src = imageUrl;
+                    });
+                    const bgBlobFull = await checkAbort(op.id, removeBackground(sdrDataUrl, {
                         output: { format: 'image/png' }, device: 'gpu' as any, debug: false,
                     }), 60000);
                     const maskImgFull = await loadImage(URL.createObjectURL(bgBlobFull));
@@ -667,7 +796,7 @@ Instructions:
 4. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "string", "polygon": [[y,x], ...]}].`;
 
                     try {
-                        const cloudData = await callGemini(hybridInstruction, base64, 40000, "gemini-2.5-pro");
+                        const cloudData = await callGemini(hybridInstruction, base64, 40000, "gemini-2.5-flash");
                         let resultText = cloudData?.candidates?.[0]?.content?.parts?.[0]?.text;
                         if (!resultText) throw new Error("Empty response from Cloud Engine");
                         if (resultText.includes('```')) {
@@ -681,9 +810,11 @@ Instructions:
 
                         const originalWidth = img.width; const originalHeight = img.height;
                         const targetSize = 1024;
-                        let drawW, drawH;
-                        if (originalWidth > originalHeight) { drawW = targetSize; drawH = Math.round(originalHeight * (targetSize / originalWidth)); } 
-                        else { drawH = targetSize; drawW = Math.round(originalWidth * (targetSize / originalHeight)); }
+                        // See the cloud branch: resizeImage pads 10% per side.
+                        const available = targetSize * 0.8;
+                        let drawW = available, drawH = available;
+                        if (originalWidth > originalHeight) { drawH = Math.round(available * (originalHeight / originalWidth)); }
+                        else { drawW = Math.round(available * (originalWidth / originalHeight)); }
                         const offsetX = (targetSize - drawW) / 2; const offsetY = (targetSize - drawH) / 2;
 
                         const cloudMasks: any[] = [];
@@ -800,7 +931,10 @@ Instructions:
             let finalColors = processed.dominantColors || [];
             let bitmapRes: any = {};
             if (!isVideo) {
-                bitmapRes = await generateBitmapAndHexMap(localMaskUrl || op.result?.maskUrl || op.imageUrl, 20, 20, 80, 149, 61, 199, itemData.material, itemData.shape, itemData.color);
+                // Prefer the background-replaced frame: sampling colour off the
+                // original means sampling the studio cloth and the cardboard too.
+                const colorSource = op.result?.cleanedUrl || localMaskUrl || op.result?.maskUrl || op.imageUrl;
+                bitmapRes = await generateBitmapAndHexMap(colorSource, 20, 20, 80, 149, 61, 199, itemData.material, itemData.shape, itemData.color);
                 finalColors = (processed.dominantColors && processed.dominantColors.length > 0) ? processed.dominantColors : bitmapRes.dominantColors;
             }
 
@@ -815,6 +949,8 @@ Instructions:
                     dominantColors: finalColors,
                     generatedType: processed.generatedType || op.result?.generatedType,
                     maskUrl: localMaskUrl || op.result?.maskUrl || undefined,
+                    cleanedUrl: op.result?.cleanedUrl,
+                    cleanedKey: op.result?.cleanedKey,
                     bitmapUrl: bitmapRes.bitmapDataUrl || op.result?.bitmapUrl,
                     hexString: bitmapRes.hexString || op.result?.hexString,
                     cols: bitmapRes.cols || op.result?.cols,
@@ -927,11 +1063,19 @@ Instructions:
             if (op.result.videoGen) {
                 processedMap['videoGen'] = op.result.videoGen;
             }
+            if (op.result.cleanedUrl && op.imageUrl) {
+                // Keyed by the CLEANED source url, because that is the form
+                // UnifiedInventoryView looks up (getCleanImageUrl rewrites Drive
+                // links to lh3). All 294 existing entries use this form.
+                processedMap[getCleanImageUrl(op.imageUrl) || op.imageUrl] = op.result.cleanedUrl;
+            }
             updatePayload.processed_media_urls = JSON.stringify(processedMap);
-            if (op.result.localSegmentationMasks) updatePayload.local_segmentation_masks = op.result.localSegmentationMasks;
+            // local_segmentation_masks / cloud_segmentation_masks do not exist in
+            // Postgres. Sending them fails the whole update with 42703, and the old
+            // recovery path retried without generated_color and generated_type -
+            // silently downgrading the save. Write the column that does exist.
             if (op.result.cloudSegmentationMasks) {
-                updatePayload.cloud_segmentation_masks = op.result.cloudSegmentationMasks;
-                updatePayload.spatial_masks = op.result.cloudSegmentationMasks;
+                updatePayload.spatial_masks = safeParseMasks(op.result.cloudSegmentationMasks);
             }
             
             // Generate and save Classification and Type
@@ -962,21 +1106,7 @@ Instructions:
             }
 
             const { error: sbErr } = await supabase.from('inventory').update(updatePayload).eq('id', itemId);
-            if (sbErr) {
-                if (sbErr.code === '42703' || sbErr.message?.includes('column')) {
-                    const fallbackPayload = { ...updatePayload };
-                    delete fallbackPayload.generated_type;
-                    delete fallbackPayload.generated_color;
-                    delete fallbackPayload.local_segmentation_masks;
-                    delete fallbackPayload.cloud_segmentation_masks;
-                    delete fallbackPayload.product_category;
-                    delete fallbackPayload.product_type;
-                    const { error: retryErr } = await supabase.from('inventory').update(fallbackPayload).eq('id', itemId);
-                    if (retryErr) throw retryErr;
-                } else {
-                    throw sbErr;
-                }
-            }
+            if (sbErr) throw sbErr;
             toast.success(tr("Description saved!"), { id: toastId });
             setInventoryVersion(Date.now());
         } catch (e: any) {
@@ -1031,6 +1161,18 @@ Instructions:
                         }
                     }
                     
+                    if (op.result?.cloudSegmentationMasks && !op.result.svgUrl) {
+                        try {
+                            const svgData = JSON.parse(op.result.cloudSegmentationMasks)?.svgData;
+                            if (svgData) {
+                                const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
+                                op.result.svgUrl = await uploadCleanedImage(svgDataUrl, `outline_${op.id}.svg`);
+                            }
+                        } catch (e) {
+                            console.warn('Could not persist SVG outline:', e);
+                        }
+                    }
+
                     if (op.result?.maskUrl) {
                         combinedMaskUrls.push(op.result.maskUrl);
                     } else {
@@ -1051,11 +1193,11 @@ Instructions:
                     }
                 }
                 
-                let lastLocalMasks = '';
                 let lastCloudMasks = '';
+                let lastSvgUrl = '';
                 ops.forEach(op => {
-                    if (op.result?.localSegmentationMasks) lastLocalMasks = op.result.localSegmentationMasks;
                     if (op.result?.cloudSegmentationMasks) lastCloudMasks = op.result.cloudSegmentationMasks;
+                    if (op.result?.svgUrl) lastSvgUrl = op.result.svgUrl;
                 });
                 
                 const primaryOp = ops[0];
@@ -1074,8 +1216,16 @@ Instructions:
                 let lastCols = 20;
                 let lastRows = 20;
                 ops.forEach(op => {
-                    if (op.result?.maskUrl && op.imageUrl) {
-                        processedMap[op.imageUrl] = op.result.maskUrl;
+                    // The cleaned photo wins over a cutout for the catalogue slot:
+                    // it is the opaque image the grid renders. Key on the cleaned
+                    // source url, matching all 294 existing entries.
+                    if (op.imageUrl) {
+                        const key = getCleanImageUrl(op.imageUrl) || op.imageUrl;
+                        if (op.result?.cleanedUrl) {
+                            processedMap[key] = op.result.cleanedUrl;
+                        } else if (op.result?.maskUrl) {
+                            processedMap[key] = op.result.maskUrl;
+                        }
                     }
                     if (op.result?.videoGen) {
                         processedMap['videoGen'] = op.result.videoGen;
@@ -1134,10 +1284,14 @@ Instructions:
                 if (lastGeneratedType) {
                     updatePayload.generated_type = lastGeneratedType;
                 }
-                if (lastLocalMasks) updatePayload.local_segmentation_masks = lastLocalMasks;
+                // Only spatial_masks exists in Postgres; see handleSaveDescription.
                 if (lastCloudMasks) {
-                    updatePayload.cloud_segmentation_masks = lastCloudMasks;
-                    updatePayload.spatial_masks = lastCloudMasks;
+                    updatePayload.spatial_masks = safeParseMasks(lastCloudMasks);
+                }
+                if (lastSvgUrl) {
+                    // generated_svg_url was 0/497 because the SVG was rendered on
+                    // every run and then dropped on the floor.
+                    updatePayload.generated_svg_url = lastSvgUrl;
                 }
 
                 if (lastHexString) {
@@ -1152,20 +1306,7 @@ Instructions:
                 }
 
                 const { error: sbErr } = await supabase.from('inventory').update(updatePayload).eq('id', itemId);
-                if (sbErr) {
-                    if (sbErr.code === '42703' || sbErr.message?.includes('column')) {
-                        const fallbackPayload = { ...updatePayload };
-                        delete fallbackPayload.generated_type;
-                        delete fallbackPayload.generated_color;
-                        delete fallbackPayload.local_segmentation_masks;
-                        delete fallbackPayload.cloud_segmentation_masks;
-                        delete fallbackPayload.video_gen;
-                        const { error: retryErr } = await supabase.from('inventory').update(fallbackPayload).eq('id', itemId);
-                        if (retryErr) throw retryErr;
-                    } else {
-                        throw sbErr;
-                    }
-                }
+                if (sbErr) throw sbErr;
                 
                 savedCount++;
                 setOverallProgress((savedCount / entries.length) * 100);
@@ -1237,7 +1378,7 @@ Instructions:
                 'AN': 'Angel', 'FR': 'Fountain Rock Mine', 'BT': 'Bernardo', 'RF': 'Roberto'
             };
             
-            const tagId = codes?.printCode || codes?.bookBarcode || normData.book_barcode || normData.itemId || '';
+            const tagId = codes?.bookBarcode || normData.book_barcode || normData.itemId || '';
             const matchPrefix = tagId.match(/^[A-Za-z]+/);
             const extractedPrefix = matchPrefix ? matchPrefix[0] : '';
             const rawVendorId = String(normData.vendor_id || extractedPrefix || '').toUpperCase();
@@ -1395,7 +1536,7 @@ Instructions:
                 const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
                 const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
 
-                const tagId = calc.printCode || calc.bookBarcode || norm.book_barcode || norm.itemId || String(itemData.row) || '';
+                const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(itemData.row) || '';
                 const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
                 
                 const rawVendorId = String(norm.vendorId || norm.vendor_id || '').toUpperCase().trim();
@@ -1540,7 +1681,7 @@ Instructions:
             setQueue(prev => prev.map(op => ({
                 ...op,
                 result: undefined,
-                status: 'pending'
+                status: 'idle' as const
             })));
             setHasUnsavedChanges(true); // Treat this as a change that needs to be noticed
             
@@ -1631,30 +1772,43 @@ Instructions:
 
         setIsProcessing(true);
         setIsAborted(false);
+        abortRef.current = false;
         setOverallProgress(0);
 
-        let completed = 0;
-        for (const op of queue) {
-            if (isAborted) break;
+        const pending = queue.filter(op => {
             const needsContent = (op.imageIndex || 0) === 0 && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription);
-            if (op.status === 'completed' && !needsContent) {
-                completed++;
-                continue;
-            }
+            if (op.status === 'completed' && !needsContent) return false;
+            // Only the hero shot is what the catalogue renders. At 2.07 images per
+            // item, skipping the rest halves the generation bill for no visible loss.
+            if (heroOnly && (op.imageIndex || 0) > 0 && !needsContent) return false;
+            return true;
+        });
 
-            try {
-                await processSingleItem(op);
-            } catch (err) {
-                console.error("Failed processing item:", op.id, err);
+        let completed = 0;
+        const total = pending.length || 1;
+
+        // Three at a time. Serial with a blanket sleep(1000) meant a 240-image run
+        // spent hours waiting on a rate limit that was never actually being hit.
+        const CONCURRENCY = 3;
+        const cursor = { i: 0 };
+        const worker = async () => {
+            while (!abortRef.current) {
+                const index = cursor.i++;
+                if (index >= pending.length) return;
+                try {
+                    await processSingleItem(pending[index]);
+                } catch (err) {
+                    console.error("Failed processing item:", pending[index].id, err);
+                }
+                completed++;
+                setOverallProgress((completed / total) * 100);
             }
-            completed++;
-            setOverallProgress((completed / queue.length) * 100);
-            await new Promise(r => setTimeout(r, 1000)); // Rate limit backoff
-        }
-        
+        };
+        await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
+
         setIsProcessing(false);
         setInventoryVersion(v => v + 1);
-        if (!isAborted) {
+        if (!abortRef.current) {
             toast.success(tr("AI Batch Processing Complete!"));
         }
     };
@@ -1663,6 +1817,7 @@ Instructions:
         if (isProcessing) {
             const ok = window.confirm(tr("Processing is active. Are you sure you want to abort and close?"));
             if (!ok) return;
+            abortRef.current = true;
             setIsAborted(true);
         }
         setIsOpen(false);
@@ -1672,7 +1827,8 @@ Instructions:
         setHasUnsavedChanges(true);
         setQueue(prev => prev.map(op => {
             if (op.id === id) {
-                const nextMode = op.processingMode === 'local' ? 'cloud' : op.processingMode === 'cloud' ? 'hybrid' : 'local';
+                const current = MODE_CYCLE.indexOf(op.processingMode || 'bgreplace');
+                const nextMode = MODE_CYCLE[(current + 1) % MODE_CYCLE.length];
                 return { ...op, processingMode: nextMode };
             }
             return op;
@@ -1919,7 +2075,7 @@ Instructions:
                                             {(() => {
                                                 const norm = normalizeInventoryData(op.item.data || op.item);
                                                 const calc = calculateCodesAndPrices(norm, activeRate, norm.workbook || op.item.workbook || '326');
-                                                const tagId = calc?.printCode || calc?.bookBarcode || norm.book_barcode || norm.itemId || `Item ${norm.itemNumber}`;
+                                                const tagId = calc?.bookBarcode || norm.book_barcode || norm.itemId || `Item ${norm.itemNumber}`;
                                                 
                                                 const match = tagId.replace(/\s+/g, '').match(/^([A-Za-z]+\d{2,4})(\d{2}[A-Za-z]*)$/);
                                                 if (match) {
@@ -1978,16 +2134,18 @@ Instructions:
                                             onClick={() => toggleProcessingMode(op.id)}
                                             disabled={op.status !== 'idle' || op.skipImageProcessing}
                                             className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-[9px] font-black uppercase tracking-widest ${
-                                                op.processingMode === 'hybrid'
+                                                op.processingMode === 'bgreplace'
+                                                    ? 'text-amber-300 hover:text-amber-200 bg-amber-500/10 border border-amber-500/30'
+                                                    : op.processingMode === 'hybrid'
                                                     ? 'text-purple-400 hover:text-purple-300 bg-purple-500/10 border border-purple-500/30'
                                                     : op.processingMode === 'cloud' 
                                                     ? 'text-blue-400 hover:text-blue-300 bg-black/40 hover:bg-white/10'
                                                     : 'text-(--main-color) hover:text-(--main-color) bg-black/40 hover:bg-white/10'
                                             } ${op.status !== 'idle' || op.skipImageProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            title={tr("Toggle Local / Cloud / Hybrid Processing")}
+                                            title={tr("Toggle Studio / Local / Cloud / Hybrid Processing")}
                                         >
-                                            {op.processingMode === 'hybrid' ? <Layers size={14} className="animate-pulse" /> : op.processingMode === 'cloud' ? <Cloud size={14} /> : <Cpu size={14} />}
-                                            {op.processingMode === 'hybrid' ? tr("HYBRID") : op.processingMode === 'cloud' ? tr("CLOUD") : tr("LOCAL")}
+                                            {op.processingMode === 'bgreplace' ? <Sparkles size={14} /> : op.processingMode === 'hybrid' ? <Layers size={14} className="animate-pulse" /> : op.processingMode === 'cloud' ? <Cloud size={14} /> : <Cpu size={14} />}
+                                            {op.processingMode === 'bgreplace' ? tr("STUDIO") : op.processingMode === 'hybrid' ? tr("HYBRID") : op.processingMode === 'cloud' ? tr("CLOUD") : tr("LOCAL")}
                                         </button>
                                         
                                         {op.status === 'processing' && (
