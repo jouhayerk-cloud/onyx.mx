@@ -676,8 +676,8 @@ export const UniversalToolsBar: React.FC = () => {
                                                 }}
                                                 className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
                                                 {invSortKey === sort.key
-                                                    ? (invSortOrder === 'asc' ? <ArrowUp size={18} strokeWidth={3} /> : <ArrowDown size={18} strokeWidth={3} />)
-                                                    : <ArrowUpDown size={16} strokeWidth={2.2} />}
+                                                    ? (invSortOrder === 'asc' ? <ArrowUp size={22} strokeWidth={3} /> : <ArrowDown size={22} strokeWidth={3} />)
+                                                    : <ArrowUpDown size={21} strokeWidth={2.2} />}
                                             </button>
                                             <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{sort.label}</span>
                                         </div>
@@ -763,7 +763,7 @@ export const UniversalToolsBar: React.FC = () => {
                                         <div key={s.id} className="tool-cell flex flex-col items-center gap-1 shrink-0">
                                             <button aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
                                                 className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
-                                                <Icon size={20} strokeWidth={isActive ? 3.5 : 2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
+                                                <Icon size={25} strokeWidth={isActive ? 3.5 : 2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
                                             </button>
                                             <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
                                         </div>
@@ -960,7 +960,7 @@ export const UniversalToolsBar: React.FC = () => {
                                         <button aria-pressed={isActive} title={s.id} onClick={() => setInvStatusFilter(s.id as any)}
                                             className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
                                             style={{ color: isActive ? s.color : undefined }}>
-                                            <Icon size={19} strokeWidth={isActive ? 3.5 : 2.5} />
+                                            <Icon size={24} strokeWidth={isActive ? 3.5 : 2.5} />
                                         </button>
                                         <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
                                     </div>

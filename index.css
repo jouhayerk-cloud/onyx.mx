@@ -286,7 +286,16 @@ html, body, #root {
 .main-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  /* flex-start, and this is the rule that decides it: Tailwind is imported on
+     line 2, so this selector comes AFTER the utilities and beats any
+     items-end / items-start class on the element. Alignment classes in
+     MainHeader.tsx have no effect while this line disagrees with them.
+
+     Keys must align along their TOPS. A tool cell is two rows tall when it
+     carries a label and one row when it does not, so centring or
+     bottom-aligning them lines the label of one control up against the key of
+     another — which is what made the bar look jumbled. */
+  align-items: flex-start;
   background-color: var(--main-header-bg);
   flex-shrink: 0;
   padding: 0 1rem;
@@ -3130,15 +3139,18 @@ html.theme-tekis .wizardstate-indicator {
     max-height: 85vh;
   }
 
-  /* Header: compact icons on mobile. Height is double the old 56px because the
-     bar is now a two-row tool grid — this rule sits after the Tailwind import
-     and so beats the h-40/max-h-40 utilities on the element. */
+  /* Header height on mobile. Like align-items above, this sits after the
+     Tailwind import and so beats the h-20/max-h-20 utilities on the element —
+     it is the value that actually applies, and the utility is decoration.
+
+     One row of controls: a 44px key, a 4px gap and an 8px label is 56px,
+     plus 8px of padding top and bottom. The previous 96px dated from when the
+     bar was a two-row grid and the stats readout was overlaid on it; both
+     have since moved out, leaving a band of dead space under the keys. */
   .main-header {
     padding: 0 0.75rem;
-    /* Two rows of h-16 (64px) controls plus the 4px row gap is 132px, so the
-       old 56px — and a naive doubling to 112px — both clipped the top row. */
-    height: 96px;
-    max-height: 96px;
+    height: 80px;
+    max-height: 80px;
   }
 
   /* Better mobile touch targets for all buttons */

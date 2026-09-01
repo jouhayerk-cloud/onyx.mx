@@ -217,7 +217,7 @@ const SubTabPills: React.FC<{
                         title={t.label}
                         className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all select-none"
                         style={active === t.id ? { color: accentColor } : {}}>
-                        {TabIcon ? <TabIcon size={21} strokeWidth={2.2} /> : <span className="text-[10px] font-black">{t.label}</span>}
+                        {TabIcon ? <TabIcon size={26} strokeWidth={2.2} /> : <span className="text-[10px] font-black">{t.label}</span>}
                     </button>
                     {TabIcon && (
                         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">{t.label}</span>
@@ -246,7 +246,7 @@ const StudioAction: React.FC<{
             aria-pressed={active}
             className={`tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all select-none disabled:opacity-30 disabled:pointer-events-none ${className}`}
         >
-            <Icon size={21} strokeWidth={2.2} style={{ color: active ? color : undefined }} />
+            <Icon size={26} strokeWidth={2.2} style={{ color: active ? color : undefined }} />
         </button>
         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">{label}</span>
     </div>
@@ -453,7 +453,7 @@ const ToolButton: React.FC<{
             className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
             style={active && tone ? { color: tone } : undefined}
         >
-            <Icon size={21} strokeWidth={2.2} />
+            <Icon size={26} strokeWidth={2.2} />
         </button>
         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">
             {label}
@@ -3554,13 +3554,13 @@ export function MainHeader() {
                 a horizontal scroll container, so anything absolutely positioned
                 inside it would slide away with the content and be clipped by
                 overflow-y-hidden. This wrapper is the positioning context. */}
-            <div className="relative w-full shrink-0">
+            <div className="w-full shrink-0 flex flex-col">
             {activeView === 'inventory' && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-0 z-30">
+                <div className="flex justify-center shrink-0 pt-1 pb-0.5">
                     <InfoNotch />
                 </div>
             )}
-            <div className={`main-header h-24 sm:h-28 max-h-24 sm:max-h-28 flex items-end pl-6 pr-6 pt-3 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
+            <div className={`main-header h-20 max-h-20 flex items-start pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -3594,7 +3594,7 @@ export function MainHeader() {
                         readout moved into the notch, which put this cluster on a
                         different baseline from the right-hand one and opened a band
                         of dead space under both. */}
-                    <div className="flex items-end gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
+                    <div className="flex items-start gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
                         {activeView === 'inventory' && <InventoryBar />}
                         {activeView === 'store' && <StoreBar />}
                         {activeView === 'finance' && <FinanceBar />}
@@ -3644,14 +3644,14 @@ export function MainHeader() {
                 {/* Top-right corner of the header: the readout sits on the first
                     row and the tool icons on the second, so the two never fight
                     for the same horizontal space on a narrow viewport. */}
-                <div className="flex items-end justify-end shrink-0 pl-2 sm:pl-4 ml-auto h-full pb-0">
-                    <div className="flex items-center gap-1 sm:gap-6">
+                <div className="flex items-start justify-end shrink-0 pl-2 sm:pl-4 ml-auto">
+                    <div className="flex items-start gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
                         {sentTruckId && (
                             <button 
                                 onClick={() => setView('truck')}
-                                className="w-10 h-10 flex items-center justify-center text-(--main-color) animate-pulse drop-shadow-[0_0_10px_var(--main-color)] hover:scale-110 transition-all"
+                                className="w-11 h-11 flex items-center justify-center text-(--main-color) animate-pulse drop-shadow-[0_0_10px_var(--main-color)] hover:scale-110 transition-all"
                                 title={tr("Active Crate Deployment")}
                             >
                                 <Truck size={20} strokeWidth={2.5} />
@@ -3661,7 +3661,7 @@ export function MainHeader() {
                         {artifactConfig.itemIds.length > 0 && (
                             <button 
                                 onClick={() => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen }))}
-                                className={`w-10 h-10 flex items-center justify-center transition-all active:scale-90 hover:scale-110 ${artifactConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white/40 hover:text-white'}`}
+                                className={`w-11 h-11 flex items-center justify-center transition-all active:scale-90 hover:scale-110 ${artifactConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white/40 hover:text-white'}`}
                                 title={tr("Toggle Neural Manifest")}
                             >
                                 <Package size={20} strokeWidth={2.5} />
@@ -3687,7 +3687,7 @@ export function MainHeader() {
                                             setOnyxApiKey('');
                                         }
                                     }}
-                                    className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-red-500 transition-all active:scale-90 hover:scale-110"
+                                    className="w-11 h-11 flex items-center justify-center text-white/20 hover:text-red-500 transition-all active:scale-90 hover:scale-110"
                                     title={tr("Reset Neural Credentials")}
                                 >
                                     <RefreshCw size={18} strokeWidth={2.5} />

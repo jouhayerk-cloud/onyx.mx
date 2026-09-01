@@ -194,7 +194,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     title={language === 'es' ? 'ESPANOL — CLICK FOR ENGLISH' : 'ENGLISH — CLICK FOR ESPANOL'}
                                                     className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
                                                 >
-                                                    <Languages size={18} className={language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')} />
+                                                    <Languages size={22} className={language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')} />
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')}`}>
                                                     {language === 'es' ? 'ES' : 'EN'}
@@ -209,7 +209,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     title={`${styleMeta.label} STYLE — CLICK FOR ${STYLE_META[nextStyle].label}`}
                                                     className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
                                                 >
-                                                    <StyleIcon size={18} className={appStyle === 'slab' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')} />
+                                                    <StyleIcon size={22} className={appStyle === 'slab' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')} />
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${appStyle === 'slab' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')}`}>
                                                     {styleMeta.label}
@@ -224,7 +224,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     title={performanceMode ? 'MAX PERFORMANCE — click for standard' : 'STANDARD PERFORMANCE — click for max'}
                                                     className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
                                                 >
-                                                    <Zap size={18} className={performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')} />
+                                                    <Zap size={22} className={performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')} />
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')}`}>
                                                     {performanceMode ? tr("MAX") : tr("STD")}
@@ -239,7 +239,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     title={isOffline ? 'GO ONLINE' : 'GO OFFLINE'}
                                                     className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
                                                 >
-                                                    {isOffline ? <Wifi size={18} className="text-green-500" /> : <WifiOff size={18} className="text-amber-500" />}
+                                                    {isOffline ? <Wifi size={22} className="text-green-500" /> : <WifiOff size={22} className="text-amber-500" />}
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${isOffline ? 'text-green-500' : 'text-amber-500'}`}>
                                                     {isOffline ? tr("OFFLINE") : 'ONLINE'}
@@ -253,7 +253,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     title={tr("TERMINATE SESSION")}
                                                     className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-red-500/10"
                                                 >
-                                                    <LogOut size={18} className="text-red-500" />
+                                                    <LogOut size={22} className="text-red-500" />
                                                 </button>
                                                 <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none text-red-500">
                                                     {tr("EXIT")}
