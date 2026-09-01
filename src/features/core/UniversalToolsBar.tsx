@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { CONTENT_FILTERS, countContent, type ContentKey } from '../../lib/aiContent';
 import { buildGeometryTree, buildMaterialColorTree, toggleKey, type SmartFilterNode } from '../../lib/smartFilters';
 import { GEOMETRIES, GEOMETRY_LABELS, type Geometry } from '../../lib/geometry';
 import { GeometryIcon } from './shapeIcons';
@@ -58,6 +59,7 @@ import {
     isInventorySearchOpenAtom,
     inventoryToolsOpenAtom,
     isInventorySmartFiltersOpenAtom,
+    inventoryContentFilterAtom,
     isInventoryMaterialColorFilterOpenAtom,
     isInventoryShapeFilterOpenAtom,
     inventoryShapeFilterAtom,
@@ -69,7 +71,7 @@ import {
     inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import { 
-    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Hammer, FlaskConical, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX,
+    Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX,
     Palette, Shapes
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
@@ -351,6 +353,7 @@ export const UniversalToolsBar: React.FC = () => {
     // never forces the other onto the screen.
     const toolsOpen = useAtomValue(inventoryToolsOpenAtom);
     const smartOpen = useAtomValue(isInventorySmartFiltersOpenAtom);
+    const [contentSel, setContentSel] = useAtom(inventoryContentFilterAtom);
     const [materialColorOpen, setMaterialColorOpen] = useAtom(isInventoryMaterialColorFilterOpenAtom);
     const [shapeFilterOpen, setShapeFilterOpen] = useAtom(isInventoryShapeFilterOpenAtom);
     const [shapeSel, setShapeSel] = useAtom(inventoryShapeFilterAtom);
@@ -362,6 +365,7 @@ export const UniversalToolsBar: React.FC = () => {
     // saved — nothing to configure and nothing to keep in sync with the data.
     const shapeTree = React.useMemo(() => buildGeometryTree(inventoryRows || []), [inventoryRows]);
     const materialColorTree = React.useMemo(() => buildMaterialColorTree(inventoryRows || []), [inventoryRows]);
+    const contentCounts = React.useMemo(() => countContent(inventoryRows || []), [inventoryRows]);
     const [invSearchTerm, setInvSearchTerm] = useAtom(inventorySearchTermAtom);
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const invCategoryFilter = useAtomValue(inventoryCategoryFilterAtom);
@@ -382,7 +386,6 @@ export const UniversalToolsBar: React.FC = () => {
         }
     };
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
-    const setInvVersion = useSetAtom(InventoryVersionAtom);
     
     // Finance States
     const [isFinSearchOpen, setIsFinSearchOpen] = useAtom(isPaymentsSearchOpenAtom);
@@ -938,18 +941,16 @@ export const UniversalToolsBar: React.FC = () => {
             {/* ── INVENTORY TOOLS ─────────────────────────────────────────────────────────── */}
             {isInventory && toolsOpen && isInvFiltersOpen && (
                 <div className="flex flex-col w-full min-h-0">
-                    <div className="w-full px-6 py-3 flex items-center justify-between overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-500">
+                    <div className="w-full px-6 py-3 flex items-center overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center gap-5 shrink-0">
                             {[
                                 { id: 'All', icon: LayoutGrid, color: '#FFFFFF' },
                                 { id: 'New', icon: Plus, color: '#38bdf8' },
-                                { id: 'Production', icon: Hammer, color: '#6366f1' },
                                 { id: 'Packed', icon: PackageCheck, color: '#eab308' },
                                 { id: 'Not Packed', icon: PackageOpen, color: '#a1a1aa' },
                                 { id: 'Shipped', icon: Send, color: '#06b6d4' },
                                 { id: 'Not Shipped', icon: PackageX, color: '#f43f5e' },
                                 { id: 'Acquired', icon: Tag, color: '#10b981' },
-                                { id: 'Partial', icon: FlaskConical, color: '#a855f7' },
                                 { id: 'Requested', icon: Activity, color: '#f59e0b' },
                                 { id: 'Paid', icon: DollarSign, color: '#10b981' }
                             ].map(s => {
@@ -967,8 +968,55 @@ export const UniversalToolsBar: React.FC = () => {
                                 );
                             })}
                         </div>
-                        <button onClick={() => { setInvVersion(v => v + 1); toast.success(tr("Syncing...")); }} className="flex items-center gap-2 px-4 py-2 text-white/40 hover:text-white text-[9px] font-black uppercase tracking-widest"><Heartbeat size={14} /> {tr("SYNC REGISTRY")}</button>
+
+                        {/* AI content, on the SAME row as Status and divided from
+                            it rather than stacked. Both answer "what state is this
+                            item in", and a second row for five chips cost as much
+                            height as the status keys themselves.
+
+                            The stages are strictly nested — cleanup > vision > copy,
+                            with cutout branching off vision — so the counts fall from
+                            left to right by design, not by accident. See lib/aiContent
+                            for the audit they come from. Chips OR together. */}
+                        <div className="h-9 w-px bg-white/10 mx-5 shrink-0" />
+
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 leading-none shrink-0 mr-3">
+                            {tr("AI Content")}
+                        </span>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            {CONTENT_FILTERS.map(f => {
+                                const on = (contentSel || []).includes(f.key);
+                                const n = contentCounts[f.key as ContentKey] ?? 0;
+                                return (
+                                    <button
+                                        key={f.key}
+                                        onClick={() => setContentSel(prev => {
+                                            const cur = prev || [];
+                                            return cur.includes(f.key)
+                                                ? cur.filter(k => k !== f.key)
+                                                : [...cur, f.key];
+                                        })}
+                                        aria-pressed={on}
+                                        title={f.hint}
+                                        className="smart-chip flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]"
+                                    >
+                                        {tr(f.label)}
+                                        <span className="smart-count tabular-nums opacity-50">{n}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {(contentSel || []).length > 0 && (
+                            <button onClick={() => setContentSel([])}
+                                className="smart-clear text-[8px] font-black uppercase tracking-[0.16em] px-2 py-1 rounded-md shrink-0 ml-3"
+                                title={tr("Clear content filter")}>
+                                {tr("Clear")} {(contentSel || []).length}
+                            </button>
+                        )}
                     </div>
+
                     <div className="w-full px-6 py-3 flex items-center gap-6 overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-700">
                         <button onClick={() => setInvVendorFilter(['All'])} className={`text-[10px] font-black uppercase transition-all shrink-0 ${invVendorFilter.includes('All') ? 'text-white' : 'text-zinc-600 hover:text-white'}`}>{tr("ALL")}<br/>{tr("VENDORS")}</button>
                         <div className="flex items-center gap-6 shrink-0 py-1">

@@ -126,7 +126,7 @@ const shipmentsSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 17,
+    version: 18,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -154,6 +154,8 @@ const inventorySchema = {
         length_cm: { type: ['number', 'null'] },
         media_urls: { type: ['string', 'null'] },
         short_description: { type: ['string', 'null'] },
+        processed_media_urls: { type: ['string', 'null'] },
+        generated_color: { type: ['string', 'null'] },
         generated_description: { type: ['string', 'null'] },
         detailed_description: { type: ['string', 'null'] },
         generated_image_urls: { type: ['string', 'null'] },
@@ -266,6 +268,22 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
     }
 }
 
+/**
+ * Local store name.
+ *
+ * Bumping this is the established way to recover from a migration that cannot
+ * complete: the local store is a CACHE and Supabase is the source of truth, so
+ * a clean name costs one re-sync and is far safer than repairing migration
+ * state. That has been needed twice — once when an incomplete 13→14 inventory
+ * migration left RxDB awaiting a step that never finished and the whole
+ * database promise hung, and again at 17→18.
+ *
+ * Names retired so far, wiped on failure below to reclaim the space. Keep this
+ * list append-only; a browser can hold any of them.
+ */
+const DB_NAME = 'onyxdb20';
+const RETIRED_DB_NAMES = ['onyxdb18', 'onyxdb19'];
+
 const createDatabase = async () => {
     // Check for Secure Context (Required for RxDB's Crypto/Subtle functionalities)
     if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
@@ -278,13 +296,7 @@ const createDatabase = async () => {
 
     try {
         db = await createRxDatabase<OnyxDatabase>({
-            // Bumped from onyxdb18 with the season schema change (inventory 14→15,
-            // finance 6→7, logistics 4→5). An earlier 13→14 inventory migration had
-            // been left incomplete, so stacking another version on top left RxDB
-            // awaiting a migration that never finished and the whole DB promise hung.
-            // The local store is a cache — Supabase is the source of truth — so a
-            // clean name is cheaper and safer than repairing migration state.
-            name: 'onyxdb19',
+            name: DB_NAME,
             storage: getRxStorageDexie()
         });
 
@@ -303,6 +315,14 @@ const createDatabase = async () => {
                     // 17: print provenance + the two derived status columns.
                     // All nullable and server-populated, so docs pass through.
                     17: (oldDoc) => oldDoc,
+                    // 18: processed_media_urls + generated_color. Both were
+                    // already coming down from Supabase — select('*') fetches
+                    // every column — and were being discarded here, which is
+                    // why nothing client-side could tell whether an item had
+                    // been through image cleanup. Nullable and server-owned,
+                    // so existing docs pass through and the next sync fills
+                    // them in.
+                    18: (oldDoc) => oldDoc,
                 }
             },
             finance: {
@@ -474,13 +494,21 @@ const createDatabase = async () => {
         const now = Date.now();
 
         if (now - lastReload > 15000) { // Increased to 15s for mobile stability
-            console.warn('⚠️ [DB] Wiping onyxdb18 store and reloading...');
+            console.warn(`⚠️ [DB] Wiping ${DB_NAME} and reloading...`);
             localStorage.setItem('onyx_last_reload', now.toString());
-            
+
             setTimeout(async () => {
                 try {
                     if (db) await db.destroy().catch(() => {});
-                    await removeRxDatabase('onyxdb18', getRxStorageDexie());
+                    // DB_NAME, not a literal. This previously named a store the
+                    // app had already stopped using, so recovery wiped nothing,
+                    // reloaded into the same failure, and the second pass hit
+                    // the loop guard below — leaving the app on its skeleton
+                    // with no way out.
+                    await removeRxDatabase(DB_NAME, getRxStorageDexie());
+                    for (const stale of RETIRED_DB_NAMES) {
+                        await removeRxDatabase(stale, getRxStorageDexie()).catch(() => {});
+                    }
                 } catch (_) { /* Ignore wipe errors */ }
                 window.location.reload();
             }, 1000);
