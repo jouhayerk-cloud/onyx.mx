@@ -1,12 +1,13 @@
 import React from 'react';
 import { SkeletonBox, SkeletonText, SkeletonAvatar, SkeletonBadge } from '../../components/Skeleton';
+import { tr } from '../../lib/i18n';
 
 /** Grid skeleton — mirrors the 2→3→4→5 col responsive grid */
 export const InventorySkeletonGrid = () => (
     <div
         role="status"
         aria-busy="true"
-        aria-label="Loading inventory"
+        aria-label={tr("Loading inventory")}
         className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
     >
         {Array.from({ length: 10 }).map((_, i) => (
@@ -27,7 +28,7 @@ export const InventorySkeletonGrid = () => (
                 </div>
             </div>
         ))}
-        <span className="sr-only">Loading inventory items…</span>
+        <span className="sr-only">{tr("Loading inventory items…")}</span>
     </div>
 );
 
@@ -36,7 +37,7 @@ export const InventorySkeletonList = () => (
     <div
         role="status"
         aria-busy="true"
-        aria-label="Loading inventory"
+        aria-label={tr("Loading inventory")}
         className="flex flex-col gap-1.5"
     >
         {Array.from({ length: 8 }).map((_, i) => (
@@ -57,6 +58,6 @@ export const InventorySkeletonList = () => (
                 <SkeletonBox className="w-6 h-6 rounded-lg shrink-0" />
             </div>
         ))}
-        <span className="sr-only">Loading inventory items…</span>
+        <span className="sr-only">{tr("Loading inventory items…")}</span>
     </div>
 );

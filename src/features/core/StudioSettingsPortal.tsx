@@ -10,6 +10,7 @@ import {
     APP_STYLES,
     performanceModeAtom,
     userAtom,
+    languageAtom,
     isOfflineModeAtom
 } from '../../lib/atoms';
 import type { AppStyle } from '../../lib/atoms';
@@ -17,13 +18,14 @@ import { useSyncEngine } from '../../lib/syncEngine';
 import {
     X, AlertCircle, LogOut,
     Shield, Activity, Palette, Zap, Terminal,
-    Wifi, WifiOff, Layers, Box
+    Wifi, WifiOff, Layers, Box, Languages
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { THEME_ASSETS } from '../../lib/themes-assets';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import changelogText from '../../assets/CHANGELOG.md?raw';
+import { tr } from '../../lib/i18n';
 
 declare const __APP_VERSION__: string;
 
@@ -56,6 +58,7 @@ export const StudioSettingsPortal: React.FC = () => {
     const [performanceMode, setPerf]      = useAtom(performanceModeAtom);
     const [user]                          = useAtom(userAtom);
     const [isOffline]                     = useAtom(isOfflineModeAtom);
+    const [language, setLanguage]         = useAtom(languageAtom);
     const { goOffline, goOnline }         = useSyncEngine();
     const logout                          = useLogout();
     const { t }                           = useTranslation();
@@ -79,7 +82,7 @@ export const StudioSettingsPortal: React.FC = () => {
             return (
                 <div className={`flex flex-col items-center justify-center py-20 gap-4 ${L ? 'text-black/30' : 'text-white/30'}`}>
                     <AlertCircle size={40} strokeWidth={1} />
-                    <p className="text-xs font-black uppercase tracking-[0.2em]">Documentation Offline</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em]">{tr("Documentation Offline")}</p>
                 </div>
             );
         }
@@ -122,7 +125,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                 <div className="flex items-center gap-3 mb-1">
                                     <h1 className={`text-lg md:text-3xl font-black uppercase tracking-[0.4em] leading-none ${L ? 'text-black' : 'text-white'}`}>Onyx.mx</h1>
                                     <span className={`h-[1px] w-8 ${L ? 'bg-black/40' : 'bg-white/40'}`} />
-                                    <span className="text-[9px] font-black text-blue-500 tracking-[0.3em] uppercase">Settings</span>
+                                    <span className="text-[9px] font-black text-blue-500 tracking-[0.3em] uppercase">{tr("Settings")}</span>
                                 </div>
                                 <span className={`text-[8px] font-black uppercase tracking-[0.5em] ${L ? 'text-black/40' : 'text-white/40'}`}>V{__APP_VERSION__}</span>
                             </div>
@@ -155,9 +158,9 @@ export const StudioSettingsPortal: React.FC = () => {
                                         <div className="flex items-center gap-6 md:gap-8 w-full md:w-auto">
                                             <Shield size={32} strokeWidth={2} className="text-purple-500" />
                                             <div className="flex flex-col">
-                                                <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] mb-1 ${L ? 'text-black' : 'text-white'}`}>Operator</span>
+                                                <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.6em] mb-1 ${L ? 'text-black' : 'text-white'}`}>{tr("Operator")}</span>
                                                 <div className="flex flex-col md:flex-row md:items-baseline gap-1 md:gap-4">
-                                                    <span className={`text-xl md:text-2xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || 'ROOT'}</span>
+                                                    <span className={`text-xl md:text-2xl font-black uppercase tracking-widest leading-none ${L ? 'text-black' : 'text-white'}`}>{user?.name || tr("ROOT")}</span>
                                                     <span className="text-[10px] md:text-[11px] font-black text-blue-500 lowercase tracking-[0.2em] opacity-60">{user?.email?.toLowerCase()}</span>
                                                 </div>
                                             </div>
@@ -169,6 +172,34 @@ export const StudioSettingsPortal: React.FC = () => {
                                             kit. aria-pressed drives SLAB's carved-in ON state for the three
                                             actual toggles; Logout is an action and carries none. */}
                                         <div className="flex items-center gap-2.5 md:gap-3 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0 border-white/5">
+
+                                            {/* Language. App.tsx keys the tree on languageAtom and pushes the
+                                                value into the i18n runtime, so setting the atom is the whole
+                                                switch — tr() reads a module-level language rather than
+                                                subscribing, and the remount is what carries the change into
+                                                the ~120 files that never read the atom themselves.
+
+                                                The label shows the language you are IN, not the one you would
+                                                get; a control that names the other option reads as a statement
+                                                about the current state and gets toggled the wrong way. The
+                                                title carries the destination instead. Both strings stay
+                                                untranslated on purpose: a language name is the one label that
+                                                must stay legible to someone who cannot read the current UI. */}
+                                            <div className="tool-cell flex flex-col items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLanguage(language === 'es' ? 'en' : 'es')}
+                                                    aria-pressed={language === 'es'}
+                                                    aria-label={`Language: ${language === 'es' ? 'Espanol' : 'English'}. Activate to switch to ${language === 'es' ? 'English' : 'Espanol'}.`}
+                                                    title={language === 'es' ? 'ESPANOL — CLICK FOR ENGLISH' : 'ENGLISH — CLICK FOR ESPANOL'}
+                                                    className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-white/10"
+                                                >
+                                                    <Languages size={18} className={language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')} />
+                                                </button>
+                                                <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')}`}>
+                                                    {language === 'es' ? 'ES' : 'EN'}
+                                                </span>
+                                            </div>
                                             <div className="tool-cell flex flex-col items-center gap-1.5">
                                                 <button
                                                     type="button"
@@ -196,7 +227,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     <Zap size={18} className={performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')} />
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${performanceMode ? 'text-yellow-500' : (L ? 'text-black/40' : 'text-white/40')}`}>
-                                                    {performanceMode ? 'MAX' : 'STD'}
+                                                    {performanceMode ? tr("MAX") : tr("STD")}
                                                 </span>
                                             </div>
 
@@ -211,7 +242,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     {isOffline ? <Wifi size={18} className="text-green-500" /> : <WifiOff size={18} className="text-amber-500" />}
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${isOffline ? 'text-green-500' : 'text-amber-500'}`}>
-                                                    {isOffline ? 'OFFLINE' : 'ONLINE'}
+                                                    {isOffline ? tr("OFFLINE") : 'ONLINE'}
                                                 </span>
                                             </div>
 
@@ -219,13 +250,13 @@ export const StudioSettingsPortal: React.FC = () => {
                                                 <button
                                                     type="button"
                                                     onClick={logout}
-                                                    title="TERMINATE SESSION"
+                                                    title={tr("TERMINATE SESSION")}
                                                     className="tool-btn flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-xl transition-all duration-150 hover:bg-red-500/10"
                                                 >
                                                     <LogOut size={18} className="text-red-500" />
                                                 </button>
                                                 <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none text-red-500">
-                                                    EXIT
+                                                    {tr("EXIT")}
                                                 </span>
                                             </div>
                                         </div>
@@ -242,7 +273,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                         <div className="shrink-0">
                                             <div className="flex items-center gap-3 pb-4 mb-4">
                                                 <Palette size={14} className="text-blue-500" />
-                                                <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>Theme</h3>
+                                                <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>{tr("Theme")}</h3>
                                             </div>
                                             <div className="flex items-center gap-5 md:gap-6">
                                                 {themes.map(th => {
@@ -288,22 +319,22 @@ export const StudioSettingsPortal: React.FC = () => {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-3 pb-4 mb-4">
                                                 <Palette size={14} className="text-cyan-500" />
-                                                <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>Colors</h3>
+                                                <h3 className={`text-sm font-black uppercase tracking-[0.4em] ${L ? 'text-black' : 'text-white'}`}>{tr("Colors")}</h3>
                                             </div>
                                             <div className="flex flex-wrap gap-4 md:gap-5">
                                                 {[
-                                                    { label: 'Surface',  key: '--app-bg-solid' },
-                                                    { label: 'Neural',   key: '--main-color' },
-                                                    { label: 'Static',   key: '--secondary-color' },
-                                                    { label: 'Text P',   key: '--text-color-primary' },
-                                                    { label: 'Text S',   key: '--text-color-secondary' },
-                                                    { label: 'Boundary', key: '--border-color' },
-                                                    { label: 'Input',    key: '--input-color' },
-                                                    { label: 'Sidebar',  key: '--sidebar-bg' },
-                                                    { label: 'Portal',   key: '--app-bg' },
-                                                    { label: 'Glass',    key: '--glass-bg' },
-                                                    { label: 'Base',     key: '--bg-color' },
-                                                    { label: 'Accent',   key: '--accent-color' },
+                                                    { label: tr("Surface"),  key: '--app-bg-solid' },
+                                                    { label: tr("Neural"),   key: '--main-color' },
+                                                    { label: tr("Static"),   key: '--secondary-color' },
+                                                    { label: tr("Text P"),   key: '--text-color-primary' },
+                                                    { label: tr("Text S"),   key: '--text-color-secondary' },
+                                                    { label: tr("Boundary"), key: '--border-color' },
+                                                    { label: tr("Input"),    key: '--input-color' },
+                                                    { label: tr("Sidebar"),  key: '--sidebar-bg' },
+                                                    { label: tr("Portal"),   key: '--app-bg' },
+                                                    { label: tr("Glass"),    key: '--glass-bg' },
+                                                    { label: tr("Base"),     key: '--bg-color' },
+                                                    { label: tr("Accent"),   key: '--accent-color' },
                                                 ].map((token) => (
                                                     <div key={`${token.key}-${theme}`} className="flex flex-col items-center gap-1.5 w-12">
                                                         <div
@@ -324,7 +355,7 @@ export const StudioSettingsPortal: React.FC = () => {
                             ) : (
                                 <div className="max-w-4xl mx-auto py-12 animate-in slide-in-from-bottom-12 duration-700 select-text">
                                     <div className={`flex items-center gap-6 mb-16 ${L ? 'opacity-40' : 'opacity-30'}`}>
-                                        <h2 className={`text-[10px] font-black uppercase tracking-[1em] ${L ? 'text-black' : 'text-white'}`}>System Logs</h2>
+                                        <h2 className={`text-[10px] font-black uppercase tracking-[1em] ${L ? 'text-black' : 'text-white'}`}>{tr("System Logs")}</h2>
                                         <div className={`h-[1px] flex-1 ${L ? 'bg-black/20' : 'bg-white/20'}`} />
                                     </div>
                                     {renderMarkdown(changelogText)}
@@ -337,18 +368,18 @@ export const StudioSettingsPortal: React.FC = () => {
                     <div className={`mt-auto px-6 py-6 md:px-12 md:pb-16 md:pt-12 flex flex-col md:flex-row items-center justify-between gap-10 md:gap-20 animate-in slide-in-from-bottom-8 duration-700 shrink-0`}>
                         <div className="flex items-center justify-between w-full md:w-auto md:gap-24">
                             <div className="flex flex-col gap-2">
-                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>Latency</span>
+                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>{tr("Latency")}</span>
                                 <div className="flex items-center gap-4">
-                                    <span className={`text-3xl md:text-5xl font-black tracking-tighter ${L ? 'text-black' : 'text-white'}`}>14MS</span>
+                                    <span className={`text-3xl md:text-5xl font-black tracking-tighter ${L ? 'text-black' : 'text-white'}`}>{tr("14MS")}</span>
                                     <div className="flex gap-1">
                                         {[1,2,3,4,5].map(i => <div key={i} className={`w-1 h-4 md:h-6 ${i < 4 ? 'bg-blue-500' : L ? 'bg-black/20' : 'bg-white/20'}`} />)}
                                     </div>
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
-                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>Memory</span>
+                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>{tr("Memory")}</span>
                                 <div className="flex items-center gap-4">
-                                    <span className={`text-3xl md:text-5xl font-black tracking-tighter ${L ? 'text-black' : 'text-white'}`}>1.2GB</span>
+                                    <span className={`text-3xl md:text-5xl font-black tracking-tighter ${L ? 'text-black' : 'text-white'}`}>{tr("1.2GB")}</span>
                                     <div className={`w-12 md:w-20 h-2 rounded-full overflow-hidden ${L ? 'bg-black/15' : 'bg-white/15'}`}>
                                         <div className="w-2/3 h-full bg-purple-500" />
                                     </div>
@@ -358,15 +389,15 @@ export const StudioSettingsPortal: React.FC = () => {
 
                         <div className="flex items-center justify-between w-full md:w-auto md:gap-24 text-right">
                             <div className="flex flex-col gap-2">
-                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>Sync</span>
+                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>{tr("Sync")}</span>
                                 <div className="flex items-center gap-4 justify-end">
-                                    <span className="text-3xl md:text-5xl font-black text-green-500 tracking-tighter uppercase">ACTIVE</span>
+                                    <span className="text-3xl md:text-5xl font-black text-green-500 tracking-tighter uppercase">{tr("ACTIVE")}</span>
                                     <Activity size={24} className="text-green-500 animate-pulse" />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
-                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>Regional Hub</span>
-                                <span className={`text-3xl md:text-5xl font-black tracking-tighter uppercase ${L ? 'text-black' : 'text-white'}`}>MX-NORTH</span>
+                                <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${L ? 'text-black' : 'text-white'}`}>{tr("Regional Hub")}</span>
+                                <span className={`text-3xl md:text-5xl font-black tracking-tighter uppercase ${L ? 'text-black' : 'text-white'}`}>{tr("MX-NORTH")}</span>
                             </div>
                         </div>
                     </div>

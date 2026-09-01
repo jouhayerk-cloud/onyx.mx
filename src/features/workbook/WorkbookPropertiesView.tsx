@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai/react';
 import { workbookPropertiesDataAtom } from '../../lib/atoms';
 import { WorkbookPaymentTrackingView } from './WorkbookPaymentTrackingView';
 import { findHeaderRowIndex } from './workbookUtils';
+import { tr } from '../../lib/i18n';
 
 export const WorkbookPropertiesView: React.FC = () => {
     const propertiesData = useAtomValue(workbookPropertiesDataAtom);
@@ -18,7 +19,7 @@ export const WorkbookPropertiesView: React.FC = () => {
         <div className="flex flex-col gap-6 h-full p-4 overflow-y-auto overflow-x-hidden custom-scrollbar">
             {sortedData.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-[var(--text-color-secondary)]">
-                    No Property/Expense sheets loaded (-v*).
+                    {tr("No Property/Expense sheets loaded (-v*).")}
                 </div>
             ) : (
                 <div className="flex flex-col gap-8 w-full">

@@ -3,6 +3,8 @@ import { useAtomValue } from 'jotai';
 import { userAtom } from '../../../lib/atoms';
 import { PicoDevice } from '../../../lib/picoAtoms';
 import { Plus, Terminal, Check, X, AlertCircle, Bot, Box, Smartphone, Monitor, Bluetooth, Sparkles, UserCheck, RefreshCw } from 'lucide-react';
+import { tr } from '../../../lib/i18n';
+import { el } from '../../../lib/i18nEnums';
 
 interface PicoDeviceRegistryProps {
   onRegisterDevice: (device: Omit<PicoDevice, 'id' | 'last_seen_at' | 'is_active'>) => void;
@@ -186,8 +188,8 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
               <Bot size={20} className="text-purple-400" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-wide">Link Hardware Terminal</h3>
-              <p className="text-[11px] font-mono text-neutral-400">Pair StackChan, ATOM, or StickS3 to your Onyx.mx account</p>
+              <h3 className="text-base font-bold text-white tracking-wide">{tr("Link Hardware Terminal")}</h3>
+              <p className="text-[11px] font-mono text-neutral-400">{tr("Pair StackChan, ATOM, or StickS3 to your Onyx.mx account")}</p>
             </div>
           </div>
           {onClose && (
@@ -211,7 +213,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
         <div className="mb-5">
           <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
             <Sparkles size={12} className="text-purple-400" />
-            Select Hardware Type
+            {tr("Select Hardware Type")}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {HARDWARE_PRESETS.map(preset => {
@@ -247,9 +249,9 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
               <Bluetooth size={16} className="text-purple-400" />
             </div>
             <div>
-              <div className="text-xs font-bold text-white">Auto-Discover via Bluetooth</div>
+              <div className="text-xs font-bold text-white">{tr("Auto-Discover via Bluetooth")}</div>
               <div className="text-[10px] text-neutral-400 font-mono">
-                {bleStatus || 'Search for nearby OnyxChan BLE beacon to auto-fill MAC'}
+                {bleStatus || tr("Search for nearby OnyxChan BLE beacon to auto-fill MAC")}
               </div>
             </div>
           </div>
@@ -260,7 +262,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
             className="w-full sm:w-auto px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-[11px] font-bold tracking-wider uppercase transition-colors shrink-0 flex items-center justify-center gap-1.5"
           >
             {isScanningBle ? <RefreshCw size={12} className="animate-spin" /> : <Bluetooth size={12} />}
-            {isScanningBle ? 'Scanning...' : 'Scan BLE'}
+            {isScanningBle ? tr("Scanning...") : tr("Scan BLE")}
           </button>
         </div>
 
@@ -269,13 +271,13 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-                Device Name
+                {tr("Device Name")}
               </label>
               <input
                 type="text"
                 value={deviceName}
                 onChange={e => setDeviceName(e.target.value)}
-                placeholder="e.g., OnyxChan Robot #1"
+                placeholder={tr("e.g., OnyxChan Robot #1")}
                 className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs font-mono focus:outline-none focus:border-purple-500 transition-colors"
                 required
               />
@@ -283,13 +285,13 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
 
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-                ESP32 MAC Address
+                {tr("ESP32 MAC Address")}
               </label>
               <input
                 type="text"
                 value={deviceMac}
                 onChange={e => setDeviceMac(e.target.value)}
-                placeholder="e.g., 24:D7:EB:12:34:56"
+                placeholder={tr("e.g., 24:D7:EB:12:34:56")}
                 className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs font-mono uppercase focus:outline-none focus:border-purple-500 transition-colors"
                 required
               />
@@ -300,7 +302,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                Assigned User (Email)
+                {tr("Assigned User (Email)")}
               </label>
               {currentUser?.email && (
                 <button
@@ -317,7 +319,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
               type="email"
               value={assignedEmail}
               onChange={e => setAssignedEmail(e.target.value)}
-              placeholder="e.g., ramses@jouhayerk.com"
+              placeholder={tr("e.g., ramses@jouhayerk.com")}
               className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs font-mono focus:outline-none focus:border-purple-500 transition-colors"
             />
           </div>
@@ -326,16 +328,16 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-                Assigned Access Role
+                {tr("Assigned Access Role")}
               </label>
               <select
                 value={assignedRole}
                 onChange={e => setAssignedRole(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-purple-500 transition-colors"
               >
-                {(['Developer', 'Admin', 'Vendor', 'Staff', 'User'] as const).map(role => (
+                {(['Developer', 'Admin', 'Vendor', tr("Staff"), tr("User")] as const).map(role => (
                   <option key={role} value={role} className="bg-neutral-900 text-white">
-                    {role}
+                    {el(role)}
                   </option>
                 ))}
               </select>
@@ -343,10 +345,10 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
 
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">
-                Firmware Runtime
+                {tr("Firmware Runtime")}
               </label>
               <div className="w-full px-3 py-2 rounded-xl bg-black/30 border border-white/5 text-neutral-400 text-xs font-mono">
-                UIFlow 2.0 (MicroPython)
+                {tr("UIFlow 2.0 (MicroPython)")}
               </div>
             </div>
           </div>
@@ -354,7 +356,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
           {/* Attached Hardware Accessories */}
           <div>
             <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">
-              Active Hardware Sensors / Features
+              {tr("Active Hardware Sensors / Features")}
             </label>
             <div className="grid grid-cols-2 gap-1.5 max-h-28 overflow-y-auto p-2 rounded-xl bg-black/30 border border-white/5">
               {ACCESSORY_OPTIONS.map(acc => {
@@ -390,7 +392,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
                 onClick={onClose}
                 className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-semibold tracking-wide transition-colors"
               >
-                Cancel
+                {tr("Cancel")}
               </button>
             )}
             <button
@@ -398,7 +400,7 @@ export const PicoDeviceRegistry: React.FC<PicoDeviceRegistryProps> = ({ onRegist
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold tracking-wider uppercase transition-all shadow-lg shadow-purple-500/20 flex items-center gap-2"
             >
               <Plus size={14} />
-              Link Device
+              {tr("Link Device")}
             </button>
           </div>
         </form>

@@ -25,6 +25,7 @@ import {SCRIPT_URL, segmentationColors} from '../../lib/consts';
 import {useTranslation, useNotify} from '../../lib/hooks';
 import {InventoryItemData} from '../../lib/Types';
 import {createCurvePath, extractGradientFromMask, generatePngAndSvgFromMasks} from '../../lib/utils';
+import { tr } from '../../lib/i18n';
 
 export function ExtraModeControls() {
   const t = useTranslation();
@@ -106,7 +107,7 @@ export function ExtraModeControls() {
       }
     }
 
-    const toastId = notify.loading('Saving mask data...');
+    const toastId = notify.loading(tr("Saving mask data..."));
 
     try {
       const masksToExport = editedAnnotations.masks.filter((_, index) => selectedMasks.includes(index));
@@ -224,7 +225,7 @@ export function ExtraModeControls() {
           className="button secondary px-8 hover:bg-white/10 transition-all font-bold uppercase tracking-widest text-xs"
         >
           <svg className="w-4 h-4 inline-block mr-2"><use href="#x" /></svg>
-          Close Viewer
+          {tr("Close Viewer")}
         </button>
       </div>
     );
@@ -251,7 +252,7 @@ export function ExtraModeControls() {
               </option>
             ))
           ) : (
-            <option>No masks loaded</option>
+            <option>{tr("No masks loaded")}</option>
           )}
         </select>
       </div>

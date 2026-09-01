@@ -5,6 +5,7 @@ import { activeViewAtom, inventoryVendorFilterAtom } from '../../../lib/atoms';
 import { VENDOR_COLORS, useDeviceControl } from '../useDeviceControl';
 import { X, CheckCircle2, Package, Bot, Volume2, ArrowRight, Radio, DollarSign, Box } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { tr } from '../../../lib/i18n';
 
 interface PicoInventoryCardModalProps {
   scanEvent: (PicoScanEvent & { actionTaken?: string }) | null;
@@ -128,7 +129,7 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
             </span>
             <span className="text-[10px] font-black uppercase tracking-widest text-neutral-300 flex items-center gap-1.5">
               <Radio size={12} className="text-emerald-400" />
-              Inventory Item Detected
+              {tr("Inventory Item Detected")}
             </span>
           </div>
           <button
@@ -142,7 +143,7 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
         {/* Loading / Error States */}
         {loading && (
           <div className="p-10 text-center text-neutral-400 animate-pulse text-sm">
-            Searching Supabase inventory...
+            {tr("Searching Supabase inventory...")}
           </div>
         )}
         
@@ -176,12 +177,12 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="text-lg font-bold text-white tracking-wide line-clamp-2">{item.title}</h3>
                 </div>
-                <p className="text-xs text-neutral-300 font-mono mt-1">Vendor: {item.vendor || 'N/A'}</p>
+                <p className="text-xs text-neutral-300 font-mono mt-1">{tr("Vendor:")} {item.vendor || 'N/A'}</p>
                 <div className="text-[10px] font-mono text-neutral-400 mt-1 flex items-center gap-2">
-                  <span>Tag: <strong className="text-white">{scanEvent.tagId}</strong></span>
+                  <span>{tr("Tag:")} <strong className="text-white">{scanEvent.tagId}</strong></span>
                   <span>•</span>
                   <span>{scanEvent.scanType}</span>
-                  {scanEvent.rssi !== undefined && <span>({scanEvent.rssi} dBm)</span>}
+                  {scanEvent.rssi !== undefined && <span>({scanEvent.rssi} {tr("dBm)")}</span>}
                 </div>
               </div>
             </div>
@@ -190,15 +191,15 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
             <div className="space-y-1.5 p-3 rounded-xl bg-black/40 border border-white/5 text-[11px] font-mono text-neutral-300 grid grid-cols-2 gap-2">
               <div className="flex items-center gap-2 col-span-2 sm:col-span-1">
                 <DollarSign size={12} className="text-emerald-400 shrink-0" />
-                <span>Price: <strong className="text-white">${item.price || '0.00'}</strong></span>
+                <span>{tr("Price:")} <strong className="text-white">${item.price || '0.00'}</strong></span>
               </div>
               <div className="flex items-center gap-2 col-span-2 sm:col-span-1">
                 <Box size={12} className="text-amber-400 shrink-0" />
-                <span>Stock: <strong className="text-white">{item.stock ?? 'N/A'}</strong></span>
+                <span>{tr("Stock:")} <strong className="text-white">{item.stock ?? 'N/A'}</strong></span>
               </div>
               <div className="flex items-center gap-2 col-span-2">
                 <CheckCircle2 size={12} className="text-blue-400 shrink-0" />
-                <span className="truncate">Status: <strong className="text-white">{item.status || 'Active'}</strong></span>
+                <span className="truncate">{tr("Status:")} <strong className="text-white">{item.status || 'Active'}</strong></span>
               </div>
             </div>
           </div>
@@ -212,7 +213,7 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
               className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-200 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 hover:border-purple-500/40"
             >
               <Bot size={14} className="text-purple-400" />
-              Push to LCD
+              {tr("Push to LCD")}
             </button>
             
             <button
@@ -220,7 +221,7 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
               className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-200 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 hover:border-purple-500/40"
             >
               <Volume2 size={14} className="text-amber-400" />
-              Robot Speak
+              {tr("Robot Speak")}
             </button>
           </div>
         )}
@@ -231,7 +232,7 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-semibold tracking-wide transition-colors"
           >
-            Dismiss
+            {tr("Dismiss")}
           </button>
           
           {item && !loading && (
@@ -241,7 +242,7 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
               style={{ backgroundColor: vendorColor }}
             >
               <Package size={14} />
-              <span>View in DB</span>
+              <span>{tr("View in DB")}</span>
               <ArrowRight size={12} />
             </button>
           )}

@@ -148,6 +148,7 @@ import {
 // The swatch images are non-critical (shown in the settings sidebar only).
 
 import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
+import { tr } from '../../lib/i18n';
 
 declare const __APP_VERSION__: string;
 
@@ -319,13 +320,13 @@ const ShippingStats: React.FC = () => {
                 <div className="w-24 h-2 bg-(--text-color)/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#00AEEF] rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
-                <span>{pct}% wt</span>
+                <span>{pct}{tr("% wt")}</span>
             </div>
             <div className="flex items-center gap-1.5">
                 <div className="w-20 h-1.5 bg-(--text-color)/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#6BCEBB] rounded-full transition-all" style={{ width: `${volPct}%` }} />
                 </div>
-                <span>{volPct}% vol</span>
+                <span>{volPct}{tr("% vol")}</span>
             </div>
         </div>
     );
@@ -359,7 +360,7 @@ const InfoNotch: React.FC = () => {
     const handleSyncCalculatedFields = async () => {
         if (isSyncingCalc) return;
         setIsSyncingCalc(true);
-        const tid = toast.loading('Syncing calculated fields to database...');
+        const tid = toast.loading(tr("Syncing calculated fields to database..."));
         try {
             const count = await syncAllCalculatedFieldsToDB(items, exRate, db, (pct, curr, tot) => {
                 toast.loading(`Syncing calculated fields: ${curr}/${tot} items (${pct}%)`, { id: tid });
@@ -389,16 +390,16 @@ const InfoNotch: React.FC = () => {
             <button
                 onClick={handleSyncCalculatedFields}
                 disabled={isSyncingCalc}
-                title="Sync calculated fields to the database"
+                title={tr("Sync calculated fields to the database")}
                 className={`info-notch-stats grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-3.5 gap-y-1 px-3.5 py-1.5 ${isSyncingCalc ? 'animate-pulse' : ''}`}
             >
-                <span className={lbl}>Types</span>
+                <span className={lbl}>{tr("Types")}</span>
                 <span className={`${val} text-(--text-color)`}>{typesCount.toLocaleString()}</span>
 
-                <span className={lbl}>Qty</span>
+                <span className={lbl}>{tr("Qty")}</span>
                 <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
 
-                <span className={lbl}>{showFinancials ? 'Total MXN' : 'Total'}</span>
+                <span className={lbl}>{showFinancials ? tr("Total MXN") : tr("Total")}</span>
                 <span className={`${val} text-(--main-color)`}>
                     {showFinancials ? `$${totalValue.toLocaleString()}` : '\u2022\u2022\u2022'}
                 </span>
@@ -406,10 +407,10 @@ const InfoNotch: React.FC = () => {
 
             <button
                 onClick={() => openSettingsPortal(true)}
-                title="Settings"
+                title={tr("Settings")}
                 className="info-notch-user grid grid-rows-2 auto-cols-max items-center gap-y-1 px-3.5 py-1.5 text-left"
             >
-                <span className={`${lbl} text-(--main-color)`}>Welcome</span>
+                <span className={`${lbl} text-(--main-color)`}>{tr("Welcome")}</span>
                 <span className="text-[12px] font-black leading-none tracking-tight capitalize text-(--text-color)">
                     {displayName}
                 </span>
@@ -508,8 +509,8 @@ const InventoryAddButton: React.FC = () => {
     return (
         <ToolButton
             icon={Plus}
-            label="Add"
-            title="Add Entry"
+            label={tr("Add")}
+            title={tr("Add Entry")}
             onClick={() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 setView('upload');
@@ -525,11 +526,11 @@ const SheetsUploadButton: React.FC = () => {
     const handleGoogleSheetsUpload = async () => {
         const webhookUrl = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK;
         if (!webhookUrl) {
-            toast.error("VITE_GOOGLE_SHEETS_WEBHOOK is not defined in .env.local");
+            toast.error(tr("VITE_GOOGLE_SHEETS_WEBHOOK is not defined in .env.local"));
             return;
         }
 
-        const tid = toast.loading("Preparing Google Sheets payload...");
+        const tid = toast.loading(tr("Preparing Google Sheets payload..."));
         try {
             const payloadItems = items.map(item => {
                 const itemData = normalizeInventoryData(item.data);
@@ -577,8 +578,8 @@ const SheetsUploadButton: React.FC = () => {
     return (
         <ToolButton
             icon={FileSpreadsheet}
-            label="Sheets"
-            title="Upload inventory to Google Sheets"
+            label={tr("Sheets")}
+            title={tr("Upload inventory to Google Sheets")}
             onClick={handleGoogleSheetsUpload}
         />
     );
@@ -610,29 +611,29 @@ const InventoryBar: React.FC = () => {
     return (
         <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
             <div className="flex items-end gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
-                <ToolButton icon={SquareCheckBig} label="Select" active={isSelectionMode}
+                <ToolButton icon={SquareCheckBig} label={tr("Select")} active={isSelectionMode}
                     onClick={handleToggleSelectionMode} />
 
                 {/* TOOLS — a disclosure for the whole tool set. Off hides the
                     buttons AND any bars they deployed; on brings back every
                     button plus whichever bars were active. State is gated, not
                     cleared, so nothing is lost by collapsing the group. */}
-                <ToolButton icon={Wrench} label="Tools" active={showTools}
+                <ToolButton icon={Wrench} label={tr("Tools")} active={showTools}
                     onClick={() => setShowTools(!showTools)} />
 
                 {showTools && (
                     <div className="flex items-end gap-1 sm:gap-2 animate-in fade-in slide-in-from-left-4 duration-300 ml-1">
-                        <ToolButton icon={ViewIcon} label="View" active={isViewSliderOpen}
+                        <ToolButton icon={ViewIcon} label={tr("View")} active={isViewSliderOpen}
                             onClick={() => setIsViewSliderOpen(!isViewSliderOpen)} />
-                        <ToolButton icon={Filter} label="Filter" active={isFiltersOpen}
+                        <ToolButton icon={Filter} label={tr("Filter")} active={isFiltersOpen}
                             onClick={() => setIsFiltersOpen(!isFiltersOpen)} />
-                        <ToolButton icon={Search} label="Search" active={isSearchOpen || !!search}
+                        <ToolButton icon={Search} label={tr("Search")} active={isSearchOpen || !!search}
                             onClick={() => setIsSearchOpen(!isSearchOpen)} />
 
                         {/* Smart filters: the auto-generated Type/Shape and
                             Material/Colour hierarchies. */}
-                        <ToolButton icon={Tag} label="Tags" active={showSmart}
-                            title="Smart filters — type, shape, material, colour"
+                        <ToolButton icon={Tag} label={tr("Tags")} active={showSmart}
+                            title={tr("Smart filters — type, shape, material, colour")}
                             onClick={() => setShowSmart(!showSmart)} />
                     </div>
                 )}
@@ -658,7 +659,7 @@ const StoreBar: React.FC = () => {
                 isOpen={isSearchOpen} 
                 setIsOpen={setIsSearchOpen} 
                 accentColor="var(--color-store)"
-                placeholder="FIND ON STORE..."
+                placeholder={tr("FIND ON STORE...")}
             />
 
             {!isSearchOpen && (
@@ -720,7 +721,7 @@ const FinanceBar: React.FC = () => {
             <button 
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
                 className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isSearchOpen || search ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                title="Search Payments"
+                title={tr("Search Payments")}
             >
                 <Search size={22} strokeWidth={2} />
             </button>
@@ -729,14 +730,14 @@ const FinanceBar: React.FC = () => {
                 <button 
                     onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isFiltersOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Filter Payments"
+                    title={tr("Filter Payments")}
                 >
                     <Filter size={22} strokeWidth={2} />
                 </button>
                 <button 
                     onClick={() => setIsActionOpen(!isActionOpen)}
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isActionOpen ? 'text-(--color-finance) drop-shadow-[0_0_10px_rgba(var(--color-finance-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Settings & Logic"
+                    title={tr("Settings & Logic")}
                 >
                     <SlidersHorizontal size={22} strokeWidth={2} />
                 </button>
@@ -744,7 +745,7 @@ const FinanceBar: React.FC = () => {
                 <button 
                     onClick={() => setIsUpcomingOpen(!isUpcomingOpen)}
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isUpcomingOpen ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-white/50 hover:text-white'}`}
-                    title="Upcoming Payments"
+                    title={tr("Upcoming Payments")}
                 >
                     <Hourglass size={22} strokeWidth={2} className={isUpcomingOpen ? 'animate-pulse' : ''} />
                 </button>
@@ -815,7 +816,7 @@ const LogisticsBar: React.FC = () => {
                     isOpen={isSearchOpen} 
                     setIsOpen={setIsSearchOpen} 
                     accentColor="var(--color-logistics)"
-                    placeholder="FIND CRATES..."
+                    placeholder={tr("FIND CRATES...")}
                 />
             )}
 
@@ -834,18 +835,18 @@ const LogisticsBar: React.FC = () => {
                             <button 
                                 onClick={() => setIsCrateModalOpen(true)}
                                 className="flex flex-col items-center justify-center w-16 h-16 text-(--main-color) hover:text-white transition-all cursor-pointer hover:bg-white/5 rounded-2xl group/action"
-                                title="Initialize Storage Protocol"
+                                title={tr("Initialize Storage Protocol")}
                             >
                                 <PackagePlus size={24} strokeWidth={2} className="group-hover/action:scale-110 transition-transform mb-1" />
-                                <span className="text-[8px] font-black uppercase tracking-widest leading-none">New Unit</span>
+                                <span className="text-[8px] font-black uppercase tracking-widest leading-none">{tr("New Unit")}</span>
                             </button>
                             <button 
                                 onClick={() => setIsWarehouseSearchOpen(!isWarehouseSearchOpen)}
                                 className={`flex flex-col items-center justify-center w-16 h-16 transition-all cursor-pointer hover:bg-white/5 rounded-2xl group/search ${isWarehouseSearchOpen || search ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
-                                title="Search Units"
+                                title={tr("Search Units")}
                             >
                                 <Search size={22} strokeWidth={2} className="group-hover/search:scale-110 transition-transform mb-1" />
-                                <span className="text-[8px] font-black uppercase tracking-widest leading-none">Search</span>
+                                <span className="text-[8px] font-black uppercase tracking-widest leading-none">{tr("Search")}</span>
                             </button>
 
                             {subTab === 'packed' && (
@@ -866,7 +867,7 @@ const LogisticsBar: React.FC = () => {
                                         title={isWarehouseSelectionMode ? 'Cancel Selection' : 'Select Crates'}
                                     >
                                         <FolderUp size={22} strokeWidth={2} className="group-hover/select:scale-110 transition-transform mb-1" />
-                                        <span className="text-[8px] font-black uppercase tracking-widest leading-none">Select</span>
+                                        <span className="text-[8px] font-black uppercase tracking-widest leading-none">{tr("Select")}</span>
                                     </button>
 
                                     {isWarehouseSelectionMode && warehouseSelectedIds.size > 0 && (
@@ -889,7 +890,7 @@ const LogisticsBar: React.FC = () => {
                                         isOpen={true} 
                                         setIsOpen={setIsWarehouseSearchOpen} 
                                         accentColor="var(--color-logistics)"
-                                        placeholder="FIND UNITS..."
+                                        placeholder={tr("FIND UNITS...")}
                                     />
                                 </div>
                             )}
@@ -902,7 +903,7 @@ const LogisticsBar: React.FC = () => {
                             <button 
                                 onClick={() => setIsPackingFiltersOpen(!isPackingFiltersOpen)}
                                 className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isPackingFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
-                                title="Configuration"
+                                title={tr("Configuration")}
                             >
                                 <ListFilter size={28} />
                             </button>
@@ -925,17 +926,17 @@ const LogisticsBar: React.FC = () => {
                     {activeView === 'trucking' && (
                         <>
                             <div className="flex items-center gap-2 px-4 border-l border-white/5">
-                                <button onClick={() => setShowOpenDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group" title="Load Draft">
+                                <button onClick={() => setShowOpenDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group" title={tr("Load Draft")}>
                                     <Archive size={14} className="group-hover:scale-110 transition-transform" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">Drafts</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{tr("Drafts")}</span>
                                 </button>
-                                <button onClick={() => setShowSaveDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group px-2" title="Save Draft">
+                                <button onClick={() => setShowSaveDraft(true)} className="flex items-center gap-2 text-white/30 hover:text-white transition-all group px-2" title={tr("Save Draft")}>
                                     <Save size={14} className="group-hover:scale-110 transition-transform" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">Save</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{tr("Save")}</span>
                                 </button>
-                                <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 text-white/30 hover:text-(--main-color) transition-all group pr-2" title="Export Manifest">
+                                <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 text-white/30 hover:text-(--main-color) transition-all group pr-2" title={tr("Export Manifest")}>
                                     <SlidersHorizontal size={14} className="group-hover:scale-110 transition-transform" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">Export</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{tr("Export")}</span>
                                 </button>
                                 <button 
                                     disabled={truckBusy} 
@@ -944,18 +945,18 @@ const LogisticsBar: React.FC = () => {
                                         ${truckBusy ? 'bg-white/5 text-white/20' : 'bg-(--main-color) text-black hover:scale-105 active:scale-95'}`}
                                 >
                                     {truckBusy ? <Activity size={14} className="animate-spin" /> : <Truck size={14} strokeWidth={3} />}
-                                    <span className="hidden sm:block">{truckBusy ? 'Processing...' : 'Ready Truck'}</span>
+                                    <span className="hidden sm:block">{truckBusy ? tr("Processing...") : tr("Ready Truck")}</span>
                                 </button>
                             </div>
 
                             <div className="w-px h-6 bg-white/5 mx-1" />
                             <button
                                 onClick={() => setSubTab('crates')}
-                                title="Deployed Crates Library"
+                                title={tr("Deployed Crates Library")}
                                 className={`flex flex-col items-center justify-center w-16 h-16 transition-all cursor-pointer rounded-2xl hover:bg-white/5 group/library ${subTab === 'crates' ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
                             >
                                 <SquareLibrary size={28} strokeWidth={1.5} className="group-hover/library:scale-110 transition-transform" />
-                                <span className="text-[7px] font-black tracking-widest mt-1 opacity-40 group-hover/library:opacity-100 uppercase">Library</span>
+                                <span className="text-[7px] font-black tracking-widest mt-1 opacity-40 group-hover/library:opacity-100 uppercase">{tr("Library")}</span>
                             </button>
                         </>
                     )}
@@ -987,13 +988,13 @@ const PackingBar: React.FC = () => {
                 <div className="flex items-center gap-6 animate-in slide-in-from-left duration-500 pr-4 border-r border-white/5 mr-2">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-(--main-color) whitespace-nowrap">
-                            {selectedIds.size} ARTIFACTS SELECTED
+                            {selectedIds.size} {tr("ARTIFACTS SELECTED")}
                         </span>
                         <button 
                             onClick={() => setSelectedIds(new Set())} 
                             className="text-[9px] font-bold underline uppercase tracking-tighter opacity-40 hover:opacity-100 transition-opacity text-left"
                         >
-                            Clear Selection
+                            {tr("Clear Selection")}
                         </button>
                     </div>
                 </div>
@@ -1004,7 +1005,7 @@ const PackingBar: React.FC = () => {
                     isOpen={isSearchOpen} 
                     setIsOpen={setIsSearchOpen} 
                     accentColor="var(--main-color)"
-                    placeholder="FIND INVENTORY..."
+                    placeholder={tr("FIND INVENTORY...")}
                 />
             )}
 
@@ -1015,26 +1016,26 @@ const PackingBar: React.FC = () => {
                         label={viewMode.toUpperCase()}
                         active={true}
                         onClick={cycleView}
-                        title="Toggle View Mode"
+                        title={tr("Toggle View Mode")}
                     />
                     <button 
                         onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                         className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
-                        title="Configuration"
+                        title={tr("Configuration")}
                     >
                         <ListFilter size={28} />
                     </button>
 
                     <div className="w-px h-5 bg-white/10 mx-2" />
 
-                    <StudioAction icon={Printer} label="PRINT" onClick={() => setIsPrintOpen(true)} title="Generate High-Fidelity Labels" />
-                    <StudioAction icon={QrCode} label="NFC" onClick={() => setIsNFCWizardOpen(true)} title="Hardware Sync Handshake" />
+                    <StudioAction icon={Printer} label={tr("PRINT")} onClick={() => setIsPrintOpen(true)} title={tr("Generate High-Fidelity Labels")} />
+                    <StudioAction icon={QrCode} label="NFC" onClick={() => setIsNFCWizardOpen(true)} title={tr("Hardware Sync Handshake")} />
                     
                     <div className="w-px h-5 bg-white/10 mx-2" />
                     
-                    <StudioAction icon={FileText} label="PDF" onClick={() => setExportPDF(true)} title="Export PDF Catalog" />
-                    <StudioAction icon={Table} label="XLSX" onClick={() => setExportXLSX(true)} title="Export Spreadsheet" />
-                    <StudioAction icon={Database} label="JSON" onClick={() => setExportJSON(true)} title="Developer Data Dump" />
+                    <StudioAction icon={FileText} label="PDF" onClick={() => setExportPDF(true)} title={tr("Export PDF Catalog")} />
+                    <StudioAction icon={Table} label="XLSX" onClick={() => setExportXLSX(true)} title={tr("Export Spreadsheet")} />
+                    <StudioAction icon={Database} label="JSON" onClick={() => setExportJSON(true)} title={tr("Developer Data Dump")} />
                 </div>
             )}
         </div>
@@ -1050,7 +1051,7 @@ const ProcessBar: React.FC = () => {
                 onClick={() => setActiveTab('workspace')}
                 className={`flex items-center justify-center p-1 transition-all active:scale-90 group relative
                     ${activeTab === 'workspace' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
-                title="Engine Workspace"
+                title={tr("Engine Workspace")}
             >
                 <Target size={24} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
                 {activeTab === 'workspace' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
@@ -1059,7 +1060,7 @@ const ProcessBar: React.FC = () => {
                 onClick={() => setActiveTab('vault')}
                 className={`flex items-center justify-center p-1 transition-all active:scale-90 group relative
                     ${activeTab === 'vault' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
-                title="Inventory Vault"
+                title={tr("Inventory Vault")}
             >
                 <Library size={24} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
                 {activeTab === 'vault' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
@@ -1068,7 +1069,7 @@ const ProcessBar: React.FC = () => {
                 onClick={() => setActiveTab('batch')}
                 className={`flex items-center justify-center p-1 transition-all active:scale-90 group relative
                     ${activeTab === 'batch' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
-                title="Batch Telemetry"
+                title={tr("Batch Telemetry")}
             >
                 <FolderKanban size={24} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
                 {activeTab === 'batch' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
@@ -1083,16 +1084,16 @@ const UploadBar: React.FC = () => {
 
     return (
         <div className="flex items-center gap-3">
-            <ModuleBadge icon="upload" label="Add Entry" color="var(--color-upload)" />
+            <ModuleBadge icon="upload" label={tr("Add Entry")} color="var(--color-upload)" />
         </div>
     );
 };
 
 const ControlBar: React.FC = () => (
     <>
-        <ModuleBadge icon="shield" label="Control" color="var(--color-control)" />
+        <ModuleBadge icon="shield" label={tr("Control")} color="var(--color-control)" />
         <div className="ml-auto">
-            <span className="text-[11px] font-black text-(--text-color)/15 uppercase tracking-widest">Developer Only</span>
+            <span className="text-[11px] font-black text-(--text-color)/15 uppercase tracking-widest">{tr("Developer Only")}</span>
         </div>
     </>
 );
@@ -3569,7 +3570,7 @@ export function MainHeader() {
                                 setSidebarState(isMobile ? 'compact' : 'expanded');
                             }}
                             className="logo-panel p-1 px-2 rounded-xl transition-all flex items-center gap-2 group/logo mr-4"
-                            title="Onyx.mx Menu"
+                            title={tr("Onyx.mx Menu")}
                         >
                             <OnyxMiniLogo className="w-12 h-12 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
                         </button>
@@ -3615,7 +3616,7 @@ export function MainHeader() {
                                 />
                                 <StudioAction 
                                     icon={Download}
-                                    label="EXPORT"
+                                    label={tr("EXPORT")}
                                     onClick={handleMasterExportXLSX}
                                     disabled={isExporting}
                                     className={isExporting ? 'animate-bounce' : ''}
@@ -3624,7 +3625,7 @@ export function MainHeader() {
                         )}
                         {activeView === 'dashboard' && (
                             <div className="flex items-center gap-1 sm:gap-4">
-                                <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
+                                <ModuleBadge icon="layout-grid" label={tr("Analytics")} color="var(--color-analytics)" />
                                 <StudioAction 
                                     icon={DollarSign}
                                     label={currencyMode}
@@ -3651,7 +3652,7 @@ export function MainHeader() {
                             <button 
                                 onClick={() => setView('truck')}
                                 className="w-10 h-10 flex items-center justify-center text-(--main-color) animate-pulse drop-shadow-[0_0_10px_var(--main-color)] hover:scale-110 transition-all"
-                                title="Active Crate Deployment"
+                                title={tr("Active Crate Deployment")}
                             >
                                 <Truck size={20} strokeWidth={2.5} />
                             </button>
@@ -3661,7 +3662,7 @@ export function MainHeader() {
                             <button 
                                 onClick={() => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen }))}
                                 className={`w-10 h-10 flex items-center justify-center transition-all active:scale-90 hover:scale-110 ${artifactConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white/40 hover:text-white'}`}
-                                title="Toggle Neural Manifest"
+                                title={tr("Toggle Neural Manifest")}
                             >
                                 <Package size={20} strokeWidth={2.5} />
                             </button>
@@ -3673,7 +3674,7 @@ export function MainHeader() {
                                 <button 
                                     onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
                                     className="px-2 h-10 flex items-center justify-center text-[11px] font-black tracking-[0.3em] text-white/40 hover:text-white transition-all active:scale-95"
-                                    title="Toggle Neural Language"
+                                    title={tr("Toggle Neural Language")}
                                 >
                                     {appLanguage.toUpperCase()}
                                 </button>
@@ -3681,13 +3682,13 @@ export function MainHeader() {
                                 {/* Reset Neural Credentials */}
                                 <button 
                                     onClick={() => {
-                                        if (confirm("Reset Neural Link credentials to system default?")) {
+                                        if (confirm(tr("Reset Neural Link credentials to system default?"))) {
                                             localStorage.removeItem('onyxApiKey');
                                             setOnyxApiKey('');
                                         }
                                     }}
                                     className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-red-500 transition-all active:scale-90 hover:scale-110"
-                                    title="Reset Neural Credentials"
+                                    title={tr("Reset Neural Credentials")}
                                 >
                                     <RefreshCw size={18} strokeWidth={2.5} />
                                 </button>
@@ -3709,7 +3710,7 @@ export function MainHeader() {
                                 className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 bg-[#96bf48]/10 border border-[#96bf48]/20 hover:bg-[#96bf48]/20 group/shopify ${
                                     isShopifyExporting ? 'opacity-50 cursor-not-allowed' : ''
                                 }`}
-                                title="Download Shopify XLSX"
+                                title={tr("Download Shopify XLSX")}
                             >
                                 <ShoppingBag size={20} strokeWidth={2.5} className={isShopifyExporting ? 'animate-bounce text-[#96bf48]' : 'group-hover/shopify:scale-110 transition-transform text-[#96bf48]/70 group-hover/shopify:text-[#96bf48]'} />
                             </button>
@@ -3741,7 +3742,7 @@ export function MainHeader() {
                                 isExporting ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                             style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
-                            title="Download Workbook V2 (Rare Earth Format)"
+                            title={tr("Download Workbook V2 (Rare Earth Format)")}
                         >
                             <FileSpreadsheet size={20} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                         </button>
@@ -3754,8 +3755,8 @@ export function MainHeader() {
                         {activeView === 'inventory' && <InventoryAddButton />}
 
                         {/* EXPORT — the mirror of TOOLS at the other edge. */}
-                        <ToolButton icon={FolderUp} label="Export" active={showExport}
-                            title="Export tools" onClick={() => setShowExport(!showExport)} />
+                        <ToolButton icon={FolderUp} label={tr("Export")} active={showExport}
+                            title={tr("Export tools")} onClick={() => setShowExport(!showExport)} />
                     </div>
 
 

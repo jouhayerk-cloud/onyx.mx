@@ -13,6 +13,7 @@ import {
     PaymentCategory
 } from '../../lib/atoms';
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { tr } from '../../lib/i18n';
 
 const SUBCATEGORIES: PaymentCategory[] = ['All', 'Acq', 'Prod', 'Monthly', 'Sppl', 'Labr', 'Packing', 'Oprt'];
 
@@ -52,10 +53,10 @@ export const PaymentsFilterBar: React.FC = () => {
                             'Acq': { label: 'ACQUISITION', icon: DollarSign, color: '#10b981' },
                             'Prod': { label: 'PRODUCTION', icon: Cpu, color: '#6366f1' },
                             'Monthly': { label: 'MONTHLY', icon: Calendar, color: '#38bdf8' },
-                            'Oprt': { label: 'OPERATION', icon: Activity, color: '#818cf8' },
-                            'Packing': { label: 'PACKING', icon: Archive, color: '#fb7185' },
+                            'Oprt': { label: tr("OPERATION"), icon: Activity, color: '#818cf8' },
+                            'Packing': { label: tr("PACKING"), icon: Archive, color: '#fb7185' },
                             'Sppl': { label: 'SUPPLIES', icon: Box, color: '#34d399' },
-                            'Labr': { label: 'LABOR', icon: Users, color: '#fbbf24' }
+                            'Labr': { label: tr("LABOR"), icon: Users, color: '#fbbf24' }
                         };
                         const cfg = labels[s];
                         if (!cfg) return null;

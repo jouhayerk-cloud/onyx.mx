@@ -9,12 +9,13 @@ import { SceneComposerView } from '../market/SceneComposerView';
 import { useItemImage } from '../../lib/hooks';
 import { MarketInventoryView } from './MarketInventoryView';
 import { InventoryImages } from './InventoryImages';
+import { tr } from '../../lib/i18n';
 
 const DescriptionView = () => {
     const itemData = useAtomValue(SelectedItemDataAtom);
     const { imageUrl } = useItemImage(itemData);
 
-    if (!itemData) return <div className="flex items-center justify-center h-full text-[var(--text-color-secondary)]">Select an item to see details.</div>;
+    if (!itemData) return <div className="flex items-center justify-center h-full text-[var(--text-color-secondary)]">{tr("Select an item to see details.")}</div>;
 
     return (
         <div className="p-4 md:p-8 overflow-y-auto h-full space-y-6">
@@ -35,7 +36,7 @@ const MarketBottomBar = () => {
 
     const handleTabClick = (tabId: string) => {
         if (!itemData) {
-            toast.error('Please select an item first.');
+            toast.error(tr("Please select an item first."));
             return;
         }
         setActiveTab(tabId as any);

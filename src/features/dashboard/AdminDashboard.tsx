@@ -21,6 +21,7 @@ import type { EChartsOption } from 'echarts';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { pendingCardIcon } from './paymentsIcons.svg';
 import { PaymentDestination } from '../../lib/Types';
+import { tr } from '../../lib/i18n';
 
 // ── Shared Sub-components ──────────────────────────────────────────
 const getContrastColor = (hexcolor: string) => {
@@ -547,7 +548,7 @@ export function AdminDashboard() {
     if (isLoading) {
         return (
             <div className="h-full flex items-center justify-center">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary)">Synchronizing Intelligence...</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary)">{tr("Synchronizing Intelligence...")}</p>
             </div>
         );
     }
@@ -560,7 +561,7 @@ export function AdminDashboard() {
                       <div className="space-y-12">
                     <SectionHeader 
                         icon={Wallet} 
-                        title="Expenses & Financials" 
+                        title={tr("Expenses & Financials")} 
                         badge="Management" 
                         color="var(--main-color)"
                     />
@@ -569,7 +570,7 @@ export function AdminDashboard() {
                         {/* Donut Chart - Capital Distribution */}
                         <div className="lg:col-span-5 flex flex-col items-center gap-6">
                             <div className="flex flex-col items-center w-full">
-                                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-(--text-color-secondary) mb-4">Capital Allocation Ecosystem</span>
+                                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-(--text-color-secondary) mb-4">{tr("Capital Allocation Ecosystem")}</span>
                                 <div className="w-full flex justify-center">
                                     <FinancialDonutChart 
                                         metrics={{ 
@@ -588,9 +589,9 @@ export function AdminDashboard() {
                             {/* Distribution Labels */}
                             <div className="grid grid-cols-1 gap-4 w-full">
                                 {([
-                                    { label: 'Inventory', val: globalTotals.paidAcqMxn + globalTotals.reqMerchMxn, color: '#22c55e', sub: 'Capital Assets' },
-                                    { label: 'Operations', val: globalTotals.paidExpMxn + globalTotals.reqExpMxn, color: '#3b82f6', sub: 'Burn Rate' },
-                                    { label: 'Liability', val: globalTotals.pendingMxn, color: '#ef4444', sub: 'Outstanding' },
+                                    { label: tr("Inventory"), val: globalTotals.paidAcqMxn + globalTotals.reqMerchMxn, color: '#22c55e', sub: tr("Capital Assets") },
+                                    { label: tr("Operations"), val: globalTotals.paidExpMxn + globalTotals.reqExpMxn, color: '#3b82f6', sub: tr("Burn Rate") },
+                                    { label: tr("Liability"), val: globalTotals.pendingMxn, color: '#ef4444', sub: tr("Outstanding") },
                                 ] as const).map(g => (
                                     <div key={g.label} className="flex flex-col gap-1 border-l-4 pl-4 bg-white/[0.05] backdrop-blur-md p-3 border border-white/5" style={{ borderColor: g.color }}>
                                         <div className="flex items-center justify-between">
@@ -610,10 +611,10 @@ export function AdminDashboard() {
                             {/* Primary Payment Pillars */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                                 {([
-                                    { label: 'Paid Acq.', val: globalTotals.paidAcqMxn, sub: 'Inventory Settled', color: '#22c55e', Icon: PackageCheck },
-                                    { label: 'Req. Merch.', val: globalTotals.reqMerchMxn, sub: 'Awaiting Trans.', color: '#eab308', Icon: ShoppingCart },
-                                    { label: 'Pending Payment', val: globalTotals.pendingMxn, sub: 'Active Liability', color: '#ef4444', Icon: Receipt },
-                                    { label: 'Operations Paid', val: globalTotals.paidExpMxn, sub: 'Logistics/Supp.', color: '#3b82f6', Icon: Wrench },
+                                    { label: tr("Paid Acq."), val: globalTotals.paidAcqMxn, sub: tr("Inventory Settled"), color: '#22c55e', Icon: PackageCheck },
+                                    { label: tr("Req. Merch."), val: globalTotals.reqMerchMxn, sub: tr("Awaiting Trans."), color: '#eab308', Icon: ShoppingCart },
+                                    { label: tr("Pending Payment"), val: globalTotals.pendingMxn, sub: tr("Active Liability"), color: '#ef4444', Icon: Receipt },
+                                    { label: tr("Operations Paid"), val: globalTotals.paidExpMxn, sub: tr("Logistics/Supp."), color: '#3b82f6', Icon: Wrench },
                                 ] as const).map(pillar => (
                                     <div key={pillar.label} className="flex flex-col gap-2 group cursor-default">
                                         <div className="flex items-center gap-2">
@@ -623,7 +624,7 @@ export function AdminDashboard() {
                                         <p className="text-2xl font-mono font-black text-(--text-color) tracking-tighter">
                                             <span className="text-[10px] text-(--text-color-secondary) mr-1">{currencyMode}</span>
                                             {showFinancials
-                                                ? (currencyMode === 'MXN' ? pillar.val : pillar.val / currentExchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                                ? (currencyMode === 'MXN' ? pillar.val : pillar.val / currentExchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })
                                                 : '***'
                                             }
                                         </p>
@@ -634,14 +635,14 @@ export function AdminDashboard() {
 
                             {/* Operational Breakdown - Unified Colors */}
                             <div className="pt-8 border-t border-white/10">
-                                <h4 className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary) mb-8">Operational Allocation Breakdown</h4>
+                                <h4 className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary) mb-8">{tr("Operational Allocation Breakdown")}</h4>
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
                                     {([
                                         { label: 'Monthly', val: opsBreakdown.Monthly, color: '#4f46e5', Icon: Calendar },
                                         { label: 'Supplies', val: opsBreakdown.Supplies, color: '#0891b2', Icon: FlaskConical },
-                                        { label: 'Labor/Fees', val: opsBreakdown.Labor, color: '#9333ea', Icon: HandCoins },
-                                        { label: 'Logistics/Pack', val: opsBreakdown.Packing, color: '#6366f1', Icon: Truck },
-                                        { label: 'Operations', val: opsBreakdown.Operations, color: '#2563eb', Icon: Wrench },
+                                        { label: tr("Labor/Fees"), val: opsBreakdown.Labor, color: '#9333ea', Icon: HandCoins },
+                                        { label: tr("Logistics/Pack"), val: opsBreakdown.Packing, color: '#6366f1', Icon: Truck },
+                                        { label: tr("Operations"), val: opsBreakdown.Operations, color: '#2563eb', Icon: Wrench },
                                     ] as const).map(cat => (
                                         <div key={cat.label} className="flex flex-col gap-2 border-l border-white/10 pl-4 hover:border-l-2 transition-all" style={{ borderLeftColor: cat.color }}>
                                             <div className="flex items-center gap-2">
@@ -650,7 +651,7 @@ export function AdminDashboard() {
                                             </div>
                                             <p className="text-lg font-mono font-black text-(--text-color) tracking-tight">
                                                 <span className="text-[9px] text-(--text-color-secondary) mr-1">{currencyMode}</span>
-                                                {(currencyMode === 'MXN' ? cat.val.mxn : cat.val.usd).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                                {(currencyMode === 'MXN' ? cat.val.mxn : cat.val.usd).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                                             </p>
                                         </div>
                                     ))}
@@ -659,7 +660,7 @@ export function AdminDashboard() {
 
                             {/* Liability Ledger - Granular Detail */}
                             <div className="pt-8 border-t border-white/10">
-                                <h4 className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary) mb-6">Liability Ledger: Top Pending Vendors</h4>
+                                <h4 className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary) mb-6">{tr("Liability Ledger: Top Pending Vendors")}</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {vendorSummaries.slice(0, 4).map(v => (
                                         <div key={v.vendorId} className="flex items-center justify-between p-4 bg-white/[0.05] backdrop-blur-sm border border-white/5 border-l-2 hover:bg-white/10 transition-all" style={{ borderLeftColor: v.color }}>
@@ -670,8 +671,8 @@ export function AdminDashboard() {
                                                 </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-[8px] font-bold uppercase tracking-widest text-(--text-color-secondary)">ITEM EQUITY</span>
-                                                <p className="text-[11px] font-mono font-black text-(--text-color)">{v.itemCount} UNITS</p>
+                                                <span className="text-[8px] font-bold uppercase tracking-widest text-(--text-color-secondary)">{tr("ITEM EQUITY")}</span>
+                                                <p className="text-[11px] font-mono font-black text-(--text-color)">{v.itemCount} {tr("UNITS")}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -686,7 +687,7 @@ export function AdminDashboard() {
                 <div className="space-y-12">
                     <SectionHeader 
                         icon={Package} 
-                        title="Storage & Logistics" 
+                        title={tr("Storage & Logistics")} 
                         badge="Warehouse" 
                     />
 
@@ -721,9 +722,9 @@ export function AdminDashboard() {
                                                 <span className="text-[10px] font-black text-(--text-color) tracking-[0.4em] uppercase mb-2">{log.type}</span>
                                                 <p className="text-2xl font-black text-(--text-color) tracking-tighter leading-none group-hover/box:scale-110 transition-transform">
                                                     {log.isIndividual ? (
-                                                        <span className="text-[10px] font-mono border-b border-dashed border-white pb-1">ID: #{log.shortId}</span>
+                                                        <span className="text-[10px] font-mono border-b border-dashed border-white pb-1">{tr("ID: #")}{log.shortId}</span>
                                                     ) : (
-                                                        <>{log.count} <span className="text-[11px] font-bold text-(--text-color-secondary) tracking-widest uppercase ml-1">Units</span></>
+                                                        <>{log.count} <span className="text-[11px] font-bold text-(--text-color-secondary) tracking-widest uppercase ml-1">{tr("Units")}</span></>
                                                     )}
                                                 </p>
                                                 <p className="text-[10px] font-mono font-bold text-(--text-color-secondary) mt-2">@{log.w}x{log.h}x{log.l}</p>
@@ -744,8 +745,8 @@ export function AdminDashboard() {
                         {/* Metrics & Accumulation - Grouped into a Floating Module */}
                         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-12 pt-16 border-t border-white/5">
                             {[
-                                { label: 'Inventory Packed', val: globalTotals.packedItems, total: globalTotals.totalItems, unit: 'Items', color: '#6BCEBB', icon: PackageCheck },
-                                { label: 'Crate Occupancy', val: globalTotals.packedCrates, total: globalTotals.totalCratesAndPallets, unit: 'Crates', color: '#00AEEF', icon: LayoutGrid }
+                                { label: tr("Inventory Packed"), val: globalTotals.packedItems, total: globalTotals.totalItems, unit: tr("Items"), color: '#6BCEBB', icon: PackageCheck },
+                                { label: tr("Crate Occupancy"), val: globalTotals.packedCrates, total: globalTotals.totalCratesAndPallets, unit: 'Crates', color: '#00AEEF', icon: LayoutGrid }
                             ].map(m => (
                                 <div key={m.label} className="flex items-start gap-8 group/stat p-6 hover:bg-white/[0.03] rounded-3xl transition-all border border-transparent hover:border-white/10">
                                     <div className="p-4 bg-white/[0.04] border border-white/20 rounded-2xl group-hover/stat:rotate-12 transition-transform shadow-2xl" style={{ color: m.color }}>
@@ -761,7 +762,7 @@ export function AdminDashboard() {
                                         <div className="h-[4px] bg-white/10 overflow-hidden rounded-full shadow-inner">
                                             <div className="h-full transition-all duration-1000 ease-out" style={{ width: `${(m.val/m.total)*100}%`, backgroundColor: m.color }} />
                                         </div>
-                                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-(--text-color-secondary)">{m.unit} Strategy Coefficient</p>
+                                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-(--text-color-secondary)">{m.unit} {tr("Strategy Coefficient")}</p>
                                     </div>
                                 </div>
                             ))}
@@ -772,12 +773,12 @@ export function AdminDashboard() {
                                     <DollarSign size={32} className="text-[#6BCEBB]" strokeWidth={2.5} />
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#6BCEBB]">Logistics Ledger Accumulation</p>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#6BCEBB]">{tr("Logistics Ledger Accumulation")}</p>
                                     <p className="text-4xl font-mono font-black text-(--text-color) tracking-tighter leading-none group-hover/spend:translate-x-2 transition-transform">
                                         <span className="text-[14px] text-(--text-color-secondary) mr-3 font-black h-fit mb-auto">{currencyMode}</span>
-                                        {currencyMode === 'MXN' ? globalTotals.logisticsSpendMxn.toLocaleString('en-US', { maximumFractionDigits: 0 }) : globalTotals.logisticsSpendUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                        {currencyMode === 'MXN' ? globalTotals.logisticsSpendMxn.toLocaleString("en-US", { maximumFractionDigits: 0 }) : globalTotals.logisticsSpendUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                                     </p>
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--text-color-secondary) mt-2 leading-tight">Comprehensive Overhead Strategy</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--text-color-secondary) mt-2 leading-tight">{tr("Comprehensive Overhead Strategy")}</p>
                                 </div>
                             </div>
                         </div>
@@ -791,11 +792,11 @@ export function AdminDashboard() {
                         <div className="flex items-center justify-between px-2">
                             <div className="flex items-center gap-4">
                                 <BarChart3 size={20} className="text-(--main-color)" />
-                                <h2 className="text-[12px] font-black uppercase tracking-[0.4em] text-(--text-color)">Acquisition Portfolio by Vendor</h2>
+                                <h2 className="text-[12px] font-black uppercase tracking-[0.4em] text-(--text-color)">{tr("Acquisition Portfolio by Vendor")}</h2>
                             </div>
                             <div className="flex items-center gap-6">
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest">Global Assets</span>
+                                    <span className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest">{tr("Global Assets")}</span>
                                     <span className="text-[12px] font-mono font-black text-(--text-color)">
                                         {currencyMode === 'MXN' ? fmtMXN(globalTotals.totalAcqValueMxn) : fmtUSD(globalTotals.totalAcqValueUsd)}
                                     </span>
@@ -811,7 +812,7 @@ export function AdminDashboard() {
                         <div className="flex-1 flex flex-col gap-8">
                             <div className="flex items-center gap-4 px-2">
                                 <PieChart size={18} className="text-blue-400" />
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-(--text-color)">Material Concentration</h3>
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-(--text-color)">{tr("Material Concentration")}</h3>
                             </div>
                             <EChart option={pieOption} style={{ height: '320px' }} />
                         </div>
@@ -820,7 +821,7 @@ export function AdminDashboard() {
                         <div className="flex-1 flex flex-col gap-8">
                             <div className="flex items-center gap-4 px-2">
                                 <Shapes size={18} className="text-[#6BCEBB]" />
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-(--text-color)">Category Distribution</h3>
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-(--text-color)">{tr("Category Distribution")}</h3>
                             </div>
                             <EChart option={categoriesOption} style={{ height: '320px' }} />
                         </div>
@@ -831,11 +832,11 @@ export function AdminDashboard() {
                 <div className="space-y-12 pt-12 border-t border-white/10">
                     <SectionHeader 
                         icon={TrendingUp} 
-                        title="Global Distribution Analysis" 
+                        title={tr("Global Distribution Analysis")} 
                         badge="Network Intelligence" 
                         right={
                             <div className="hidden sm:flex gap-4">
-                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">Acq. Balance: {showFinancials ? '$' + globalTotals.totalAcqValueUsd.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}</span>
+                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">{tr("Acq. Balance:")} {showFinancials ? '$' + globalTotals.totalAcqValueUsd.toLocaleString("en-US", { maximumFractionDigits: 0 }) : '***'}</span>
                             </div>
                         }
                     />
@@ -843,7 +844,7 @@ export function AdminDashboard() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                         {/* Acquisitions Concentration (Value) */}
                         <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-white/5 pb-10">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-6">Acquisitions Concentration (Value)</span>
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-6">{tr("Acquisitions Concentration (Value)")}</span>
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
                                 <div className="w-full sm:w-1/2 h-56">
                                     <EChart option={vendorValuePieOption} style={{ height: '100%' }} />
@@ -879,7 +880,7 @@ export function AdminDashboard() {
 
                         {/* Units Share by Vendor */}
                         <div className="flex flex-col col-span-1 lg:col-span-2">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-4 ">Units Share by Vendor</span>
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-4 ">{tr("Units Share by Vendor")}</span>
                             <div className="flex flex-col gap-4">
                                 <div className="h-3 w-full rounded-2xl overflow-hidden flex shadow-2xl bg-white/5 border border-white/5">
                                     {vendorSummaries.map((v, idx) => {
@@ -933,7 +934,7 @@ export function AdminDashboard() {
                 <div className="space-y-12 pt-12 border-t border-white/10">
                     <SectionHeader 
                         icon={Shapes} 
-                        title="Compositional Analysis" 
+                        title={tr("Compositional Analysis")} 
                         badge="Detailed Stats" 
                     />
                     
@@ -941,14 +942,14 @@ export function AdminDashboard() {
                         <div className="space-y-10">
                             <div className="flex items-center gap-4 text-(--main-color) px-2">
                                 <Layers size={18} />
-                                <h3 className="text-[12px] font-black uppercase tracking-[0.3em]">Material + Color Attribution</h3>
+                                <h3 className="text-[12px] font-black uppercase tracking-[0.3em]">{tr("Material + Color Attribution")}</h3>
                             </div>
                             <div className="space-y-6">
                                 {attributeStats.topCM.map(([label, count]) => (
                                     <div key={label} className="group flex flex-col gap-3">
                                         <div className="flex justify-between items-center px-1">
                                             <span className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) group-hover:text-(--text-color) transition-colors">{label}</span>
-                                            <span className="text-[11px] font-mono font-black text-(--text-color-secondary) group-hover:text-(--main-color) transition-colors">{count} UNITS</span>
+                                            <span className="text-[11px] font-mono font-black text-(--text-color-secondary) group-hover:text-(--main-color) transition-colors">{count} {tr("UNITS")}</span>
                                         </div>
                                         <div className="h-0.5 bg-white/10 overflow-hidden group-hover:bg-(--main-color) transition-all">
                                             <div className="h-full bg-(--main-color) transition-all duration-1000" style={{ width: `${(count / items.length) * 100}%` }} />
@@ -960,7 +961,7 @@ export function AdminDashboard() {
                         <div className="space-y-10">
                             <div className="flex items-center gap-4 text-sky-400 px-2">
                                 <BarChart3 size={18} />
-                                <h3 className="text-[12px] font-black uppercase tracking-[0.3em]">Shape + Description Distribution</h3>
+                                <h3 className="text-[12px] font-black uppercase tracking-[0.3em]">{tr("Shape + Description Distribution")}</h3>
                             </div>
                             <div className="grid grid-cols-1 gap-4">
                                 {attributeStats.topSD.map(([label, count]) => (

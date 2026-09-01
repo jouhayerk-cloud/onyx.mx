@@ -5,6 +5,7 @@ import { PaymentDestination, ExpenseStatus } from '../../lib/Types';
 import { SCRIPT_URL } from '../../lib/consts';
 import { paymentsVersionAtom } from '../../lib/atoms';
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { tr } from '../../lib/i18n';
 
 interface WorkbookPaymentModalProps {
     isOpen: boolean;
@@ -33,8 +34,8 @@ const DestinationCard: React.FC<{
             <p className="font-semibold text-sm">{config.name}</p>
             {baseAmount !== undefined && (
                 <div className="text-xs text-center mt-2">
-                    {commission !== null && <p className="text-[var(--text-color-secondary)]">Comm: {formatCurrency(commission, 'MXN')}</p>}
-                    {total !== null && <p className="font-bold">Total: {formatCurrency(total, 'MXN')}</p>}
+                    {commission !== null && <p className="text-[var(--text-color-secondary)]">{tr("Comm:")} {formatCurrency(commission, 'MXN')}</p>}
+                    {total !== null && <p className="font-bold">{tr("Total:")} {formatCurrency(total, 'MXN')}</p>}
                 </div>
             )}
         </div>
@@ -53,7 +54,7 @@ export const WorkbookPaymentModal: React.FC<WorkbookPaymentModalProps> = ({ isOp
     const handleConfirm = async () => {
         if (!selectedDestination) return;
         setIsSaving(true);
-        const toastId = toast.loading('Requesting payment...');
+        const toastId = toast.loading(tr("Requesting payment..."));
 
         try {
             const config = destinationsConfig[selectedDestination];
@@ -83,7 +84,7 @@ export const WorkbookPaymentModal: React.FC<WorkbookPaymentModalProps> = ({ isOp
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message);
 
-            toast.success('Payment requested successfully', { id: toastId });
+            toast.success(tr("Payment requested successfully"), { id: toastId });
             setPaymentsVersion(v => v + 1); // Refresh dashboard to show new expense
             onConfirm();
             onClose();
@@ -98,12 +99,12 @@ export const WorkbookPaymentModal: React.FC<WorkbookPaymentModalProps> = ({ isOp
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-[#1e1e1e] border border-[#333] rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
                 <div className="p-6 border-b border-[#333]">
-                    <h2 className="text-xl font-bold">Request Payment for {selectedItems.length} Items</h2>
-                    <p className="text-sm text-gray-400 mt-1">Total: <span className="text-white font-mono font-bold">{formatCurrency(totalAmount, 'MXN')}</span></p>
+                    <h2 className="text-xl font-bold">Request Payment for {selectedItems.length} {tr("Items")}</h2>
+                    <p className="text-sm text-gray-400 mt-1">{tr("Total:")} <span className="text-white font-mono font-bold">{formatCurrency(totalAmount, 'MXN')}</span></p>
                 </div>
 
                 <div className="p-6 overflow-y-auto">
-                    <h3 className="text-lg font-bold mb-4">Select Payment Destination</h3>
+                    <h3 className="text-lg font-bold mb-4">{tr("Select Payment Destination")}</h3>
                     <div className="grid grid-cols-2 gap-4">
                         {Object.entries(destinationsConfig).map(([key, config]) => (
                             <DestinationCard
@@ -118,7 +119,7 @@ export const WorkbookPaymentModal: React.FC<WorkbookPaymentModalProps> = ({ isOp
                     </div>
 
                     <div className="mt-6">
-                        <h4 className="font-semibold mb-2 text-sm uppercase text-gray-400">Selected Items Preview</h4>
+                        <h4 className="font-semibold mb-2 text-sm uppercase text-gray-400">{tr("Selected Items Preview")}</h4>
                         <div className="bg-black/20 rounded-lg p-2 max-h-32 overflow-y-auto text-sm font-mono">
                             {selectedItems.map((item, idx) => (
                                 <div key={idx} className="flex justify-between py-1 border-b border-white/5 last:border-0">
@@ -131,13 +132,13 @@ export const WorkbookPaymentModal: React.FC<WorkbookPaymentModalProps> = ({ isOp
                 </div>
 
                 <div className="p-6 border-t border-[#333] flex justify-end gap-3 bg-[#252525]">
-                    <button onClick={onClose} className="px-4 py-2 rounded-lg hover:bg-white/5 transition-colors" disabled={isSaving}>Cancel</button>
+                    <button onClick={onClose} className="px-4 py-2 rounded-lg hover:bg-white/5 transition-colors" disabled={isSaving}>{tr("Cancel")}</button>
                     <button
                         onClick={handleConfirm}
                         className="px-6 py-2 rounded-lg bg-[var(--main-color)] text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         disabled={!selectedDestination || isSaving}
                     >
-                        {isSaving ? 'Processing...' : 'Confirm Request'}
+                        {isSaving ? tr("Processing...") : tr("Confirm Request")}
                     </button>
                 </div>
             </div>

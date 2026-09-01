@@ -6,6 +6,7 @@ import { useTranslation } from '../lib/hooks';
 import { InventoryItemData, UploadedFile } from '../lib/Types';
 import { readFileAsDataURL, extractFileId, fetchImageBatch, imageCache, generateVideoThumbnail, resizeImage } from '../lib/utils';
 import { Play, FileVideo, ImageIcon, Plus } from 'lucide-react';
+import { tr } from '../lib/i18n';
 
 export type FormState = {
   itemId: string;
@@ -253,7 +254,7 @@ export function InventoryForm({
             disabled={isEditMode}
             className={`w-full ${isEditMode ? 'opacity-50 cursor-not-allowed' : ''}`}
             required>
-            <option value="" disabled>Select...</option>
+            <option value="" disabled>{tr("Select...")}</option>
             {Object.keys(vendors).map(v => <option key={v} value={v}>{v}</option>)}
           </FormSelect>
           <FormInput
@@ -343,7 +344,7 @@ export function InventoryForm({
         {isEditMode && (
           <div className="flex flex-col gap-3 pt-4 border-t border-(--border-color)">
             <label className="text-xs font-black uppercase tracking-widest text-(--text-color-secondary)">
-              Operational Media Gallery
+              {tr("Operational Media Gallery")}
             </label>
             
             {(existingMedia.length > 0 || newFiles.length > 0) && (
@@ -356,7 +357,7 @@ export function InventoryForm({
                 {/* Locally Uploaded Pending Files */}
                 {newFiles.map((file, idx) => (
                   <div key={`new-${idx}`} className="relative group shrink-0">
-                    <img src={file.dataUrl} className="h-14 w-14 object-cover rounded-lg border border-(--main-color)/30" alt="New Preview" />
+                    <img src={file.dataUrl} className="h-14 w-14 object-cover rounded-lg border border-(--main-color)/30" alt={tr("New Preview")} />
                     <div className="absolute top-0 right-0 p-1">
                       <div className="bg-(--main-color) w-2 h-2 rounded-full shadow-[0_0_10px_var(--main-color)]" />
                     </div>
@@ -384,7 +385,7 @@ export function InventoryForm({
                 className="flex items-center justify-center gap-2 w-full h-12 border border-dashed border-white/20 hover:border-(--main-color)/50 hover:bg-(--main-color)/5 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all cursor-pointer rounded-lg"
               >
                 <Plus size={14} />
-                Upload Additional Media
+                {tr("Upload Additional Media")}
               </label>
             </div>
           </div>

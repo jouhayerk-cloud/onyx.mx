@@ -7,7 +7,9 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { useNotify } from '../../lib/hooks';
 import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/Types';
 import { handleFileUpload, createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask } from '../../lib/utils';
-import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 const uuidv4 = () => self.crypto.randomUUID();
 
@@ -229,7 +231,7 @@ export function BatchImportModule() {
             await processItem(item, i);
         }
         setIsBatchProcessing(false);
-        notify.success('Batch processing finished.');
+        notify.success(tr("Batch processing finished."));
     };
 
     return (
@@ -238,11 +240,11 @@ export function BatchImportModule() {
                 <h2 className="text-2xl font-bold text-slate-800">Batch Import ({batchItems.length}/{MAX_ITEMS})</h2>
                 <div className="flex gap-4">
                     <button onClick={addBatchItem} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold" disabled={isBatchProcessing}>
-                        + Add Item
+                        {tr("+ Add Item")}
                     </button>
                     {batchItems.length > 0 && (
                         <button onClick={processBatch} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-lg flex items-center gap-2" disabled={isBatchProcessing}>
-                            {isBatchProcessing ? <LoadingIndicator /> : '🚀 Process Batch'}
+                            {isBatchProcessing ? <LoadingIndicator /> : tr("🚀 Process Batch")}
                         </button>
                     )}
                 </div>
@@ -257,7 +259,7 @@ export function BatchImportModule() {
                         {/* Status Badge */}
                         <div className="mb-4 flex items-center gap-2">
                             <div className={`w-3 h-3 rounded-full ${item.status === 'idle' ? 'bg-slate-300' : item.status === 'processing' ? 'bg-blue-500 animate-pulse' : item.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
-                            <span className="text-sm font-semibold uppercase text-slate-500">{item.status}</span>
+                            <span className="text-sm font-semibold uppercase text-slate-500">{el(item.status)}</span>
                             {item.resultItemNumber && <span className="ml-auto font-mono text-blue-600 font-bold">{item.resultItemNumber}</span>}
                         </div>
 
@@ -268,7 +270,7 @@ export function BatchImportModule() {
                                 {item.previewUrls.map((src, i) => (
                                     <div key={i} className="relative shrink-0 w-16 h-full">
                                         <img src={src} className="h-full w-full object-cover rounded" />
-                                        {i === 0 && <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-[9px] text-center">AI Master</span>}
+                                        {i === 0 && <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-[9px] text-center">{tr("AI Master")}</span>}
                                     </div>
                                 ))}
                                 <label className="shrink-0 w-16 h-full border-2 border-dashed border-slate-300 rounded flex items-center justify-center cursor-pointer hover:bg-slate-50">
@@ -283,7 +285,7 @@ export function BatchImportModule() {
                             <div>
                                 <input
                                     type="text"
-                                    placeholder="Shape (e.g. Sphere)"
+                                    placeholder={tr("Shape (e.g. Sphere)")}
                                     value={item.data.shape}
                                     onChange={(e) => updateItemData(index, 'shape', e.target.value)}
                                     className="w-full px-3 py-2 border rounded text-sm disabled:bg-slate-200"
@@ -293,7 +295,7 @@ export function BatchImportModule() {
                             <div>
                                 <input
                                     type="text"
-                                    placeholder="Material (e.g. Onyx)"
+                                    placeholder={tr("Material (e.g. Onyx)")}
                                     value={item.data.material}
                                     onChange={(e) => updateItemData(index, 'material', e.target.value)}
                                     className="w-full px-3 py-2 border rounded text-sm disabled:bg-slate-200"
@@ -303,7 +305,7 @@ export function BatchImportModule() {
                             <div className="grid grid-cols-2 gap-2">
                                 <input
                                     type="number"
-                                    placeholder="Price"
+                                    placeholder={tr("Price")}
                                     value={item.data.price}
                                     onChange={(e) => updateItemData(index, 'price', e.target.value)}
                                     className="w-full px-3 py-2 border rounded text-sm disabled:bg-slate-200"
@@ -311,7 +313,7 @@ export function BatchImportModule() {
                                 />
                                 <input
                                     type="number"
-                                    placeholder="Qty"
+                                    placeholder={tr("Qty")}
                                     value={item.data.quantity}
                                     onChange={(e) => updateItemData(index, 'quantity', e.target.value)}
                                     className="w-full px-3 py-2 border rounded text-sm disabled:bg-slate-200"

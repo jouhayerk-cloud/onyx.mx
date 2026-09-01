@@ -7,6 +7,7 @@ import { paymentsVersionAtom, userAtom, paymentDestinationFilterAtom } from '../
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { getTextColorForBg } from '../../lib/utils';
+import { tr } from '../../lib/i18n';
 
 const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
 const apiCall = async (action: string, payload: object) => {
@@ -52,7 +53,7 @@ export function WorkbookPaymentsView() {
     }, [expenses]);
 
     const handleMarkAsPaid = async (expense: Expense) => {
-        const toastId = toast.loading(`Marking as paid...`);
+        const toastId = toast.loading(tr("Marking as paid..."));
         try {
             await apiCall('updateExpense', {
                 row: expense.row,
@@ -61,7 +62,7 @@ export function WorkbookPaymentsView() {
                     paymentDate: new Date().toISOString(),
                 }
             });
-            toast.success('Payment marked as paid.', { id: toastId });
+            toast.success(tr("Payment marked as paid."), { id: toastId });
             setPaymentsVersion(v => v + 1);
         } catch (error: any) {
             toast.error(`Error: ${error.message}`, { id: toastId });
@@ -83,13 +84,13 @@ export function WorkbookPaymentsView() {
             <div className="flex-grow min-h-0 glass-panel">
                 <div className="p-4 border-b border-[var(--border-color)]">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-bold">Workbook Payments</h2>
+                        <h2 className="text-xl font-bold">{tr("Workbook Payments")}</h2>
                         <div className="flex items-center gap-2 overflow-x-auto">
                             <button
                                 onClick={() => setDestinationFilter('All')}
                                 className={`button secondary !min-h-0 text-xs py-1 px-3 flex-shrink-0 ${destinationFilter === 'All' ? '!bg-[var(--main-color)] !text-white' : ''}`}
                             >
-                                All
+                                {tr("All")}
                             </button>
                             {Object.entries(destinationsConfig).map(([key, config]) => (
                                 <button
@@ -144,10 +145,10 @@ export function WorkbookPaymentsView() {
                                             </>
                                         ) : (
                                             <>
-                                                <span className="timeline-status-badge pending">Pending</span>
+                                                <span className="timeline-status-badge pending">{tr("Pending")}</span>
                                                 <div className="flex items-center gap-4">
                                                     <span className="timeline-amount">{formatCurrency(expense.totalAmount, 'MXN')}</span>
-                                                    <button onClick={() => handleMarkAsPaid(expense)} className="button secondary !min-h-0 text-xs py-1 px-3">Mark as Paid</button>
+                                                    <button onClick={() => handleMarkAsPaid(expense)} className="button secondary !min-h-0 text-xs py-1 px-3">{tr("Mark as Paid")}</button>
                                                 </div>
                                             </>
                                         )}
@@ -156,7 +157,7 @@ export function WorkbookPaymentsView() {
                             </div>
                         );
                     })}
-                    {sortedTimeline.length === 0 && <p className="text-center text-sm p-8 text-[var(--text-color-secondary)]">No workbook payments found for the selected filters.</p>}
+                    {sortedTimeline.length === 0 && <p className="text-center text-sm p-8 text-[var(--text-color-secondary)]">{tr("No workbook payments found for the selected filters.")}</p>}
                 </div>
             </div>
         </div>

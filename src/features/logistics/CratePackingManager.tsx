@@ -26,6 +26,8 @@ import { NFCTagCard } from '../../components/LabelVisuals';
 import { CratePackingWorkspace } from './CratePackingWorkspace';
 import { InventoryArtifactInner } from '../inventory/InventoryArtifact';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 // ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
 // Backward compat: entries without ":qty" default to full quantity
@@ -329,7 +331,7 @@ const ActiveCrateHUD: React.FC<{
                                 className="shrink-0 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all flex items-center gap-2 group shadow-lg"
                             >
                                 <X size={12} className="group-hover:rotate-90 transition-transform" />
-                                Release
+                                {tr("Release")}
                             </button>
                             {crate.inventory_ids && (
                                 <button 
@@ -338,7 +340,7 @@ const ActiveCrateHUD: React.FC<{
                                     className="shrink-0 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 transition-all flex items-center gap-2 group shadow-lg"
                                 >
                                     <Trash2 size={12} className="group-hover:-translate-y-0.5 transition-transform" />
-                                    Reset
+                                    {tr("Reset")}
                                 </button>
                             )}
                         </div>
@@ -347,16 +349,16 @@ const ActiveCrateHUD: React.FC<{
                 {/* Center: Inventory Meta (Added to HUD) */}
                 <div className="hidden lg:flex items-center gap-12">
                     <div className="flex flex-col items-center gap-1">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Staging Sequence</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Staging Sequence")}</span>
                         <span className="text-xl font-black text-white uppercase tracking-tighter leading-none italic">
-                            {itemCount} <span className="text-(--main-color) ml-1">Items</span>
+                            {itemCount} <span className="text-(--main-color) ml-1">{tr("Items")}</span>
                         </span>
                     </div>
 
                     {totalNested > 0 && (
                         <div className="flex items-center gap-4 border-l border-white/5 pl-12">
                             <div className="flex flex-col items-start gap-1">
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Nested Units</span>
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Nested Units")}</span>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xl font-black text-blue-400 uppercase tracking-tighter leading-none italic">{totalNested}</span>
                                     <div className="flex -space-x-2">
@@ -380,7 +382,7 @@ const ActiveCrateHUD: React.FC<{
                 {/* Right: Metrics */}
                 <div className="flex items-center gap-8 sm:gap-16 shrink-0">
                     <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1.5">Brute Weight</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1.5">{tr("Brute Weight")}</span>
                         <div className="flex items-center gap-1.5">
                             <input 
                                 type="number"
@@ -390,7 +392,7 @@ const ActiveCrateHUD: React.FC<{
                                 onBlur={async (e) => {
                                     const val = parseFloat(e.target.value);
                                     if (isNaN(val)) return;
-                                    const tid = toast.loading('Syncing weight...');
+                                    const tid = toast.loading(tr("Syncing weight..."));
                                     try {
                                         // brute_weight_kg does NOT exist as a Supabase column.
                                         const db = (window as any).onyxDb;
@@ -402,9 +404,9 @@ const ActiveCrateHUD: React.FC<{
                                         const cleaned = summary.replace(/\[BW:\d+\.?\d*\]/g, '').trim();
                                         const newSummary = `${cleaned} [BW:${val}]`.trim();
                                         await supabase.from('logistics').update({ contents_summary: newSummary, updated_at: new Date().toISOString() }).eq('id', crate.id);
-                                        toast.success('Recorded', { id: tid });
+                                        toast.success(tr("Recorded"), { id: tid });
                                     } catch (err) {
-                                        toast.error('Sync failed', { id: tid });
+                                        toast.error(tr("Sync failed"), { id: tid });
                                     }
                                 }}
                                 className="w-14 bg-white/5 border border-white/10 px-2 py-1 text-xs font-mono text-(--main-color) focus:outline-none focus:border-(--main-color)/50 transition text-right"
@@ -414,7 +416,7 @@ const ActiveCrateHUD: React.FC<{
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">Volumetric Fill</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">{tr("Volumetric Fill")}</span>
                         <div className="flex items-baseline gap-1">
                             <span className={`text-xl sm:text-3xl font-black tabular-nums tracking-tighter ${fillPct > 90 ? 'text-rose-500' : 'text-(--main-color)'}`}>
                                 {fillPct.toFixed(0)}
@@ -424,7 +426,7 @@ const ActiveCrateHUD: React.FC<{
                     </div>
 
                     <div className="hidden sm:flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">Units Packed</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">{tr("Units Packed")}</span>
                         <span className="text-xl sm:text-3xl font-black text-white tabular-nums tracking-tighter">
                             {totalQty}
                         </span>
@@ -435,7 +437,7 @@ const ActiveCrateHUD: React.FC<{
                     {/* Separator Controls */}
                     <div className="h-8 w-px bg-white/10" />
                     <div className="flex flex-col gap-1 min-w-[120px]">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Active Separators</span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Active Separators")}</span>
                         <div className="flex flex-wrap gap-2">
                             {separators.map(sep => (
                                 <div key={sep.id} className="group/sep relative">
@@ -456,7 +458,7 @@ const ActiveCrateHUD: React.FC<{
                             <button 
                                 onClick={onAddSeparator}
                                 className="p-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded flex items-center justify-center text-white/40 hover:text-white"
-                                title="Add Separator"
+                                title={tr("Add Separator")}
                             >
                                 <Plus size={12} />
                             </button>
@@ -523,12 +525,12 @@ const CrateSelectCard: React.FC<{
                 </p>
                 <div className="flex items-center justify-center gap-3">
                     <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em]">
-                        {isPallet ? 'Pallet' : (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? 'Box' : 'Crate'}
+                        {isPallet ? tr("Pallet") : (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? tr("Box") : 'Crate'}
                     </span>
                     {partialCount > 0 && (
                         <div className="flex items-center gap-1.5">
                             <div className="w-1.5 h-1.5 rounded-none bg-amber-400" />
-                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Active</span>
+                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">{tr("Active")}</span>
                         </div>
                     )}
                 </div>
@@ -594,7 +596,7 @@ const PackingInventoryCard: React.FC<{
                     </div>
                     {fullyPacked && (
                         <div className="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/30">
-                            <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest">PACKED</span>
+                            <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest">{tr("PACKED")}</span>
                         </div>
                     )}
                 </div>
@@ -610,7 +612,7 @@ const PackingInventoryCard: React.FC<{
                 <button
                     onClick={e => { e.stopPropagation(); onToggleExpand(); }}
                     className="absolute top-4 left-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all opacity-0 group-hover:opacity-100"
-                    title="Label Preview"
+                    title={tr("Label Preview")}
                 >
                     <Info size={14} />
                 </button>
@@ -620,18 +622,18 @@ const PackingInventoryCard: React.FC<{
             <div className="p-5 flex flex-col gap-3">
                 <div className="min-h-[40px]">
                     <h3 className="text-[11px] font-black text-white uppercase tracking-tight leading-tight line-clamp-2">
-                        {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || 'Untitled')}
+                        {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || tr("Untitled"))}
                     </h3>
                 </div>
 
                 {/* Specs Grid */}
                 <div className="grid grid-cols-2 gap-2">
                     <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5">
-                        <span className="block text-[7px] font-black text-white/20 uppercase tracking-widest mb-0.5">DIMENSIONS</span>
+                        <span className="block text-[7px] font-black text-white/20 uppercase tracking-widest mb-0.5">{tr("DIMENSIONS")}</span>
                         <span className="block text-[9px] font-mono font-black text-white/70 truncate">{dimsCm || '—'} CM</span>
                     </div>
                     <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5">
-                        <span className="block text-[7px] font-black text-white/20 uppercase tracking-widest mb-0.5">AVAILABILITY</span>
+                        <span className="block text-[7px] font-black text-white/20 uppercase tracking-widest mb-0.5">{tr("AVAILABILITY")}</span>
                         <span className={`block text-[10px] font-mono font-black ${fullyPacked ? 'text-rose-400/60' : 'text-emerald-400'}`}>
                             {availableForThisCrate}/{itemQuantity}
                         </span>
@@ -649,7 +651,7 @@ const PackingInventoryCard: React.FC<{
                         </button>
                         <div className="flex flex-col items-center">
                             <span className="text-xs font-black text-white font-mono leading-none">{selectedQty}</span>
-                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-0.5">UNIT</span>
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-0.5">{tr("UNIT")}</span>
                         </div>
                         <button
                             onClick={e => { e.stopPropagation(); onQtyChange(Math.min(availableForThisCrate, selectedQty + 1)); }}
@@ -707,7 +709,7 @@ export const CratePackingManager: React.FC = () => {
         if (!selectedCrate) return;
         const newSep = { id: Math.random().toString(36).slice(2, 9), y: 40, label: `SHELF ${separators.length + 1}` };
         setSeparators([...separators, newSep]);
-        toast.success(`Separator added at 40cm`);
+        toast.success(tr("Separator added at 40cm"));
     };
 
     const handleRemoveSeparator = (id: string) => {
@@ -1071,7 +1073,7 @@ export const CratePackingManager: React.FC = () => {
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1500));
-                toast.success("Crate unpacked (Demo Mode)", { id: tid, icon: '🧪' });
+                toast.success(tr("Crate unpacked (Demo Mode)"), { id: tid, icon: '🧪' });
                 setSelectedItemIds(new Set());
                 setSelectedQtys({});
                 setCratesVersion(v => v + 1);
@@ -1108,7 +1110,7 @@ export const CratePackingManager: React.FC = () => {
                 }
             }
 
-            toast.success("Crate unpacked", { id: tid });
+            toast.success(tr("Crate unpacked"), { id: tid });
             setSelectedItemIds(new Set());
             setSelectedQtys({});
             setCratesVersion(v => v + 1);
@@ -1119,11 +1121,11 @@ export const CratePackingManager: React.FC = () => {
 
     const handleNestUnit = async (sourceId: string, parentId: string) => {
         setIsSaving(true);
-        const tid = toast.loading(`Nesting unit...`);
+        const tid = toast.loading(tr("Nesting unit..."));
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1000));
-                toast.success("Unit nested (Demo Mode)", { id: tid, icon: '🧪' });
+                toast.success(tr("Unit nested (Demo Mode)"), { id: tid, icon: '🧪' });
                 setNestingUnit(null);
                 setCratesVersion(v => v + 1);
                 return;
@@ -1135,7 +1137,7 @@ export const CratePackingManager: React.FC = () => {
                 const localUnit = await db.logistics.findOne({ selector: { id: sourceId } }).exec();
                 if (localUnit) await localUnit.patch(updatePayload);
             }
-            toast.success("Unit successfully nested", { id: tid });
+            toast.success(tr("Unit successfully nested"), { id: tid });
             setNestingUnit(null);
             setCratesVersion(v => v + 1);
         } catch (err: any) {
@@ -1147,11 +1149,11 @@ export const CratePackingManager: React.FC = () => {
 
     const handleUnnestUnit = async (unitId: string) => {
         setIsSaving(true);
-        const tid = toast.loading(`Unnesting unit...`);
+        const tid = toast.loading(tr("Unnesting unit..."));
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1000));
-                toast.success("Unit unnested (Demo Mode)", { id: tid, icon: '🧪' });
+                toast.success(tr("Unit unnested (Demo Mode)"), { id: tid, icon: '🧪' });
                 setCratesVersion(v => v + 1);
                 return;
             }
@@ -1162,7 +1164,7 @@ export const CratePackingManager: React.FC = () => {
                 const localUnit = await db.logistics.findOne({ selector: { id: unitId } }).exec();
                 if (localUnit) await localUnit.patch(updatePayload);
             }
-            toast.success("Unit successfully unnested", { id: tid });
+            toast.success(tr("Unit successfully unnested"), { id: tid });
             setCratesVersion(v => v + 1);
         } catch (err: any) {
             toast.error(err.message || 'Unnesting failed.', { id: tid });
@@ -1181,7 +1183,7 @@ export const CratePackingManager: React.FC = () => {
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1500));
-                toast.success("Crate deleted (Demo Mode)", { id: tid, icon: '🧪' });
+                toast.success(tr("Crate deleted (Demo Mode)"), { id: tid, icon: '🧪' });
                 handleSelectCrate(null);
                 setCratesVersion(v => v + 1);
                 setIsSaving(false);
@@ -1213,7 +1215,7 @@ export const CratePackingManager: React.FC = () => {
                 if (localCrate) await localCrate.remove();
             }
 
-            toast.success("Crate permanently deleted", { id: tid });
+            toast.success(tr("Crate permanently deleted"), { id: tid });
             handleSelectCrate(null);
             setCratesVersion(v => v + 1);
         } catch (err: any) {
@@ -1246,13 +1248,13 @@ export const CratePackingManager: React.FC = () => {
                     <button 
                         onClick={() => setIsOpen(false)}
                         className="w-14 h-14 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition-all active:scale-90 shadow-2xl"
-                        title="Close Workspace"
+                        title={tr("Close Workspace")}
                     >
                         <X size={24} />
                     </button>
                     <div className="flex flex-col">
-                        <h2 className="text-xl font-black text-white uppercase tracking-[0.4em] italic drop-shadow-lg">Advanced Packing</h2>
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mt-1">3D Spatial Manifest Workspace</span>
+                        <h2 className="text-xl font-black text-white uppercase tracking-[0.4em] italic drop-shadow-lg">{tr("Advanced Packing")}</h2>
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mt-1">{tr("3D Spatial Manifest Workspace")}</span>
                     </div>
                 </div>
 
@@ -1277,10 +1279,10 @@ export const CratePackingManager: React.FC = () => {
                         <div className="max-w-7xl mx-auto flex items-center justify-between">
                             <div className="flex flex-col gap-2">
                                 <h3 className="text-[14px] font-black uppercase tracking-[0.6em] text-(--main-color) italic">
-                                    {activeGroup?.isNestable ? 'Packed Boxes' : `Available ${activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Storage Units'}`}
+                                    {activeGroup?.isNestable ? tr("Packed Boxes") : `Available ${activeGroup ? activeGroup.type === 'pallet' ? tr("Pallets") : 'Crates' : tr("Storage Units")}`}
                                 </h3>
                                 <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] font-mono">
-                                    {activeCrates.length} {activeGroup?.isNestable ? 'Ready for Nesting' : 'Precision Units Ready for Assignment'}
+                                    {activeCrates.length} {activeGroup?.isNestable ? tr("Ready for Nesting") : tr("Precision Units Ready for Assignment")}
                                 </p>
                             </div>
                             {activeGroup && (
@@ -1289,7 +1291,7 @@ export const CratePackingManager: React.FC = () => {
                                     className="text-[10px] font-black uppercase tracking-[0.2em] text-white hover:text-black px-8 py-3 bg-white/5 hover:bg-(--main-color) border border-white/10 hover:border-(--main-color) transition-all cursor-pointer flex items-center gap-3 group rounded-none font-mono"
                                 >
                                     <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                                    Root Catalog
+                                    {tr("Root Catalog")}
                                 </button>
                             )}
                         </div>
@@ -1302,7 +1304,7 @@ export const CratePackingManager: React.FC = () => {
                                 {activeCrates.length === 0 ? (
                                     <div className="flex flex-col items-center gap-6 py-24 opacity-20 col-span-full justify-center">
                                         <Inbox size={48} strokeWidth={0.5} />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.5em] font-mono">No Available Logistics Hardware</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.5em] font-mono">{tr("No Available Logistics Hardware")}</span>
                                     </div>
                                 ) : !activeGroup ? (
                                     groupedAvailableCrates.map(group => {
@@ -1342,7 +1344,7 @@ export const CratePackingManager: React.FC = () => {
                                                     </div>
                                                     <div className="flex flex-col gap-2 text-left">
                                                         <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isSelected ? 'text-white' : 'text-white/20'}`}>
-                                                            {c.status}
+                                                            {el(c.status)}
                                                         </span>
                                                         <div className={`h-2 transition-all duration-1000 ${isSelected ? 'w-full bg-(--main-color)' : 'w-10 bg-white/10'}`} />
                                                     </div>
@@ -1361,7 +1363,7 @@ export const CratePackingManager: React.FC = () => {
                                                         className="absolute bottom-2 right-2 bg-blue-500 text-white px-4 py-1.5 text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all z-20 flex items-center gap-2 shadow-lg opacity-0 group-hover/unit:opacity-100 translate-y-2 group-hover/unit:translate-y-0"
                                                     >
                                                         <PackagePlus size={12} />
-                                                        Nest
+                                                        {tr("Nest")}
                                                     </button>
                                                 )}
                                             </div>
@@ -1422,7 +1424,7 @@ export const CratePackingManager: React.FC = () => {
                                     className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
                                         !vendorFilter ? 'bg-white text-black border-white shadow-xl' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
                                     }`}
-                                >ALL VENDORS</button>
+                                >{tr("ALL VENDORS")}</button>
                                 {vendorOptions.filter(v => v !== 'All').map(v => {
                                     const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
                                     const isActive = vendorFilter === v;
@@ -1456,10 +1458,10 @@ export const CratePackingManager: React.FC = () => {
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <p className="text-[14px] font-black uppercase tracking-[0.5em] text-white/30">
-                                        Initialize Packing Sequence
+                                        {tr("Initialize Packing Sequence")}
                                     </p>
                                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/10">
-                                        Select a destination unit to begin item assignment
+                                        {tr("Select a destination unit to begin item assignment")}
                                     </p>
                                 </div>
                             </div>
@@ -1507,11 +1509,11 @@ export const CratePackingManager: React.FC = () => {
                                         <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center gap-6 shadow-2xl">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                                <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Interactive Grid</span>
+                                                <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{tr("Interactive Grid")}</span>
                                             </div>
                                             <div className="h-4 w-px bg-white/10" />
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">ISO View: <span className="text-white">Active</span></span>
+                                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">{tr("ISO View:")} <span className="text-white">{tr("Active")}</span></span>
                                             </div>
                                         </div>
                                     </div>
@@ -1522,7 +1524,7 @@ export const CratePackingManager: React.FC = () => {
                                             ids={filteredInventory.map(i => String(i.row))}
                                             onClose={() => {}}
                                             viewMode="embedded"
-                                            title="Crate Inventory"
+                                            title={tr("Crate Inventory")}
                                             onItemClick={(item) => {
                                                 const iid = String(item.row);
                                                 const norm = normalizeInventoryData(item.data);
@@ -1562,7 +1564,7 @@ export const CratePackingManager: React.FC = () => {
                         </div>
                     </button>
                     <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 pointer-events-none drop-shadow-lg">
-                        Confirm Pack
+                        {tr("Confirm Pack")}
                     </span>
                 </div>
             )}
@@ -1573,7 +1575,7 @@ export const CratePackingManager: React.FC = () => {
                     <div className="bg-black border border-white/10 w-full max-w-2xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] flex flex-col">
                         <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                             <div className="flex flex-col gap-2">
-                                <h3 className="text-xl font-black uppercase tracking-[0.4em] text-(--main-color)">Nesting Wizard</h3>
+                                <h3 className="text-xl font-black uppercase tracking-[0.4em] text-(--main-color)">{tr("Nesting Wizard")}</h3>
                                 <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Select destination for {nestingUnit.id.slice(0, 8).toUpperCase()}</p>
                             </div>
                             <button onClick={() => setNestingUnit(null)} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10">
@@ -1595,7 +1597,7 @@ export const CratePackingManager: React.FC = () => {
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <span className="text-lg font-black text-white tracking-tighter uppercase">{fmtDims(dest)}</span>
-                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{dest.type} · {dest.status}</span>
+                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{dest.type} · {el(dest.status)}</span>
                                         </div>
                                     </button>
                                 ))}
@@ -1603,7 +1605,7 @@ export const CratePackingManager: React.FC = () => {
                         </div>
 
                         <div className="p-8 border-t border-white/5 bg-white/[0.02] flex items-center justify-center">
-                            <p className="text-[10px] font-black text-white/10 uppercase tracking-widest">Nesting packed boxes maintains their inventory and status within the parent unit</p>
+                            <p className="text-[10px] font-black text-white/10 uppercase tracking-widest">{tr("Nesting packed boxes maintains their inventory and status within the parent unit")}</p>
                         </div>
                     </div>
                 </div>

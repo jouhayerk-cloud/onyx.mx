@@ -7,6 +7,8 @@ import { Search, Save, X, Edit2, AlertCircle, Loader2, Shield, Hash, Layers, Dol
 import { toast } from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { tr } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 
 interface DBItem {
     id: string;
@@ -122,7 +124,7 @@ export function DataBaseArtifact() {
 
             if (error) throw error;
             
-            toast.success("Artifact Synchronized");
+            toast.success(tr("Artifact Synchronized"));
             setEditingId(null);
             setEditValues({});
         } catch (err: any) {
@@ -134,11 +136,11 @@ export function DataBaseArtifact() {
 
     const handleDelete = async (id: string, itemId: string) => {
         if (!confirm(`AUTHORIZED OVERRIDE: Permanently expunge unit ${itemId} from nexus?`)) return;
-        const tid = toast.loading("Expunging record...");
+        const tid = toast.loading(tr("Expunging record..."));
         try {
             const { error } = await supabase.from('inventory').delete().eq('id', id);
             if (error) throw error;
-            toast.success("Unit expunged", { id: tid });
+            toast.success(tr("Unit expunged"), { id: tid });
         } catch (err: any) {
             toast.error(err.message || "Delection failed", { id: tid });
         }
@@ -154,11 +156,11 @@ export function DataBaseArtifact() {
             <div className="flex flex-col gap-10">
                 <div className="flex items-center gap-4">
                     <Layers size={14} className="text-neutral-500" />
-                    <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-neutral-400">Master Index Override</h2>
+                    <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-neutral-400">{tr("Master Index Override")}</h2>
                     <div className="h-px grow bg-linear-to-r from-white/5 to-transparent" />
                     <div className="flex items-center gap-2 px-3 py-1 bg-(--main-color)/5 border border-(--main-color)/30 rounded-full">
                         <div className="w-1 h-1 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_8px_rgba(var(--main-color-rgb),0.8)]" />
-                        <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest">{filteredItems.length} RECORDED UNITS</span>
+                        <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest">{filteredItems.length} {tr("RECORDED UNITS")}</span>
                     </div>
                 </div>
 
@@ -168,7 +170,7 @@ export function DataBaseArtifact() {
                         <Search size={14} className="text-neutral-500 group-focus-within:text-(--main-color) transition-all" />
                         <input 
                             type="text"
-                            placeholder="QUERY ARTIFACTS..."
+                            placeholder={tr("QUERY ARTIFACTS...")}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/40 transition-all placeholder:text-white/5 uppercase tracking-tighter w-full"
@@ -177,7 +179,7 @@ export function DataBaseArtifact() {
 
                     {/* Status Toggle */}
                     <div className="flex flex-col gap-3">
-                        <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-500 ml-1">Transmission State</span>
+                        <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-500 ml-1">{tr("Transmission State")}</span>
                         <div className="flex flex-wrap gap-2">
                             {statuses.map(s => (
                                 <button
@@ -194,7 +196,7 @@ export function DataBaseArtifact() {
 
                 {/* Vendor Pill Matrix */}
                 <div className="flex flex-col gap-4">
-                    <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/10 ml-1">Nexus Node Origin</span>
+                    <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/10 ml-1">{tr("Nexus Node Origin")}</span>
                     <div className="flex flex-wrap gap-2 pb-4 border-b border-white/2">
                         {activeVendors.map(v => {
                             const vData = vendors[v as keyof typeof vendors];
@@ -207,7 +209,7 @@ export function DataBaseArtifact() {
                                     style={{ borderColor: isActive ? (vData?.color || 'white') : (vData?.color ? `${vData.color}33` : 'rgba(255,255,255,0.05)') }}
                                 >
                                     {v !== 'All' && <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vData?.color }} />}
-                                    {v === 'All' ? 'ALL ORIGINS' : vData?.name || v}
+                                    {v === 'All' ? tr("ALL ORIGINS") : vData?.name || v}
                                 </button>
                             );
                         })}
@@ -220,23 +222,23 @@ export function DataBaseArtifact() {
                 <table className="w-full border-collapse text-left min-w-[1800px]">
                     <thead>
                         <tr className="text-[8px] font-black uppercase tracking-[0.3em] text-neutral-500 border-b border-white/10">
-                            <th className="px-4 py-4 sticky left-0 bg-[#0a0a0a] z-10 w-[140px]"><div className="flex items-center gap-2"><Hash size={10} /> UNIT ID</div></th>
-                            <th className="px-4 py-4 w-[160px]"><div className="flex items-center gap-2"><Barcode size={10} /> TAG ID</div></th>
-                            <th className="px-4 py-4 w-[120px]">DEPLOYMENT</th>
-                            <th className="px-4 py-4 w-[120px]">MORPHOLOGY</th>
-                            <th className="px-4 py-4 w-[120px]">MATERIAL</th>
-                            <th className="px-4 py-4 w-[100px]">COLOR</th>
-                            <th className="px-4 py-4 w-[120px]"><div className="flex items-center gap-2"><DollarSign size={10} /> VALUATION</div></th>
-                            <th className="px-4 py-4 w-[100px]">AQ CODE</th>
-                            <th className="px-4 py-4 w-[100px]">LD CODE</th>
-                            <th className="px-4 py-4 w-[100px]">USD RETAIL</th>
-                            <th className="px-4 py-4 w-[80px]">QTY</th>
-                            <th className="px-4 py-4 w-[100px]"><div className="flex items-center gap-2"><Scale size={10} /> MASS</div></th>
-                            <th className="px-4 py-4 w-[140px]"><div className="flex items-center gap-2"><Ruler size={10} /> SCALE (CM)</div></th>
-                            <th className="px-4 py-4 w-[140px]">PROTOCOL</th>
-                            <th className="px-4 py-4 w-[100px]">INDEX</th>
-                            <th className="px-4 py-4">METADATA</th>
-                            <th className="px-4 py-4 text-right sticky right-0 bg-[#0a0a0a] z-10 w-[80px]">OVERRIDE</th>
+                            <th className="px-4 py-4 sticky left-0 bg-[#0a0a0a] z-10 w-[140px]"><div className="flex items-center gap-2"><Hash size={10} /> {tr("UNIT ID")}</div></th>
+                            <th className="px-4 py-4 w-[160px]"><div className="flex items-center gap-2"><Barcode size={10} /> {tr("TAG ID")}</div></th>
+                            <th className="px-4 py-4 w-[120px]">{tr("DEPLOYMENT")}</th>
+                            <th className="px-4 py-4 w-[120px]">{tr("MORPHOLOGY")}</th>
+                            <th className="px-4 py-4 w-[120px]">{tr("MATERIAL")}</th>
+                            <th className="px-4 py-4 w-[100px]">{tr("COLOR")}</th>
+                            <th className="px-4 py-4 w-[120px]"><div className="flex items-center gap-2"><DollarSign size={10} /> {tr("VALUATION")}</div></th>
+                            <th className="px-4 py-4 w-[100px]">{tr("AQ CODE")}</th>
+                            <th className="px-4 py-4 w-[100px]">{tr("LD CODE")}</th>
+                            <th className="px-4 py-4 w-[100px]">{tr("USD RETAIL")}</th>
+                            <th className="px-4 py-4 w-[80px]">{tr("QTY")}</th>
+                            <th className="px-4 py-4 w-[100px]"><div className="flex items-center gap-2"><Scale size={10} /> {tr("MASS")}</div></th>
+                            <th className="px-4 py-4 w-[140px]"><div className="flex items-center gap-2"><Ruler size={10} /> {tr("SCALE (CM)")}</div></th>
+                            <th className="px-4 py-4 w-[140px]">{tr("PROTOCOL")}</th>
+                            <th className="px-4 py-4 w-[100px]">{tr("INDEX")}</th>
+                            <th className="px-4 py-4">{tr("METADATA")}</th>
+                            <th className="px-4 py-4 text-right sticky right-0 bg-[#0a0a0a] z-10 w-[80px]">{tr("OVERRIDE")}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/2">
@@ -283,7 +285,7 @@ export function DataBaseArtifact() {
                                                 item.status === 'Requested' ? 'bg-yellow-500/5 text-yellow-500/50 border-yellow-500/10' :
                                                 'bg-green-500/5 text-green-500/50 border-green-500/10'
                                             }`}>
-                                                {item.status}
+                                                {el(item.status)}
                                             </span>
                                         )}
                                     </td>
@@ -298,7 +300,7 @@ export function DataBaseArtifact() {
                                                 className="bg-transparent border-b border-white/10 py-1 text-[10px] w-full text-white/60 focus:outline-none focus:border-(--main-color)/40"
                                             />
                                         ) : (
-                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-tighter group-hover:text-white/60 transition-all">{item.shape || 'UNK'}</span>
+                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-tighter group-hover:text-white/60 transition-all">{item.shape || tr("UNK")}</span>
                                         )}
                                     </td>
 
@@ -416,7 +418,7 @@ export function DataBaseArtifact() {
                                             />
                                         ) : (
                                             <span className={`text-[10px] font-mono leading-none ${item.pay_req ? 'text-yellow-500/40' : 'text-white/5'}`}>
-                                                {item.pay_req || 'NULL_SIGNAL'}
+                                                {item.pay_req || tr("NULL_SIGNAL")}
                                             </span>
                                         )}
                                     </td>
@@ -445,7 +447,7 @@ export function DataBaseArtifact() {
                                                 className="bg-transparent border-b border-white/10 py-1 text-[10px] w-full text-white/60 focus:outline-none focus:border-(--main-color)/40"
                                             />
                                         ) : (
-                                            <span className="text-[10px] text-neutral-500 font-bold uppercase truncate block max-w-xs group-hover:text-neutral-300 transition-all">{item.description || item.short_description || 'NO_METADATA_EXTRACTED'}</span>
+                                            <span className="text-[10px] text-neutral-500 font-bold uppercase truncate block max-w-xs group-hover:text-neutral-300 transition-all">{item.description || item.short_description || tr("NO_METADATA_EXTRACTED")}</span>
                                         )}
                                     </td>
 
@@ -473,14 +475,14 @@ export function DataBaseArtifact() {
                                                 <button 
                                                     onClick={() => handleStartEdit(item)}
                                                     className="w-8 h-8 rounded-full flex items-center justify-center text-white/20 hover:text-(--main-color) hover:bg-white/5 transition-all"
-                                                    title="Modify Unit"
+                                                    title={tr("Modify Unit")}
                                                 >
                                                     <Edit2 size={12} />
                                                 </button>
                                                 <button 
                                                     onClick={() => handleDelete(item.id, item.item_id)}
                                                     className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 hover:text-red-500 hover:bg-white/5 transition-all"
-                                                    title="Expunge Unit"
+                                                    title={tr("Expunge Unit")}
                                                 >
                                                     <Trash2 size={12} />
                                                 </button>
@@ -496,7 +498,7 @@ export function DataBaseArtifact() {
                 {filteredItems.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-32 text-white/5 gap-4">
                         <AlertCircle size={48} strokeWidth={1} />
-                        <p className="text-[11px] font-black uppercase tracking-[0.5em]">Nexus Result Set: Null</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.5em]">{tr("Nexus Result Set: Null")}</p>
                     </div>
                 )}
             </div>
@@ -504,13 +506,13 @@ export function DataBaseArtifact() {
             {/* Minimalist Sub-Footer */}
             <div className="flex items-center justify-between text-[8px] text-white/5 font-black uppercase tracking-[0.3em] mt-8 pt-8 border-t border-white/2">
                 <div className="flex items-center gap-6">
-                    <span>Vendor Logic: Active</span>
+                    <span>{tr("Vendor Logic: Active")}</span>
                     <div className="w-1 h-1 rounded-full bg-white/5" />
-                    <span>Join Index: {allItems.length} Units</span>
+                    <span>{tr("Join Index:")} {allItems.length} {tr("Units")}</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <Shield size={10} className="text-(--main-color) opacity-20" />
-                    <span>Terminal Override Shell v1.70.1</span>
+                    <span>{tr("Terminal Override Shell v1.70.1")}</span>
                 </div>
             </div>
         </div>

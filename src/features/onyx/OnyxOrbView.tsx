@@ -8,6 +8,7 @@ import {
     onyxIsListeningAtom
 } from '../../lib/atoms';
 import { useAtom, useAtomValue } from 'jotai';
+import { tr } from '../../lib/i18n';
 
 export function OnyxOrbView() {
     const onyx = useOnyx();
@@ -38,7 +39,7 @@ export function OnyxOrbView() {
                 >
                     <p className="text-[10px] font-black uppercase tracking-widest text-red-500/80 group-hover:text-red-400 flex items-center gap-2">
                         {onyx.lastError}
-                        {onyx.lastError.includes("Credentials") && <span className="opacity-40 ml-1 underline decoration-dotted">CONFIGURE LINK</span>}
+                        {onyx.lastError.includes("Credentials") && <span className="opacity-40 ml-1 underline decoration-dotted">{tr("CONFIGURE LINK")}</span>}
                     </p>
                 </div>
             )}
@@ -48,14 +49,14 @@ export function OnyxOrbView() {
                 <div className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-3xl flex items-center justify-center p-6 animate-in fade-in duration-500">
                     <div className="w-full max-w-sm space-y-8 text-center">
                         <div className="space-y-2">
-                            <h3 className="text-2xl font-black uppercase tracking-[0.4em] text-white">Neural Core Sync</h3>
-                            <p className="text-[10px] font-bold tracking-widest text-white/40 uppercase">Enter Gemini AI Credentials to activate Link</p>
+                            <h3 className="text-2xl font-black uppercase tracking-[0.4em] text-white">{tr("Neural Core Sync")}</h3>
+                            <p className="text-[10px] font-bold tracking-widest text-white/40 uppercase">{tr("Enter Gemini AI Credentials to activate Link")}</p>
                         </div>
                         
                         <div className="relative group">
                             <input 
                                 type="password"
-                                placeholder="PASTE NEURAL KEY..."
+                                placeholder={tr("PASTE NEURAL KEY...")}
                                 value={tempKey}
                                 onChange={(e) => setTempKey(e.target.value)}
                                 className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 text-center text-sm font-bold tracking-widest text-white placeholder:text-white/10 focus:border-(--main-color) focus:ring-2 focus:ring-(--main-color)/20 transition-all outline-none"
@@ -74,13 +75,13 @@ export function OnyxOrbView() {
                                 }}
                                 className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-[0.3em] rounded-xl hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)]"
                             >
-                                Activate Link
+                                {tr("Activate Link")}
                             </button>
                             <button 
                                 onClick={() => setIsSetupOpen(false)}
                                 className="w-full py-2 text-[9px] font-black uppercase tracking-[0.4em] text-white/20 hover:text-white transition-all"
                             >
-                                Bypass Sync
+                                {tr("Bypass Sync")}
                             </button>
                         </div>
                     </div>

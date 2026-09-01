@@ -1,6 +1,7 @@
 import React from 'react';
 import { Wifi, Radio, Zap, RefreshCw, Activity, CheckCircle2, AlertCircle, Shield, Globe } from 'lucide-react';
 import { StackChanSocketState } from '../useStackChanSocket';
+import { tr } from '../../../lib/i18n';
 
 interface PicoDualChannelMonitorProps {
   directSocket: StackChanSocketState;
@@ -24,12 +25,12 @@ export const PicoDualChannelMonitor: React.FC<PicoDualChannelMonitorProps> = ({
   const getLatencyBadge = (latency: number | null) => {
     if (latency === null) return null;
     if (latency < 30) {
-      return <span className="text-emerald-400 font-mono text-[10px] font-bold">{latency}ms (Zero-Lag)</span>;
+      return <span className="text-emerald-400 font-mono text-[10px] font-bold">{latency}{tr("ms (Zero-Lag)")}</span>;
     }
     if (latency < 100) {
-      return <span className="text-amber-400 font-mono text-[10px] font-bold">{latency}ms (Fast)</span>;
+      return <span className="text-amber-400 font-mono text-[10px] font-bold">{latency}{tr("ms (Fast)")}</span>;
     }
-    return <span className="text-rose-400 font-mono text-[10px] font-bold">{latency}ms (Slow)</span>;
+    return <span className="text-rose-400 font-mono text-[10px] font-bold">{latency}{tr("ms (Slow)")}</span>;
   };
 
   return (
@@ -53,7 +54,7 @@ export const PicoDualChannelMonitor: React.FC<PicoDualChannelMonitorProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Channel 1: Direct LAN WS</h4>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">{tr("Channel 1: Direct LAN WS")}</h4>
                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
                   isDirectConnected
                     ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
@@ -61,10 +62,10 @@ export const PicoDualChannelMonitor: React.FC<PicoDualChannelMonitorProps> = ({
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                     : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
                 }`}>
-                  {isDirectConnected ? 'Active / 0-Latency' : directSocket.status.toUpperCase()}
+                  {isDirectConnected ? tr("Active / 0-Latency") : directSocket.status.toUpperCase()}
                 </span>
               </div>
-              <p className="text-[10px] font-mono text-neutral-400">Local ESP32 WebSocket bridge (Factory & Custom)</p>
+              <p className="text-[10px] font-mono text-neutral-400">{tr("Local ESP32 WebSocket bridge (Factory & Custom)")}</p>
             </div>
           </div>
 
@@ -72,7 +73,7 @@ export const PicoDualChannelMonitor: React.FC<PicoDualChannelMonitorProps> = ({
             <button
               onClick={onReconnectDirect}
               className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-neutral-300 text-xs transition-colors flex items-center gap-1"
-              title="Retry Direct Connection"
+              title={tr("Retry Direct Connection")}
             >
               <RefreshCw size={12} className={directSocket.status === 'connecting' ? 'animate-spin' : ''} />
             </button>
@@ -81,16 +82,16 @@ export const PicoDualChannelMonitor: React.FC<PicoDualChannelMonitorProps> = ({
 
         <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-black/40 border border-white/5 text-center text-[10px] font-mono">
           <div>
-            <span className="text-neutral-500 block uppercase text-[8px] font-bold">Target IP</span>
+            <span className="text-neutral-500 block uppercase text-[8px] font-bold">{tr("Target IP")}</span>
             <span className="text-neutral-200 font-bold truncate block">{localIp}</span>
           </div>
           <div>
-            <span className="text-neutral-500 block uppercase text-[8px] font-bold">Latency</span>
+            <span className="text-neutral-500 block uppercase text-[8px] font-bold">{tr("Latency")}</span>
             {isDirectConnected ? getLatencyBadge(directSocket.latencyMs) : <span className="text-neutral-500">N/A</span>}
           </div>
           <div>
-            <span className="text-neutral-500 block uppercase text-[8px] font-bold">Protocol</span>
-            <span className="text-cyan-400 font-bold">ws://:80/ws</span>
+            <span className="text-neutral-500 block uppercase text-[8px] font-bold">{tr("Protocol")}</span>
+            <span className="text-cyan-400 font-bold">{tr("ws://:80/ws")}</span>
           </div>
         </div>
       </div>
@@ -108,33 +109,33 @@ export const PicoDualChannelMonitor: React.FC<PicoDualChannelMonitorProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Channel 2: Supabase Realtime</h4>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">{tr("Channel 2: Supabase Realtime")}</h4>
                 <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[8px] font-black uppercase tracking-widest border border-purple-500/30">
-                  Global WAN
+                  {tr("Global WAN")}
                 </span>
               </div>
-              <p className="text-[10px] font-mono text-neutral-400">Cloud telemetry relay & remote multi-device sync</p>
+              <p className="text-[10px] font-mono text-neutral-400">{tr("Cloud telemetry relay & remote multi-device sync")}</p>
             </div>
           </div>
 
           <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
             <CheckCircle2 size={11} />
-            Subscribed
+            {tr("Subscribed")}
           </span>
         </div>
 
         <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-black/40 border border-white/5 text-center text-[10px] font-mono">
           <div>
-            <span className="text-neutral-500 block uppercase text-[8px] font-bold">Channel</span>
-            <span className="text-neutral-200 font-bold truncate block">pico-bridge-global</span>
+            <span className="text-neutral-500 block uppercase text-[8px] font-bold">{tr("Channel")}</span>
+            <span className="text-neutral-200 font-bold truncate block">{tr("pico-bridge-global")}</span>
           </div>
           <div>
-            <span className="text-neutral-500 block uppercase text-[8px] font-bold">Telemetry</span>
-            <span className="text-purple-300 font-bold">{eventCount} Events</span>
+            <span className="text-neutral-500 block uppercase text-[8px] font-bold">{tr("Telemetry")}</span>
+            <span className="text-purple-300 font-bold">{eventCount} {tr("Events")}</span>
           </div>
           <div>
-            <span className="text-neutral-500 block uppercase text-[8px] font-bold">Security</span>
-            <span className="text-emerald-400 font-bold">TLS WSS</span>
+            <span className="text-neutral-500 block uppercase text-[8px] font-bold">{tr("Security")}</span>
+            <span className="text-emerald-400 font-bold">{tr("TLS WSS")}</span>
           </div>
         </div>
       </div>
