@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { userAtom, notificationsAtom } from '../../lib/atoms';
 import { readFileAsDataURL, loadImage } from '../../lib/utils';
-import { Sparkles, PackageSearch, Palette, Scissors, Lightbulb, Hourglass } from 'lucide-react';
+import { Sparkles, PackageSearch, Palette, Scissors, Lightbulb, Hourglass } from 'lucide-react';
+import { tr } from '../../lib/i18n';
 const API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
 
 async function generateContent(model: string, parts: any[], config?: any) {
@@ -51,7 +52,7 @@ const ResultPanel: React.FC<{ content: string; onCopy?: () => void }> = ({ conte
     <div className="relative bg-black/20 border border-white/6 rounded-xl p-4">
         <pre className="text-xs text-white/70 whitespace-pre-wrap leading-relaxed font-mono overflow-auto max-h-60">{content}</pre>
         {onCopy && (
-            <button onClick={onCopy} className="absolute top-2 right-2 text-[8px] font-black text-white/20 hover:text-white/60 tracking-widest uppercase transition-colors">COPY</button>
+            <button onClick={onCopy} className="absolute top-2 right-2 text-[8px] font-black text-white/20 hover:text-white/60 tracking-widest uppercase transition-colors">{tr("COPY")}</button>
         )}
     </div>
 );
@@ -87,10 +88,10 @@ const DescribePanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
 
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[10px] text-white/30">Gemini analyzes the image and fills form fields automatically.</p>
+            <p className="text-[10px] text-white/30">{tr("Gemini analyzes the image and fills form fields automatically.")}</p>
             <button onClick={run} disabled={!imageSrc || loading}
                 className="flex items-center justify-center gap-2 py-2.5 px-5 bg-(--main-color) text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
-                {loading ? <><Hourglass size={12} className="animate-spin" /> Analyzing…</> : <><Sparkles size={12} /> Generate Description</>}
+                {loading ? <><Hourglass size={12} className="animate-spin" /> {tr("Analyzing…")}</> : <><Sparkles size={12} /> {tr("Generate Description")}</>}
             </button>
             {result && !result.error && (
                 <div className="flex flex-col gap-2">
@@ -102,7 +103,7 @@ const DescribePanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
                     ))}
                     <button onClick={() => navigator.clipboard.writeText(JSON.stringify(result, null, 2))}
                         className="text-[9px] font-black text-white/20 hover:text-white/60 uppercase tracking-widest self-end transition-colors mt-1">
-                        Copy JSON
+                        {tr("Copy JSON")}
                     </button>
                 </div>
             )}
@@ -133,12 +134,12 @@ const DetectPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
     return (
         <div className="flex flex-col gap-3">
             <div>
-                <label className={lbl}>Detect prompt</label>
-                <input value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="product objects" className={inp} />
+                <label className={lbl}>{tr("Detect prompt")}</label>
+                <input value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={tr("product objects")} className={inp} />
             </div>
             <button onClick={run} disabled={!imageSrc || loading}
                 className="flex items-center justify-center gap-2 py-2.5 px-5 bg-[#00AEEF] text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
-                {loading ? <><Hourglass size={12} className="animate-spin" /> Detecting…</> : <><PackageSearch size={12} /> Run Detection</>}
+                {loading ? <><Hourglass size={12} className="animate-spin" /> {tr("Detecting…")}</> : <><PackageSearch size={12} /> {tr("Run Detection")}</>}
             </button>
             {result && <ResultPanel content={result} onCopy={() => navigator.clipboard.writeText(result)} />}
         </div>
@@ -165,10 +166,10 @@ const ColorPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
     };
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[10px] text-white/30">Extract dominant colors with HEX codes. Click any swatch to copy.</p>
+            <p className="text-[10px] text-white/30">{tr("Extract dominant colors with HEX codes. Click any swatch to copy.")}</p>
             <button onClick={run} disabled={!imageSrc || loading}
                 className="flex items-center justify-center gap-2 py-2.5 px-5 bg-[#F7941D] text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
-                {loading ? <><Hourglass size={12} className="animate-spin" /> Extracting…</> : <><Palette size={12} /> Extract Colors</>}
+                {loading ? <><Hourglass size={12} className="animate-spin" /> {tr("Extracting…")}</> : <><Palette size={12} /> {tr("Extract Colors")}</>}
             </button>
             {swatches.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
@@ -208,13 +209,13 @@ const MaskPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
                     <button key={t} type="button" onClick={() => setTask(t)}
                         className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
                             ${task === t ? 'bg-[#8DC63F]/15 border-[#8DC63F]/50 text-[#8DC63F]' : 'border-white/10 text-white/30 hover:text-white/60'}`}>
-                        {t === 'segment' ? <><Scissors size={10} /> Segment</> : <><Lightbulb size={10} /> BG Analysis</>}
+                        {t === 'segment' ? <><Scissors size={10} /> {tr("Segment")}</> : <><Lightbulb size={10} /> {tr("BG Analysis")}</>}
                     </button>
                 ))}
             </div>
             <button onClick={run} disabled={!imageSrc || loading}
                 className="flex items-center justify-center gap-2 py-2.5 px-5 bg-[#8DC63F] text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
-                {loading ? <><Hourglass size={12} className="animate-spin" /> Processing…</> : <><Scissors size={12} /> Run Analysis</>}
+                {loading ? <><Hourglass size={12} className="animate-spin" /> {tr("Processing…")}</> : <><Scissors size={12} /> {tr("Run Analysis")}</>}
             </button>
             {result && <ResultPanel content={result} onCopy={() => navigator.clipboard.writeText(result)} />}
         </div>
@@ -229,7 +230,7 @@ export function UploadAIPanel() {
         return (
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
                 <svg className="w-10 h-10 text-white/10"><use href="#lock" /></svg>
-                <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Admin / Developer Only</p>
+                <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">{tr("Admin / Developer Only")}</p>
             </div>
         );
     }
@@ -244,13 +245,13 @@ export function UploadAIPanel() {
     return (
         <div className="w-full max-w-2xl mx-auto flex flex-col gap-5 pb-8">
             <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-3">AI Processing Tools</p>
-                <p className="text-xs text-white/30">Upload an image to process with Gemini AI. Results can be copied and used manually or pasted into the entry form.</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-3">{tr("AI Processing Tools")}</p>
+                <p className="text-xs text-white/30">{tr("Upload an image to process with Gemini AI. Results can be copied and used manually or pasted into the entry form.")}</p>
             </div>
 
             {/* Image picker */}
             <div>
-                <label className={lbl}>Source Image</label>
+                <label className={lbl}>{tr("Source Image")}</label>
                 <label className="flex items-center gap-3 border border-dashed border-white/12 rounded-xl px-4 py-3 cursor-pointer hover:border-white/25 hover:bg-white/2 transition-all">
                     <svg className="w-5 h-5 text-white/20 shrink-0"><use href="#camera" /></svg>
                     <span className="text-xs text-white/30">
@@ -260,10 +261,10 @@ export function UploadAIPanel() {
                 </label>
                 {imageSrc && (
                     <div className="mt-2 flex gap-3 items-start">
-                        <img src={imageSrc} alt="AI source" className="w-24 h-24 object-cover rounded-xl border border-white/10 shrink-0" />
+                        <img src={imageSrc} alt={tr("AI source")} className="w-24 h-24 object-cover rounded-xl border border-white/10 shrink-0" />
                         <button onClick={() => setImageSrc(null)}
                             className="text-[9px] font-black text-white/20 hover:text-white/50 uppercase tracking-widest transition-colors mt-1">
-                            Remove
+                            {tr("Remove")}
                         </button>
                     </div>
                 )}

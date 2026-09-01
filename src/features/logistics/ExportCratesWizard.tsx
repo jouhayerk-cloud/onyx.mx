@@ -12,6 +12,7 @@ import { calculateCodesAndPrices, normalizeInventoryData, getCrateDisplayName } 
 import { exportCombinedTruckManifesto } from '../../lib/crateManifesto';
 import { generateCratesListHtml } from './generateCratesListHtml';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
+import { tr } from '../../lib/i18n';
 
 export const ExportCard: React.FC<{
     id: string;
@@ -53,7 +54,7 @@ export const ExportCard: React.FC<{
                     </button>
                 ) : (
                     <button onClick={() => onDownload ? onDownload(url, filename || 'export') : window.open(url)} className="px-4 py-2 rounded-xl text-black font-black uppercase tracking-widest text-[10px] transition-all hover:scale-105 shadow-[0_0_20px_rgba(16,185,129,0.2)]" style={{ backgroundColor: color }}>
-                        Download
+                        {tr("Download")}
                     </button>
                 )}
             </div>
@@ -334,8 +335,8 @@ export const ExportCratesWizard: React.FC<{
                             <Package size={24} className="text-white/60" />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Export Crates</h3>
-                            <p className="text-[9px] text-white/40 uppercase tracking-[0.3em] font-black">{selectedCrates.length} Units Selected</p>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">{tr("Export Crates")}</h3>
+                            <p className="text-[9px] text-white/40 uppercase tracking-[0.3em] font-black">{selectedCrates.length} {tr("Units Selected")}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-3 rounded-2xl text-white/20 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/10"><X size={20} /></button>
@@ -345,21 +346,21 @@ export const ExportCratesWizard: React.FC<{
                     {/* Form Details */}
                     <div className="flex flex-col gap-4">
                         <div className="group flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 focus-within:border-white/20 transition-all">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-white/20">Shipment Reference</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-white/20">{tr("Shipment Reference")}</label>
                             <input type="text" value={fields.shipmentRef} onChange={e => setFields({ ...fields, shipmentRef: e.target.value })}
-                                className="w-full bg-transparent text-sm font-black text-white outline-none placeholder:text-white/10" placeholder="EXP-2026..." />
+                                className="w-full bg-transparent text-sm font-black text-white outline-none placeholder:text-white/10" placeholder={tr("EXP-2026...")} />
                         </div>
 
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between px-1">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">Senders Information</label>
+                                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">{tr("Senders Information")}</label>
                                 <button type="button" onClick={() => setFields({ ...fields, senders: [...fields.senders, ''] })} className="p-1 rounded-md bg-white/5 text-white/40 hover:text-white transition-all"><Plus size={14} /></button>
                             </div>
                             <div className="flex flex-col gap-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
                                 {fields.senders.map((s: string, i: number) => (
                                     <div key={i} className="flex gap-2">
                                         <input type="text" value={s} onChange={e => { const n = [...fields.senders]; n[i] = e.target.value; setFields({ ...fields, senders: n }); }}
-                                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white outline-none focus:border-white/30" placeholder="Sender Name" />
+                                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white outline-none focus:border-white/30" placeholder={tr("Sender Name")} />
                                         <button type="button" onClick={() => { const n = fields.senders.filter((_:any,idx:number)=>idx!==i); setFields({ ...fields, senders: n.length?n:[''] }); }}
                                             className="p-2 text-white/20 hover:text-red-400 transition-all"><Trash2 size={16} /></button>
                                     </div>
@@ -368,24 +369,24 @@ export const ExportCratesWizard: React.FC<{
                         </div>
 
                         <div className="group flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 focus-within:border-white/20 transition-all">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-white/20">Truck Plates Number</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-white/20">{tr("Truck Plates Number")}</label>
                             <input type="text" value={fields.truckPlates} onChange={e => setFields({ ...fields, truckPlates: e.target.value })}
-                                className="w-full bg-transparent text-sm font-black text-white outline-none placeholder:text-white/10" placeholder="Optional truck plates..." />
+                                className="w-full bg-transparent text-sm font-black text-white outline-none placeholder:text-white/10" placeholder={tr("Optional truck plates...")} />
                         </div>
 
                         <div className="group flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 focus-within:border-white/20 transition-all">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-white/20">Additional Notes</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-white/20">{tr("Additional Notes")}</label>
                             <input type="text" value={fields.notes} onChange={e => setFields({ ...fields, notes: e.target.value })}
-                                className="w-full bg-transparent text-sm font-black text-white outline-none placeholder:text-white/10" placeholder="Optional notes for packing list..." />
+                                className="w-full bg-transparent text-sm font-black text-white outline-none placeholder:text-white/10" placeholder={tr("Optional notes for packing list...")} />
                         </div>
                     </div>
 
                     {/* Exporters */}
                     <div className="flex flex-col gap-3">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Documentation Engine</label>
-                        <ExportCard id="html" title="Interactive HTML Manifest" type="HTML" color="#3b82f6" icon={Globe} prog={progress.html} url={urls.html} onGenerate={generateHtml} onDownload={triggerDownload} filename={`Manifesto_${exportTimestamp.current}.html`} />
-                        <ExportCard id="xlsx" title="Master Packing List" type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} onDownload={triggerDownload} filename={`Master_Packing_List_${exportTimestamp.current}.xlsx`} />
-                        <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} onDownload={triggerDownload} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
+                        <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">{tr("Documentation Engine")}</label>
+                        <ExportCard id="html" title={tr("Interactive HTML Manifest")} type="HTML" color="#3b82f6" icon={Globe} prog={progress.html} url={urls.html} onGenerate={generateHtml} onDownload={triggerDownload} filename={`Manifesto_${exportTimestamp.current}.html`} />
+                        <ExportCard id="xlsx" title={tr("Master Packing List")} type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} onDownload={triggerDownload} filename={`Master_Packing_List_${exportTimestamp.current}.xlsx`} />
+                        <ExportCard id="allCrates" title={tr("All Crates Manifesto")} type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} onDownload={triggerDownload} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
                     </div>
                 </div>
 

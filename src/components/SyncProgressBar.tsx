@@ -7,6 +7,7 @@ import React from 'react';
 import { useAtomValue } from 'jotai';
 import { syncProgressAtom, syncStatusAtom, syncQueueCountAtom } from '../lib/atoms';
 import { RefreshCw, Upload, Download, CheckCircle } from 'lucide-react';
+import { tr } from '../lib/i18n';
 
 export const SyncProgressBar: React.FC = () => {
     const progress = useAtomValue(syncProgressAtom);
@@ -79,7 +80,7 @@ export const SyncProgressBar: React.FC = () => {
                 {/* Queue info when pushing */}
                 {isPush && queueCount > 0 && (
                     <div className="mt-2 text-[8px] text-white/20 font-black uppercase tracking-widest">
-                        {queueCount} changes queued
+                        {queueCount} {tr("changes queued")}
                     </div>
                 )}
             </div>

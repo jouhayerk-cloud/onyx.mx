@@ -33,6 +33,7 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { DetectTypes, InventoryItem, InventoryItemData } from '../../lib/Types';
 import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, extractFileId, resizeImage, generateVideoThumbnail } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
+import { tr } from '../../lib/i18n';
 
 export const StatusMarkers = ({
   data,
@@ -359,7 +360,7 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
           <div className="flex items-center justify-between pt-1">
             <span className="font-mono text-[8px] text-white/40 tracking-widest">{calculated.bookBardcode || 'N/A'}</span>
             <div className="flex items-center gap-1">
-              <span className="text-[7px] text-white/30 uppercase tracking-widest">Retail</span>
+              <span className="text-[7px] text-white/30 uppercase tracking-widest">{tr("Retail")}</span>
               <span className="font-medium text-[9px] text-green-300">${calculated.bookRetail}</span>
             </div>
           </div>

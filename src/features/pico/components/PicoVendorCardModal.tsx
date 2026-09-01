@@ -4,6 +4,7 @@ import { PicoScanEvent } from '../../../lib/picoAtoms';
 import { activeViewAtom, inventoryVendorFilterAtom } from '../../../lib/atoms';
 import { VENDOR_COLORS, useDeviceControl } from '../useDeviceControl';
 import { Shield, Sparkles, X, CheckCircle2, User, Package, CreditCard, Bot, Volume2, ArrowRight, Radio } from 'lucide-react';
+import { tr } from '../../../lib/i18n';
 
 interface PicoVendorCardModalProps {
   scanEvent: (PicoScanEvent & { actionTaken?: string }) | null;
@@ -149,7 +150,7 @@ export const PicoVendorCardModal: React.FC<PicoVendorCardModalProps> = ({
             </span>
             <span className="text-[10px] font-black uppercase tracking-widest text-neutral-300 flex items-center gap-1.5">
               <Radio size={12} className="text-emerald-400" />
-              NFC Vendor Card Detected
+              {tr("NFC Vendor Card Detected")}
             </span>
           </div>
           <button
@@ -188,10 +189,10 @@ export const PicoVendorCardModal: React.FC<PicoVendorCardModalProps> = ({
               </div>
               <p className="text-xs text-neutral-300 font-mono">{profile.role}</p>
               <div className="text-[10px] font-mono text-neutral-400 mt-1 flex items-center gap-2">
-                <span>Tag: <strong className="text-white">{scanEvent.tagId}</strong></span>
+                <span>{tr("Tag:")} <strong className="text-white">{scanEvent.tagId}</strong></span>
                 <span>•</span>
                 <span>{scanEvent.scanType}</span>
-                {scanEvent.rssi !== undefined && <span>({scanEvent.rssi} dBm)</span>}
+                {scanEvent.rssi !== undefined && <span>({scanEvent.rssi} {tr("dBm)")}</span>}
               </div>
             </div>
           </div>
@@ -214,7 +215,7 @@ export const PicoVendorCardModal: React.FC<PicoVendorCardModalProps> = ({
             className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-200 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 hover:border-purple-500/40"
           >
             <Bot size={14} className="text-purple-400" />
-            Push to LCD
+            {tr("Push to LCD")}
           </button>
           
           <button
@@ -222,7 +223,7 @@ export const PicoVendorCardModal: React.FC<PicoVendorCardModalProps> = ({
             className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-200 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 hover:border-purple-500/40"
           >
             <Volume2 size={14} className="text-amber-400" />
-            Robot Speak
+            {tr("Robot Speak")}
           </button>
         </div>
 
@@ -232,7 +233,7 @@ export const PicoVendorCardModal: React.FC<PicoVendorCardModalProps> = ({
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-semibold tracking-wide transition-colors"
           >
-            Dismiss
+            {tr("Dismiss")}
           </button>
           
           <button
@@ -241,7 +242,7 @@ export const PicoVendorCardModal: React.FC<PicoVendorCardModalProps> = ({
             style={{ backgroundColor: profile.color }}
           >
             <Package size={14} />
-            <span>Open Items</span>
+            <span>{tr("Open Items")}</span>
             <ArrowRight size={12} />
           </button>
         </div>

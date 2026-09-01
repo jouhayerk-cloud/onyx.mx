@@ -3,7 +3,8 @@ import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai/react';
 import { workbookPropertiesDataAtom } from '../../lib/atoms';
 import { getTextColorForBg } from '../../lib/utils';
-import { vendors } from '../../lib/consts';
+import { vendors } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
 interface PaymentSummary {
     rate: string;
     totalAq: string;
@@ -90,7 +91,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
     }, [paymentSheet]);
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
 
-    if (!paymentSheet) return <div>No -vPayment sheet found.</div>;
+    if (!paymentSheet) return <div>{tr("No -vPayment sheet found.")}</div>;
 
     return (
         <div className="flex h-full gap-4 overflow-hidden p-2">
@@ -114,11 +115,11 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                     {/* Rate & Total */}
                     <div className="glass-panel p-6 rounded-xl flex flex-col gap-4 shrink-0 whitespace-nowrap">
                         <div>
-                            <p className="text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-wider">USD / MXN Rate</p>
+                            <p className="text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-wider">{tr("USD / MXN Rate")}</p>
                             <p className="text-3xl font-bold font-mono text-[var(--main-color)]">{summary?.rate}</p>
                         </div>
                         <div>
-                            <p className="text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-wider">Total AQ MXN</p>
+                            <p className="text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-wider">{tr("Total AQ MXN")}</p>
                             <p className="text-2xl font-bold font-mono text-white">{summary?.totalAq}</p>
                         </div>
                     </div>
@@ -126,7 +127,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                     {/* Shipping Summary */}
                     <div className="glass-panel p-0 rounded-xl flex-grow overflow-hidden flex flex-col whitespace-nowrap">
                         <div className="p-4 border-b border-[var(--border-color)] bg-[var(--glass-bg)] flex justify-between items-center">
-                            <h3 className="font-bold text-[var(--text-color)] uppercase tracking-wider text-sm">Shipping Record</h3>
+                            <h3 className="font-bold text-[var(--text-color)] uppercase tracking-wider text-sm">{tr("Shipping Record")}</h3>
                         </div>
                         <div className="overflow-y-auto p-2">
                             <table className="w-full text-sm">
@@ -166,7 +167,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                 {!isSidebarOpen && (
                     <div className="absolute inset-0 flex flex-col items-center pt-20 gap-4 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onClick={() => setIsSidebarOpen(true)}>
                         <div className="writing-mode-vertical text-[var(--text-color-secondary)] text-xs font-bold uppercase tracking-widest whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>
-                            Summary & Shipping
+                            {tr("Summary & Shipping")}
                         </div>
                     </div>
                 )}
@@ -180,10 +181,10 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                             {/* Vendor Headers */}
                             <tr>
                                 <th className="sticky left-0 z-30 p-2 min-w-[250px] bg-[#0f1115] border-b border-r border-[var(--border-color)] text-left font-bold text-[var(--text-color-secondary)] uppercase">
-                                    TYPE
+                                    {tr("TYPE")}
                                 </th>
                                 <th className="sticky left-[250px] z-30 p-2 min-w-[100px] bg-[#0f1115] border-b border-r border-[var(--border-color)] text-center font-bold text-[var(--text-color-secondary)] uppercase">
-                                    Date
+                                    {tr("Date")}
                                 </th>
                                 {vendorColumns.map(v => (
                                     <th key={v.id} colSpan={2} className="p-2 border-b border-r border-[var(--border-color)] text-center text-[var(--text-color)] font-bold uppercase min-w-[200px]" style={{
@@ -202,8 +203,8 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                                 <th className="sticky left-[250px] z-30 bg-[#0f1115] border-b border-r border-[var(--border-color)]"></th>
                                 {vendorColumns.map(v => (
                                     <React.Fragment key={v.id}>
-                                        <th className="p-2 border-b border-r border-[var(--border-color)] text-[10px] uppercase text-[var(--text-color-secondary)] bg-[var(--glass-bg)]">Payment</th>
-                                        <th className="p-2 border-b border-r border-[var(--border-color)] text-[10px] uppercase text-[var(--text-color-secondary)] bg-[var(--glass-bg)]">Balance</th>
+                                        <th className="p-2 border-b border-r border-[var(--border-color)] text-[10px] uppercase text-[var(--text-color-secondary)] bg-[var(--glass-bg)]">{tr("Payment")}</th>
+                                        <th className="p-2 border-b border-r border-[var(--border-color)] text-[10px] uppercase text-[var(--text-color-secondary)] bg-[var(--glass-bg)]">{tr("Balance")}</th>
                                     </React.Fragment>
                                 ))}
                             </tr>

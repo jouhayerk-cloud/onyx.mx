@@ -18,6 +18,7 @@ import {
     ArrowRight 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { tr } from '../../lib/i18n';
 
 export const ShoppingBagDrawer = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
     const [bag, setBag] = useAtom(storeShoppingBagAtom);
@@ -26,7 +27,7 @@ export const ShoppingBagDrawer = ({ isOpen, onClose }: { isOpen: boolean; onClos
 
     const onRemoveItem = (item: any) => {
         setBag(prev => prev.filter(b => b.row !== item.row));
-        toast.success("Removed from bag");
+        toast.success(tr("Removed from bag"));
     };
 
     const onAcquireAll = async () => {
@@ -42,7 +43,7 @@ export const ShoppingBagDrawer = ({ isOpen, onClose }: { isOpen: boolean; onClos
                 }).eq('id', id);
                 if (error) throw error;
             }
-            toast.success("Batch Acquisition Complete!", { id: tid });
+            toast.success(tr("Batch Acquisition Complete!"), { id: tid });
             setBag([]);
             onClose();
         } catch (err: any) {
@@ -62,8 +63,8 @@ export const ShoppingBagDrawer = ({ isOpen, onClose }: { isOpen: boolean; onClos
                             <ShoppingBag className="text-(--main-color)" size={28} />
                         </div>
                         <div className="flex flex-col">
-                            <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none">Acquisition Bag</h2>
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-2 leading-none">{bag.length} Selected Artifacts</p>
+                            <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none">{tr("Acquisition Bag")}</h2>
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-2 leading-none">{bag.length} {tr("Selected Artifacts")}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="w-12 h-12 rounded-full hover:bg-white/5 flex items-center justify-center text-white/20 hover:text-white transition-all">
@@ -76,7 +77,7 @@ export const ShoppingBagDrawer = ({ isOpen, onClose }: { isOpen: boolean; onClos
                     {bag.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center opacity-20 gap-6 text-center">
                             <Box size={60} strokeWidth={0.5} />
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em]">Bag is currently empty</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em]">{tr("Bag is currently empty")}</p>
                         </div>
                     ) : (
                         bag.map((item, idx) => {
@@ -107,12 +108,12 @@ export const ShoppingBagDrawer = ({ isOpen, onClose }: { isOpen: boolean; onClos
                             onClick={onAcquireAll}
                             className="w-full h-24 bg-(--main-color) text-black rounded-none flex items-center justify-center gap-6 group hover:scale-[1.02] shadow-[0_20px_60px_-10px_rgba(var(--main-color-rgb),0.3)] transition-all"
                         >
-                            <span className="text-sm font-black uppercase tracking-[0.5em] ml-12">Commit Acquisition →</span>
+                            <span className="text-sm font-black uppercase tracking-[0.5em] ml-12">{tr("Commit Acquisition →")}</span>
                             <div className="w-12 h-12 bg-black/10 rounded-full flex items-center justify-center group-hover:bg-black/20 transition-all">
                                 <ArrowRight size={20} />
                             </div>
                         </button>
-                        <p className="text-[10px] font-bold text-white/10 uppercase tracking-[0.2em] text-center mt-6">These items will be migrated to the Inventory Workforce</p>
+                        <p className="text-[10px] font-bold text-white/10 uppercase tracking-[0.2em] text-center mt-6">{tr("These items will be migrated to the Inventory Workforce")}</p>
                     </div>
                 )}
             </div>

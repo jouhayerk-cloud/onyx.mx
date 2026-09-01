@@ -32,6 +32,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { ShoppingBagDrawer } from './ShoppingBagDrawer';
 import { atom } from 'jotai';
+import { tr } from '../../lib/i18n';
 
 // --- Atoms for Fullscreen Gallery State ---
 const ActiveGalleryIndexAtom = atom(0);
@@ -131,7 +132,7 @@ export function StoreView() {
     };
     
     const handleStartExport = async (cfg: any) => {
-        if (selectedIds.length === 0) return toast.error('No items selected for PDF.');
+        if (selectedIds.length === 0) return toast.error(tr("No items selected for PDF."));
         setIsExporting(true);
         try {
             const itemsToExport = selectedIds.map(id => {
@@ -185,7 +186,7 @@ export function StoreView() {
                 setExportStatus(msg);
             });
             
-            toast.success("PDF generated successfully!", { id: "store_pdf" });
+            toast.success(tr("PDF generated successfully!"), { id: "store_pdf" });
         } catch (e: any) {
             toast.error("Export failed: " + e.message, { id: "store_pdf" });
         } finally {
@@ -197,10 +198,10 @@ export function StoreView() {
         const isInBag = bag.some(b => b.row === item.row);
         if (isInBag) {
             setBag(prev => prev.filter(b => b.row !== item.row));
-            toast.success("Removed from bag");
+            toast.success(tr("Removed from bag"));
         } else {
             setBag(prev => [...prev, item]);
-            toast.success("Added to bag", {
+            toast.success(tr("Added to bag"), {
                 icon: '🛍️',
                 style: { background: 'black', color: 'var(--main-color)', border: '1px solid var(--main-color)' }
             });
@@ -213,13 +214,13 @@ export function StoreView() {
         if (error) {
             toast.error(`Remove failed: ${error.message}`);
         } else {
-            toast.success("Item removed from store");
+            toast.success(tr("Item removed from store"));
             setSelectedItem(null);
         }
     };
 
     const handleAcquireItem = async (item: any) => {
-        const tid = toast.loading("Updating status...");
+        const tid = toast.loading(tr("Updating status..."));
         try {
             const tableName = item.table_name || 'inventory';
             const { error } = await supabase.from(tableName).update({ 
@@ -227,7 +228,7 @@ export function StoreView() {
                 updated_at: new Date().toISOString()
             }).eq('id', item.id);
             if (error) throw error;
-            toast.success("Item Acquired!", { id: tid });
+            toast.success(tr("Item Acquired!"), { id: tid });
             setSelectedItem(null);
         } catch (err: any) {
             toast.error(err.message, { id: tid });
@@ -246,7 +247,7 @@ export function StoreView() {
                 }).eq('id', item.id);
                 if (error) throw error;
             }
-            toast.success("Batch Acquisition Complete!", { id: tid });
+            toast.success(tr("Batch Acquisition Complete!"), { id: tid });
             setBag([]);
             setIsBagOpen(false);
         } catch (err: any) {
@@ -282,7 +283,7 @@ export function StoreView() {
     const handleSaveEdit = async (e: React.FormEvent) => {
         e.preventDefault(); if (!selectedItem || !editData) return; 
         setIsSaving(true); setSavingProgress(10);
-        const tid = toast.loading('Syncing Artifact...');
+        const tid = toast.loading(tr("Syncing Artifact..."));
         try {
             let uploaded: string[] = []; 
             if (newFiles.length > 0) { 
@@ -321,7 +322,7 @@ export function StoreView() {
             if (error) throw error; 
             
             setSavingProgress(100);
-            toast.success('Sync Complete', { id: tid }); 
+            toast.success(tr("Sync Complete"), { id: tid }); 
             setSelectedItem(null);
             setEditData(null);
         } catch (err: any) { 
@@ -343,21 +344,21 @@ export function StoreView() {
                     <div className="flex items-center gap-5 shrink-0">
                         {isSelectionMode && (
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} SELECTED</span>
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} {tr("SELECTED")}</span>
                                 <div className="flex items-center gap-3 border-l border-white/5 pl-4 ml-2">
                                     <button onClick={handleSelectAll} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-(--main-color) transition-colors">
                                         {filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id)) ? 'DESELECT ALL' : 'SELECT ALL'}
                                     </button>
-                                    <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-red-400 transition-colors">CLEAR</button>
+                                    <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-red-400 transition-colors">{tr("CLEAR")}</button>
                                 </div>
                                 <button 
                                     onClick={() => setShowExportConfig(true)}
                                     disabled={selectedIds.length === 0 || isExporting}
                                     className="flex items-center gap-2 px-3 h-8 rounded-full bg-(--main-color)/10 text-(--main-color) border border-(--main-color)/20 hover:bg-(--main-color) hover:text-black transition-all text-[9px] font-black uppercase tracking-widest ml-1 disabled:opacity-30 disabled:pointer-events-none"
-                                    title="Export Selected Items to PDF Catalog"
+                                    title={tr("Export Selected Items to PDF Catalog")}
                                 >
                                     <Download size={14} strokeWidth={2.5} />
-                                    EXPORT PDF
+                                    {tr("EXPORT PDF")}
                                 </button>
                                 
                                 <ExportWizard 
@@ -403,7 +404,7 @@ export function StoreView() {
                             {filteredItems.length === 0 && (
                                 <div className="h-full flex items-center justify-center py-40 opacity-20 gap-8 text-center">
                                     <Box size={100} strokeWidth={0.5} />
-                                    <p className="text-xl font-black uppercase tracking-widest">No artifacts found</p>
+                                    <p className="text-xl font-black uppercase tracking-widest">{tr("No artifacts found")}</p>
                                 </div>
                             )}
                         </div>
@@ -432,7 +433,7 @@ export function StoreView() {
                             {filteredItems.length === 0 && (
                                 <div className="h-full flex items-center justify-center py-20 opacity-20 gap-4 text-center">
                                     <Box size={40} strokeWidth={1} />
-                                    <p className="text-sm font-black uppercase tracking-widest">No artifacts found</p>
+                                    <p className="text-sm font-black uppercase tracking-widest">{tr("No artifacts found")}</p>
                                 </div>
                             )}
                         </div>
@@ -459,7 +460,7 @@ export function StoreView() {
                             {filteredItems.length === 0 && (
                                 <div className="h-full flex items-center justify-center py-40 opacity-20 gap-8 text-center">
                                     <Box size={100} strokeWidth={0.5} />
-                                    <p className="text-xl font-black uppercase tracking-widest">No artifacts found</p>
+                                    <p className="text-xl font-black uppercase tracking-widest">{tr("No artifacts found")}</p>
                                 </div>
                             )}
                         </div>
@@ -494,8 +495,8 @@ export function StoreView() {
                             <div className="flex items-center gap-5">
                                 <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10"><FileText size={28} className="text-white/40" /></div>
                                 <div className="flex flex-col">
-                                    <h2 className="text-3xl font-black text-white leading-none tracking-tighter uppercase">MANUAL ENTRY FORM</h2>
-                                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] mt-2 ml-0.5">Store Details Editor</p>
+                                    <h2 className="text-3xl font-black text-white leading-none tracking-tighter uppercase">{tr("MANUAL ENTRY FORM")}</h2>
+                                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] mt-2 ml-0.5">{tr("Store Details Editor")}</p>
                                 </div>
                             </div>
                             <button onClick={() => setEditData(null)} className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all text-2xl font-light">&times;</button>
@@ -505,7 +506,7 @@ export function StoreView() {
                             
                             {/* Entry Status Section */}
                             <div className="space-y-5">
-                                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">ENTRY STATUS</h3>
+                                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">{tr("ENTRY STATUS")}</h3>
                                 <div className="grid grid-cols-3 gap-4">
                                     {['Available', 'Production', 'Acquisition'].map(s => (
                                         <button key={s} type="button" onClick={() => setEditData((p:any) => ({ ...p, status: s }))}
@@ -521,7 +522,7 @@ export function StoreView() {
 
                             {/* Vendor Selection Section */}
                             <div className="space-y-5">
-                                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">VENDOR SELECTION</h3>
+                                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">{tr("VENDOR SELECTION")}</h3>
                                 <div className="flex flex-wrap gap-4 p-8 rounded-[32px] bg-white/2 border border-white/5">
                                     {activeVendors.map((v: string) => {
                                         const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
@@ -539,12 +540,12 @@ export function StoreView() {
 
                             {/* Identity Fields Section */}
                             <div className="grid grid-cols-2 gap-x-8 gap-y-10">
-                                <div className="flex flex-col gap-2.5"><label className={lbl}>NUM</label><input disabled className={inpNum + " opacity-50 cursor-not-allowed"} value={editData.itemNumber || '--'} /></div>
-                                <div className="flex flex-col gap-2.5"><label className={lbl}>ITEM QUANTITY</label><input type="text" name="quantity" value={editData.quantity} placeholder="1" onChange={(e) => setEditData((p:any) => ({ ...p, quantity: e.target.value.replace(/[^0-9]/g, '') }))} className={inp + " text-2xl font-black"} /></div>
+                                <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("NUM")}</label><input disabled className={inpNum + " opacity-50 cursor-not-allowed"} value={editData.itemNumber || '--'} /></div>
+                                <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("ITEM QUANTITY")}</label><input type="text" name="quantity" value={editData.quantity} placeholder="1" onChange={(e) => setEditData((p:any) => ({ ...p, quantity: e.target.value.replace(/[^0-9]/g, '') }))} className={inp + " text-2xl font-black"} /></div>
                                 
                                 {/* Media Section */}
                                 <div className="space-y-5 col-span-2">
-                                    <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">MEDIA ATTACHMENTS</h3>
+                                    <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">{tr("MEDIA ATTACHMENTS")}</h3>
                                     
                                     {/* Saved Gallery */}
                                     {editData.mediaUrls && (
@@ -568,7 +569,7 @@ export function StoreView() {
                                         <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                                         <div className="h-48 rounded-[32px] border-2 border-dashed border-white/10 bg-white/2 flex flex-col items-center justify-center gap-4 group-hover:bg-white/5 group-hover:border-white/20 transition-all">
                                             <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10"><Upload size={24} className="text-white/20 group-hover:text-white transition-all" /></div>
-                                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] group-hover:text-white transition-all">ATTACH NEW MEDIA (IMAGES / VIDEO)</p>
+                                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] group-hover:text-white transition-all">{tr("ATTACH NEW MEDIA (IMAGES / VIDEO)")}</p>
                                         </div>
                                     </div>
                                     {newFiles.length > 0 && (
@@ -588,37 +589,37 @@ export function StoreView() {
                             {/* Detail Fields Section (DESC) */}
                             <div className="space-y-8">
                                 <div className="grid grid-cols-2 gap-8">
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>COLOR</label><input name="color" value={editData.color} onChange={handleEditChange} className={inp} placeholder="Identify pigment..." /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>MAT</label><input name="material" value={editData.material} onChange={handleEditChange} className={inp} placeholder="Identify mineral..." /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>SHAPE</label><input name="shape" value={editData.shape} onChange={handleEditChange} className={inp} placeholder="Identify geometry..." /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>TYPE</label><input name="shortDescription" value={editData.shortDescription} onChange={handleEditChange} className={inp} placeholder="Identify class..." /></div>
+                                    <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("COLOR")}</label><input name="color" value={editData.color} onChange={handleEditChange} className={inp} placeholder={tr("Identify pigment...")} /></div>
+                                    <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("MAT")}</label><input name="material" value={editData.material} onChange={handleEditChange} className={inp} placeholder={tr("Identify mineral...")} /></div>
+                                    <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("SHAPE")}</label><input name="shape" value={editData.shape} onChange={handleEditChange} className={inp} placeholder={tr("Identify geometry...")} /></div>
+                                    <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("TYPE")}</label><input name="shortDescription" value={editData.shortDescription} onChange={handleEditChange} className={inp} placeholder={tr("Identify class...")} /></div>
                                 </div>
                             </div>
 
                             {/* Logistics Section */}
                             <div className="pt-8 border-t border-white/5 space-y-8">
                                 <div className="grid grid-cols-4 gap-6">
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>WEIGHT (KG)</label><input type="number" step="0.01" name="weightKg" value={editData.weightKg} onChange={handleEditChange} className={inpNum} /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>W (CM)</label><input type="number" name="widthCm" value={editData.widthCm} onChange={handleEditChange} className={inpNum} /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>H (CM)</label><input type="number" name="heightCm" value={editData.heightCm} onChange={handleEditChange} className={inpNum} /></div>
-                                    <div className="flex flex-col gap-2.5"><label className={lbl}>D (CM)</label><input type="number" name="lengthCm" value={editData.lengthCm} onChange={handleEditChange} className={inpNum} /></div>
+                                    <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("WEIGHT (KG)")}</label><input type="number" step="0.01" name="weightKg" value={editData.weightKg} onChange={handleEditChange} className={inpNum} /></div>
+                                    <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("W (CM)")}</label><input type="number" name="widthCm" value={editData.widthCm} onChange={handleEditChange} className={inpNum} /></div>
+                                    <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("H (CM)")}</label><input type="number" name="heightCm" value={editData.heightCm} onChange={handleEditChange} className={inpNum} /></div>
+                                    <div className="flex flex-col gap-2.5"><label className={lbl}>{tr("D (CM)")}</label><input type="number" name="lengthCm" value={editData.lengthCm} onChange={handleEditChange} className={inpNum} /></div>
                                 </div>
                             </div>
 
                             {/* Financial Assets Section */}
                             <div className="pt-8 border-t border-white/5 lg:flex items-center gap-12 space-y-8 lg:space-y-0">
                                 <div className="grow space-y-2">
-                                    <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em]">FINANCIAL INTEGRITY</h3>
-                                    <p className="text-[10px] text-white/10 font-medium leading-relaxed max-w-sm">Artifact values are stored in MXN and calculated against active exchange rates for global parity.</p>
+                                    <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em]">{tr("FINANCIAL INTEGRITY")}</h3>
+                                    <p className="text-[10px] text-white/10 font-medium leading-relaxed max-w-sm">{tr("Artifact values are stored in MXN and calculated against active exchange rates for global parity.")}</p>
                                 </div>
                                 <div className="w-full lg:w-72 flex flex-col gap-2.5">
-                                    <label className={lbl}>PRICE (MXN)</label>
+                                    <label className={lbl}>{tr("PRICE (MXN)")}</label>
                                     <input type="number" name="price" value={editData.price || 0} onChange={handleEditChange} className={inp + " text-2xl font-black text-green-400 font-mono"} />
                                 </div>
                             </div>
 
                             <div className="pt-16 flex gap-6 pb-4">
-                                <button type="button" onClick={() => setEditData(null)} className="h-20 px-10 rounded-3xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.4em] uppercase text-white/30 hover:text-white hover:bg-white/10 transition-all">ABORT SYNC</button>
+                                <button type="button" onClick={() => setEditData(null)} className="h-20 px-10 rounded-3xl bg-white/5 border border-white/10 text-[11px] font-black tracking-[0.4em] uppercase text-white/30 hover:text-white hover:bg-white/10 transition-all">{tr("ABORT SYNC")}</button>
                                 <button type="submit" disabled={isSaving} className="flex-1 h-20 rounded-3xl bg-(--main-color) text-black text-[13px] font-black tracking-[0.5em] uppercase shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
                                     {isSaving ? 'SYNCING ARTIFACT...' : 'COMMIT CHANGES →'}
                                 </button>
@@ -645,7 +646,7 @@ export function StoreView() {
 
                         <div className="w-full space-y-4 relative">
                             <div className="flex justify-between items-end">
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Synchronization</span>
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{tr("Synchronization")}</span>
                                 <span className="text-sm font-mono font-black text-(--main-color)">{savingProgress}%</span>
                             </div>
                             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
@@ -670,27 +671,27 @@ export function StoreView() {
                         <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-(--main-color)/40 to-transparent" />
                         
                         <div className="flex flex-col gap-2">
-                            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Export Configuration</h2>
-                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Customize your catalog</p>
+                            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">{tr("Export Configuration")}</h2>
+                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">{tr("Customize your catalog")}</p>
                         </div>
 
                         <div className="space-y-8">
                             {/* Title Input */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">PDF Title (Cover & Filename)</label>
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("PDF Title (Cover & Filename)")}</label>
                                 <input 
                                     autoFocus
                                     type="text" 
                                     value={exportTitle} 
                                     onChange={e => setExportTitle(e.target.value)}
-                                    placeholder="Enter custom title..."
+                                    placeholder={tr("Enter custom title...")}
                                     className="w-full h-14 px-6 bg-white/[0.04] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-(--main-color)/30 focus:bg-white/5 transition-all"
                                 />
                             </div>
 
                             {/* Export Type Selection */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Export Scope & Financials</label>
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Export Scope & Financials")}</label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button 
                                         onClick={() => setExportType('regular')}
@@ -700,8 +701,8 @@ export function StoreView() {
                                             <Tag size={20} className={exportType === 'regular' ? 'text-(--main-color)' : 'text-white/40'} />
                                         </div>
                                         <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest ${exportType === 'regular' ? 'text-white' : 'text-white/40'}`}>Regular Export</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Internal · Full Costs</p>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportType === 'regular' ? 'text-white' : 'text-white/40'}`}>{tr("Regular Export")}</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">{tr("Internal · Full Costs")}</p>
                                         </div>
                                     </button>
                                     <button 
@@ -712,8 +713,8 @@ export function StoreView() {
                                             <Share2 size={20} className={exportType === 'catalog' ? 'text-(--main-color)' : 'text-white/40'} />
                                         </div>
                                         <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest ${exportType === 'catalog' ? 'text-white' : 'text-white/40'}`}>Catalog Mode</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">External · Codes only</p>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportType === 'catalog' ? 'text-white' : 'text-white/40'}`}>{tr("Catalog Mode")}</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">{tr("External · Codes only")}</p>
                                         </div>
                                     </button>
                                 </div>
@@ -721,7 +722,7 @@ export function StoreView() {
 
                             {/* Method Selection */}
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Export Methodology</label>
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Export Methodology")}</label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button 
                                         onClick={() => setExportMethod('grid')}
@@ -731,8 +732,8 @@ export function StoreView() {
                                             <LayoutGrid size={20} className={exportMethod === 'grid' ? 'text-(--main-color)' : 'text-white/40'} />
                                         </div>
                                         <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'grid' ? 'text-white' : 'text-white/40'}`}>Catalog Grid</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Multi-image rows</p>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'grid' ? 'text-white' : 'text-white/40'}`}>{tr("Catalog Grid")}</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">{tr("Multi-image rows")}</p>
                                         </div>
                                     </button>
                                     <button 
@@ -743,8 +744,8 @@ export function StoreView() {
                                             <FileText size={20} className={exportMethod === 'single' ? 'text-(--main-color)' : 'text-white/40'} />
                                         </div>
                                         <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'single' ? 'text-white' : 'text-white/40'}`}>Per Image</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Full-page view</p>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'single' ? 'text-white' : 'text-white/40'}`}>{tr("Per Image")}</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">{tr("Full-page view")}</p>
                                         </div>
                                     </button>
                                 </div>
@@ -756,13 +757,13 @@ export function StoreView() {
                                 onClick={() => setShowExportConfig(false)}
                                 className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
                             >
-                                Cancel
+                                {tr("Cancel")}
                             </button>
                             <button 
                                 onClick={executeExportPdf}
                                 className="flex-[2] h-14 rounded-full bg-(--main-color) text-[10px] font-black text-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-2xl active:scale-95"
                             >
-                                Start Generation
+                                {tr("Start Generation")}
                             </button>
                         </div>
                     </div>
@@ -785,7 +786,7 @@ export function StoreView() {
 
                         <div className="w-full space-y-4 relative">
                             <div className="flex justify-between items-end">
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">PDF Exporting</span>
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{tr("PDF Exporting")}</span>
                                 <span className="text-sm font-mono font-black text-(--main-color)">{exportProgress}%</span>
                             </div>
                             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
@@ -802,7 +803,7 @@ export function StoreView() {
                             </p>
                             {exportProgress === 100 && (
                                 <p className="text-[9px] font-bold text-green-500/60 uppercase tracking-widest text-center">
-                                    Ready for download
+                                    {tr("Ready for download")}
                                 </p>
                             )}
                         </div>
@@ -885,7 +886,7 @@ const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay, isSelected, is
                         onClick={(e) => { e.stopPropagation(); onClick(); }} 
                         className="flex-1 bg-white text-black py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md"
                     >
-                        GET THIS!
+                        {tr("GET THIS!")}
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
@@ -949,7 +950,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate, isSele
 
                 {/* Dimensional Data */}
                 <div className="flex flex-col gap-1.5 w-[200px] md:w-[20%] shrink-0 pl-4 border-l border-white/5 md:border-0 md:pl-0">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Dimensions & Mass</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Dimensions & Mass")}</span>
                     <div className="flex flex-col leading-tight">
                         <span className="text-xs md:text-sm font-black text-white/80 tracking-widest uppercase">{n.widthCm}x{n.lengthCm}x{n.heightCm} <span className="opacity-40 text-[9px]">CM</span></span>
                         <span className="text-[10px] font-bold text-white/40 tracking-wider uppercase">{cmToImperial(n.widthCm)}x{cmToImperial(n.lengthCm)}x{cmToImperial(n.heightCm)} <span className="opacity-40 text-[8px]">IN</span></span>
@@ -959,7 +960,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate, isSele
 
                 {/* Valuation */}
                 <div className="flex flex-col gap-1.5 w-[120px] md:w-[15%] shrink-0 pl-4 border-l border-white/5 md:border-0 md:pl-0">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Unit Val.</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Unit Val.")}</span>
                     <div className="flex flex-col leading-tight">
                         <span className="text-sm md:text-base font-black text-(--main-color) font-mono italic">${(unitPrice / 1000).toFixed(1)}K <span className="text-[9px] opacity-40">MXN</span></span>
                         <span className="text-[10px] md:text-xs font-black text-white/30 font-mono tracking-tighter">${(unitPrice / (exchangeRate || DEFAULT_EXCHANGE_RATE)).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="opacity-40 tracking-widest uppercase text-[7px]">USD</span></span>
@@ -968,10 +969,10 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate, isSele
 
                 {/* Inventory Overview */}
                 <div className="flex flex-col gap-1.5 w-[150px] md:w-[20%] shrink-0 pl-4 border-l border-white/5 md:border-0 md:pl-0">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Inventory Total</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Inventory Total")}</span>
                     <div className="flex flex-col leading-tight">
-                        <span className="text-sm md:text-base font-black text-white uppercase italic">{qty} <span className="text-[9px] opacity-40 uppercase tracking-widest">Units</span></span>
-                        <span className="text-[10px] md:text-xs font-black text-(--main-color)/70 font-mono tracking-tighter">Total: ${(unitPrice * qty / 1000).toFixed(1)}K <span className="opacity-40 tracking-widest uppercase text-[7px]">MXN</span></span>
+                        <span className="text-sm md:text-base font-black text-white uppercase italic">{qty} <span className="text-[9px] opacity-40 uppercase tracking-widest">{tr("Units")}</span></span>
+                        <span className="text-[10px] md:text-xs font-black text-(--main-color)/70 font-mono tracking-tighter">{tr("Total: $")}{(unitPrice * qty / 1000).toFixed(1)}K <span className="opacity-40 tracking-widest uppercase text-[7px]">MXN</span></span>
                     </div>
                 </div>
 
@@ -981,7 +982,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate, isSele
                         onClick={(e) => { e.stopPropagation(); onClick(); }} 
                         className="bg-white text-black px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-md mr-2"
                     >
-                        GET THIS!
+                        {tr("GET THIS!")}
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
@@ -1278,7 +1279,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                             className="w-full bg-white text-black font-black uppercase tracking-[0.8em] rounded-[24px] hover:bg-(--main-color) hover:scale-[1.02] transition-all flex items-center justify-center group"
                             style={{ padding: `${dText(14)}px`, fontSize: `${dText(10)}px`, gap: `${dGap(12)}px` }}
                         >
-                            GET IT! <ArrowRight size={dText(16)} className="group-hover:translate-x-5 transition-transform" />
+                            {tr("GET IT!")} <ArrowRight size={dText(16)} className="group-hover:translate-x-5 transition-transform" />
                         </button>
 
                         {/* Admin Action Icons */}
@@ -1298,12 +1299,12 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                 <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-3xl flex items-center justify-center p-8 md:p-12 text-center pointer-events-auto rounded-none md:rounded-[32px]">
                     <div className="flex flex-col gap-10 animate-in zoom-in duration-300">
                         <div className="flex flex-col gap-4">
-                            <span className="text-rose-500 font-black uppercase tracking-[0.8em] text-[10px] md:text-[11px]">Secure Protocol Deletion</span>
-                            <h3 className="text-5xl md:text-6xl font-black text-white uppercase italic tracking-tighter leading-[0.8] mb-4">Discard<br/>Artifact?</h3>
+                            <span className="text-rose-500 font-black uppercase tracking-[0.8em] text-[10px] md:text-[11px]">{tr("Secure Protocol Deletion")}</span>
+                            <h3 className="text-5xl md:text-6xl font-black text-white uppercase italic tracking-tighter leading-[0.8] mb-4">{tr("Discard")}<br/>{tr("Artifact?")}</h3>
                             </div>
                             <div className="flex flex-col gap-4">
-                                <button onClick={() => { onRemove(item); onClose(); }} className="w-full py-8 bg-rose-600 text-white text-[12px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all font-mono">Confirm Erasure</button>
-                                <button onClick={() => setShowConfirmRemove(false)} className="w-full py-6 bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">Cancel Operation</button>
+                                <button onClick={() => { onRemove(item); onClose(); }} className="w-full py-8 bg-rose-600 text-white text-[12px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all font-mono">{tr("Confirm Erasure")}</button>
+                                <button onClick={() => setShowConfirmRemove(false)} className="w-full py-6 bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">{tr("Cancel Operation")}</button>
                         </div>
                     </div>
                 </div>
@@ -1400,7 +1401,7 @@ const GalleryFullItem = ({ item, onClick, inBag, onToggleBag, isSelectionMode, i
                             onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
                             className="flex items-center gap-4 text-black bg-white px-8 py-4 rounded-[24px] group/acq hover:scale-105 transition-all w-[240px] justify-between"
                         >
-                            <span className="text-sm font-black uppercase tracking-[0.4em]">GET THIS!</span>
+                            <span className="text-sm font-black uppercase tracking-[0.4em]">{tr("GET THIS!")}</span>
                             <ArrowRight size={20} strokeWidth={2.5} className="group-hover/acq:translate-x-2 transition-transform" />
                         </button>
                         <button 
@@ -1417,7 +1418,7 @@ const GalleryFullItem = ({ item, onClick, inBag, onToggleBag, isSelectionMode, i
             {/* Hint for vertical scroll */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-20 flex flex-col items-center gap-2">
                  <div className="w-px h-10 bg-white" />
-                 <span className="text-[8px] font-black uppercase tracking-[1em] rotate-90 ml-2">Scroll</span>
+                 <span className="text-[8px] font-black uppercase tracking-[1em] rotate-90 ml-2">{tr("Scroll")}</span>
             </div>
         </div>
     );
@@ -1492,7 +1493,7 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
                     className="flex items-center gap-2 md:gap-4 text-white/50 hover:text-white transition-all bg-black/40 backdrop-blur-md px-4 md:px-6 py-3 md:py-4 rounded-full border border-white/5 active:scale-95"
                 >
                     <ChevronLeft size={20} strokeWidth={2} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] hidden md:block">Return</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] hidden md:block">{tr("Return")}</span>
                 </button>
             </div>
 
@@ -1510,7 +1511,7 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
             {/* Scale Indicator */}
             {scale > 1 && (
                 <div className="absolute top-24 px-4 py-1 bg-white/10 rounded-full text-[10px] font-black text-white/40 uppercase tracking-widest z-50">
-                    Zoom: {scale.toFixed(1)}x
+                    {tr("Zoom:")} {scale.toFixed(1)}x
                 </div>
             )}
 
@@ -1555,7 +1556,7 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
                             onClick={resetZoom}
                             className="w-14 h-14 bg-white/5 border border-white/10 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all uppercase text-[8px] font-black tracking-tighter"
                         >
-                            Reset
+                            {tr("Reset")}
                         </button>
                     )}
                     <button 

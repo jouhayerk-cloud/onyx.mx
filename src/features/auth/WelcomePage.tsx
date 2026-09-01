@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import { CheckCircle, ArrowRight, Zap } from 'lucide-react';
 import gsap from 'gsap';
+import { tr } from '../../lib/i18n';
 
 export function WelcomePage({ onComplete }: { onComplete: () => void }) {
     const [countdown, setCountdown] = useState(5);
@@ -43,11 +44,11 @@ export function WelcomePage({ onComplete }: { onComplete: () => void }) {
                 </div>
 
                 <h1 className="welcome-animate text-4xl font-black text-white mb-4 tracking-tighter italic" style={{ fontFamily: 'Playfair Display, serif' }}>
-                    Activation <span className="text-[var(--main-color)]">Successful</span>
+                    {tr("Activation")} <span className="text-[var(--main-color)]">{tr("Successful")}</span>
                 </h1>
 
                 <p className="welcome-animate text-white/50 text-lg mb-12 leading-relaxed">
-                    Your secure enterprise account has been verified. Welcome to the <span className="text-white font-bold">Onyx.mx</span> network.
+                    Your secure enterprise account has been verified. Welcome to the <span className="text-white font-bold">Onyx.mx</span> {tr("network.")}
                 </p>
 
                 <div className="welcome-animate p-6 rounded-3xl bg-white/5 border border-white/10 mb-8 flex items-center justify-between">
@@ -56,12 +57,12 @@ export function WelcomePage({ onComplete }: { onComplete: () => void }) {
                             <Zap className="w-5 h-5 text-black" strokeWidth={2.5} />
                         </div>
                         <div className="text-left">
-                            <span className="block text-[10px] font-black text-white/30 uppercase tracking-widest">Protocol</span>
-                            <span className="text-sm font-bold text-white uppercase tracking-tighter font-mono">Full Access Granted</span>
+                            <span className="block text-[10px] font-black text-white/30 uppercase tracking-widest">{tr("Protocol")}</span>
+                            <span className="text-sm font-bold text-white uppercase tracking-tighter font-mono">{tr("Full Access Granted")}</span>
                         </div>
                     </div>
                     <div className="text-right">
-                        <span className="block text-[10px] font-black text-white/30 uppercase tracking-widest">Redirecting</span>
+                        <span className="block text-[10px] font-black text-white/30 uppercase tracking-widest">{tr("Redirecting")}</span>
                         <span className="text-sm font-black text-[var(--main-color)]">{countdown}s</span>
                     </div>
                 </div>
@@ -70,7 +71,7 @@ export function WelcomePage({ onComplete }: { onComplete: () => void }) {
                     onClick={onComplete}
                     className="welcome-animate w-full py-5 rounded-full bg-white text-black font-black text-sm tracking-[0.2em] uppercase flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl"
                 >
-                    Enter System Now
+                    {tr("Enter System Now")}
                     <ArrowRight className="w-4 h-4" />
                 </button>
 

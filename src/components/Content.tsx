@@ -28,6 +28,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { segmentationColors } from '../lib/consts';
 import { BoundingBoxMaskType } from '../lib/Types';
 import { createCurvePath, extractFileId, fetchImageBatch, resizeImage, generateVideoThumbnail, imageCache } from '../lib/utils';
+import { tr } from '../lib/i18n';
 
 export function Content() {
   const [imageSrc] = useAtom(ImageSrcAtom);
@@ -375,8 +376,8 @@ export function Content() {
        <div className="flex items-center justify-center h-full text-center text-[var(--text-color-secondary)] p-8">
         <div>
           <svg className="w-16 h-16 mx-auto mb-4 opacity-50"><use href="#camera"></use></svg>
-          <h3 className="font-bold">Media Viewer</h3>
-          <p>Select an image from the Media Gallery to view it here.</p>
+          <h3 className="font-bold">{tr("Media Viewer")}</h3>
+          <p>{tr("Select an image from the Media Gallery to view it here.")}</p>
         </div>
       </div>
     );

@@ -14,6 +14,7 @@ import {
     Users, Box, Archive, Cpu 
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
+import { tr } from '../../lib/i18n';
 
 export const PaymentsArtifact: React.FC = () => {
     const [config, setConfig] = useAtom(paymentsArtifactConfigAtom);
@@ -120,7 +121,7 @@ export const PaymentsArtifact: React.FC = () => {
                                 {config.title || 'Payments Artifact'}
                             </h2>
                             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-0.5">
-                                {filteredPayments.length} {filteredPayments.length === 1 ? 'Record' : 'Records'} Found
+                                {filteredPayments.length} {filteredPayments.length === 1 ? 'Record' : 'Records'} {tr("Found")}
                             </p>
                         </div>
                     </div>
@@ -137,7 +138,7 @@ export const PaymentsArtifact: React.FC = () => {
                     {filteredPayments.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-20">
                             <Receipt size={48} strokeWidth={1} />
-                            <p className="text-xs font-black uppercase tracking-widest mt-4">No matching records</p>
+                            <p className="text-xs font-black uppercase tracking-widest mt-4">{tr("No matching records")}</p>
                         </div>
                     ) : (
                         filteredPayments.map((pay, idx) => {
@@ -205,7 +206,7 @@ export const PaymentsArtifact: React.FC = () => {
                                                             </span>
                                                             <div className="flex items-center gap-1 opacity-40">
                                                                 <Tag size={8} />
-                                                                <span className="text-[7px] font-black uppercase">Acquisition</span>
+                                                                <span className="text-[7px] font-black uppercase">{tr("Acquisition")}</span>
                                                             </div>
                                                         </div>
                                                     );
@@ -254,7 +255,7 @@ export const PaymentsArtifact: React.FC = () => {
                                         <div className="flex items-center gap-4 sm:gap-6 shrink-0 ml-auto justify-end">
                                             <div className="flex flex-col items-end justify-center opacity-60">
                                                 <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${isUSD ? 'text-emerald-400/60' : 'text-sky-400/60'}`}>
-                                                    Net {isUSD ? 'USD' : 'MXN'}
+                                                    {tr("Net")} {isUSD ? 'USD' : 'MXN'}
                                                 </span>
                                                 <span className="text-[11px] font-bold font-mono text-white">
                                                     {showFinancials ? `$${netAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
@@ -263,7 +264,7 @@ export const PaymentsArtifact: React.FC = () => {
 
                                             <div className="flex flex-col items-end justify-center opacity-60">
                                                 <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${isUSD ? 'text-emerald-400/60' : 'text-sky-400/60'}`}>
-                                                    Fees {isUSD ? 'USD' : 'MXN'}
+                                                    {tr("Fees")} {isUSD ? 'USD' : 'MXN'}
                                                 </span>
                                                 <span className="text-[11px] font-bold font-mono text-red-400">
                                                     {showFinancials ? `$${feesAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
@@ -272,7 +273,7 @@ export const PaymentsArtifact: React.FC = () => {
 
                                             <div className="flex flex-col items-end justify-center border-l border-white/10 pl-4 sm:pl-6 min-w-[70px]">
                                                 <span className={`text-[8px] font-black uppercase tracking-[0.18em] mb-1 leading-none ${isUSD ? 'text-emerald-400/80' : 'text-sky-400/80'}`}>
-                                                    Total {isUSD ? 'USD' : 'MXN'}
+                                                    {tr("Total")} {isUSD ? 'USD' : 'MXN'}
                                                 </span>
                                                 <span className={`text-[15px] font-black font-mono tracking-tight ${isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>
                                                     {showFinancials ? `$${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
@@ -295,7 +296,7 @@ export const PaymentsArtifact: React.FC = () => {
                 <div className="px-6 py-4 bg-black/40 border-t border-white/5 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-8">
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Total MXN Summary</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">{tr("Total MXN Summary")}</span>
                             <div className="flex items-baseline gap-2">
                                 <span className={`text-xl font-mono font-black text-sky-400`}>
                                     {showFinancials ? `$${Math.ceil(totals.mxn).toLocaleString()}` : '***'}
@@ -304,7 +305,7 @@ export const PaymentsArtifact: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Total USD Summary</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">{tr("Total USD Summary")}</span>
                             <div className="flex items-baseline gap-2">
                                 <span className={`text-xl font-mono font-black text-emerald-400`}>
                                     {showFinancials ? `$${totals.usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '***'}
@@ -317,7 +318,7 @@ export const PaymentsArtifact: React.FC = () => {
                         onClick={onClose}
                         className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-(--main-color)/20 hover:scale-105 active:scale-95 transition-all"
                     >
-                        Dismiss
+                        {tr("Dismiss")}
                     </button>
                 </div>
             </div>

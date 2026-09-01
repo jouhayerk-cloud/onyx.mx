@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Check, Move, Maximize2, Palette, Sparkles, Sliders, Layers } from 'lucide-react';
 import { cropImage, extractEdgeColor, PixelStretchConfig, getCleanImageUrl } from '../lib/utils';
+import { tr } from '../lib/i18n';
 
 interface SquareCropModalProps {
     isOpen: boolean;
@@ -248,7 +249,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
             <div className="flex items-center justify-between px-6 py-3 border-b border-white/10 bg-black/40 shrink-0">
                 <div className="flex items-center gap-2.5">
                     <Maximize2 className="w-5 h-5 text-purple-400" />
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">1:1 Crop Studio & Pixel Stretch Background Generator</h3>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">{tr("1:1 Crop Studio & Pixel Stretch Background Generator")}</h3>
                 </div>
                 <button 
                     onClick={onClose}
@@ -276,7 +277,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
                     <img 
                         ref={imgRef}
                         src={activeImageSrc} 
-                        alt="Crop target" 
+                        alt={tr("Crop target")} 
                         className="relative z-10 max-w-[85%] max-h-[65vh] object-contain pointer-events-none rounded drop-shadow-2xl"
                     />
 
@@ -334,7 +335,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
 
                         {/* Size badge */}
                         <div className="absolute top-1 left-1 bg-black/80 text-[9px] font-mono font-bold text-purple-300 px-1.5 py-0.5 rounded border border-white/10 pointer-events-none">
-                            {Math.round(cropPx.size)}×{Math.round(cropPx.size)} px (1:1 Square)
+                            {Math.round(cropPx.size)}×{Math.round(cropPx.size)} {tr("px (1:1 Square)")}
                         </div>
 
                         {/* Resize handle bottom-right */}
@@ -347,7 +348,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
                     </div>
 
                     <p className="absolute bottom-2 left-4 text-xs text-white/60 bg-black/70 px-3 py-1 rounded-lg border border-white/10 flex items-center gap-1.5 z-40">
-                        <Move className="w-3.5 h-3.5 text-purple-400" /> Drag crop box freely anywhere across panel (allows extended background margins!).
+                        <Move className="w-3.5 h-3.5 text-purple-400" /> {tr("Drag crop box freely anywhere across panel (allows extended background margins!).")}
                     </p>
                 </div>
 
@@ -359,7 +360,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
                         <div className="p-3.5 bg-black/60 border border-white/10 rounded-xl flex flex-col gap-3">
                             <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                                 <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Layers className="w-3.5 h-3.5 text-purple-400" /> Background Fill Mode
+                                    <Layers className="w-3.5 h-3.5 text-purple-400" /> {tr("Background Fill Mode")}
                                 </span>
                                 <div className="flex items-center bg-black/80 rounded-lg p-0.5 border border-white/10">
                                     <button
@@ -368,7 +369,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
                                             bgMode === 'solid' ? 'bg-purple-600 text-white shadow-sm' : 'text-white/50 hover:text-white'
                                         }`}
                                     >
-                                        Solid Color
+                                        {tr("Solid Color")}
                                     </button>
                                     <button
                                         onClick={() => setBgMode('pixel-stretch')}
@@ -376,7 +377,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
                                             bgMode === 'pixel-stretch' ? 'bg-purple-600 text-white shadow-sm' : 'text-white/50 hover:text-white'
                                         }`}
                                     >
-                                        <Sparkles className="w-3 h-3 text-amber-300" /> Pixel Stretch
+                                        <Sparkles className="w-3 h-3 text-amber-300" /> {tr("Pixel Stretch")}
                                     </button>
                                 </div>
                             </div>
@@ -409,12 +410,12 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
                                             onChange={(e) => setBgColor(e.target.value)} 
                                             className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer rounded"
                                         />
-                                        <span>Custom Color</span>
+                                        <span>{tr("Custom Color")}</span>
                                     </label>
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-2.5">
-                                    <span className="text-[10px] uppercase font-bold text-white/50">Select Sample Line:</span>
+                                    <span className="text-[10px] uppercase font-bold text-white/50">{tr("Select Sample Line:")}</span>
                                     <div className="grid grid-cols-2 gap-1.5">
                                         {stretchLines.map((line) => (
                                             <button
@@ -433,7 +434,7 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
 
                                     <div className="flex items-center justify-between gap-3 bg-black/40 p-2.5 rounded-lg border border-white/5 mt-1">
                                         <span className="text-[10px] uppercase font-bold text-white/50 flex items-center gap-1">
-                                            <Sliders className="w-3 h-3 text-purple-400" /> Soft Studio Blur:
+                                            <Sliders className="w-3 h-3 text-purple-400" /> {tr("Soft Studio Blur:")}
                                         </span>
                                         <input 
                                             type="range"
@@ -451,31 +452,31 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
 
                         {/* 1:1 Output Preview Card */}
                         <div className="flex flex-col gap-2.5">
-                            <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">1:1 Square Output Preview</span>
+                            <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">{tr("1:1 Square Output Preview")}</span>
                             <div 
                                 className="w-full aspect-square max-h-[220px] rounded-lg overflow-hidden border border-white/10 shadow-lg flex items-center justify-center transition-colors bg-black/60"
                             >
                                 {previewUrl ? (
-                                    <img src={previewUrl} alt="1:1 Preview" className="w-full h-full object-contain" />
+                                    <img src={previewUrl} alt={tr("1:1 Preview")} className="w-full h-full object-contain" />
                                 ) : (
-                                    <span className="text-xs text-white/40">Generating preview...</span>
+                                    <span className="text-xs text-white/40">{tr("Generating preview...")}</span>
                                 )}
                             </div>
                             <div className="text-[10px] text-white/50 space-y-1 mt-1">
                                 <p className="flex items-center justify-between">
-                                    <span>Aspect Ratio:</span>
-                                    <strong className="text-purple-400 font-bold">1:1 Square (100%)</strong>
+                                    <span>{tr("Aspect Ratio:")}</span>
+                                    <strong className="text-purple-400 font-bold">{tr("1:1 Square (100%)")}</strong>
                                 </p>
                                 <p className="flex items-center justify-between">
-                                    <span>Output Resolution:</span>
-                                    <strong className="text-white font-mono">1024 × 1024 px</strong>
+                                    <span>{tr("Output Resolution:")}</span>
+                                    <strong className="text-white font-mono">{tr("1024 × 1024 px")}</strong>
                                 </p>
                                 <p className="flex items-center justify-between">
-                                    <span>Proportion Stretching:</span>
-                                    <strong className="text-emerald-400 font-bold">0% (Zero Distortion)</strong>
+                                    <span>{tr("Proportion Stretching:")}</span>
+                                    <strong className="text-emerald-400 font-bold">{tr("0% (Zero Distortion)")}</strong>
                                 </p>
                                 <p className="flex items-center justify-between">
-                                    <span>Background Mode:</span>
+                                    <span>{tr("Background Mode:")}</span>
                                     <strong className="text-purple-300 uppercase font-bold">
                                         {bgMode === 'solid' ? 'Solid Color' : `Pixel Stretch (${stretchPosition})`}
                                     </strong>
@@ -490,13 +491,13 @@ export const SquareCropModal: React.FC<SquareCropModalProps> = ({
                             onClick={onClose}
                             className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 font-medium text-xs transition-colors"
                         >
-                            Cancel
+                            {tr("Cancel")}
                         </button>
                         <button
                             onClick={handleSave}
                             className="flex-1 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-purple-600/30 transition-all"
                         >
-                            <Check className="w-4 h-4" /> Apply 1:1 Crop
+                            <Check className="w-4 h-4" /> {tr("Apply 1:1 Crop")}
                         </button>
                     </div>
                 </div>

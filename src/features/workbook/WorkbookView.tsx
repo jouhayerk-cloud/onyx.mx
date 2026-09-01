@@ -6,6 +6,7 @@ import { WORKBOOK_TABS, vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg } from '../../lib/utils';
+import { tr } from '../../lib/i18n';
 
 const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = ({ label, active, color }) => (
     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all duration-300 ${active
@@ -44,16 +45,16 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <div className="flex gap-3 p-3 items-center shrink-0 border-b border-white/5 bg-black/10">
                     <div className="relative flex-1 max-w-sm">
-                        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter items..." className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2 text-xs text-white/80 focus:ring-1 focus:ring-[var(--main-color)] transition-all placeholder:text-white/10" />
+                        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder={tr("Filter items...")} className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2 text-xs text-white/80 focus:ring-1 focus:ring-[var(--main-color)] transition-all placeholder:text-white/10" />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-20"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>
                     </div>
                     {user?.role !== 'Vendor' && (
                         <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold tracking-widest text-white/60 focus:outline-none hover:bg-white/5 transition-colors">
-                            <option value="ALL">ALL VENDORS</option>
+                            <option value="ALL">{tr("ALL VENDORS")}</option>
                             {[...new Set(docs.map(d => d.item_id))].sort().map(v => <option key={v} value={v}>{v}</option>)}
                         </select>
                     )}
-                    <div className="ml-auto text-[9px] uppercase font-black tracking-widest text-white/20 whitespace-nowrap">{filtered.length} Items Listed</div>
+                    <div className="ml-auto text-[9px] uppercase font-black tracking-widest text-white/20 whitespace-nowrap">{filtered.length} {tr("Items Listed")}</div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
@@ -62,11 +63,11 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02]">
-                                        <th className="px-4 py-3 w-12 text-center">VND</th>
-                                        <th className="px-4 py-3 w-20">TAG ID</th>
-                                        <th className="px-4 py-3">Description</th>
-                                        <th className="px-4 py-3 text-right">Value (MXN)</th>
-                                        {!isArchive ? <th className="px-4 py-3 text-center w-64">Status / Workflow</th> : <th className="px-4 py-3 text-right w-24">Archived</th>}
+                                        <th className="px-4 py-3 w-12 text-center">{tr("VND")}</th>
+                                        <th className="px-4 py-3 w-20">{tr("TAG ID")}</th>
+                                        <th className="px-4 py-3">{tr("Description")}</th>
+                                        <th className="px-4 py-3 text-right">{tr("Value (MXN)")}</th>
+                                        {!isArchive ? <th className="px-4 py-3 text-center w-64">{tr("Status / Workflow")}</th> : <th className="px-4 py-3 text-right w-24">{tr("Archived")}</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/[0.03]">
@@ -99,10 +100,10 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                                                 {!isArchive ? (
                                                     <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
                                                         <div className="flex justify-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => handleStatusToggle(item.id, 'in_production', !item.in_production)} title="Production"><StatusPill label="PROD" active={item.in_production} color="#FFED00" /></button>
-                                                            <button onClick={() => handleStatusToggle(item.id, 'ready', !item.ready)} title="Ready"><StatusPill label="READY" active={item.ready} color="#8DC63F" /></button>
-                                                            <button onClick={() => handleStatusToggle(item.id, 'paid', !item.paid)} title="Paid"><StatusPill label="PAID" active={item.paid} color="#00AEEF" /></button>
-                                                            <button onClick={() => handleStatusToggle(item.id, 'shipped', !item.shipped)} title="Shipped"><StatusPill label="SHIP" active={item.shipped} color="#6BCEBB" /></button>
+                                                            <button onClick={() => handleStatusToggle(item.id, 'in_production', !item.in_production)} title={tr("Production")}><StatusPill label={tr("PROD")} active={item.in_production} color="#FFED00" /></button>
+                                                            <button onClick={() => handleStatusToggle(item.id, 'ready', !item.ready)} title={tr("Ready")}><StatusPill label={tr("READY")} active={item.ready} color="#8DC63F" /></button>
+                                                            <button onClick={() => handleStatusToggle(item.id, 'paid', !item.paid)} title={tr("Paid")}><StatusPill label={tr("PAID")} active={item.paid} color="#00AEEF" /></button>
+                                                            <button onClick={() => handleStatusToggle(item.id, 'shipped', !item.shipped)} title={tr("Shipped")}><StatusPill label={tr("SHIP")} active={item.shipped} color="#6BCEBB" /></button>
                                                         </div>
                                                     </td>
                                                 ) : (
@@ -198,7 +199,7 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                     <div className="flex flex-col h-full">
                         <div className="p-4 border-b border-white/5 flex items-center justify-between">
                             <div className="flex flex-col">
-                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Detail Grid</span>
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Detail Grid")}</span>
                                 <h3 className="text-sm font-black text-white uppercase">{selectedItem.item_id}-{selectedItem.item_number}</h3>
                             </div>
                             <button onClick={() => setSelectedItem(null)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 hover:text-white transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
@@ -210,7 +211,7 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1.5">Description</label>
+                                    <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1.5">{tr("Description")}</label>
                                     <textarea
                                         className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 focus:ring-1 focus:ring-[var(--main-color)] transition-all resize-none h-20"
                                         value={selectedItem.description}
@@ -220,7 +221,7 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1.5">Price (MXN)</label>
+                                        <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1.5">{tr("Price (MXN)")}</label>
                                         <input
                                             type="number"
                                             className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-white/80 focus:ring-1 focus:ring-[var(--main-color)]"
@@ -229,7 +230,7 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1.5">Weight (KG)</label>
+                                        <label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1.5">{tr("Weight (KG)")}</label>
                                         <input
                                             type="number"
                                             className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-white/80 focus:ring-1 focus:ring-[var(--main-color)]"
@@ -240,12 +241,12 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                                 </div>
 
                                 <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-3">
-                                    <div className="text-[8px] font-black text-white/20 uppercase tracking-widest">Global Status Management</div>
+                                    <div className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Global Status Management")}</div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={() => handleStatusToggle(selectedItem.id, 'in_production', !selectedItem.in_production)} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${selectedItem.in_production ? 'bg-[#FFED00]/10 border-[#FFED00]/30 text-[#FFED00]' : 'bg-white/5 border-white/5 text-white/20'}`}><span className="text-[9px] font-black">PROD</span><div className={`w-1.5 h-1.5 rounded-full ${selectedItem.in_production ? 'bg-[#FFED00] animate-pulse' : 'bg-white/10'}`} /></button>
-                                        <button onClick={() => handleStatusToggle(selectedItem.id, 'ready', !selectedItem.ready)} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${selectedItem.ready ? 'bg-[#8DC63F]/10 border-[#8DC63F]/30 text-[#8DC63F]' : 'bg-white/5 border-white/5 text-white/20'}`}><span className="text-[9px] font-black">READY</span><div className={`w-1.5 h-1.5 rounded-full ${selectedItem.ready ? 'bg-[#8DC63F] animate-pulse' : 'bg-white/10'}`} /></button>
-                                        <button onClick={() => handleStatusToggle(selectedItem.id, 'paid', !selectedItem.paid)} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${selectedItem.paid ? 'bg-[#00AEEF]/10 border-[#00AEEF]/30 text-[#00AEEF]' : 'bg-white/5 border-white/5 text-white/20'}`}><span className="text-[9px] font-black">PAID</span><div className={`w-1.5 h-1.5 rounded-full ${selectedItem.paid ? 'bg-[#00AEEF] animate-pulse' : 'bg-white/10'}`} /></button>
-                                        <button onClick={() => handleStatusToggle(selectedItem.id, 'shipped', !selectedItem.shipped)} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${selectedItem.shipped ? 'bg-[#6BCEBB]/10 border-[#6BCEBB]/30 text-[#6BCEBB]' : 'bg-white/5 border-white/5 text-white/20'}`}><span className="text-[9px] font-black">SHIP</span><div className={`w-1.5 h-1.5 rounded-full ${selectedItem.shipped ? 'bg-[#6BCEBB] animate-pulse' : 'bg-white/10'}`} /></button>
+                                        <button onClick={() => handleStatusToggle(selectedItem.id, 'in_production', !selectedItem.in_production)} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${selectedItem.in_production ? 'bg-[#FFED00]/10 border-[#FFED00]/30 text-[#FFED00]' : 'bg-white/5 border-white/5 text-white/20'}`}><span className="text-[9px] font-black">{tr("PROD")}</span><div className={`w-1.5 h-1.5 rounded-full ${selectedItem.in_production ? 'bg-[#FFED00] animate-pulse' : 'bg-white/10'}`} /></button>
+                                        <button onClick={() => handleStatusToggle(selectedItem.id, 'ready', !selectedItem.ready)} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${selectedItem.ready ? 'bg-[#8DC63F]/10 border-[#8DC63F]/30 text-[#8DC63F]' : 'bg-white/5 border-white/5 text-white/20'}`}><span className="text-[9px] font-black">{tr("READY")}</span><div className={`w-1.5 h-1.5 rounded-full ${selectedItem.ready ? 'bg-[#8DC63F] animate-pulse' : 'bg-white/10'}`} /></button>
+                                        <button onClick={() => handleStatusToggle(selectedItem.id, 'paid', !selectedItem.paid)} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${selectedItem.paid ? 'bg-[#00AEEF]/10 border-[#00AEEF]/30 text-[#00AEEF]' : 'bg-white/5 border-white/5 text-white/20'}`}><span className="text-[9px] font-black">{tr("PAID")}</span><div className={`w-1.5 h-1.5 rounded-full ${selectedItem.paid ? 'bg-[#00AEEF] animate-pulse' : 'bg-white/10'}`} /></button>
+                                        <button onClick={() => handleStatusToggle(selectedItem.id, 'shipped', !selectedItem.shipped)} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${selectedItem.shipped ? 'bg-[#6BCEBB]/10 border-[#6BCEBB]/30 text-[#6BCEBB]' : 'bg-white/5 border-white/5 text-white/20'}`}><span className="text-[9px] font-black">{tr("SHIP")}</span><div className={`w-1.5 h-1.5 rounded-full ${selectedItem.shipped ? 'bg-[#6BCEBB] animate-pulse' : 'bg-white/10'}`} /></button>
                                     </div>
                                 </div>
                             </div>
@@ -257,13 +258,13 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                                     const { error } = await supabase.from('inventory').update({ description, price_mxn, weight_kg }).eq('id', id);
                                     if (error) toast.error(error.message);
                                     else {
-                                        toast.success('Record Updated');
+                                        toast.success(tr("Record Updated"));
                                         onRefresh();
                                     }
                                 }}
                                 className="w-full py-3 bg-[var(--main-color)] text-black font-black text-[10px] tracking-[0.2em] rounded-xl shadow-[0_4px_20px_rgba(127,187,255,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all"
                             >
-                                COMMIT CHANGES
+                                {tr("COMMIT CHANGES")}
                             </button>
                         </div>
                     </div>
@@ -291,20 +292,20 @@ const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
                                 <span className="px-3 py-1 rounded-full text-[10px] font-black text-black shadow-md tracking-tighter" style={{ backgroundColor: color }}>{p.vendor_id}</span>
                                 <div className="text-right">
                                     <div className="text-sm font-black text-white/90 font-mono">{fmtMXN(p.total)}</div>
-                                    <div className="text-[9px] text-white/30 uppercase font-black tracking-widest">{p.quantity} Units Total</div>
+                                    <div className="text-[9px] text-white/30 uppercase font-black tracking-widest">{p.quantity} {tr("Units Total")}</div>
                                 </div>
                             </div>
                             <div>
                                 <h4 className="text-sm font-bold text-white group-hover:text-[var(--main-color)] transition-colors line-clamp-2">{p.description}</h4>
-                                <div className="mt-1 font-mono text-[10px] text-white/20 uppercase tracking-widest">ORDER TAG: {p.tag_id}</div>
+                                <div className="mt-1 font-mono text-[10px] text-white/20 uppercase tracking-widest">{tr("ORDER TAG:")} {p.tag_id}</div>
                             </div>
                             <div className="space-y-2">
-                                <div className="flex justify-between text-[10px] font-black tracking-tighter text-white/30 uppercase"><span>Progress</span><span>{Math.round(p.progress || 0)}% Complete</span></div>
+                                <div className="flex justify-between text-[10px] font-black tracking-tighter text-white/30 uppercase"><span>{tr("Progress")}</span><span>{Math.round(p.progress || 0)}{tr("% Complete")}</span></div>
                                 <div className="h-2 w-full bg-white/5 rounded-full p-0.5 border border-white/5"><div className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-[var(--main-color)] to-[#AEE6F5]" style={{ width: `${p.progress}%`, boxShadow: `0 0 10px ${vendors[p.vendor_id]?.color || '#7FBBFF'}33` }} /></div>
                             </div>
                             <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase font-bold">Advance Paid</span><span className="text-xs font-mono font-bold text-[#8DC63F]">{fmtMXN(p.advance)}</span></div>
-                                <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-bold">Estimated Ready</span><span className="text-xs font-mono font-bold text-white/60">{fmtDate(p.ready_date)}</span></div>
+                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase font-bold">{tr("Advance Paid")}</span><span className="text-xs font-mono font-bold text-[#8DC63F]">{fmtMXN(p.advance)}</span></div>
+                                <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-bold">{tr("Estimated Ready")}</span><span className="text-xs font-mono font-bold text-white/60">{fmtDate(p.ready_date)}</span></div>
                             </div>
                         </div>
                     );
@@ -331,9 +332,9 @@ const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
                             <div className="flex justify-between items-center"><span className="px-1.5 py-0.5 rounded text-[8px] font-bold text-black" style={{ backgroundColor: color }}>{c.vendor_id}</span><span className="text-[10px] text-white/40 font-mono">{fmtDate(c.date)}</span></div>
                             <div className="text-xs font-bold text-white line-clamp-1">{c.description}</div>
                             <div className="flex gap-4 py-2 border-y border-white/5 mt-1 justify-between">
-                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Weight</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg}kg</span></div>
-                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Units</span><span className="text-[10px] font-mono font-bold text-white">{c.quantity}</span></div>
-                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Cost</span><span className="text-[10px] font-mono font-bold text-[#8DC63F]">{fmtMXN(c.cost_mxn)}</span></div>
+                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Weight")}</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg}kg</span></div>
+                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Units")}</span><span className="text-[10px] font-mono font-bold text-white">{c.quantity}</span></div>
+                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Cost")}</span><span className="text-[10px] font-mono font-bold text-[#8DC63F]">{fmtMXN(c.cost_mxn)}</span></div>
                             </div>
                             <div className="text-[9px] text-white/30 font-mono">{c.l_cm}×{c.w_cm}×{c.d_cm}cm</div>
                         </div>
@@ -375,19 +376,19 @@ const DatabasePanel: React.FC = () => {
         try {
             const { error } = await supabase.from(collectionName).update(data).eq('id', id);
             if (error) throw error;
-            toast.success('Record updated in Cloud');
+            toast.success(tr("Record updated in Cloud"));
         } catch (e: any) {
             toast.error(e.message);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this record?')) return;
+        if (!confirm(tr("Are you sure you want to delete this record?"))) return;
         if (!db) return;
         try {
             const { error } = await supabase.from(collectionName).delete().eq('id', id);
             if (error) throw error;
-            toast.success('Record deleted from Cloud');
+            toast.success(tr("Record deleted from Cloud"));
             setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
         } catch (e: any) {
             toast.error(e.message);
@@ -427,7 +428,7 @@ const DatabasePanel: React.FC = () => {
     };
 
     const handleWipeLocal = async () => {
-        if (!confirm('WARNING: Wiping local DB. This will reload the app and fetch fresh data from the cloud. Proceed?')) return;
+        if (!confirm(tr("WARNING: Wiping local DB. This will reload the app and fetch fresh data from the cloud. Proceed?"))) return;
         try {
             const Dexie = (await import('dexie')).default;
             await new Dexie('onyxdb').delete();
@@ -437,7 +438,7 @@ const DatabasePanel: React.FC = () => {
         }
     };
 
-    if (loading) return <div className="p-10 text-white/20 animate-pulse font-black text-center tracking-[0.5em]">INITIALIZING CORE...</div>;
+    if (loading) return <div className="p-10 text-white/20 animate-pulse font-black text-center tracking-[0.5em]">{tr("INITIALIZING CORE...")}</div>;
 
     const headers = docs.length > 0 ? Object.keys(docs[0]).filter(k => !k.startsWith('_')) : [];
 
@@ -458,19 +459,19 @@ const DatabasePanel: React.FC = () => {
 
                 {selectedIds.size > 0 && (
                     <div className="flex items-center gap-3 ml-4 animate-in fade-in">
-                        <span className="text-[10px] font-black text-white/50 tracking-widest uppercase">{selectedIds.size} Selected</span>
+                        <span className="text-[10px] font-black text-white/50 tracking-widest uppercase">{selectedIds.size} {tr("Selected")}</span>
                         <button onClick={handleBulkDelete} className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-[9px] font-black tracking-widest uppercase transition-all flex items-center gap-1.5">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            Delete Selected
+                            {tr("Delete Selected")}
                         </button>
                     </div>
                 )}
 
                 <div className="ml-auto flex items-center gap-4">
-                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{docs.length} Records Found</span>
+                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{docs.length} {tr("Records Found")}</span>
                     <button onClick={handleWipeLocal} className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-[9px] font-black tracking-widest uppercase transition-all flex items-center gap-1.5">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        Wipe Local DB
+                        {tr("Wipe Local DB")}
                     </button>
                 </div>
             </div>
@@ -489,7 +490,7 @@ const DatabasePanel: React.FC = () => {
                                         {selectedIds.size > 0 && selectedIds.size < docs.length && <div className="w-2 h-0.5 bg-white/50" />}
                                     </button>
                                 </th>
-                                <th className="px-4 py-3 w-10">ACT</th>
+                                <th className="px-4 py-3 w-10">{tr("ACT")}</th>
                                 {headers.map(h => <th key={h} className="px-4 py-3">{h}</th>)}
                             </tr>
                         </thead>
@@ -522,10 +523,10 @@ const DatabasePanel: React.FC = () => {
                 <div className="h-64 border-t border-white/10 bg-black/60 backdrop-blur-3xl p-6 overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom duration-300">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-[var(--main-color)] uppercase tracking-[0.3em]">Quick Forge Logic</span>
-                            <h2 className="text-sm font-black text-white uppercase tracking-widest">Editing {collectionName.slice(0, -1)} ID: {selectedId}</h2>
+                            <span className="text-[9px] font-black text-[var(--main-color)] uppercase tracking-[0.3em]">{tr("Quick Forge Logic")}</span>
+                            <h2 className="text-sm font-black text-white uppercase tracking-widest">{tr("Editing")} {collectionName.slice(0, -1)} {tr("ID:")} {selectedId}</h2>
                         </div>
-                        <button onClick={() => setSelectedId(null)} className="px-4 py-1.5 rounded-full border border-white/10 text-[9px] font-black text-white/40 hover:text-white hover:border-white transition-all uppercase tracking-widest">Close Editor</button>
+                        <button onClick={() => setSelectedId(null)} className="px-4 py-1.5 rounded-full border border-white/10 text-[9px] font-black text-white/40 hover:text-white hover:border-white transition-all uppercase tracking-widest">{tr("Close Editor")}</button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
                         {headers.filter(h => h !== 'id').map(h => {
@@ -575,7 +576,7 @@ const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
     const handleAdd = async () => {
         const payload = { ...form, amount: parseFloat(form.amount) || 0, status: 'Requested', type: 'Expense', category: form.subcategory, currency: 'MXN', date: new Date().toISOString(), updated_at: new Date().toISOString() };
         const { error } = await supabase.from('finance').insert(payload);
-        if (error) toast.error(error.message); else { toast.success('Expense Added'); setShowAdd(false); setForm({ subcategory: 'Acquisition', amount: '', description: '', vendor_id: '', bank_account: '', notes: '' }); onRefresh(); }
+        if (error) toast.error(error.message); else { toast.success(tr("Expense Added")); setShowAdd(false); setForm({ subcategory: 'Acquisition', amount: '', description: '', vendor_id: '', bank_account: '', notes: '' }); onRefresh(); }
     };
     const handleToggleStatus = async (id: string, current: string) => {
         const next = current === 'Requested' ? 'Paid' : 'Requested';
@@ -592,8 +593,8 @@ const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
                     ))}
                 </div>
                 <div className="ml-auto flex items-center gap-4">
-                    <div className="text-right"><span className="text-[8px] text-white/20 uppercase block font-black tracking-widest">Total</span><span className="text-lg font-mono font-black text-[#00AEEF]">{fmtMXN(grandTotal)}</span></div>
-                    <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-[#00AEEF] text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">+ ADD</button>
+                    <div className="text-right"><span className="text-[8px] text-white/20 uppercase block font-black tracking-widest">{tr("Total")}</span><span className="text-lg font-mono font-black text-[#00AEEF]">{fmtMXN(grandTotal)}</span></div>
+                    <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-[#00AEEF] text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">{tr("+ ADD")}</button>
                 </div>
             </div>
             {/* Summary Cards */}
@@ -611,7 +612,7 @@ const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
                 <div className="rounded-2xl border border-white/5 overflow-hidden bg-white/[0.01]">
                     <table className="w-full text-left border-collapse">
                         <thead><tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02]">
-                            <th className="px-4 py-3">Date</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Description</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3 text-center">Status</th>
+                            <th className="px-4 py-3">{tr("Date")}</th><th className="px-4 py-3">{tr("Category")}</th><th className="px-4 py-3">{tr("Description")}</th><th className="px-4 py-3">{tr("Vendor")}</th><th className="px-4 py-3 text-right">{tr("Amount")}</th><th className="px-4 py-3 text-center">{tr("Status")}</th>
                         </tr></thead>
                         <tbody className="divide-y divide-white/[0.03]">
                             {filtered.map(r => (
@@ -626,7 +627,7 @@ const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
                                     </td>
                                 </tr>
                             ))}
-                            {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">NO RECORDS</td></tr>}
+                            {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">{tr("NO RECORDS")}</td></tr>}
                         </tbody>
                     </table>
                 </div>
@@ -635,26 +636,26 @@ const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
             {showAdd && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={() => setShowAdd(false)}>
                     <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-8 w-[480px] max-w-[90vw] shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-6">Add Finance Record</h3>
+                        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-6">{tr("Add Finance Record")}</h3>
                         <div className="space-y-4">
-                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Subcategory</label>
+                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">{tr("Subcategory")}</label>
                                 <select value={form.subcategory} onChange={e => setForm({ ...form, subcategory: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80">
                                     {SUBCATEGORIES.filter(s => s !== 'All').map(s => <option key={s} value={s}>{s}</option>)}
                                 </select></div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Amount (MXN)</label>
+                                <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">{tr("Amount (MXN)")}</label>
                                     <input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-white/80" /></div>
-                                <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Vendor</label>
-                                    <input value={form.vendor_id} onChange={e => setForm({ ...form, vendor_id: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" placeholder="e.g. JM" /></div>
+                                <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">{tr("Vendor")}</label>
+                                    <input value={form.vendor_id} onChange={e => setForm({ ...form, vendor_id: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" placeholder={tr("e.g. JM")} /></div>
                             </div>
-                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Description</label>
+                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">{tr("Description")}</label>
                                 <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" /></div>
-                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Notes</label>
+                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">{tr("Notes")}</label>
                                 <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 h-16 resize-none" /></div>
                         </div>
                         <div className="flex gap-3 mt-6">
-                            <button onClick={() => setShowAdd(false)} className="flex-1 py-3 border border-white/10 text-white/40 rounded-xl text-[10px] font-black tracking-widest hover:bg-white/5">CANCEL</button>
-                            <button onClick={handleAdd} className="flex-1 py-3 bg-[#00AEEF] text-black rounded-xl text-[10px] font-black tracking-widest shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">COMMIT</button>
+                            <button onClick={() => setShowAdd(false)} className="flex-1 py-3 border border-white/10 text-white/40 rounded-xl text-[10px] font-black tracking-widest hover:bg-white/5">{tr("CANCEL")}</button>
+                            <button onClick={handleAdd} className="flex-1 py-3 bg-[#00AEEF] text-black rounded-xl text-[10px] font-black tracking-widest shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">{tr("COMMIT")}</button>
                         </div>
                     </div>
                 </div>
@@ -683,9 +684,9 @@ const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs
                     ))}
                 </div>
                 <div className="ml-auto flex gap-6">
-                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">Warehouse</span><span className="text-lg font-mono font-black text-[#FFED00]">{counts.warehouse}</span></div>
+                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">{tr("Warehouse")}</span><span className="text-lg font-mono font-black text-[#FFED00]">{counts.warehouse}</span></div>
                     <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">In Transit</span><span className="text-lg font-mono font-black text-[#00AEEF]">{counts.transit}</span></div>
-                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">Delivered</span><span className="text-lg font-mono font-black text-[#8DC63F]">{counts.delivered}</span></div>
+                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">{tr("Delivered")}</span><span className="text-lg font-mono font-black text-[#8DC63F]">{counts.delivered}</span></div>
                 </div>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
@@ -699,23 +700,23 @@ const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs
                                 <div className="flex justify-between items-center">
                                     <span className="px-1.5 py-0.5 rounded text-[8px] font-bold text-black" style={{ backgroundColor: color }}>{c.vendor_id || c.vendors || '—'}</span>
                                     <select value={c.status || 'Warehouse'} onChange={e => handleStatusChange(c.id, e.target.value)} className="bg-transparent text-[9px] font-black uppercase tracking-widest cursor-pointer" style={{ color: statusColor }}>
-                                        <option value="Warehouse">WAREHOUSE</option><option value="In Transit">IN TRANSIT</option><option value="Delivered">DELIVERED</option>
+                                        <option value="Warehouse">{tr("WAREHOUSE")}</option><option value="In Transit">IN TRANSIT</option><option value="Delivered">{tr("DELIVERED")}</option>
                                     </select>
                                 </div>
                                 <div className="text-xs font-bold text-white line-clamp-1">{c.description || c.contents_summary || 'Shipment'}</div>
                                 <div className="flex gap-4 py-2 border-y border-white/5 mt-1 justify-between">
-                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Weight</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg || 0}kg</span></div>
-                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Crates</span><span className="text-[10px] font-mono font-bold text-white">{c.crate_count || c.quantity || 0}</span></div>
-                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Pallets</span><span className="text-[10px] font-mono font-bold text-white">{c.pallet_count || 0}</span></div>
-                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Freight</span><span className="text-[10px] font-mono font-bold text-[#8DC63F]">{fmtMXN(c.freight_cost || c.cost_mxn || 0)}</span></div>
+                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Weight")}</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg || 0}kg</span></div>
+                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Crates")}</span><span className="text-[10px] font-mono font-bold text-white">{c.crate_count || c.quantity || 0}</span></div>
+                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Pallets")}</span><span className="text-[10px] font-mono font-bold text-white">{c.pallet_count || 0}</span></div>
+                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">{tr("Freight")}</span><span className="text-[10px] font-mono font-bold text-[#8DC63F]">{fmtMXN(c.freight_cost || c.cost_mxn || 0)}</span></div>
                                 </div>
-                                {c.tracking_number && <div className="text-[9px] text-white/30 font-mono">TRK: {c.tracking_number}</div>}
+                                {c.tracking_number && <div className="text-[9px] text-white/30 font-mono">{tr("TRK:")} {c.tracking_number}</div>}
                                 {(c.origin || c.destination_address) && <div className="text-[9px] text-white/20">{c.origin || '?'} → {c.destination_address || '?'}</div>}
-                                {c.customs_status && <div className="text-[8px] font-black uppercase tracking-widest" style={{ color: c.customs_status === 'Cleared' ? '#8DC63F' : c.customs_status === 'Rejected' ? '#e06666' : '#FFED00' }}>CUSTOMS: {c.customs_status}</div>}
+                                {c.customs_status && <div className="text-[8px] font-black uppercase tracking-widest" style={{ color: c.customs_status === 'Cleared' ? '#8DC63F' : c.customs_status === 'Rejected' ? '#e06666' : '#FFED00' }}>{tr("CUSTOMS:")} {c.customs_status}</div>}
                             </div>
                         );
                     })}
-                    {filtered.length === 0 && <div className="col-span-3 py-16 text-center text-white/10 text-sm font-black tracking-widest">NO LOGISTICS RECORDS</div>}
+                    {filtered.length === 0 && <div className="col-span-3 py-16 text-center text-white/10 text-sm font-black tracking-widest">{tr("NO LOGISTICS RECORDS")}</div>}
                 </div>
             </div>
         </div>
@@ -796,22 +797,22 @@ export const WorkbookView: React.FC = () => {
             <div className="flex flex-col px-6 py-4 bg-white/[0.02] backdrop-blur-3xl border-b border-white/[0.05] shrink-0 gap-4">
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col">
-                        <h1 className="text-xl font-black tracking-tighter text-white/90">POWER WORKBOOK</h1>
+                        <h1 className="text-xl font-black tracking-tighter text-white/90">{tr("POWER WORKBOOK")}</h1>
                     </div>
 
                     <div className="flex gap-8 items-center">
                         <div className="flex flex-col items-end">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Acquired Pcs</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{tr("Acquired Pcs")}</span>
                             <span className="text-xl font-mono font-black text-white leading-none">{docs326.length}</span>
                         </div>
                         <div className="flex flex-col items-end">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Production %</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{tr("Production %")}</span>
                             <span className="text-xl font-mono font-black text-[#FFED00] leading-none">
                                 {data.prod.length > 0 ? Math.round(data.prod.reduce((a, b) => a + (b.progress || 0), 0) / data.prod.length) : 0}%
                             </span>
                         </div>
                         <div className="flex flex-col items-end">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Vault Value</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{tr("Vault Value")}</span>
                             <span className="text-xl font-mono font-black text-[var(--main-color)] leading-none">{fmtUSD(docs326.reduce((a, b) => a + (b.price_mxn || 0), 0) / exchangeRate)}</span>
                         </div>
                     </div>
@@ -825,9 +826,9 @@ export const WorkbookView: React.FC = () => {
 
                     <div className="flex items-center gap-3">
                         <div className="flex bg-black/20 p-0.5 rounded-lg border border-white/5">
-                            <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white/10 text-[var(--main-color)]' : 'text-white/20 hover:text-white/40'}`} title="Table View"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></button>
-                            <button onClick={() => setViewMode('gallery')} className={`p-1.5 rounded-md transition-all ${viewMode === 'gallery' ? 'bg-white/10 text-[var(--main-color)]' : 'text-white/20 hover:text-white/40'}`} title="Gallery View"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg></button>
-                            <button onClick={() => setViewMode('kanban')} className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white/10 text-[var(--main-color)]' : 'text-white/20 hover:text-white/40'}`} title="Workflow Board"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg></button>
+                            <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white/10 text-[var(--main-color)]' : 'text-white/20 hover:text-white/40'}`} title={tr("Table View")}><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></button>
+                            <button onClick={() => setViewMode('gallery')} className={`p-1.5 rounded-md transition-all ${viewMode === 'gallery' ? 'bg-white/10 text-[var(--main-color)]' : 'text-white/20 hover:text-white/40'}`} title={tr("Gallery View")}><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg></button>
+                            <button onClick={() => setViewMode('kanban')} className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white/10 text-[var(--main-color)]' : 'text-white/20 hover:text-white/40'}`} title={tr("Workflow Board")}><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg></button>
                         </div>
                         <button onClick={refresh} className="p-2 rounded-xl bg-white/5 border border-white/5 text-white/40 hover:text-white transition-all"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg></button>
                     </div>
@@ -840,8 +841,8 @@ export const WorkbookView: React.FC = () => {
                 {!isSyncing && isEmpty ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20 gap-4">
                         <svg className="w-12 h-12 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
-                        <div className="text-sm font-black tracking-widest uppercase opacity-40">No records found. Sync failed or DB empty.</div>
-                        <button onClick={refresh} className="px-6 py-2 rounded-full border border-white/10 text-[9px] font-black hover:bg-white/5 uppercase tracking-[0.2em] transition-all">Force Cloud Fetch</button>
+                        <div className="text-sm font-black tracking-widest uppercase opacity-40">{tr("No records found. Sync failed or DB empty.")}</div>
+                        <button onClick={refresh} className="px-6 py-2 rounded-full border border-white/10 text-[9px] font-black hover:bg-white/5 uppercase tracking-[0.2em] transition-all">{tr("Force Cloud Fetch")}</button>
                     </div>
                 ) : (
                     <div className="h-full relative z-10 animate-in fade-in zoom-in-95 duration-500">

@@ -16,6 +16,7 @@ import { SCRIPT_URL } from '../../lib/consts';
 import { BoundingBox2DType, BoundingBoxMaskType, InventoryItem, PointingType } from '../../lib/Types';
 import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, simplifyContour, extractGradientFromMask } from '../../lib/utils';
 import { useTranslation, useNotify } from '../../lib/hooks';
+import { tr } from '../../lib/i18n';
 
 
 
@@ -228,7 +229,7 @@ export function BatchActionsModal() {
         const totalItems = batchActionItems.length;
         setIsProcessing(true);
         setProgress(0);
-        const toastId = notify.loading(`Starting batch process...`);
+        const toastId = notify.loading(tr("Starting batch process..."));
 
         for (let i = 0; i < batchActionItems.length; i++) {
             const item = batchActionItems[i];

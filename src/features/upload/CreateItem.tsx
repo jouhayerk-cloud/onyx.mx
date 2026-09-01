@@ -8,6 +8,7 @@ import { calculateCodesAndPrices, handleFileUpload, readFileAsDataURL, getTextCo
 import toast from 'react-hot-toast';
 import { Trash2, Save, UploadCloud, X, Plus, Image as ImageIcon, Layers } from 'lucide-react';
 import { useDatabase } from '../../lib/hooks';
+import { tr } from '../../lib/i18n';
 
 const lbl = "text-[9px] font-black text-black/50 uppercase tracking-[0.1em] mb-1 flex items-center gap-1.5";
 const inp = "h-10 w-full px-3 bg-black/[0.02] border border-black/5 rounded-lg text-[12px] font-bold text-black placeholder-black/20 outline-none focus:ring-2 focus:ring-(--main-color)/50 focus:bg-black/[0.04] transition-all";
@@ -170,7 +171,7 @@ export function CreateItem() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedVendorKey) return toast.error('Please select a vendor first');
+        if (!selectedVendorKey) return toast.error(tr("Please select a vendor first"));
         
         setIsSaving(true);
         setSavingProgress(10);
@@ -237,7 +238,7 @@ export function CreateItem() {
             }
             
             setSavingProgress(100);
-            toast.success('Item saved!');
+            toast.success(tr("Item saved!"));
             setTimeout(() => {
                 setIsSaving(false);
                 setSavingProgress(0);
@@ -265,7 +266,7 @@ export function CreateItem() {
                             mode === 'single' ? 'bg-white shadow-sm text-black' : 'text-black/40 hover:text-black/60'
                         }`}
                     >
-                        Single Item
+                        {tr("Single Item")}
                     </button>
                     <button
                         type="button"
@@ -274,7 +275,7 @@ export function CreateItem() {
                             mode === 'batch' ? 'bg-white shadow-sm text-black' : 'text-black/40 hover:text-black/60'
                         }`}
                     >
-                        Batch XLSX
+                        {tr("Batch XLSX")}
                     </button>
                 </div>
 
@@ -283,11 +284,11 @@ export function CreateItem() {
                 <button
                     type="button"
                     onClick={openLegacyWizard}
-                    title="Open the classic Add Entry wizard — supports Book 826, 326 and 825"
+                    title={tr("Open the classic Add Entry wizard — supports Book 826, 326 and 825")}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-black/10 bg-white text-black/60 hover:text-black hover:border-black/25 hover:shadow-sm text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
                 >
                     <Layers size={13} strokeWidth={2.5} />
-                    Add Entry
+                    {tr("Add Entry")}
                     <span className="text-[8px] font-black text-black/30 tracking-[0.15em]">826 · 326 · 825</span>
                 </button>
             </div>
@@ -362,7 +363,7 @@ export function CreateItem() {
                     <div className="flex flex-col gap-1.5">
                         <label className={lbl}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                            SHAPE
+                            {tr("SHAPE")}
                         </label>
                         <input type="text" value={itemData.shape || ''} onChange={e => set('shape', e.target.value)} onFocus={() => setActiveField('shape')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp} placeholder="" />
                         {activeField === 'shape' && suggestions.shape.length > 0 && (
@@ -377,7 +378,7 @@ export function CreateItem() {
                     <div className="flex flex-col gap-1.5">
                         <label className={lbl}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
-                            TYPE
+                            {tr("TYPE")}
                         </label>
                         <input type="text" value={itemData.itemType || ''} onChange={e => set('itemType', e.target.value)} onFocus={() => setActiveField('itemType')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp} placeholder="" />
                         {activeField === 'itemType' && suggestions.itemType.length > 0 && (
@@ -392,7 +393,7 @@ export function CreateItem() {
                     <div className="flex flex-col gap-1.5">
                         <label className={lbl}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                            COLOR
+                            {tr("COLOR")}
                         </label>
                         <input type="text" value={itemData.color || ''} onChange={e => set('color', e.target.value)} onFocus={() => setActiveField('color')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp} placeholder="" />
                         {activeField === 'color' && suggestions.color.length > 0 && (
@@ -407,7 +408,7 @@ export function CreateItem() {
                     <div className="flex flex-col gap-1.5">
                         <label className={lbl}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.2 7.8l-7.7 7.7-4-4-5.7 5.7"></path><path d="M15 7h6v6"></path></svg>
-                            MATERIAL
+                            {tr("MATERIAL")}
                         </label>
                         <input type="text" value={itemData.material || ''} onChange={e => set('material', e.target.value)} onFocus={() => setActiveField('material')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp} placeholder="" />
                         {activeField === 'material' && suggestions.material.length > 0 && (
@@ -422,12 +423,12 @@ export function CreateItem() {
                     <div className="md:col-span-2 flex flex-col gap-1.5 bg-black/[0.02] p-4 rounded-xl border border-black/5">
                         <label className={lbl}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                            DIMENSIONS (CM)
+                            {tr("DIMENSIONS (CM)")}
                         </label>
                         <div className="grid grid-cols-3 gap-2">
-                            <input type="number" min="0" value={itemData.widthCm || ''} onChange={e => set('widthCm', e.target.value)} onFocus={() => setActiveField('size')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp + ' text-center'} placeholder="Width" />
-                            <input type="number" min="0" value={itemData.lengthCm || ''} onChange={e => set('lengthCm', e.target.value)} onFocus={() => setActiveField('size')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp + ' text-center'} placeholder="Length" />
-                            <input type="number" min="0" value={itemData.heightCm || ''} onChange={e => set('heightCm', e.target.value)} onFocus={() => setActiveField('size')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp + ' text-center'} placeholder="Height" />
+                            <input type="number" min="0" value={itemData.widthCm || ''} onChange={e => set('widthCm', e.target.value)} onFocus={() => setActiveField('size')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp + ' text-center'} placeholder={tr("Width")} />
+                            <input type="number" min="0" value={itemData.lengthCm || ''} onChange={e => set('lengthCm', e.target.value)} onFocus={() => setActiveField('size')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp + ' text-center'} placeholder={tr("Length")} />
+                            <input type="number" min="0" value={itemData.heightCm || ''} onChange={e => set('heightCm', e.target.value)} onFocus={() => setActiveField('size')} onBlur={() => setTimeout(() => setActiveField(null), 200)} className={inp + ' text-center'} placeholder={tr("Height")} />
                         </div>
                         {activeField === 'size' && suggestions.sizes.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1 animate-in slide-in-from-top-1">
@@ -441,13 +442,13 @@ export function CreateItem() {
                     <div className="md:col-span-2 flex items-center justify-between gap-6 bg-black/[0.02] p-4 rounded-xl border border-black/5">
                         <div className="flex flex-col gap-1 w-1/4">
                             <label className={`${lbl} mb-0 text-cyan-500 shrink-0`}>
-                                <span className="text-cyan-500 font-mono text-sm leading-none">#</span> QTY
+                                <span className="text-cyan-500 font-mono text-sm leading-none">#</span> {tr("QTY")}
                             </label>
                             <input type="number" min="1" value={itemData.quantity || '1'} onChange={e => set('quantity', e.target.value)} className="w-full bg-transparent border-none text-2xl font-black outline-none text-black" />
                         </div>
                         <div className="flex flex-col justify-center flex-1 items-end">
                             <label className={`${lbl} justify-end`}>
-                                <span className="text-black/60 font-mono text-sm leading-none">#</span> ACQ MXN
+                                <span className="text-black/60 font-mono text-sm leading-none">#</span> {tr("ACQ MXN")}
                             </label>
                             <input type="number" min="0" value={itemData.price || ''} onChange={e => set('price', e.target.value)} className={`w-full bg-transparent border-none text-4xl! font-black! text-right placeholder-black/10 outline-none`} placeholder="0" />
                         </div>
@@ -474,7 +475,7 @@ export function CreateItem() {
                         <div className="w-48 h-2 bg-black/10 rounded-full overflow-hidden">
                             <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${savingProgress}%` }} />
                         </div>
-                        <span className="text-xs font-black uppercase tracking-widest text-black drop-shadow-md">Saving Item...</span>
+                        <span className="text-xs font-black uppercase tracking-widest text-black drop-shadow-md">{tr("Saving Item...")}</span>
                     </div>
                 </div>
             )}

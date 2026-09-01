@@ -18,6 +18,7 @@ import {
 import { getDatabase } from './database';
 import { supabase } from './supabase';
 import toast from 'react-hot-toast';
+import { tr } from './i18n';
 
 const LAST_SYNC_KEY = 'onyx_last_synced_at';
 
@@ -70,7 +71,7 @@ export function useSyncEngine() {
         if (!navigator.onLine) return;
 
         setSyncStatus('syncing');
-        if (!silent) toast.loading('Syncing with cloud…', { id: 'sync' });
+        if (!silent) toast.loading(tr("Syncing with cloud…"), { id: 'sync' });
 
         try {
             // Step 1: Push local changes
@@ -121,7 +122,7 @@ export function useSyncEngine() {
             console.error('[SyncEngine] Sync failed:', err);
             setSyncStatus('error');
             setSyncProgress(null);
-            if (!silent) toast.error('Sync failed — will retry on next connection', { id: 'sync' });
+            if (!silent) toast.error(tr("Sync failed — will retry on next connection"), { id: 'sync' });
         }
     }, [isOffline, setSyncStatus, setSyncProgress, setLastSynced, refreshQueueCount]);
 
@@ -130,7 +131,7 @@ export function useSyncEngine() {
         const handleOnline = () => {
             if (!isOffline) {
                 console.log('[SyncEngine] Connection restored — starting sync');
-                toast.success('Back online · syncing…', { duration: 2000 });
+                toast.success(tr("Back online · syncing…"), { duration: 2000 });
                 runSync(false);
             }
         };
@@ -138,7 +139,7 @@ export function useSyncEngine() {
         const handleOffline = () => {
             console.warn('[SyncEngine] Connection lost');
             setSyncStatus('pending');
-            toast('Working offline — changes queued', {
+            toast(tr("Working offline — changes queued"), {
                 icon: '📵',
                 duration: 3000,
             });
@@ -170,13 +171,13 @@ export function useSyncEngine() {
         setIsOffline(true);
         setSyncStatus('pending');
         localStorage.setItem('offlineMode', 'true');
-        toast('Offline mode ON — all changes saved locally', { icon: '📵' });
+        toast(tr("Offline mode ON — all changes saved locally"), { icon: '📵' });
     }, [setIsOffline, setSyncStatus]);
 
     const goOnline = useCallback(async () => {
         setIsOffline(false);
         localStorage.setItem('offlineMode', 'false');
-        toast('Going online…');
+        toast(tr("Going online…"));
         await runSync(false);
     }, [setIsOffline, runSync]);
 

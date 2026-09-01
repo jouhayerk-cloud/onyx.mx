@@ -10,6 +10,7 @@ import {
     ZoomIn, Share2, Maximize2, Maximize, Ruler, Scale, Layers
 } from 'lucide-react';
 import { OnyxLogo } from '../../components/OnyxLogo';
+import { tr } from '../../lib/i18n';
 
 interface TagViewProps {
     tagId: string;
@@ -160,7 +161,7 @@ const ImageGrid: React.FC<{ images: string[]; onOpenViewer: (idx: number) => voi
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
                             <div className="flex flex-col items-center gap-0.5">
                                 <span className="text-2xl font-black text-white">+{remaining}</span>
-                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">More</span>
+                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">{tr("More")}</span>
                             </div>
                         </div>
                     )}
@@ -234,7 +235,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a0a] gap-4">
             <Loader2 className="animate-spin text-white/20" size={36} />
-            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">Resolving Artifact</span>
+            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">{tr("Resolving Artifact")}</span>
         </div>
     );
 
@@ -245,8 +246,8 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                 <Package size={48} strokeWidth={0.75} />
             </div>
             <div className="flex flex-col gap-3">
-                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Trace Lost</h1>
-                <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] max-w-xs">{String(tagId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()} · Artifact trace could not be resolved</p>
+                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">{tr("Trace Lost")}</h1>
+                <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] max-w-xs">{String(tagId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()} {tr("· Artifact trace could not be resolved")}</p>
             </div>
         </div>
     );
@@ -337,12 +338,12 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                             {/* AQ / LD codes */}
                             {codes.bookAqCode && (
                                 <div className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/40 uppercase tracking-widest">
-                                    AQ {codes.bookAqCode}
+                                    {tr("AQ")} {codes.bookAqCode}
                                 </div>
                             )}
                             {codes.bookLandCode && (
                                 <div className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/40 uppercase tracking-widest">
-                                    LD {codes.bookLandCode}
+                                    {tr("LD")} {codes.bookLandCode}
                                 </div>
                             )}
                         </div>
@@ -363,7 +364,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                                     <Ruler size={22} strokeWidth={1.5} />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Dimensions</span>
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">{tr("Dimensions")}</span>
                                     <span className="text-xl font-black text-white font-mono leading-tight">{dimensionsInchStr} <span className="text-[10px] text-white/40 ml-1">IN</span></span>
                                     <span className="text-xs font-black text-white/30 font-mono mt-1">{dimensionsStr} <span className="text-[9px] opacity-60 uppercase">CM</span></span>
                                 </div>
@@ -375,7 +376,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                                     <Scale size={22} strokeWidth={1.5} />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Weight</span>
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">{tr("Weight")}</span>
                                     <span className="text-xl font-black text-white font-mono leading-tight">{weightLbs} <span className="text-[10px] text-white/40 ml-1">LBS</span></span>
                                     <span className="text-xs font-black text-white/30 font-mono mt-1">{weightStr.replace(' kg', '')} <span className="text-[9px] opacity-60 uppercase">KG</span></span>
                                 </div>
@@ -386,8 +387,8 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                                 <Package size={22} strokeWidth={1.5} />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Quantity</span>
-                                <span className="text-xl font-black text-white font-mono leading-tight">{norm.quantity || 1} <span className="text-[10px] text-white/40 ml-1">Items</span></span>
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">{tr("Quantity")}</span>
+                                <span className="text-xl font-black text-white font-mono leading-tight">{norm.quantity || 1} <span className="text-[10px] text-white/40 ml-1">{tr("Items")}</span></span>
                             </div>
                         </div>
                     </div>

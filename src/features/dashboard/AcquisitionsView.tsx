@@ -22,6 +22,7 @@ import { useNotify, useTranslation, useDatabase } from '../../lib/hooks';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { ItemThumbnail } from '../../components/ItemThumbnail';
 import { InventoryImageItem } from '../catalog/InventoryImages';
+import { tr } from '../../lib/i18n';
 
 interface AcquisitionsViewProps {
     mode?: 'live' | 'archive';
@@ -164,7 +165,7 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
             setVersion(v => v + 1);
             setSelectedRows([]);
         } catch (e) {
-            notify.error('Commit failed.', { id: toastId });
+            notify.error(tr("Commit failed."), { id: toastId });
         }
     };
 
@@ -174,10 +175,10 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
             await apiCall('batchUpdateItems', {
                 updates: [{ row: item.row, itemData: { status: 'Acquired', acquired_at: new Date().toISOString(), acquired_by: user?.email } }]
             });
-            notify.success('Item approved for payment!', { id: toastId });
+            notify.success(tr("Item approved for payment!"), { id: toastId });
             setVersion(v => v + 1);
         } catch (e) {
-            notify.error('Failed to approve item.', { id: toastId });
+            notify.error(tr("Failed to approve item."), { id: toastId });
         }
     };
 
@@ -203,18 +204,18 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                 <div className="dashboard-stats py-2 px-4 border-b border-(--text-color)/5 bg-(--text-color)/5">
                     <div className="flex flex-wrap gap-4 items-center">
                         <div className="flex items-center gap-2">
-                            <label className="text-[10px] uppercase font-black text-(--text-color)/30 tracking-widest" htmlFor="exchange-rate">MXN/USD</label>
+                            <label className="text-[10px] uppercase font-black text-(--text-color)/30 tracking-widest" htmlFor="exchange-rate">{tr("MXN/USD")}</label>
                             <input id="exchange-rate" className="bg-(--text-color)/5 border border-(--text-color)/10 rounded px-2 py-0.5 text-xs w-16 text-(--text-color) font-mono" type="number" value={exchangeRate} onChange={e => setExchangeRate(parseFloat(e.target.value))} step="0.1" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <label className="text-[10px] uppercase font-black text-(--text-color)/30 tracking-widest" htmlFor="workbook-prefix">Book</label>
+                            <label className="text-[10px] uppercase font-black text-(--text-color)/30 tracking-widest" htmlFor="workbook-prefix">{tr("Book")}</label>
                             <input id="workbook-prefix" className="bg-(--text-color)/5 border border-(--text-color)/10 rounded px-2 py-0.5 text-xs w-16 uppercase text-(--text-color) font-mono" type="text" value={workbookPrefix} onChange={e => setWorkbookPrefix(e.target.value)} />
                         </div>
                     </div>
                 </div>
             )}
             <div className="dashboard-tabs">
-                <button onClick={() => setActiveVendor(null)} className={`tab-button ${!activeVendor ? 'active' : ''}`}>All<span className="count">{allAcquisitions.filter(i => i.data.status !== 'Pending Deletion').length}</span></button>
+                <button onClick={() => setActiveVendor(null)} className={`tab-button ${!activeVendor ? 'active' : ''}`}>{tr("All")}<span className="count">{allAcquisitions.filter(i => i.data.status !== 'Pending Deletion').length}</span></button>
                 {uniqueVendors.map(vendor => {
                     const vendorColor = vendors[vendor as keyof typeof vendors]?.color;
                     const textColor = getTextColorForBg(vendorColor);
@@ -236,7 +237,7 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                         <div className="projects-section-header">
                             <p className="text-sm font-semibold">
                                 {activeVendor ? `${activeVendor} Acquisitions` : 'All Acquisitions'}
-                                <span className="ml-2 text-xs font-normal text-(--secondary-text-color)">({filteredAcquisitions.length} items)</span>
+                                <span className="ml-2 text-xs font-normal text-(--secondary-text-color)">({filteredAcquisitions.length} {tr("items)")}</span>
                             </p>
                             {selectedRows.length > 0 && (
                                 <div className="flex items-center gap-4">

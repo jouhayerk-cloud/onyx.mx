@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, Lightbulb } from 'lucide-react';
+import { tr } from '../../lib/i18n';
 
 export function InventoryTutorial({ onClose }: { onClose: () => void }) {
     const [step, setStep] = useState(0);
@@ -47,7 +48,7 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
                             <div className="flex items-center gap-3 mb-1">
                                 <h1 className="text-lg md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">Onyx.mx</h1>
                                 <span className="h-[1px] w-8 bg-white/40" />
-                                <span className="text-[9px] font-black text-(--main-color) tracking-[0.3em] uppercase">Tutorial</span>
+                                <span className="text-[9px] font-black text-(--main-color) tracking-[0.3em] uppercase">{tr("Tutorial")}</span>
                             </div>
                         </div>
                     </div>
@@ -111,7 +112,7 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
                                         onClick={() => setStep(s => s - 1)}
                                         className="px-6 py-4 rounded-xl text-white/50 hover:bg-white/5 transition-colors font-bold tracking-widest uppercase text-xs"
                                     >
-                                        Back
+                                        {tr("Back")}
                                     </button>
                                 )}
                                 <button 

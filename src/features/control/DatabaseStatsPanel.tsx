@@ -4,6 +4,7 @@ import { useAtom, useAtomValue } from 'jotai/react';
 import { uploadItemDataAtom, userAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { Database, RefreshCw, AlertTriangle, Activity, PieChart, Users, ChevronRight, History } from 'lucide-react';
+import { tr } from '../../lib/i18n';
 
 interface InventoryStats {
     total: number;
@@ -134,7 +135,7 @@ export function DatabaseStatsPanel() {
     }, []);
 
     const handleAuthorize = async (id: string, source: string) => {
-        if (!confirm("Expunge this record from core storage permanently?")) return;
+        if (!confirm(tr("Expunge this record from core storage permanently?"))) return;
         setIsActing(id);
         try {
             const { error } = await supabase.from(source).delete().eq('id', id);
@@ -169,7 +170,7 @@ export function DatabaseStatsPanel() {
         <div className="flex items-center justify-center h-64 opacity-20 scale-90">
             <div className="flex flex-col items-center gap-6">
                 <Database size={40} className="animate-pulse text-(--main-color)" />
-                <span className="text-[10px] font-black uppercase tracking-[0.4em]">Querying Nexus...</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em]">{tr("Querying Nexus...")}</span>
             </div>
         </div>
     );
@@ -177,7 +178,7 @@ export function DatabaseStatsPanel() {
     if (error) return (
         <div className="p-10 border border-red-500/20 bg-red-500/5 rounded-2xl">
             <p className="text-red-400 text-[10px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-3">
-                <AlertTriangle size={14} /> Critical Data Exception
+                <AlertTriangle size={14} /> {tr("Critical Data Exception")}
             </p>
             <p className="text-white/40 text-xs font-mono">{error}</p>
         </div>
@@ -194,17 +195,17 @@ export function DatabaseStatsPanel() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-8">
                     <div className="flex flex-col">
-                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mb-1">Nexus Metadata</span>
+                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mb-1">{tr("Nexus Metadata")}</span>
                         <div className="flex items-center gap-3">
                             <History size={12} className="text-white/20" />
                             <span className="text-[11px] font-black text-white uppercase tracking-tighter">
-                                Last Sync: {lastRefreshed?.toLocaleTimeString()}
+                                {tr("Last Sync:")} {lastRefreshed?.toLocaleTimeString()}
                             </span>
                         </div>
                     </div>
                     {isDev && (
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mb-1">Workbook Index</span>
+                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mb-1">{tr("Workbook Index")}</span>
                             <div className="flex items-center gap-2">
                                 <span className="text-[11px] font-black text-(--main-color) uppercase tracking-tighter">{itemData.workbook || 'V000'}</span>
                                 <button onClick={handleSetBook} className="text-white/10 hover:text-white transition-all"><ChevronRight size={12} /></button>
@@ -216,7 +217,7 @@ export function DatabaseStatsPanel() {
                     onClick={() => { fetchStats(); fetchDelRequests(); }}
                     className="flex items-center gap-3 group"
                 >
-                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 group-hover:text-white transition-all">Re-Sync Nexus</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 group-hover:text-white transition-all">{tr("Re-Sync Nexus")}</span>
                     <div className="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center group-hover:border-(--main-color)/40 transition-all duration-700">
                         <RefreshCw size={12} className={`text-white/20 group-hover:text-(--main-color) transition-all ${loading && 'animate-spin'}`} />
                     </div>
@@ -225,10 +226,10 @@ export function DatabaseStatsPanel() {
 
             {/* Frameless KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16">
-                <StatCard label="Infrastructure Store" value={stats.total} />
-                <StatCard label="Availability Rate" value={activeCount} sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}%` : undefined} color="text-green-500/80" />
-                <StatCard label="Vendor Nodes" value={vendorCount} color="text-(--main-color)" />
-                <StatCard label="Classification Types" value={Object.keys(stats.byCategory).length} />
+                <StatCard label={tr("Infrastructure Store")} value={stats.total} />
+                <StatCard label={tr("Availability Rate")} value={activeCount} sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}%` : undefined} color="text-green-500/80" />
+                <StatCard label={tr("Vendor Nodes")} value={vendorCount} color="text-(--main-color)" />
+                <StatCard label={tr("Classification Types")} value={Object.keys(stats.byCategory).length} />
             </div>
 
             {/* Pending expungements */}
@@ -236,7 +237,7 @@ export function DatabaseStatsPanel() {
                 <div className="animate-in slide-in-from-left-4 duration-1000">
                     <div className="flex items-center gap-4 mb-8">
                         <AlertTriangle size={14} className="text-orange-500" />
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-orange-500/80">Quarantined records for deletion</h3>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-orange-500/80">{tr("Quarantined records for deletion")}</h3>
                         <div className="h-px grow bg-linear-to-r from-orange-500/20 to-transparent" />
                     </div>
                     
@@ -251,11 +252,11 @@ export function DatabaseStatsPanel() {
                                     <button 
                                         onClick={() => handleRestore(req.id, req.source)}
                                         className="text-[9px] font-black uppercase tracking-widest text-green-500/50 hover:text-green-400 px-3 py-1 border border-green-500/20 rounded-full hover:bg-green-500/5 transition-all"
-                                    >Restore</button>
+                                    >{tr("Restore")}</button>
                                     <button 
                                         onClick={() => handleAuthorize(req.id, req.source)}
                                         className="text-[9px] font-black uppercase tracking-widest text-red-500/50 hover:text-red-400 px-3 py-1 border border-red-500/20 rounded-full hover:bg-red-500/5 transition-all"
-                                    >Authorize Purge</button>
+                                    >{tr("Authorize Purge")}</button>
                                 </div>
                             </div>
                         ))}
@@ -265,27 +266,27 @@ export function DatabaseStatsPanel() {
 
             {/* Distribution Matrices */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-24">
-                <BreakdownBar data={stats.byStatus} title="Status Distribution" icon={Activity} />
-                <BreakdownBar data={stats.byVendor} title="Node Distribution" icon={Users} />
-                <BreakdownBar data={stats.byCategory} title="Morphology Grid" icon={PieChart} />
+                <BreakdownBar data={stats.byStatus} title={tr("Status Distribution")} icon={Activity} />
+                <BreakdownBar data={stats.byVendor} title={tr("Node Distribution")} icon={Users} />
+                <BreakdownBar data={stats.byCategory} title={tr("Morphology Grid")} icon={PieChart} />
             </div>
 
             {/* Danger Zone: Extreme Override */}
             {isDev && (
                 <div className="mt-20 pt-20 border-t border-white/3">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-red-500/40 mb-12 flex items-center gap-4">
-                        <AlertTriangle size={14} /> System Core Override
+                        <AlertTriangle size={14} /> {tr("System Core Override")}
                     </h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                         <div className="group flex flex-col gap-6 p-8 border border-white/3 rounded-3xl hover:border-red-500/30 transition-all duration-700">
                             <div>
-                                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white mb-2">Expunge Nexus Cloud</h4>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 leading-relaxed">Permanently terminate all satellite inventory nodes strictly from central cloud storage. Non-reversible procedure.</p>
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white mb-2">{tr("Expunge Nexus Cloud")}</h4>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 leading-relaxed">{tr("Permanently terminate all satellite inventory nodes strictly from central cloud storage. Non-reversible procedure.")}</p>
                             </div>
                             <button 
                                 onClick={async () => {
-                                    if (!confirm("EXPUNGE CLOUD?")) return;
+                                    if (!confirm(tr("EXPUNGE CLOUD?"))) return;
                                     try {
                                         const { error } = await supabase.from('inventory').delete().neq('item_id', 'FORCE');
                                         if (error) throw error;
@@ -293,13 +294,13 @@ export function DatabaseStatsPanel() {
                                     } catch (err: any) { alert(err.message); }
                                 }}
                                 className="w-full bg-red-500/5 border border-red-500/10 py-3 rounded-full text-[9px] font-black uppercase tracking-[0.4em] text-red-500/60 hover:bg-red-500 hover:text-black transition-all duration-500"
-                            >Wipe Satellite Data</button>
+                            >{tr("Wipe Satellite Data")}</button>
                         </div>
 
                         <div className="group flex flex-col gap-6 p-8 border border-white/3 rounded-3xl hover:border-red-500/30 transition-all duration-700">
                             <div>
-                                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white mb-2">Local Nexus Nuke</h4>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 leading-relaxed">Invalidate all local cached data streams. Forces an immediate core restart and primary nexus re-sync.</p>
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white mb-2">{tr("Local Nexus Nuke")}</h4>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 leading-relaxed">{tr("Invalidate all local cached data streams. Forces an immediate core restart and primary nexus re-sync.")}</p>
                             </div>
                             <button 
                                 onClick={async () => {
@@ -308,7 +309,7 @@ export function DatabaseStatsPanel() {
                                     window.location.reload();
                                 }}
                                 className="w-full bg-red-500/5 border border-red-500/10 py-3 rounded-full text-[9px] font-black uppercase tracking-[0.4em] text-red-500/60 hover:bg-red-500 hover:text-black transition-all duration-500"
-                            >Initiate Terminal Wipe</button>
+                            >{tr("Initiate Terminal Wipe")}</button>
                         </div>
                     </div>
                 </div>

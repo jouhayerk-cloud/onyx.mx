@@ -38,6 +38,7 @@ import { supabase } from '../../lib/supabase';
 /* ─── NFC Tags HUD Component ─── */
 import { ScannerCenter } from '../../components/ScannerCenter';
 import { PreviewLabels } from '../../components/PreviewLabels';
+import { tr } from '../../lib/i18n';
 
 export const NFCWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isPackingNFCWizardOpenAtom);
@@ -217,7 +218,7 @@ export const NFCWizard: React.FC = () => {
                                 </div>
                                 <div className="flex flex-col">
                                     <h2 className="text-2xl font-black text-white tracking-[0.3em] uppercase leading-none">NFC</h2>
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.8em] mt-2">SYSTEM_NFC_PROTOCOL</span>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.8em] mt-2">{tr("SYSTEM_NFC_PROTOCOL")}</span>
                                 </div>
                             </div>
 
@@ -238,7 +239,7 @@ export const NFCWizard: React.FC = () => {
                                     ))}
                                 </div>
                                 <div className="bg-white p-0.5 rounded-sm shadow-2xl w-[60%] md:w-[35%] h-6 md:h-7 flex items-center justify-center overflow-hidden border-b border-black/10 transition-all hover:scale-[1.01]">
-                                    <img src={barcodeUrl} className="w-full h-full object-fill mix-blend-multiply" alt="Barcode" />
+                                    <img src={barcodeUrl} className="w-full h-full object-fill mix-blend-multiply" alt={tr("Barcode")} />
                                 </div>
                             </div>
                         </div>
@@ -265,9 +266,9 @@ export const NFCWizard: React.FC = () => {
                                     }`}
                                 >
                                     {isVerified ? (
-                                        <><ShieldCheck size={14} /> <span className="text-[10px] uppercase tracking-widest">Verified</span></>
+                                        <><ShieldCheck size={14} /> <span className="text-[10px] uppercase tracking-widest">{tr("Verified")}</span></>
                                     ) : (
-                                        <><QrCode size={14} /> <span className="text-[10px] uppercase tracking-widest">Verify QR</span></>
+                                        <><QrCode size={14} /> <span className="text-[10px] uppercase tracking-widest">{tr("Verify QR")}</span></>
                                     )}
                                 </button>
                             </div>
@@ -282,10 +283,10 @@ export const NFCWizard: React.FC = () => {
                                 {!isSupported && status !== 'success' && status !== 'writing' ? (
                                     <>
                                         <ZapOff size={20} className="md:w-[24px] md:h-[24px] text-white/20" />
-                                        <span className="text-[6px] md:text-[8px] font-black text-white/40 uppercase tracking-[0.2em] leading-none">NO_HW</span>
+                                        <span className="text-[6px] md:text-[8px] font-black text-white/40 uppercase tracking-[0.2em] leading-none">{tr("NO_HW")}</span>
                                     </>
                                 ) : status === 'success' ? (
-                                    <><CheckCircle size={28} className="md:w-[32px] md:h-[32px] text-black" /><span className="text-[9px] font-black text-black uppercase tracking-[0.2em]">LOCKED</span></>
+                                    <><CheckCircle size={28} className="md:w-[32px] md:h-[32px] text-black" /><span className="text-[9px] font-black text-black uppercase tracking-[0.2em]">{tr("LOCKED")}</span></>
                                 ) : (
                                     <>
                                         <Nfc size={28} className={`md:w-[36px] md:h-[36px] transition-all duration-700 ${isWriting ? 'animate-pulse scale-110 text-white' : 'text-(--main-color) group-hover:scale-110'}`} />
@@ -301,7 +302,7 @@ export const NFCWizard: React.FC = () => {
                     {/* Specification Matrix */}
                     <div className="grid grid-cols-2 gap-y-6 md:gap-y-8 gap-x-8 md:gap-x-12 mb-8 md:mb-10 border-t border-white/5 pt-8 md:pt-10">
                         <div className="flex flex-col">
-                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CORE_SPEC</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">{tr("CORE_SPEC")}</span>
                             <div className="flex flex-col">
                                 <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.color || 'CLR_NULL'}</span>
                                 <span className="text-[10px] md:text-base font-bold text-white/40 uppercase tracking-widest leading-none mt-0.5">{currentItem?.normData.material || 'MAT_NULL'}</span>
@@ -309,7 +310,7 @@ export const NFCWizard: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col">
-                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">DESCRIPTOR</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">{tr("DESCRIPTOR")}</span>
                             <div className="flex flex-col">
                                 <span className="text-xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.shape || 'SHAPE_NULL'}</span>
                                 <span className="text-[10px] md:text-base font-medium text-white/30 uppercase tracking-tight truncate">{currentItem?.normData.shortDescription || '---'}</span>
@@ -317,14 +318,14 @@ export const NFCWizard: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col col-span-2 group">
-                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">GEOMETRY_PROTO</span>
+                            <span className="text-[7px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">{tr("GEOMETRY_PROTO")}</span>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-baseline gap-2 md:gap-5">
                                     <span className="text-2xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-(--main-color) transition-colors">{currentItem?.normData.dims || '0×0×0'}</span>
                                     <span className="text-sm md:text-2xl font-black text-(--main-color) uppercase tracking-tighter opacity-30">CM</span>
                                 </div>
                                 <div className="flex flex-col items-end border-l border-white/10 pl-4 md:pl-6">
-                                    <span className="text-[7px] md:text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">WEIGHT</span>
+                                    <span className="text-[7px] md:text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">{tr("WEIGHT")}</span>
                                     <span className="text-xl md:text-4xl font-black text-white tabular-nums tracking-tighter">{currentItem?.normData.weightKg || 0}KG</span>
                                 </div>
                             </div>
@@ -357,7 +358,7 @@ export const NFCWizard: React.FC = () => {
                         setTimeout(() => setIsQRScannerOpen(false), 800);
                     }}
                     onClose={() => setIsQRScannerOpen(false)}
-                    title="Verify Artifact"
+                    title={tr("Verify Artifact")}
                     subtitle={`Authenticating ${currentItem?.codes.bookBarcode}`}
                 />
             )}

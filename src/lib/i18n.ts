@@ -64,10 +64,16 @@ export function getI18nLang(): AppLang {
 /**
  * Translate a UI string. The English source text is the key.
  *
- *   t('Save Draft')            // 'Guardar Borrador'
- *   t('Some new button')       // 'Some new button' — no entry yet, falls back
+ *   tr('Save Draft')           // 'Guardar Borrador'
+ *   tr('Some new button')      // 'Some new button' — no entry yet, falls back
+ *
+ * Named `tr`, not `t`, and that is not cosmetic: 39 files in src/ already bind
+ * `t`. Ten hold `const t = useTranslation()`, where `t` is an OBJECT read as
+ * `t.welcome`; others (axonometric.ts, geometry.ts) use `t` as a math
+ * parameter. An `import { t }` is shadowed in every one of them, and `t("…")`
+ * would call a non-function at runtime. `tr` is unbound across the whole tree.
  */
-export function t(en: string): string {
+export function tr(en: string): string {
   if (currentLang === 'en') return en;
   return esCatalog[en] ?? en;
 }
@@ -75,13 +81,14 @@ export function t(en: string): string {
 /**
  * Interpolating form, for strings that carry a value:
  *
- *   tf('Delete {n} items', { n: 3 })
+ *   trf('Delete {n} items', { n: 3 })
  *
  * Placeholders survive translation because the Spanish entry keeps the same
- * `{name}` tokens.
+ * `{name}` tokens. Used for text that was split around a JSX expression, where
+ * translating the halves separately would break Spanish word order.
  */
-export function tf(en: string, vars: Record<string, string | number>): string {
-  return t(en).replace(/\{(\w+)\}/g, (whole, key) =>
+export function trf(en: string, vars: Record<string, string | number>): string {
+  return tr(en).replace(/\{(\w+)\}/g, (whole, key) =>
     key in vars ? String(vars[key]) : whole,
   );
 }

@@ -39,6 +39,7 @@ interface InventoryArtifactProps {
 import { inventoryArtifactConfigAtom } from '../../lib/atoms';
 
 import { describeAxoIcon, getAxoIcon, peekAxoIcon } from '../../lib/axoIconCache';
+import { tr } from '../../lib/i18n';
 
 export const WireframeIcon = ({ item, color }: { item: any, color?: string }) => {
     // Cheap and pure, so the key is available before the first paint. Depending on
@@ -246,7 +247,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                     <Package size={24} className="text-white/20" />
                     <div className="flex flex-col">
                         <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">{propTitle || "Manifest"}</h2>
-                        <span className="text-[8px] font-black uppercase tracking-[0.6em] text-white/10">{allResolvedItems.length} Linked Assets</span>
+                        <span className="text-[8px] font-black uppercase tracking-[0.6em] text-white/10">{allResolvedItems.length} {tr("Linked Assets")}</span>
                     </div>
                 </div>
 
@@ -328,7 +329,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                     </div>
                                     <div className="flex items-center gap-6 opacity-40 group-hover:opacity-80 transition-opacity">
                                         <div className="flex flex-col">
-                                            <span className="text-[6px] font-black text-white/40 uppercase">Qty</span>
+                                            <span className="text-[6px] font-black text-white/40 uppercase">{tr("Qty")}</span>
                                             <span className="text-xs font-black text-white">x{norm.quantity || 1}</span>
                                         </div>
                                         <div className="flex flex-col border-l border-white/5 pl-6">
@@ -337,7 +338,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         </div>
                                         {norm.vendor && (
                                             <div className="flex flex-col border-l border-white/5 pl-6">
-                                                <span className="text-[6px] font-black text-white/40 uppercase">Vendor</span>
+                                                <span className="text-[6px] font-black text-white/40 uppercase">{tr("Vendor")}</span>
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: VENDOR_COLORS[String(norm.vendor).toLowerCase()] || '#fff' }} />
                                                     <span className="text-xs font-black uppercase tracking-widest" style={{ color: VENDOR_COLORS[String(norm.vendor).toLowerCase()] || '#fff' }}>{norm.vendor}</span>
@@ -345,7 +346,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                             </div>
                                         )}
                                         <div className="flex flex-col border-l border-white/5 pl-6">
-                                            <span className="text-[6px] font-black text-white/40 uppercase">Dims</span>
+                                            <span className="text-[6px] font-black text-white/40 uppercase">{tr("Dims")}</span>
                                             <span className="text-xs font-black text-white">{norm.width_cm || '—'}</span>
                                         </div>
                                     </div>
@@ -361,12 +362,12 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
             <div className={`absolute bottom-12 left-12 right-12 z-50 flex items-center justify-between pointer-events-auto transition-all duration-1000 ${isSidebar ? 'flex-col gap-8 items-start bottom-8 px-4' : ''}`}>
                 <div className="flex items-center gap-16 md:gap-24 transition-all duration-1000">
                     <div className="flex flex-col gap-1">
-                        <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em] mb-1">Session ID</span>
+                        <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em] mb-1">{tr("Session ID")}</span>
                         <span className="text-xl font-black text-white/20 tabular-nums">#{targetIds[0]?.slice(-4).toUpperCase() || 'NULL'}</span>
                     </div>
                 </div>
 
-                <button onClick={onClose} className="text-[10px] font-black uppercase tracking-[0.6em] text-white/10 hover:text-white transition-all">Dismiss Artifact</button>
+                <button onClick={onClose} className="text-[10px] font-black uppercase tracking-[0.6em] text-white/10 hover:text-white transition-all">{tr("Dismiss Artifact")}</button>
             </div>
         </div>
     );

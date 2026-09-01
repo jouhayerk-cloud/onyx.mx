@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai';
 import { workbookLogDataAtom, workbookVersionAtom } from '../../lib/atoms';
 import { vendors as vendorConfigs } from '../../lib/consts';
 import { boaCardIcon, bbvaRamsesIcon, bbvaMarthaIcon } from '../dashboard/paymentsIcons.svg.tsx';
+import { tr } from '../../lib/i18n';
 
 const CollapsibleSection = ({ title, icon, color, expanded, onToggle, children, badge }: { title: string, icon: string, color: string, expanded: boolean, onToggle: () => void, children: React.ReactNode, badge?: string | number }) => (
     <div className="flex flex-col gap-4">
@@ -141,7 +142,7 @@ export const WorkbookLogView: React.FC = () => {
     if (!logInfo) {
         return (
             <div className="flex items-center justify-center h-full text-[var(--text-color-secondary)]">
-                No Log data found in -Log sheet.
+                {tr("No Log data found in -Log sheet.")}
             </div>
         );
     }
@@ -153,7 +154,7 @@ export const WorkbookLogView: React.FC = () => {
             {/* Header section */}
             <div className="flex justify-between items-end border-b border-white/10 pb-6">
                 <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold mb-1">Workbook Analysis</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold mb-1">{tr("Workbook Analysis")}</span>
                     <h1 className="text-6xl font-black text-white leading-tight font-display italic tracking-tighter">
                         {logInfo.bookNum} <span className="text-2xl font-normal not-italic text-white/20 ml-3">[{logInfo.version}]</span>
                     </h1>
@@ -161,12 +162,12 @@ export const WorkbookLogView: React.FC = () => {
                 <div className="flex flex-col items-end gap-1">
                     <div className="flex items-center gap-6">
                         <div className="flex flex-col items-end">
-                            <span className="text-[10px] uppercase tracking-wider text-white/30">Global Rate</span>
-                            <span className="text-2xl font-mono text-[#00b0f0] font-bold">1 USD = {logInfo.exchangeRate} MXN</span>
+                            <span className="text-[10px] uppercase tracking-wider text-white/30">{tr("Global Rate")}</span>
+                            <span className="text-2xl font-mono text-[#00b0f0] font-bold">{tr("1 USD =")} {logInfo.exchangeRate} MXN</span>
                         </div>
                         <div className="h-10 w-[1px] bg-white/10 ml-2"></div>
                         <div className="flex flex-col items-end">
-                            <span className="text-[10px] uppercase tracking-wider text-white/30">Active Tracking</span>
+                            <span className="text-[10px] uppercase tracking-wider text-white/30">{tr("Active Tracking")}</span>
                             <div className="flex gap-2 mt-1">
                                 {logInfo.tracking.map((trk, i) => (
                                     <span key={i} className="px-3 py-1 rounded-md text-[10px] font-bold bg-white/5 text-white border border-white/10 shadow-glow shadow-white/5">
@@ -183,7 +184,7 @@ export const WorkbookLogView: React.FC = () => {
                 {/* Left side: Vendors Grid */}
                 <div className="col-span-12 xl:col-span-7">
                     <CollapsibleSection
-                        title="Vendor Acquisitions"
+                        title={tr("Vendor Acquisitions")}
                         color="#a9d08e"
                         expanded={expandedSections.vendors}
                         onToggle={() => toggleSection('vendors')}
@@ -201,7 +202,7 @@ export const WorkbookLogView: React.FC = () => {
                                                 {v.code}
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-[9px] text-white/30 uppercase tracking-widest font-bold">Balance</div>
+                                                <div className="text-[9px] text-white/30 uppercase tracking-widest font-bold">{tr("Balance")}</div>
                                                 <div className="text-sm font-mono font-bold text-white group-hover:text-[var(--main-color)] transition-colors">{fmt(v.acq)}</div>
                                             </div>
                                         </div>
@@ -219,7 +220,7 @@ export const WorkbookLogView: React.FC = () => {
                 <div className="col-span-12 xl:col-span-5 flex flex-col gap-10">
                     {/* Monthly Expenses */}
                     <CollapsibleSection
-                        title="Monthly Expenses"
+                        title={tr("Monthly Expenses")}
                         color="#76933c"
                         expanded={expandedSections.expenses}
                         onToggle={() => toggleSection('expenses')}
@@ -247,7 +248,7 @@ export const WorkbookLogView: React.FC = () => {
                             ))}
 
                             <div className="flex justify-between items-center p-4 rounded-xl bg-[#76933c]/5 border border-[#76933c]/20 mt-2">
-                                <span className="text-[10px] uppercase tracking-widest text-[#76933c] font-bold">Consolidated Forecast</span>
+                                <span className="text-[10px] uppercase tracking-widest text-[#76933c] font-bold">{tr("Consolidated Forecast")}</span>
                                 <span className="text-2xl font-mono font-bold text-[#76933c]">{fmt(logInfo.monthlyTotal)}</span>
                             </div>
                         </div>
@@ -255,7 +256,7 @@ export const WorkbookLogView: React.FC = () => {
 
                     {/* Bank Accounts */}
                     <CollapsibleSection
-                        title="Capital Accounts"
+                        title={tr("Capital Accounts")}
                         color="#00b0f0"
                         expanded={expandedSections.accounts}
                         onToggle={() => toggleSection('accounts')}

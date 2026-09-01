@@ -67,6 +67,7 @@ import {
     Bug
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { tr } from '../../lib/i18n';
 
 /* --- Types --- */
 interface ProcessLayer {
@@ -337,7 +338,7 @@ export const ProcessView: React.FC = () => {
         try {
             if (isDummyMode) {
                 addLog(`Asset purge simulated for ${item.itemId} (Demo Mode)`, 'warn');
-                toast.success('Assets cleared (Demo Mode)', { icon: '🧪' });
+                toast.success(tr("Assets cleared (Demo Mode)"), { icon: '🧪' });
                 return;
             }
             const { error } = await supabase
@@ -366,7 +367,7 @@ export const ProcessView: React.FC = () => {
                 addLog(`Commit simulated for workspace (Demo Mode)`, 'success');
                 setInventoryVersion(v => v + 1);
                 setEngineStatus('completed');
-                toast.success("Design Saved (Demo Mode)", { icon: '🧪' });
+                toast.success(tr("Design Saved (Demo Mode)"), { icon: '🧪' });
                 return;
             }
             const selectedMasks = layers.filter(l => l.type === 'mask' && l.includeInOutput).map(l => l.data.mask);
@@ -387,7 +388,7 @@ export const ProcessView: React.FC = () => {
             addLog(`Success: Production data synced.`, 'success');
             setInventoryVersion(v => v + 1);
             setEngineStatus('completed');
-            toast.success("Database Updated");
+            toast.success(tr("Database Updated"));
         } catch (e: any) {
             addLog(`Sync error: ${e.message}`, 'error');
             setEngineStatus('error');
@@ -672,7 +673,7 @@ export const ProcessView: React.FC = () => {
             setEngineStatus('error');
             updateOp({ status: 'failed', error: e.message, stepLabel: 'Error' });
             if (opId === 'single') updateProgress('ENGINE ERROR', false);
-            toast.error(`Processing Error`);
+            toast.error(tr("Processing Error"));
         }
     };
 
@@ -849,7 +850,7 @@ export const ProcessView: React.FC = () => {
         if (!selectedItem) return (
             <div className="w-full h-full flex flex-col items-center justify-center text-white/10 gap-4">
                 <ImageIcon size={64} strokeWidth={1} />
-                <span className="text-[10px] font-black uppercase tracking-[0.4em]">Initialize Workspace First</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em]">{tr("Initialize Workspace First")}</span>
             </div>
         );
 
@@ -883,11 +884,11 @@ export const ProcessView: React.FC = () => {
                                 </svg>
 
                                 <div className="absolute bottom-4 left-4 flex flex-col gap-1">
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Angle {(idx + 1).toString().padStart(2, '0')}</span>
-                                    <span className="text-[14px] font-black text-white uppercase tracking-tight">{angleMasks.length} Masks</span>
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Angle")} {(idx + 1).toString().padStart(2, '0')}</span>
+                                    <span className="text-[14px] font-black text-white uppercase tracking-tight">{angleMasks.length} {tr("Masks")}</span>
                                 </div>
                                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="px-3 py-1.5 bg-amber-400 text-black text-[9px] font-black uppercase tracking-widest rounded-full">Open Editor</div>
+                                    <div className="px-3 py-1.5 bg-amber-400 text-black text-[9px] font-black uppercase tracking-widest rounded-full">{tr("Open Editor")}</div>
                                 </div>
                             </div>
                         );
@@ -905,7 +906,7 @@ export const ProcessView: React.FC = () => {
                     <button 
                         onClick={() => setWorkspaceViewMode(workspaceViewMode === 'editor' ? 'gallery' : 'editor')}
                         className={`h-9 px-4 flex items-center gap-2 font-black text-[9px] uppercase tracking-widest rounded-lg transition-all duration-300 ${workspaceViewMode === 'gallery' ? 'bg-amber-400 text-black' : 'text-white/30 hover:text-white hover:bg-white/5 border border-white/5'}`}
-                        title="Toggle Gallery/Editor"
+                        title={tr("Toggle Gallery/Editor")}
                     >
                         {workspaceViewMode === 'gallery' ? <Target size={12} /> : <ImageIcon size={12} />}
                         {workspaceViewMode === 'gallery' ? 'Editor' : 'Gallery'}
@@ -923,7 +924,7 @@ export const ProcessView: React.FC = () => {
                     <div className="w-px h-5 bg-white/10 mx-1" />
                     <button onClick={handleManualCommit} className="h-9 px-4 flex items-center gap-2 text-green-400 font-black text-[9px] uppercase tracking-widest hover:bg-green-400/10 rounded-lg transition-all">
                         <Upload size={12} strokeWidth={2.5} />
-                        Sync
+                        {tr("Sync")}
                     </button>
                 </div>
             )}
@@ -1037,12 +1038,12 @@ export const ProcessView: React.FC = () => {
                         <div className="absolute inset-0 z-30 bg-black/80 flex flex-col items-center justify-center p-8 overflow-hidden">
                              <div className="w-full max-w-4xl h-full flex flex-col gap-4">
                                  <div className="flex items-center justify-between">
-                                     <SectionTitle title="Manual Edge Refinement" icon={Pipette} />
+                                     <SectionTitle title={tr("Manual Edge Refinement")} icon={Pipette} />
                                      <div className="flex items-center gap-3">
                                          <button 
                                             onClick={() => setRefiningLayerId(null)}
                                             className="px-4 py-2 rounded-lg bg-white/5 text-[10px] font-black uppercase hover:bg-white/10"
-                                         >Cancel</button>
+                                         >{tr("Cancel")}</button>
                                          <button 
                                             onClick={() => {
                                                 if (maskEditorRef.current?.maskCanvas) {
@@ -1053,7 +1054,7 @@ export const ProcessView: React.FC = () => {
                                                 }
                                             }}
                                             className="px-6 py-2 rounded-lg bg-(--main-color) text-black text-[10px] font-black uppercase"
-                                         >Apply Changes</button>
+                                         >{tr("Apply Changes")}</button>
                                      </div>
                                  </div>
                                  <div className="flex-1 bg-black rounded-2xl overflow-hidden border border-white/10 relative">
@@ -1095,11 +1096,11 @@ export const ProcessView: React.FC = () => {
                     {/* Layer Properties Panel (Conditional) */}
                     {activeLayerId && (
                         <StitchCard className="shrink-0 flex flex-col gap-3 p-3 bg-black/40 border-white/5 overflow-hidden">
-                            <SectionTitle title="Properties" icon={Palette} />
+                            <SectionTitle title={tr("Properties")} icon={Palette} />
                             <div className="flex flex-col gap-3 mt-1">
                                 {layers.find(l => l.id === activeLayerId)?.type === 'mask' && (
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Color</label>
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Color")}</label>
                                         <div className="flex gap-2">
                                             {['#6BCEBB', '#F7941D', '#F36F21', '#a78bfa', '#FFFFFF'].map(c => (
                                                 <button 
@@ -1117,16 +1118,16 @@ export const ProcessView: React.FC = () => {
                                          <button 
                                              onClick={() => processItem('single', refinePoints)}
                                              className="w-full py-2 bg-(--main-color) text-black text-[9px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-(--main-color)/20 active:scale-95 transition-all"
-                                         >Refine via {refinePoints.length} Points</button>
+                                         >{tr("Refine via")} {refinePoints.length} {tr("Points")}</button>
                                          <button 
                                              onClick={() => setRefinePoints([])}
                                              className="w-full py-1 text-white/20 text-[8px] font-black uppercase hover:text-rose-400 transition-colors"
-                                         >Reset Points</button>
+                                         >{tr("Reset Points")}</button>
                                      </div>
                                 )}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Opacity</label>
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Opacity")}</label>
                                         <input 
                                             type="range" min="0" max="1" step="0.01" 
                                             value={layers.find(l => l.id === activeLayerId)?.opacity || 0}
@@ -1135,7 +1136,7 @@ export const ProcessView: React.FC = () => {
                                         />
                                     </div>
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Scale</label>
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Scale")}</label>
                                         <input 
                                             type="range" min="0.1" max="3" step="0.01" 
                                             value={layers.find(l => l.id === activeLayerId)?.scale || 1}
@@ -1144,7 +1145,7 @@ export const ProcessView: React.FC = () => {
                                         />
                                     </div>
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Rotate</label>
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Rotate")}</label>
                                         <input 
                                             type="range" min="-180" max="180" step="1" 
                                             value={layers.find(l => l.id === activeLayerId)?.rotation || 0}
@@ -1153,10 +1154,10 @@ export const ProcessView: React.FC = () => {
                                         />
                                     </div>
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Z-Order</label>
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Z-Order")}</label>
                                         <div className="flex gap-2">
-                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: Math.max(0, l.zIndex - 1) } : l))} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1 text-[8px] font-black">BACK</button>
-                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: l.zIndex + 1 } : l))} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1 text-[8px] font-black">FRONT</button>
+                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: Math.max(0, l.zIndex - 1) } : l))} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1 text-[8px] font-black">{tr("BACK")}</button>
+                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: l.zIndex + 1 } : l))} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1 text-[8px] font-black">{tr("FRONT")}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1165,7 +1166,7 @@ export const ProcessView: React.FC = () => {
                     )}
                     <StitchCard className="flex-1 flex flex-col gap-4 overflow-hidden">
                         <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Layers</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{tr("Layers")}</span>
                             <Badge>{layers.length}</Badge>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2">
@@ -1175,7 +1176,7 @@ export const ProcessView: React.FC = () => {
                                         <button 
                                             onClick={() => setLayers(ls => ls.map(layer => layer.id === l.id ? { ...layer, visible: !layer.visible } : layer))}
                                             className={`w-6 h-6 flex items-center justify-center rounded-md transition-colors ${l.visible ? 'text-(--main-color)' : 'text-white/10'}`}
-                                            title="Toggle Visibility"
+                                            title={tr("Toggle Visibility")}
                                         >
                                             <Layers size={14} />
                                         </button>
@@ -1183,7 +1184,7 @@ export const ProcessView: React.FC = () => {
                                             <button 
                                                 onClick={() => setLayers(ls => ls.map(layer => layer.id === l.id ? { ...layer, includeInOutput: !layer.includeInOutput } : layer))}
                                                 className={`w-6 h-6 flex items-center justify-center rounded-md transition-colors ${l.includeInOutput ? 'text-amber-400' : 'text-white/10'}`}
-                                                title="Include in Output"
+                                                title={tr("Include in Output")}
                                             >
                                                 <Check size={14} />
                                             </button>
@@ -1204,7 +1205,7 @@ export const ProcessView: React.FC = () => {
                                             <button 
                                                 onClick={() => setRefiningLayerId(l.id)}
                                                 className="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center text-white/20 hover:text-(--main-color) transition-all"
-                                                title="Refine Edges"
+                                                title={tr("Refine Edges")}
                                             >
                                                 <Pipette size={14} />
                                             </button>
@@ -1221,7 +1222,7 @@ export const ProcessView: React.FC = () => {
                                 className="w-full py-2.5 rounded-lg bg-(--main-color)/10 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all disabled:opacity-20 flex items-center justify-center gap-2"
                             >
                                 <Save size={12} />
-                                Sync Selection
+                                {tr("Sync Selection")}
                             </button>
                         </div>
                     </StitchCard>
@@ -1232,7 +1233,7 @@ export const ProcessView: React.FC = () => {
                                 <div className="flex items-center justify-between mb-3 text-emerald-500">
                                     <div className="flex items-center gap-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Engine Console</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">{tr("Engine Console")}</span>
                                             <button 
                                                 onClick={() => {
                                                     const val = window.prompt("Enter Gemini API Key (Case-Sensitive):", getApiKey());
@@ -1242,7 +1243,7 @@ export const ProcessView: React.FC = () => {
                                                     }
                                                 }}
                                                 className="text-white/20 hover:text-(--main-color) transition-colors"
-                                                title="Configure API Key"
+                                                title={tr("Configure API Key")}
                                             >
                                                 <Bug size={10} />
                                             </button>
@@ -1251,10 +1252,10 @@ export const ProcessView: React.FC = () => {
                                             onClick={() => {
                                                 const text = logs.map(l => `[${l.time}] ${l.msg}`).join('\n');
                                                 navigator.clipboard.writeText(text);
-                                                toast.success("Logs copied to clipboard");
+                                                toast.success(tr("Logs copied to clipboard"));
                                             }}
                                             className="w-6 h-6 flex items-center justify-center rounded-md bg-white/5 text-white/40 hover:text-white transition-all"
-                                            title="Copy Logs"
+                                            title={tr("Copy Logs")}
                                         >
                                             <Download size={12} />
                                         </button>
@@ -1287,9 +1288,9 @@ export const ProcessView: React.FC = () => {
                          <div className="flex gap-4 w-full max-w-7xl mx-auto flex-1 h-full">
                              <StitchCard className="flex-1 flex flex-col gap-6 overflow-hidden">
                                  <div className="flex items-center justify-between">
-                                     <SectionTitle title="Batch Pipeline" icon={FolderKanban} />
+                                     <SectionTitle title={tr("Batch Pipeline")} icon={FolderKanban} />
                                      <div className="flex items-center gap-3">
-                                         <button onClick={() => setBatchQueue([])} className="px-4 py-2 border border-white/5 rounded-lg text-[10px] font-bold text-white/30 hover:text-red-400">Clear Queue</button>
+                                         <button onClick={() => setBatchQueue([])} className="px-4 py-2 border border-white/5 rounded-lg text-[10px] font-bold text-white/30 hover:text-red-400">{tr("Clear Queue")}</button>
                                          <button onClick={() => setShowBatchList(false)} className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white">
                                               <X size={20} />
                                          </button>
@@ -1327,7 +1328,7 @@ export const ProcessView: React.FC = () => {
                                              <div className="flex flex-col gap-1">
                                                   <div className="flex items-center justify-between">
                                                        <span className="text-[9px] font-black text-white italic truncate uppercase">{op.item.itemId}</span>
-                                                       {op.status === 'completed' && <span className="text-[7px] font-black text-emerald-400 uppercase tracking-tighter ml-2">DONE</span>}
+                                                       {op.status === 'completed' && <span className="text-[7px] font-black text-emerald-400 uppercase tracking-tighter ml-2">{tr("DONE")}</span>}
                                                   </div>
                                                   <div className="flex items-center justify-between text-[7px] font-bold text-white/25 uppercase">
                                                        <span>{op.stepLabel}</span>
@@ -1339,7 +1340,7 @@ export const ProcessView: React.FC = () => {
                                              </div>
                                          </div>
                                      ))}
-                                     {batchQueue.length === 0 && <div className="col-span-full h-full flex items-center justify-center text-[10px] font-black uppercase text-white/10 tracking-[0.2em]">Queue Empty</div>}
+                                     {batchQueue.length === 0 && <div className="col-span-full h-full flex items-center justify-center text-[10px] font-black uppercase text-white/10 tracking-[0.2em]">{tr("Queue Empty")}</div>}
                                  </div>
 
                                  <div className="flex gap-4">
@@ -1348,7 +1349,7 @@ export const ProcessView: React.FC = () => {
                                               onClick={runBatchSequence} 
                                               disabled={isProcessingGlobal || batchQueue.length === 0} 
                                               className="flex-1 py-5 rounded-2xl bg-(--main-color) text-black text-[12px] font-black uppercase tracking-[0.3em] shadow-xl shadow-(--main-color)/20 disabled:grayscale disabled:opacity-20 active:scale-[0.98] transition-all"
-                                          >Execute Batch Sequence</button>
+                                          >{tr("Execute Batch Sequence")}</button>
                                       ) : (
                                           <button 
                                               onClick={() => {
@@ -1356,7 +1357,7 @@ export const ProcessView: React.FC = () => {
                                                   addLog("Termination signal sent to engine...", "warn");
                                               }} 
                                               className="flex-1 py-5 rounded-2xl bg-rose-500 text-white text-[12px] font-black uppercase tracking-[0.3em] shadow-xl shadow-rose-500/20 active:scale-[0.98] transition-all animate-pulse"
-                                          >Stop Batch Sequence</button>
+                                          >{tr("Stop Batch Sequence")}</button>
                                       )}
                                   </div>
                              </StitchCard>
@@ -1367,21 +1368,21 @@ export const ProcessView: React.FC = () => {
                                      <div className="flex items-center justify-between border-b border-white/5 pb-3">
                                          <div className="flex items-center gap-2 text-emerald-400">
                                             <Terminal size={14} />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">Live Engine</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest">{tr("Live Engine")}</span>
                                          </div>
                                          <div className="flex items-center gap-2">
                                               <button 
                                                   onClick={() => {
                                                       const text = (logs || []).map((l: any) => `[${l.time}] ${l.msg}`).join('\n');
                                                       navigator.clipboard.writeText(text);
-                                                      toast.success("Telemetry logs copied");
+                                                      toast.success(tr("Telemetry logs copied"));
                                                   }}
                                                   className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-(--main-color) transition-all"
-                                                  title="Copy All Progress Logs"
+                                                  title={tr("Copy All Progress Logs")}
                                               >
                                                   <Copy size={12} />
                                               </button>
-                                              <button onClick={() => setLogs([])} className="text-[8px] font-black uppercase text-white/20 hover:text-white transition-colors">Clear</button>
+                                              <button onClick={() => setLogs([])} className="text-[8px] font-black uppercase text-white/20 hover:text-white transition-colors">{tr("Clear")}</button>
                                           </div>
                                      </div>
                                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col-reverse gap-3 pr-1 text-[9px] font-mono">
@@ -1406,15 +1407,15 @@ export const ProcessView: React.FC = () => {
                                     <button 
                                         onClick={() => setVaultFilter('ALL')}
                                         className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${vaultFilter === 'ALL' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                                    >All Data</button>
+                                    >{tr("All Data")}</button>
                                     <button 
                                         onClick={() => setVaultFilter('STORE')}
                                         className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${vaultFilter === 'STORE' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                                    >Store List</button>
+                                    >{tr("Store List")}</button>
                                     <button 
                                         onClick={() => setVaultFilter('INVENTORY')}
                                         className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${vaultFilter === 'INVENTORY' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                                    >Inventory Tracker</button>
+                                    >{tr("Inventory Tracker")}</button>
                                     
                                     <div className="w-px h-6 bg-white/10 mx-2 self-center" />
                                     
@@ -1422,7 +1423,7 @@ export const ProcessView: React.FC = () => {
                                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-(--main-color) transition-colors" />
                                         <input 
                                             type="text" 
-                                            placeholder="FILTER TAG ID..." 
+                                            placeholder={tr("FILTER TAG ID...")} 
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                             className="bg-transparent text-[10px] font-bold text-white pl-9 pr-4 py-2 focus:outline-none w-64 uppercase tracking-widest placeholder:text-white/10 border-0"
@@ -1435,7 +1436,7 @@ export const ProcessView: React.FC = () => {
                                             className="ml-auto bg-(--main-color) text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                                         >
                                             <Play size={10} fill="black" />
-                                            Add {selectedIds.size} to Batch
+                                            {tr("Add")} {selectedIds.size} to Batch
                                         </button>
                                     )}
                                 </div>
@@ -1484,14 +1485,14 @@ export const ProcessView: React.FC = () => {
                                                 </div>
                                                 
                                                 <div className="flex flex-col min-w-[70px] shrink-0">
-                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Ident</span>
+                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">{tr("Ident")}</span>
                                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-white/10 text-white text-[10px] font-black uppercase tracking-tight w-fit">
                                                         {item.itemId || `N/A`}
                                                     </span>
                                                 </div>
 
                                                 <div className="flex flex-col min-w-[120px] shrink-0">
-                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Metrics</span>
+                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">{tr("Metrics")}</span>
                                                     <div className="flex flex-col gap-0.5">
                                                         <span className="text-[9px] font-mono text-(--text-color)/60">{dim}</span>
                                                         <span className="text-[9px] font-mono text-(--text-color)/40">{wg}</span>
@@ -1499,22 +1500,22 @@ export const ProcessView: React.FC = () => {
                                                 </div>
 
                                                 <div className="flex flex-col min-w-[120px] shrink-0 ml-auto items-end pr-4">
-                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-2">Engine Data</span>
+                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-2">{tr("Engine Data")}</span>
                                                     <div className="flex items-center gap-2">
                                                         {hasData ? (
                                                             <div className="px-2 py-0.5 rounded text-[9px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest flex items-center gap-1">
-                                                                <Check strokeWidth={3} size={10} /> Valid
+                                                                <Check strokeWidth={3} size={10} /> {tr("Valid")}
                                                             </div>
                                                         ) : (
                                                             <div className="px-2 py-0.5 rounded text-[9px] font-black bg-white/5 text-white/40 uppercase tracking-widest">
-                                                                Empty
+                                                                {tr("Empty")}
                                                             </div>
                                                         )}
                                                         {item.generatedPngUrl && (
                                                             <button 
                                                                 onClick={(e) => handleClearResult(item, e)}
                                                                 className="w-5 h-5 rounded hover:bg-rose-500/20 text-rose-500 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                                                                title="Clear Engine Result"
+                                                                title={tr("Clear Engine Result")}
                                                             >
                                                                 <Trash2 size={12} />
                                                             </button>

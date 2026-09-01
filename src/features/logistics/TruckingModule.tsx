@@ -34,6 +34,7 @@ import { CrateEditPanel, WireframeCrate } from './CratesInventoryView';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import gsap from 'gsap';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
+import { tr } from '../../lib/i18n';
 
 export const TRUCK_L_CM = 1615;
 export const TRUCK_W_CM = 244;
@@ -335,7 +336,7 @@ export const CompactDockCard: React.FC<{
                     <button 
                         onClick={(e) => { e.stopPropagation(); onNest(); }}
                         className="text-emerald-400/40 hover:text-emerald-400 transition-all opacity-0 group-hover:opacity-100 hover:scale-125"
-                        title="Nest Unit"
+                        title={tr("Nest Unit")}
                     >
                         <CornerDownRight size={14} />
                     </button>
@@ -531,21 +532,21 @@ export const DeployedTrailerCard: React.FC<{
 
             <div className="flex flex-col gap-1 min-w-[120px]">
                 <span className="text-[16px] font-black text-white/90 tracking-tighter uppercase leading-none">{trkDate}</span>
-                <span className="text-[9px] font-black text-emerald-500/40 uppercase tracking-[0.4em]">{weight}KG LOADED</span>
+                <span className="text-[9px] font-black text-emerald-500/40 uppercase tracking-[0.4em]">{weight}{tr("KG LOADED")}</span>
             </div>
 
             <div className="flex items-center gap-4">
                 <button 
                     onClick={onRecall}
                     className="w-16 h-16 rounded-full text-white/10 hover:text-white hover:scale-125 transition-all duration-500 flex items-center justify-center group/btn active:scale-90"
-                    title="Recall Load"
+                    title={tr("Recall Load")}
                 >
                     <ArrowUp size={32} strokeWidth={2.5} className="transition-transform group-hover/btn:-translate-y-1" />
                 </button>
                 <button 
                     onClick={(e) => { e.stopPropagation(); onDelete(); }}
                     className="p-3 text-rose-500/5 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
-                    title="Delete Record"
+                    title={tr("Delete Record")}
                 >
                     <Trash2 size={16} />
                 </button>
@@ -632,18 +633,18 @@ const DockCard: React.FC<{
                     {crate.width_cm}Ãƒâ€”{crate.length_cm}Ãƒâ€”{crate.height_cm || '?'} CM
                 </span>
                 <span className="text-[9px] font-bold text-white/20 uppercase">
-                    Vol: {Math.round((crate.width_cm * crate.length_cm * (crate.height_cm||100))/1000)} Liters
+                    {tr("Vol:")} {Math.round((crate.width_cm * crate.length_cm * (crate.height_cm||100))/1000)} {tr("Liters")}
                 </span>
             </div>
             {/* Bottom stats */}
             <div className="flex items-center justify-between w-full pt-2 border-t border-white/10 mt-1">
                 <div className="flex flex-col">
-                    <span className="text-[11px] font-black text-white">{itemCount} SKU</span>
+                    <span className="text-[11px] font-black text-white">{itemCount} {tr("SKU")}</span>
                     <span className="text-[8px] text-white/40 uppercase font-bold">In Inventory</span>
                 </div>
                 <div className="flex flex-col items-end">
                     <span className="text-[14px] font-black" style={{ color: primaryColor }}>{w} KG</span>
-                    <span className="text-[8px] text-white/40 uppercase font-bold">Estimated</span>
+                    <span className="text-[8px] text-white/40 uppercase font-bold">{tr("Estimated")}</span>
                 </div>
             </div>
         </div>
@@ -1009,15 +1010,15 @@ const SideView: React.FC<{
                 {/* Header bar */}
                 <div className="flex items-center gap-6 mb-6 px-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
-                        <span className="w-1 h-1 rounded-full bg-white/20" /> Ã¢â€”â‚¬ Rear
+                        <span className="w-1 h-1 rounded-full bg-white/20" /> {tr("Ã¢â€”â‚¬ Rear")}
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
                     <span className="text-[9px] font-black text-white/70 uppercase tracking-[0.6em] italic">
-                        Trailer Matrix Ã¢â‚¬â€ {TRUCK_L_CM}cm Ãƒâ€” {TRUCK_H_CM}cm H
+                        {tr("Trailer Matrix Ã¢â‚¬â€")} {TRUCK_L_CM}{tr("cm Ãƒâ€”")} {TRUCK_H_CM}{tr("cm H")}
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
-                        Front Ã¢â€“Â¶ <span className="w-1 h-1 rounded-full bg-white/20" />
+                        {tr("Front Ã¢â€“Â¶")} <span className="w-1 h-1 rounded-full bg-white/20" />
                     </span>
                 </div>
                 {/* Selected crate toolbar */}
@@ -1031,26 +1032,26 @@ const SideView: React.FC<{
                                     const { label, subtitle } = getCrateDisplayName(sel, allCrates, allInventory, truckNumbering[sel.id]);
                                     return `${label}${subtitle ? ` (${subtitle})` : ''}`;
                                 })()}
-                                <span className="text-white/30 ml-2">X:{Math.round(pos.x)}cm  Z:{Math.round(pos.z||0)}cm</span>
+                                <span className="text-white/30 ml-2">X:{Math.round(pos.x)}{tr("cm  Z:")}{Math.round(pos.z||0)}cm</span>
                             </span>
                             <button onClick={() => onStack(selectedId)}
                                 className="flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] cursor-pointer transition-all bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:scale-105 active:scale-95 shadow-lg shadow-amber-500/5">
-                                <Layers size={13} /> Stack on Top
+                                <Layers size={13} /> {tr("Stack on Top")}
                             </button>
                             <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded-xl border border-white/10">
                                 <button onClick={() => onUpdateXZ(selectedId, pos.x, Math.max(0, (pos.z||0) - (sel.height_cm||100)))}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Down"><ArrowDown size={14} /></button>
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title={tr("Move Down")}><ArrowDown size={14} /></button>
                                 <button onClick={() => onUpdateXZ(selectedId, pos.x, (pos.z||0) + (sel.height_cm||100))}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Up"><ArrowUp size={14} /></button>
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title={tr("Move Up")}><ArrowUp size={14} /></button>
                                 <div className="w-px h-3 bg-white/10 mx-0.5" />
                                 <button onClick={() => onUpdateXZ(selectedId, Math.max(0, pos.x - 50), pos.z||0)}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Rear"><ArrowLeft size={14} /></button>
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title={tr("Move Rear")}><ArrowLeft size={14} /></button>
                                 <button onClick={() => onUpdateXZ(selectedId, pos.x + 50, pos.z||0)}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Front"><ChevronRight size={14} /></button>
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title={tr("Move Front")}><ChevronRight size={14} /></button>
                             </div>
                             <button onClick={() => onUnload(selectedId)}
                                 className="flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:scale-105 active:scale-95 shadow-lg shadow-rose-500/5">
-                                <Trash2 size={13} /> Remove
+                                <Trash2 size={13} /> {tr("Remove")}
                             </button>
                         </div>
                     ) : null;
@@ -1140,7 +1141,7 @@ const SideView: React.FC<{
                         {/* Cab block */}
                         <rect x={SVG_W - 12} y={0} width={12} height={SVG_H} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" strokeWidth={1} rx={2} />
                         <text x={SVG_W - 6} y={SVG_H / 2} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.25)" fontFamily="monospace" fontWeight="black"
-                            transform={`rotate(-90, ${SVG_W - 6}, ${SVG_H / 2})`}>FRONT (CAB)</text>
+                            transform={`rotate(-90, ${SVG_W - 6}, ${SVG_H / 2})`}>{tr("FRONT (CAB)")}</text>
                     </svg>
                 </div>
             </div>
@@ -1669,8 +1670,8 @@ const NestingTargetModal: React.FC<{
             <div className="relative z-10 w-full max-w-lg bg-white/[0.03] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] backdrop-blur-3xl animate-in slide-in-from-bottom-8 duration-700">
                 <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                     <div>
-                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Nesting Wizard</h3>
-                        <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold mt-1.5">Select container for box {boxId.slice(0,6)}</p>
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">{tr("Nesting Wizard")}</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold mt-1.5">{tr("Select container for box")} {boxId.slice(0,6)}</p>
                     </div>
                     <button onClick={onClose} className="w-12 h-12 rounded-full hover:bg-white/10 text-white/20 hover:text-white transition-all flex items-center justify-center group">
                         <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
@@ -1680,7 +1681,7 @@ const NestingTargetModal: React.FC<{
                     {targets.length === 0 ? (
                         <div className="py-20 text-center flex flex-col items-center gap-4">
                             <Box size={48} className="text-white/5" />
-                            <p className="text-xs text-white/20 uppercase tracking-widest font-black italic">No compatible containers available</p>
+                            <p className="text-xs text-white/20 uppercase tracking-widest font-black italic">{tr("No compatible containers available")}</p>
                         </div>
                     ) : targets.map(t => (
                         <button
@@ -1692,7 +1693,7 @@ const NestingTargetModal: React.FC<{
                                 <Box size={32} className="text-white/20 group-hover:text-emerald-500/60 transition-colors" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="text-[10px] font-black uppercase text-(--main-color) tracking-[0.3em] mb-1">{t.type} UNIT</div>
+                                <div className="text-[10px] font-black uppercase text-(--main-color) tracking-[0.3em] mb-1">{t.type} {tr("UNIT")}</div>
                                 <div className="text-lg font-black text-white truncate leading-none group-hover:text-emerald-400 transition-colors">
                                     {getCrateDisplayName(t, allCrates, []).label}
                                 </div>
@@ -1709,7 +1710,7 @@ const NestingTargetModal: React.FC<{
                     ))}
                 </div>
                 <div className="p-6 border-t border-white/5 bg-black/20 flex justify-center">
-                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Onyx Logistics Protocol Ã‚Â· Nesting v1.2</p>
+                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">{tr("Onyx Logistics Protocol Ã‚Â· Nesting v1.2")}</p>
                 </div>
             </div>
         </div>
@@ -1841,7 +1842,7 @@ const ExportCard: React.FC<{
                         className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-xl"
                         style={{ backgroundColor: color, color: '#fff' }}
                     >
-                        Download
+                        {tr("Download")}
                     </button>
                 ) : (
                     <button 
@@ -2202,9 +2203,9 @@ const TruckExportModal: React.FC<{
                             <div className="p-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
                                 <LayoutGrid size={24} className="text-white/60" />
                             </div>
-                            <h3 className="text-3xl font-black uppercase tracking-tighter text-white">Exportation Wizard</h3>
+                            <h3 className="text-3xl font-black uppercase tracking-tighter text-white">{tr("Exportation Wizard")}</h3>
                         </div>
-                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-bold ml-16">Advanced Logistics Protocol v2.5</p>
+                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-bold ml-16">{tr("Advanced Logistics Protocol v2.5")}</p>
                     </div>
                     <button onClick={onClose} className="p-3 rounded-2xl text-white/30 hover:text-white hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-white/10">
                         <X size={24} />
@@ -2214,41 +2215,41 @@ const TruckExportModal: React.FC<{
                 <div className="flex flex-col gap-8">
                     {/* Shipment Info */}
                     <div className="flex flex-col gap-3 max-w-sm">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">Manifest Identity</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">{tr("Manifest Identity")}</label>
                         <input 
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-base font-bold text-white focus:outline-none focus:border-white/20 transition-all placeholder:text-white/10"
-                            placeholder="TRK-ID-000"
+                            placeholder={tr("TRK-ID-000")}
                         />
                     </div>
 
                     {/* Options List */}
                     <div className="flex flex-col gap-4">
                         <ExportCard 
-                            id="manifesto" title="Consolidated Manifesto" type="XLSX" color="#3b82f6" icon={FileSpreadsheet}
+                            id="manifesto" title={tr("Consolidated Manifesto")} type="XLSX" color="#3b82f6" icon={FileSpreadsheet}
                             desc="Global inventory list with all items combined. Best for accounting."
                             prog={progress.manifesto} url={urls.manifesto} onGenerate={generateManifesto} onDownload={triggerDownload} filename={`${name}_Consolidated_Manifesto.xlsx`}
                         />
                         <ExportCard 
-                            id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText}
+                            id="pdf" title={tr("Trailer Packing List")} type="PDF" color="#ef4444" icon={FileText}
                             desc="Summary of trailer load with isometric and top views."
                             prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} onDownload={triggerDownload} filename={`${name}_Packing_List.pdf`}
                         />
                         <ExportCard 
-                            id="packed" title="Crate Spreadsheets" type="XLSX" color="#10b981" icon={FileSpreadsheet}
+                            id="packed" title={tr("Crate Spreadsheets")} type="XLSX" color="#10b981" icon={FileSpreadsheet}
                             desc="One Excel sheet per crate. Detailed per-box breakdown."
                             prog={progress.packed} url={urls.packed} onGenerate={generatePacked} onDownload={triggerDownload} filename={`${name}_Crate_Spreadsheets.xlsx`}
                         />
                         <div className="h-px bg-white/5 my-2" />
                         <ExportCard 
-                            id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText}
+                            id="allCrates" title={tr("All Crates Manifesto")} type="PDF" color="#f97316" icon={FileText}
                             desc="Combined PDF of all individual crate manifestos. (No photos)."
                             prog={progress.allCrates} url={urls.allCrates} onGenerate={() => generateAllManifestos(false)} onDownload={triggerDownload} filename={`${name}_All_Crates_Manifesto.pdf`}
                         />
                         <ExportCard 
-                            id="allCratesImages" title="Visual Manifesto" type="PDF" color="#f43f5e" icon={ImageIcon}
+                            id="allCratesImages" title={tr("Visual Manifesto")} type="PDF" color="#f43f5e" icon={ImageIcon}
                             desc="High-fidelity visual verification with multi-row item photos."
                             prog={progress.allCratesImages} url={urls.allCratesImages} onGenerate={() => generateAllManifestos(true)} onDownload={triggerDownload} filename={`${name}_Visual_Manifesto.pdf`}
                         />
@@ -2259,17 +2260,17 @@ const TruckExportModal: React.FC<{
                 <div className="flex items-center justify-between pt-4 border-t border-white/5">
                     <div className="flex items-center gap-6">
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Load Payload</span>
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Load Payload")}</span>
                             <span className="text-xl font-black text-white italic tracking-tighter">{totalWeight.toLocaleString()} <span className="text-xs text-white/40 not-italic">KG</span></span>
                         </div>
                         <div className="w-px h-10 bg-white/10" />
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Active Units</span>
-                            <span className="text-xl font-black text-white italic tracking-tighter">{truckCrates.length} <span className="text-xs text-white/40 not-italic">Units</span></span>
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Active Units")}</span>
+                            <span className="text-xl font-black text-white italic tracking-tighter">{truckCrates.length} <span className="text-xs text-white/40 not-italic">{tr("Units")}</span></span>
                         </div>
                     </div>
                     <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Protocol Stable</span>
+                        <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">{tr("Protocol Stable")}</span>
                         <div className="flex gap-1 mt-1">
                             <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                             <div className="w-1 h-1 rounded-full bg-emerald-500/40" />
@@ -2908,17 +2909,17 @@ const ReadyTruckWizard: React.FC<{
                             <Truck size={24} className="text-white/60" />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Ready Trailer</h3>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">{tr("Ready Trailer")}</h3>
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                <p className="text-[9px] text-white/30 uppercase tracking-[0.3em] font-black">Ready for Finalization Sequence</p>
+                                <p className="text-[9px] text-white/30 uppercase tracking-[0.3em] font-black">{tr("Ready for Finalization Sequence")}</p>
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex flex-col items-end px-4 py-2 bg-white/5 rounded-xl border border-white/5">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Protocol ID</span>
-                            <span className="text-[10px] font-mono text-white/40 tracking-wider">ONYX-LOG-2.5</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Protocol ID")}</span>
+                            <span className="text-[10px] font-mono text-white/40 tracking-wider">{tr("ONYX-LOG-2.5")}</span>
                         </div>
                         <button onClick={onClose} className="p-3 rounded-2xl text-white/20 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/10"><X size={20} /></button>
                     </div>
@@ -2930,13 +2931,13 @@ const ReadyTruckWizard: React.FC<{
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black font-black">Ã¢Å“â€œ</div>
                                 <div>
-                                    <h4 className="text-sm font-black text-white uppercase tracking-tight">Shipment Live in Registry</h4>
-                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">3D Digital Mirror Created</p>
+                                    <h4 className="text-sm font-black text-white uppercase tracking-tight">{tr("Shipment Live in Registry")}</h4>
+                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">{tr("3D Digital Mirror Created")}</p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Registry Link Copied'); }} className="px-4 py-2 rounded-xl bg-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">Copy Share Link</button>
-                                <button onClick={() => window.open(publicUrl, '_blank')} className="px-4 py-2 rounded-xl bg-emerald-500 text-[9px] font-black text-black uppercase tracking-widest hover:scale-105 transition-all">Launch 3D Viewer</button>
+                                <button onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success(tr("Registry Link Copied")); }} className="px-4 py-2 rounded-xl bg-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">{tr("Copy Share Link")}</button>
+                                <button onClick={() => window.open(publicUrl, '_blank')} className="px-4 py-2 rounded-xl bg-emerald-500 text-[9px] font-black text-black uppercase tracking-widest hover:scale-105 transition-all">{tr("Launch 3D Viewer")}</button>
                             </div>
                         </div>
                         <div className="text-[10px] font-mono text-white/40 break-all bg-black/20 p-3 rounded-xl border border-white/5">{publicUrl}</div>
@@ -2967,26 +2968,26 @@ const ReadyTruckWizard: React.FC<{
                         
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between px-1">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">Packing Items (Cardboard Boxes)</label>
-                                <button onClick={() => onFieldChange({ ...fields, packingItems: [...fields.packingItems, { name: '', count: 1, weight: 0 }] })} className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 text-white/40 hover:text-white transition-all text-[8px] font-black uppercase"><Plus size={10} /> Add Box</button>
+                                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">{tr("Packing Items (Cardboard Boxes)")}</label>
+                                <button onClick={() => onFieldChange({ ...fields, packingItems: [...fields.packingItems, { name: '', count: 1, weight: 0 }] })} className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 text-white/40 hover:text-white transition-all text-[8px] font-black uppercase"><Plus size={10} /> {tr("Add Box")}</button>
                             </div>
                             <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar bg-white/[0.01] rounded-xl p-2 border border-white/5">
                                 {fields.packingItems.length === 0 ? (
-                                    <div className="py-6 text-center text-[10px] font-black text-white/10 uppercase tracking-[0.2em] italic">No extra packing items added</div>
+                                    <div className="py-6 text-center text-[10px] font-black text-white/10 uppercase tracking-[0.2em] italic">{tr("No extra packing items added")}</div>
                                 ) : fields.packingItems.map((pi: any, i: number) => (
                                     <div key={i} className="flex items-center gap-3 bg-white/[0.03] p-3 rounded-2xl border border-white/10 shadow-lg animate-in slide-in-from-left-4 duration-200">
                                         <input type="text" value={pi.name} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, name: e.target.value }; onFieldChange({ ...fields, packingItems: n }); }}
-                                            className="flex-1 bg-transparent text-base font-black text-white outline-none focus:text-emerald-400 placeholder:text-white/10 transition-colors" placeholder="BOX DESCRIPTION (E.G. TOOLS, WRAPPING...)" />
+                                            className="flex-1 bg-transparent text-base font-black text-white outline-none focus:text-emerald-400 placeholder:text-white/10 transition-colors" placeholder={tr("BOX DESCRIPTION (E.G. TOOLS, WRAPPING...)")} />
                                         <div className="flex items-center gap-2 shrink-0">
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-[7px] font-black text-white/20 uppercase tracking-widest ml-1">Quantity</span>
+                                                <span className="text-[7px] font-black text-white/20 uppercase tracking-widest ml-1">{tr("Quantity")}</span>
                                                 <input type="number" value={pi.count} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, count: parseInt(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
                                                     className="w-16 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-black text-white outline-none focus:border-white/30 transition-all" />
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-[7px] font-black text-white/20 uppercase tracking-widest ml-1">Weight KG</span>
+                                                <span className="text-[7px] font-black text-white/20 uppercase tracking-widest ml-1">{tr("Weight KG")}</span>
                                                 <input type="number" value={pi.weight} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, weight: parseFloat(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
                                                     className="w-20 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-black text-white outline-none focus:border-white/30 transition-all" />
                                             </div>
@@ -3000,14 +3001,14 @@ const ReadyTruckWizard: React.FC<{
 
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between px-1">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">Senders Information</label>
+                                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">{tr("Senders Information")}</label>
                                 <button onClick={() => onFieldChange({ ...fields, senders: [...fields.senders, ''] })} className="p-1 rounded-md bg-white/5 text-white/40 hover:text-white transition-all"><Plus size={14} /></button>
                             </div>
                             <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-2 custom-scrollbar">
                                 {fields.senders.map((s: string, i: number) => (
                                     <div key={i} className="flex gap-2">
                                         <input type="text" value={s} onChange={e => { const n = [...fields.senders]; n[i] = e.target.value; onFieldChange({ ...fields, senders: n }); }}
-                                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white outline-none focus:border-white/30" placeholder="Sender Name" />
+                                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white outline-none focus:border-white/30" placeholder={tr("Sender Name")} />
                                         <button onClick={() => { const n = fields.senders.filter((_:any,idx:number)=>idx!==i); onFieldChange({ ...fields, senders: n.length?n:[''] }); }}
                                             className="p-2 text-white/20 hover:text-red-400 transition-all"><Trash2 size={16} /></button>
                                     </div>
@@ -3018,7 +3019,7 @@ const ReadyTruckWizard: React.FC<{
                         <div className="mt-2 flex flex-col gap-4">
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
-                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Total Payload</span>
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Total Payload")}</span>
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-xl font-black text-white">{(totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)).toLocaleString()}</span>
                                         <span className="text-[10px] font-bold text-white/30 uppercase">KG</span>
@@ -3028,20 +3029,20 @@ const ReadyTruckWizard: React.FC<{
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
-                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Active Units</span>
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Active Units")}</span>
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-xl font-black text-white">{(buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)}</span>
-                                        <span className="text-[10px] font-bold text-white/30 uppercase">Units</span>
+                                        <span className="text-[10px] font-bold text-white/30 uppercase">{tr("Units")}</span>
                                     </div>
-                                    <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Ready for In-Transit</div>
+                                    <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">{tr("Ready for In-Transit")}</div>
                                 </div>
                                 <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
-                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Utilization</span>
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{tr("Utilization")}</span>
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-xl font-black text-white">{Math.round(((totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%</span>
-                                        <span className="text-[10px] font-bold text-white/30 uppercase">Volume</span>
+                                        <span className="text-[10px] font-bold text-white/30 uppercase">{tr("Volume")}</span>
                                     </div>
-                                    <div className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest mt-1">High Density</div>
+                                    <div className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest mt-1">{tr("High Density")}</div>
                                 </div>
                             </div>
 
@@ -3053,7 +3054,7 @@ const ReadyTruckWizard: React.FC<{
                                             <Share2 size={24} />
                                         </div>
                                         <div>
-                                            <h4 className={`text-lg font-black uppercase tracking-tighter ${publicUrl ? 'text-white' : 'text-white/20'}`}>Cloud Registry Link</h4>
+                                            <h4 className={`text-lg font-black uppercase tracking-tighter ${publicUrl ? 'text-white' : 'text-white/20'}`}>{tr("Cloud Registry Link")}</h4>
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
                                                 {publicUrl ? 'Sync Active Ã‚Â· Publicly Accessible' : 'Pending Dispatch Ã‚Â· Registry Offline'}
                                             </p>
@@ -3061,10 +3062,10 @@ const ReadyTruckWizard: React.FC<{
                                     </div>
                                     {publicUrl && (
                                         <button 
-                                            onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Registry Link Copied'); }}
+                                            onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success(tr("Registry Link Copied")); }}
                                             className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
                                         >
-                                            Copy URL
+                                            {tr("Copy URL")}
                                         </button>
                                     )}
                                 </div>
@@ -3078,8 +3079,8 @@ const ReadyTruckWizard: React.FC<{
                             {/* Axle Distribution Visualization */}
                             <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 shadow-inner">
                                 <div className="flex items-center justify-between mb-4">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2"><Move className="w-3 h-3 text-emerald-500" /> Axle Load Distribution</span>
-                                    <span className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest">Balanced Load</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2"><Move className="w-3 h-3 text-emerald-500" /> {tr("Axle Load Distribution")}</span>
+                                    <span className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest">{tr("Balanced Load")}</span>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <div className="flex h-4 gap-1 rounded-lg overflow-hidden bg-white/5 p-0.5">
@@ -3105,22 +3106,22 @@ const ReadyTruckWizard: React.FC<{
                         <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">System Ready for Finalization</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{tr("System Ready for Finalization")}</span>
                             </div>
-                            <p className="text-[11px] text-white/30 leading-relaxed uppercase font-bold tracking-tight">Updating <span className="text-white/60">{truckCrates.length}</span> units to "In Transit" status. Positions will be baked into record descriptors.</p>
+                            <p className="text-[11px] text-white/30 leading-relaxed uppercase font-bold tracking-tight">{tr("Updating")} <span className="text-white/60">{truckCrates.length}</span> {tr("units to \"In Transit\" status. Positions will be baked into record descriptors.")}</p>
                         </div>
                     </div>
 
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-4">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Preview</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">{tr("Preview")}</label>
                             <div 
                                 onClick={() => setShowLiveViewer(true)}
                                 className="relative group rounded-[2rem] border border-white/10 bg-white/5 overflow-hidden aspect-video shadow-2xl cursor-pointer hover:border-emerald-500/30 transition-all"
                             >
                                 <img 
                                     src={generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory)} 
-                                    alt="Preview" 
+                                    alt={tr("Preview")} 
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
@@ -3130,8 +3131,8 @@ const ReadyTruckWizard: React.FC<{
                                             <Maximize2 size={14} className="text-emerald-400" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-white uppercase tracking-tight">Trailer Isometric</span>
-                                            <span className="text-[8px] font-black text-emerald-400/80 uppercase tracking-widest">Active Mirror Sync</span>
+                                            <span className="text-[10px] font-black text-white uppercase tracking-tight">{tr("Trailer Isometric")}</span>
+                                            <span className="text-[8px] font-black text-emerald-400/80 uppercase tracking-widest">{tr("Active Mirror Sync")}</span>
                                         </div>
                                     </div>
                                     
@@ -3150,20 +3151,20 @@ const ReadyTruckWizard: React.FC<{
                                         className="p-2.5 rounded-xl bg-white text-black hover:bg-emerald-400 transition-all shadow-xl flex items-center gap-2 group/btn"
                                     >
                                         <Share2 size={14} />
-                                        <span className="text-[9px] font-black uppercase tracking-widest">View 3D</span>
+                                        <span className="text-[9px] font-black uppercase tracking-widest">{tr("View 3D")}</span>
                                     </button>
                                 </div>
                                 <div className="absolute top-4 right-6 px-3 py-1 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
-                                    <span className="text-[8px] font-black text-white/60 uppercase tracking-[0.2em]">3D Lidar Point-Cloud</span>
+                                    <span className="text-[8px] font-black text-white/60 uppercase tracking-[0.2em]">{tr("3D Lidar Point-Cloud")}</span>
                                 </div>
                             </div>
 
-                            <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1 mt-2">Documentation Engine</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1 mt-2">{tr("Documentation Engine")}</label>
                             <div className="grid grid-cols-1 gap-2">
-                                <ExportCard id="html" title="Interactive HTML Manifest" type="HTML" color="#3b82f6" icon={Globe} prog={progress.html} url={urls.html} onGenerate={generateHtml} filename={`Manifesto_${exportTimestamp.current}.html`} />
-                                <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} filename={`Packing_List_${exportTimestamp.current}.pdf`} />
-                                <ExportCard id="xlsx" title="Master Packing List" type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} filename={`Master_Packing_List_${exportTimestamp.current}.xlsx`} />
-                                <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
+                                <ExportCard id="html" title={tr("Interactive HTML Manifest")} type="HTML" color="#3b82f6" icon={Globe} prog={progress.html} url={urls.html} onGenerate={generateHtml} filename={`Manifesto_${exportTimestamp.current}.html`} />
+                                <ExportCard id="pdf" title={tr("Trailer Packing List")} type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} filename={`Packing_List_${exportTimestamp.current}.pdf`} />
+                                <ExportCard id="xlsx" title={tr("Master Packing List")} type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} filename={`Master_Packing_List_${exportTimestamp.current}.xlsx`} />
+                                <ExportCard id="allCrates" title={tr("All Crates Manifesto")} type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
                             </div>
                         </div>
                     
@@ -3171,16 +3172,16 @@ const ReadyTruckWizard: React.FC<{
                         <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
                             <div className="grid grid-cols-3 gap-3">
                                 <button onClick={onOpenDraft} className="py-4 rounded-2xl bg-white/5 text-white/60 font-black uppercase tracking-widest text-[9px] hover:bg-white/10 transition-all border border-white/10 flex items-center justify-center gap-2">
-                                    <FolderOpen size={14} /> Load Previous
+                                    <FolderOpen size={14} /> {tr("Load Previous")}
                                 </button>
                                 <button onClick={onSaveDraft} className="py-4 rounded-2xl bg-white/10 text-white font-black uppercase tracking-widest text-[9px] hover:bg-white/20 transition-all border border-white/10 flex items-center justify-center gap-2">
-                                    <Save size={14} /> Save Truck
+                                    <Save size={14} /> {tr("Save Truck")}
                                 </button>
                                 <button onClick={onConfirm} disabled={isBusy} className="py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40">
                                     {isBusy ? 'Syncing...' : 'Dispatch'}
                                 </button>
                             </div>
-                            <button onClick={onClose} className="w-full py-3 rounded-2xl bg-white/5 text-white/40 font-black uppercase tracking-widest text-[8px] hover:bg-white/10 transition-all border border-transparent hover:border-white/5">Cancel Protocol</button>
+                            <button onClick={onClose} className="w-full py-3 rounded-2xl bg-white/5 text-white/40 font-black uppercase tracking-widest text-[8px] hover:bg-white/10 transition-all border border-transparent hover:border-white/5">{tr("Cancel Protocol")}</button>
                         </div>
                     </div>
                 </div>
@@ -3196,7 +3197,7 @@ const SharePopup: React.FC<{ url: string; onClose: () => void }> = ({ url, onClo
                 <iframe 
                     src={url} 
                     className="w-full h-full border-none" 
-                    title="Onyx 3D Visualizer"
+                    title={tr("Onyx 3D Visualizer")}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                 />
@@ -3206,11 +3207,11 @@ const SharePopup: React.FC<{ url: string; onClose: () => void }> = ({ url, onClo
                     <button 
                         onClick={() => {
                             navigator.clipboard.writeText(url);
-                            toast.success('Public URL copied to clipboard');
+                            toast.success(tr("Public URL copied to clipboard"));
                         }}
                         className="px-10 py-5 rounded-[2rem] bg-white text-black font-black text-[12px] tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-4"
                     >
-                        <Share2 size={22} /> COPY MANIFESTO LINK
+                        <Share2 size={22} /> {tr("COPY MANIFESTO LINK")}
                     </button>
                     <button onClick={onClose} className="w-16 h-16 rounded-full bg-black/40 border border-white/10 backdrop-blur-2xl flex items-center justify-center text-white/60 hover:text-white hover:bg-black/60 transition-all group shadow-2xl">
                         <X size={36} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
@@ -3219,7 +3220,7 @@ const SharePopup: React.FC<{ url: string; onClose: () => void }> = ({ url, onClo
                 
                 {/* HUD Overlay for the iframe */}
                 <div className="absolute bottom-10 left-10 p-8 rounded-[2rem] border border-white/5 bg-black/40 backdrop-blur-2xl flex flex-col gap-2 pointer-events-none">
-                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">Network Topology</span>
+                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">{tr("Network Topology")}</span>
                     <span className="text-[14px] font-black text-white/80 uppercase tracking-widest">{url.split('?')[0]}</span>
                 </div>
             </div>
@@ -3246,34 +3247,34 @@ const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProp
             >
                 <div className="flex items-start justify-between">
                     <div>
-                        <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Save Draft</h3>
-                        <p className="text-[10px] text-white/40 mt-0.5">{crateCount} crates - positions + thumbnail</p>
+                        <h3 className="text-[14px] font-black uppercase tracking-tight text-white">{tr("Save Draft")}</h3>
+                        <p className="text-[10px] text-white/40 mt-0.5">{crateCount} {tr("crates - positions + thumbnail")}</p>
                     </div>
                     <button onClick={onClose} className="text-white/30 hover:text-white cursor-pointer"><X size={16} /></button>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-white/40">Draft Name</label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-white/40">{tr("Draft Name")}</label>
                     <input
                         autoFocus
                         value={name}
                         onChange={e => setName(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter' && name.trim()) onSave(name.trim()); if (e.key === 'Escape') onClose(); }}
                         className="w-full bg-white/8 border border-white/15 rounded-lg px-3 py-2.5 text-[13px] font-black text-white outline-none focus:border-white/40 transition-colors"
-                        placeholder="e.g. Monday AM Load"
+                        placeholder={tr("e.g. Monday AM Load")}
                     />
-                    <p className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exports as .truckload - includes map thumbnail</p>
+                    <p className="text-[8px] text-white/20 font-black uppercase tracking-widest">{tr("Exports as .truckload - includes map thumbnail")}</p>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-white/10 text-[10px] font-black text-white/40 hover:text-white hover:border-white/20 transition-all cursor-pointer">
-                        Cancel
+                        {tr("Cancel")}
                     </button>
                     <button
                         onClick={() => name.trim() && onExport(name.trim())}
                         disabled={!name.trim()}
                         className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-white/15 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/30 transition-all cursor-pointer disabled:opacity-30"
-                        title="Export as .truckload file (includes thumbnail)"
+                        title={tr("Export as .truckload file (includes thumbnail)")}
                     >
-                        <Download size={12} />Export
+                        <Download size={12} />{tr("Export")}
                     </button>
                     <button
                         onClick={() => name.trim() && onSave(name.trim())}
@@ -3281,7 +3282,7 @@ const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProp
                         className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-40"
                         style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
                     >
-                        Save
+                        {tr("Save")}
                     </button>
                 </div>
             </div>
@@ -3298,26 +3299,26 @@ const ReadyTruckHUD: React.FC<{ metadata: any, stats: any }> = ({ metadata, stat
                     <Shield size={22} strokeWidth={1.5} />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Security Seal</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">{tr("Security Seal")}</span>
                     <span className="text-lg font-black uppercase text-emerald-400 tracking-tighter">{metadata?.sealNumber || 'OPEN'}</span>
                 </div>
             </div>
             <div className="w-full h-px bg-white/5" />
             <div className="grid grid-cols-2 gap-x-10 gap-y-4">
                 <div className="flex flex-col gap-1">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Tractor</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Tractor")}</span>
                     <span className="text-[12px] font-black uppercase text-white/80">{metadata?.tractorNumber || 'Ã¢â‚¬â€'}</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Trailer</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Trailer")}</span>
                     <span className="text-[12px] font-black uppercase text-white/80">{metadata?.trailerNumber || 'Ã¢â‚¬â€'}</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Load Weight</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Load Weight")}</span>
                     <span className="text-[12px] font-black uppercase text-white/80">{Math.round(stats?.totalWeight || 0).toLocaleString()} KG</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Status</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Status")}</span>
                     <span className="text-[12px] font-black uppercase text-emerald-500/60 font-mono tracking-tighter">{stats?.status || 'OPTIMAL'}</span>
                 </div>
             </div>
@@ -3340,7 +3341,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
         const file = e.target.files?.[0];
         if (!file) return;
         const draft = await importDraftFile(file);
-        if (!draft) { toast.error('Invalid .truckload file'); return; }
+        if (!draft) { toast.error(tr("Invalid .truckload file")); return; }
         saveDraft(draft);
         setDrafts(getDrafts());
         toast.success(`Imported "${draft.name}"`);
@@ -3356,16 +3357,16 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                 {/* Header */}
                 <div className="sticky top-0 z-[60] flex items-center justify-between px-6 py-4 border-b border-white/8 bg-[rgba(12,12,18,0.95)]">
                     <div>
-                        <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Load Drafts</h3>
-                        <p className="text-[10px] text-white/40">{drafts.length} saved Ã‚Â· <span className="text-white/20">.truckload</span></p>
+                        <h3 className="text-[14px] font-black uppercase tracking-tight text-white">{tr("Load Drafts")}</h3>
+                        <p className="text-[10px] text-white/40">{drafts.length} {tr("saved Ã‚Â·")} <span className="text-white/20">{tr(".truckload")}</span></p>
                     </div>
                     <div className="flex items-center gap-3">
                         <input ref={importRef} type="file" accept={`${TRUCKLOAD_EXT},.json`} className="hidden" onChange={handleImport} />
                         <button
                             onClick={() => importRef.current?.click()}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/15 text-[9px] font-black uppercase tracking-widest text-white/50 hover:text-white hover:border-white/30 transition-all cursor-pointer"
-                            title="Import a .truckload file"
-                        ><Upload size={12} />Import</button>
+                            title={tr("Import a .truckload file")}
+                        ><Upload size={12} />{tr("Import")}</button>
                         <button onClick={onClose} className="text-white/30 hover:text-white cursor-pointer"><X size={16} /></button>
                     </div>
                 </div>
@@ -3374,8 +3375,8 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                     {drafts.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-white/20">
                             <Truck size={32} strokeWidth={0.8} />
-                            <p className="text-[11px] font-black uppercase tracking-widest mt-3">No saved drafts</p>
-                            <p className="text-[9px] text-white/15 mt-1">Import a .truckload file to get started</p>
+                            <p className="text-[11px] font-black uppercase tracking-widest mt-3">{tr("No saved drafts")}</p>
+                            <p className="text-[9px] text-white/15 mt-1">{tr("Import a .truckload file to get started")}</p>
                         </div>
                     ) : (
                         <div className="flex flex-col divide-y divide-white/5">
@@ -3402,8 +3403,8 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[12px] font-black text-white truncate">{draft.name}</p>
-                                            <button onClick={() => handleDelete(draft.id)} className="opacity-0 group-hover:opacity-100 text-rose-400/60 hover:text-rose-400 transition-all cursor-pointer" title="Delete"><Trash2 size={13} /></button>
-                                            <button onClick={() => { onLoad(draft); onClose(); }} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all" style={{ backgroundColor: 'var(--main-color)', color: '#000' }}>Load</button>
+                                            <button onClick={() => handleDelete(draft.id)} className="opacity-0 group-hover:opacity-100 text-rose-400/60 hover:text-rose-400 transition-all cursor-pointer" title={tr("Delete")}><Trash2 size={13} /></button>
+                                            <button onClick={() => { onLoad(draft); onClose(); }} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all" style={{ backgroundColor: 'var(--main-color)', color: '#000' }}>{tr("Load")}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -3527,7 +3528,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             });
             notify.success(`Recalled manifest ${shipment.manifest_id}`);
             setTopBarState('crates');
-        } catch (e) { notify.error('Failed to recall shipment'); }
+        } catch (e) { notify.error(tr("Failed to recall shipment")); }
     }, [setPositions, setTopBarState, setRecalledShipment, setReadyTruckFields]);
 
 
@@ -3933,7 +3934,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             setPositions(p => { const n = { ...p }; delete n[boxId]; return n; });
             setNestingBoxId(null);
             setRecalledShipment(null);
-            notify.success('Successfully nested', { id: tid });
+            notify.success(tr("Successfully nested"), { id: tid });
             onRefresh();
             setCratesVersion(v => v + 1);
         } catch (err: any) {
@@ -3943,7 +3944,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     const handleClearTrailer = useCallback(async () => {
         if (Object.keys(positions).length === 0) return;
-        if (confirm('Are you sure you want to clear all loaded units from the trailer?')) {
+        if (confirm(tr("Are you sure you want to clear all loaded units from the trailer?"))) {
             const idsToClear = Object.keys(positions);
             setPositions({});
             setSelectedId(null);
@@ -3956,7 +3957,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 console.error("Error clearing trailer from DB", err);
             }
             
-            notify.success('Trailer cleared');
+            notify.success(tr("Trailer cleared"));
         }
     }, [positions]);
 
@@ -3971,9 +3972,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     // Ã¢â€â‚¬Ã¢â€â‚¬ Ready Truck Ã¢â‚¬â€ sync DB + PDF + XLSX Ã¢â€â‚¬Ã¢â€â‚¬
     const handleReadyTruck = async (f = readyTruckFields) => {
-        if (!confirm('Are you sure you want to finalize this shipment and synchronize with the cloud?')) return;
+        if (!confirm(tr("Are you sure you want to finalize this shipment and synchronize with the cloud?"))) return;
         setIsSaving(true);
-        const tid = notify.loading('Validating shipment integrity...');
+        const tid = notify.loading(tr("Validating shipment integrity..."));
         try {
             // 0. Integrity Check: Ensure no items are already in another active shipment
             if (!isDummyMode) {
@@ -4010,7 +4011,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 }
             }
 
-            notify.loading('Synchronizing shipment data...', { id: tid });
+            notify.loading(tr("Synchronizing shipment data..."), { id: tid });
             const manifestId = `TRK-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
             const dispatchTs = new Date().toISOString();
             const ts = new Date().toLocaleString();
@@ -4223,9 +4224,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     };
 
     const handleDeleteShipment = async (manifest_id: string) => {
-        if (!confirm('Are you sure you want to permanently delete this shipment record? This action cannot be undone.')) return;
+        if (!confirm(tr("Are you sure you want to permanently delete this shipment record? This action cannot be undone."))) return;
         
-        const tid = notify.loading('Deleting shipment record...');
+        const tid = notify.loading(tr("Deleting shipment record..."));
         try {
             const { error } = await supabase
                 .from('shipments')
@@ -4235,7 +4236,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             if (error) throw error;
 
             setRecentShipments(prev => prev.filter(s => s.manifest_id !== manifest_id));
-            notify.success('Shipment record deleted', { id: tid });
+            notify.success(tr("Shipment record deleted"), { id: tid });
         } catch (err: any) {
             notify.error(err.message || 'Deletion failed', { id: tid });
         }
@@ -4372,7 +4373,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     <button 
                         onClick={() => setTopBarState('deployed')}
                         className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-4 text-white/30 hover:text-white'}`}
-                        title="View All Deployed Crates"
+                        title={tr("View All Deployed Crates")}
                     >
                         <SquareLibrary size={isCompact ? 14 : 32} strokeWidth={1.25} style={topBarState === 'deployed' ? { color: 'var(--main-color)' } : { opacity: 0.2 }} />
                     </button>
@@ -4383,7 +4384,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 {dockCrates.length === 0 ? (
                                     <div className="flex items-center gap-3 px-6 py-2 rounded-xl bg-white/5 border border-dashed border-white/10 text-white/20">
                                         <CheckCircle2 size={16} strokeWidth={1} />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.4em]">Manifest Clean</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.4em]">{tr("Manifest Clean")}</span>
                                     </div>
                                 ) : (
                                     dockCrates.map(c => (
@@ -4404,7 +4405,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 {deployedCrates.length === 0 ? (
                                     <div className="flex items-center gap-3 px-6 py-2 rounded-xl bg-white/5 border border-dashed border-white/10 text-white/20">
                                         <SquareLibrary size={16} strokeWidth={1} />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.4em]">No Individual Deployed Crates</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.4em]">{tr("No Individual Deployed Crates")}</span>
                                     </div>
                                 ) : (
                                     deployedCrates.map(c => (
@@ -4420,11 +4421,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             </div>
                                             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity w-full mt-1 px-2">
                                                 <button onClick={(e) => { e.stopPropagation(); setEditingCrate(c); }} className="flex-1 py-1.5 px-2 text-[8px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 flex items-center justify-center gap-1.5 whitespace-nowrap">
-                                                    <Eye size={12} /> View Deployment
+                                                    <Eye size={12} /> {tr("View Deployment")}
                                                 </button>
                                                 <button onClick={async (e) => { 
                                                     e.stopPropagation(); 
-                                                    const tid = notify.loading('Reverting to Warehouse...');
+                                                    const tid = notify.loading(tr("Reverting to Warehouse..."));
                                                     const { error } = await supabase.from('logistics').update({ 
                                                         status: c.inventory_ids ? 'Packed' : 'Empty', 
                                                         sent_date: null, 
@@ -4434,13 +4435,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                                         truck_position: null
                                                     }).eq('id', c.id);
                                                     if (!error) { 
-                                                        notify.success('Reverted to Warehouse', { id: tid }); 
+                                                        notify.success(tr("Reverted to Warehouse"), { id: tid }); 
                                                         onRefresh(); 
                                                     } else { 
-                                                        notify.error('Failed to revert', { id: tid }); 
+                                                        notify.error(tr("Failed to revert"), { id: tid }); 
                                                     }
                                                 }} className="flex-1 py-1.5 px-2 text-[8px] font-black uppercase tracking-widest bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-all border border-rose-500/10 flex items-center justify-center gap-1.5 whitespace-nowrap">
-                                                    <ArrowLeft size={12} /> Back to Warehouse
+                                                    <ArrowLeft size={12} /> {tr("Back to Warehouse")}
                                                 </button>
                                             </div>
                                         </div>
@@ -4452,12 +4453,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 {loadingShipments ? (
                                     <div className="flex items-center gap-3 px-6 py-2">
                                         <Loader2 size={16} className="animate-spin text-emerald-400" />
-                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Loading...</span>
+                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Loading...")}</span>
                                     </div>
                                 ) : recentShipments.length === 0 ? (
                                     <div className="flex items-center gap-3 px-6 py-2 text-white/10">
                                         <AlertCircle size={16} strokeWidth={1} />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">No Records</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">{tr("No Records")}</span>
                                     </div>
                                 ) : (
                                     recentShipments.map(s => (
@@ -4478,7 +4479,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2 shrink-0 group"
                                 >
                                     <Maximize2 size={14} className="group-hover:scale-110 transition-transform" />
-                                    Expand Fleet
+                                    {tr("Expand Fleet")}
                                 </button>
                             </>
                         )}
@@ -4505,16 +4506,16 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <div className="flex flex-col gap-1 min-w-0">
                                 {isCompact ? (
                                     <div className="flex items-center gap-3">
-                                        <span className="font-black text-white/40 text-[9px] uppercase tracking-widest">53FT</span>
+                                        <span className="font-black text-white/40 text-[9px] uppercase tracking-widest">{tr("53FT")}</span>
                                         <span className="font-mono font-black text-white/60 uppercase tracking-widest text-[9px]">{TRUCK_L_CM}Ãƒâ€”{TRUCK_W_CM}</span>
                                         <div className="w-1 h-1 rounded-full bg-white/10" />
                                         <span className="font-black tracking-tighter text-white text-[14px] leading-none">{truckCrates.length}</span>
-                                        <span className="text-white/30 font-black uppercase tracking-widest text-[7px] leading-none">UNITS</span>
+                                        <span className="text-white/30 font-black uppercase tracking-widest text-[7px] leading-none">{tr("UNITS")}</span>
                                     </div>
                                 ) : (
                                     <div className="flex items-baseline gap-1.5 leading-none">
                                         <span className="font-black tracking-tighter text-white text-3xl">{truckCrates.length}</span>
-                                        <span className="text-white/80 font-black uppercase tracking-widest text-[8px]">/ {allCrates.length} UNITS</span>
+                                        <span className="text-white/80 font-black uppercase tracking-widest text-[8px]">/ {allCrates.length} {tr("UNITS")}</span>
                                     </div>
                                 )}
                             </div>
@@ -4545,11 +4546,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         <div className={`flex items-center border-l border-white/10 transition-all duration-500 ${isCompact ? 'px-4 gap-4' : 'px-5 gap-6 flex-1 justify-center'}`}>
                             <div className={`${isCompact ? 'flex items-center gap-2' : 'flex flex-col gap-1'} text-center`}>
                                 <span className={`font-black text-white leading-none tracking-tighter transition-all ${isCompact ? 'text-[14px]' : 'text-3xl'}`}>{floorPct}%</span>
-                                <span className={`font-black uppercase text-white/60 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>Floor</span>
+                                <span className={`font-black uppercase text-white/60 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>{tr("Floor")}</span>
                             </div>
                             <div className={`${isCompact ? 'flex items-center gap-2' : 'flex flex-col gap-1'} text-center`}>
                                 <span className={`font-black text-white leading-none tracking-tighter transition-all ${isCompact ? 'text-[14px]' : 'text-3xl'}`}>{panelStats.volPct}%</span>
-                                <span className={`font-black uppercase text-white/60 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>Vol</span>
+                                <span className={`font-black uppercase text-white/60 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>{tr("Vol")}</span>
                             </div>
                         </div>
 
@@ -4561,13 +4562,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <button 
                                         onClick={() => setShowSharePopup(true)}
                                         className="text-emerald-400 hover:text-emerald-300 hover:scale-125 active:scale-95 transition-all animate-in zoom-in duration-1000 p-2"
-                                        title="Share 3D Visualizer"
+                                        title={tr("Share 3D Visualizer")}
                                     >
                                         <Share2 size={26} strokeWidth={2.5} />
                                     </button>
                                 )}
                             </div>
-                            {!isCompact && <span className="font-black text-white/80 uppercase tracking-widest leading-none text-[7px] mt-1">{panelStats.remaining.toLocaleString()} KG FREE</span>}
+                            {!isCompact && <span className="font-black text-white/80 uppercase tracking-widest leading-none text-[7px] mt-1">{panelStats.remaining.toLocaleString()} {tr("KG FREE")}</span>}
                         </div>
 
                         {/* Section 5: Recalled Truck Metadata (Ultra-High-Density Onyx Grid) */}
@@ -4578,7 +4579,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <div className="flex flex-col justify-center min-w-0">
                                         <div className="flex items-center gap-1.5 mb-1">
                                             <Shield size={10} className="text-emerald-400 opacity-60" />
-                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Tractor</span>
+                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Tractor")}</span>
                                         </div>
                                         <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.tractorNumber || 'Ã¢â‚¬â€'}</span>
                                         {!isCompact && (
@@ -4590,7 +4591,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <div className="flex flex-col justify-center min-w-0">
                                         <div className="flex items-center gap-1.5 mb-1">
                                             <Truck size={10} className="text-white/40" />
-                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Trailer</span>
+                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Trailer")}</span>
                                         </div>
                                         <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.trailerNumber || 'Ã¢â‚¬â€'}</span>
                                         {!isCompact && (
@@ -4602,11 +4603,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <div className="flex flex-col justify-center min-w-0">
                                         <div className="flex items-center gap-1.5 mb-1">
                                             <IdCard size={10} className="text-cyan-400" />
-                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Security</span>
+                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Security")}</span>
                                         </div>
                                         <span className="text-[14px] font-black text-cyan-400 uppercase tracking-tighter leading-none">{readyTruckFields.sealNumber || 'OPEN'}</span>
                                         {!isCompact && (
-                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest truncate mt-1">LOCK VERIFIED</span>
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest truncate mt-1">{tr("LOCK VERIFIED")}</span>
                                         )}
                                     </div>
 
@@ -4615,9 +4616,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         <div className="flex flex-col justify-center min-w-0">
                                             <div className="flex items-center gap-1.5 mb-1">
                                                 <History size={10} className="text-emerald-500" />
-                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Logistics</span>
+                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Logistics")}</span>
                                             </div>
-                                            <span className="text-[13px] font-black text-emerald-400 uppercase tracking-tighter leading-none">{readyTruckFields.packingItems.length || 0} UNITS</span>
+                                            <span className="text-[13px] font-black text-emerald-400 uppercase tracking-tighter leading-none">{readyTruckFields.packingItems.length || 0} {tr("UNITS")}</span>
                                             <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.senders[0] || 'ONYX CORE'}</span>
                                         </div>
                                     )}
@@ -4627,7 +4628,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         <div className="flex flex-col justify-center min-w-0">
                                             <div className="flex items-center gap-1.5 mb-1">
                                                 <History size={10} className="text-white/40" />
-                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Deployed</span>
+                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Deployed")}</span>
                                             </div>
                                             <span className="text-[12px] font-black text-white/80 uppercase tracking-tighter leading-none">
                                                 {new Date(recalledShipment.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}
@@ -4718,14 +4719,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <div className="w-8 h-8 flex items-center justify-center bg-emerald-500/5">
                                         <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)]" />
                                     </div>
-                                    <span className="text-[11px] font-black uppercase tracking-[0.5em] text-emerald-500/80 whitespace-nowrap">Rear Deck</span>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.5em] text-emerald-500/80 whitespace-nowrap">{tr("Rear Deck")}</span>
                                 </div>
                                 <div className="flex-1" />
                                 <div className="flex flex-col items-center gap-3">
                                     <div className="w-8 h-8 flex items-center justify-center bg-white/5">
                                         <div className="w-3 h-3 rounded-full bg-white/40" />
                                     </div>
-                                    <span className="text-[11px] font-black uppercase tracking-[0.5em] text-white/40 whitespace-nowrap">Bulkhead</span>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.5em] text-white/40 whitespace-nowrap">{tr("Bulkhead")}</span>
                                 </div>
                             </div>
                         ) : (
@@ -4733,7 +4734,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 <div className="w-8 h-8 flex items-center justify-center bg-white/5">
                                     <div className="w-3 h-3 rounded-full bg-white/40" />
                                 </div>
-                                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-white/40 whitespace-nowrap">Bulkhead</span>
+                                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-white/40 whitespace-nowrap">{tr("Bulkhead")}</span>
                             </div>
                         )}
                         
@@ -4796,7 +4797,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 <div className="w-8 h-8 flex items-center justify-center bg-emerald-500/5">
                                     <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)]" />
                                 </div>
-                                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-emerald-500/80 whitespace-nowrap">Rear Deck</span>
+                                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-emerald-500/80 whitespace-nowrap">{tr("Rear Deck")}</span>
                             </div>
                         )}
                     </div>
@@ -4891,7 +4892,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     <div className="w-px h-8 bg-white/10 mx-2" />
                     
                     <div className="flex items-center gap-1">
-                        <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title="Zoom Out"><ZoomOut size={22} /></button>
+                        <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title={tr("Zoom Out")}><ZoomOut size={22} /></button>
                         <button onClick={() => setZoom(1.0)} className="px-4 text-[13px] font-black text-white hover:scale-110 transition-all tracking-tighter">{Math.round(zoom * 100)}%</button>
                         <button onClick={() => setZoom(z => Math.min(4, z + 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title="Zoom In"><ZoomIn size={22} /></button>
                     </div>
@@ -4920,20 +4921,20 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     className="px-5 py-3 bg-white text-black rounded-xl font-black text-[11px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center gap-2"
                                 >
                                     <Eye size={18} />
-                                    VIEW
+                                    {tr("VIEW")}
                                 </button>
                                 <div className="w-px h-8 bg-white/10 mx-1" />
                                 <button 
                                     onClick={() => handleRotate(selectedId)} 
                                     className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" 
-                                    title="Transform (Rotate)"
+                                    title={tr("Transform (Rotate)")}
                                 >
                                     <RotateCcw size={22} />
                                 </button>
                                 <button 
                                     onClick={() => handleUnload(selectedId)} 
                                     className="p-3 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all" 
-                                    title="Eject (Unload)"
+                                    title={tr("Eject (Unload)")}
                                 >
                                     <Trash2 size={22} />
                                 </button>
@@ -4943,7 +4944,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         <button 
                                             onClick={() => setNestingBoxId(selectedId)} 
                                             className="p-3 text-emerald-500/60 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all" 
-                                            title="Nest Unit"
+                                            title={tr("Nest Unit")}
                                         >
                                             <Box size={22} />
                                         </button>
@@ -4952,7 +4953,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 <button 
                                     onClick={() => setSelectedId(null)} 
                                     className="p-3 text-white/20 hover:text-white hover:bg-white/10 rounded-xl transition-all ml-1" 
-                                    title="Deselect"
+                                    title={tr("Deselect")}
                                 >
                                     <X size={18} />
                                 </button>
@@ -4964,7 +4965,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     <button 
                         onClick={handleClearTrailer}
                         className="p-3 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
-                        title="Flush Payload"
+                        title={tr("Flush Payload")}
                     >
                         <Trash2 size={22} />
                     </button>
@@ -4981,10 +4982,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         const { error } = await supabase.from('logistics').update(updates).eq('id', id);
                         if (!error) {
                             setEditingCrate(null);
-                            notify.success('Crate updated');
+                            notify.success(tr("Crate updated"));
                             onRefresh();
                         } else {
-                            notify.error('Update failed');
+                            notify.error(tr("Update failed"));
                         }
                     }}
                     onDeleteGroup={() => {}} 

@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { InventoryItem } from '../../lib/Types';
 import { normalizeInventoryData } from '../../lib/utils';
 import { gsap } from 'gsap';
+import { tr } from '../../lib/i18n';
 
 interface PackingPosition {
     x: number; // in cm
@@ -417,16 +418,16 @@ export const CratePackingWorkspace: React.FC<CratePackingWorkspaceProps> = ({
             {/* Legend Overlay */}
             <div className="absolute top-4 right-4 flex flex-col gap-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-xl">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Orbit</span>
-                    <span className="text-[10px] font-mono text-white/80">L-MOUSE</span>
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Orbit")}</span>
+                    <span className="text-[10px] font-mono text-white/80">{tr("L-MOUSE")}</span>
                 </div>
                 <div className="flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-xl">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Pan</span>
-                    <span className="text-[10px] font-mono text-white/80">R-MOUSE</span>
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Pan")}</span>
+                    <span className="text-[10px] font-mono text-white/80">{tr("R-MOUSE")}</span>
                 </div>
                 <div className="flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-xl">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Move</span>
-                    <span className="text-[10px] font-mono text-white/80">DRAG ITEM</span>
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Move")}</span>
+                    <span className="text-[10px] font-mono text-white/80">{tr("DRAG ITEM")}</span>
                 </div>
             </div>
         </div>

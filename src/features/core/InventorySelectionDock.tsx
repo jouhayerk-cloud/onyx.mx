@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { calculateCodesAndPrices } from '../../lib/utils';
+import { tr } from '../../lib/i18n';
 
 export const InventorySelectionDock: React.FC = () => {
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
@@ -92,7 +93,7 @@ export const InventorySelectionDock: React.FC = () => {
                         <span className="text-(--main-color) font-black text-2xl md:text-4xl leading-none drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]">
                             {selectedIds.length}
                         </span>
-                        <span className="text-[10px] md:text-[14px] font-black text-white/40 tracking-widest uppercase">ITEMS</span>
+                        <span className="text-[10px] md:text-[14px] font-black text-white/40 tracking-widest uppercase">{tr("ITEMS")}</span>
                     </div>
                 </div>
 
@@ -100,15 +101,15 @@ export const InventorySelectionDock: React.FC = () => {
                     <button 
                         onClick={() => setPrintOpen(true)}
                         className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
-                        title="Print Labels"
+                        title={tr("Print Labels")}
                     >
                         <Printer size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
-                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">PRINT</span>
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PRINT")}</span>
                     </button>
                     <button 
                         onClick={() => setNFCOpen(true)}
                         className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
-                        title="Write NFC"
+                        title={tr("Write NFC")}
                     >
                         <Nfc size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
                         <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">NFC</span>
@@ -116,50 +117,50 @@ export const InventorySelectionDock: React.FC = () => {
                     <button 
                         onClick={() => setPackOpen(true)}
                         className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
-                        title="Pack Items"
+                        title={tr("Pack Items")}
                     >
                         <Package size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
-                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">PACK</span>
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PACK")}</span>
                     </button>
                     <button 
                         onClick={() => setPayOpen(true)}
                         className="text-white/40 hover:text-green-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
-                        title="Payment Workflow"
+                        title={tr("Payment Workflow")}
                     >
                         <DollarSign size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
-                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">PAY</span>
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PAY")}</span>
                     </button>
                     <button 
                         onClick={handleOpenTags}
                         className="text-white/40 hover:text-(--main-color) transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
-                        title="Manage Tags"
+                        title={tr("Manage Tags")}
                     >
                         <Tag size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
-                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">TAGS</span>
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("TAGS")}</span>
                     </button>
                     <button 
                         onClick={handleCopyTags}
                         className="text-white/40 hover:text-blue-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
-                        title="Copy Tag IDs"
+                        title={tr("Copy Tag IDs")}
                     >
                         <Copy size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
-                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">COPY</span>
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("COPY")}</span>
                     </button>
                     <button 
                         onClick={() => setExportSelectedXLSX(Date.now())}
                         className="text-white/40 hover:text-green-500 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
-                        title="Export XLSX"
+                        title={tr("Export XLSX")}
                     >
                         <FileSpreadsheet size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
-                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">EXPORT</span>
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("EXPORT")}</span>
                     </button>
                     <button 
                         onClick={handleOpenAIWizard}
                         className="text-white/40 hover:text-purple-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" 
-                        title="AI Batch Process"
+                        title={tr("AI Batch Process")}
                     >
                         <Sparkles size={28} className="md:w-[34px] md:h-[34px]" strokeWidth={2} />
-                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-purple-900/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-purple-500/50 text-white">AI GEN</span>
+                        <span className="absolute -top-14 left-1/2 -translate-x-1/2 bg-purple-900/90 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-purple-500/50 text-white">{tr("AI GEN")}</span>
                     </button>
                     
                     <div className="w-px h-8 md:h-12 bg-white/10 mx-2 flex-shrink-0" />
