@@ -112,7 +112,7 @@ import { WORKBOOK_IDS, type WorkbookId } from '../../lib/seasons';
 const OnyxBar: React.FC = () => null;
 
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -3353,7 +3353,7 @@ export function MainHeader() {
                 // formatProductTitle applies the three rules Grant gave on
                 // 28 Jul (strip articles, capitalise every word, drop the
                 // trailing period). It already existed in utils with no callers.
-                const aiTitle = String(norm.detailedDescription || norm.detailed_description || '').trim();
+                const aiTitle = normalizeBrandTerms(String(norm.detailedDescription || norm.detailed_description || '').trim());
                 const rawTitle = aiTitle || `${shape} ${shortDesc} ${color} ${material}`;
                 let title = formatProductTitle(rawTitle.trim().replace(/\s+/g, ' '));
                 // Grant also asked for 60-70 characters. The prompt now targets
@@ -3440,7 +3440,7 @@ export function MainHeader() {
                     polishType = 'Partially Polished';
                 }
 
-                const bodyHtml = norm.generatedDescription || norm.generated_description || generateFallbackMarketingHtml(norm);
+                const bodyHtml = normalizeBrandTerms(norm.generatedDescription || norm.generated_description || generateFallbackMarketingHtml(norm));
 
                 // Colour, in falling order of how much we trust it: a manually
                 // entered list, then the AI's extracted dominant colours, then

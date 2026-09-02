@@ -33,6 +33,7 @@ import {
     normalizeInventoryData, 
     getProductCategoryAndType,
     SHOPIFY_PRODUCT_TYPES,
+    normalizeBrandTerms,
     formatProductTitle
 } from '../../lib/utils';
 import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2, Layers, Video, Maximize2, Image as ImageIcon, Wand2 } from 'lucide-react';
@@ -1063,8 +1064,19 @@ Instructions:
         try {
             const itemId = op.item.data?.id || op.item.id || op.item.row;
             const updatePayload: any = {};
-            if (op.result.description) updatePayload.detailed_description = op.result.description;
-            if (op.result.marketingDescription) updatePayload.generated_description = op.result.marketingDescription;
+            // Normalise on the way into the table, not only on the way out.
+            // formatProductTitle applies Grant's rules (no articles, every word
+            // capitalised, no trailing period) so the stored title is already
+            // correct for both the Shopify sheet and the printed catalogue --
+            // the model does not always honour them. Length is deliberately NOT
+            // enforced here; the export trims on a word boundary instead, so a
+            // good long title is not destroyed in storage.
+            if (op.result.description) {
+                updatePayload.detailed_description = formatProductTitle(normalizeBrandTerms(op.result.description));
+            }
+            if (op.result.marketingDescription) {
+                updatePayload.generated_description = normalizeBrandTerms(op.result.marketingDescription);
+            }
             let processedMap: Record<string, string> = {};
             const itemData = op.item.data || op.item || {};
             const rawMedia = itemData.processedMediaUrls || itemData.processed_media_urls;

@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType } from './utils';
+import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -383,7 +383,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     
     const shape = norm.shape || '';
     const type = norm.shortDescription || '';
-    let nameStr = item.data.title || item.data.generatedTitle || item.data.generated_title || item.data.description || item.data.detailed_description || norm.description || norm.detailedDescription || '';
+    let nameStr = normalizeBrandTerms(item.data.title || item.data.generatedTitle || item.data.generated_title || item.data.description || item.data.detailed_description || norm.description || norm.detailedDescription || '');
     if (!nameStr) {
         nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
     }
@@ -704,7 +704,7 @@ async function drawCatalogHubPage(
     
     // Main Title: Generated Title
     const itemDataObj = item.data || item;
-    const mainDescStr = itemDataObj.title || itemDataObj.generatedTitle || itemDataObj.generated_title || itemDataObj.description || itemDataObj.detailed_description || norm.description || norm.detailedDescription || `${shape} handcrafted from natural Mexican ${material}`;
+    const mainDescStr = normalizeBrandTerms(itemDataObj.title || itemDataObj.generatedTitle || itemDataObj.generated_title || itemDataObj.description || itemDataObj.detailed_description || norm.description || norm.detailedDescription || `${shape} handcrafted from natural Mexican ${material}`);
     const titleStr = mainDescStr.replace(/\s+/g, ' ').trim().toUpperCase() + (itemDataObj.partSuffix ? ` ${itemDataObj.partSuffix.toUpperCase()}` : '');
 
     let titleY = sep1Y + 7;
@@ -813,7 +813,7 @@ async function drawCatalogHubPage(
     const descY = contentY + imgBoxH + 6;
     const descH = contentH - imgBoxH - 6;
     
-    const marketingHtml = item.data.marketing_description || item.data.generatedDescription || item.data.generated_description || '';
+    const marketingHtml = normalizeBrandTerms(item.data.marketing_description || item.data.generatedDescription || item.data.generated_description || '');
     renderStyledMarketingHtml(doc, marketingHtml, M, descY, fullW, descH);
 
     // 5. Large axonometric icon & ADD Dimensions Panel generated at the bottom left of the page
