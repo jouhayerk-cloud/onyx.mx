@@ -139,7 +139,7 @@ import {
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, Archive,
     PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup, CloudUpload,
-    Wrench, ClipboardClock, LayoutTemplate, Tag, ChevronDown, Pointer
+    Wrench, ClipboardClock, LayoutTemplate, Tag, ChevronDown, Pointer, QrCode, Table
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
