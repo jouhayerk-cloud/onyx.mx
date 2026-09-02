@@ -2065,6 +2065,35 @@ export async function syncAllCalculatedFieldsToDB(
     return updatedCount;
 }
 
+/**
+ * The Shopify "Type" vocabulary, as agreed with Rare Earth Gallery.
+ *
+ * ONE list, used in two places that must never drift apart: the batch
+ * prompt interpolates it so the model can only choose from it, and the
+ * Shopify export validates against it before trusting generated_type.
+ * They used to be two hand-copied literals. That is exactly how the
+ * polish_type import failure happened -- the sheet carried a value the
+ * store had never heard of, and Shopify answered "Value does not exist in
+ * provided choices".
+ */
+export const SHOPIFY_PRODUCT_TYPES = [
+    'Barware > Wine Stoppers', 'Bathtubs', 'Board Games > Chess Sets',
+    'Home Decor > Candleholders', 'Home Decor > Coasters',
+    'Home Decor > Decorative Bowls', 'Home Decor > Decorative Plates',
+    'Home Decor > Decorative Trays', 'Home Decor > Floor Lamps',
+    'Home Decor > Mirrors', 'Home Decor > Pendant Lights',
+    'Home Decor > Sculptures', 'Home Decor > Sinks',
+    'Home Decor > Table Lamps', 'Home Decor > Tables',
+    'Home Decor > Vases', 'Home Decor > Wall Panels',
+    'Home Decor > Wine Racks', 'Outdoor Decor > Fountains',
+] as const;
+
+const PRODUCT_TYPE_SET = new Set<string>(SHOPIFY_PRODUCT_TYPES as readonly string[]);
+
+/** True when a generated type is one the store will actually accept. */
+export const isAllowedProductType = (t: unknown): boolean =>
+    typeof t === 'string' && PRODUCT_TYPE_SET.has(t.trim());
+
 export function getProductCategoryAndType(item: any): { category: string, type: string } {
     const title = `${item.shape || ''} ${item.shortDescription || ''} ${item.description || ''} ${item.type || ''}`.toLowerCase();
     if (title.includes('wine rack')) return { category: 'Furniture > Cabinets & Storage > Wine Racks', type: 'Home Decor > Wine Racks' };

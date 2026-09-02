@@ -112,7 +112,7 @@ import { WORKBOOK_IDS, type WorkbookId } from '../../lib/seasons';
 const OnyxBar: React.FC = () => null;
 
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -3343,7 +3343,28 @@ export function MainHeader() {
                 const color = norm.color || '';
                 const material = norm.material || '';
                 
-                const title = toTitleCase(`${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' '));
+                // Title, in falling order of quality. The AI title lives in
+                // detailed_description ("Mexican Onyx Cylinder Pendant Light
+                // Fixtures - Box Set"); it was written against Grant's brief and
+                // reads far better than concatenating four columns. It was not
+                // being used at all -- the sheet always carried the mechanical
+                // fallback.
+                //
+                // formatProductTitle applies the three rules Grant gave on
+                // 28 Jul (strip articles, capitalise every word, drop the
+                // trailing period). It already existed in utils with no callers.
+                const aiTitle = String(norm.detailedDescription || norm.detailed_description || '').trim();
+                const rawTitle = aiTitle || `${shape} ${shortDesc} ${color} ${material}`;
+                let title = formatProductTitle(rawTitle.trim().replace(/\s+/g, ' '));
+                // Grant also asked for 60-70 characters. The prompt now targets
+                // that, but older rows were generated under the 80-char rule, so
+                // trim on a word boundary rather than shipping an over-long title
+                // or cutting mid-word.
+                if (title.length > 70) {
+                    const cut = title.slice(0, 70);
+                    const lastSpace = cut.lastIndexOf(' ');
+                    title = (lastSpace > 40 ? cut.slice(0, lastSpace) : cut).replace(/[\s\-,]+$/, '');
+                }
                 
                 const vendorMapping: Record<string, string> = {
                     'ET': 'Betoeduardo',
@@ -3441,8 +3462,17 @@ export function MainHeader() {
                 const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
                 const handle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || tagId.toLowerCase();
 
+                // Type: the AI classified this from the photograph against the
+                // agreed vocabulary, which beats keyword-matching the shape and
+                // description columns. Validated before use -- an unrecognised
+                // value is exactly what made the polish_type import fail, so a
+                // hallucinated type falls back to the keyword mapping instead of
+                // reaching the sheet.
                 const catAndType = getProductCategoryAndType(norm);
-                const finalType = catAndType.type;
+                const generatedType = norm.generatedType || norm.generated_type;
+                const finalType = isAllowedProductType(generatedType)
+                    ? String(generatedType).trim()
+                    : catAndType.type;
 
                 // Export 1 row per image
                 imageList.forEach((imgRaw, idx) => {
@@ -3482,7 +3512,7 @@ export function MainHeader() {
                         idx === 0 ? imageSrc : '',
                         weightLbs,
                         vendorSku,
-                        '',
+                        'g',   // Variant Weight Unit -- was empty; Variant Grams carries grams
                         depthIn,
                         widthIn,
                         heightIn,
