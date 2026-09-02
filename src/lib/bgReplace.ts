@@ -42,7 +42,7 @@ import { loadImage } from './utils';
  * atmospheric, raise colorExtractor's threshold in the same commit -- but note
  * that raising it costs dark stone, which is why the prompt moved instead.
  */
-export const BG_PROMPT_VERSION = 'dark-room-v5';
+export const BG_PROMPT_VERSION = 'dark-room-v6';
 
 export type BgQuality = '1K' | '2K';
 
@@ -131,6 +131,14 @@ export interface BgSubject {
  * backdrop, one bullet for the cardboard -- both phrased as things to draw.
  * Keep it that way: add scenery, not rules, and change one thing at a time.
  *
+ * v6 answers the inverse of the veining clause above it. That one stops the
+ * model reading dark stone as shadow; v6 stops it painting shadow onto stone.
+ * Frames and rings made it visible: the opening has to be filled with the
+ * dark room, and at that high-contrast boundary the fill bled outward into
+ * black blobs sitting on the onyx. Being generative, this is a tendency
+ * rather than a switch -- expect it to get rarer, not to vanish, and re-run
+ * the individual item when it appears.
+ *
  * v5 makes the backdrop a shallow depth-of-field room rather than a flat
  * sweep, which is a scene change and so the safe kind: photographic language
  * ("thrown far out of focus at a wide aperture") is something a model draws
@@ -154,6 +162,7 @@ export function buildDarkRoomPrompt(subject: BgSubject): string {
 Keep the subject exactly as photographed:
 - Reproduce it pixel-for-pixel. Do not restyle, retouch, straighten, recolour, relight or "improve" it.
 - Its natural veining, mineral banding and dark or near-black patches are STONE, not dirt or shadow. Preserve every one at its original tone.
+- The stone keeps its own colour all the way out to its outline. The dark room and its shadows stay behind the piece and outside it, never spilling onto its surface -- especially around mirror glass, openings and cut-outs, where the stone edge stays clean and unbroken.
 - Its rough, unpolished, chipped or bark-like outer edges are part of the piece. Never smooth, trim or tidy them.
 - If any part is translucent or lit from within, preserve that glow and its exact colour.
 - Keep every component: bases, arms, fittings, hardware, cabling, mirror glass and each separate piece in a set.
