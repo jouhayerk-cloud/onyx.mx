@@ -320,6 +320,58 @@ export const isGooglePhotos = (url: string) => {
   return url.toLowerCase().includes('photos.app.goo.gl') || url.toLowerCase().includes('photos.google.com');
 };
 
+/**
+ * Images for an OUTBOUND artefact -- the print catalogue and the Shopify
+ * sheet. Differs from collectAllImages in the two ways that only matter once
+ * a picture leaves the app:
+ *
+ *  - The AI-generated video is dropped. collectAllImages includes videoGen,
+ *    which is right for a gallery and wrong here: the PDF loader tries to
+ *    decode the .mp4 as an image and logs "All image loading strategies
+ *    failed", and Shopify rejects a row whose Image Src is a video.
+ *  - Each source photo is swapped for its background-replaced version when
+ *    one exists. PER IMAGE, not all-or-nothing: an item with three photos of
+ *    which one is cleaned exports that cleaned one plus the two originals.
+ *    The gallery's version of this returns only the cleaned subset and drops
+ *    the rest, which is survivable on screen and would silently shrink a
+ *    catalogue.
+ *
+ * processed_media_urls mixes two kinds of entry -- "_"-prefixed metadata and
+ * real image entries keyed by the source URL -- so the lookup must be by key,
+ * never by "the map is non-empty". See lib/aiContent.ts for why.
+ */
+export function collectExportImages(normData: any): string[] {
+  if (!normData) return [];
+
+  let processedMap: Record<string, any> = {};
+  const rawMedia = normData.processedMediaUrls || normData.processed_media_urls;
+  if (rawMedia) {
+    if (typeof rawMedia === 'object') {
+      processedMap = rawMedia as Record<string, any>;
+    } else {
+      const str = String(rawMedia).trim();
+      if (str.startsWith('{')) {
+        try { processedMap = JSON.parse(str) || {}; } catch (e) { /* leave empty */ }
+      }
+    }
+  }
+
+  const resolved = collectAllImages(normData)
+    .filter(url => !isVideoFile(url))
+    .map(url => {
+      // The map may be keyed by the raw URL or by its cleaned form, depending
+      // on which build wrote the row.
+      const hit = processedMap[url];
+      if (typeof hit === 'string' && /^https?:\/\//i.test(hit)) {
+        return getCleanImageUrl(hit) || url;
+      }
+      return url;
+    })
+    .filter(Boolean) as string[];
+
+  return Array.from(new Set(resolved));
+}
+
 export async function generateVideoThumbnail(videoSrc: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
