@@ -25,7 +25,7 @@ import {
 import toast from 'react-hot-toast';
 import { RareEarthLogoBase64 } from './RareEarthLogoBase64';
 import { ART_OF_DECOR_LOGO } from '../../lib/artOfDecorLogo';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, collectAllImages, toTitleCase } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, collectAllImages, collectExportImages, toTitleCase } from '../../lib/utils';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
@@ -920,7 +920,7 @@ export const LabelWizard: React.FC = () => {
                     weightKg: parseFloat(d.weightKg) || 0,
                     costMxn: 0, 
                     costUsd: 0, 
-                    imageUrls: includeImages ? collectAllImages(d) : [],
+                    imageUrls: includeImages ? collectExportImages(d) : [],
                     tagColor: (vendors as any)[vendorPrefix]?.color || '#333', 
                     dbItemCount: Number(d.quantity || 1)
                 };
@@ -959,7 +959,7 @@ export const LabelWizard: React.FC = () => {
             const results: CatalogArtifact[] = selectedItems.map(item => ({
                 data: item.data,
                 codes: item.codes,
-                images: collectAllImages(item.normData),
+                images: collectExportImages(item.normData),
                 exportType: 'catalog'
             }));
 

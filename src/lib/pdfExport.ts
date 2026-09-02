@@ -118,9 +118,37 @@ async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor =
                 // trimTransparentCanvas may fail on tainted canvas, use original
             }
         }
-        
+
+        // Encode PNG only when the image actually carries transparency.
+        //
+        // This line used to be an unconditional toDataURL('image/png', 0.92) --
+        // and the quality argument is ignored for PNG, so every picture in
+        // every catalogue was embedded losslessly. jsPDF assembles the whole
+        // document by Array.join, so a big enough catalogue overflowed V8's
+        // maximum string length and threw "Invalid string length" from
+        // buildDocument, which surfaced as "Catalog generation failed".
+        //
+        // The extension cannot decide this. Background-replaced photos are
+        // served from /cleaned/*.png and are fully opaque, so testing the URL
+        // for "png" -- as the trim condition above still does -- would keep
+        // exactly the largest images lossless. So ask the pixels instead, and
+        // fall back to PNG if the canvas is tainted and refuses to be read.
+        let hasAlpha = true;
+        try {
+            const probe = canvas.getContext('2d', { willReadFrequently: true });
+            const px = probe?.getImageData(0, 0, canvas.width, canvas.height).data;
+            if (px) {
+                hasAlpha = false;
+                for (let i = 3; i < px.length; i += 4) {
+                    if (px[i] < 250) { hasAlpha = true; break; }
+                }
+            }
+        } catch (e) {
+            // Tainted canvas: keep the old lossless behaviour for this one image.
+        }
+
         return { 
-            dataUrl: canvas.toDataURL('image/png', 0.92), 
+            dataUrl: hasAlpha ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85), 
             w: Math.max(1, canvas.width), 
             h: Math.max(1, canvas.height),
             edgeColor: edgeColor

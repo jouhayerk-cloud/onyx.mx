@@ -112,7 +112,7 @@ import { WORKBOOK_IDS, type WorkbookId } from '../../lib/seasons';
 const OnyxBar: React.FC = () => null;
 
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -3389,7 +3389,10 @@ export function MainHeader() {
                 const widthIn = cmToIn(norm.widthCm);
                 const heightIn = cmToIn(norm.heightCm);
                 
-                const allImages = collectAllImages(norm);
+                // collectExportImages, not collectAllImages: the background-replaced
+                // photo where one exists, and never the generated .mp4, which
+                // Shopify rejects in an Image Src column.
+                const allImages = collectExportImages(norm);
                 const imageList = (allImages && allImages.length > 0) ? allImages : [''];
 
                 const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
@@ -3418,9 +3421,16 @@ export function MainHeader() {
 
                 const bodyHtml = norm.generatedDescription || norm.generated_description || generateFallbackMarketingHtml(norm);
 
+                // Colour, in falling order of how much we trust it: a manually
+                // entered list, then the AI's extracted dominant colours, then
+                // a guess from the material name. generatedColor was previously
+                // ignored here, so the sheet fell through to the guess for every
+                // item the batch had already measured.
                 let colorsStr = '';
                 if (norm.color && norm.color.includes(',')) {
                     colorsStr = norm.color;
+                } else if (norm.generatedColor && String(norm.generatedColor).trim()) {
+                    colorsStr = String(norm.generatedColor).trim();
                 } else {
                     colorsStr = getStoneStyleColors(material, `${shape} ${shortDesc}`, color).join(', ');
                 }
