@@ -32,6 +32,7 @@ import {
     calculateCodesAndPrices, 
     normalizeInventoryData, 
     getProductCategoryAndType,
+    SHOPIFY_PRODUCT_TYPES,
     formatProductTitle
 } from '../../lib/utils';
 import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2, Layers, Video, Maximize2, Image as ImageIcon, Wand2 } from 'lucide-react';
@@ -473,36 +474,38 @@ export const BatchProcessingWizard: React.FC = () => {
 Notice: These cylinder pendants are packed in SETS / BOXES against a black studio background, and this photo shows the exact items included in this specific Box Set.
 
 CRITICAL RULES FOR CYLINDER PENDANTS:
-1. "description": A highly descriptive product title (MAXIMUM 80 characters long). Do NOT use articles (a, an, the, and). Do NOT end with a period. (e.g., "Mexican Onyx Cylinder Pendant Light Fixtures - Box Set").
-2. "marketingDescription": A 1000 to 1200 character long marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium, engaging, and emphasize artisanal Mexican stone craftsmanship, translucency, and natural veining.
+1. "description": A product title of 60 to 70 characters, and NEVER longer than 70. Capitalize Every Word Like This. Do NOT use articles (a, an, the, and). Do NOT end with a period. (e.g., "Mexican Onyx Cylinder Pendant Light Fixtures - Box Set").
+2. "marketingDescription": A 600 to 750 character marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium and engaging, emphasizing artisanal Mexican stone craftsmanship, translucency and natural veining.
+   - Say each thing ONCE. Do not restate the title, the material or the colour after the opening sentence, and do not close with a summary of what you just said. Every sentence must add a fact or an image the reader did not already have.
    - You MUST COUNT the exact number of individual cylinder pieces visible in this photo (e.g. 9 pieces, 12 pieces, etc.) and state clearly early in the description: "This box set contains [X] pieces" (replacing [X] with the exact number of cylinders you counted in the image).
    - You MUST also mention later in the description that this set is part of a larger limited edition master collection (stating clearly: "${collectionTotal} items in this limited edition collection").
    - Emphasize how each cylinder in the set showcases unique natural veining and warm translucent glow when illuminated.
 3. "dominantColors": An array of 2 to 3 color names selected strictly from this allowed list: [Black, Blue, Bronze, Brown, Clear, Copper, Cream, Gold, Gray, Green, Iridescent, Multicolor, Orange, Pink, Purple, Rainbow, Red, Rose Gold, Silver, Tan, Turquoise/Aqua, White, Yellow].
-   - CRITICAL COLOR RULE: Completely IGNORE the black studio background cloth! NEVER include "Black" as a dominant color for translucent cylinder pendants! Choose only the true natural stone colors (e.g. Cream, Tan, Brown, Amber/Orange, White, Green, etc.).
-4. Do NOT use the word 'lamp'. ALL fixtures MUST be described as 'Luminarie' or 'Luminaries' or 'Light Fixtures'.
-5. "generatedType": Choose ONE category strictly from this allowed list: [Barware > Wine Stoppers, Bathtubs, Board Games > Chess Sets, Home Decor > Candleholders, Home Decor > Coasters, Home Decor > Decorative Bowls, Home Decor > Decorative Plates, Home Decor > Decorative Trays, Home Decor > Floor Lamps, Home Decor > Mirrors, Home Decor > Pendant Lights, Home Decor > Sculptures, Home Decor > Sinks, Home Decor > Table Lamps, Home Decor > Tables, Home Decor > Vases, Home Decor > Wall Panels, Home Decor > Wine Racks, Outdoor Decor > Fountains]. CRITICAL RULE: Canoes, canoe dishes, or canoe bowls MUST be classified as "Home Decor > Decorative Trays". For Cylinder Pendants, always choose "Home Decor > Pendant Lights".
+   - CRITICAL COLOR RULE: Completely IGNORE the black studio background cloth! NEVER include "Black" as a dominant color for translucent cylinder pendants! Choose only the true natural stone colors (e.g. Cream, Tan, Brown, Orange, White, Green, etc.).
+4. Do NOT use the word 'lamp'. ALL fixtures MUST be described as 'Luminary' or 'Luminaries' or 'Light Fixtures'.
+5. "generatedType": Choose ONE category strictly from this allowed list: [${SHOPIFY_PRODUCT_TYPES.join(', ')}]. CRITICAL RULE: Canoes, canoe dishes, or canoe bowls MUST be classified as "Home Decor > Decorative Trays". For Cylinder Pendants, always choose "Home Decor > Pendant Lights".
 
 Return ONLY valid JSON in this exact structure, with no markdown formatting:
 {
   "description": "Your short title-style description here...",
-  "marketingDescription": "<p>Your 1000-1200 character HTML marketing description here...</p>",
+  "marketingDescription": "<p>Your 600-750 character HTML marketing description here...</p>",
   "dominantColors": ["Color1", "Color2"],
   "generatedType": "Home Decor > Pendant Lights"
 }` : `FIND the ${material} ${shape} ${type}. 
 Generate comprehensive catalog content for this item based on its features, shape, material (${material}), and color (${color}).
 
 CRITICAL RULES:
-1. "description": A highly descriptive product title (MAXIMUM 80 characters long). Do NOT use articles (a, an, the, and). Do NOT end with a period.
-2. "marketingDescription": A 1000 to 1200 character long marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium, engaging, and emphasize artisanal Mexican stone craftsmanship, translucency, and natural veining.
+1. "description": A product title of 60 to 70 characters, and NEVER longer than 70. Capitalize Every Word Like This. Do NOT use articles (a, an, the, and). Do NOT end with a period.
+2. "marketingDescription": A 600 to 750 character marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium and engaging, emphasizing artisanal Mexican stone craftsmanship, translucency and natural veining.
+   - Say each thing ONCE. Do not restate the title, the material or the colour after the opening sentence, and do not close with a summary of what you just said. Every sentence must add a fact or an image the reader did not already have.
 3. "dominantColors": An array of 2 to 3 color names selected strictly from this allowed list: [Black, Blue, Bronze, Brown, Clear, Copper, Cream, Gold, Gray, Green, Iridescent, Multicolor, Orange, Pink, Purple, Rainbow, Red, Rose Gold, Silver, Tan, Turquoise/Aqua, White, Yellow].
-4. Do NOT use the word 'lamp'. ALL lamps MUST be described as 'Luminarie' or 'Luminaries'.
-5. "generatedType": Choose ONE category strictly from this allowed list: [Barware > Wine Stoppers, Bathtubs, Board Games > Chess Sets, Home Decor > Candleholders, Home Decor > Coasters, Home Decor > Decorative Bowls, Home Decor > Decorative Plates, Home Decor > Decorative Trays, Home Decor > Floor Lamps, Home Decor > Mirrors, Home Decor > Pendant Lights, Home Decor > Sculptures, Home Decor > Sinks, Home Decor > Table Lamps, Home Decor > Tables, Home Decor > Vases, Home Decor > Wall Panels, Home Decor > Wine Racks, Outdoor Decor > Fountains]. CRITICAL RULE: Canoes, canoe dishes, or canoe bowls MUST be classified as "Home Decor > Decorative Trays".
+4. Do NOT use the word 'lamp'. ALL lamps MUST be described as 'Luminary' or 'Luminaries'.
+5. "generatedType": Choose ONE category strictly from this allowed list: [${SHOPIFY_PRODUCT_TYPES.join(', ')}]. CRITICAL RULE: Canoes, canoe dishes, or canoe bowls MUST be classified as "Home Decor > Decorative Trays".
 
 Return ONLY valid JSON in this exact structure, with no markdown formatting:
 {
   "description": "Your short title-style description here...",
-  "marketingDescription": "<p>Your 1000-1200 character HTML marketing description here...</p>",
+  "marketingDescription": "<p>Your 600-750 character HTML marketing description here...</p>",
   "dominantColors": ["Color1", "Color2"],
   "generatedType": "Home Decor > Decorative Bowls"
 }`;
