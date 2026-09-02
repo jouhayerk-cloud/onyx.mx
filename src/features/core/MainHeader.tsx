@@ -112,6 +112,7 @@ import { WORKBOOK_IDS, type WorkbookId } from '../../lib/seasons';
 const OnyxBar: React.FC = () => null;
 
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
+import { missingShopifyFields, SHOPIFY_REQUIRED_FIELDS, type ShopifyField } from '../../lib/aiContent';
 import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
@@ -3330,10 +3331,23 @@ export function MainHeader() {
             
             const bookRate = exchangeRate || DEFAULT_EXCHANGE_RATE;
             const shippedItems = inventory.filter((item: any) => selectedIds.includes(item.row));
-            
+
+            // Split the selection: only items whose generated content is
+            // complete go to Shopify. The rest are written to a Workbook V2
+            // sheet in the same file, so nothing selected is silently dropped
+            // and it is obvious what still needs a batch run.
+            const readyItems: any[] = [];
+            const notReadyItems: { item: any; missing: ShopifyField[] }[] = [];
+            shippedItems.forEach((item: any) => {
+                const n = normalizeInventoryData(item.data || item);
+                const missing = missingShopifyFields(n);
+                if (missing.length === 0) readyItems.push(item);
+                else notReadyItems.push({ item, missing });
+            });
+
             const allExportRows: any[][] = [];
 
-            shippedItems.forEach((item: any) => {
+            readyItems.forEach((item: any) => {
                 const rawData = item.data || item;
                 const norm = normalizeInventoryData(rawData);
                 const calc = calculateCodesAndPrices(norm, bookRate, '326');
@@ -3563,10 +3577,165 @@ export function MainHeader() {
             
             allExportRows.forEach(r => sheet.addRow(sanitizeExcelRow(r)));
 
+            // --- SHEET 2: items not ready for Shopify, in Workbook V2 format ---
+            // Flat: one sheet covering every vendor, unlike the V2 master export
+            // which splits per vendor. This sheet answers a single question --
+            // what is still missing -- and splitting it would only bury that.
+            const v2Sheet = workbook.addWorksheet('Not Shopify Ready (V2)', {
+                properties: { tabColor: { argb: 'FFF59E0B' } }
+            });
+
+            const v2MaxImages = notReadyItems.reduce((mx, entry) => {
+                const urls = collectExportImages(normalizeInventoryData(entry.item.data || entry.item));
+                return Math.max(mx, urls.length);
+            }, 1);
+
+            const v2Cols: any[] = [
+                { header: 'Date', key: 'date', width: 12 },
+                { header: 'Shape Type', key: 'shape_type', width: 20 },
+                { header: 'Colo Material', key: 'color_material', width: 20 },
+                { header: 'Tag - ID with LC', key: 'tag_id', width: 22 },
+                { header: 'Quantity', key: 'quantity', width: 10 },
+                { header: 'Weight', key: 'weight', width: 10 },
+                { header: 'H Cm', key: 'height_cm', width: 12 },
+                { header: 'W cm', key: 'width_cm', width: 12 },
+                { header: 'D cm', key: 'depth_cm', width: 12 },
+                { header: 'Pounds', key: 'pounds', width: 10 },
+                { header: 'L inch', key: 'height_in', width: 12 },
+                { header: 'W Inch', key: 'width_in', width: 12 },
+                { header: 'D Inch', key: 'depth_in', width: 12 },
+                { header: 'Per Piece Pesos', key: 'price_mxn', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'Total in Pesos', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'Per Piece US$', key: 'price_usd', width: 18, style: { numFmt: '#,##0.00' } },
+                { header: 'Total in US$ Dollars', key: 'total_usd', width: 20, style: { numFmt: '#,##0.00' } },
+                { header: 'ACQ Code', key: 'acq_code', width: 12 },
+                { header: 'LND Code', key: 'landed_code', width: 12 },
+                { header: 'Missing For Shopify', key: 'missing', width: 34 },
+            ];
+            for (let k = 1; k <= v2MaxImages; k++) {
+                v2Cols.push({ header: 'Image ' + k, key: 'image_' + k, width: 15 });
+            }
+            v2Sheet.columns = v2Cols;
+            v2Sheet.getRow(1).font = { bold: true };
+
+            const labelFor = (keys: ShopifyField[]) =>
+                keys.map(k => (SHOPIFY_REQUIRED_FIELDS.find(f => f.key === k) || { label: k }).label).join(', ');
+
+            notReadyItems.forEach((entry) => {
+                const item = entry.item;
+                const itemData = item.data || item;
+                const n2 = normalizeInventoryData(itemData);
+                const c2 = calculateCodesAndPrices(n2, bookRate, '326');
+
+                const qty = parseInt(itemData.quantity || '1', 10) || 1;
+                const priceMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
+                const totalMxn = Math.round(priceMxn * qty);
+                const rawDateVal = itemData.created_at || itemData.createdAt || item.created_at || Date.now();
+
+                const hCm = itemData.Height || itemData.height || itemData.heightCm || itemData.height_cm || '';
+                const wCm = itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm || '';
+                const dCm = itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || '';
+                const kg  = itemData.WEIGHT || itemData.weightKg || itemData.weight_kg || itemData.weight;
+
+                const v2Row: any = {
+                    date: new Date(rawDateVal).toLocaleDateString('en-US'),
+                    shape_type: ((itemData.shape || '') + ' ' + (itemData.type || itemData.shortDescription || '')).trim().toUpperCase(),
+                    color_material: ((itemData.color || '') + ' ' + (itemData.material || '')).trim().toUpperCase(),
+                    tag_id: c2.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '',
+                    quantity: qty,
+                    weight: kg || '',
+                    height_cm: hCm,
+                    width_cm: wCm,
+                    depth_cm: dCm,
+                    pounds: itemData.weightLbs || itemData.weight_lbs || kgToLbs(kg),
+                    height_in: itemData.heightIn || itemData.height_in || cmToIn(hCm),
+                    width_in: itemData.widthIn || itemData.width_in || cmToIn(wCm),
+                    depth_in: itemData.depthIn || itemData.depth_in || cmToIn(dCm),
+                    price_mxn: priceMxn,
+                    total_mxn: totalMxn,
+                    price_usd: priceMxn / bookRate,
+                    total_usd: totalMxn / bookRate,
+                    acq_code: c2.bookAqCode || '-',
+                    landed_code: c2.bookLandCode || '-',
+                    missing: labelFor(entry.missing),
+                };
+
+                const urls = collectExportImages(n2);
+                for (let k = 0; k < v2MaxImages; k++) {
+                    v2Row['image_' + (k + 1)] = urls[k]
+                        ? { formula: 'HYPERLINK("' + urls[k] + '", "View Image ' + (k + 1) + '")' }
+                        : '';
+                }
+                v2Sheet.addRow(v2Row);
+            });
+
+            // --- SHEET 3: report ---
+            const repSheet = workbook.addWorksheet('Report', {
+                properties: { tabColor: { argb: 'FF4F46E5' } }
+            });
+            repSheet.columns = [
+                { header: '', key: 'a', width: 28 },
+                { header: '', key: 'b', width: 42 },
+                { header: '', key: 'c', width: 26 },
+                { header: '', key: 'd', width: 42 },
+            ];
+
+            const missingCounts = SHOPIFY_REQUIRED_FIELDS.map(f => ({
+                label: f.label,
+                n: notReadyItems.filter(x => x.missing.indexOf(f.key) !== -1).length,
+            }));
+
+            const summary: any[][] = [
+                ['Shopify Export Report', ''],
+                ['Generated', new Date().toLocaleString('es-MX')],
+                ['', ''],
+                ['Items selected', shippedItems.length],
+                ['Shopify ready', readyItems.length],
+                ['Not ready (Workbook V2)', notReadyItems.length],
+                ['Shopify rows written', allExportRows.length],
+                ['', ''],
+                ['Held back by', 'items'],
+            ];
+            missingCounts.forEach(m => summary.push([m.label, m.n]));
+
+            summary.forEach((pair, i) => {
+                const r = repSheet.addRow({ a: pair[0], b: pair[1] });
+                if (i === 0) r.font = { bold: true, size: 14 };
+                else if (pair[0] === 'Held back by' || pair[0] === 'Items selected') r.font = { bold: true };
+            });
+
+            repSheet.addRow({});
+            const hdr = repSheet.addRow({ a: 'Tag ID', b: 'Shape / Type', c: 'Destination', d: 'Missing for Shopify' });
+            hdr.font = { bold: true };
+            hdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+
+            const describeItem = (item: any) => {
+                const d = item.data || item;
+                const nn = normalizeInventoryData(d);
+                const cc = calculateCodesAndPrices(nn, bookRate, '326');
+                return {
+                    tag: cc.bookBarcode || d.book_barcode || d.itemId || d.item_id || item.label || '',
+                    shape: ((d.shape || '') + ' ' + (d.type || d.shortDescription || '')).trim(),
+                };
+            };
+            readyItems.forEach((item: any) => {
+                const info = describeItem(item);
+                repSheet.addRow({ a: info.tag, b: info.shape, c: 'Shopify Export', d: '-' });
+            });
+            notReadyItems.forEach((entry) => {
+                const info = describeItem(entry.item);
+                repSheet.addRow({
+                    a: info.tag,
+                    b: info.shape,
+                    c: 'Not Shopify Ready (V2)',
+                    d: labelFor(entry.missing),
+                });
+            });
+
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveAs(new Blob([buffer]), `Shopify_Export_${dateStr}.xlsx`);
-            toast.success('Shopify Export Ready', { icon: '🛍️' });
+            toast.success(`Shopify Export Ready — ${readyItems.length} ready, ${notReadyItems.length} to V2`, { icon: '🛍️' });
         } catch (error) {
             console.error('Shopify Export failed:', error);
             toast.error('Shopify Export Failed');

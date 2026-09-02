@@ -168,3 +168,48 @@ export const countContent = (rows: any[]): Record<ContentKey, number> => {
  */
 export const needsImageCleanup = (d: any): boolean =>
     filled(d?.mediaUrls ?? d?.media_urls) && !hasCleanedImage(d);
+
+/**
+ * Is an item ready to become a Shopify product?
+ *
+ * The bar agreed with Ramses on 2026-09-01: all four generated fields must be
+ * present -- title, body, colour and type. Stricter than "has any AI content",
+ * deliberately. A row that reaches Matrixify with an empty Title or Body is
+ * what produced the earlier import rejections, and a missing type falls back
+ * to keyword matching that may not agree with what the photograph shows.
+ *
+ * Measured across all 497 production rows on 2026-09-01: 97 pass. 181 have a
+ * title and body, so 84 are held back by generated_type alone -- running the
+ * batch's type classification over those would nearly triple what reaches
+ * Shopify, which is worth knowing before anyone concludes the bar is too high.
+ */
+export type ShopifyField = 'title' | 'body' | 'color' | 'type';
+
+export const SHOPIFY_REQUIRED_FIELDS: { key: ShopifyField; label: string }[] = [
+    { key: 'title', label: 'AI Title' },
+    { key: 'body',  label: 'Body (HTML)' },
+    { key: 'color', label: 'Colour' },
+    { key: 'type',  label: 'Product Type' },
+];
+
+const hasShopifyField = (d: any, key: ShopifyField): boolean => {
+    const map = readMap(d);
+    switch (key) {
+        case 'title': return read(d, 'detailedDescription', 'detailed_description');
+        case 'body':  return read(d, 'generatedDescription', 'generated_description',
+                                     'marketingDescription', 'marketing_description');
+        // Both of these are also mirrored into the processed-media map by the
+        // batch, and normalizeInventoryData reads them back from there, so the
+        // map is checked too rather than trusting the column alone.
+        case 'color': return read(d, 'generatedColor', 'generated_color') || filled(map['_generated_color']);
+        case 'type':  return read(d, 'generatedType', 'generated_type') || filled(map['_generated_type']);
+        default:      return false;
+    }
+};
+
+/** Which of the four required fields this item is still missing. */
+export const missingShopifyFields = (d: any): ShopifyField[] =>
+    SHOPIFY_REQUIRED_FIELDS.map(f => f.key).filter(k => !hasShopifyField(d, k));
+
+/** True when every required generated field is present. */
+export const isShopifyReady = (d: any): boolean => missingShopifyFields(d).length === 0;
