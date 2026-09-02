@@ -2123,6 +2123,27 @@ export function getProductCategoryAndType(item: any): { category: string, type: 
     return { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Sculptures' }; 
 }
 
+/**
+ * Client vocabulary corrections, applied to generated text on its way out.
+ *
+ * Grant asked on 21 Jul for "Luminarie" to be spelled "Luminary". Fixing the
+ * batch prompt only helps rows generated after the fix -- 79 rows already in
+ * the table carry the misspelling and would keep shipping it to Shopify and
+ * into the printed catalogue until every one of them is regenerated. So the
+ * correction is applied at the point of use as well.
+ *
+ * "Luminaries" is left alone: it is already the correct plural of Luminary,
+ * and the word boundary after "Luminarie" is what keeps this from turning it
+ * into "Luminarys".
+ */
+export function normalizeBrandTerms(text: string): string {
+    if (!text) return '';
+    return String(text)
+        .replace(/\bLUMINARIE\b/g, 'LUMINARY')
+        .replace(/\bLuminarie\b/g, 'Luminary')
+        .replace(/\bluminarie\b/g, 'luminary');
+}
+
 export function formatProductTitle(title: string): string {
     if (!title) return '';
     let formatted = title;
