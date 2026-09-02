@@ -42,7 +42,7 @@ import { loadImage } from './utils';
  * atmospheric, raise colorExtractor's threshold in the same commit -- but note
  * that raising it costs dark stone, which is why the prompt moved instead.
  */
-export const BG_PROMPT_VERSION = 'dark-room-v4';
+export const BG_PROMPT_VERSION = 'dark-room-v5';
 
 export type BgQuality = '1K' | '2K';
 
@@ -131,6 +131,13 @@ export interface BgSubject {
  * backdrop, one bullet for the cardboard -- both phrased as things to draw.
  * Keep it that way: add scenery, not rules, and change one thing at a time.
  *
+ * v5 makes the backdrop a shallow depth-of-field room rather than a flat
+ * sweep, which is a scene change and so the safe kind: photographic language
+ * ("thrown far out of focus at a wide aperture") is something a model draws
+ * well. Two things kept it safe. It stays "near-black" for the reason below,
+ * and it says the piece stays sharp -- a wide aperture on a piece this large
+ * is otherwise an invitation to blur its own far edge.
+ *
  * "near-black" is also a contract with colorExtractor.ts, which drops
  * background pixels at <= RGB 45. Charcoal sits just above that line, so the
  * backdrop was being measured as the stone's colour. If you make the
@@ -152,7 +159,7 @@ Keep the subject exactly as photographed:
 - Keep every component: bases, arms, fittings, hardware, cabling, mirror glass and each separate piece in a set.
 
 Replace the surroundings with an empty dark studio room:
-- A seamless, unlit near-black studio room with a soft floor-to-wall falloff behind the subject.
+- Behind the subject, a large empty near-black room receding into deep shadow, thrown far out of focus as if photographed at a wide aperture: smooth and soft, the far wall and floor dissolving into darkness. Keep the piece itself sharp from front to back.
 - The piece is usually standing on flattened cardboard boxes or packing sheets. Those are floor covering, not part of the piece: put the studio floor in their place at the height the piece already rests at, so it stands directly on the floor.
 - Add a soft contact shadow where the piece meets the floor, consistent with the existing lighting direction.
 - Remove all props, packing material, cardboard, pallets, tools, people, hands, text and watermarks.
