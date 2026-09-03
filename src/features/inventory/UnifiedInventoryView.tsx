@@ -400,12 +400,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         const net = p.amount || 0;
                         const fees = p.commission || 0;
                         const total = net + fees;
-                        const format = (val: number) => showFinancials ? `$${val.toLocaleString("en-US")}` : '***';
+                        const format = (val: number) => showFinancials ? `$${val.toLocaleString(tr("en-US"))}` : '***';
 
                         return (
                             <div key={p.id} className="payment-row flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-3 rounded-xl bg-(--text-color)/5 border border-(--border-color) transition-all hover:bg-(--text-color)/10">
                                 <div className="flex flex-col min-w-[120px]">
-                                    <span className="text-[11px] text-(--text-color) font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : tr("Unknown Date")}</span>
+                                    <span className="text-[11px] text-(--text-color) font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric', year: 'numeric' }) : tr("Unknown Date")}</span>
                                     <span className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${p.status === 'Paid' ? 'text-green-400' : p.status === 'Requested' ? 'text-yellow-400' : 'text-sky-400'}`}>{p.status || 'New'}</span>
                                 </div>
                                 <div className="flex items-center gap-6 sm:gap-12 w-full sm:w-auto no-scrollbar justify-between sm:justify-end">
@@ -963,7 +963,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none">
                                     {deployedInfo.manifestId
                                         ? deployedInfo.manifestId.replace(tr("TRK-"), tr("TRK·"))
-                                        : `TRK·${new Date(deployedInfo.date).toLocaleDateString("en-US", { month: 'short', year: '2-digit' })}`
+                                        : `TRK·${new Date(deployedInfo.date).toLocaleDateString(tr("en-US"), { month: 'short', year: '2-digit' })}`
                                     }
                                 </span>
                             </div>
@@ -1073,7 +1073,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none">
                                 {deployedInfo.manifestId
                                     ? deployedInfo.manifestId.replace(tr("TRK-"), tr("TRK·"))
-                                    : `TRK·${new Date(deployedInfo.date).toLocaleDateString("en-US", { month: 'short', year: '2-digit' })}`
+                                    : `TRK·${new Date(deployedInfo.date).toLocaleDateString(tr("en-US"), { month: 'short', year: '2-digit' })}`
                                 }
                             </span>
                         </div>

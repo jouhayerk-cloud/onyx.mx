@@ -197,7 +197,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     <Languages size={26} className={language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')} />
                                                 </button>
                                                 <span className={`tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none ${language === 'es' ? 'text-(--main-color)' : (L ? 'text-black/40' : 'text-white/40')}`}>
-                                                    {language === 'es' ? 'ES' : 'EN'}
+                                                    {language === 'es' ? tr("ES") : tr("EN")}
                                                 </span>
                                             </div>
                                             <div className="tool-cell flex flex-col items-center gap-1.5">

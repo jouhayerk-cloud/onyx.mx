@@ -119,7 +119,7 @@ export const WorkbookCratesView: React.FC = () => {
                                 <div className="text-right">
                                     <div className="text-[10px] text-white/30 uppercase">{tr("Date")}</div>
                                     <div className="text-xs font-mono text-white/60">
-                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString("es-MX") : String(item.date)) : '-'}
+                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString(tr("es-MX")) : String(item.date)) : '-'}
                                     </div>
                                 </div>
                             </div>

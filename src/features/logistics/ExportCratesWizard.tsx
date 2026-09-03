@@ -106,7 +106,7 @@ export const ExportCratesWizard: React.FC<{
     };
 
     const generatePackingListXlsx = async () => {
-        const tid = toast.loading('Generating XLSX Packing List...');
+        const tid = toast.loading(tr("Generating XLSX Packing List..."));
         setProgress(p => ({ ...p, xlsx: 5 }));
         try {
             const wb = new ExcelJS.Workbook();
@@ -181,10 +181,10 @@ export const ExportCratesWizard: React.FC<{
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             setUrls(u => ({ ...u, xlsx: URL.createObjectURL(blob) }));
             setProgress(p => ({ ...p, xlsx: 100 }));
-            toast.success('Packing List Ready', { id: tid });
+            toast.success(tr("Packing List Ready"), { id: tid });
         } catch (err: any) {
             setProgress(p => ({ ...p, xlsx: -1 }));
-            toast.error('Failed to generate XLSX', { id: tid });
+            toast.error(tr("Failed to generate XLSX"), { id: tid });
         }
     };
 
@@ -252,14 +252,14 @@ export const ExportCratesWizard: React.FC<{
             const allData = [...cratesData, ...cardboardData];
             
             if (allData.length === 0) {
-                toast.error('No valid crates to export');
+                toast.error(tr("No valid crates to export"));
                 setProgress(p => ({ ...p, allCrates: -1 }));
                 return;
             }
 
             const blob = await exportCombinedTruckManifesto(null, allData, pct => setProgress(p => ({ ...p, allCrates: Math.round(pct) })), 'blob') as Blob;
             if (blob) { setUrls(u => ({ ...u, allCrates: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, allCrates: 100 })); }
-        } catch (err: any) { setProgress(p => ({ ...p, allCrates: -1 })); toast.error('PDF export failed'); }
+        } catch (err: any) { setProgress(p => ({ ...p, allCrates: -1 })); toast.error(tr("PDF export failed")); }
     };
 
     const generateHtml = async () => {
@@ -319,7 +319,7 @@ export const ExportCratesWizard: React.FC<{
             }
         } catch (err: any) { 
             setProgress(p => ({ ...p, html: -1 })); 
-            toast.error('HTML Generation failed'); 
+            toast.error(tr("HTML Generation failed")); 
         }
     };
 

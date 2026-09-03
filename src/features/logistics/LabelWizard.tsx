@@ -736,7 +736,7 @@ export const LabelWizard: React.FC = () => {
 
     const handlePrintBluetooth = async (isReprint = false) => {
         setProgress(p => ({ ...p, printer: 5 }));
-        const tid = toast.loading('Generating dynamic 3D structures for labels...');
+        const tid = toast.loading(tr("Generating dynamic 3D structures for labels..."));
         try {
             const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix, activeLabelSize, logoVariant);
             try {
@@ -746,7 +746,7 @@ export const LabelWizard: React.FC = () => {
             }
             pendingBatchRef.current = batchProject;
             setProgress(p => ({ ...p, printer: 100 }));
-            toast.success('Batch Prepared! Launching Print Engine', { id: tid });
+            toast.success(tr("Batch Prepared! Launching Print Engine"), { id: tid });
 
             // Hold the job until the engine confirms it printed. Stamping here
             // would record every opened wizard as a printed tag, which is the
@@ -889,7 +889,7 @@ export const LabelWizard: React.FC = () => {
             if (blob instanceof Blob) {
                 setUrls(u => ({ ...u, xlsx: URL.createObjectURL(blob) }));
                 setProgress(p => ({ ...p, xlsx: 100 }));
-                toast.success('XLSX generated');
+                toast.success(tr("XLSX generated"));
             } else {
                 throw new Error('XLSX generation failed');
             }
@@ -942,14 +942,14 @@ export const LabelWizard: React.FC = () => {
             if (blob instanceof Blob) {
                 setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
                 setProgress(p => ({ ...p, pdf: 100 }));
-                toast.success('Control Page generated');
+                toast.success(tr("Control Page generated"));
             } else {
                 throw new Error('PDF generation failed to produce a valid file');
             }
         } catch (e) {
             console.error(e);
             setProgress(p => ({ ...p, pdf: -1 }));
-            toast.error('Control Page failed');
+            toast.error(tr("Control Page failed"));
         }
     };
 
@@ -975,14 +975,14 @@ export const LabelWizard: React.FC = () => {
             if (blob instanceof Blob) {
                 setUrls(u => ({ ...u, catalog: URL.createObjectURL(blob) }));
                 setProgress(p => ({ ...p, catalog: 100 }));
-                toast.success('Catalog generated');
+                toast.success(tr("Catalog generated"));
             } else {
                 throw new Error('Catalog generation failed');
             }
         } catch (e) {
             console.error(e);
             setProgress(p => ({ ...p, catalog: -1 }));
-            toast.error('Catalog generation failed');
+            toast.error(tr("Catalog generation failed"));
         }
     };
 

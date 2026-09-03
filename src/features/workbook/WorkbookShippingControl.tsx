@@ -503,7 +503,7 @@ export const WorkbookShippingControl = ({ isVisible }: { isVisible: boolean }) =
 
 
     const handleExportPackingList = async () => {
-        if (crates.length === 0) return toast.error("No crates to export.");
+        if (crates.length === 0) return toast.error(tr("No crates to export."));
         const dataForExport: any[][] = [];
         const styles: { [key: string]: { bgColor?: string, bold?: boolean, textColor?: string } } = {};
         dataForExport.push(['Crate ID', 'Vendor', 'Item ID', 'Shape', 'Material', 'Dimensions (cm)', 'Weight (kg)', 'Barcode', 'Color']);

@@ -1167,7 +1167,7 @@ Instructions:
     const handleExportDatabase = async () => {
         const completedOps = queue.filter(op => op.status === 'completed');
         if (completedOps.length === 0) {
-            toast.error('No completed items to export.');
+            toast.error(tr("No completed items to export."));
             return;
         }
 
@@ -1363,7 +1363,7 @@ Instructions:
                 setOverallProgress((savedCount / entries.length) * 100);
             }
             
-            toast.success('Saved successfully to database!', { id: toastId });
+            toast.success(tr("Saved successfully to database!"), { id: toastId });
             setInventoryVersion(Date.now());
             setHasUnsavedChanges(false);
         } catch (e: any) {
@@ -1526,9 +1526,9 @@ Instructions:
     };
 
     const handleGenerateXLSX = async () => {
-        if (!allCompleted || hasUnsavedChanges) { toast.error("Please export to database first."); return; }
+        if (!allCompleted || hasUnsavedChanges) { toast.error(tr("Please export to database first.")); return; }
         setIsGeneratingXlsx(true);
-        const toastId = toast.loading('Generating Shopify XLSX...');
+        const toastId = toast.loading(tr("Generating Shopify XLSX..."));
         try {
             const { exportDataList } = buildExportContext();
             const workbook = new ExcelJS.Workbook();
@@ -1680,7 +1680,7 @@ Instructions:
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             setXlsxUrl(URL.createObjectURL(blob));
-            toast.success('XLSX generated! Click Download XLSX to save.', { id: toastId });
+            toast.success(tr("XLSX generated! Click Download XLSX to save."), { id: toastId });
         } catch (e: any) {
             toast.error(`XLSX Generation failed: ${e.message}`, { id: toastId });
             console.error(e);
@@ -1688,9 +1688,9 @@ Instructions:
     };
 
     const handleGeneratePDF = async () => {
-        if (!allCompleted || hasUnsavedChanges) { toast.error("Please export to database first."); return; }
+        if (!allCompleted || hasUnsavedChanges) { toast.error(tr("Please export to database first.")); return; }
         setIsGeneratingPdf(true);
-        const toastId = toast.loading('Generating Catalog PDF...');
+        const toastId = toast.loading(tr("Generating Catalog PDF..."));
         try {
             const { catalogResults } = buildExportContext();
             const dateStr = new Date().toISOString().split('T')[0];
@@ -1703,7 +1703,7 @@ Instructions:
 
             if (blob instanceof Blob) {
                 setPdfUrl(URL.createObjectURL(blob));
-                toast.success('PDF generated! Click Download PDF to save.', { id: toastId });
+                toast.success(tr("PDF generated! Click Download PDF to save."), { id: toastId });
             }
         } catch (e: any) {
             toast.error(`PDF Generation failed: ${e.message}`, { id: toastId });

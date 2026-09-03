@@ -517,4 +517,197 @@ export const esCatalog: Record<string, string> = {
     'Aprende lo básico del módulo de Inventario y sus funciones.',
   'Manage and track your products, edit items, and view collections.':
     'Gestiona y rastrea tus productos, edita artículos y consulta colecciones.',
+
+  // ── Trucking / trailer loading ───────────────────────────────────────────
+  // Absent on purpose, so they fall through unchanged: plate and ID example
+  // placeholders (TR-000, ABC-123-X, XYZ-789-Y, TRK-ID-000), the .truckload
+  // file extension, 53FT, SKU, ONYX CORE, ONYX-LOG-2.5, and the en-US locale.
+  'Trailer': 'Tráiler',
+  'Tractor': 'Tractor',
+  'Tractor Number': 'Número de Tractor',
+  'Trailer Number': 'Número de Tráiler',
+  'Trailer Plates': 'Placas del Tráiler',
+  'Truck Plates': 'Placas del Camión',
+  'Seal Number': 'Número de Sello',
+  'NO PLATES': 'SIN PLACAS',
+  'Bulkhead': 'Mamparo',
+  'Floor': 'Piso',
+  'Rear Deck': 'Plataforma Trasera',
+  'FRONT (CAB)': 'FRENTE (CABINA)',
+  '◀ Rear': '◀ Atrás',
+  'Front ▶': 'Frente ▶',
+  'Trailer Matrix —': 'Matriz del Tráiler —',
+  'cm ×': 'cm ×',
+
+  // Loading actions
+  'Load': 'Cargar',
+  'Load Payload': 'Cargar Contenido',
+  'Load Weight': 'Peso de Carga',
+  'Load Previous': 'Cargar Anterior',
+  'Load Drafts': 'Cargar Borradores',
+  'Recall Load': 'Recuperar Carga',
+  'Flush Payload': 'Vaciar Contenido',
+  'Eject (Unload)': 'Expulsar (Descargar)',
+  'Back to Warehouse': 'Volver al Almacén',
+  'Reverting to Warehouse...': 'Regresando al Almacén...',
+  'Reverted to Warehouse': 'Regresado al Almacén',
+  'Failed to revert': 'No se pudo regresar',
+  'Nest Unit': 'Anidar Unidad',
+  'Successfully nested': 'Anidado con éxito',
+  'Stack on Top': 'Apilar Encima',
+  'Add Box': 'Agregar Caja',
+  'Select container for box': 'Selecciona el contenedor para la caja',
+  'No compatible containers available': 'No hay contenedores compatibles disponibles',
+  'Deselect': 'Deseleccionar',
+  'Unit': 'Unidad',
+  'Active Units': 'Unidades Activas',
+  'Total Payload': 'Carga Total',
+  'Estimated': 'Estimado',
+  'Vol': 'Vol',
+  'Vol:': 'Vol:',
+  'Liters': 'Litros',
+  'Weight KG': 'Peso KG',
+  'KG LOADED': 'KG CARGADOS',
+  'KG FREE': 'KG LIBRES',
+  'High Density': 'Alta Densidad',
+  'Balanced Load': 'Carga Balanceada',
+  'Axle Load Distribution': 'Distribución de Carga por Eje',
+  'Packing Items (Cardboard Boxes)': 'Artículos de Embalaje (Cajas de Cartón)',
+  'No extra packing items added': 'No se agregaron artículos de embalaje extra',
+  'BOX DESCRIPTION (E.G. TOOLS, WRAPPING...)':
+    'DESCRIPCIÓN DE LA CAJA (P. EJ. HERRAMIENTAS, EMBALAJE...)',
+
+  // Positioning
+  'Move Up': 'Mover Arriba',
+  'Move Down': 'Mover Abajo',
+  'Move Front': 'Mover al Frente',
+  'Move Rear': 'Mover Atrás',
+  'Transform (Rotate)': 'Transformar (Rotar)',
+  'Zoom Out': 'Alejar',
+
+  // Shipment lifecycle
+  'Dispatch': 'Despacho',
+  'Ready for In-Transit': 'Listo para Tránsito',
+  'Ready for Finalization Sequence': 'Listo para la Secuencia de Finalización',
+  'System Ready for Finalization': 'Sistema Listo para Finalizar',
+  'Validating shipment integrity...': 'Validando la integridad del embarque...',
+  'Synchronizing shipment data...': 'Sincronizando datos del embarque...',
+  'Shipment Live in Registry': 'Embarque Activo en el Registro',
+  'Shipment record deleted': 'Registro de embarque eliminado',
+  'Deleting shipment record...': 'Eliminando registro de embarque...',
+  'Failed to recall shipment': 'No se pudo recuperar el embarque',
+  'Save Truck': 'Guardar Camión',
+  'Trailer cleared': 'Tráiler vaciado',
+  'Crate updated': 'Caja actualizada',
+  'Update failed': 'La actualización falló',
+  'Updating': 'Actualizando',
+  'Building...': 'Construyendo...',
+  'Loading...': 'Cargando...',
+  'Generate': 'Generar',
+  'Import': 'Importar',
+  'Delete': 'Eliminar',
+  'Delete Record': 'Eliminar Registro',
+  'No Records': 'Sin Registros',
+  'No saved drafts': 'No hay borradores guardados',
+  'Draft Name': 'Nombre del Borrador',
+  'e.g. Monday AM Load': 'p. ej. Carga del lunes AM',
+  'Expand Fleet': 'Expandir Flota',
+  'Cancel Protocol': 'Cancelar Protocolo',
+
+  'Are you sure you want to clear all loaded units from the trailer?':
+    '¿Seguro que quieres quitar todas las unidades cargadas del tráiler?',
+  'Are you sure you want to finalize this shipment and synchronize with the cloud?':
+    '¿Seguro que quieres finalizar este embarque y sincronizarlo con la nube?',
+  'Are you sure you want to permanently delete this shipment record? This action cannot be undone.':
+    '¿Seguro que quieres eliminar permanentemente este registro de embarque? Esta acción no se puede deshacer.',
+
+  // 3D viewer / sharing
+  'View 3D': 'Ver en 3D',
+  'Launch 3D Viewer': 'Abrir el Visor 3D',
+  'Share 3D Visualizer': 'Compartir el Visor 3D',
+  'Onyx 3D Visualizer': 'Visor 3D de Onyx',
+  '3D Digital Mirror Created': 'Espejo Digital 3D Creado',
+  '3D Lidar Point-Cloud': 'Nube de Puntos Lidar 3D',
+  'Active Mirror Sync': 'Sincronización de Espejo Activa',
+  'Trailer Isometric': 'Isométrica del Tráiler',
+  'Visual Manifesto': 'Manifiesto Visual',
+  'Consolidated Manifesto': 'Manifiesto Consolidado',
+  'Trailer Packing List': 'Lista de Embalaje del Tráiler',
+  'Crate Spreadsheets': 'Hojas de Cálculo de Cajas',
+  'Exportation Wizard': 'Asistente de Exportación',
+  'Export as .truckload file (includes thumbnail)':
+    'Exportar como archivo .truckload (incluye miniatura)',
+  'Exports as .truckload - includes map thumbnail':
+    'Exporta como .truckload — incluye miniatura del mapa',
+  'Import a .truckload file': 'Importar un archivo .truckload',
+  'Import a .truckload file to get started':
+    'Importa un archivo .truckload para comenzar',
+  'Invalid .truckload file': 'Archivo .truckload inválido',
+  'COPY MANIFESTO LINK': 'COPIAR ENLACE DEL MANIFIESTO',
+  'Copy Share Link': 'Copiar Enlace para Compartir',
+  'Copy URL': 'Copiar URL',
+  'Cloud Registry Link': 'Enlace del Registro en la Nube',
+  'Registry Link Copied': 'Enlace del Registro Copiado',
+  'Public URL copied to clipboard': 'URL pública copiada al portapapeles',
+  'View Deployment': 'Ver Despliegue',
+  'View All Deployed Crates': 'Ver Todas las Cajas Desplegadas',
+  'No Individual Deployed Crates': 'Sin Cajas Desplegadas Individuales',
+  'Ready Trailer': 'Preparar Tráiler',
+  'VIEW': 'VER',
+  'OPEN': 'ABRIR',
+
+  // Protocol / status readouts
+  'Protocol ID': 'ID del Protocolo',
+  'Protocol Stable': 'Protocolo Estable',
+  'Manifest Clean': 'Manifiesto Limpio',
+  'Manifest Identity': 'Identidad del Manifiesto',
+  'Network Topology': 'Topología de Red',
+  'LOCK VERIFIED': 'BLOQUEO VERIFICADO',
+  'Advanced Logistics Protocol v2.5': 'Protocolo de Logística Avanzada v2.5',
+  'Onyx Logistics Protocol · Nesting v1.2': 'Protocolo de Logística Onyx · Anidado v1.2',
+  'Pending Dispatch · Registry Offline': 'Despacho Pendiente · Registro Sin Conexión',
+  'Sync Active · Publicly Accessible': 'Sincronización Activa · Accesible Públicamente',
+  'saved ·': 'guardado ·',
+
+  // ── AI batch image pipeline (background replacement) ─────────────────────
+  'Replacing background...': 'Reemplazando el fondo...',
+  'RE-CLEAN IMAGES': 'RE-LIMPIAR IMÁGENES',
+  'No images in the queue to re-clean.': 'No hay imágenes en la cola para re-limpiar.',
+  'All images queued for re-cleaning. Click START ENGINE to begin.':
+    'Todas las imágenes están en cola para re-limpieza. Pulsa START ENGINE para comenzar.',
+  'AI Batch Processing Complete!': '¡Procesamiento por Lote con IA Completado!',
+  'Image Processing OFF for all items (Using original images)':
+    'Procesamiento de Imágenes DESACTIVADO para todos los artículos (usando las imágenes originales)',
+  'Image Processing ON for all items (Masks enabled)':
+    'Procesamiento de Imágenes ACTIVADO para todos los artículos (máscaras habilitadas)',
+  'Finding masks to optimize...': 'Buscando máscaras para optimizar...',
+  'No masks found!': '¡No se encontraron máscaras!',
+  'All masks are already optimized!': '¡Todas las máscaras ya están optimizadas!',
+  'Generating Catalog PDF...': 'Generando el PDF del catálogo...',
+  'PDF generated! Click Download PDF to save.':
+    '¡PDF generado! Pulsa Descargar PDF para guardarlo.',
+  'Generating Shopify XLSX...': 'Generando el XLSX de Shopify...',
+  'Hexadecimal pixel map copied to clipboard!':
+    '¡Mapa de píxeles hexadecimal copiado al portapapeles!',
+  '1:1 Square crop applied!': '¡Recorte cuadrado 1:1 aplicado!',
+
+  // ── Export toasts ────────────────────────────────────────────────────────
+  // These fire from inside handleExportSelectedXLSX and friends. They are
+  // messages to the person at the screen, not content of the exported file —
+  // the workbook's own sheet names and headers stay English.
+  'No items selected': 'No hay artículos seleccionados',
+  'WorkBook Ready': 'Workbook Listo',
+  'Workbook V2 Ready': 'Workbook V2 Listo',
+  'Selected Items WorkBook Ready': 'Workbook de Artículos Seleccionados Listo',
+  'Ready Truck': 'Preparar Camión',
+  'Load Draft': 'Cargar Borrador',
+  'Processing...': 'Procesando...',
+  'Manifest Export Failed': 'La Exportación del Manifiesto Falló',
+  'Selected Items Export Failed': 'La Exportación de Artículos Seleccionados Falló',
+  'Shopify Export Failed': 'La Exportación a Shopify Falló',
+  'V2 Export Failed': 'La Exportación V2 Falló',
+  '% vol': '% vol',
+  '% wt': '% peso',
+  // VITE_GOOGLE_SHEETS_WEBHOOK... is a developer configuration error, not user
+  // copy — left untranslated on purpose.
 };

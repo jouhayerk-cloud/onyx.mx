@@ -1011,15 +1011,15 @@ const SideView: React.FC<{
                 {/* Header bar */}
                 <div className="flex items-center gap-6 mb-6 px-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
-                        <span className="w-1 h-1 rounded-full bg-white/20" /> {tr("Ã¢â€”â‚¬ Rear")}
+                        <span className="w-1 h-1 rounded-full bg-white/20" /> {tr("◀ Rear")}
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
                     <span className="text-[9px] font-black text-white/70 uppercase tracking-[0.6em] italic">
-                        {tr("Trailer Matrix Ã¢â‚¬â€")} {TRUCK_L_CM}{tr("cm Ãƒâ€”")} {TRUCK_H_CM}{tr("cm H")}
+                        {tr("Trailer Matrix —")} {TRUCK_L_CM}{tr("cm ×")} {TRUCK_H_CM}{tr("cm H")}
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
-                        {tr("Front Ã¢â€“Â¶")} <span className="w-1 h-1 rounded-full bg-white/20" />
+                        {tr("Front ▶")} <span className="w-1 h-1 rounded-full bg-white/20" />
                     </span>
                 </div>
                 {/* Selected crate toolbar */}
@@ -1711,7 +1711,7 @@ const NestingTargetModal: React.FC<{
                     ))}
                 </div>
                 <div className="p-6 border-t border-white/5 bg-black/20 flex justify-center">
-                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">{tr("Onyx Logistics Protocol Ã‚Â· Nesting v1.2")}</p>
+                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">{tr("Onyx Logistics Protocol · Nesting v1.2")}</p>
                 </div>
             </div>
         </div>
@@ -1960,12 +1960,12 @@ const TruckExportModal: React.FC<{
             setProgress(p => ({ ...p, manifesto: 100 }));
         } else {
             setProgress(p => ({ ...p, manifesto: -1 }));
-            toast.error('Failed to generate Excel file');
+            toast.error(tr("Failed to generate Excel file"));
         }
     };
 
     const generatePdf = async () => {
-        const tid = toast.loading('Generating consolidated trailer manifest...');
+        const tid = toast.loading(tr("Generating consolidated trailer manifest..."));
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
             const items = buildConsolidatedItems();
@@ -2043,7 +2043,7 @@ const TruckExportModal: React.FC<{
             if (blob) {
                 setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
                 setProgress(p => ({ ...p, pdf: 100 }));
-                toast.success('Manifest ready', { id: tid });
+                toast.success(tr("Manifest ready"), { id: tid });
             } else {
                 throw new Error('PDF Generation failed (empty blob)');
             }
@@ -2133,7 +2133,7 @@ const TruckExportModal: React.FC<{
             setProgress(p => ({ ...p, [key]: 100 }));
         } else {
             setProgress(p => ({ ...p, [key]: -1 }));
-            toast.error('Failed to generate combined PDF');
+            toast.error(tr("Failed to generate combined PDF"));
         }
     };
 
@@ -2184,7 +2184,7 @@ const TruckExportModal: React.FC<{
             setProgress(p => ({ ...p, packed: 100 }));
         } else {
             setProgress(p => ({ ...p, packed: -1 }));
-            toast.error('Failed to generate Excel files');
+            toast.error(tr("Failed to generate Excel files"));
         }
     };
 
@@ -2588,7 +2588,7 @@ const ReadyTruckWizard: React.FC<{
     };
 
     const generatePdf = async () => {
-        const tid = toast.loading('Building trailer packing list...');
+        const tid = toast.loading(tr("Building trailer packing list..."));
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
             const items = buildConsolidatedItems();
@@ -2647,12 +2647,12 @@ const ReadyTruckWizard: React.FC<{
                 packingItems: fields.packingItems
             };
             const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob') as Blob;
-            if (blob) { setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, pdf: 100 })); toast.success('Manifest ready', { id: tid }); }
+            if (blob) { setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, pdf: 100 })); toast.success(tr("Manifest ready"), { id: tid }); }
         } catch (err: any) { setProgress(p => ({ ...p, pdf: -1 })); toast.error(err.message || 'Failed', { id: tid }); }
     };
 
     const generatePackingListXlsx = async () => {
-        const tid = toast.loading('Generating XLSX Packing List...');
+        const tid = toast.loading(tr("Generating XLSX Packing List..."));
         setProgress(p => ({ ...p, xlsx: 5 }));
         try {
             const wb = new ExcelJS.Workbook();
@@ -2757,11 +2757,11 @@ const ReadyTruckWizard: React.FC<{
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             setUrls(u => ({ ...u, xlsx: URL.createObjectURL(blob) }));
             setProgress(p => ({ ...p, xlsx: 100 }));
-            toast.success('Packing List Ready', { id: tid });
+            toast.success(tr("Packing List Ready"), { id: tid });
         } catch (err: any) {
             console.error('[TruckExport] XLSX Error:', err);
             setProgress(p => ({ ...p, xlsx: -1 }));
-            toast.error('Failed to generate XLSX', { id: tid });
+            toast.error(tr("Failed to generate XLSX"), { id: tid });
         }
     };
 
@@ -2824,7 +2824,7 @@ const ReadyTruckWizard: React.FC<{
             };
             const blob = await exportCombinedTruckManifesto({ items: [], meta: trailerMeta }, cratesData, pct => setProgress(p => ({ ...p, allCrates: 10 + Math.round(pct * 0.9) })), 'blob') as Blob;
             if (blob) { setUrls(u => ({ ...u, allCrates: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, allCrates: 100 })); }
-        } catch (err: any) { setProgress(p => ({ ...p, allCrates: -1 })); toast.error('Combined PDF failed'); }
+        } catch (err: any) { setProgress(p => ({ ...p, allCrates: -1 })); toast.error(tr("Combined PDF failed")); }
     };
 
     const generateHtml = async () => {
@@ -2894,7 +2894,7 @@ const ReadyTruckWizard: React.FC<{
             }
         } catch (err: any) { 
             setProgress(p => ({ ...p, html: -1 })); 
-            toast.error('HTML Generation failed'); 
+            toast.error(tr("HTML Generation failed")); 
         }
     };
 
@@ -2950,11 +2950,11 @@ const ReadyTruckWizard: React.FC<{
                     <div className="flex flex-col gap-5">
                         <div className="grid grid-cols-2 gap-4">
                             {[
-                                { label: tr("Seal Number"), key: tr("sealNumber"), placeholder: 'S-0000000', icon: Shield },
-                                { label: tr("Tractor Number"), key: tr("tractorNumber"), placeholder: 'T-000', icon: IdCard },
-                                { label: tr("Truck Plates"), key: tr("truckPlates"), placeholder: tr("ABC-123-X"), icon: ClipboardCheck },
-                                { label: tr("Trailer Number"), key: tr("trailerNumber"), placeholder: tr("TR-000"), icon: Hash },
-                                { label: tr("Trailer Plates"), key: tr("trailerPlates"), placeholder: tr("XYZ-789-Y"), icon: FileText },
+                                { label: tr("Seal Number"), key: "sealNumber", placeholder: 'S-0000000', icon: Shield },
+                                { label: tr("Tractor Number"), key: "tractorNumber", placeholder: 'T-000', icon: IdCard },
+                                { label: tr("Truck Plates"), key: "truckPlates", placeholder: tr("ABC-123-X"), icon: ClipboardCheck },
+                                { label: tr("Trailer Number"), key: "trailerNumber", placeholder: tr("TR-000"), icon: Hash },
+                                { label: tr("Trailer Plates"), key: "trailerPlates", placeholder: tr("XYZ-789-Y"), icon: FileText },
                             ].map(f => (
                                 <div key={f.key} className="group flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 focus-within:border-white/20 transition-all">
                                     <div className="flex items-center justify-between">
@@ -3057,7 +3057,7 @@ const ReadyTruckWizard: React.FC<{
                                         <div>
                                             <h4 className={`text-lg font-black uppercase tracking-tighter ${publicUrl ? 'text-white' : 'text-white/20'}`}>{tr("Cloud Registry Link")}</h4>
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
-                                                {publicUrl ? tr("Sync Active Ã‚Â· Publicly Accessible") : tr("Pending Dispatch Ã‚Â· Registry Offline")}
+                                                {publicUrl ? tr("Sync Active · Publicly Accessible") : tr("Pending Dispatch · Registry Offline")}
                                             </p>
                                         </div>
                                     </div>
@@ -3359,7 +3359,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                 <div className="sticky top-0 z-[60] flex items-center justify-between px-6 py-4 border-b border-white/8 bg-[rgba(12,12,18,0.95)]">
                     <div>
                         <h3 className="text-[14px] font-black uppercase tracking-tight text-white">{tr("Load Drafts")}</h3>
-                        <p className="text-[10px] text-white/40">{drafts.length} {tr("saved Ã‚Â·")} <span className="text-white/20">{tr(".truckload")}</span></p>
+                        <p className="text-[10px] text-white/40">{drafts.length} {tr("saved ·")} <span className="text-white/20">{tr(".truckload")}</span></p>
                     </div>
                     <div className="flex items-center gap-3">
                         <input ref={importRef} type="file" accept={`${TRUCKLOAD_EXT},.json`} className="hidden" onChange={handleImport} />
@@ -4632,7 +4632,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                                 <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Deployed")}</span>
                                             </div>
                                             <span className="text-[12px] font-black text-white/80 uppercase tracking-tighter leading-none">
-                                                {new Date(recalledShipment.timestamp).toLocaleDateString("en-US", { month: 'short', day: 'numeric' }).toUpperCase()}
+                                                {new Date(recalledShipment.timestamp).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric' }).toUpperCase()}
                                             </span>
                                             <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">
                                                 {new Date(recalledShipment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

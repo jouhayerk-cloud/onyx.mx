@@ -265,7 +265,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                                                 color: secondaryTextColor,
                                                 fontWeight: vendorColor ? 'bold' : 'normal'
                                             }}>
-                                            {typeof row.date === 'number' ? new Date((row.date - 25569) * 86400 * 1000).toLocaleDateString("es-MX") : row.date}
+                                            {typeof row.date === 'number' ? new Date((row.date - 25569) * 86400 * 1000).toLocaleDateString(tr("es-MX")) : row.date}
                                         </td>
 
                                         {vendorColumns.map(v => {
