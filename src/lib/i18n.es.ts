@@ -395,7 +395,11 @@ export const esCatalog: Record<string, string> = {
   'Full Access Granted': 'Acceso Total Concedido',
   'Email Address': 'Correo Electrónico',
   'Security Key': 'Clave de Seguridad',
+  // Two distinct buttons: Login says "Enter System", WelcomePage says "Enter
+  // System Now". Both keys are needed — the catalogue is keyed on the exact
+  // source string, so dropping either silently falls back to English.
   'Enter System': 'Entrar al Sistema',
+  'Enter System Now': 'Entrar al Sistema',
   'Authenticating...': 'Autenticando...',
   'Return to Login': 'Volver al Inicio de Sesión',
   'TERMINATE SESSION': 'TERMINAR SESIÓN',
@@ -2295,4 +2299,82 @@ export const esCatalog: Record<string, string> = {
   'Export Complete': 'Exportación Completa',
   'Process finished successfully': 'El proceso terminó con éxito',
   'Select Sample Line:': 'Selecciona la línea de muestra:',
+
+  // ── Final pass: remaining hardware, workbook and wizard copy ─────────────
+  // What is deliberately left after this point is not UI copy: locale tags,
+  // MAC and IP addresses, the Cave Creek address and phone, gallery and
+  // payment brand names, internal protocol tokens, ID placeholders,
+  // fixed-width column stubs, filenames, and item attribute values.
+  'Device Name': 'Nombre del Dispositivo',
+  'ESP32 MAC Address': 'Dirección MAC del ESP32',
+  'No Devices Linked Yet': 'Aún No Hay Dispositivos Vinculados',
+  'Link Hardware Terminal': 'Vincular Terminal de Hardware',
+  'Manual Link': 'Vínculo Manual',
+  'Pair via Web Bluetooth': 'Emparejar por Web Bluetooth',
+  'Pairing...': 'Emparejando...',
+  'Paired & Connected!': '¡Emparejado y conectado!',
+  'Disconnect': 'Desconectar',
+  'Disconnect Session': 'Desconectar la Sesión',
+  'Offline': 'Sin Conexión',
+  'Last seen:': 'Visto por última vez:',
+  'Firmware Runtime': 'Tiempo de Ejecución del Firmware',
+  'Global WAN': 'WAN Global',
+  'Local ESP32 WebSocket bridge (Factory & Custom)':
+    'Puente WebSocket local del ESP32 (de fábrica y personalizado)',
+  'Direct View': 'Vista Directa',
+  'Interactive Core': 'Núcleo Interactivo',
+  'Live Hardware Feed': 'Flujo de Hardware en Vivo',
+  'Enable Camera Stream': 'Activar la Transmisión de la Cámara',
+  'Mirror Mode (Invert Avatar Gaze / Camera)':
+    'Modo espejo (invertir la mirada del avatar y la cámara)',
+  'Mirror:': 'Espejo:',
+  'Face Expression': 'Expresión Facial',
+  'Nod Head': 'Asentir con la Cabeza',
+  'Pan & Tilt Dual Servo Gimbal': 'Estabilizador de Doble Servo (giro e inclinación)',
+  'Pan / Yaw (Horizontal):': 'Giro (Horizontal):',
+  'LCD / OLED Screen Text': 'Texto de la Pantalla LCD / OLED',
+  'Error (Long Low Buzz)': 'Error (zumbido largo y grave)',
+  'Double Alert Beep': 'Doble pitido de alerta',
+  'Hardware Test': 'Prueba de Hardware',
+  'Hardware Test Harness': 'Banco de Pruebas de Hardware',
+  'Inject Scan Event': 'Inyectar Evento de Escaneo',
+  'Events': 'Eventos',
+  'No telemetry intercepted yet': 'Aún no se ha interceptado telemetría',
+  'Inventory Item Detected': 'Artículo de Inventario Detectado',
+  'NFC Vendor Card Detected': 'Tarjeta de Proveedor NFC Detectada',
+  'Ignore UHF RFID tag reads below this signal strength to prevent reading distant warehouse crates.':
+    'Ignora las lecturas de etiquetas UHF RFID por debajo de esta intensidad de señal para no leer cajas lejanas del almacén.',
+  'ms (Fast)': 'ms (rápido)',
+  'ms (Slow)': 'ms (lento)',
+  'ms (Zero-Lag)': 'ms (sin retardo)',
+  'Done': 'Listo',
+
+  // Workbook sheet-load messages. The "-Production" style names refer to real
+  // Google Sheets tabs, so they stay verbatim inside the sentence.
+  'No -vPayment sheet found.': 'No se encontró la hoja -vPayment.',
+  'No active production orders found in -Production sheet.':
+    'No se encontraron órdenes de producción activas en la hoja -Production.',
+  'No Log data found in -Log sheet.':
+    'No se encontraron datos de registro en la hoja -Log.',
+  'No pallets or crates data found in -Crates sheet.':
+    'No se encontraron datos de tarimas o cajas en la hoja -Crates.',
+  'No Property/Expense sheets loaded (-v*).':
+    'No se cargaron hojas de propiedades/gastos (-v*).',
+  'No supplies or labor data found in -Supplies sheet.':
+    'No se encontraron datos de suministros o mano de obra en la hoja -Supplies.',
+
+  // Wizard validation and progress
+  'Please provide a video, vendor ID, and shape.':
+    'Proporciona un video, un ID de proveedor y una forma.',
+  'Please select a vendor ID in the top bar.':
+    'Selecciona un ID de proveedor en la barra superior.',
+  'Please keep this tab open. Analysis may take a few minutes.':
+    'Mantén esta pestaña abierta. El análisis puede tardar unos minutos.',
+  'Starting batch process...': 'Iniciando el proceso por lote...',
+  'Objects detected!': '¡Objetos detectados!',
+  'Uploading new files to Drive...': 'Subiendo los archivos nuevos a Drive...',
+  'Vendor ID': 'ID de Proveedor',
+  'Open Items': 'Artículos Abiertos',
+  'Unknown Object': 'Objeto Desconocido',
+  'Wght': 'Peso',
 };
