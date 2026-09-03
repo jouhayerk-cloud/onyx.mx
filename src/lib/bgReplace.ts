@@ -284,5 +284,22 @@ export async function uploadCleanedImage(dataUrl: string, fileName: string): Pro
     if (error) throw new Error(`Storage upload failed: ${error.message}`);
 
     const { data } = supabase.storage.from('inventory-media').getPublicUrl(path);
-    return data.publicUrl;
+
+    // Cache-bust on CONTENT, which is what makes a re-clean actually visible.
+    //
+    // The storage path is derived from bgCacheKey, and that only changes when
+    // the prompt version, the quality or the source URL changes. So pressing
+    // RE-CLEAN IMAGES re-generated the picture, uploaded it over the same
+    // object with upsert, and handed back a byte-identical public URL. With
+    // cacheControl 3600 on that URL, every viewer -- the batch wizard's own
+    // thumbnail included -- kept serving the previous image for up to an hour.
+    // The new picture was in the bucket the whole time; nothing ever asked for
+    // it. That is why re-generated images looked like they were not
+    // overwriting, and why the batch did not refresh what it had just made.
+    //
+    // Hashing the data URL rather than stamping the time is deliberate: a
+    // re-run that happens to produce identical bytes keeps its URL and stays
+    // cached, while any real change moves the URL immediately. The path itself
+    // stays stable, so this adds no orphaned objects to the bucket.
+    return `${data.publicUrl}?v=${hashString(dataUrl)}`;
 }

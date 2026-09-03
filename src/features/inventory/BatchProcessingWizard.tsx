@@ -2157,6 +2157,35 @@ Instructions:
                                     })()}
                                 </div>
                                 
+                                {/* Background-replaced result.
+                                  *
+                                  * Studio mode ('bgreplace') short-circuits the
+                                  * mask path entirely and sets localMaskUrl to
+                                  * null, so its output never had a preview here
+                                  * -- the panel below only renders maskUrl, and
+                                  * the thumbnail to the left resolves from
+                                  * op.imageUrl, which is the SOURCE photo. The
+                                  * cleaned image was being produced, uploaded and
+                                  * saved without ever being shown, which is what
+                                  * made the batch look like it was not picking up
+                                  * regenerated images.
+                                  */}
+                                {op.result?.cleanedUrl && (
+                                    <div
+                                        className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden shrink-0 bg-black/40 flex items-center justify-center border border-sky-400/40 group relative cursor-pointer"
+                                        onClick={() => setFullscreenImage(op.result!.cleanedUrl!)}
+                                        title={tr("Cleaned image")}
+                                    >
+                                        <img src={op.result.cleanedUrl} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-300" />
+                                        <div className="absolute bottom-0 inset-x-0 bg-sky-500/80 text-white text-[8px] font-black uppercase text-center py-0.5 tracking-wider">
+                                            {tr("Cleaned")}
+                                        </div>
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                                            <ZoomIn size={20} className="text-white drop-shadow-md" />
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Generated Mask Image */}
                                 {op.result?.maskUrl && (
                                     <div 
