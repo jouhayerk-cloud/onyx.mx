@@ -845,4 +845,103 @@ export const esCatalog: Record<string, string> = {
   'Updating payment…': 'Actualizando el pago…',
   'UPDATING…': 'ACTUALIZANDO…',
   'Record added!': '¡Registro agregado!',
+
+  // ── Crates inventory / storage units ─────────────────────────────────────
+  // "UNK" left as-is: a truncated placeholder shown where a vendor code is
+  // missing, sized to a fixed 3-character slot.
+  'Logistics Units (Crates, Pallets & Boxes)':
+    'Unidades Logísticas (Cajas, Tarimas y Cajas de Cartón)',
+  'Unit Type': 'Tipo de Unidad',
+  'Unit Protocol': 'Protocolo de la Unidad',
+  'Parent Unit': 'Unidad Principal',
+  'UNITS AVAILABLE': 'UNIDADES DISPONIBLES',
+  'Box': 'Caja de Cartón',
+  'Boxes': 'Cajas de Cartón',
+  'BOXES': 'CAJAS DE CARTÓN',
+  'Internal': 'Interno',
+  'Internal References': 'Referencias Internas',
+  'Matrix': 'Matriz',
+  'Configuration Matrix': 'Matriz de Configuración',
+  'Initializing Matrix...': 'Inicializando la matriz...',
+  'Syncing with logistics matrix...': 'Sincronizando con la matriz logística...',
+  'Protocol version 3.2.6 · Jouhayerk Matrix':
+    'Protocolo versión 3.2.6 · Matriz Jouhayerk',
+
+  // Dimensions & weight
+  'Width (CM)': 'Ancho (CM)',
+  'Height (CM)': 'Alto (CM)',
+  'Length (CM)': 'Largo (CM)',
+  'Enter all three dimensions.': 'Ingresa las tres dimensiones.',
+  'BRUTE KG': 'KG BRUTOS',
+  'BRUTE WEIGHT': 'PESO BRUTO',
+  'Saving weight...': 'Guardando el peso...',
+  'Weight recorded': 'Peso registrado',
+  'Batch Quantity': 'Cantidad del Lote',
+  'Total Resource Allocation': 'Asignación Total de Recursos',
+
+  // Crate lifecycle
+  'Initialize Storage': 'Inicializar Almacenamiento',
+  'Deploy Storage Protocol': 'Desplegar Protocolo de Almacenamiento',
+  'Edit Crate Details': 'Editar Detalles de la Caja',
+  'Edit Storage Unit': 'Editar Unidad de Almacenamiento',
+  'Delete Crate': 'Eliminar Caja',
+  'Delete All Units': 'Eliminar Todas las Unidades',
+  'Sync Unit Changes': 'Sincronizar Cambios de la Unidad',
+  'Logistics protocol updated': 'Protocolo logístico actualizado',
+  'Crate is empty': 'La caja está vacía',
+  'Nested': 'Anidado',
+  'Nest this Box': 'Anidar esta Caja de Cartón',
+  'Nesting Protocol': 'Protocolo de Anidado',
+  'Packed Inside:': 'Empacado Dentro de:',
+  'Assign': 'Asignar',
+  'Remove from unit': 'Quitar de la unidad',
+  'Remove item from this unit?': '¿Quitar el artículo de esta unidad?',
+  'Removing item...': 'Quitando el artículo...',
+  'Marked as Partial': 'Marcado como Parcial',
+  'Marking as Partial...': 'Marcando como Parcial...',
+  'Re-opening crate for packing...': 'Reabriendo la caja para embalaje...',
+  'Crate re-opened — add more items in packing view':
+    'Caja reabierta — agrega más artículos en la vista de embalaje',
+  'Crate re-opened (Demo Mode)': 'Caja reabierta (Modo Demo)',
+  'Returning crate to packing state...': 'Regresando la caja al estado de embalaje...',
+  'Crate returned to Packed Crates': 'Caja devuelta a Cajas Empacadas',
+  'Crate returned to Packed (Demo Mode)': 'Caja devuelta a Empacada (Modo Demo)',
+  'Send to Warehouse': 'Enviar al Almacén',
+  'WARNING: Are you sure you want to SEND THIS UNIT BACK TO THE WAREHOUSE? This will reset its deployment status to PACKED and clear its truck and dispatch data.':
+    'ADVERTENCIA: ¿Seguro que quieres DEVOLVER ESTA UNIDAD AL ALMACÉN? Esto restablecerá su estado de despliegue a EMPACADA y borrará sus datos de camión y despacho.',
+  'Record updated (Demo Mode)': 'Registro actualizado (Modo Demo)',
+  'Group purged (Demo Mode)': 'Grupo purgado (Modo Demo)',
+  'Failed to remove': 'No se pudo quitar',
+  'Failed to save': 'No se pudo guardar',
+
+  // Acquisition & sourcing
+  'Acquisition Protocol': 'Protocolo de Adquisición',
+  'Acquisition Cost (MXN)': 'Costo de Adquisición (MXN)',
+  'Acquisition Price (MXN)': 'Precio de Adquisición (MXN)',
+  'Source Provider': 'Proveedor de Origen',
+  'Protocol Source': 'Origen del Protocolo',
+  'Primary Vendor': 'Proveedor Principal',
+  'Senders': 'Remitentes',
+  'Deployment Date': 'Fecha de Despliegue',
+  'PAY:': 'PAGO:',
+  'No': 'No',
+
+  // Notes
+  'Label / Notes': 'Etiqueta / Notas',
+  'Contents / Notes': 'Contenido / Notas',
+  'Notes / Reference Code': 'Notas / Código de Referencia',
+  'No notes provided': 'No se proporcionaron notas',
+
+  // Empty states
+  'No units found matching this criteria.':
+    'No se encontraron unidades que coincidan con este criterio.',
+  'No deployed units found in the registry.':
+    'No se encontraron unidades desplegadas en el registro.',
+  'No deployed units found in the shipping registry.':
+    'No se encontraron unidades desplegadas en el registro de embarques.',
+  'No empty units available. Create new storage to begin packing.':
+    'No hay unidades vacías disponibles. Crea un almacenamiento nuevo para comenzar a embalar.',
+
+  '— Packing List': '— Lista de Embalaje',
+  'Export Manifesto': 'Exportar Manifiesto',
 };
