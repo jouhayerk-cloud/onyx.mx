@@ -389,6 +389,7 @@ export const BatchProcessingWizard: React.FC = () => {
                     progress: 100,
                     result: op.result || {}
                 });
+                setHasUnsavedChanges(true);
                 return;
             }
 
@@ -981,6 +982,13 @@ Instructions:
                     videoGen: processed.videoGen || op.result?.videoGen
                 }
             });
+            // Every other setHasUnsavedChanges(true) in this file follows a
+            // manual UI action (regenerate, upload mask, toggle a mode). The
+            // automatic batch run had none -- handleStartBatch never touched
+            // this flag, so a finished run left SAVE TO DB disabled
+            // (completedOps.length === 0 || !hasUnsavedChanges) with results
+            // sitting only in React state and nowhere to put them.
+            setHasUnsavedChanges(true);
 
             // Propagate generated description and colors to all sibling images of the same item
             if ((op.imageIndex || 0) === 0) {
