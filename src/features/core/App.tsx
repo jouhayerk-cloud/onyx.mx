@@ -184,7 +184,21 @@ export default function App() {
           role: appUser.role,
         });
 
-        setLanguage(appUser.role === 'Vendor' ? 'es' : 'en');
+        // Role picks the INITIAL language, once. Without the guard this ran on
+        // every auth resolution and overwrote whatever the user had chosen, so
+        // the language switch in Settings could not stick: a non-Vendor could
+        // never keep Spanish, and a Vendor could never choose English.
+        // `languageAtom` is atomWithStorage, which only writes on set, so an
+        // absent key genuinely means "this user has never chosen".
+        let hasChosenLanguage = false;
+        try {
+          hasChosenLanguage = localStorage.getItem('appLanguage') !== null;
+        } catch {
+          // Storage unavailable (private mode) — fall back to the role default.
+        }
+        if (!hasChosenLanguage) {
+          setLanguage(appUser.role === 'Vendor' ? 'es' : 'en');
+        }
 
         supabase.from('app_users')
           .update({ last_submit_at: new Date().toISOString() })
