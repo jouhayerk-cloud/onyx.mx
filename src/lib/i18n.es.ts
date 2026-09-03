@@ -968,4 +968,245 @@ export const esCatalog: Record<string, string> = {
   'Body (HTML)': 'Cuerpo (HTML)',
   'Colour': 'Color',
   'Product Type': 'Tipo de Producto',
+
+  // ── AI batch processing wizard ───────────────────────────────────────────
+  // Left as-is: AIzaSy... (an API-key placeholder), IMG/MASK/CLIP (fixed-width
+  // chips), and the two gallery brand names ART OF DECOR / RARE EARTH GALLERY.
+  // The processing-mode chips STUDIO / LOCAL / CLOUD / HYBRID are also left
+  // alone — they label wire values that are compared, and the words are read
+  // the same in Spanish.
+  'Start Engine': 'Iniciar Motor',
+  'Save & Start': 'Guardar e Iniciar',
+  'Total Progress': 'Progreso Total',
+  'ABORT': 'ABORTAR',
+  'Abort Processing': 'Abortar el Procesamiento',
+  'Processing is active. Are you sure you want to abort and close?':
+    'El procesamiento está activo. ¿Seguro que quieres abortarlo y cerrar?',
+  'Batch segmentation & description logic':
+    'Lógica de segmentación y descripción por lote',
+
+  // Image stage
+  'Toggle Image Processing': 'Alternar el Procesamiento de Imágenes',
+  'Toggle Image Processing (Masks & Transparency) ON/OFF for ALL items':
+    'Activar o desactivar el procesamiento de imágenes (máscaras y transparencia) para TODOS los artículos',
+  'Toggle Studio / Local / Cloud / Hybrid Processing':
+    'Alternar el procesamiento Studio / Local / Cloud / Hybrid',
+  'IMG PROCESSING: ON (MASKS)': 'PROC. DE IMAGEN: ACTIVO (MÁSCARAS)',
+  'IMG PROCESSING: OFF (ORIGINALS)': 'PROC. DE IMAGEN: INACTIVO (ORIGINALES)',
+  'CLEAN IMAGES ONLY': 'SOLO LIMPIAR IMÁGENES',
+  'Clean Images only — the run skips descriptions, colours and type, and does the image stage alone':
+    'Solo limpiar imágenes — la ejecución omite descripciones, colores y tipo, y hace únicamente la etapa de imagen',
+  'IMAGES + DESCRIPTIONS': 'IMÁGENES + DESCRIPCIONES',
+  'ALL IMAGES': 'TODAS LAS IMÁGENES',
+  'HERO IMAGE ONLY': 'SOLO LA IMAGEN PRINCIPAL',
+  'All images per item, or only the first. Hero-only is cheaper — roughly half the images — but leaves the rest uncleaned.':
+    'Todas las imágenes de cada artículo, o solo la primera. Solo la principal es más económico —aproximadamente la mitad de las imágenes— pero deja el resto sin limpiar.',
+  'Re-clean ALL images (force a new background replacement on every image of every item, not just the first)':
+    'Re-limpiar TODAS las imágenes (fuerza un nuevo reemplazo de fondo en cada imagen de cada artículo, no solo en la primera)',
+  'Cleaned image': 'Imagen limpiada',
+  'No Image': 'Sin Imagen',
+  'Re-Generate Mask': 'Regenerar Máscara',
+  'Optimize Legacy PNG Masks to WebP': 'Optimizar máscaras PNG antiguas a WebP',
+  '1:1 CROP': 'RECORTE 1:1',
+  '1:1 Square Crop Tool': 'Herramienta de Recorte Cuadrado 1:1',
+  'Copy Map': 'Copiar Mapa',
+  'Colors:': 'Colores:',
+  'AI:': 'IA:',
+
+  // Description stage
+  'Title Description': 'Descripción del Título',
+  'AI generated title description...': 'Descripción del título generada por IA...',
+  'AI generated HTML marketing description...':
+    'Descripción de marketing en HTML generada por IA...',
+  'Marketing Description (Embedded HTML Review)':
+    'Descripción de Marketing (Revisión de HTML Incrustado)',
+  'Edit Source HTML': 'Editar el HTML de Origen',
+  'View Styled Preview': 'Ver la Vista Previa con Estilo',
+  'AI Generated Video': 'Video Generado por IA',
+  'RE-GEN INFO': 'REGENERAR INFO',
+  'RE-GENERATE': 'REGENERAR',
+  'Re-Generate AI Info': 'Regenerar la Info de IA',
+  'REGENERATE DESCRIPTIONS': 'REGENERAR DESCRIPCIONES',
+  'Regenerate ALL Descriptions (Force AI body descriptions and color info for all active items)':
+    'Regenerar TODAS las descripciones (fuerza descripciones y color por IA en todos los artículos activos)',
+  'All items enabled for AI description & color regeneration! Click START ENGINE to begin.':
+    '¡Todos los artículos habilitados para regenerar descripción y color con IA! Pulsa INICIAR MOTOR para comenzar.',
+  'Clear AI Generated Data': 'Borrar los Datos Generados por IA',
+  'Incomplete Data: Missing Description, Colors, Hex Map, or Type':
+    'Datos incompletos: falta la descripción, los colores, el mapa hexadecimal o el tipo',
+
+  // Saving
+  'Save Description & Colors': 'Guardar Descripción y Colores',
+  'Saving description...': 'Guardando la descripción...',
+  'SAVE TO DB': 'GUARDAR EN LA BD',
+  'SAVED TO DB': 'GUARDADO EN LA BD',
+  'Saving to DB...': 'Guardando en la BD...',
+  'Saved successfully to database!': '¡Guardado con éxito en la base de datos!',
+  'Please export to database first.': 'Primero exporta a la base de datos.',
+
+  // Export
+  'Generate PDF': 'Generar PDF',
+  'Download PDF': 'Descargar PDF',
+  'Generate XLSX': 'Generar XLSX',
+  'Download XLSX': 'Descargar XLSX',
+  'XLSX generated! Click Download XLSX to save.':
+    '¡XLSX generado! Pulsa Descargar XLSX para guardarlo.',
+  'No completed items to export.': 'No hay artículos completados para exportar.',
+  'PDF BRAND': 'MARCA DEL PDF',
+  'Onyx.mx - Catalog Hub': 'Onyx.mx - Centro de Catálogo',
+  'Upload': 'Subir',
+
+  // API key
+  'API Settings': 'Ajustes de la API',
+  'API Key Required': 'Se Requiere una Clave de API',
+  'Please enter your Gemini API Key. It will be stored securely in your local device storage.':
+    'Ingresa tu clave de API de Gemini. Se guardará de forma segura en el almacenamiento local de tu dispositivo.',
+
+  // ── Store / storefront preview ───────────────────────────────────────────
+  // The store module mirrors Rare Earth Gallery's US storefront. Left English
+  // on purpose: the gallery's own name and branding, its Cave Creek address and
+  // phone number, the Shop Pay payment brand, internal codes (Onyx.mx-REG,
+  // OL-Aqua, REG Logo, v2.4-REG), and the material names Onyx / Natural Onyx,
+  // which are item data rather than interface text.
+  'Shopping Cart': 'Carrito de Compras',
+  'Acquisition Bag': 'Bolsa de Adquisición',
+  'Bag is currently empty': 'La bolsa está vacía',
+  'ADD TO BAG': 'AGREGAR A LA BOLSA',
+  'ADD TO CART': 'AGREGAR AL CARRITO',
+  'IN BAG': 'EN LA BOLSA',
+  'Added to bag': 'Agregado a la bolsa',
+  'GET THIS!': '¡LLÉVATELO!',
+  'GET IT!': '¡LLÉVATELO!',
+  'Item Acquired!': '¡Artículo Adquirido!',
+  'Item removed from store': 'Artículo quitado de la tienda',
+  'Shipping calculated at checkout.': 'El envío se calcula al pagar.',
+  'Simulated Express Buy It Now!': '¡Compra Rápida Simulada!',
+  'Total: $': 'Total: $',
+  'Usually ready in 24 hours': 'Normalmente listo en 24 horas',
+  '0% APR financing available up to 24 mos.':
+    'Financiamiento a 0% de interés hasta 24 meses.',
+  'View sample plans': 'Ver planes de ejemplo',
+
+  // Storefront navigation
+  'Home': 'Inicio',
+  'All Stone Catalog': 'Catálogo Completo de Piedra',
+  'Natural Stone & Onyx Collection': 'Colección de Piedra Natural y Ónix',
+  'Back to Catalog Grid': 'Volver a la Cuadrícula del Catálogo',
+  'View Details ›': 'Ver Detalles ›',
+  'Next Image': 'Imagen Siguiente',
+  'Previous Image': 'Imagen Anterior',
+  'Customer Care': 'Atención al Cliente',
+  'Frequently Asked Questions': 'Preguntas Frecuentes',
+  'Return Policy': 'Política de Devoluciones',
+  'Shipping & Delivery': 'Envíos y Entregas',
+  'Gallery Location': 'Ubicación de la Galería',
+  'Call Us': 'Llámanos',
+  'Directions': 'Cómo Llegar',
+  'User Profile': 'Perfil de Usuario',
+  'View store information': 'Ver información de la tienda',
+  'Store Details Editor': 'Editor de Detalles de la Tienda',
+
+  // Product detail
+  'Specifications & Minerals': 'Especificaciones y Minerales',
+  'Dimensions & Mass': 'Dimensiones y Masa',
+  'Dimensions:': 'Dimensiones:',
+  'Material & Origin:': 'Material y Origen:',
+  'Weight:': 'Peso:',
+  'Weight TBD': 'Peso por definir',
+  'Unit Val.': 'Val. Unitario',
+  'Inventory Total': 'Total del Inventario',
+  'Spatial Axonometric Box:': 'Caja Axonométrica Espacial:',
+  'Zoom:': 'Zoom:',
+  'Scroll': 'Desplazar',
+  'Return': 'Volver',
+  'Elevate your space with this striking': 'Eleva tu espacio con esta impresionante',
+
+  // Manual entry form
+  'MANUAL ENTRY FORM': 'FORMULARIO DE ENTRADA MANUAL',
+  'ENTRY STATUS': 'ESTADO DE LA ENTRADA',
+  'VENDOR SELECTION': 'SELECCIÓN DE PROVEEDOR',
+  'ITEM QUANTITY': 'CANTIDAD DEL ARTÍCULO',
+  'MEDIA ATTACHMENTS': 'ARCHIVOS ADJUNTOS',
+  'ATTACH NEW MEDIA (IMAGES / VIDEO)': 'ADJUNTAR NUEVO CONTENIDO (IMÁGENES / VIDEO)',
+  'Uploading Media...': 'Subiendo contenido...',
+  'NUM': 'NÚM',
+  'MAT': 'MAT',
+  'WEIGHT (KG)': 'PESO (KG)',
+  'PRICE (MXN)': 'PRECIO (MXN)',
+  'FINANCIAL INTEGRITY': 'INTEGRIDAD FINANCIERA',
+  'Artifact values are stored in MXN and calculated against active exchange rates for global parity.':
+    'Los valores se almacenan en MXN y se calculan con los tipos de cambio vigentes para mantener la paridad global.',
+  'Enter custom title...': 'Ingresa un título personalizado...',
+  'Identify class...': 'Identificar clase...',
+  'Identify geometry...': 'Identificar geometría...',
+  'Identify mineral...': 'Identificar mineral...',
+  'Identify pigment...': 'Identificar pigmento...',
+  'Manual Metric': 'Métrica Manual',
+
+  // Sync
+  'Syncing Artifact...': 'Sincronizando artículo...',
+  'SYNCING ARTIFACT...': 'SINCRONIZANDO ARTÍCULO...',
+  'Artifact Synced': 'Artículo Sincronizado',
+  'Sync Complete': 'Sincronización Completa',
+  'ABORT SYNC': 'ABORTAR SINCRONIZACIÓN',
+  'Updating Registry...': 'Actualizando el registro...',
+  'Updating status...': 'Actualizando el estado...',
+  'COMMIT CHANGES →': 'CONFIRMAR CAMBIOS →',
+  'Commit Acquisition →': 'Confirmar Adquisición →',
+  'These items will be migrated to the Inventory Workforce':
+    'Estos artículos se migrarán al Inventario',
+
+  // Deletion
+  'Secure Protocol Deletion': 'Eliminación Segura por Protocolo',
+  'Confirm Erasure': 'Confirmar Borrado',
+  'Cancel Operation': 'Cancelar Operación',
+  'Discard': 'Descartar',
+  'Artifact?': '¿Artículo?',
+
+  // Selection
+  'SELECT ALL': 'SELECCIONAR TODO',
+  'DESELECT ALL': 'DESELECCIONAR TODO',
+  'SELECTED': 'SELECCIONADO',
+  'Selected Artifacts': 'Artículos Seleccionados',
+  'CLEAR': 'LIMPIAR',
+
+  // PDF export
+  'EXPORT PDF': 'EXPORTAR PDF',
+  'Export Configuration': 'Configuración de la Exportación',
+  'Export Methodology': 'Metodología de Exportación',
+  'Export Scope & Financials': 'Alcance y Finanzas de la Exportación',
+  'Export Selected Items to PDF Catalog':
+    'Exportar los artículos seleccionados al catálogo PDF',
+  'Customize your catalog': 'Personaliza tu catálogo',
+  'PDF Title (Cover & Filename)': 'Título del PDF (portada y nombre de archivo)',
+  'Regular Export': 'Exportación Normal',
+  'Catalog Mode': 'Modo Catálogo',
+  'Full-page view': 'Vista de página completa',
+  'Internal · Full Costs': 'Interno · Costos Completos',
+  'External · Codes only': 'Externo · Solo Códigos',
+  'PDF Exporting': 'Exportando PDF',
+  'PDF generated successfully!': '¡PDF generado con éxito!',
+  'Ready for download': 'Listo para descargar',
+  'No items selected for PDF.': 'No hay artículos seleccionados para el PDF.',
+
+  // AI status
+  'AI Classification:': 'Clasificación por IA:',
+  'AI Metadata Verified:': 'Metadatos de IA verificados:',
+  'Onyx.mx AI Engine': 'Motor de IA de Onyx.mx',
+  'WebP Background Removed': 'Fondo eliminado en WebP',
+  'Generated': 'Generado',
+  '100% AI Ready': '100% Listo con IA',
+  '100% Complete': '100% Completo',
+  'Powered by Google DeepMind Advanced Agentic Coding. Generating automated spatial masks, background removal, and marketing copy for natural stone artifacts.':
+    'Impulsado por Google DeepMind Advanced Agentic Coding. Genera máscaras espaciales automáticas, eliminación de fondo y textos de marketing para artículos de piedra natural.',
+  'museum-grade handcrafted stone items ready for digital storefronts.':
+    'artículos de piedra tallados a mano, de calidad museo, listos para tiendas digitales.',
+
+  // Empty states
+  'No artifacts found': 'No se encontraron artículos',
+  'No matching items found': 'No se encontraron artículos que coincidan',
+  'No items currently match the 100% AI Generated filter with this category or search term.':
+    'Ningún artículo coincide actualmente con el filtro 100% Generado por IA en esta categoría o término de búsqueda.',
+  'Try clearing your search query or selecting a different category tab.':
+    'Prueba a limpiar la búsqueda o a elegir otra categoría.',
 };
