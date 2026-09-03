@@ -42,7 +42,7 @@ import { loadImage } from './utils';
  * atmospheric, raise colorExtractor's threshold in the same commit -- but note
  * that raising it costs dark stone, which is why the prompt moved instead.
  */
-export const BG_PROMPT_VERSION = 'dark-room-v6';
+export const BG_PROMPT_VERSION = 'dark-room-v7';
 
 export type BgQuality = '1K' | '2K';
 
@@ -165,13 +165,14 @@ Keep the subject exactly as photographed:
 - The stone keeps its own colour all the way out to its outline. The dark room and its shadows stay behind the piece and outside it, never spilling onto its surface -- especially around mirror glass, openings and cut-outs, where the stone edge stays clean and unbroken.
 - Its rough, unpolished, chipped or bark-like outer edges are part of the piece. Never smooth, trim or tidy them.
 - If any part is translucent or lit from within, preserve that glow and its exact colour.
-- Keep every component: bases, arms, fittings, hardware, cabling, mirror glass and each separate piece in a set.
+- Keep every component: bases, arms, fittings, hardware, mirror glass and each separate piece in a set.
 
 Replace the surroundings with an empty dark studio room:
 - Behind the subject, a large empty near-black room receding into deep shadow, thrown far out of focus as if photographed at a wide aperture: smooth and soft, the far wall and floor dissolving into darkness. Keep the piece itself sharp from front to back.
 - The piece is usually standing on flattened cardboard boxes or packing sheets. Those are floor covering, not part of the piece: put the studio floor in their place at the height the piece already rests at, so it stands directly on the floor.
 - Add a soft contact shadow where the piece meets the floor, consistent with the existing lighting direction.
 - Remove all props, packing material, cardboard, pallets, tools, people, hands, text and watermarks.
+- Remove any power cord, plug, extension cord or power strip visible in the shot, including where a cord runs off the piece toward a wall outlet. A cord is not part of the stone even when the piece is a lamp photographed while lit.
 - Add nothing new: no furniture, plants, decor, reflections or text.
 
 Keep the original framing, crop, scale and camera angle. Output the full scene at the same aspect ratio.`;
