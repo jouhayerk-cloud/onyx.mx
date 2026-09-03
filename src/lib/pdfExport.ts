@@ -168,8 +168,17 @@ async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor =
  *   3. CORS anonymous Image() as last resort
  */
 async function loadExternalImageAsDataUrl(cleanUrl: string): Promise<HTMLImageElement> {
+    // Google never sends Access-Control-Allow-Origin for Drive or lh3 content,
+    // so strategy 1 cannot succeed for those hosts -- it just spends a failed
+    // round trip per image before we fall through to the proxy that does work.
+    // Every image in the catalogue used to pay for that. Skipping it changes no
+    // outcome: a Drive URL that the proxy cannot fetch still ends up at
+    // strategy 3 exactly as before.
+    const isGoogleHosted = /(^|\.)((lh\d+\.)?googleusercontent\.com|drive\.google\.com|docs\.google\.com)/i
+        .test((() => { try { return new URL(cleanUrl).hostname; } catch { return ''; } })());
+
     // Strategy 1: fetch → blob → dataURL (preferred, avoids canvas tainting)
-    try {
+    if (!isGoogleHosted) try {
         const resp = await fetch(cleanUrl, { mode: 'cors' });
         if (resp.ok) {
             const blob = await resp.blob();
