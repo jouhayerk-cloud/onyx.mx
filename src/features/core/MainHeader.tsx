@@ -3619,7 +3619,7 @@ export function MainHeader() {
             v2Sheet.getRow(1).font = { bold: true };
 
             const labelFor = (keys: ShopifyField[]) =>
-                keys.map(k => (SHOPIFY_REQUIRED_FIELDS.find(f => f.key === k) || { label: k }).label).join(', ');
+                keys.map(k => tr((SHOPIFY_REQUIRED_FIELDS.find(f => f.key === k) || { label: k }).label)).join(', ');
 
             notReadyItems.forEach((entry) => {
                 const item = entry.item;
@@ -3689,7 +3689,7 @@ export function MainHeader() {
             ];
 
             const missingCounts = SHOPIFY_REQUIRED_FIELDS.map(f => ({
-                label: f.label,
+                label: tr(f.label),
                 n: notReadyItems.filter(x => x.missing.indexOf(f.key) !== -1).length,
             }));
 

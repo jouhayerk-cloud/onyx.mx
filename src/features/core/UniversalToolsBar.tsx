@@ -998,7 +998,7 @@ export const UniversalToolsBar: React.FC = () => {
                                                 : [...cur, f.key];
                                         })}
                                         aria-pressed={on}
-                                        title={f.hint}
+                                        title={tr(f.hint)}
                                         className="smart-chip flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]"
                                     >
                                         {tr(f.label)}
