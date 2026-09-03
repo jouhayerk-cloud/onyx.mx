@@ -3660,13 +3660,21 @@ export function MainHeader() {
                     missing: labelFor(entry.missing),
                 };
 
+                // Sanitise the scalars BEFORE the hyperlinks go on. Item text
+                // comes from free-typed inventory fields, and a stray control
+                // or zero-width character produces a workbook Excel refuses to
+                // open -- which would take sheet 1 down with it, not just this
+                // one. Order matters: sanitizeExcelValue does String(val) on
+                // anything that is not a number or boolean, so running it over
+                // a { formula } cell would flatten it to "[object Object]".
+                const v2Clean: any = sanitizeExcelRow(v2Row);
                 const urls = collectExportImages(n2);
                 for (let k = 0; k < v2MaxImages; k++) {
-                    v2Row['image_' + (k + 1)] = urls[k]
+                    v2Clean['image_' + (k + 1)] = urls[k]
                         ? { formula: 'HYPERLINK("' + urls[k] + '", "View Image ' + (k + 1) + '")' }
                         : '';
                 }
-                v2Sheet.addRow(v2Row);
+                v2Sheet.addRow(v2Clean);
             });
 
             // --- SHEET 3: report ---
@@ -3699,7 +3707,7 @@ export function MainHeader() {
             missingCounts.forEach(m => summary.push([m.label, m.n]));
 
             summary.forEach((pair, i) => {
-                const r = repSheet.addRow({ a: pair[0], b: pair[1] });
+                const r = repSheet.addRow(sanitizeExcelRow({ a: pair[0], b: pair[1] }));
                 if (i === 0) r.font = { bold: true, size: 14 };
                 else if (pair[0] === 'Held back by' || pair[0] === 'Items selected') r.font = { bold: true };
             });
@@ -3720,16 +3728,16 @@ export function MainHeader() {
             };
             readyItems.forEach((item: any) => {
                 const info = describeItem(item);
-                repSheet.addRow({ a: info.tag, b: info.shape, c: 'Shopify Export', d: '-' });
+                repSheet.addRow(sanitizeExcelRow({ a: info.tag, b: info.shape, c: 'Shopify Export', d: '-' }));
             });
             notReadyItems.forEach((entry) => {
                 const info = describeItem(entry.item);
-                repSheet.addRow({
+                repSheet.addRow(sanitizeExcelRow({
                     a: info.tag,
                     b: info.shape,
                     c: 'Not Shopify Ready (V2)',
                     d: labelFor(entry.missing),
-                });
+                }));
             });
 
             const buffer = await workbook.xlsx.writeBuffer();
