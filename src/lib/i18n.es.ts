@@ -944,4 +944,28 @@ export const esCatalog: Record<string, string> = {
 
   '— Packing List': '— Lista de Embalaje',
   'Export Manifesto': 'Exportar Manifiesto',
+
+  // ── AI content filters ───────────────────────────────────────────────────
+  // CONTENT_FILTERS and SHOPIFY_REQUIRED_FIELDS in aiContent.ts hold these as
+  // plain English and are translated where they are READ, not where they are
+  // declared. Those are module-level consts, evaluated once at import — a
+  // tr() inside them would freeze at load and go stale on a language switch,
+  // because the remount re-renders components but does not re-run module code.
+  'Metadata': 'Metadatos',
+  'Described': 'Descrito',
+  'Cleaned': 'Limpiado',
+  'Cutout': 'Recorte',
+  'No AI': 'Sin IA',
+  'Colour and type extracted — text-derived, no photo needed':
+    'Color y tipo extraídos — derivados del texto, sin necesidad de foto',
+  'Written up: descriptions, masks and points':
+    'Redactado: descripciones, máscaras y puntos',
+  'A background-removed image exists': 'Existe una imagen sin fondo',
+  'Transparent PNG rendered': 'PNG transparente generado',
+  'Never processed': 'Nunca procesado',
+
+  'AI Title': 'Título IA',
+  'Body (HTML)': 'Cuerpo (HTML)',
+  'Colour': 'Color',
+  'Product Type': 'Tipo de Producto',
 };
