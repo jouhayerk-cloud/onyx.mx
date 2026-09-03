@@ -2098,4 +2098,201 @@ export const esCatalog: Record<string, string> = {
   'Admin / Developer Only': 'Solo Administrador / Desarrollador',
   'Open the classic Add Entry wizard — supports Book 826, 326 and 825':
     'Abre el asistente clásico de Agregar Entrada — compatible con los libros 826, 326 y 825',
+
+  // ── Catalog / details panel ──────────────────────────────────────────────
+  'Market Inventory': 'Inventario de Mercado',
+  'Select an item to see its details.':
+    'Selecciona un artículo para ver sus detalles.',
+  'Select an item to see details.': 'Selecciona un artículo para ver los detalles.',
+  'Please select an item first.': 'Primero selecciona un artículo.',
+  'Edit': 'Editar',
+  'Desc': 'Desc',
+  'Short': 'Corto',
+  'Acquire': 'Adquirir',
+  'Acquired!': '¡Adquirido!',
+  'Archived!': '¡Archivado!',
+  'Ship': 'Enviar',
+  'Shipped!': '¡Enviado!',
+  'Mark Del': 'Marcar Elim.',
+  'Marking as Acquired...': 'Marcando como Adquirido...',
+  'Marking as Archive...': 'Marcando como Archivado...',
+  'Marking as Shipped...': 'Marcando como Enviado...',
+  'Deletion requested': 'Eliminación solicitada',
+  'Item deleted permanently': 'Artículo eliminado permanentemente',
+  'Remove Generated Image': 'Quitar la Imagen Generada',
+  'Generated image removed from database.':
+    'Imagen generada eliminada de la base de datos.',
+  'Failed to remove image from DB':
+    'No se pudo quitar la imagen de la base de datos',
+  'Failed to load an item image.': 'No se pudo cargar la imagen del artículo.',
+  'Loading original image for editor...':
+    'Cargando la imagen original para el editor...',
+  'Original source image not found for this item.':
+    'No se encontró la imagen original de este artículo.',
+  'No masks available to edit for this item.':
+    'No hay máscaras disponibles para editar en este artículo.',
+  'No masks found to edit.': 'No se encontraron máscaras para editar.',
+  '3D preview requires generated mask or SVG data.':
+    'La vista previa 3D requiere una máscara generada o datos SVG.',
+
+  // ── Create / video batch ─────────────────────────────────────────────────
+  'Video Batch Creation': 'Creación por Lote desde Video',
+  '1. Upload Video': '1. Sube el video',
+  '2. Items to Find': '2. Artículos a encontrar',
+  'Scan Video for Items': 'Escanear el Video en Busca de Artículos',
+  'Analyzing Video...': 'Analizando el video...',
+  'Analyzing...': 'Analizando...',
+  'Start Analysis': 'Iniciar el Análisis',
+  'An AI analysis step failed.': 'Falló un paso del análisis por IA.',
+  'This may take several minutes depending on video length.':
+    'Esto puede tardar varios minutos según la duración del video.',
+  'Your video analysis results will appear here once the process is complete.':
+    'Los resultados del análisis del video aparecerán aquí cuando termine el proceso.',
+  'Fill out the form and scan a video to see potential items here.':
+    'Completa el formulario y escanea un video para ver aquí los artículos detectados.',
+  'Select a video file': 'Selecciona un archivo de video',
+  'Select a file': 'Selecciona un archivo',
+  'Click to upload': 'Haz clic para subir',
+  'MP4, MOV, etc.': 'MP4, MOV, etc.',
+  'Please select an image first.': 'Primero selecciona una imagen.',
+  'Please select at least one frame to create.':
+    'Selecciona al menos un fotograma para crear.',
+  'Number of Items': 'Número de Artículos',
+  'Enter a comma-separated list of items.':
+    'Ingresa una lista de artículos separados por comas.',
+  'e.g. red car, dog, person holding a sign':
+    'p. ej. coche rojo, perro, persona sosteniendo un letrero',
+  'Detect & Tag': 'Detectar y Etiquetar',
+  'Detecting objects...': 'Detectando objetos...',
+  'Segmentation': 'Segmentación',
+  'Generating masks...': 'Generando máscaras...',
+  'Masks generated!': '¡Máscaras generadas!',
+  'No masks loaded': 'No hay máscaras cargadas',
+  'Failed to load mask data for editing.':
+    'No se pudieron cargar los datos de la máscara para editar.',
+  'Saving mask data...': 'Guardando los datos de la máscara...',
+  'Saving item...': 'Guardando el artículo...',
+  'Generating details...': 'Generando los detalles...',
+  'Details generated!': '¡Detalles generados!',
+  'Creating...': 'Creando...',
+  'Zipping...': 'Comprimiendo...',
+  'Batch processing finished.': 'El procesamiento por lote terminó.',
+  'Run AI analysis after creation (masks, descriptions)':
+    'Ejecutar el análisis por IA después de crear (máscaras, descripciones)',
+  'Translating to Standard English...': 'Traduciendo a inglés estándar...',
+  '🚀 Process Batch': '🚀 Procesar Lote',
+  '+ Add Item': '+ Agregar Artículo',
+  'Next': 'Siguiente',
+  'Previous': 'Anterior',
+  'Press Enter or ↓ to continue': 'Pulsa Enter o ↓ para continuar',
+  'Close Viewer': 'Cerrar el Visor',
+  'AI Master': 'IA Maestra',
+  'Select Vendor': 'Seleccionar Proveedor',
+  'Material (e.g. Onyx)': 'Material (p. ej. Onyx)',
+  'Shape (e.g. Sphere)': 'Forma (p. ej. Esfera)',
+  'Time:': 'Tiempo:',
+  'W cm': 'An cm',
+  'H cm': 'Al cm',
+  'L cm': 'La cm',
+  'L (cm)': 'La (cm)',
+
+  // ── Core shell: settings portal, tool bar ────────────────────────────────
+  // Left as-is: EN / ES language codes, MX-NORTH, ROOT, STD, and the perf
+  // readouts (1.2GB, 14MS).
+  'Sidebar': 'Barra Lateral',
+  'Portal': 'Portal',
+  'Compact': 'Compacto',
+  'Spacious': 'Espacioso',
+  'Glass': 'Vidrio',
+  'Static': 'Estático',
+  'Surface': 'Superficie',
+  'Accent': 'Acento',
+  'Base': 'Base',
+  'Boundary': 'Borde',
+  'Input': 'Entrada',
+  'Text P': 'Texto P',
+  'Text S': 'Texto S',
+  'Neural': 'Neural',
+  'AI Content': 'Contenido de IA',
+  'Clear content filter': 'Limpiar el filtro de contenido',
+  'OFFLINE': 'SIN CONEXIÓN',
+  'STATUS': 'ESTADO',
+  'VALUE': 'VALOR',
+  'DATE': 'FECHA',
+  'MAX': 'MÁX',
+
+  // ── Finance session / batch execution ────────────────────────────────────
+  // Left as-is: internal state tokens (AGGREGATE_TOTAL, BASE_VAL, NET_VAL,
+  // USD_TOTAL, ENGINE_ACTIVE, ENCRYPTION_ACTIVE, IDENTITY_VERIFIED,
+  // NULL_SESSION, CLOSE_SESSION, FX_CALIBRATION, TRANSACTION_LOGGING,
+  // VIEW_DETAILS, TIMESTAMP, ROOT), account names and the admin address.
+  'Payments Artifact': 'Artefacto de Pagos',
+  'Session Aggregation': 'Agregación de la Sesión',
+  'Execution Queues': 'Colas de Ejecución',
+  'Ready for Batch Request': 'Listo para la Solicitud por Lote',
+  'EXECUTE': 'EJECUTAR',
+  'Executing batch requests will generate immediate financial artifacts in the main ledger. Ensure all inventory counts have been physically verified.':
+    'Ejecutar solicitudes por lote generará artefactos financieros inmediatos en el libro principal. Asegúrate de que todos los conteos de inventario se hayan verificado físicamente.',
+  'Protocol Guidelines': 'Lineamientos del Protocolo',
+  'Verified Operator': 'Operador Verificado',
+  'Registry Empty : Standing By': 'Registro vacío : en espera',
+  'No matching records': 'No hay registros coincidentes',
+  'No Description': 'Sin Descripción',
+  'Unknown Source': 'Origen Desconocido',
+  'Records': 'Registros',
+  'Objects': 'Objetos',
+  'Found': 'Encontrados',
+  'Net': 'Neto',
+  'Fees': 'Cargos',
+  'MISC': 'VARIOS',
+  'Operation': 'Operación',
+  'OPERATION': 'OPERACIÓN',
+  'PAYMENT': 'PAGO',
+  'PACKING': 'EMBALAJE',
+  'Transfer': 'Transferencia',
+  'Direct Wire': 'Transferencia Directa',
+  'Cash Payment': 'Pago en Efectivo',
+  'Total MXN Summary': 'Resumen Total MXN',
+  'Total USD Summary': 'Resumen Total USD',
+
+  // ── 3D showroom / AR ─────────────────────────────────────────────────────
+  '3D Catalog': 'Catálogo 3D',
+  '3D & AR Artifact Catalog': 'Catálogo de Artículos en 3D y RA',
+  'Showroom': 'Sala de Exhibición',
+  'Close Showroom': 'Cerrar la Sala de Exhibición',
+  'View in Room (AR)': 'Ver en la Habitación (RA)',
+  'AR Ready': 'Listo para RA',
+  'Camera Height': 'Altura de la Cámara',
+  'No 3D Models Configured': 'No Hay Modelos 3D Configurados',
+  'No item selected.': 'No hay ningún artículo seleccionado.',
+  'Item Details': 'Detalles del Artículo',
+  'Item #': 'Artículo #',
+  'Short Description': 'Descripción Corta',
+  'Loading Image...': 'Cargando la imagen...',
+  'Failed to load image': 'No se pudo cargar la imagen',
+
+  // ── Viewer / scanner / scene ─────────────────────────────────────────────
+  'Scanning for Tags...': 'Buscando etiquetas...',
+  'Change Scene': 'Cambiar la Escena',
+  'Upload Scene': 'Subir Escena',
+  'Neural Core': 'Núcleo Neural',
+
+  // ── Offline / sync engine ────────────────────────────────────────────────
+  'Going online…': 'Conectando…',
+  'Back online · syncing…': 'De vuelta en línea · sincronizando…',
+  'Syncing with cloud…': 'Sincronizando con la nube…',
+  'Offline mode ON — all changes saved locally':
+    'Modo sin conexión ACTIVADO — todos los cambios se guardan localmente',
+  'Working offline — changes queued':
+    'Trabajando sin conexión — los cambios están en cola',
+  'Sync failed — will retry on next connection':
+    'La sincronización falló — se reintentará en la próxima conexión',
+
+  // ── Shared progress toasts ───────────────────────────────────────────────
+  'Uploading Changes': 'Subiendo Cambios',
+  'Pulling Updates': 'Descargando Actualizaciones',
+  'Generating PDF': 'Generando el PDF',
+  'Export Complete': 'Exportación Completa',
+  'Process finished successfully': 'El proceso terminó con éxito',
+  'Select Sample Line:': 'Selecciona la línea de muestra:',
 };
