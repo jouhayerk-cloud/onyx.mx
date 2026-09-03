@@ -1209,4 +1209,9 @@ export const esCatalog: Record<string, string> = {
     'Ningún artículo coincide actualmente con el filtro 100% Generado por IA en esta categoría o término de búsqueda.',
   'Try clearing your search query or selecting a different category tab.':
     'Prueba a limpiar la búsqueda o a elegir otra categoría.',
+
+  // ── Greeting ─────────────────────────────────────────────────────────────
+  'Good morning': 'Buenos días',
+  'Good afternoon': 'Buenas tardes',
+  'Good evening': 'Buenas noches',
 };

@@ -17,9 +17,9 @@ export function WelcomeView() {
 
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return 'Good morning';
-        if (hour < 18) return 'Good afternoon';
-        return 'Good evening';
+        if (hour < 12) return tr('Good morning');
+        if (hour < 18) return tr('Good afternoon');
+        return tr('Good evening');
     };
 
     const navigateTo = (view: any) => {
