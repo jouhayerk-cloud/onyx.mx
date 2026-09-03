@@ -64,7 +64,7 @@ function drawFormattedTagCode(doc: jsPDF, codes: any, x: number, y: number, font
 
 interface ImgData { dataUrl: string; w: number; h: number; edgeColor?: string; }
 
-async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
+async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
     try {
         if (!url) return null;
         const cleanUrl = getCleanImageUrl(url) || url;
@@ -886,6 +886,66 @@ async function drawCatalogHubPage(
     doc.text(ovImp, col1X + 17, yPos);
 }
 
+/**
+ * Decoded images, keyed by every argument that changes the result.
+ *
+ * Two jobs. It de-duplicates an image used more than once in a run, and --
+ * the reason it exists -- it lets the whole set be warmed in parallel before
+ * rendering starts. Every draw call in this file is a sequential await, so
+ * without a warm-up fetchImageBatch's 50ms batching window never accumulates
+ * more than one file id and a catalogue becomes one Apps Script round trip
+ * per image, in series. Apps Script is slow per call, so that is where the
+ * wait was coming from.
+ *
+ * Cleared at the start of each catalogue so repeated exports in one session
+ * do not grow without bound.
+ */
+const imgDataCache = new Map<string, Promise<ImgData | null>>();
+
+async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
+    if (!url) return null;
+    const key = [url, maxSize, keepPng, bgColor, padding].join('|');
+    const hit = imgDataCache.get(key);
+    if (hit) return hit;
+    // Cache the PROMISE, not the result, so concurrent callers for the same
+    // image share one decode instead of racing.
+    const p = loadImgDataUncached(url, maxSize, keepPng, bgColor, padding);
+    imgDataCache.set(key, p);
+    return p;
+}
+
+/**
+ * Warm the cache for a whole catalogue before drawing it.
+ *
+ * Concurrency is capped rather than unbounded: firing every image at once
+ * would give fetchImageBatch one perfect batch, but also decode hundreds of
+ * canvases simultaneously. Eight in flight still collapses the round trips by
+ * roughly an order of magnitude while keeping memory flat.
+ */
+async function prefetchImgData(urls: string[], onProgress?: (done: number, total: number) => void): Promise<void> {
+    const unique = Array.from(new Set(urls.filter(Boolean)));
+    if (unique.length === 0) return;
+
+    let next = 0;
+    let done = 0;
+    const CONCURRENCY = 8;
+
+    const worker = async () => {
+        while (next < unique.length) {
+            const idx = next++;
+            // Failures are already swallowed by loadImgDataUncached, which
+            // returns null. Warming must never reject the whole catalogue.
+            try { await loadImgData(unique[idx], 800, false, '#1C1C1E', 32); } catch { /* drawn as a gap later */ }
+            done++;
+            onProgress?.(done, unique.length);
+        }
+    };
+
+    await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, unique.length) }, worker)
+    );
+}
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single'; logo?: string; exportType?: 'regular' | 'catalog' },
@@ -894,6 +954,17 @@ export async function exportCatalogPdf(
 ) {
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
+
+    // Warm every image before drawing. The grid layout only ever draws the
+    // first three per item, so do not pay to decode the rest.
+    imgDataCache.clear();
+    const wanted = results.flatMap(r => {
+        const list = getItemImages(r);
+        return config.method === 'grid' ? list.slice(0, 3) : list;
+    });
+    await prefetchImgData(wanted, (n, total) => {
+        onProgress?.(5 + Math.round((n / total) * 20), `Loading images ${n}/${total}...`);
+    });
     const PW = 210, PH = 297, M = 12;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
