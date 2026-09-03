@@ -501,10 +501,10 @@ export function UploadEntryForm() {
                         <label className={lbl}>{tr("Metrics (Kg / W / H / L)")}</label>
                         <div className="grid grid-cols-4 gap-2">
                             {[
-                                { name: tr("weightKg"), placeholder: 'kg', suggestions: suggestions.weightKg },
-                                { name: tr("widthCm"), placeholder: 'W', suggestions: suggestions.widthCm },
-                                { name: tr("heightCm"), placeholder: 'H', suggestions: suggestions.heightCm },
-                                { name: tr("lengthCm"), placeholder: 'L', suggestions: suggestions.lengthCm },
+                                { name: "weightKg", placeholder: 'kg', suggestions: suggestions.weightKg },
+                                { name: "widthCm", placeholder: 'W', suggestions: suggestions.widthCm },
+                                { name: "heightCm", placeholder: 'H', suggestions: suggestions.heightCm },
+                                { name: "lengthCm", placeholder: 'L', suggestions: suggestions.lengthCm },
                             ].map(f => (
                                 <div key={f.name}>
                                     <input type="number" step="0.01" min="0" name={f.name}

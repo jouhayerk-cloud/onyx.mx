@@ -105,6 +105,14 @@ export const ENUM_LABELS: Record<string, string> = {
   'Sleepy': 'Somnoliento',
   'Doubt': 'Duda',
 
+  // NOT here, deliberately, though they look like candidates: BatchOp.status
+  // (idle/processing/completed/failed), ProcessingMode (bgreplace/local/cloud/
+  // hybrid) and BgQuality (1K/2K). Every occurrence is a comparison or an
+  // assignment — none is ever rendered, so a label would be dead weight. Worse,
+  // `tr()` falls back to this map, so entries for generic words like 'local'
+  // and 'cloud' would start translating unrelated UI copy that happens to match.
+  // Verified by grep before removing them; re-check before adding them back.
+
   // ── Connection / capacity state ──────────────────────────────────────────
   'ONLINE': 'EN LÍNEA',
   'OPTIMAL': 'ÓPTIMO',

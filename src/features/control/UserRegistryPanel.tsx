@@ -359,7 +359,7 @@ export function UserRegistryPanel() {
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">{tr("Last Sync")}</span>
                                                 <span className="text-[9px] font-black text-neutral-500 uppercase tracking-tighter">
-                                                    {user.last_submit_at ? new Date(user.last_submit_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: '2-digit' }) : tr("NONE")}
+                                                    {user.last_submit_at ? new Date(user.last_submit_at).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric', year: '2-digit' }) : tr("NONE")}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col gap-1 items-end text-right">

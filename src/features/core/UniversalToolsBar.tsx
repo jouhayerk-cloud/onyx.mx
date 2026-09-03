@@ -757,8 +757,8 @@ export const UniversalToolsBar: React.FC = () => {
                                     { id: 'Supplies', icon: Box, color: '#f59e0b' },
                                     { id: 'Labor', icon: Users, color: '#ec4899' },
                                     { id: 'Packing', icon: Archive, color: '#a855f7' },
-                                    { id: tr("Operations"), icon: Activity, color: '#ef4444' },
-                                    { id: tr("Logistics"), icon: Truck, color: '#06b6d4' }
+                                    { id: "Operations", icon: Activity, color: '#ef4444' },
+                                    { id: "Logistics", icon: Truck, color: '#06b6d4' }
                                 ].map(s => {
                                     const Icon = s.icon;
                                     const isActive = finCategoryFilter === s.id;

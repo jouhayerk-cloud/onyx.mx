@@ -109,7 +109,7 @@ export const WorkbookSuppliesView: React.FC = () => {
                             return (
                                 <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
                                     <td className="p-4 text-white/30">
-                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString("es-MX") : String(item.date)) : '-'}
+                                        {item.date ? (typeof item.date === 'number' ? new Date(Math.round((item.date - 25569) * 864e5)).toLocaleDateString(tr("es-MX")) : String(item.date)) : '-'}
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col">

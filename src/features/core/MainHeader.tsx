@@ -1149,7 +1149,7 @@ export function MainHeader() {
     // ─── SELECTED ITEMS EXPORT (Single Sheet) ─────────────────────────────────
     const handleExportSelectedXLSX = async () => {
         if (selectedIds.length === 0) {
-            toast.error('No items selected');
+            toast.error(tr("No items selected"));
             return;
         }
         setIsExporting(true);
@@ -1325,10 +1325,10 @@ export function MainHeader() {
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveAs(new Blob([buffer]), `Onyx-mx_Selected_Items_${dateStr}.xlsx`);
-            toast.success('Selected Items WorkBook Ready', { icon: '📦' });
+            toast.success(tr("Selected Items WorkBook Ready"), { icon: '📦' });
         } catch (error) {
             console.error('Selected export failed:', error);
-            toast.error('Selected Items Export Failed');
+            toast.error(tr("Selected Items Export Failed"));
         } finally {
             setIsExporting(false);
         }
@@ -2426,10 +2426,10 @@ export function MainHeader() {
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveAs(new Blob([buffer]), `Onyx-mx_Book-326_${dateStr}.xlsx`);
-            toast.success('WorkBook Ready', { icon: '📊' });
+            toast.success(tr("WorkBook Ready"), { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
-            toast.error('Manifest Export Failed');
+            toast.error(tr("Manifest Export Failed"));
         } finally {
             setIsExporting(false);
         }
@@ -3236,10 +3236,10 @@ export function MainHeader() {
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveAs(new Blob([buffer]), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
-            toast.success('Workbook V2 Ready', { icon: '📊' });
+            toast.success(tr("Workbook V2 Ready"), { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
-            toast.error('V2 Export Failed');
+            toast.error(tr("V2 Export Failed"));
         } finally {
             setIsExporting(false);
         }
@@ -3324,7 +3324,7 @@ export function MainHeader() {
 
             // Export ONLY selected items
             if (selectedIds.length === 0) {
-                toast.error('No items selected');
+                toast.error(tr("No items selected"));
                 setIsShopifyExporting(false);
                 return;
             }
@@ -3746,7 +3746,7 @@ export function MainHeader() {
             toast.success(`Shopify Export Ready — ${readyItems.length} ready, ${notReadyItems.length} to V2`, { icon: '🛍️' });
         } catch (error) {
             console.error('Shopify Export failed:', error);
-            toast.error('Shopify Export Failed');
+            toast.error(tr("Shopify Export Failed"));
         } finally {
             setIsShopifyExporting(false);
         }

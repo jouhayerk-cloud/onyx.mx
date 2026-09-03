@@ -124,7 +124,7 @@ export function ItemMediaPanel() {
         }
       } catch (e) {
         console.error("Failed to parse mask data for editing:", e);
-        toast.error("Failed to load mask data for editing.");
+        toast.error(tr("Failed to load mask data for editing."));
       }
     }
   };

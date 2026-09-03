@@ -217,7 +217,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
         } catch (e) {
             console.error(e);
             setProgress((p: any) => ({ ...p, xlsx: -1 }));
-            toast.error('XLSX Generation Failed');
+            toast.error(tr("XLSX Generation Failed"));
         }
     };
 
@@ -266,7 +266,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
         } catch (e) {
             console.error(e);
             setProgress((p: any) => ({ ...p, pdf: -1 }));
-            toast.error('PDF Generation Failed');
+            toast.error(tr("PDF Generation Failed"));
         }
     };
 
@@ -569,7 +569,7 @@ export const PackingModule: React.FC = () => {
     const handleExportXLSX = async () => {
         if (isExportingXLSX || selectedIds.size === 0) return;
         setIsExportingXLSX(true);
-        const tid = toast.loading('Building XLSX...');
+        const tid = toast.loading(tr("Building XLSX..."));
         try {
             const rows = selectedItems.map(item => {
                 const d = item.normData;
@@ -588,7 +588,7 @@ export const PackingModule: React.FC = () => {
                 name: 'Packing List',
                 data: [['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'], ...rows]
             }]);
-            toast.success('XLSX exported', { id: tid });
+            toast.success(tr("XLSX exported"), { id: tid });
         } catch (error: any) {
             toast.error(`XLSX failed: ${error.message}`, { id: tid });
         } finally {
@@ -657,13 +657,13 @@ export const PackingModule: React.FC = () => {
 
     /* ── Print Labels (The Wizard) ── */
     const handlePrintLabels = async () => {
-        if (selectedIds.size === 0) return toast.error('Select items first');
+        if (selectedIds.size === 0) return toast.error(tr("Select items first"));
         
         const timestamp = new Date().toISOString();
         const ids = Array.from(selectedIds);
         setLastPrintedIds(ids);
 
-        const tid = toast.loading('Initializing Multi-Step Print Wizard...');
+        const tid = toast.loading(tr("Initializing Multi-Step Print Wizard..."));
         try {
             // STEP 1: Generate XLSX (tracks filePrintDate)
             await handleExportXLSX();
@@ -680,7 +680,7 @@ export const PackingModule: React.FC = () => {
             // STEP 3: Open Overlay PREVIEW
             setShowPreviewOverlay(true);
             
-            toast.success('Wizard Step 1 Complete: XLSX generated. Step 2: Verification Ready.', { id: tid });
+            toast.success(tr("Wizard Step 1 Complete: XLSX generated. Step 2: Verification Ready."), { id: tid });
         } catch (e: any) {
             toast.error(`Wizard Failed: ${e.message}`, { id: tid });
         }
