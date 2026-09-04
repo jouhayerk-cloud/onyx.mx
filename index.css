@@ -839,6 +839,20 @@ button,
   min-height: 40px;
 }
 
+/* Icon-only keys in the main top bar and the universal tools bars.
+   These size their own box (w-12 h-12) and centre a single lucide icon in it,
+   so the rule above was pure harm: 16px of horizontal padding left a 16px
+   content box, and a 38px icon was squeezed down to a ~14px sliver while
+   keeping its full 38px height. The icons looked thin and undersized no matter
+   what size the component asked for, which is why raising the `size` prop on
+   its own changed almost nothing. The button is the hit target; the icon
+   fills it. Class beats the bare `button` element selector above, so this
+   needs no !important. */
+.tool-btn {
+  padding: 0;
+  min-height: 0;
+}
+
 button.secondary {
   min-height: 28px;
   padding: 0px 12px;
