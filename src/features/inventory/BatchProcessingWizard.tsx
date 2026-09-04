@@ -592,7 +592,7 @@ Return ONLY valid JSON in this exact structure, with no markdown formatting:
                             updateOp(op.id, { progress: 75, stepLabel: 'Uploading cleaned image...' });
                             const publicUrl = await checkAbort(
                                 op.id,
-                                uploadCleanedImage(dataUrl, `${op.id}_${cacheKey}.png`),
+                                uploadCleanedImage(dataUrl, `${op.id}_${cacheKey}.png`, user),
                             );
 
                             op.result = op.result || {};
@@ -1216,7 +1216,7 @@ Instructions:
                             const svgData = JSON.parse(op.result.cloudSegmentationMasks)?.svgData;
                             if (svgData) {
                                 const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
-                                op.result.svgUrl = await uploadCleanedImage(svgDataUrl, `outline_${op.id}.svg`);
+                                op.result.svgUrl = await uploadCleanedImage(svgDataUrl, `outline_${op.id}.svg`, user);
                             }
                         } catch (e) {
                             console.warn('Could not persist SVG outline:', e);
@@ -2181,10 +2181,14 @@ Instructions:
                                 {op.result?.cleanedUrl && (
                                     <div
                                         className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden shrink-0 bg-black/40 flex items-center justify-center border border-sky-400/40 group relative cursor-pointer"
-                                        onClick={() => setFullscreenImage(op.result!.cleanedUrl!)}
+                                        onClick={() => setFullscreenImage(getCleanImageUrl(op.result!.cleanedUrl!) || op.result!.cleanedUrl!)}
                                         title={tr("Cleaned image")}
                                     >
-                                        <img src={op.result.cleanedUrl} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-300" />
+                                        {/* Through getCleanImageUrl, not raw: cleanedUrl is a Drive
+                                          * URL now, and Drive's own uc?export=view form does not
+                                          * render reliably in an img tag. The rewrite turns it into
+                                          * the lh3 form that does. */}
+                                        <img src={getCleanImageUrl(op.result.cleanedUrl) || op.result.cleanedUrl} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-300" />
                                         <div className="absolute bottom-0 inset-x-0 bg-sky-500/80 text-white text-[8px] font-black uppercase text-center py-0.5 tracking-wider">
                                             {tr("Cleaned")}
                                         </div>

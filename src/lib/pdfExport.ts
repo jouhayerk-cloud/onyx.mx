@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms } from './utils';
+import { getCleanImageUrl, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -19,7 +19,13 @@ export interface CatalogArtifact {
         [key: string]: any;
     };
     images: string[];
-    exportType?: 'regular' | 'catalog';
+    /**
+     * 'catalog-grid' is set by the batch wizard for a single item with several
+     * images, and three places here branch on it. It was missing from this
+     * union and assigned through an `as any` cast, so every one of those
+     * comparisons type-checked as impossible while working fine at runtime.
+     */
+    exportType?: 'regular' | 'catalog' | 'catalog-grid';
 }
 
 function drawFormattedTagCode(doc: jsPDF, codes: any, x: number, y: number, fontSize: number = 9) {
@@ -174,12 +180,20 @@ async function loadExternalImageAsDataUrl(cleanUrl: string): Promise<HTMLImageEl
     // Every image in the catalogue used to pay for that. Skipping it changes no
     // outcome: a Drive URL that the proxy cannot fetch still ends up at
     // strategy 3 exactly as before.
-    const isGoogleHosted = /(^|\.)((lh\d+\.)?googleusercontent\.com|drive\.google\.com|docs\.google\.com)/i
-        .test((() => { try { return new URL(cleanUrl).hostname; } catch { return ''; } })());
+    // Shared with the Shopify export so both agree on what "a Google host" is.
+    // The inline regex this replaced anchored only the start of the label, so
+    // `drive.google.com.evil.tld` counted as Google-hosted.
+    const isGoogleHosted = isGoogleHostedUrl(cleanUrl);
 
     // Strategy 1: fetch → blob → dataURL (preferred, avoids canvas tainting)
+    // Timed for the same reason the Drive proxy is: an un-aborted fetch waits
+    // forever, and this strategy now carries the background-replaced images,
+    // so one unreachable host would hang the export rather than fall through.
     if (!isGoogleHosted) try {
-        const resp = await fetch(cleanUrl, { mode: 'cors' });
+        const ac = new AbortController();
+        const stall = setTimeout(() => ac.abort(), 15_000);
+        const resp = await fetch(cleanUrl, { mode: 'cors', signal: ac.signal })
+            .finally(() => clearTimeout(stall));
         if (resp.ok) {
             const blob = await resp.blob();
             if (blob.size > 0) {
@@ -946,6 +960,40 @@ async function prefetchImgData(urls: string[], onProgress?: (done: number, total
     );
 }
 
+/**
+ * Hand the main thread back to the browser long enough for it to paint.
+ *
+ * Every await in the draw loops below resolves out of the image cache that
+ * prefetchImgData just warmed, and awaiting an already-settled promise only
+ * queues a microtask -- the browser never gets a frame between pages. So the
+ * export fired onProgress for every page, React batched the state updates,
+ * and nothing reached the screen until the whole catalogue was assembled:
+ * a long export was indistinguishable from a frozen one, which is exactly
+ * what "generate catalog hangs" was.
+ *
+ * A macrotask is what actually allows a paint. MessageChannel rather than
+ * setTimeout(0) because background tabs clamp timers to ~1s, which would
+ * turn a 200-page export into a 200-second one the moment the user looked
+ * at another tab.
+ */
+function paintYield(): Promise<void> {
+    return new Promise<void>(resolve => {
+        if (typeof MessageChannel === 'undefined') { setTimeout(resolve, 0); return; }
+        const ch = new MessageChannel();
+        ch.port1.onmessage = () => { ch.port1.close(); resolve(); };
+        ch.port2.postMessage(null);
+    });
+}
+
+/** Yields at most ~16x/sec: smooth enough for a bar, cheap enough per page. */
+let lastYieldAt = 0;
+async function yieldToUi(force = false): Promise<void> {
+    const now = Date.now();
+    if (!force && now - lastYieldAt < 60) return;
+    lastYieldAt = now;
+    await paintYield();
+}
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single'; logo?: string; exportType?: 'regular' | 'catalog' },
@@ -955,11 +1003,21 @@ export async function exportCatalogPdf(
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
 
-    // Warm every image before drawing. The grid layout only ever draws the
-    // first three per item, so do not pay to decode the rest.
+    // Warm every image before drawing. A grid page only ever draws the first
+    // three of an item, so do not pay to decode the rest.
+    //
+    // Which items those are is decided per item by its own exportType, not by
+    // config.method: in catalogue mode the loop below gives a grid item one
+    // page and every other item one page PER IMAGE. Keying this on
+    // config.method warmed three images for items whose pages then asked for
+    // all of them, so images four onward still loaded one at a time at draw
+    // time -- the exact serialisation this warm-up exists to remove.
     imgDataCache.clear();
     const wanted = results.flatMap(r => {
         const list = getItemImages(r);
+        if (exportType === 'catalog') {
+            return (r.exportType === 'catalog-grid' && list.length > 1) ? list.slice(0, 3) : list;
+        }
         return config.method === 'grid' ? list.slice(0, 3) : list;
     });
     await prefetchImgData(wanted, (n, total) => {
@@ -1030,17 +1088,20 @@ export async function exportCatalogPdf(
             if (item.exportType === 'catalog-grid' && imgs.length > 1) {
                 processedCount++;
                 onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+                await yieldToUi();
                 addPage();
                 await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, 0);
             } else if (imgs.length <= 1) {
                 processedCount++;
                 onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+                await yieldToUi();
                 addPage();
                 await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, 0);
             } else {
                 for (let j = 0; j < imgs.length; j++) {
                     processedCount++;
                     onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${i + 1} (Image ${j + 1}/${imgs.length})...`);
+                    await yieldToUi();
                     addPage();
                     await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, j);
                 }
@@ -1053,6 +1114,7 @@ export async function exportCatalogPdf(
             const imgs = getItemImages(item);
             processedCount++;
             onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+            await yieldToUi();
 
             if (imgs.length === 0) {
                 addPage();
@@ -1098,6 +1160,7 @@ export async function exportCatalogPdf(
         }
     }
     onProgress?.(95, 'Finalizing Catalogue...');
+    await yieldToUi(true);
     
     if (output === 'blob') {
         const blob = doc.output('blob');

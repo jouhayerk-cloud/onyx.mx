@@ -280,11 +280,57 @@ export function getCleanImageUrl(url: string | null | undefined): string | null 
 }
 
 /**
+ * Is this URL served by Google's Drive/CDN hosts?
+ *
+ * Matched against the parsed hostname and anchored at BOTH ends of the label,
+ * so `drive.google.com.evil.tld` and `notdrive.google.com` are both rejected.
+ * An earlier version anchored only the start, which let any hostname merely
+ * *beginning* with a Google domain through.
+ */
+export function isGoogleHostedUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  let host = '';
+  try { host = new URL(String(url).trim()).hostname; } catch { return false; }
+  return /(^|\.)(googleusercontent\.com|drive\.google\.com|docs\.google\.com)$/i.test(host);
+}
+
+/**
+ * The form an outside service must be given to fetch one of our Drive images.
+ *
+ * getCleanImageUrl above produces `lh3.googleusercontent.com/d/<id>`, which is
+ * right for an <img> in the app and wrong for anyone else: it is an
+ * undocumented CDN endpoint. Matrixify -- which is how Rare Earth import the
+ * workbook, not Shopify's own CSV importer -- wants the documented download
+ * endpoint instead.
+ *
+ * This replaces a chain of `includes()` branches in the Shopify export that
+ * got two things wrong. It took the whole tail after '/d/', so an id carrying
+ * a suffix (`/d/<id>?.png`, the exact form written elsewhere in the app) came
+ * out as `...&id=<id>?.png` and resolved to nothing. And it treated ANY url
+ * containing the substring `id=` as a Drive link, rewriting unrelated URLs
+ * that merely had an `id=` parameter. extractFileId already parses every id
+ * form we produce, so ask it rather than re-deriving the answer by hand.
+ *
+ * Anything that is not Drive-hosted -- including a Supabase URL from before
+ * the migration -- is returned unchanged rather than mangled into a Drive link
+ * that cannot exist.
+ */
+export function toDriveDownloadUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  const s = String(url).trim();
+  // The $ matters: without it, `drive.google.com.evil.tld` matches at position
+  // zero and an attacker-controlled host is treated as Drive.
+  if (!isGoogleHostedUrl(s)) return s;
+  const fileId = extractFileId(s);
+  return fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : s;
+}
+
+/**
  * Robustly collects all unique images from every possible field (including legacy ones).
  */
-export function collectAllImages(normData: any): string[] {
+export function collectAllImages(normData: any, opts?: { dropVideos?: boolean }): string[] {
   if (!normData) return [];
-  
+
   const collect = (val: any): string[] => {
     if (!val) return [];
     if (Array.isArray(val)) return val.flatMap(v => collect(v));
@@ -301,8 +347,18 @@ export function collectAllImages(normData: any): string[] {
     ...collect(normData.videoGen)
   ].filter(Boolean).map(u => String(u).trim()).filter(Boolean);
   
+  // Drop videos BEFORE cleaning, never after.
+  //
+  // getCleanImageUrl turns a Drive video into `uc?export=download&id=<id>`,
+  // which has no file extension left for isVideoFile to recognise -- so a
+  // filter applied downstream of it silently keeps every Drive-hosted clip.
+  // That is how .mp4 links were reaching the Shopify sheet's Image Src and the
+  // catalogue's image loader, which then spent a full timeout failing to
+  // decode them. Only the raw stored value still carries the extension.
+  const kept = opts?.dropVideos ? rawUrls.filter(u => !isVideoFile(u)) : rawUrls;
+
   // Deduplicate AFTER cleaning to catch identical visuals with different tracking tags
-  const cleanedUrls = rawUrls.map(u => getCleanImageUrl(u)).filter(Boolean) as string[];
+  const cleanedUrls = kept.map(u => getCleanImageUrl(u)).filter(Boolean) as string[];
   return Array.from(new Set(cleanedUrls));
 }
 
@@ -356,8 +412,7 @@ export function collectExportImages(normData: any): string[] {
     }
   }
 
-  const resolved = collectAllImages(normData)
-    .filter(url => !isVideoFile(url))
+  const resolved = collectAllImages(normData, { dropVideos: true })
     .map(url => {
       // The map may be keyed by the raw URL or by its cleaned form, depending
       // on which build wrote the row.
@@ -428,10 +483,22 @@ async function processImageBatch() {
   imageRequestQueue.clear();
   batchTimeout = null;
 
+  // A browser fetch never times out on its own, and Apps Script can stall for
+  // minutes under load or quota pressure. Every caller of this batch is behind
+  // an await, so one stalled call used to hang the caller forever: the
+  // catalogue export warms its images through here before it draws anything,
+  // so a stall showed up as the whole export hanging with no error in the
+  // console -- nothing had thrown, it was still waiting. Failing after 30s
+  // instead lets loadExternalImageAsDataUrl fall through to its next strategy
+  // and the catalogue finish, at worst with a gap where one image should be.
+  const ac = new AbortController();
+  const stall = setTimeout(() => ac.abort(), 30_000);
+
   try {
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action: 'batchGetImageBase64FromDriveIds', fileIds }),
+      signal: ac.signal,
     });
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
@@ -452,15 +519,20 @@ async function processImageBatch() {
       }
     });
   } catch (error) {
+    const reason = (error as any)?.name === 'AbortError'
+      ? new Error(`Drive image proxy did not answer within 30s (${fileIds.length} ids)`)
+      : error;
 
     fileIds.forEach(fileId => {
       const resolvers = promiseResolvers.get(fileId);
       if (resolvers) {
-        resolvers.forEach(({ reject }) => reject(error as any));
+        resolvers.forEach(({ reject }) => reject(reason as any));
         promiseResolvers.delete(fileId);
       }
     });
-    console.error("Image batch request failed:", error);
+    console.error("Image batch request failed:", reason);
+  } finally {
+    clearTimeout(stall);
   }
 }
 
