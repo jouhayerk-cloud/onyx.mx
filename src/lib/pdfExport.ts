@@ -125,36 +125,55 @@ async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, b
             }
         }
 
-        // Encode PNG only when the image actually carries transparency.
+        // Encode PNG only when the caller actually needs transparency.
         //
-        // This line used to be an unconditional toDataURL('image/png', 0.92) --
-        // and the quality argument is ignored for PNG, so every picture in
-        // every catalogue was embedded losslessly. jsPDF assembles the whole
-        // document by Array.join, so a big enough catalogue overflowed V8's
-        // maximum string length and threw "Invalid string length" from
-        // buildDocument, which surfaced as "Catalog generation failed".
+        // Asking the pixels whether there is alpha -- which is what this used to
+        // do -- is the right question for correctness and the wrong one for
+        // size. These are background-REMOVED product shots, so most catalogue
+        // images do carry alpha, and a lossless PNG of an 800px photo measures
+        // ~1.2MB against ~80KB for the same picture as JPEG. Measured on real
+        // catalogue images: five opaque ones came out 33-117KB, the one with
+        // alpha came out 1210KB. Across 484 pages that is the difference
+        // between a ~40MB document and one over half a gigabyte, and jsPDF
+        // builds the whole PDF as a single string via Array.join, so the big
+        // one died with "Invalid string length" after thirteen minutes.
         //
-        // The extension cannot decide this. Background-replaced photos are
-        // served from /cleaned/*.png and are fully opaque, so testing the URL
-        // for "png" -- as the trim condition above still does -- would keep
-        // exactly the largest images lossless. So ask the pixels instead, and
-        // fall back to PNG if the canvas is tainted and refuses to be read.
-        let hasAlpha = true;
-        try {
-            const probe = canvas.getContext('2d', { willReadFrequently: true });
-            const px = probe?.getImageData(0, 0, canvas.width, canvas.height).data;
-            if (px) {
-                hasAlpha = false;
-                for (let i = 3; i < px.length; i += 4) {
-                    if (px[i] < 250) { hasAlpha = true; break; }
+        // drawContain already paints edgeColor as a solid frame behind every
+        // image, so compositing the transparent pixels onto that same colour
+        // is visually identical in the finished PDF and lets the photo ship as
+        // JPEG. Every call in this file passes keepPng: false; callers that do
+        // want real transparency (masks, label art) keep the alpha probe.
+        const flattenTo = edgeColor || bgColor;
+        let dataUrl: string;
+
+        if (!keepPng) {
+            const flat = document.createElement('canvas');
+            flat.width = canvas.width;
+            flat.height = canvas.height;
+            const fctx = flat.getContext('2d')!;
+            fctx.fillStyle = flattenTo;
+            fctx.fillRect(0, 0, flat.width, flat.height);
+            fctx.drawImage(canvas, 0, 0);
+            dataUrl = flat.toDataURL('image/jpeg', 0.85);
+        } else {
+            let hasAlpha = true;
+            try {
+                const probe = canvas.getContext('2d', { willReadFrequently: true });
+                const px = probe?.getImageData(0, 0, canvas.width, canvas.height).data;
+                if (px) {
+                    hasAlpha = false;
+                    for (let i = 3; i < px.length; i += 4) {
+                        if (px[i] < 250) { hasAlpha = true; break; }
+                    }
                 }
+            } catch (e) {
+                // Tainted canvas: keep the old lossless behaviour for this one image.
             }
-        } catch (e) {
-            // Tainted canvas: keep the old lossless behaviour for this one image.
+            dataUrl = hasAlpha ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85);
         }
 
         return { 
-            dataUrl: hasAlpha ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85), 
+            dataUrl, 
             w: Math.max(1, canvas.width), 
             h: Math.max(1, canvas.height),
             edgeColor: edgeColor
@@ -1023,6 +1042,26 @@ export async function exportCatalogPdf(
     await prefetchImgData(wanted, (n, total) => {
         onProgress?.(5 + Math.round((n / total) * 20), `Loading images ${n}/${total}...`);
     });
+
+    // jsPDF assembles the finished PDF as ONE JavaScript string (Array.join in
+    // buildDocument), so the whole document is bounded by V8's maximum string
+    // length, around 512MB. Overshooting throws "Invalid string length" only at
+    // the very end -- which is how a 483-item catalogue managed to fail after
+    // thirteen minutes of work with nothing to show for it. Every image is
+    // already decoded by this point, so the size is knowable now: check it here
+    // and fail in seconds, with the number and a batch size that would fit,
+    // rather than at the finish line with a stack trace.
+    const payloadChars = (await Promise.all([...imgDataCache.values()]))
+        .reduce((n, d) => n + (d?.dataUrl.length ?? 0), 0);
+    const MAX_PAYLOAD_CHARS = 320_000_000;
+    if (payloadChars > MAX_PAYLOAD_CHARS) {
+        const mb = Math.round(payloadChars / 1_048_576);
+        const fits = Math.max(1, Math.floor(results.length * (MAX_PAYLOAD_CHARS / payloadChars)));
+        throw new Error(
+            `Too large for one PDF: ${results.length} items carry about ${mb}MB of image data, ` +
+            `and a single PDF tops out near 300MB. Try batches of about ${fits} items.`
+        );
+    }
     const PW = 210, PH = 297, M = 12;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
