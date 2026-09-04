@@ -366,6 +366,11 @@ export const NFCWizard: React.FC = () => {
     );
 };
 
+const fmtDuration = (ms: number) => {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    return total < 60 ? `${total}s` : `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, '0')}s`;
+};
+
 /* ─── Printables Engine HUB Sub-component (LARGE Mode) ─── */
 export const LabelWizard: React.FC = () => {
     const user = useAtomValue(userAtom);
@@ -383,6 +388,25 @@ export const LabelWizard: React.FC = () => {
     const [catalogMethod, setCatalogMethod] = useState<'grid' | 'single'>('grid');
     const [progress, setProgress] = useState({ xlsx: -1, pdf: -1, catalog: -1, printer: -1 });
     const [urls, setUrls] = useState({ xlsx: '', pdf: '', catalog: '' });
+
+    // Verbose catalogue telemetry. exportCatalogPdf has always reported a stage
+    // string alongside the percentage -- it was being dropped on the floor, so a
+    // multi-minute export showed nothing but a spinner and read as a hang.
+    const [catalogStatus, setCatalogStatus] = useState<{
+        label: string; error: string | null; startedAt: number | null; updatedAt: number; bytes: number;
+    }>({ label: '', error: null, startedAt: null, updatedAt: 0, bytes: 0 });
+    const [nowTs, setNowTs] = useState(() => Date.now());
+
+    const catalogRunning = progress.catalog > 0 && progress.catalog < 100;
+    // The export never reports backwards, so a long gap means one image source
+    // is sitting on its timeout. Say so instead of leaving a frozen-looking bar.
+    const catalogStalled = catalogRunning && catalogStatus.updatedAt > 0 && nowTs - catalogStatus.updatedAt > 15000;
+
+    useEffect(() => {
+        if (!catalogRunning) return;
+        const id = window.setInterval(() => setNowTs(Date.now()), 250);
+        return () => window.clearInterval(id);
+    }, [catalogRunning]);
 
     const [isPrintWorkflowOpen, setIsPrintWorkflowOpen] = useState(false);
     const [showJobLog, setShowJobLog] = useState(false);
@@ -954,6 +978,9 @@ export const LabelWizard: React.FC = () => {
     };
 
     const handleGenerateCatalog = async () => {
+        const startedAt = Date.now();
+        setCatalogStatus({ label: tr("Preparing Catalog..."), error: null, startedAt, updatedAt: startedAt, bytes: 0 });
+        setNowTs(startedAt);
         setProgress(p => ({ ...p, catalog: 5 }));
         try {
             const results: CatalogArtifact[] = selectedItems.map(item => ({
@@ -968,13 +995,16 @@ export const LabelWizard: React.FC = () => {
                 method: catalogMethod,
                 logo: logoVariant,
                 exportType: 'catalog'
-            }, (pct) => {
+            }, (pct, stage) => {
                 setProgress(p => ({ ...p, catalog: pct }));
+                // Keep the last stage if a caller ever reports a bare percentage.
+                setCatalogStatus(s => ({ ...s, label: stage || s.label, updatedAt: Date.now() }));
             }, 'blob');
 
             if (blob instanceof Blob) {
                 setUrls(u => ({ ...u, catalog: URL.createObjectURL(blob) }));
                 setProgress(p => ({ ...p, catalog: 100 }));
+                setCatalogStatus(s => ({ ...s, label: tr("Catalogue Ready"), error: null, updatedAt: Date.now(), bytes: blob.size }));
                 toast.success(tr("Catalog generated"));
             } else {
                 throw new Error('Catalog generation failed');
@@ -982,6 +1012,14 @@ export const LabelWizard: React.FC = () => {
         } catch (e) {
             console.error(e);
             setProgress(p => ({ ...p, catalog: -1 }));
+            // Surface the real reason in the panel; the toast only ever said
+            // "failed", which is what sent people looking at a frozen spinner.
+            setCatalogStatus(s => ({
+                ...s,
+                label: '',
+                error: (e as any)?.message ? String((e as any).message) : String(e),
+                updatedAt: Date.now(),
+            }));
             toast.error(tr("Catalog generation failed"));
         }
     };
@@ -1443,10 +1481,70 @@ export const LabelWizard: React.FC = () => {
                                         disabled={progress.catalog > 0 && progress.catalog < 100} 
                                         className="w-full py-4 bg-blue-500 border border-blue-400 text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                                     >
-                                        {progress.catalog > 0 && progress.catalog < 100 ? <div className="w-4 h-4 border-2 border-black/20 border-t-black animate-spin rounded-full" /> : <BookOpen size={18} />}
-                                        {progress.catalog === 100 ? tr("RE-GENERATE CATALOG") : tr("GENERATE CATALOG")}
+                                        {catalogRunning ? <div className="w-4 h-4 border-2 border-black/20 border-t-black animate-spin rounded-full" /> : <BookOpen size={18} />}
+                                        {catalogRunning
+                                            ? `${tr("GENERATING")} ${Math.max(0, Math.min(100, progress.catalog))}%`
+                                            : progress.catalog === 100 ? tr("RE-GENERATE CATALOG") : tr("GENERATE CATALOG")}
                                     </button>
                                     
+                                    {(catalogRunning || progress.catalog === 100 || catalogStatus.error) && (
+                                        <div className="mt-3 flex flex-col gap-3 bg-black/40 border border-white/5 rounded-2xl p-5">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {catalogRunning && <div className="w-3 h-3 border-2 border-blue-400/20 border-t-blue-400 animate-spin rounded-full shrink-0" />}
+                                                    {!catalogRunning && progress.catalog === 100 && <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />}
+                                                    {!catalogRunning && catalogStatus.error && <ShieldAlert size={14} className="text-red-400 shrink-0" />}
+                                                    <span className="text-[11px] font-black uppercase tracking-widest text-white/70 truncate">
+                                                        {catalogStatus.error ? tr("Generation failed") : (catalogStatus.label || tr("Working..."))}
+                                                    </span>
+                                                </div>
+                                                <span className={`text-[11px] font-black tabular-nums shrink-0 ${catalogStatus.error ? 'text-red-400' : progress.catalog === 100 ? 'text-emerald-400' : 'text-blue-400'}`}>
+                                                    {Math.max(0, Math.min(100, progress.catalog))}%
+                                                </span>
+                                            </div>
+
+                                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full transition-all duration-300 ease-out ${catalogStatus.error ? 'bg-red-500' : progress.catalog === 100 ? 'bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.6)]' : 'bg-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.6)]'}`}
+                                                    style={{ width: `${Math.max(0, Math.min(100, progress.catalog))}%` }}
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">{tr("Items")}</span>
+                                                    <span className="text-[12px] font-black tabular-nums text-white/80">{selectedItems.length}</span>
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">{tr("Elapsed")}</span>
+                                                    <span className="text-[12px] font-black tabular-nums text-white/80">
+                                                        {catalogStatus.startedAt ? fmtDuration((catalogRunning ? nowTs : catalogStatus.updatedAt) - catalogStatus.startedAt) : '--'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">{tr("Size")}</span>
+                                                    <span className="text-[12px] font-black tabular-nums text-white/80">
+                                                        {catalogStatus.bytes ? `${(catalogStatus.bytes / 1048576).toFixed(1)} MB` : '--'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {catalogStalled && (
+                                                <div className="flex items-start gap-2 text-[10px] font-bold text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
+                                                    <Activity size={12} className="mt-[1px] shrink-0" />
+                                                    <span>{tr("Stalled for")} {fmtDuration(nowTs - catalogStatus.updatedAt)} — {tr("an image source is likely timing out. This resolves itself; the page it belongs to is drawn as a gap.")}</span>
+                                                </div>
+                                            )}
+
+                                            {catalogStatus.error && (
+                                                <div className="flex items-start gap-2 text-[10px] font-bold text-red-400/90 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2 break-words">
+                                                    <ShieldAlert size={12} className="mt-[1px] shrink-0" />
+                                                    <span>{catalogStatus.error}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {progress.catalog === 100 && urls.catalog && (
                                         <button 
                                             onClick={() => { const a = document.createElement('a'); a.href = urls.catalog; a.download = `Catalog_${name}.pdf`; a.click(); }}
