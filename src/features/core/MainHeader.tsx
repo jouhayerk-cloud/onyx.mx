@@ -217,7 +217,7 @@ const SubTabPills: React.FC<{
                         title={t.label}
                         className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all select-none"
                         style={active === t.id ? { color: accentColor } : {}}>
-                        {TabIcon ? <TabIcon size={34} strokeWidth={2.2} /> : <span className="text-[10px] font-black">{t.label}</span>}
+                        {TabIcon ? <TabIcon size={18} strokeWidth={2.2} /> : <span className="text-[10px] font-black">{t.label}</span>}
                     </button>
                     {TabIcon && (
                         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">{t.label}</span>
@@ -246,7 +246,7 @@ const StudioAction: React.FC<{
             aria-pressed={active}
             className={`tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all select-none disabled:opacity-30 disabled:pointer-events-none ${className}`}
         >
-            <Icon size={34} strokeWidth={2.2} style={{ color: active ? color : undefined }} />
+            <Icon size={18} strokeWidth={2.2} style={{ color: active ? color : undefined }} />
         </button>
         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">{label}</span>
     </div>
@@ -453,7 +453,7 @@ const ToolButton: React.FC<{
             className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
             style={active && tone ? { color: tone } : undefined}
         >
-            <Icon size={34} strokeWidth={2.2} />
+            <Icon size={18} strokeWidth={2.2} />
         </button>
         <span className="tool-label text-[8px] font-black uppercase tracking-[0.14em] leading-none whitespace-nowrap">
             {label}
