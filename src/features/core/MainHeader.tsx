@@ -113,7 +113,7 @@ const OnyxBar: React.FC = () => null;
 
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { missingShopifyFields, SHOPIFY_REQUIRED_FIELDS, type ShopifyField } from '../../lib/aiContent';
-import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, toDriveDownloadUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -3490,21 +3490,7 @@ export function MainHeader() {
 
                 // Export 1 row per image
                 imageList.forEach((imgRaw, idx) => {
-                    let imageSrc = '';
-                    if (imgRaw) {
-                        if (imgRaw.includes('lh3.googleusercontent.com/d/')) {
-                            const fileId = imgRaw.split('/d/')[1];
-                            imageSrc = `https://drive.google.com/uc?export=download&id=${fileId}`;
-                        } else if (imgRaw.includes('drive.google.com/file/d/')) {
-                            const match = imgRaw.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                            imageSrc = (match && match[1]) ? `https://drive.google.com/uc?export=download&id=${match[1]}` : imgRaw;
-                        } else if (imgRaw.includes('id=')) {
-                            const match = imgRaw.match(/id=([a-zA-Z0-9_-]+)/);
-                            imageSrc = (match && match[1]) ? `https://drive.google.com/uc?export=download&id=${match[1]}` : imgRaw;
-                        } else {
-                            imageSrc = imgRaw;
-                        }
-                    }
+                    const imageSrc = toDriveDownloadUrl(imgRaw);
 
                     const rowData = [
                         handle,
@@ -3670,8 +3656,15 @@ export function MainHeader() {
                 const v2Clean: any = sanitizeExcelRow(v2Row);
                 const urls = collectExportImages(n2);
                 for (let k = 0; k < v2MaxImages; k++) {
-                    v2Clean['image_' + (k + 1)] = urls[k]
-                        ? { formula: 'HYPERLINK("' + urls[k] + '", "View Image ' + (k + 1) + '")' }
+                    // Same download form as sheet 1. This sheet used to embed the
+                    // lh3 URL straight from collectExportImages, so one workbook
+                    // handed out the same photo under two different hosts.
+                    // Quotes are stripped because the URL sits inside a quoted
+                    // formula string -- one in a filename would end the argument
+                    // early and corrupt the cell.
+                    const href = toDriveDownloadUrl(urls[k]).replace(/"/g, '');
+                    v2Clean['image_' + (k + 1)] = href
+                        ? { formula: 'HYPERLINK("' + href + '", "View Image ' + (k + 1) + '")' }
                         : '';
                 }
                 v2Sheet.addRow(v2Clean);

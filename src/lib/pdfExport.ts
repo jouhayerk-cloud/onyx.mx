@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms } from './utils';
+import { getCleanImageUrl, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -180,8 +180,10 @@ async function loadExternalImageAsDataUrl(cleanUrl: string): Promise<HTMLImageEl
     // Every image in the catalogue used to pay for that. Skipping it changes no
     // outcome: a Drive URL that the proxy cannot fetch still ends up at
     // strategy 3 exactly as before.
-    const isGoogleHosted = /(^|\.)((lh\d+\.)?googleusercontent\.com|drive\.google\.com|docs\.google\.com)/i
-        .test((() => { try { return new URL(cleanUrl).hostname; } catch { return ''; } })());
+    // Shared with the Shopify export so both agree on what "a Google host" is.
+    // The inline regex this replaced anchored only the start of the label, so
+    // `drive.google.com.evil.tld` counted as Google-hosted.
+    const isGoogleHosted = isGoogleHostedUrl(cleanUrl);
 
     // Strategy 1: fetch → blob → dataURL (preferred, avoids canvas tainting)
     // Timed for the same reason the Drive proxy is: an un-aborted fetch waits
