@@ -19,7 +19,13 @@ export interface CatalogArtifact {
         [key: string]: any;
     };
     images: string[];
-    exportType?: 'regular' | 'catalog';
+    /**
+     * 'catalog-grid' is set by the batch wizard for a single item with several
+     * images, and three places here branch on it. It was missing from this
+     * union and assigned through an `as any` cast, so every one of those
+     * comparisons type-checked as impossible while working fine at runtime.
+     */
+    exportType?: 'regular' | 'catalog' | 'catalog-grid';
 }
 
 function drawFormattedTagCode(doc: jsPDF, codes: any, x: number, y: number, fontSize: number = 9) {
@@ -178,8 +184,14 @@ async function loadExternalImageAsDataUrl(cleanUrl: string): Promise<HTMLImageEl
         .test((() => { try { return new URL(cleanUrl).hostname; } catch { return ''; } })());
 
     // Strategy 1: fetch → blob → dataURL (preferred, avoids canvas tainting)
+    // Timed for the same reason the Drive proxy is: an un-aborted fetch waits
+    // forever, and this strategy now carries the background-replaced images,
+    // so one unreachable host would hang the export rather than fall through.
     if (!isGoogleHosted) try {
-        const resp = await fetch(cleanUrl, { mode: 'cors' });
+        const ac = new AbortController();
+        const stall = setTimeout(() => ac.abort(), 15_000);
+        const resp = await fetch(cleanUrl, { mode: 'cors', signal: ac.signal })
+            .finally(() => clearTimeout(stall));
         if (resp.ok) {
             const blob = await resp.blob();
             if (blob.size > 0) {
@@ -955,11 +967,21 @@ export async function exportCatalogPdf(
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
 
-    // Warm every image before drawing. The grid layout only ever draws the
-    // first three per item, so do not pay to decode the rest.
+    // Warm every image before drawing. A grid page only ever draws the first
+    // three of an item, so do not pay to decode the rest.
+    //
+    // Which items those are is decided per item by its own exportType, not by
+    // config.method: in catalogue mode the loop below gives a grid item one
+    // page and every other item one page PER IMAGE. Keying this on
+    // config.method warmed three images for items whose pages then asked for
+    // all of them, so images four onward still loaded one at a time at draw
+    // time -- the exact serialisation this warm-up exists to remove.
     imgDataCache.clear();
     const wanted = results.flatMap(r => {
         const list = getItemImages(r);
+        if (exportType === 'catalog') {
+            return (r.exportType === 'catalog-grid' && list.length > 1) ? list.slice(0, 3) : list;
+        }
         return config.method === 'grid' ? list.slice(0, 3) : list;
     });
     await prefetchImgData(wanted, (n, total) => {
