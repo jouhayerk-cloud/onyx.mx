@@ -960,6 +960,40 @@ async function prefetchImgData(urls: string[], onProgress?: (done: number, total
     );
 }
 
+/**
+ * Hand the main thread back to the browser long enough for it to paint.
+ *
+ * Every await in the draw loops below resolves out of the image cache that
+ * prefetchImgData just warmed, and awaiting an already-settled promise only
+ * queues a microtask -- the browser never gets a frame between pages. So the
+ * export fired onProgress for every page, React batched the state updates,
+ * and nothing reached the screen until the whole catalogue was assembled:
+ * a long export was indistinguishable from a frozen one, which is exactly
+ * what "generate catalog hangs" was.
+ *
+ * A macrotask is what actually allows a paint. MessageChannel rather than
+ * setTimeout(0) because background tabs clamp timers to ~1s, which would
+ * turn a 200-page export into a 200-second one the moment the user looked
+ * at another tab.
+ */
+function paintYield(): Promise<void> {
+    return new Promise<void>(resolve => {
+        if (typeof MessageChannel === 'undefined') { setTimeout(resolve, 0); return; }
+        const ch = new MessageChannel();
+        ch.port1.onmessage = () => { ch.port1.close(); resolve(); };
+        ch.port2.postMessage(null);
+    });
+}
+
+/** Yields at most ~16x/sec: smooth enough for a bar, cheap enough per page. */
+let lastYieldAt = 0;
+async function yieldToUi(force = false): Promise<void> {
+    const now = Date.now();
+    if (!force && now - lastYieldAt < 60) return;
+    lastYieldAt = now;
+    await paintYield();
+}
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single'; logo?: string; exportType?: 'regular' | 'catalog' },
@@ -1054,17 +1088,20 @@ export async function exportCatalogPdf(
             if (item.exportType === 'catalog-grid' && imgs.length > 1) {
                 processedCount++;
                 onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+                await yieldToUi();
                 addPage();
                 await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, 0);
             } else if (imgs.length <= 1) {
                 processedCount++;
                 onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+                await yieldToUi();
                 addPage();
                 await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, 0);
             } else {
                 for (let j = 0; j < imgs.length; j++) {
                     processedCount++;
                     onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${i + 1} (Image ${j + 1}/${imgs.length})...`);
+                    await yieldToUi();
                     addPage();
                     await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, j);
                 }
@@ -1077,6 +1114,7 @@ export async function exportCatalogPdf(
             const imgs = getItemImages(item);
             processedCount++;
             onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+            await yieldToUi();
 
             if (imgs.length === 0) {
                 addPage();
@@ -1122,6 +1160,7 @@ export async function exportCatalogPdf(
         }
     }
     onProgress?.(95, 'Finalizing Catalogue...');
+    await yieldToUi(true);
     
     if (output === 'blob') {
         const blob = doc.output('blob');
