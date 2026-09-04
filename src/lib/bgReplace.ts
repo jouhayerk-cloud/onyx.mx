@@ -14,7 +14,7 @@
  * a customer cannot detect — instead of a missing lamp arm. It also sidesteps
  * translucency entirely, since nothing has to be resolved into an alpha value.
  *
- * The output goes to Supabase Storage and is recorded in `processed_media_urls`
+ * The output goes to Google Drive and is recorded in `processed_media_urls`
  * under the CLEANED SOURCE URL as key, because that is what
  * UnifiedInventoryView reads back (see its `mediaUrls` memo). Originals in
  * `media_urls` are never touched.
@@ -22,8 +22,7 @@
 
 import { Modality } from '@google/genai';
 import { ai } from './ai';
-import { supabase } from './supabase';
-import { loadImage } from './utils';
+import { loadImage, handleProcessedFileUpload } from './utils';
 
 /**
  * Bumped whenever the prompt changes, so cached results are invalidated.
@@ -266,41 +265,34 @@ export const hashString = (input: string): string => {
 export const bgCacheKey = (sourceUrl: string, quality: BgQuality): string =>
     hashString(`${BG_PROMPT_VERSION}|${quality}|${sourceUrl}`);
 
-const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => (await fetch(dataUrl)).blob();
 
 /**
- * Upload to Supabase Storage rather than the Apps Script Drive path used by
- * handleProcessedFileUpload. The bucket is public-read with authenticated
- * writes, the wizard already uploads generated video there, and the resulting
- * URL passes through getCleanImageUrl untouched (Drive URLs get rewritten).
+ * Upload the cleaned image to Google Drive, through the same Apps Script path
+ * the wizard already uses for masks and bitmaps.
+ *
+ * This used to write to Supabase Storage, which made the cleanup pipeline the
+ * only thing in the app storing its output outside Drive. That divergence
+ * reached the customer: Rare Earth import the Shopify workbook through
+ * Matrixify, which wants a direct Drive download link, and the export only
+ * rewrites URLs it recognises as Drive -- a Supabase URL fell through the else
+ * branch and shipped verbatim.
+ *
+ * Drive mints a NEW file id per upload instead of upserting to a fixed path,
+ * so a re-clean changes the URL by itself and the content-hash cache-buster
+ * this function used to append is neither needed nor meaningful here. The
+ * trade is that a re-cleaned image leaves its predecessor behind in Drive,
+ * which is already true of every mask and bitmap the wizard uploads.
  */
-export async function uploadCleanedImage(dataUrl: string, fileName: string): Promise<string> {
-    const blob = await dataUrlToBlob(dataUrl);
-    const path = `cleaned/${fileName}`;
+export async function uploadCleanedImage(dataUrl: string, fileName: string, user?: any): Promise<string> {
+    const res = await handleProcessedFileUpload(dataUrl, fileName, user);
+    if (!res?.thumbnailUrl) throw new Error('Drive upload returned no URL for the cleaned image');
 
-    const { error } = await supabase.storage
-        .from('inventory-media')
-        .upload(path, blob, { cacheControl: '3600', upsert: true, contentType: blob.type || 'image/png' });
-
-    if (error) throw new Error(`Storage upload failed: ${error.message}`);
-
-    const { data } = supabase.storage.from('inventory-media').getPublicUrl(path);
-
-    // Cache-bust on CONTENT, which is what makes a re-clean actually visible.
+    // No cache-buster here, unlike the Supabase version this replaced.
     //
-    // The storage path is derived from bgCacheKey, and that only changes when
-    // the prompt version, the quality or the source URL changes. So pressing
-    // RE-CLEAN IMAGES re-generated the picture, uploaded it over the same
-    // object with upsert, and handed back a byte-identical public URL. With
-    // cacheControl 3600 on that URL, every viewer -- the batch wizard's own
-    // thumbnail included -- kept serving the previous image for up to an hour.
-    // The new picture was in the bucket the whole time; nothing ever asked for
-    // it. That is why re-generated images looked like they were not
-    // overwriting, and why the batch did not refresh what it had just made.
-    //
-    // Hashing the data URL rather than stamping the time is deliberate: a
-    // re-run that happens to produce identical bytes keeps its URL and stays
-    // cached, while any real change moves the URL immediately. The path itself
-    // stays stable, so this adds no orphaned objects to the bucket.
-    return `${data.publicUrl}?v=${hashString(dataUrl)}`;
+    // That one existed because the storage path came from bgCacheKey, which
+    // only changes when the prompt version, the quality or the source URL
+    // changes -- so a re-clean upserted over the same object and handed back a
+    // byte-identical URL, and every viewer kept serving the previous image for
+    // an hour. A fresh Drive file id per upload solves that at the source.
+    return res.thumbnailUrl;
 }

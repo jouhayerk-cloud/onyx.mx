@@ -428,10 +428,22 @@ async function processImageBatch() {
   imageRequestQueue.clear();
   batchTimeout = null;
 
+  // A browser fetch never times out on its own, and Apps Script can stall for
+  // minutes under load or quota pressure. Every caller of this batch is behind
+  // an await, so one stalled call used to hang the caller forever: the
+  // catalogue export warms its images through here before it draws anything,
+  // so a stall showed up as the whole export hanging with no error in the
+  // console -- nothing had thrown, it was still waiting. Failing after 30s
+  // instead lets loadExternalImageAsDataUrl fall through to its next strategy
+  // and the catalogue finish, at worst with a gap where one image should be.
+  const ac = new AbortController();
+  const stall = setTimeout(() => ac.abort(), 30_000);
+
   try {
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action: 'batchGetImageBase64FromDriveIds', fileIds }),
+      signal: ac.signal,
     });
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
@@ -452,15 +464,20 @@ async function processImageBatch() {
       }
     });
   } catch (error) {
+    const reason = (error as any)?.name === 'AbortError'
+      ? new Error(`Drive image proxy did not answer within 30s (${fileIds.length} ids)`)
+      : error;
 
     fileIds.forEach(fileId => {
       const resolvers = promiseResolvers.get(fileId);
       if (resolvers) {
-        resolvers.forEach(({ reject }) => reject(error as any));
+        resolvers.forEach(({ reject }) => reject(reason as any));
         promiseResolvers.delete(fileId);
       }
     });
-    console.error("Image batch request failed:", error);
+    console.error("Image batch request failed:", reason);
+  } finally {
+    clearTimeout(stall);
   }
 }
 
