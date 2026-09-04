@@ -284,7 +284,18 @@ export const bgCacheKey = (sourceUrl: string, quality: BgQuality): string =>
  * which is already true of every mask and bitmap the wizard uploads.
  */
 export async function uploadCleanedImage(dataUrl: string, fileName: string, user?: any): Promise<string> {
-    const res = await handleProcessedFileUpload(dataUrl, fileName, user);
+    // Name the file after what it actually contains.
+    //
+    // Callers pass ".png" unconditionally, but the model hands back whatever it
+    // hands back -- every one of the 150 images already in storage is JPEG
+    // bytes under a .png name. That was invisible while Supabase served them
+    // with a content type taken from the blob, and it stops being invisible on
+    // Drive, where the name is what people see.
+    const mimeExt = /^data:image\/(png|jpeg|webp|svg\+xml)/i.exec(dataUrl)?.[1];
+    const ext = mimeExt === 'svg+xml' ? 'svg' : mimeExt === 'jpeg' ? 'jpg' : mimeExt;
+    const named = ext ? `${fileName.replace(/\.[a-z0-9+]+$/i, '')}.${ext}` : fileName;
+
+    const res = await handleProcessedFileUpload(dataUrl, named, user);
     if (!res?.thumbnailUrl) throw new Error('Drive upload returned no URL for the cleaned image');
 
     // No cache-buster here, unlike the Supabase version this replaced.
