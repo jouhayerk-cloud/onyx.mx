@@ -29,6 +29,9 @@ import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, coll
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
+// The catalogue splits on exactly what the Shopify sheet splits on, so the
+// two PDFs and the workbook's two sheets can never disagree about an item.
+import { isShopifyReady } from '../../lib/aiContent';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { vendors } from '../../lib/consts';
 import { generateAxonometricDataUrl } from '../../lib/axonometric';
@@ -387,14 +390,15 @@ export const LabelWizard: React.FC = () => {
     const [includeImages, setIncludeImages] = useState(true);
     const [catalogMethod, setCatalogMethod] = useState<'grid' | 'single'>('grid');
     const [progress, setProgress] = useState({ xlsx: -1, pdf: -1, catalog: -1, printer: -1 });
-    const [urls, setUrls] = useState({ xlsx: '', pdf: '', catalog: '' });
+    const [urls, setUrls] = useState({ xlsx: '', pdf: '', catalogReady: '', catalogNotReady: '' });
 
     // Verbose catalogue telemetry. exportCatalogPdf has always reported a stage
     // string alongside the percentage -- it was being dropped on the floor, so a
     // multi-minute export showed nothing but a spinner and read as a hang.
     const [catalogStatus, setCatalogStatus] = useState<{
         label: string; error: string | null; startedAt: number | null; updatedAt: number; bytes: number;
-    }>({ label: '', error: null, startedAt: null, updatedAt: 0, bytes: 0 });
+        imagesTotal: number; imagesFailed: number;
+    }>({ label: '', error: null, startedAt: null, updatedAt: 0, bytes: 0, imagesTotal: 0, imagesFailed: 0 });
     const [nowTs, setNowTs] = useState(() => Date.now());
 
     const catalogRunning = progress.catalog > 0 && progress.catalog < 100;
@@ -812,6 +816,13 @@ export const LabelWizard: React.FC = () => {
         });
     }, [inventory, selectedIds, exchangeRate, workbookPrefix]);
 
+    // Counted from the same predicate the export uses, so the preview and the
+    // two produced files always agree.
+    const shopifySplit = useMemo(() => {
+        const ready = selectedItems.reduce((n, i) => n + (isShopifyReady(i.normData) ? 1 : 0), 0);
+        return { ready, notReady: selectedItems.length - ready };
+    }, [selectedItems]);
+
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             // The engine reports a finished job. This is the confident path:
@@ -855,7 +866,7 @@ export const LabelWizard: React.FC = () => {
     useEffect(() => {
         if (isOpen) {
             setProgress({ xlsx: -1, pdf: -1, catalog: -1, printer: -1 });
-            setUrls({ xlsx: '', pdf: '', catalog: '' });
+            setUrls({ xlsx: '', pdf: '', catalogReady: '', catalogNotReady: '' });
             setIsPrintWorkflowOpen(false);
             setActiveSlide(0);
 
@@ -979,36 +990,78 @@ export const LabelWizard: React.FC = () => {
 
     const handleGenerateCatalog = async () => {
         const startedAt = Date.now();
-        setCatalogStatus({ label: tr("Preparing Catalog..."), error: null, startedAt, updatedAt: startedAt, bytes: 0 });
+        setCatalogStatus({ label: tr("Preparing Catalog..."), error: null, startedAt, updatedAt: startedAt, bytes: 0, imagesTotal: 0, imagesFailed: 0 });
         setNowTs(startedAt);
         setProgress(p => ({ ...p, catalog: 5 }));
         try {
-            const results: CatalogArtifact[] = selectedItems.map(item => ({
-                data: item.data,
-                codes: item.codes,
-                images: collectExportImages(item.normData),
-                exportType: 'catalog'
-            }));
+            // Same split as the Shopify workbook: isShopifyReady is literally
+            // missingShopifyFields(d).length === 0, which is what the sheet
+            // partition computes, so an item cannot land in the "ready" PDF and
+            // the "Not Shopify Ready (V2)" sheet at the same time.
+            const ready = selectedItems.filter(i => isShopifyReady(i.normData));
+            const notReady = selectedItems.filter(i => !isShopifyReady(i.normData));
 
-            const blob = await exportCatalogPdf(results, {
-                title: name,
-                method: catalogMethod,
-                logo: logoVariant,
-                exportType: 'catalog'
-            }, (pct, stage) => {
-                setProgress(p => ({ ...p, catalog: pct }));
-                // Keep the last stage if a caller ever reports a bare percentage.
-                setCatalogStatus(s => ({ ...s, label: stage || s.label, updatedAt: Date.now() }));
-            }, 'blob');
+            const jobs = [
+                { key: 'catalogReady' as const, suffix: 'ShopifyReady', label: tr("Shopify ready"), items: ready },
+                { key: 'catalogNotReady' as const, suffix: 'NotShopifyReady', label: tr("Not Shopify ready"), items: notReady },
+            ].filter(j => j.items.length > 0);
 
-            if (blob instanceof Blob) {
-                setUrls(u => ({ ...u, catalog: URL.createObjectURL(blob) }));
-                setProgress(p => ({ ...p, catalog: 100 }));
-                setCatalogStatus(s => ({ ...s, label: tr("Catalogue Ready"), error: null, updatedAt: Date.now(), bytes: blob.size }));
-                toast.success(tr("Catalog generated"));
-            } else {
-                throw new Error('Catalog generation failed');
+            if (jobs.length === 0) throw new Error(tr("No items selected"));
+
+            // One progress bar across both documents, so the percentage still
+            // means "how much of what I asked for is done".
+            const span = 95 / jobs.length;
+            let base = 5;
+            let totalBytes = 0;
+            let imgTotal = 0;
+            let imgFailed = 0;
+
+            for (const job of jobs) {
+                const results: CatalogArtifact[] = job.items.map(item => ({
+                    data: item.data,
+                    codes: item.codes,
+                    images: collectExportImages(item.normData),
+                    exportType: 'catalog'
+                }));
+
+                const jobBase = base;
+                const blob = await exportCatalogPdf(results, {
+                    title: `${name} — ${job.label}`,
+                    method: catalogMethod,
+                    logo: logoVariant,
+                    exportType: 'catalog'
+                }, (pct, stage) => {
+                    setProgress(p => ({ ...p, catalog: Math.min(99, Math.round(jobBase + (pct / 100) * span)) }));
+                    setCatalogStatus(s => ({
+                        ...s,
+                        label: `${job.label} (${job.items.length}) — ${stage || s.label}`,
+                        updatedAt: Date.now(),
+                    }));
+                }, 'blob', (stats) => {
+                    // Accumulate across both documents rather than overwrite.
+                    imgTotal += stats.imagesTotal;
+                    imgFailed += stats.imagesFailed;
+                    setCatalogStatus(s => ({ ...s, imagesTotal: imgTotal, imagesFailed: imgFailed }));
+                });
+
+                if (!(blob instanceof Blob)) throw new Error(`${job.label}: catalogue generation failed`);
+
+                totalBytes += blob.size;
+                const url = URL.createObjectURL(blob);
+                setUrls(u => ({ ...u, [job.key]: url }));
+                base += span;
             }
+
+            setProgress(p => ({ ...p, catalog: 100 }));
+            const parts = jobs.map(j => `${j.items.length} ${j.label.toLowerCase()}`).join(', ');
+            setCatalogStatus(s => ({
+                ...s,
+                label: imgFailed > 0
+                    ? `${jobs.length} ${tr("PDFs ready")} — ${imgFailed}/${imgTotal} ${tr("images missing")}`
+                    : `${jobs.length} ${tr("PDFs ready")} — ${parts}`,
+                error: null, updatedAt: Date.now(), bytes: totalBytes,
+            }));
+            toast.success(`${tr("Catalog generated")} — ${parts}`);
         } catch (e) {
             console.error(e);
             setProgress(p => ({ ...p, catalog: -1 }));
@@ -1475,6 +1528,16 @@ export const LabelWizard: React.FC = () => {
                                     </div>
                                 </div>
 
+                                <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-white/30">{tr("Will produce")}</span>
+                                    <span className="px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 tabular-nums">
+                                        {shopifySplit.ready} {tr("Shopify ready")}
+                                    </span>
+                                    <span className="px-2 py-1 rounded-lg bg-amber-500/15 text-amber-400 tabular-nums">
+                                        {shopifySplit.notReady} {tr("not ready")}
+                                    </span>
+                                </div>
+
                                 <div className="mt-4 flex flex-col gap-2">
                                     <button 
                                         onClick={handleGenerateCatalog} 
@@ -1532,7 +1595,16 @@ export const LabelWizard: React.FC = () => {
                                             {catalogStalled && (
                                                 <div className="flex items-start gap-2 text-[10px] font-bold text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
                                                     <Activity size={12} className="mt-[1px] shrink-0" />
-                                                    <span>{tr("Stalled for")} {fmtDuration(nowTs - catalogStatus.updatedAt)} — {tr("an image source is likely timing out. This resolves itself; the page it belongs to is drawn as a gap.")}</span>
+                                                    <span>{tr("No progress for")} {fmtDuration(nowTs - catalogStatus.updatedAt)} — {tr("the Drive image proxy is slow. Images are fetched in batches, so one slow batch pauses the whole count. It continues on its own; anything that does fail is counted below.")}</span>
+                                                </div>
+                                            )}
+
+                                            {catalogStatus.imagesFailed > 0 && !catalogStatus.error && (
+                                                <div className="flex items-start gap-2 text-[10px] font-bold text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
+                                                    <ShieldAlert size={12} className="mt-[1px] shrink-0" />
+                                                    <span>
+                                                        {catalogStatus.imagesFailed}/{catalogStatus.imagesTotal} {tr("images could not be loaded — those pages are blank in the PDF.")}
+                                                    </span>
                                                 </div>
                                             )}
 
@@ -1545,12 +1617,21 @@ export const LabelWizard: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {progress.catalog === 100 && urls.catalog && (
-                                        <button 
-                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalog; a.download = `Catalog_${name}.pdf`; a.click(); }}
-                                            className="w-full py-2 bg-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex justify-center items-center gap-2 hover:bg-blue-500/30 transition-all"
+                                    {progress.catalog === 100 && urls.catalogReady && (
+                                        <button
+                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalogReady; a.download = `Catalog_${name}_ShopifyReady.pdf`; a.click(); }}
+                                            className="w-full py-2 bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex justify-center items-center gap-2 hover:bg-emerald-500/30 transition-all"
                                         >
-                                            <Download size={12} /> RETRIEVE CATALOG
+                                            <Download size={12} /> {tr("RETRIEVE")} — {tr("SHOPIFY READY")} ({shopifySplit.ready})
+                                        </button>
+                                    )}
+
+                                    {progress.catalog === 100 && urls.catalogNotReady && (
+                                        <button
+                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalogNotReady; a.download = `Catalog_${name}_NotShopifyReady.pdf`; a.click(); }}
+                                            className="w-full py-2 bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex justify-center items-center gap-2 hover:bg-amber-500/30 transition-all"
+                                        >
+                                            <Download size={12} /> {tr("RETRIEVE")} — {tr("NOT SHOPIFY READY")} ({shopifySplit.notReady})
                                         </button>
                                     )}
                                 </div>

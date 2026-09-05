@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms } from './utils';
+import { getCleanImageUrl, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -69,6 +69,22 @@ function drawFormattedTagCode(doc: jsPDF, codes: any, x: number, y: number, font
 }
 
 interface ImgData { dataUrl: string; w: number; h: number; edgeColor?: string; }
+
+/**
+ * URLs the loader positively identified as NOT stills (a video, so far).
+ *
+ * isVideoFile can only judge by extension, and a Drive link of the form
+ * `file/d/<id>/view` -- or the `uc?export=download&id=<id>` that getCleanImageUrl
+ * rewrites it to -- carries no extension at all, so it reaches the loader looking
+ * exactly like an image. The proxy hands back the real MIME type, which is the
+ * first honest answer available, so record it there. Counting one of these as a
+ * "missing image" would tell the user a page is blank because something broke,
+ * when really a clip was never catalogue material.
+ */
+const nonImageUrls = new Set<string>();
+
+/** What the caller needs to tell the user the catalogue came out degraded. */
+export interface CatalogExportStats { imagesTotal: number; imagesFailed: number; }
 
 async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
     try {
@@ -240,6 +256,10 @@ async function loadExternalImageAsDataUrl(cleanUrl: string): Promise<HTMLImageEl
     if (fileId) {
         try {
             const res = await fetchImageBatch(fileId);
+            if (isVideoMime(res.mimeType)) {
+                nonImageUrls.add(cleanUrl);
+                throw new Error(`Not a still image (${res.mimeType})`);
+            }
             return await new Promise<HTMLImageElement>((resolve, reject) => {
                 const el = new Image();
                 el.onload = () => resolve(el);
@@ -626,12 +646,35 @@ async function loadLogoData(logoBase64Url: string): Promise<LogoData | null> {
     }
 }
 
+/**
+ * Clean one stored URL for the PDF, dropping anything that is not a still.
+ *
+ * Videos have to be rejected BEFORE getCleanImageUrl, never after: that helper
+ * turns a Drive video into `uc?export=download&id=<id>`, which has no file
+ * extension left for isVideoFile to recognise, so a filter applied downstream
+ * silently keeps every Drive-hosted clip. collectAllImages already learned this
+ * the hard way -- see its dropVideos comment.
+ */
+function cleanStillUrl(raw: any): string | null {
+    if (!raw) return null;
+    const str = String(raw).trim();
+    if (!str || isVideoFile(str)) return null;
+    return getCleanImageUrl(str) || null;
+}
+
 function getItemImages(item: any): string[] {
     if (!item) return [];
-    
+
     // 1. Direct images array on CatalogArtifact
+    //
+    // collectExportImages already passes dropVideos, but this function is also
+    // reached from the store, viewer and batch wizard with raw arrays, and a
+    // video that survives here costs a full three-strategy timeout per page
+    // before it is drawn as a gap -- and, now that failures are counted, it
+    // would be reported to the user as a missing image when it is really a
+    // clip that never belonged in the catalogue.
     if (Array.isArray(item.images) && item.images.length > 0) {
-        const cleaned = item.images.map((u: string) => getCleanImageUrl(u)).filter(Boolean) as string[];
+        const cleaned = item.images.map(cleanStillUrl).filter(Boolean) as string[];
         if (cleaned.length > 0) return cleaned;
     }
 
@@ -640,17 +683,17 @@ function getItemImages(item: any): string[] {
     const urls: string[] = [];
 
     // 3. Check generated PNG / mask URL
-    const genPng = getCleanImageUrl(norm.generatedPngUrl || item.generated_png_url || item.generatedPngUrl || item.maskUrl || item.mask_url);
+    const genPng = cleanStillUrl(norm.generatedPngUrl || item.generated_png_url || item.generatedPngUrl || item.maskUrl || item.mask_url);
     if (genPng) urls.push(genPng);
 
     // 4. Check primary image URL
-    const mainImg = getCleanImageUrl(norm.imageUrl || item.image_url || item.imageUrl);
+    const mainImg = cleanStillUrl(norm.imageUrl || item.image_url || item.imageUrl);
     if (mainImg && !urls.includes(mainImg)) urls.push(mainImg);
 
     // 5. Check media_urls
     const rawMedia = norm.mediaUrls || item.media_urls || item.mediaUrls || (item.data ? (item.data.media_urls || item.data.mediaUrls) : null);
     if (rawMedia && typeof rawMedia === 'string') {
-        const parts = rawMedia.split(',').map((s: string) => getCleanImageUrl(s.trim())).filter(Boolean) as string[];
+        const parts = rawMedia.split(',').map(cleanStillUrl).filter(Boolean) as string[];
         for (const p of parts) {
             if (!urls.includes(p)) urls.push(p);
         }
@@ -955,28 +998,47 @@ async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor =
  * canvases simultaneously. Eight in flight still collapses the round trips by
  * roughly an order of magnitude while keeping memory flat.
  */
-async function prefetchImgData(urls: string[], onProgress?: (done: number, total: number) => void): Promise<void> {
+async function prefetchImgData(
+    urls: string[],
+    onProgress?: (done: number, total: number, failed: number) => void,
+): Promise<CatalogExportStats> {
     const unique = Array.from(new Set(urls.filter(Boolean)));
-    if (unique.length === 0) return;
+    if (unique.length === 0) return { imagesTotal: 0, imagesFailed: 0 };
 
     let next = 0;
     let done = 0;
     const CONCURRENCY = 8;
 
+    // A failure here is not fatal -- loadImgDataUncached already swallows it and
+    // returns null, and drawContain skips a null image -- but it used to be
+    // completely silent, so a Drive proxy batch that timed out produced a
+    // finished PDF with blank image areas and nothing anywhere saying how many.
+    // On a 484-image catalogue that is easy to miss entirely. Count them so the
+    // caller can say so.
+    let failed = 0;
+    let skipped = 0;
     const worker = async () => {
         while (next < unique.length) {
             const idx = next++;
-            // Failures are already swallowed by loadImgDataUncached, which
-            // returns null. Warming must never reject the whole catalogue.
-            try { await loadImgData(unique[idx], 800, false, '#1C1C1E', 32); } catch { /* drawn as a gap later */ }
+            const url = unique[idx];
+            let ok = false;
+            try { ok = !!(await loadImgData(url, 800, false, '#1C1C1E', 32)); } catch { ok = false; }
+            if (!ok) {
+                // Separate "this was never a still" from "this should have loaded
+                // and did not", so a stray clip is not reported as a blank page.
+                if (nonImageUrls.has(getCleanImageUrl(url) || url)) skipped++;
+                else failed++;
+            }
             done++;
-            onProgress?.(done, unique.length);
+            onProgress?.(done, unique.length, failed);
         }
     };
 
     await Promise.all(
         Array.from({ length: Math.min(CONCURRENCY, unique.length) }, worker)
     );
+
+    return { imagesTotal: unique.length - skipped, imagesFailed: failed };
 }
 
 /**
@@ -1017,7 +1079,8 @@ export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single'; logo?: string; exportType?: 'regular' | 'catalog' },
     onProgress?: (p: number, s: string) => void,
-    output: 'download' | 'blob' = 'download'
+    output: 'download' | 'blob' = 'download',
+    onStats?: (stats: CatalogExportStats) => void,
 ) {
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
@@ -1039,9 +1102,11 @@ export async function exportCatalogPdf(
         }
         return config.method === 'grid' ? list.slice(0, 3) : list;
     });
-    await prefetchImgData(wanted, (n, total) => {
-        onProgress?.(5 + Math.round((n / total) * 20), `Loading images ${n}/${total}...`);
+    const warmed = await prefetchImgData(wanted, (n, total, failed) => {
+        const missing = failed > 0 ? ` (${failed} unavailable)` : '';
+        onProgress?.(5 + Math.round((n / total) * 20), `Loading images ${n}/${total}${missing}...`);
     });
+    onStats?.(warmed);
 
     // jsPDF assembles the finished PDF as ONE JavaScript string (Array.join in
     // buildDocument), so the whole document is bounded by V8's maximum string
