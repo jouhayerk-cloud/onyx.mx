@@ -242,36 +242,49 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
     }
 
     const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(crate, logisticsDocs || [], allInventory || []);
+    // The same composition CratesInventoryView uses, so the badge in a row and
+    // the header in the warehouse always read as the same crate.
+    const crateName = date ? `${date}${vList.join('')}${sequence}` : (sequence || crate.id?.slice(0, 8).toUpperCase());
+    const dims = [crate.width_cm, crate.length_cm, crate.height_cm].filter(Boolean).join('×');
 
     if (isCompact) {
         return (
-            <div className="flex items-center rounded border border-white/20 shadow-lg overflow-hidden shrink-0 backdrop-blur-md" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                <div className="px-1.5 py-0.5 bg-black/40 flex items-center border-r border-white/10">
-                   <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={14} vibrant />
-                </div>
-                {date && <div className="px-1 py-0.5"><span className="text-[8px] font-black text-white leading-none">{date}</span></div>}
-                {vList.map(v => (
-                    <div key={v} className="px-1 py-0.5" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}>
-                        <span className="text-[8px] font-black text-black leading-none">{v}</span>
-                    </div>
-                ))}
-                {sequence && <div className="px-1.5 py-0.5 bg-white/10"><span className="text-[8px] font-black text-white leading-none">{sequence}</span></div>}
+            <div className="crate-badge crate-badge--compact flex items-center gap-1.5 shrink-0">
+                <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={18} vibrant />
+                <span className="crate-badge__name text-[11px] font-black tracking-[0.08em] leading-none tabular-nums">{crateName}</span>
+                <span className="flex items-center gap-[2px]">
+                    {vList.map(v => (
+                        <span key={v} className="crate-badge__vendor" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}>{v}</span>
+                    ))}
+                </span>
             </div>
         );
     }
 
+    // The row badge used to be an icon plus two-letter vendor blocks and nothing
+    // else -- it identified the vendors in a crate but never the crate, so you
+    // could not tell two crates apart from the inventory list at all. It now
+    // leads with the crate name and carries the dimensions underneath.
     return (
-        <div className="flex items-center rounded flex-none border border-white/10 overflow-hidden bg-black/10 shadow-sm shrink-0">
-            <div className="px-1 py-0.5 flex items-center justify-center shrink-0 border-r border-white/5 bg-black/20">
-                <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={14} vibrant />
-            </div>
-            <div className="flex items-center min-w-0">
-                {vList.map((v, idx) => (
-                    <div key={v} className="px-1.5 py-0.5" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}>
-                        <span className="text-[9px] font-black tracking-widest leading-none block text-black">{v}</span>
-                    </div>
-                ))}
-            </div>
+        <div className="crate-badge flex items-center gap-2 shrink-0" title={`${tr("Crate")} ${crateName} · ${dims} ${tr("CM")}`}>
+            <span className="crate-badge__icon flex items-center justify-center shrink-0">
+                <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={26} vibrant />
+            </span>
+            <span className="flex flex-col gap-[3px] min-w-0">
+                <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="crate-badge__name text-[13px] font-black tracking-[0.06em] leading-none tabular-nums truncate">{crateName}</span>
+                    <span className="flex items-center gap-[2px] shrink-0">
+                        {vList.map(v => (
+                            <span key={v} className="crate-badge__vendor" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}>{v}</span>
+                        ))}
+                    </span>
+                </span>
+                {dims && (
+                    <span className="crate-badge__meta text-[10px] font-black uppercase tracking-[0.14em] leading-none tabular-nums">
+                        {dims}<span className="opacity-50 ml-1">{tr("CM")}</span>
+                    </span>
+                )}
+            </span>
         </div>
     );
 };
