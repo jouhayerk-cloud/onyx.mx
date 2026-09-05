@@ -437,19 +437,19 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                     onSelect();
                 }
             }}
-            className={`group relative transition-all duration-500 w-full flex flex-col py-6 px-6 bg-white/[0.03] border backdrop-blur-xl rounded-3xl mb-4 ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.15)] bg-amber-500/5 scale-[1.01] z-10' : 'border-white/10 hover:border-(--main-color)/40'}`}
+            className={`crate-card group relative transition-all w-full flex flex-col p-3 mb-2 ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'is-selected z-10' : ''}`}
         >
             {/* Selection Checkbox Overlay */}
             {selectionMode && (
-                <div className={`absolute top-6 right-6 z-20 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-amber-500 border-amber-500 text-black' : 'border-white/20 bg-black/20 group-hover:border-amber-500/50'}`}>
-                    {isSelected && <Check size={20} strokeWidth={4} />}
+                <div className={`absolute top-2 right-2 z-20 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-amber-500 border-amber-500 text-black' : 'border-white/20 bg-black/20 group-hover:border-amber-500/50'}`}>
+                    {isSelected && <Check size={16} strokeWidth={4} />}
                 </div>
             )}
 
             {/* Main Row */}
-            <div className="p-4 flex flex-col xl:flex-row items-stretch xl:items-center gap-4 xl:gap-6 relative">
+            <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 xl:gap-4 relative">
                 {/* Wireframe preview window */}
-                <div className="relative w-full xl:w-56 h-44 xl:h-36 shrink-0 flex items-center justify-center overflow-hidden cursor-pointer group/wire" onClick={() => setIsExpanded(!isExpanded)}>
+                <div className="crate-wire relative w-full xl:w-40 h-32 xl:h-28 shrink-0 flex items-center justify-center overflow-hidden cursor-pointer group/wire" onClick={() => setIsExpanded(!isExpanded)}>
                     <div className="absolute inset-0 opacity-[0.04]" style={{
                         backgroundImage: 'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
                         backgroundSize: '20px 20px'
@@ -551,14 +551,14 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                 title={isDeployedView ? 'Return to Packing' : isPackedView ? 'Mark as Partial' : 'Pack Items'}
                             >
                                 {isDeployedView || isPackedView ? (
-                                    <RotateCcw size={22} />
+                                    <RotateCcw size={18} />
                                 ) : (
-                                    <ArrowRight size={22} />
+                                    <ArrowRight size={18} />
                                 )}
                             </button>
                         </div>
                         <div className="flex flex-col items-end xl:items-start text-right xl:text-left">
-                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">
+                            <h3 className="crate-dims text-[19px] font-black uppercase tracking-tighter leading-none tabular-nums">
                                 {crate.width_cm}<span className="text-white/40 mx-0.5">×</span>{crate.length_cm}<span className="text-white/40 mx-0.5">×</span>{crate.height_cm}
                                 <span className="text-[10px] text-white/40 font-black ml-1.5 tracking-widest">CM</span>
                             </h3>
@@ -628,31 +628,35 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 sm:flex sm:flex-row gap-4 xl:gap-10 xl:min-w-[240px] w-full mt-4 xl:mt-0">
-                        <div className="flex flex-col gap-1.5">
-                            <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">{tr("Volume")}</p>
-                            <p className="text-[17px] font-mono font-black text-white leading-none">{vol} <span className="text-[9px] font-black text-white/20">M³</span></p>
+                    {/* Stat tiles. Each figure sits in its own pressed well so the
+                        row reads as a set of readouts rather than loose text, and the
+                        grid reflows 2 -> 4 -> 2 -> 4 across breakpoints so the block
+                        stays dense whether it is stacked under the crate or beside it. */}
+                    <div className="crate-stats grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4 gap-1.5 w-full xl:w-auto xl:min-w-[236px] mt-2 xl:mt-0">
+                        <div className="crate-stat">
+                            <p className="crate-stat__label">{tr("Volume")}</p>
+                            <p className="crate-stat__value">{vol}<span className="crate-stat__unit">M³</span></p>
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">{tr("Net Weight")}</p>
-                            <p className="text-[17px] font-mono font-black text-(--main-color) leading-none">
-                                {netWeight > 0 ? netWeight.toFixed(1) : '—'} <span className="text-[9px] font-black text-white/20">KG</span>
+                        <div className="crate-stat">
+                            <p className="crate-stat__label">{tr("Net Weight")}</p>
+                            <p className="crate-stat__value text-(--main-color)">
+                                {netWeight > 0 ? netWeight.toFixed(1) : '—'}<span className="crate-stat__unit">KG</span>
                             </p>
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">{tr("Utilization")}</p>
-                            <p className={`text-[17px] font-mono font-black leading-none ${fillPct > 90 ? 'text-rose-400' : fillPct > 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                {fillPct.toFixed(1)}%
+                        <div className="crate-stat">
+                            <p className="crate-stat__label">{tr("Utilization")}</p>
+                            <p className={`crate-stat__value ${fillPct > 90 ? 'text-rose-400' : fillPct > 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                {fillPct.toFixed(1)}<span className="crate-stat__unit">%</span>
                             </p>
                         </div>
-                        <div className="flex flex-col gap-1.5 text-center xl:text-left">
-                            <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">{tr("Inventory")}</p>
-                            <p className="text-[17px] font-mono font-black text-white leading-none">{itemCount} <span className="text-[9px] font-black text-white/20">{tr("ITEMS")}</span></p>
+                        <div className="crate-stat">
+                            <p className="crate-stat__label">{tr("Inventory")}</p>
+                            <p className="crate-stat__value">{itemCount}<span className="crate-stat__unit">{tr("ITEMS")}</span></p>
                         </div>
                         {nestedCount > 0 && (
-                            <div className="flex flex-col gap-1.5">
-                                <p className="text-[9px] uppercase tracking-[0.3em] text-(--main-color) font-black leading-none">{tr("Nested")}</p>
-                                <p className="text-[17px] font-mono font-black text-white leading-none">{nestedCount} <span className="text-[9px] font-black text-white/20">{tr("BOXES")}</span></p>
+                            <div className="crate-stat">
+                                <p className="crate-stat__label text-(--main-color)">{tr("Nested")}</p>
+                                <p className="crate-stat__value">{nestedCount}<span className="crate-stat__unit">{tr("BOXES")}</span></p>
                             </div>
                         )}
                     </div>
@@ -660,15 +664,15 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row xl:flex-col gap-2 shrink-0 h-full justify-center w-full xl:w-auto mt-2 xl:mt-0">
+                <div className="flex flex-row xl:flex-col gap-1.5 shrink-0 items-center justify-center w-full xl:w-auto mt-1 xl:mt-0">
                     {crate.status !== 'Empty' && (
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setIsExportProgressOpen(true)}
-                                className={`p-3 text-white/20 hover:text-emerald-500 transition-all duration-300 cursor-pointer hover:scale-125 ${isExporting ? 'opacity-50 pointer-events-none' : ''}`}
+                                className={`tool-btn crate-key flex items-center justify-center w-9 h-9 rounded-lg transition-all cursor-pointer hover:text-emerald-500 ${isExporting ? 'opacity-50 pointer-events-none' : ''}`}
                                 title={tr("Export Manifesto")}
                             >
-                                <Download size={22} />
+                                <Download size={16} />
                             </button>
                             
                             <ExportWizard 
@@ -687,17 +691,17 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                     {isPackedView && (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) && !crate.parent_id && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onNest(crate); }}
-                            className="p-3 text-white/20 hover:text-blue-400 transition-all duration-300 cursor-pointer hover:scale-125"
+                            className="tool-btn crate-key flex items-center justify-center w-9 h-9 rounded-lg transition-all cursor-pointer hover:text-blue-400"
                             title={tr("Nest this Box")}
                         >
-                            <Plus size={22} />
+                            <Plus size={16} />
                         </button>
                     )}
 
 
                     <button
                         onClick={(e) => { e.stopPropagation(); onEdit(crate); }}
-                        className="p-3 text-white/20 hover:text-white transition-all duration-300 cursor-pointer hover:scale-125"
+                        className="tool-btn crate-key flex items-center justify-center w-9 h-9 rounded-lg transition-all cursor-pointer hover:text-(--text-color)"
                         title={tr("Edit Crate Details")}
                     >
                         <Pencil size={22} />
@@ -705,7 +709,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
 
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(crate); }}
-                        className="p-3 text-white/20 hover:text-rose-500 transition-all duration-300 cursor-pointer hover:scale-125"
+                        className="tool-btn crate-key flex items-center justify-center w-9 h-9 rounded-lg transition-all cursor-pointer hover:text-rose-500"
                         title={tr("Delete Crate")}
                     >
                         <Trash2 size={22} />
