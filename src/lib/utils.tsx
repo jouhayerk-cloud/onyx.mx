@@ -365,8 +365,22 @@ export function collectAllImages(normData: any, opts?: { dropVideos?: boolean })
 export const isVideoMime = (mime: string) => mime?.startsWith('video/');
 export const isVideoFile = (fileName: string) => {
   if (!fileName) return false;
-  // Remove query string and hash, then get extension
-  const cleanUrl = fileName.split(/[?#]/)[0];
+  // Cut at the first '?', '#' OR '&'.
+  //
+  // Splitting on '?' and '#' alone was not enough. media_urls stores entries
+  // like ".../1785391567738_4xcmno.mp4&tag=Product" -- the suffix is appended
+  // with '&' even though the URL has no query string at all, so the extension
+  // parsed as "mp4&tag=Product", matched nothing, and every video in the
+  // database reported as an image. 119 rows carry that suffix and not one
+  // video is stored without it, so this check was failing 100% of the time:
+  // that is how .mp4 links reached the Shopify sheet's Image Src and the
+  // catalogue's image loader, which then spent a full timeout failing to
+  // decode them. getCleanImageUrl already strips the same '&tag=' suffix.
+  //
+  // Cutting at '&' is safe for real query strings because '?' is cut anyway,
+  // and Drive URLs ("uc?export=view&id=...") have no extension to find either
+  // way.
+  const cleanUrl = fileName.split(/[?#&]/)[0];
   const ext = cleanUrl.split('.').pop()?.toLowerCase();
   return ['mov', 'mp4', 'webm', 'ogg', 'm4v', 'avi', 'mkv'].includes(ext || '');
 };
