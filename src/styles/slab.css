@@ -1242,6 +1242,79 @@ html.style-slab .tool-cell:hover .tool-label {
 }
 
 
+/* ── Warehouse crate card ──────────────────────────────────────────────────
+   The card is a raised slab that lifts on hover; the wireframe preview and
+   each stat figure are pressed wells cut into it. That gives the row a clear
+   read at a glance -- one object, several instrument readouts -- without the
+   generous padding the old glass card needed to look deliberate. */
+html.style-slab .crate-card {
+    background: var(--slab) !important;
+    background-image: var(--slab-sheen) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-lift);
+    transition: box-shadow var(--slab-ease), background-color var(--slab-ease);
+}
+
+html.style-slab .crate-card:hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+}
+
+html.style-slab .crate-card.is-selected {
+    box-shadow: var(--slab-pressed) !important;
+    background-color: var(--slab-tint-on) !important;
+    border-color: var(--slab-edge-on) !important;
+}
+
+html.style-slab .crate-wire {
+    background: var(--slab) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+html.style-slab .crate-dims { color: var(--slab-ink); }
+
+/* Card action keys inherit the .tool-btn bevel; this only trims the icon
+   colour so the hover accents above still read. */
+html.style-slab .crate-key { color: var(--slab-dim); }
+
+html.style-slab .crate-stat {
+    background: var(--slab) !important;
+    background-image: var(--slab-sheen-in) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+html.style-slab .crate-stat__label { color: var(--slab-dim); }
+html.style-slab .crate-stat__value { color: var(--slab-ink); }
+
+/* ── Crate badge ───────────────────────────────────────────────────────────
+   A pressed well rather than a raised key: the badge is a read-only label on
+   a row, not something you push, and the inset reads as "stamped into the
+   slab" which is what an identifier should feel like. The icon sits in its
+   own deeper well so the wireframe crate stays legible against the sheen. */
+html.style-slab .crate-badge {
+    background: var(--slab) !important;
+    background-image: var(--slab-sheen-in) !important;
+    border: 1px solid var(--slab-edge) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+html.style-slab .crate-badge__icon {
+    background: var(--slab) !important;
+    box-shadow: var(--slab-pressed-deep);
+    color: var(--slab-ink);
+}
+
+html.style-slab .crate-badge__name { color: var(--slab-ink); }
+html.style-slab .crate-badge__meta { color: var(--slab-dim); }
+
+/* The vendor colour is the identifier, so it keeps its fill and only takes
+   the bevel -- same rule the vendor keys follow in the tools bar. */
+html.style-slab .crate-badge__vendor {
+    box-shadow: var(--slab-lift);
+    border: 1px solid var(--slab-edge);
+}
+
 html.style-slab .tool-btn {
     background-color: var(--slab) !important;
     background-image: var(--slab-sheen) !important;

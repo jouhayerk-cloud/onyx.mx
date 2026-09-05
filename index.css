@@ -853,6 +853,107 @@ button,
   min-height: 0;
 }
 
+/* ── Crate badge ───────────────────────────────────────────────────────────
+   The crate identifier shown on an inventory row. Base (theme-neutral) look
+   lives here; slab.css gives it the bevel. Sized to carry the crate NAME as
+   the primary token, with the vendor chips demoted to a suffix -- the old
+   badge showed vendor letters only, which identified who supplied the
+   contents but never which crate you were looking at. */
+.crate-badge {
+  padding: 5px 10px 5px 6px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.05);
+  max-width: 100%;
+}
+
+.crate-badge--compact {
+  padding: 4px 7px;
+  border-radius: 7px;
+}
+
+.crate-badge__icon {
+  width: 31px;
+  height: 31px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.crate-badge__name { color: var(--text-color, #fff); }
+.crate-badge__meta { color: rgba(255, 255, 255, 0.45); }
+
+/* ── Warehouse crate card ──────────────────────────────────────────────────
+   Compact, data-dense shell for the packed/empty crate rows. The card used to
+   carry py-6 px-6 on the shell AND p-4 on the row inside it, which is why a
+   single crate filled most of the viewport. Base look here; slab.css bevels it. */
+.crate-card {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
+}
+.crate-card.is-selected {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.crate-wire {
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.crate-dims { color: var(--text-color, #fff); }
+
+.crate-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 0;
+}
+
+.crate-stat__label {
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crate-stat__value {
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-color, #fff);
+  white-space: nowrap;
+}
+
+.crate-stat__unit {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  opacity: 0.45;
+  margin-left: 3px;
+}
+
+.crate-badge__vendor {
+  display: inline-block;
+  padding: 3px 5px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: #000;
+}
+
 button.secondary {
   min-height: 28px;
   padding: 0px 12px;
