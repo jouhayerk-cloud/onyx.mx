@@ -487,26 +487,62 @@ export const imageCache = new Map<string, string>();
 let imageRequestQueue = new Set<string>();
 let promiseResolvers = new Map<string, { resolve: (data: any) => void, reject: (reason?: any) => void }[]>();
 let batchTimeout: number | null = null;
+let inFlight = 0;
+let lastBatchError: Error | null = null;
 
-const BATCH_DELAY = 50; // ms
+/**
+ * Batch sizing is driven by what the Apps Script proxy actually does with a
+ * batch. handleBatchGetImageBase64 is a plain forEach over fileIds -- one
+ * DriveApp.getFileById().getBlob() plus a base64 encode per id, all inside a
+ * single execution. So a batch does NOT fan out server side: its cost is
+ * linear in its own size, and a big batch is just a long request.
+ *
+ * That makes the two knobs pull the opposite way to the obvious guess:
+ *
+ *  - MAX_BATCH stays small. It only amortises the round trip and the script's
+ *    cold start; past a handful of ids it buys nothing and costs latency,
+ *    response size, and abort risk -- a batch that trips the timeout below
+ *    loses every id in it, not one.
+ *  - MAX_IN_FLIGHT is where the parallelism is. Each POST is its own Apps
+ *    Script execution and those do run concurrently, so six requests of four
+ *    finish in roughly the time of one request of four.
+ *
+ * Before this, neither knob existed: the debounce below scheduled a single
+ * processImageBatch and every caller awaited it, so the client made exactly
+ * one round trip at a time no matter how many images were queued. A 484 image
+ * catalogue was ~61 of them back to back, which is where the ten minute export
+ * and the "no progress for 17s" stalls came from -- during a round trip every
+ * worker is parked on the same promise, so the done count cannot move.
+ */
+const BATCH_DELAY = 50;      // ms; only ever delays a trailing partial batch
+const MAX_BATCH = 4;         // ids per Apps Script execution
+const MAX_IN_FLIGHT = 6;     // concurrent executions
+const BATCH_TIMEOUT_MS = 30_000;
+const RETRY_TIMEOUT_MS = 15_000;
 
-async function processImageBatch() {
-  if (imageRequestQueue.size === 0) return;
+function settle(fileId: string, data: any, error?: Error) {
+  const resolvers = promiseResolvers.get(fileId);
+  if (!resolvers) return;
+  promiseResolvers.delete(fileId);
+  if (error) resolvers.forEach(({ reject }) => reject(error));
+  else resolvers.forEach(({ resolve }) => resolve(data));
+}
 
-  const fileIds = Array.from(imageRequestQueue);
-  imageRequestQueue.clear();
-  batchTimeout = null;
-
+/**
+ * One POST. Resolves the ids it got answers for and returns the ids it did
+ * not, so the caller can decide whether to retry them rather than write them
+ * off -- an aborted batch is usually one slow file dragging its neighbours
+ * down, and the neighbours are fine on their own.
+ */
+async function postBatch(fileIds: string[], timeoutMs: number): Promise<string[]> {
   // A browser fetch never times out on its own, and Apps Script can stall for
   // minutes under load or quota pressure. Every caller of this batch is behind
   // an await, so one stalled call used to hang the caller forever: the
   // catalogue export warms its images through here before it draws anything,
   // so a stall showed up as the whole export hanging with no error in the
-  // console -- nothing had thrown, it was still waiting. Failing after 30s
-  // instead lets loadExternalImageAsDataUrl fall through to its next strategy
-  // and the catalogue finish, at worst with a gap where one image should be.
+  // console -- nothing had thrown, it was still waiting.
   const ac = new AbortController();
-  const stall = setTimeout(() => ac.abort(), 30_000);
+  const stall = setTimeout(() => ac.abort(), timeoutMs);
 
   try {
     const response = await fetch(SCRIPT_URL, {
@@ -519,34 +555,78 @@ async function processImageBatch() {
     const result = await response.json();
     if (result.status !== 'success') throw new Error(result.message);
 
+    const unanswered: string[] = [];
     fileIds.forEach(fileId => {
       const data = result.data[fileId];
-      const resolvers = promiseResolvers.get(fileId);
-      if (resolvers) {
-        if (data && !data.error) {
-          resolvers.forEach(({ resolve }) => resolve(data));
-        } else {
-          const errorMsg = data ? data.error : 'Image not found in batch response';
-          resolvers.forEach(({ reject }) => reject(new Error(errorMsg)));
-        }
-        promiseResolvers.delete(fileId);
-      }
+      if (data && !data.error) settle(fileId, data);
+      // A per-id error from Drive is a real answer -- the file is missing or
+      // unreadable, and retrying costs a round trip to learn the same thing.
+      else if (data) settle(fileId, null, new Error(data.error));
+      else unanswered.push(fileId);
     });
+    return unanswered;
   } catch (error) {
-    const reason = (error as any)?.name === 'AbortError'
-      ? new Error(`Drive image proxy did not answer within 30s (${fileIds.length} ids)`)
-      : error;
-
-    fileIds.forEach(fileId => {
-      const resolvers = promiseResolvers.get(fileId);
-      if (resolvers) {
-        resolvers.forEach(({ reject }) => reject(reason as any));
-        promiseResolvers.delete(fileId);
-      }
-    });
-    console.error("Image batch request failed:", reason);
+    lastBatchError = ((error as any)?.name === 'AbortError'
+      ? new Error(`Drive image proxy did not answer within ${Math.round(timeoutMs / 1000)}s (${fileIds.length} ids)`)
+      : error) as Error;
+    return fileIds;
   } finally {
     clearTimeout(stall);
+  }
+}
+
+async function runBatch(fileIds: string[]) {
+  inFlight++;
+  try {
+    let pending = await postBatch(fileIds, BATCH_TIMEOUT_MS);
+
+    // Retry what is left one id at a time. A batch fails as a unit, so without
+    // this a single slow file blanks MAX_BATCH images in the catalogue; split
+    // up, the slow one is the only one at risk and it gets a clean timeout of
+    // its own rather than sharing one with three neighbours.
+    if (pending.length) {
+      const results = await Promise.all(
+        pending.map(id => postBatch([id], RETRY_TIMEOUT_MS))
+      );
+      pending = results.flat();
+    }
+
+    if (pending.length) {
+      const reason = lastBatchError || new Error('Image not found in batch response');
+      console.error("Image batch request failed:", reason, pending);
+      pending.forEach(id => settle(id, null, reason));
+    }
+  } finally {
+    inFlight--;
+    pump();
+  }
+}
+
+/**
+ * Dispatch whatever the queue and the in-flight budget allow.
+ *
+ * Full batches go immediately -- they cannot get any fuller, so waiting on the
+ * debounce would be dead time. Only a partial batch waits, and only for
+ * BATCH_DELAY, to give a burst of enqueues a chance to fill it out. That also
+ * removes a starvation bug: the timer used to be cleared and reset by every
+ * single enqueue, so a steady stream of callers could push the flush back
+ * indefinitely.
+ */
+function pump() {
+  while (inFlight < MAX_IN_FLIGHT && imageRequestQueue.size >= MAX_BATCH) {
+    const batch = Array.from(imageRequestQueue).slice(0, MAX_BATCH);
+    batch.forEach(id => imageRequestQueue.delete(id));
+    void runBatch(batch);
+  }
+
+  if (imageRequestQueue.size > 0 && inFlight < MAX_IN_FLIGHT && batchTimeout === null) {
+    batchTimeout = window.setTimeout(() => {
+      batchTimeout = null;
+      if (imageRequestQueue.size === 0) return;
+      const batch = Array.from(imageRequestQueue).slice(0, MAX_BATCH);
+      batch.forEach(id => imageRequestQueue.delete(id));
+      void runBatch(batch);
+    }, BATCH_DELAY);
   }
 }
 
@@ -557,11 +637,7 @@ export function fetchImageBatch(fileId: string): Promise<{ base64: string, mimeT
     }
     promiseResolvers.get(fileId)!.push({ resolve, reject });
     imageRequestQueue.add(fileId);
-
-    if (batchTimeout) {
-      clearTimeout(batchTimeout);
-    }
-    batchTimeout = window.setTimeout(processImageBatch, BATCH_DELAY);
+    pump();
   });
 }
 

@@ -84,7 +84,7 @@ interface ImgData { dataUrl: string; w: number; h: number; edgeColor?: string; }
 const nonImageUrls = new Set<string>();
 
 /** What the caller needs to tell the user the catalogue came out degraded. */
-export interface CatalogExportStats { imagesTotal: number; imagesFailed: number; }
+export interface CatalogExportStats { imagesTotal: number; imagesFailed: number; payloadChars: number; }
 
 async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
     try {
@@ -978,6 +978,68 @@ async function drawCatalogHubPage(
  */
 const imgDataCache = new Map<string, Promise<ImgData | null>>();
 
+/**
+ * How long the cache above is allowed to live.
+ *
+ * On its own each export clears the cache on the way in, which is right for a
+ * single document but makes two documents in a row strictly sequential: the
+ * second cannot be warmed until the first has finished drawing, because the
+ * first's entry point would wipe whatever the warm-up had put there.
+ *
+ * A session lets a caller that is producing several documents say "these belong
+ * together, keep one cache across them" and take responsibility for ending it.
+ * Inside a session the per-export clear is skipped, so the second document's
+ * images can be fetched while the first is still drawing -- fetching is network
+ * bound and drawing is main-thread bound, so the two genuinely overlap.
+ *
+ * Nothing else has to opt in: with no session open, sessionDepth is 0 and the
+ * clear happens exactly where it always did.
+ */
+let sessionDepth = 0;
+
+export function beginImageSession() {
+    if (sessionDepth === 0) imgDataCache.clear();
+    sessionDepth++;
+}
+
+export function endImageSession() {
+    sessionDepth = Math.max(0, sessionDepth - 1);
+    if (sessionDepth === 0) imgDataCache.clear();
+}
+
+/**
+ * The images a catalogue run will actually ask for.
+ *
+ * Shared by the export and the standalone warm-up below so the two cannot drift
+ * -- a warm-up that computed a different set from the export it is warming
+ * would silently do nothing useful.
+ */
+function catalogWantedImages(
+    results: CatalogArtifact[],
+    exportType: string,
+    method: 'grid' | 'single',
+): string[] {
+    return results.flatMap(r => {
+        const list = getItemImages(r);
+        if (exportType === 'catalog') {
+            return (r.exportType === 'catalog-grid' && list.length > 1) ? list.slice(0, 3) : list;
+        }
+        return method === 'grid' ? list.slice(0, 3) : list;
+    });
+}
+
+/**
+ * Warm a document's images without drawing it. Only useful inside a session --
+ * outside one the next export clears what this just fetched.
+ */
+export async function prewarmCatalogImages(
+    results: CatalogArtifact[],
+    config: { method: 'grid' | 'single'; exportType?: 'regular' | 'catalog' },
+): Promise<void> {
+    const wanted = catalogWantedImages(results, config.exportType || 'regular', config.method);
+    try { await prefetchImgData(wanted); } catch { /* the export will retry and report */ }
+}
+
 async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
     if (!url) return null;
     const key = [url, maxSize, keepPng, bgColor, padding].join('|');
@@ -994,20 +1056,24 @@ async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor =
  * Warm the cache for a whole catalogue before drawing it.
  *
  * Concurrency is capped rather than unbounded: firing every image at once
- * would give fetchImageBatch one perfect batch, but also decode hundreds of
- * canvases simultaneously. Eight in flight still collapses the round trips by
- * roughly an order of magnitude while keeping memory flat.
+ * would decode hundreds of canvases simultaneously. The cap is set to exactly
+ * fill fetchImageBatch's pipe -- MAX_IN_FLIGHT * MAX_BATCH, six executions of
+ * four ids -- because that queue can only dispatch what has been enqueued, and
+ * a worker sitting on an await is not enqueueing. Below 24 the proxy runs with
+ * idle request slots; above it the surplus workers just queue behind the same
+ * slots while holding a decode buffer each, so it buys throughput at the cost
+ * of memory only.
  */
 async function prefetchImgData(
     urls: string[],
     onProgress?: (done: number, total: number, failed: number) => void,
 ): Promise<CatalogExportStats> {
     const unique = Array.from(new Set(urls.filter(Boolean)));
-    if (unique.length === 0) return { imagesTotal: 0, imagesFailed: 0 };
+    if (unique.length === 0) return { imagesTotal: 0, imagesFailed: 0, payloadChars: 0 };
 
     let next = 0;
     let done = 0;
-    const CONCURRENCY = 8;
+    const CONCURRENCY = 24; // = MAX_IN_FLIGHT * MAX_BATCH in utils.tsx
 
     // A failure here is not fatal -- loadImgDataUncached already swallows it and
     // returns null, and drawContain skips a null image -- but it used to be
@@ -1017,12 +1083,17 @@ async function prefetchImgData(
     // caller can say so.
     let failed = 0;
     let skipped = 0;
+    let payloadChars = 0;
     const worker = async () => {
         while (next < unique.length) {
             const idx = next++;
             const url = unique[idx];
             let ok = false;
-            try { ok = !!(await loadImgData(url, 800, false, '#1C1C1E', 32)); } catch { ok = false; }
+            try {
+                const d = await loadImgData(url, 800, false, '#1C1C1E', 32);
+                ok = !!d;
+                if (d) payloadChars += d.dataUrl.length;
+            } catch { ok = false; }
             if (!ok) {
                 // Separate "this was never a still" from "this should have loaded
                 // and did not", so a stray clip is not reported as a blank page.
@@ -1038,7 +1109,7 @@ async function prefetchImgData(
         Array.from({ length: Math.min(CONCURRENCY, unique.length) }, worker)
     );
 
-    return { imagesTotal: unique.length - skipped, imagesFailed: failed };
+    return { imagesTotal: unique.length - skipped, imagesFailed: failed, payloadChars };
 }
 
 /**
@@ -1094,14 +1165,8 @@ export async function exportCatalogPdf(
     // config.method warmed three images for items whose pages then asked for
     // all of them, so images four onward still loaded one at a time at draw
     // time -- the exact serialisation this warm-up exists to remove.
-    imgDataCache.clear();
-    const wanted = results.flatMap(r => {
-        const list = getItemImages(r);
-        if (exportType === 'catalog') {
-            return (r.exportType === 'catalog-grid' && list.length > 1) ? list.slice(0, 3) : list;
-        }
-        return config.method === 'grid' ? list.slice(0, 3) : list;
-    });
+    if (sessionDepth === 0) imgDataCache.clear();
+    const wanted = catalogWantedImages(results, exportType, config.method);
     const warmed = await prefetchImgData(wanted, (n, total, failed) => {
         const missing = failed > 0 ? ` (${failed} unavailable)` : '';
         onProgress?.(5 + Math.round((n / total) * 20), `Loading images ${n}/${total}${missing}...`);
@@ -1116,8 +1181,10 @@ export async function exportCatalogPdf(
     // already decoded by this point, so the size is knowable now: check it here
     // and fail in seconds, with the number and a batch size that would fit,
     // rather than at the finish line with a stack trace.
-    const payloadChars = (await Promise.all([...imgDataCache.values()]))
-        .reduce((n, d) => n + (d?.dataUrl.length ?? 0), 0);
+    // From this run's own stats rather than the whole cache: inside a session the
+    // cache also holds the next document's images, and counting those here would
+    // trip the guard on a document that fits perfectly well.
+    const payloadChars = warmed.payloadChars;
     const MAX_PAYLOAD_CHARS = 320_000_000;
     if (payloadChars > MAX_PAYLOAD_CHARS) {
         const mb = Math.round(payloadChars / 1_048_576);

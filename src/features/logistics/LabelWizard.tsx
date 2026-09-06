@@ -28,7 +28,7 @@ import { ART_OF_DECOR_LOGO } from '../../lib/artOfDecorLogo';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, collectAllImages, collectExportImages, toTitleCase } from '../../lib/utils';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
-import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
+import { exportCatalogPdf, prewarmCatalogImages, beginImageSession, endImageSession, CatalogArtifact } from '../../lib/pdfExport';
 // The catalogue splits on exactly what the Shopify sheet splits on, so the
 // two PDFs and the workbook's two sheets can never disagree about an item.
 import { isShopifyReady } from '../../lib/aiContent';
@@ -1002,8 +1002,8 @@ export const LabelWizard: React.FC = () => {
             const notReady = selectedItems.filter(i => !isShopifyReady(i.normData));
 
             const jobs = [
-                { key: 'catalogReady' as const, suffix: 'ShopifyReady', label: tr("Shopify ready"), items: ready },
-                { key: 'catalogNotReady' as const, suffix: 'NotShopifyReady', label: tr("Not Shopify ready"), items: notReady },
+                { key: 'catalogReady' as const, suffix: 'Shopify', label: tr("Shopify"), items: ready },
+                { key: 'catalogNotReady' as const, suffix: 'Isometric', label: tr("Isometric"), items: notReady },
             ].filter(j => j.items.length > 0);
 
             if (jobs.length === 0) throw new Error(tr("No items selected"));
@@ -1016,13 +1016,23 @@ export const LabelWizard: React.FC = () => {
             let imgTotal = 0;
             let imgFailed = 0;
 
-            for (const job of jobs) {
-                const results: CatalogArtifact[] = job.items.map(item => ({
-                    data: item.data,
-                    codes: item.codes,
-                    images: collectExportImages(item.normData),
-                    exportType: 'catalog'
-                }));
+            // Built up front so the next document's image list exists before the
+            // current one starts drawing -- see the prewarm in onStats below.
+            const jobResults: CatalogArtifact[][] = jobs.map(job => job.items.map(item => ({
+                data: item.data,
+                codes: item.codes,
+                images: collectExportImages(item.normData),
+                exportType: 'catalog' as const,
+            })));
+
+            // One image cache across both documents. Without this each export
+            // clears the cache on entry, so nothing can be fetched ahead.
+            beginImageSession();
+            const started = new Set<number>();
+
+            for (let ji = 0; ji < jobs.length; ji++) {
+                const job = jobs[ji];
+                const results = jobResults[ji];
 
                 const jobBase = base;
                 const blob = await exportCatalogPdf(results, {
@@ -1042,6 +1052,20 @@ export const LabelWizard: React.FC = () => {
                     imgTotal += stats.imagesTotal;
                     imgFailed += stats.imagesFailed;
                     setCatalogStatus(s => ({ ...s, imagesTotal: imgTotal, imagesFailed: imgFailed }));
+
+                    // onStats fires the instant this document's images are warm,
+                    // which is exactly when it stops using the network and starts
+                    // using the main thread to draw. Start fetching the next
+                    // document into that window: the two costs are on different
+                    // resources, so the second document's download is close to
+                    // free. Deliberately not awaited, and deliberately not started
+                    // any earlier -- before this point it would be competing with
+                    // this document for the same six proxy slots.
+                    const nextResults = jobResults[ji + 1];
+                    if (nextResults && !started.has(ji + 1)) {
+                        started.add(ji + 1);
+                        void prewarmCatalogImages(nextResults, { method: catalogMethod, exportType: 'catalog' });
+                    }
                 });
 
                 if (!(blob instanceof Blob)) throw new Error(`${job.label}: catalogue generation failed`);
@@ -1074,6 +1098,10 @@ export const LabelWizard: React.FC = () => {
                 updatedAt: Date.now(),
             }));
             toast.error(tr("Catalog generation failed"));
+        } finally {
+            // Drops the shared cache. Must run on the failure path too, or a
+            // failed export leaves every decoded image of both documents live.
+            endImageSession();
         }
     };
 
@@ -1531,10 +1559,10 @@ export const LabelWizard: React.FC = () => {
                                 <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest">
                                     <span className="text-white/30">{tr("Will produce")}</span>
                                     <span className="px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 tabular-nums">
-                                        {shopifySplit.ready} {tr("Shopify ready")}
+                                        {shopifySplit.ready} {tr("Shopify")}
                                     </span>
                                     <span className="px-2 py-1 rounded-lg bg-amber-500/15 text-amber-400 tabular-nums">
-                                        {shopifySplit.notReady} {tr("not ready")}
+                                        {shopifySplit.notReady} {tr("isometric")}
                                     </span>
                                 </div>
 
@@ -1619,19 +1647,19 @@ export const LabelWizard: React.FC = () => {
 
                                     {progress.catalog === 100 && urls.catalogReady && (
                                         <button
-                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalogReady; a.download = `Catalog_${name}_ShopifyReady.pdf`; a.click(); }}
+                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalogReady; a.download = `Catalog_${name}_Shopify.pdf`; a.click(); }}
                                             className="w-full py-2 bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex justify-center items-center gap-2 hover:bg-emerald-500/30 transition-all"
                                         >
-                                            <Download size={12} /> {tr("RETRIEVE")} — {tr("SHOPIFY READY")} ({shopifySplit.ready})
+                                            <Download size={12} /> {tr("RETRIEVE")} — {tr("SHOPIFY")} ({shopifySplit.ready})
                                         </button>
                                     )}
 
                                     {progress.catalog === 100 && urls.catalogNotReady && (
                                         <button
-                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalogNotReady; a.download = `Catalog_${name}_NotShopifyReady.pdf`; a.click(); }}
+                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalogNotReady; a.download = `Catalog_${name}_Isometric.pdf`; a.click(); }}
                                             className="w-full py-2 bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex justify-center items-center gap-2 hover:bg-amber-500/30 transition-all"
                                         >
-                                            <Download size={12} /> {tr("RETRIEVE")} — {tr("NOT SHOPIFY READY")} ({shopifySplit.notReady})
+                                            <Download size={12} /> {tr("RETRIEVE")} — {tr("ISOMETRIC")} ({shopifySplit.notReady})
                                         </button>
                                     )}
                                 </div>
