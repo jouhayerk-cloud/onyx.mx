@@ -477,7 +477,7 @@ Notice: These cylinder pendants are packed in SETS / BOXES against a black studi
 
 CRITICAL RULES FOR CYLINDER PENDANTS:
 1. "description": A product title of 60 to 70 characters, and NEVER longer than 70. Capitalize Every Word Like This. Do NOT use articles (a, an, the, and). Do NOT end with a period. (e.g., "Mexican Onyx Cylinder Pendant Light Fixtures - Box Set").
-2. "marketingDescription": A 600 to 750 character marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium and engaging, emphasizing artisanal Mexican stone craftsmanship, translucency and natural veining.
+2. "marketingDescription": A 1000 to 1200 character marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium and engaging, emphasizing artisanal Mexican stone craftsmanship, translucency and natural veining.
    - Say each thing ONCE. Do not restate the title, the material or the colour after the opening sentence, and do not close with a summary of what you just said. Every sentence must add a fact or an image the reader did not already have.
    - You MUST COUNT the exact number of individual cylinder pieces visible in this photo (e.g. 9 pieces, 12 pieces, etc.) and state clearly early in the description: "This box set contains [X] pieces" (replacing [X] with the exact number of cylinders you counted in the image).
    - You MUST also mention later in the description that this set is part of a larger limited edition master collection (stating clearly: "${collectionTotal} items in this limited edition collection").
@@ -490,7 +490,7 @@ CRITICAL RULES FOR CYLINDER PENDANTS:
 Return ONLY valid JSON in this exact structure, with no markdown formatting:
 {
   "description": "Your short title-style description here...",
-  "marketingDescription": "<p>Your 600-750 character HTML marketing description here...</p>",
+  "marketingDescription": "<p>Your 1000-1200 character HTML marketing description here...</p>",
   "dominantColors": ["Color1", "Color2"],
   "generatedType": "Home Decor > Pendant Lights"
 }` : `FIND the ${material} ${shape} ${type}. 
@@ -498,7 +498,7 @@ Generate comprehensive catalog content for this item based on its features, shap
 
 CRITICAL RULES:
 1. "description": A product title of 60 to 70 characters, and NEVER longer than 70. Capitalize Every Word Like This. Do NOT use articles (a, an, the, and). Do NOT end with a period.
-2. "marketingDescription": A 600 to 750 character marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium and engaging, emphasizing artisanal Mexican stone craftsmanship, translucency and natural veining.
+2. "marketingDescription": A 1000 to 1200 character marketing description formatted in clean HTML (<p>, <ul>, <li>). Make it premium and engaging, emphasizing artisanal Mexican stone craftsmanship, translucency and natural veining.
    - Say each thing ONCE. Do not restate the title, the material or the colour after the opening sentence, and do not close with a summary of what you just said. Every sentence must add a fact or an image the reader did not already have.
 3. "dominantColors": An array of 2 to 3 color names selected strictly from this allowed list: [Black, Blue, Bronze, Brown, Clear, Copper, Cream, Gold, Gray, Green, Iridescent, Multicolor, Orange, Pink, Purple, Rainbow, Red, Rose Gold, Silver, Tan, Turquoise/Aqua, White, Yellow].
 4. Do NOT use the word 'lamp'. ALL lamps MUST be described as 'Luminary' or 'Luminaries'.
@@ -507,7 +507,7 @@ CRITICAL RULES:
 Return ONLY valid JSON in this exact structure, with no markdown formatting:
 {
   "description": "Your short title-style description here...",
-  "marketingDescription": "<p>Your 600-750 character HTML marketing description here...</p>",
+  "marketingDescription": "<p>Your 1000-1200 character HTML marketing description here...</p>",
   "dominantColors": ["Color1", "Color2"],
   "generatedType": "Home Decor > Decorative Bowls"
 }`;
