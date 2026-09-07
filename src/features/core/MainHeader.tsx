@@ -4271,7 +4271,7 @@ export function MainHeader() {
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
                         {sentTruckId && (
                             <button 
-                                onClick={() => setView('truck')}
+                                onClick={() => setView('trucking')}
                                 className="w-11 h-11 flex items-center justify-center text-(--main-color) animate-pulse drop-shadow-[0_0_10px_var(--main-color)] hover:scale-110 transition-all"
                                 title={tr("Active Crate Deployment")}
                             >

@@ -496,7 +496,7 @@ const createDatabase = async () => {
 
             setTimeout(async () => {
                 try {
-                    if (db) await db.destroy().catch(() => {});
+                    if (db) await db.close().catch(() => {});
                     // DB_NAME, not a literal. This previously named a store the
                     // app had already stopped using, so recovery wiped nothing,
                     // reloaded into the same failure, and the second pass hit

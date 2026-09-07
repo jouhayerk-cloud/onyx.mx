@@ -89,7 +89,7 @@ export function useOnyx(props: {
     const recognitionRef = useRef<any>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyzerRef = useRef<AnalyserNode | null>(null);
-    const dataArrayRef = useRef<Uint8Array | null>(null);
+    const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const isAbortedRef = useRef(false);
     const ttsIntervalRef = useRef<any>(null);

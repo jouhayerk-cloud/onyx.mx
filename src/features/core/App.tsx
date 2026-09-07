@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 
 // Lazy-load deep-link views — only needed for URL-based tag/truck entry flows
 const TagView         = React.lazy(() => import('../logistics/TagView').then(m => ({ default: m.TagView })));
-const SentTruckViewer = React.lazy(() => import('../logistics/SentTruckViewer').then(m => ({ default: m.default ?? m.SentTruckViewer })));
+const SentTruckViewer = React.lazy(() => import('../logistics/SentTruckViewer'));
 const ViewerView      = React.lazy(() => import('../viewer/ViewerView').then(m => ({ default: m.ViewerView })));
 
 export default function App() {

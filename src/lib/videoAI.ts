@@ -156,7 +156,13 @@ export const processVideoWithGemini = async (
             let clipBlob: Blob;
             try {
                 const data = await ff.readFile(clipName);
-                clipBlob = new Blob([(data as Uint8Array).buffer], { type: 'video/mp4' });
+                // Asserted rather than copied: since TypeScript 5.7 Uint8Array is
+                // generic over its buffer and ffmpeg.wasm's return widens to
+                // ArrayBufferLike, which BlobPart rejects because it admits
+                // SharedArrayBuffer. ffmpeg hands back a plain ArrayBuffer, and
+                // copying a video clip to satisfy the type would be real memory
+                // for no behaviour.
+                clipBlob = new Blob([data as Uint8Array<ArrayBuffer>], { type: 'video/mp4' });
                 try { await ff.deleteFile(clipName); } catch (_) {}
             } catch (readErr) {
                 console.error(`[VideoAI] Could not read clip ${i}:`, readErr);
