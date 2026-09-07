@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import type { Database } from '../../lib/database.types';
 import { createPortal } from 'react-dom';
 import { useAtomValue, useAtom, useSetAtom } from 'jotai';
 import { 
@@ -58,21 +59,18 @@ function getTotalPackedForItem(itemId: string, allCrates: CrateRecord[]): number
 }
 
 // --- Local Crate type ---
-interface CrateRecord {
+type LogisticsRow = Database['public']['Tables']['logistics']['Row'];
+
+/**
+ * Derived from the generated logistics row rather than restated. The hand
+ * written version omitted height_cm, which this file reads in seven places --
+ * so the compiler could not see those reads at all.
+ */
+interface CrateRecord extends Partial<Omit<LogisticsRow, 'id' | 'status'>> {
     id: string;
-    type?: string;
     status: CrateStatus;
-    length_cm?: number;
-    width_cm?: number;
-    weight_kg?: number;
+    /** Local only -- not a Supabase column. */
     brute_weight_kg?: number;
-    inventory_ids?: string;
-    contents_summary?: string;
-    description?: string;
-    cost_mxn?: number;
-    quantity?: number;
-    updated_at?: string;
-    parent_id?: string | null;
 }
 
 interface GroupedCrateRecord extends CrateRecord {
