@@ -1123,7 +1123,7 @@ const LogisticsBar: React.FC = () => {
                         </>
                     )}
 
-                    {(subTab === 'shipping' || subTab === 'TRK' || subTab === 'deployed') && (
+                    {(subTab === 'shipping' || subTab === 'deployed') && (
                         <>
                             <div className="w-px h-6 bg-white/5 mx-1" />
                             <button

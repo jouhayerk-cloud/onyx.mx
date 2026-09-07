@@ -7,8 +7,7 @@ import {
     packingVendorFilterAtom, packingSortKeyAtom, packingSortOrderAtom,
     crateSeparatorsAtom, crateItemPositionsAtom,
     isCratePackingManagerOpenAtom, packingManagerTargetCrateIdAtom,
-    selectedInventoryIdsAtom
-} from '../../lib/atoms';
+    selectedInventoryIdsAtom, CrateStatus} from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
@@ -62,7 +61,7 @@ function getTotalPackedForItem(itemId: string, allCrates: CrateRecord[]): number
 interface CrateRecord {
     id: string;
     type?: string;
-    status: 'Empty' | 'Packed' | 'Partial';
+    status: CrateStatus;
     length_cm?: number;
     width_cm?: number;
     weight_kg?: number;
