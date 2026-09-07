@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { InventoryItem } from '../../lib/Types';
 import { normalizeInventoryData } from '../../lib/utils';
 import { gsap } from 'gsap';

@@ -131,6 +131,11 @@ export function StoreView() {
         }
     };
     
+    const executeExportPdf = () => {
+        setShowExportConfig(false);
+        handleStartExport({ title: exportTitle, method: exportMethod });
+    };
+
     const handleStartExport = async (cfg: any) => {
         if (selectedIds.length === 0) return toast.error(tr("No items selected for PDF."));
         setIsExporting(true);
@@ -447,7 +452,7 @@ export function StoreView() {
                                         item={item} 
                                         onOpenDetails={() => setSelectedItem(item)}
                                         inBag={bag.some(b => b.row === item.row)}
-                                        onToggleBag={() => toggleBagItem(item)}
+                                        onToggleBag={() => toggleBag(item)}
                                         onClick={() => {
                                             if (isSelectionMode) toggleSelection(item);
                                             else setSelectedItem(item);
@@ -1320,7 +1325,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
 
 /* ─── Gallery Full Item ─── */
 
-const GalleryFullItem = ({ item, onClick, inBag, onToggleBag, isSelectionMode, isSelected }: { item: any; onClick: () => void; inBag: boolean; onToggleBag: () => void; isSelectionMode?: boolean; isSelected?: boolean }) => {
+const GalleryFullItem = ({ item, onClick, onOpenDetails, inBag, onToggleBag, isSelectionMode, isSelected }: { item: any; onClick: () => void; onOpenDetails: () => void; inBag: boolean; onToggleBag: () => void; isSelectionMode?: boolean; isSelected?: boolean }) => {
     const n = normalizeInventoryData(item.data);
     const mediaUrls = useMemo(() => {
         const raw = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];

@@ -5,7 +5,7 @@
  */
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { cmToImperial, extractItemHexString } from './utils';
+import { cmToImperial, extractItemHexString, getTextColorForBg } from './utils';
 import { getVendorColor } from './excelStyles';
 import { generateAxonometricDataUrl, resolveItemColor } from './axonometric';
 

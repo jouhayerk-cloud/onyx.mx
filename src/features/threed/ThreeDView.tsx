@@ -591,6 +591,7 @@ export const ThreeDCanvas: React.FC<{ cameraYOffset?: number }> = ({ cameraYOffs
 export function ThreeDViewer() {
   const [isOpen, setIsOpen] = useAtom(is3DViewerOpenAtom);
   const [cameraYOffset, setCameraYOffset] = useState(0);
+  const itemData = useAtomValue(SelectedItemDataAtom);
   
   if (!isOpen) return null;
 
@@ -642,6 +643,7 @@ export function ThreeDWorkspace() {
     const [isInventoryOpen, setIsInventoryOpen] = useAtom(is3DWorkspaceInventoryOpenAtom);
     const [isDetailsOpen, setIsDetailsOpen] = useAtom(is3DWorkspaceDetailsOpenAtom);
     const [cameraYOffset, setCameraYOffset] = useState(0);
+    const itemData = useAtomValue(SelectedItemDataAtom);
     
     const handleItemSelect = (item: InventoryItem, dataUrl: string) => {
         setIsInventoryOpen(false);

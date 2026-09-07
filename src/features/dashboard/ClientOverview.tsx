@@ -10,7 +10,8 @@ import { useDatabase } from '../../lib/hooks';
 import {
     RefreshCcw, DollarSign, Wallet, Activity,
     ShoppingCart, CreditCard, ArrowUpRight, ChevronDown, ChevronUp,
-    TrendingUp, AlertCircle, Grid, Layers, Calendar, Users, Archive, Cpu
+    TrendingUp, AlertCircle, Grid, Layers, Calendar, Users, Archive, Cpu,
+    Package, Box
 } from 'lucide-react';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { PaymentDestination } from '../../lib/Types';

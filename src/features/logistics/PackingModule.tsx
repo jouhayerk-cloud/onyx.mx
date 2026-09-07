@@ -655,6 +655,37 @@ export const PackingModule: React.FC = () => {
         }
     };
 
+    /* ── Developer Data Dump (JSON) ── */
+    // MainHeader:1251 renders a "JSON" StudioAction that raises
+    // packingExportJSONTriggerAtom, and the effect below has always called this
+    // function -- which never existed. Clicking it threw ReferenceError inside a
+    // useEffect, so the button has never worked.
+    //
+    // Implemented with buildBatchJSON, the same builder the print wizard uses at
+    // :672, so the dump matches what the wizard actually ships rather than being
+    // a second, divergent shape.
+    const handleExportJSON = async () => {
+        if (selectedIds.size === 0) return toast.error(tr("Select items first"));
+        const tid = toast.loading(tr("Building JSON..."));
+        try {
+            const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 1);
+            const blob = new Blob([JSON.stringify(batchProject, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            try {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Packing_${workbookPrefix || '326'}_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+            toast.success(tr("JSON Downloaded"), { id: tid });
+        } catch (e: any) {
+            console.error('JSON Export Error:', e);
+            toast.error(tr("Failed to generate JSON"), { id: tid });
+        }
+    };
+
     /* ── Print Labels (The Wizard) ── */
     const handlePrintLabels = async () => {
         if (selectedIds.size === 0) return toast.error(tr("Select items first"));

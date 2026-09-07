@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { tr } from '../../../lib/i18n';
 
 export const PicoConfigurationModal = () => {
@@ -8,53 +7,53 @@ export const PicoConfigurationModal = () => {
       {/* Wi-Fi Section */}
       <div className="flex flex-col gap-2">
         <span className="text-sm text-slate-500 font-medium">{tr("Wi-Fi")}</span>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
           {tr("Change Wi-Fi")}
-        </Button>
+        </button>
       </div>
 
       {/* Device Section */}
       <div className="flex flex-col gap-2">
         <span className="text-sm text-slate-500 font-medium">{tr("Device")}</span>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm mb-1">
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm mb-1">
           {tr("Brightness")}
-        </Button>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm mb-1">
+        </button>
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm mb-1">
           {tr("Volume")}
-        </Button>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
+        </button>
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
           {tr("Timezone")}
-        </Button>
+        </button>
       </div>
 
       {/* Hardware Test Section */}
       <div className="flex flex-col gap-2">
         <span className="text-sm text-slate-500 font-medium">{tr("Hardware Test")}</span>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm mb-1">
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm mb-1">
           {tr("Servo")}
-        </Button>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
+        </button>
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
           {tr("RGB Strip")}
-        </Button>
+        </button>
       </div>
 
       {/* Account Section */}
       <div className="flex flex-col gap-2">
         <span className="text-sm text-slate-500 font-medium">{tr("Account")}</span>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
           {tr("Unbind & Reset")}
-        </Button>
+        </button>
       </div>
 
       {/* Firmware Section */}
       <div className="flex flex-col gap-2">
         <span className="text-sm text-slate-500 font-medium">{tr("Firmware")}</span>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm mb-1">
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm mb-1">
           {tr("Version: V1.2.3")}
-        </Button>
-        <Button variant="secondary" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
+        </button>
+        <button type="button" className="w-full bg-[#C2D3FA] hover:bg-[#A5BCF5] text-slate-800 rounded-xl h-12 text-lg shadow-sm">
           {tr("Check for Updates")}
-        </Button>
+        </button>
       </div>
     </div>
   );

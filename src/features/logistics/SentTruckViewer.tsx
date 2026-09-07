@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useAtom, useAtomValue } from 'jotai';
 import { sentTruckIdAtom, universalViewAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';

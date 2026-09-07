@@ -2428,8 +2428,8 @@ export function MainHeader() {
                                 let formattedPayDate = 'N/A';
                                 try {
                                     // Use atom row ID to match paymentDateMap keys
-                                    const pId = atomItem?.row || pItem.row || itemData.id || pItem.itemId;
-                                    const pDateVal = paymentDateMap.get(String(pId)) || paymentDateMap.get(String(itemData.itemId)) || paymentDateMap.get(String(pItem.itemId)) || itemData.pay_date || itemData.payDate || pItem.pay_date;
+                                    const pId = atomItem?.row || pItem.row || atomData.id || pItem.itemId;
+                                    const pDateVal = paymentDateMap.get(String(pId)) || paymentDateMap.get(String(atomData.itemId)) || paymentDateMap.get(String(pItem.itemId)) || atomData.pay_date || atomData.payDate || pItem.pay_date;
                                     if (pDateVal && pDateVal !== 'N/A' && pDateVal !== '') {
                                         const d = new Date(pDateVal);
                                         if (!isNaN(d.getTime())) formattedPayDate = d.toISOString().split('T')[0];

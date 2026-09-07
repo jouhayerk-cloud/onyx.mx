@@ -20,7 +20,7 @@ import {
     ShieldAlert, CheckCircle, Edit3, Check, BookOpen, Layers,
     Sparkles, ArrowRight, Activity, Terminal, ExternalLink,
     Smartphone, Cpu, Waves, QrCode, Tag, DollarSign, Barcode,
-    Maximize2, Search, ZapOff, History, Eye
+    Maximize2, Search, ZapOff, History, Eye, ShieldCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { RareEarthLogoBase64 } from './RareEarthLogoBase64';

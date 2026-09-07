@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { X, Terminal, Camera, Nfc, Activity, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { tr } from '../lib/i18n';
 
 interface ScannerCenterProps {
