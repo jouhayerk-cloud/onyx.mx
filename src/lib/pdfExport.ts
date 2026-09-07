@@ -68,7 +68,7 @@ function drawFormattedTagCode(doc: jsPDF, codes: any, x: number, y: number, font
     }
 }
 
-interface ImgData { dataUrl: string; w: number; h: number; edgeColor?: string; }
+interface ImgData { dataUrl: string; w: number; h: number; }
 
 /**
  * URLs the loader positively identified as NOT stills (a video, so far).
@@ -86,7 +86,7 @@ const nonImageUrls = new Set<string>();
 /** What the caller needs to tell the user the catalogue came out degraded. */
 export interface CatalogExportStats { imagesTotal: number; imagesFailed: number; payloadChars: number; }
 
-async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
+async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, bgColor = '#FFFFFF', padding = 4): Promise<ImgData | null> {
     try {
         if (!url) return null;
         const cleanUrl = getCleanImageUrl(url) || url;
@@ -109,14 +109,6 @@ async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, b
             // SecurityError on cross-origin images even with crossOrigin='anonymous'
             // if the server doesn't send proper CORS headers.
             img = await loadExternalImageAsDataUrl(cleanUrl);
-        }
-
-        // Sample edge color from image (safe since image is same-origin data URL)
-        let edgeColor = bgColor;
-        try {
-            edgeColor = extractEdgeColor(img) || bgColor;
-        } catch (e) {
-            // Non-critical: edge color extraction failed, use default
         }
 
         const imgW = img.naturalWidth || img.width || 500;
@@ -154,12 +146,13 @@ async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, b
         // builds the whole PDF as a single string via Array.join, so the big
         // one died with "Invalid string length" after thirteen minutes.
         //
-        // drawContain already paints edgeColor as a solid frame behind every
-        // image, so compositing the transparent pixels onto that same colour
-        // is visually identical in the finished PDF and lets the photo ship as
-        // JPEG. Every call in this file passes keepPng: false; callers that do
-        // want real transparency (masks, label art) keep the alpha probe.
-        const flattenTo = edgeColor || bgColor;
+        // Transparent pixels are composited onto bgColor, which is the page's
+        // own white. Catalogue images are drawn straight onto the page with no
+        // frame behind them, so white is the only value that disappears; any
+        // other colour would show as a rectangle around the cut-out product.
+        // Every call in this file passes keepPng: false; callers that do want
+        // real transparency (masks, label art) keep the alpha probe.
+        const flattenTo = bgColor;
         let dataUrl: string;
 
         if (!keepPng) {
@@ -191,8 +184,7 @@ async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, b
         return { 
             dataUrl, 
             w: Math.max(1, canvas.width), 
-            h: Math.max(1, canvas.height),
-            edgeColor: edgeColor
+            h: Math.max(1, canvas.height)
         };
     } catch (err) { 
         console.error("Failed to load image for PDF:", url, err);
@@ -288,21 +280,28 @@ async function loadExternalImageAsDataUrl(cleanUrl: string): Promise<HTMLImageEl
 function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number, ch: number, scale = 1.0, overrideBgColor?: string) {
     if (!img || !img.dataUrl || !img.w || !img.h) return;
 
-    // 1. Draw Background Frame as a SEPARATE vector object in the PDF
-    const frameColor = overrideBgColor || img.edgeColor || '#1C1C1E';
-    if (frameColor && frameColor !== 'transparent') {
-        const hex = frameColor.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16) || 28;
-        const g = parseInt(hex.substring(2, 4), 16) || 28;
-        const b = parseInt(hex.substring(4, 6), 16) || 30;
+    // 1. Optional background plate. Catalogue pages pass nothing and get none:
+    //    the photograph sits directly on the white page, which is what the
+    //    printed catalogue is meant to look like. This used to paint a dark
+    //    rounded rectangle across the whole box on every image -- nominally the
+    //    image's own sampled edge colour, but extractEdgeColor was never
+    //    imported into this module, so it always threw and every frame came out
+    //    the same hardcoded near-black.
+    if (overrideBgColor && overrideBgColor !== 'transparent') {
+        const hex = overrideBgColor.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16) || 255;
+        const g = parseInt(hex.substring(2, 4), 16) || 255;
+        const b = parseInt(hex.substring(4, 6), 16) || 255;
         doc.setFillColor(r, g, b);
         doc.roundedRect(cx, cy, cw, ch, 2, 2, 'F');
     }
 
-    // 2. Draw Image as a SEPARATE transparent image object centered on top
-    const pad = Math.min(cw, ch) * 0.06;
-    const availW = Math.max(1, cw - pad * 2);
-    const availH = Math.max(1, ch - pad * 2);
+    // 2. Draw the image centered in the box.
+    //    No inset: the 6% that used to sit here kept the photo clear of the
+    //    frame's rounded corners, and there is no frame any more. The image is
+    //    aspect-contained, so filling the box cannot overflow it.
+    const availW = Math.max(1, cw);
+    const availH = Math.max(1, ch);
     const ir = (img.w && img.h) ? (img.w / img.h) : 1; 
     const cr = availW / availH;
     let dw: number, dh: number;
@@ -873,23 +872,23 @@ async function drawCatalogHubPage(
             const botH = (imgBoxH - gap) * 0.4;
             const botW = (fullW - gap) / 2;
             
-            const imgData0 = await loadImgData(gridImages[0], 800, false, '#1C1C1E', 32);
+            const imgData0 = await loadImgData(gridImages[0], 800, false, '#FFFFFF', 6);
             if (imgData0) drawContain(doc, imgData0, M, contentY, fullW, topH, 1.0);
             
-            const imgData1 = await loadImgData(gridImages[1], 800, false, '#1C1C1E', 32);
+            const imgData1 = await loadImgData(gridImages[1], 800, false, '#FFFFFF', 6);
             if (imgData1) drawContain(doc, imgData1, M, contentY + topH + gap, botW, botH, 1.0);
             
-            const imgData2 = await loadImgData(gridImages[2], 800, false, '#1C1C1E', 32);
+            const imgData2 = await loadImgData(gridImages[2], 800, false, '#FFFFFF', 6);
             if (imgData2) drawContain(doc, imgData2, M + botW + gap, contentY + topH + gap, botW, botH, 1.0);
         } else {
             const cellH = (imgBoxH - gap) / 2;
             for (let idx = 0; idx < 2; idx++) {
-                const imgData = await loadImgData(gridImages[idx], 800, false, '#1C1C1E', 32);
+                const imgData = await loadImgData(gridImages[idx], 800, false, '#FFFFFF', 6);
                 if (imgData) drawContain(doc, imgData, M, contentY + idx * (cellH + gap), fullW, cellH, 1.0);
             }
         }
     } else {
-        const imgData = await loadImgData(currentImgUrl, 800, false, '#1C1C1E', 32);
+        const imgData = await loadImgData(currentImgUrl, 800, false, '#FFFFFF', 6);
         if (imgData) {
             drawContain(doc, imgData, M, contentY, fullW, imgBoxH, 1.0);
         }
@@ -1040,7 +1039,7 @@ export async function prewarmCatalogImages(
     try { await prefetchImgData(wanted); } catch { /* the export will retry and report */ }
 }
 
-async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor = '#1C1C1E', padding = 4): Promise<ImgData | null> {
+async function loadImgData(url: string, maxSize = 800, keepPng = true, bgColor = '#FFFFFF', padding = 4): Promise<ImgData | null> {
     if (!url) return null;
     const key = [url, maxSize, keepPng, bgColor, padding].join('|');
     const hit = imgDataCache.get(key);
@@ -1090,7 +1089,7 @@ async function prefetchImgData(
             const url = unique[idx];
             let ok = false;
             try {
-                const d = await loadImgData(url, 800, false, '#1C1C1E', 32);
+                const d = await loadImgData(url, 800, false, '#FFFFFF', 6);
                 ok = !!d;
                 if (d) payloadChars += d.dataUrl.length;
             } catch { ok = false; }
@@ -1320,7 +1319,7 @@ export async function exportCatalogPdf(
                     const specY = await drawHeader(doc, item, M, PW, M - 6, exportType, { current: j + 1, total: imgs.length });
                     
                     const imgUrl = imgs[j];
-                    const d = await loadImgData(imgUrl, 800, false, '#1C1C1E', 32);
+                    const d = await loadImgData(imgUrl, 800, false, '#FFFFFF', 6);
                     const imgW = PW - M * 2 - 4;
                     const imgH = PH - specY - 24;
                     if (d) {
