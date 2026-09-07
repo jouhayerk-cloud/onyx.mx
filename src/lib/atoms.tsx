@@ -21,7 +21,21 @@ import {
   UploadedFile,
 } from './Types';
 
-export type UserRole = 'Developer' | 'Admin' | 'ClientBoss' | 'ClientAccounting' | 'ClientViewer' | 'Vendor';
+/**
+ * Application role.
+ *
+ * 'Client' is the offline fallback tier, not a value app_users ever stores.
+ * resolveUserRole (utils.tsx:24) returns it for four hardcoded emails, and
+ * App.tsx:157 uses that only when the app_users table is unreachable. It was
+ * always produced at runtime; this union simply never admitted it, so the one
+ * check that reads it (DetailsPanel:676) looked like dead code to the compiler.
+ *
+ * Declaring it changes no permission: module visibility is decided by the
+ * explicit allow-list at MainAppView:289 ['ClientBoss','ClientAccounting',
+ * 'ClientViewer'], which 'Client' is deliberately not part of, and there is no
+ * Record<UserRole, ...> anywhere that would now demand an entry for it.
+ */
+export type UserRole = 'Developer' | 'Admin' | 'ClientBoss' | 'ClientAccounting' | 'ClientViewer' | 'Vendor' | 'Client';
 
 /**
  * Crate lifecycle state, shared so the views cannot drift apart again.
