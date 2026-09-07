@@ -61,7 +61,6 @@ export const StudioSettingsPortal: React.FC = () => {
     const [language, setLanguage]         = useAtom(languageAtom);
     const { goOffline, goOnline }         = useSyncEngine();
     const logout                          = useLogout();
-    const { t }                           = useTranslation();
 
     if (!isOpen) return null;
 

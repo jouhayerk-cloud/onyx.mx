@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import type { InventoryItemData } from '../../lib/Types';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { 
     Truck, RotateCcw, Trash2, Box, Layers, Grid3x3, 
@@ -3478,7 +3479,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const looseItems = useMemo(() => {
         return allInventory.filter(item => {
             const data: Partial<InventoryItemData> = item.data || {};
-            const parentId = data.parent_id || data.crate_id;
+            const parentId = data.crate_id;
             return !parentId && !positions[String(item.row)];
         });
     }, [allInventory, positions]);

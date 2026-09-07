@@ -5,6 +5,14 @@ export const destinationsConfig: Record<PaymentDestination, {
     icon: string;
     name: string;
     calculateCommission: (amount: number) => number;
+    /**
+     * Rendered by TrackingPaymentsView (:567, :1049) but set on no entry below,
+     * so those cards currently show blank. Declared optional rather than
+     * invented: real account numbers are not something to guess at, and whether
+     * to surface a balance at all is a product decision.
+     */
+    accountNumber?: string;
+    balance?: number;
 }> = {
     [PaymentDestination.BoA_Employee]: {
         icon: boaCardIcon,
