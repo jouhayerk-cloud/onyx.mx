@@ -360,7 +360,7 @@ export function UploadEntryForm() {
                 <div className="flex flex-col gap-3 min-w-[240px]">
                     <label className={`${lbl} text-[10px]`}>{tr("Entry Status")}</label>
                     <div className="flex flex-wrap gap-2.5 items-center">
-                        {(['Available', 'Production', 'Acquisition'] as EntryStatus[]).map(status => (
+                        {(['Available', 'Production', 'Acquisition'] as const).map(status => (
                             <button
                                 key={status}
                                 type="button"

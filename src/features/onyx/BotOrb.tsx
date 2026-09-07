@@ -2,12 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAtom, useSetAtom } from 'jotai';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, RefreshCw, Database } from 'lucide-react';
+import { X, RefreshCw, Database, ChevronRight } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { 
     isBotOrbOpenAtom,
     inventoryArtifactConfigAtom, 
-    languageAtom
+    languageAtom,
+    onyxApiKeyAtom
 } from '../../lib/atoms';
 import { OnyxVisuals } from './OnyxVisuals';
 import { onyxToolHandlers } from './onyxTools';
@@ -21,6 +22,12 @@ interface BotOrbProps {
 
 export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
     const [isBotOpen, setIsBotOpen] = useAtom(isBotOrbOpenAtom);
+    const [, setUserApiKey] = useAtom(onyxApiKeyAtom);
+
+    const resetNeuralKey = () => {
+        localStorage.removeItem('ONYX_GEMINI_KEY');
+        setUserApiKey('');
+    };
     const setInventoryConfig = useSetAtom(inventoryArtifactConfigAtom);
     const [language] = useAtom(languageAtom);
 

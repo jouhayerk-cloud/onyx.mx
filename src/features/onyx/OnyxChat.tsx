@@ -498,6 +498,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         isListening, setIsListening,
         sendMessage, lastError,
         resetNeuralKey, stopVoice,
+        getApiKeyInfo,
         handleFormSubmit,
         volume,
         appLanguage, setAppLanguage,
@@ -676,7 +677,7 @@ export function OnyxChat(props: OnyxChatProps) {
     const onyx = useOnyx(props);
     return (
         <div className="flex flex-col h-full w-full bg-black overflow-hidden">
-            {getApiKeyInfo().isDefault && (
+            {onyx.getApiKeyInfo().isDefault && (
                 <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 px-6 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 backdrop-blur-xl animate-in fade-in slide-in-from-top-4 duration-1000">
                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-500/90 text-center">
                         {tr("⚠️ SYSTEM NEURAL KEY ACTIVE • RESTRICT KEY IN CLOUD CONSOLE FOR PRODUCTION")}

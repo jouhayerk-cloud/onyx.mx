@@ -160,6 +160,14 @@ export const ProcessView: React.FC = () => {
     const batchTrigger = useAtomValue(processTriggerBatchAtom);
     const [activeStepLabel, setActiveStepLabel] = useAtom(processActiveStepLabelAtom);
     const [isProcessingGlobal, setIsProcessingGlobal] = useAtom(processIsProcessingAtom);
+    // processShowVaultAtom / processShowBatchListAtom were already imported at the
+    // top of this file and already exist in atoms.tsx -- only the bindings were
+    // missing, so every setShowVault / setShowBatchList call was a ReferenceError.
+    const setShowVault = useSetAtom(processShowVaultAtom);
+    const setShowBatchList = useSetAtom(processShowBatchListAtom);
+    // The workspace tool is local editor state; there is no atom for it. Ids come
+    // from the toolbar below: 'move' | 'mask' | 'point'.
+    const [tool, setTool] = useState<'move' | 'mask' | 'point'>('move');
     const [engineStatus, setEngineStatus] = useState<'idle' | 'analyzing' | 'vectorizing' | 'committing' | 'completed' | 'error'>('idle');
     const [availableModels, setAvailableModels] = useState<string[]>([]);
     const [isAborted, setIsAborted] = useState(false);

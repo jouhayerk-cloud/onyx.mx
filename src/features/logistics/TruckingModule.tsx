@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
-import { generatePackingListXlsx } from '../../lib/xlsxUtils';
 import { useDatabase, useNotify } from '../../lib/hooks';
 import { 
     activeViewAtom,
@@ -31,7 +30,7 @@ import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto, Mani
 
 import * as THREE from 'three';
 import { CrateEditPanel, WireframeCrate } from './CratesInventoryView';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import gsap from 'gsap';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
@@ -1969,8 +1968,16 @@ const TruckExportModal: React.FC<{
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
             const items = buildConsolidatedItems();
-            const packingWeight = (fields.packingItems || []).reduce((s, i) => s + (i.weight || 0) * (i.count || 1), 0);
-            const packingUnits = (fields.packingItems || []).reduce((s, i) => s + (i.count || 0), 0);
+            // TruckExportModal has no `fields` -- that prop belongs to
+            // ReadyTruckWizard (:2549), which owns the packing-items editor. This
+            // function was copied there, gained `fields`, and the original was left
+            // referencing a binding it never had, so every call threw
+            // ReferenceError on this line and this modal has never produced a PDF.
+            // Declared empty rather than reached for across components: this export
+            // genuinely has no packing-item data to draw on.
+            const packingItems: Array<{ name: string; count: number; weight: number }> = [];
+            const packingWeight = packingItems.reduce((s, i) => s + (i.weight || 0) * (i.count || 1), 0);
+            const packingUnits = packingItems.reduce((s, i) => s + (i.count || 0), 0);
             const crateItemsCount = items.reduce((s, i) => s + (i.qty || 1), 0);
 
             const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
@@ -2034,7 +2041,7 @@ const TruckExportModal: React.FC<{
                     status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, 
                     itemCount: crateItemsCount + packingUnits
                 },
-                packingItems: fields.packingItems,
+                packingItems,
                 excludeImages: true,
                 excludeHeaderQr: true,
                 excludeHeaderWireframe: true

@@ -27,12 +27,13 @@ import {
     tagIdAtom,
     isStudioSettingsOpenAtom,
     isFinanceScrolledAtom,
-    isBotOrbOpenAtom
+    isBotOrbOpenAtom,
+    UserRole
 } from '../../lib/atoms';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers, ShoppingBag,
-    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d, History, Brain, Cpu
+    Barcode, Box, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d, History, Brain, Cpu
 } from 'lucide-react';
 
 import { MainHeader } from './MainHeader';
