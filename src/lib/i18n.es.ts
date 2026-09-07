@@ -998,6 +998,12 @@ export const esCatalog: Record<string, string> = {
   'IMG PROCESSING: ON (MASKS)': 'PROC. DE IMAGEN: ACTIVO (MÁSCARAS)',
   'IMG PROCESSING: OFF (ORIGINALS)': 'PROC. DE IMAGEN: INACTIVO (ORIGINALES)',
   'CLEAN IMAGES ONLY': 'SOLO LIMPIAR IMÁGENES',
+  // The images-only run now backfills missing fields as well, so the label says
+  // so. The old key stays: nothing renders it any more, but a stale build or a
+  // cached bundle still would.
+  'CLEAN IMAGES + FILL GAPS': 'LIMPIAR IMÁGENES + COMPLETAR FALTANTES',
+  'Limits the run to items whose images need cleaning. Those items still get any missing description, colour or type filled in — anything that already has a value is left alone.':
+    'Limita la ejecución a artículos cuyas imágenes necesitan limpieza. Esos artículos igual reciben la descripción, el color o el tipo que les falte — lo que ya tiene valor no se toca.',
   'Clean Images only — the run skips descriptions, colours and type, and does the image stage alone':
     'Solo limpiar imágenes — la ejecución omite descripciones, colores y tipo, y hace únicamente la etapa de imagen',
   'IMAGES + DESCRIPTIONS': 'IMÁGENES + DESCRIPCIONES',
