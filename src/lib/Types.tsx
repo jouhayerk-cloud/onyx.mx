@@ -286,6 +286,18 @@ export interface PackedItem {
 }
 
 export interface Crate {
+  /**
+   * Present when this crate was hydrated from a logistics row rather than
+   * built for the 3D view. Names and types mirror the columns exactly.
+   */
+  type?: string | null;
+  vendors?: string | null;
+  vendor_id?: string | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
+  length_cm?: number | null;
+  weight_kg?: number | null;
+
   id: string;
   desc: string;
   weight: number; // Gross weight (base + items)

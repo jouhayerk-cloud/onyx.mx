@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
+import type { Database } from '../../lib/database.types';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { Box, Plus, Search, Package, ArrowLeft, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield, Check, FolderUp } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -122,26 +123,28 @@ export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; stat
 };
 
 // --- Local Crate Type ---
-export interface CrateRecord {
+type LogisticsRow = Database['public']['Tables']['logistics']['Row'];
+
+/**
+ * A crate as the app handles it: the logistics row, plus fields that live only
+ * in RxDB or in this editor's form state and are stripped before any Supabase
+ * write (see the destructure in handleSaveCrate).
+ *
+ * Derived from the generated row rather than restated, so a column rename in
+ * Postgres surfaces here instead of silently reading undefined.
+ */
+export interface CrateRecord extends Partial<Omit<LogisticsRow, 'id' | 'status'>> {
     id: string;
-    type: string;
     status: CrateStatus;
-    length_cm: number;
-    width_cm: number;
-    height_cm: number;
-    weight_kg?: number;
+    /** Local only -- not a Supabase column. */
     brute_weight_kg?: number;
-    contents_summary?: string;
-    description?: string;
-    inventory_ids?: string;
-    quantity?: number;
-    cost_mxn?: number;
-    date?: string;
-    updated_at?: string;
+    /** Local only -- grouping is computed in the view, not stored. */
     groupedCount?: number;
     groupedIds?: string[];
-    parent_id?: string | null;
-    vendors?: string;
+    /** Form-state only -- no logistics column backs these. */
+    sent_date?: string;
+    truck_plates?: string;
+    senders?: string;
 }
 
 // --- Extract item number from workbook barcode ---
@@ -1637,7 +1640,7 @@ export const CratesInventoryView: React.FC = () => {
                 return;
             }
 
-            const { brute_weight_kg, quantity, ...supabaseUpdates } = updates;
+            const { brute_weight_kg, quantity, sent_date, truck_plates, senders, ...supabaseUpdates } = updates;
 
             // 1. Handle Bulk Updates if it's a group
             const targetIds = (editingCrate?.groupedIds && editingCrate.groupedIds.length > 0) 

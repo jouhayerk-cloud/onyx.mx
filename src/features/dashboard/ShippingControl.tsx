@@ -193,7 +193,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
             row: item.row, itemId: item.data.itemId, itemNumber: item.data.itemNumber, shape: item.data.shape,
             material: item.data.material, weightKg: item.data.weightKg, color: item.data.color,
             widthCm: item.data.widthCm, heightCm: item.data.heightCm, lengthCm: item.data.lengthCm, price: Math.round(parseFloat(item.data.price || '0')).toString(),
-            bookBardcode: item.data.bookBardcode, bookAqCode: item.data.bookAqCode, bookLandCode: item.data.box_land_code,
+            bookBardcode: item.data.bookBarcode, bookAqCode: item.data.bookAqCode, bookLandCode: item.data.box_land_code,
         }));
 
         const updatedCrates = crates.map(c => {
@@ -521,13 +521,13 @@ export const ShippingControl = ({ isVisible }: { isVisible: boolean }) => {
                 styles[styleKey] = { bgColor: vendorColor, textColor: getTextColorForBg(vendorColor), bold: true };
             }
             groupedByVendor[vendorId].forEach(({ crate, item }) => {
-                const dimensions = item ? `${item.widthCm || '?'}x${item.heightCm || '?'}x${item.lengthCm || '?'}` : `${crate.width_cm || crate.width || '?'}x${crate.height_cm || crate.height || '?'}x${crate.length_cm || crate.length || '?'}`;
+                const dimensions = item ? `${item.widthCm || '?'}x${item.heightCm || '?'}x${item.lengthCm || '?'}` : `${crate.width_cm || crate.w || '?'}x${crate.height_cm || crate.h || '?'}x${crate.length_cm || crate.d || '?'}`;
                 dataForExport.push([
                     { value: crate.id, styleKey }, 
                     { value: vendorId, styleKey },
                     { value: item ? `${item.itemId}-${item.itemNumber}` : 'EMPTY', styleKey },
                     { value: item ? item.shape : (crate.type || 'CRATE'), styleKey }, 
-                    { value: item ? item.material : (crate.material || ''), styleKey },
+                    { value: item ? item.material : '', styleKey },
                     { value: dimensions, styleKey }, 
                     { value: item ? item.weightKg : (crate.weight_kg || crate.weight || 0), styleKey },
                     { value: item ? item.bookBardcode : '', styleKey }, 
