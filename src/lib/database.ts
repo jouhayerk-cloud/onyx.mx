@@ -1,4 +1,5 @@
 import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection, removeRxDatabase } from 'rxdb';
+import type { SyncTable } from './syncTables';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
 import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
@@ -360,7 +361,7 @@ const createDatabase = async () => {
         const pullReplication = async () => {
             try {
                 console.log('🚀 [DB] Starting prioritized paginated sync...');
-                const fetchPaginated = async (table: string, filterField?: string, filterVal?: any) => {
+                const fetchPaginated = async (table: SyncTable) => {
                     let page = 0;
                     const pageSize = 1000;
                     const allData: any[] = [];
@@ -373,10 +374,6 @@ const createDatabase = async () => {
                             // Filter out hidden items for main app sync
                             if (['inventory', 'production'].includes(table)) {
                                 query = query.or('is_hidden.is.null,is_hidden.eq.false');
-                            }
-
-                            if (filterField && filterVal !== undefined) {
-                                query = query.eq(filterField, filterVal);
                             }
 
                             const { data, error } = await query;
@@ -415,10 +412,10 @@ const createDatabase = async () => {
                 // dropped, fetching them fails, allSourcesOk goes false, and the prune
                 // below would never run again — so deleted rows would linger locally
                 // forever.
-                const getSeasonSources = (table: string): { name: string; season: Season }[] =>
+                const getSeasonSources = (table: SyncTable): { name: SyncTable; season: Season }[] =>
                     [{ name: table, season: 'legacy' }];
 
-                const syncCollection = async (table: string, collection: RxCollection<any>) => {
+                const syncCollection = async (table: SyncTable, collection: RxCollection<any>) => {
                     const sources = getSeasonSources(table);
                     const merged: any[] = [];
                     let allSourcesOk = true;

@@ -4,12 +4,13 @@
  * are enqueued here and replayed to Supabase when connectivity is restored.
  */
 import { supabase } from './supabase';
+import type { SyncTable } from './syncTables';
 
 export type ChangeOperation = 'upsert' | 'hide';
 
 export interface ChangeRecord {
     id: string;
-    table: string;
+    table: SyncTable;
     operation: ChangeOperation;
     recordId: string;
     payload: any;
@@ -35,7 +36,7 @@ function saveQueue(queue: ChangeRecord[]): void {
 }
 
 /** Add a pending change to the queue */
-export function enqueueChange(table: string, operation: ChangeOperation, payload: any): void {
+export function enqueueChange(table: SyncTable, operation: ChangeOperation, payload: any): void {
     const queue = loadQueue();
     const record: ChangeRecord = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

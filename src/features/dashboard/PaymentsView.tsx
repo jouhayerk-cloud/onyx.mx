@@ -47,7 +47,7 @@ const apiCall = async (action: string, payload: any, db: any) => {
 
         if (payload.expenseData.inventoryItemRows) {
             const ids = payload.expenseData.inventoryItemRows.split(',');
-            await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+            await supabase.from('inventory').update({ pay_req: 'true' }).in('id', ids);
             if (db) {
                 await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: { payReq: 'true' } });
             }
@@ -68,7 +68,7 @@ const apiCall = async (action: string, payload: any, db: any) => {
 
         for (const update of payload.updates) {
             await supabase.from('inventory').update({
-                pay_req: !!update.itemData.payReq,
+                pay_req: update.itemData.payReq ? 'true' : 'false',
                 pay_date: update.itemData.payDate || null,
                 status: update.itemData.status || undefined
             }).eq('id', update.row);
