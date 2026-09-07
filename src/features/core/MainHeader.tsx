@@ -115,7 +115,7 @@ import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { missingShopifyFields, SHOPIFY_REQUIRED_FIELDS, type ShopifyField } from '../../lib/aiContent';
 import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, toDriveDownloadUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor';
-import { lookupCanonicalColors } from '../../lib/colorVocabulary';
+import { lookupCanonicalColors, toShopifyColorValue } from '../../lib/colorVocabulary';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout, useDatabase } from '../../lib/hooks';
@@ -3641,7 +3641,7 @@ export function MainHeader() {
                 const colorsStr = (normalizedColor.colors.length > 0
                     ? normalizedColor.colors
                     : getStoneStyleColors(material, `${shape} ${shortDesc}`, color)
-                ).join(', ');
+                ).map(toShopifyColorValue).join(', ');
 
                 // custom.variety is the same for every item by decision, not by
                 // omission: everything in this catalogue is Mexican onyx and the

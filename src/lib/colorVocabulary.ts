@@ -109,3 +109,28 @@ export function lookupCanonicalColors(raw: string): readonly ShopifyColor[] | nu
     if (!raw) return null;
     return LOOKUP[raw.trim().toLowerCase()] ?? null;
 }
+
+/**
+ * How a colour is spelled ON THE WIRE, which is not always how it is spelled.
+ *
+ * color-pattern is a list.metaobject_reference: Shopify matches the string
+ * against an existing metaobject entry and rejects the row if it does not
+ * match, exactly as it did for polish_type. The client's own colour options
+ * file -- the only record we have of what their store actually contains --
+ * spells the value "Mulicolor", missing the t. Every other value in that file
+ * is spelled correctly, which is what makes it read as their metaobject's real
+ * name rather than a slip in the email.
+ *
+ * So the correct English stays everywhere inside the app, in the database and
+ * on the review page, and the substitution happens only at the point the value
+ * is written into the sheet. If the client later fixes the entry on their side,
+ * deleting this one line is the whole change.
+ */
+const WIRE_SPELLING: Record<string, string> = {
+    Multicolor: 'Mulicolor',
+};
+
+/** Render one colour as the target store spells it. */
+export function toShopifyColorValue(color: string): string {
+    return WIRE_SPELLING[color] ?? color;
+}
