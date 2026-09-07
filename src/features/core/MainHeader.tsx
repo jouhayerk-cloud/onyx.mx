@@ -3600,23 +3600,16 @@ export function MainHeader() {
                     title = (lastSpace > 40 ? cut.slice(0, lastSpace) : cut).replace(/[\s\-,]+$/, '');
                 }
                 
-                const vendorMapping: Record<string, string> = {
-                    'ET': 'Betoeduardo',
-                    'DH': 'Delfino',
-                    'EM': 'Emanuel',
-                    'GE': 'Geraldo',
-                    'JM': 'Jose Manuel',
-                    'ML': 'Manuel',
-                    'MM': 'Mariam',
-                    'SU': 'Susana',
-                    'TE': 'Tereso',
-                    'CA': 'Carlos',
-                    'AM': 'Alejandro',
-                    'CP': 'Cantera Puebla',
-                    'AN': 'Angel',
-                    'FR': 'Fountain Rock Mine',
-                    'BT': 'Bernardo'
-                };
+                // Vendor names come from `vendors` in lib/consts, which is the only
+                // list kept in step with the business. Two ad-hoc copies of this
+                // mapping had drifted from it and from each other: this one had
+                // JM as "Jose Manuel" (it is Jose Meza), ML as "Manuel" (Maria
+                // Luisa), TE as "Tereso" (Tellez Taller), and no entry at all for
+                // RF or IH -- 49 items between them, which fell back to printing
+                // the bare two-letter code as the vendor name.
+                const vendorMapping: Record<string, string> = Object.fromEntries(
+                    Object.entries(vendors).map(([code, v]) => [code, v.name])
+                );
                 const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(item.row) || '';
                 
                 const matchPrefix = tagId.match(/^[A-Za-z]+/);
@@ -3661,7 +3654,7 @@ export function MainHeader() {
                 
                 const heightCm = parseNum(norm.heightCm);
                 const widthCm = parseNum(norm.widthCm);
-                const tagsList = [tagId, monthYear, toTitleCase(`${shape} ${shortDesc}`.trim()), `${heightCm}cm ${widthCm}cm`].filter(Boolean).join(', ');
+                const tagsList = [tagId, toTitleCase(`${shape} ${shortDesc}`.trim()), `${heightCm}cm ${widthCm}cm`].filter(Boolean).join(', ');
                 
                 const productCategory = getProductCategory(shape, shortDesc);
                 
@@ -3714,7 +3707,7 @@ export function MainHeader() {
                 // importing, or fill the column in one go, whereas TRUE on every
                 // row made that decision for them the moment the header name was
                 // corrected and the column started taking effect.
-                const artOfDecorVal = '';
+                const artOfDecorVal = 'TRUE';
                 const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
                 const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
                 // Handle is the product's identity key in Shopify and must be
@@ -3740,9 +3733,16 @@ export function MainHeader() {
                 // merging rows that all share 'Default Title' loses them.
                 // Uniqueness first -- variants are separate future work.
                 const slugify = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                // Handle is the product title alone -- no tag id suffix.
+                //
+                // WARNING, measured 2026-09-07 across all 497 rows: the suffix was
+                // what made handles unique. Without it 38 of the 208 items that
+                // have an AI title share a handle with another item, and Matrixify
+                // folds same-handle rows into ONE product with variants. Items
+                // without an AI title collide far harder (159 of 289) because they
+                // fall back to shape + description + colour + material.
                 const titleSlug = slugify(title);
-                const skuSlug = slugify(tagId);
-                const handle = [titleSlug, skuSlug].filter(Boolean).join('-') || tagId.toLowerCase();
+                const handle = titleSlug || tagId.toLowerCase();
 
                 // Type: the AI classified this from the photograph against the
                 // agreed vocabulary, which beats keyword-matching the shape and
