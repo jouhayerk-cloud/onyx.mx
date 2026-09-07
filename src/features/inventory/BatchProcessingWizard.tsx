@@ -47,6 +47,7 @@ import { SquareCropModal } from '../../components/SquareCropModal';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { vendors } from '../../lib/consts';
 import { findDonor, isUsableDonor, TIER_LABEL } from '../../lib/variationMatch';
+import { generateAxonometricDataUrl, resolveItemColor } from '../../lib/axonometric';
 import type { DonorCandidate } from '../../lib/variationMatch';
 import { tr } from '../../lib/i18n';
 
@@ -108,6 +109,9 @@ interface BatchOp {
         cleanedKey?: string;
         /** Uploaded vector outline, persisted to generated_svg_url. */
         svgUrl?: string;
+        /** Rendered axonometric icon, uploaded. Used as the Shopify product
+         *  image for items that have no photograph. */
+        axoIconUrl?: string;
         /** Whole processed_media_urls map, assembled by the video branch. */
         processedMap?: Record<string, string>;
         maskUrl?: string;
@@ -1172,6 +1176,31 @@ RULES
                     generatedType: parsed.generatedType || d.generatedType || '',
                 },
             });
+            // An item with no photograph still needs SOMETHING in the Shopify
+            // Image Src column, or it imports as a product with no image at all.
+            // The axonometric icon is already what the Isometric catalogue shows
+            // for these; this makes it a real uploaded image so the sheet can
+            // point at it. Rendered with the same generator the catalogue uses --
+            // no second renderer.
+            try {
+                updateOp(op.id, { progress: 80, stepLabel: 'Rendering icon' });
+                const iconDataUrl = await generateAxonometricDataUrl(
+                    self.widthCm, self.heightCm, self.lengthCm,
+                    self.shape, self.type,
+                    resolveItemColor(itemData),
+                    true, // JPEG: smaller, and this is a flat-shaded drawing
+                );
+                if (iconDataUrl) {
+                    const iconUrl = await uploadCleanedImage(iconDataUrl, `axo_${self.id || op.id}.jpg`, user);
+                    updateOp(op.id, (prev) => ({ result: { ...(prev.result || {}), axoIconUrl: iconUrl } }));
+                    logOp(op.id, '[  OK  ] Icon uploaded as fallback product image');
+                }
+            } catch (iconErr: any) {
+                // The copy is the valuable half. A failed icon should not throw
+                // away a description that cost a model call.
+                logOp(op.id, `[ WARN ] Icon render/upload failed: ${iconErr.message}`);
+            }
+
             logOp(op.id, `[  OK  ] Written as a variation of ${d.id}`);
             setHasUnsavedChanges(true);
         } catch (err: any) {
@@ -1536,6 +1565,11 @@ RULES
                     const parsedMasks = safeParseMasks(lastCloudMasks);
                     if (parsedMasks !== undefined) updatePayload.spatial_masks = parsedMasks;
                 }
+                const lastAxoIconUrl = ops.map(o => o.result?.axoIconUrl).filter(Boolean).pop();
+                if (lastAxoIconUrl) {
+                    updatePayload.axo_icon_url = lastAxoIconUrl;
+                }
+
                 if (lastSvgUrl) {
                     // generated_svg_url was 0/497 because the SVG was rendered on
                     // every run and then dropped on the floor.

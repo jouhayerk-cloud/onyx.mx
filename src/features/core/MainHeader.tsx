@@ -3646,7 +3646,17 @@ export function MainHeader() {
                 // photo where one exists, and never the generated .mp4, which
                 // Shopify rejects in an Image Src column.
                 const allImages = collectExportImages(norm);
-                const imageList = (allImages && allImages.length > 0) ? allImages : [''];
+
+                // Items with no photograph are still Shopify-ready -- the gate is
+                // title, body, colour and type, and an image is not among them --
+                // so without a fallback they import as products with no picture
+                // at all. axo_icon_url holds the rendered axonometric icon the
+                // Isometric catalogue already shows for these, uploaded by the
+                // batch variation pass.
+                const axoIconUrl = String(norm.axoIconUrl || norm.axo_icon_url || '').trim();
+                const imageList = (allImages && allImages.length > 0)
+                    ? allImages
+                    : (axoIconUrl ? [axoIconUrl] : ['']);
 
                 const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
                 const measurementsStr = `D${depthIn}xW${widthIn}xH${heightIn}`;
