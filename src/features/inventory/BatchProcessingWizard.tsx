@@ -459,10 +459,17 @@ export const BatchProcessingWizard: React.FC = () => {
                 dominantColors: op.result?.dominantColors || [],
                 generatedType: op.result?.generatedType || ''
             };
-            // imagesOnly short-circuits the Gemini text call entirely. Checked
-            // here rather than by filtering the queue, so an item still runs its
-            // image stage instead of being dropped from the run.
-            if (!imagesOnly && (op.imageIndex || 0) === 0 && (!processed.description || !processed.marketingDescription || !processed.dominantColors?.length || !processed.generatedType || op.forceRegenerateDescription)) {
+            // Backfill whatever is missing, on every run, including an
+            // images-only one -- cleaning a photo used to skip this entirely, so
+            // an item could come back with a fresh image and still no colour.
+            //
+            // The condition is already "is anything absent", and the merge below
+            // keeps every value that exists, so a field with a value is never
+            // regenerated. An item missing only its colour therefore keeps its
+            // description and body and takes just the colour from this call.
+            // Only forceRegenerateDescription overwrites, and that is a separate
+            // per-item action.
+            if ((op.imageIndex || 0) === 0 && (!processed.description || !processed.marketingDescription || !processed.dominantColors?.length || !processed.generatedType || op.forceRegenerateDescription)) {
                 updateOp(op.id, { progress: 30 });
                 logOp(op.id, '[ WAIT ] Analyzing via Gemini...');
                 
@@ -1826,9 +1833,9 @@ Instructions:
         setOverallProgress(0);
 
         const pending = queue.filter(op => {
-            // In an images-only run, missing text is not a reason to include an
-            // op — nothing here will write text.
-            const needsContent = !imagesOnly && (op.imageIndex || 0) === 0
+            // Missing text is a reason to include an op in any run now, since
+            // an images-only run backfills gaps too.
+            const needsContent = (op.imageIndex || 0) === 0
                 && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription);
             const needsImage = !!op.imageUrl && !op.skipImageProcessing
                 && (op.forceRecleanImage || !op.result?.cleanedUrl);
@@ -2054,8 +2061,11 @@ Instructions:
                             <span>{tr("RE-CLEAN IMAGES")}</span>
                         </button>
 
-                        {/* Scope, not force. Off, a run does descriptions and
-                            images; on, it does images only. */}
+                        {/* Scope, not force -- and scope only over which ITEMS
+                            run: on, the queue is limited to items whose images
+                            need cleaning. Those items still have any missing
+                            description, colour or type filled in; what is
+                            already there is never regenerated either way. */}
                         <button
                             onClick={() => setImagesOnly(v => !v)}
                             aria-pressed={imagesOnly}
@@ -2064,10 +2074,10 @@ Instructions:
                                     ? 'bg-sky-500/25 text-sky-200 border-sky-400/50 hover:bg-sky-500/35'
                                     : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10'
                             }`}
-                            title={tr("Clean Images only — the run skips descriptions, colours and type, and does the image stage alone")}
+                            title={tr("Limits the run to items whose images need cleaning. Those items still get any missing description, colour or type filled in — anything that already has a value is left alone.")}
                         >
                             <Wand2 size={16} className={imagesOnly ? 'text-sky-200' : 'text-white/40'} />
-                            <span>{imagesOnly ? tr("CLEAN IMAGES ONLY") : tr("IMAGES + DESCRIPTIONS")}</span>
+                            <span>{imagesOnly ? tr("CLEAN IMAGES + FILL GAPS") : tr("IMAGES + DESCRIPTIONS")}</span>
                         </button>
 
                         {/* Which images a run covers. This was hardcoded to
