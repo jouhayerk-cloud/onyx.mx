@@ -3753,19 +3753,18 @@ export function MainHeader() {
                 });
             });
             
-            allExportRows.sort((a, b) => {
-                const vendorA = String(a[2] || '').toLowerCase();
-                const vendorB = String(b[2] || '').toLowerCase();
-                if (vendorA < vendorB) return -1;
-                if (vendorA > vendorB) return 1;
-                
-                const catA = String(a[22] || '').toLowerCase();
-                const catB = String(b[22] || '').toLowerCase();
-                if (catA < catB) return -1;
-                if (catA > catB) return 1;
-                
-                return 0;
-            });
+            // Vendor is index 3 and Product Category index 29, per the headers
+            // array above. This read 2 and 22, which are Body HTML and the
+            // variant height -- so the sheet came out ordered by description
+            // text and then by inches, and had been doing so unnoticed because
+            // rows of one product share a description and sort together anyway.
+            const VENDOR_COL = 3;
+            const CATEGORY_COL = 29;
+            const key = (row: any[], col: number) => String(row[col] || '').toLowerCase();
+            allExportRows.sort((a, b) =>
+                key(a, VENDOR_COL).localeCompare(key(b, VENDOR_COL)) ||
+                key(a, CATEGORY_COL).localeCompare(key(b, CATEGORY_COL))
+            );
             
             allExportRows.forEach(r => sheet.addRow(sanitizeExcelRow(r)));
 
