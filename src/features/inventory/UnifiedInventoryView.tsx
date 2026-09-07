@@ -366,8 +366,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const itemKey = String(item.row ?? item.data?.id ?? '');
     let deployedInfo = deployedItemsMap?.get(itemKey) || null;
     if (!deployedInfo) {
-        const crateId = item.data.crate_id || item.data.crateId;
-        const isPacked = item.data.packing_status === 'Packed' || item.data.packingStatus === 'Packed';
+        const crateId = item.data.crate_id;
+        const isPacked = item.data.packing_status === 'Packed';
         const crate = logisticsDocs?.find((c: any) => c.id === crateId);
         if (isPacked && crateId && (!crate || crate.status === 'Deployed')) {
             deployedInfo = { manifestId: crate?.name || 'Deployed', crateId };
@@ -1293,8 +1293,8 @@ export const UnifiedInventoryView = () => {
 
             const status = getStatusClass(item.data, partialPayIds, fullPayIds);
             if (statusFilter !== 'All') {
-                const crateId = item.data.crate_id || item.data.crateId;
-                const isPacked = item.data.packing_status === 'Packed' || item.data.packingStatus === 'Packed';
+                const crateId = item.data.crate_id;
+                const isPacked = item.data.packing_status === 'Packed';
                 const crate = logisticsDocs?.find((c: any) => c.id === crateId);
                 const isDeployed = isPacked && crateId && (!crate || crate.status === 'Deployed');
 
