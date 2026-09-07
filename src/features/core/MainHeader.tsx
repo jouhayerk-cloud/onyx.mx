@@ -199,7 +199,6 @@ const STONE_VARIETY_COLORS: Record<string, AllowedShopifyColor[]> = {
     // Black and white striped onyx. It does not carry brown, whatever a
     // qualifier in front of it may add.
     'zebra': ['Black', 'White'],
-    'serpentine': ['Green', 'Brown', 'Cream'],
     'amber': ['Orange', 'Yellow', 'Brown'],
     // "Ambar" is the Spanish spelling and it is what staff actually type.
     // normalizeBrandTerms corrects it for the description and the title but is
@@ -222,7 +221,17 @@ const STONE_VARIETY_COLORS: Record<string, AllowedShopifyColor[]> = {
 };
 
 /**
- * Varieties named after WHERE the stone is quarried. They are real variety
+ * Variety words that do not determine a colour, so the qualifier beside them
+ * has to. Two kinds end up here.
+ *
+ * PATTERNS. "Serpentine" names the serpent-like striping and is an umbrella
+ * over several colour families: Aqua Serpentine is a tan-brown-yellow onyx with
+ * one large aqua vein that gives it its name, while Pink Serpentine is mainly
+ * pink with fine black, white and yellow veins. Nothing about the word predicts
+ * either. "Zebra" is the exception that stays in the table above -- also a
+ * pattern, but always black and white.
+ *
+ * PLACES. Varieties named after WHERE the stone is quarried. They are real variety
  * names and must be recognised as such, but the place alone does not say what
  * the stone looks like: Tehuacán ships white, amber, grey, green and mint. So
  * these resolve to nothing on their own and let the qualifier decide --
@@ -233,7 +242,7 @@ const STONE_VARIETY_COLORS: Record<string, AllowedShopifyColor[]> = {
  * a place but reads green and brown consistently, so it sits in the table above
  * with a palette of its own.
  */
-const COLOURLESS_VARIETIES = ['tehuacan', 'guatemala'];
+const COLOURLESS_VARIETIES = ['tehuacan', 'guatemala', 'serpentine'];
 
 // Longest key first, so a longer variety name is never shadowed by a shorter
 // one it happens to contain.
