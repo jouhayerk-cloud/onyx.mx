@@ -20,7 +20,7 @@ import {
     ShieldAlert, CheckCircle, Edit3, Check, BookOpen, Layers,
     Sparkles, ArrowRight, Activity, Terminal, ExternalLink,
     Smartphone, Cpu, Waves, QrCode, Tag, DollarSign, Barcode,
-    Maximize2, Search, ZapOff, History
+    Maximize2, Search, ZapOff, History, Eye
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { RareEarthLogoBase64 } from './RareEarthLogoBase64';
@@ -36,6 +36,7 @@ import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { vendors } from '../../lib/consts';
 import { generateAxonometricDataUrl } from '../../lib/axonometric';
 import { NFCTagCard } from '../../components/LabelVisuals';
+import { PdfPreview, PdfDocumentSource } from '../../components/PdfPreview';
 import { supabase } from '../../lib/supabase';
 
 /* ─── NFC Tags HUD Component ─── */
@@ -391,6 +392,36 @@ export const LabelWizard: React.FC = () => {
     const [catalogMethod, setCatalogMethod] = useState<'grid' | 'single'>('grid');
     const [progress, setProgress] = useState({ xlsx: -1, pdf: -1, catalog: -1, printer: -1 });
     const [urls, setUrls] = useState({ xlsx: '', pdf: '', catalogReady: '', catalogNotReady: '' });
+
+    // Which generated document the review pane is showing, if any. 'catalog'
+    // opens Shopify and Isometric as two tabs; 'control' opens the single
+    // control page.
+    const [previewTarget, setPreviewTarget] = useState<'catalog' | 'control' | null>(null);
+
+    // Object URLs for the four artifacts above.
+    //
+    // These were previously never revoked: the reset at `isOpen` replaced all
+    // four slots in one setUrls call, and re-generating replaced one more, with
+    // no revokeObjectURL anywhere in this file. A catalogue run is the largest
+    // allocation the app makes -- hundreds of megabytes -- so this leaked the
+    // worst possible thing, and it leaked again on every re-open of the wizard.
+    // Tracked in a ref rather than derived from state so revocation never runs
+    // inside a setState updater.
+    const slotUrlsRef = useRef<Record<string, string>>({});
+
+    const setUrlSlot = (key: 'xlsx' | 'pdf' | 'catalogReady' | 'catalogNotReady', url: string) => {
+        const prev = slotUrlsRef.current[key];
+        if (prev && prev !== url) URL.revokeObjectURL(prev);
+        slotUrlsRef.current[key] = url;
+        setUrls(u => ({ ...u, [key]: url }));
+    };
+
+    const revokeAllUrls = () => {
+        Object.values(slotUrlsRef.current).forEach(u => { if (u) URL.revokeObjectURL(u); });
+        slotUrlsRef.current = {};
+    };
+
+    useEffect(() => () => { revokeAllUrls(); }, []);
 
     // Verbose catalogue telemetry. exportCatalogPdf has always reported a stage
     // string alongside the percentage -- it was being dropped on the floor, so a
@@ -866,7 +897,9 @@ export const LabelWizard: React.FC = () => {
     useEffect(() => {
         if (isOpen) {
             setProgress({ xlsx: -1, pdf: -1, catalog: -1, printer: -1 });
+            revokeAllUrls();
             setUrls({ xlsx: '', pdf: '', catalogReady: '', catalogNotReady: '' });
+            setPreviewTarget(null);
             setIsPrintWorkflowOpen(false);
             setActiveSlide(0);
 
@@ -922,7 +955,7 @@ export const LabelWizard: React.FC = () => {
             }], {}, 'blob');
             
             if (blob instanceof Blob) {
-                setUrls(u => ({ ...u, xlsx: URL.createObjectURL(blob) }));
+                setUrlSlot('xlsx', URL.createObjectURL(blob));
                 setProgress(p => ({ ...p, xlsx: 100 }));
                 toast.success(tr("XLSX generated"));
             } else {
@@ -975,7 +1008,7 @@ export const LabelWizard: React.FC = () => {
             }, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob');
             
             if (blob instanceof Blob) {
-                setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
+                setUrlSlot('pdf', URL.createObjectURL(blob));
                 setProgress(p => ({ ...p, pdf: 100 }));
                 toast.success(tr("Control Page generated"));
             } else {
@@ -1072,7 +1105,7 @@ export const LabelWizard: React.FC = () => {
 
                 totalBytes += blob.size;
                 const url = URL.createObjectURL(blob);
-                setUrls(u => ({ ...u, [job.key]: url }));
+                setUrlSlot(job.key as 'catalogReady' | 'catalogNotReady', url);
                 base += span;
             }
 
@@ -1108,8 +1141,41 @@ export const LabelWizard: React.FC = () => {
     if (!isOpen) return null;
 
 
+    const catalogDocs: PdfDocumentSource[] = [
+        urls.catalogReady ? {
+            key: 'catalogReady',
+            label: tr("SHOPIFY"),
+            filename: `Catalog_${name}_Shopify.pdf`,
+            url: urls.catalogReady,
+            meta: String(shopifySplit.ready),
+        } : null,
+        urls.catalogNotReady ? {
+            key: 'catalogNotReady',
+            label: tr("ISOMETRIC"),
+            filename: `Catalog_${name}_Isometric.pdf`,
+            url: urls.catalogNotReady,
+            meta: String(shopifySplit.notReady),
+        } : null,
+    ].filter(Boolean) as PdfDocumentSource[];
+
+    const controlDocs: PdfDocumentSource[] = urls.pdf ? [{
+        key: 'pdf',
+        label: tr("CONTROL PAGE"),
+        filename: `ControlPage_${name}.pdf`,
+        url: urls.pdf,
+    }] : [];
+
     return createPortal(
         <>
+            {/* Generated-document review pane. Reads the object URLs this
+                component already owns, so it never revokes them itself. */}
+            <PdfPreview
+                isOpen={previewTarget !== null}
+                onClose={() => setPreviewTarget(null)}
+                docs={previewTarget === 'catalog' ? catalogDocs : controlDocs}
+                title={previewTarget === 'catalog' ? `${tr("CATALOG")} — ${name}` : `${tr("CONTROL PAGE")} — ${name}`}
+            />
+
             {/* Print Helper Modal */}
             {isPrintHelperOpen && (
 <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 pointer-events-auto">
@@ -1393,10 +1459,10 @@ export const LabelWizard: React.FC = () => {
                                             </button>
                                             {progress.pdf === 100 && urls.pdf && (
                                                 <button 
-                                                    onClick={() => { const a = document.createElement('a'); a.href = urls.pdf; a.download = `ControlPage_${name}.pdf`; a.click(); }}
+                                                    onClick={() => setPreviewTarget('control')}
                                                     className="w-full py-2 bg-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex justify-center items-center gap-2 hover:bg-red-500/30 transition-all"
                                                 >
-                                                    <Download size={12} /> RETRIEVE PDF
+                                                    <Eye size={12} /> {tr("REVIEW PDF")}
                                                 </button>
                                             )}
                                         </div>
@@ -1645,21 +1711,12 @@ export const LabelWizard: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {progress.catalog === 100 && urls.catalogReady && (
+                                    {progress.catalog === 100 && (urls.catalogReady || urls.catalogNotReady) && (
                                         <button
-                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalogReady; a.download = `Catalog_${name}_Shopify.pdf`; a.click(); }}
+                                            onClick={() => setPreviewTarget('catalog')}
                                             className="w-full py-2 bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex justify-center items-center gap-2 hover:bg-emerald-500/30 transition-all"
                                         >
-                                            <Download size={12} /> {tr("RETRIEVE")} — {tr("SHOPIFY")} ({shopifySplit.ready})
-                                        </button>
-                                    )}
-
-                                    {progress.catalog === 100 && urls.catalogNotReady && (
-                                        <button
-                                            onClick={() => { const a = document.createElement('a'); a.href = urls.catalogNotReady; a.download = `Catalog_${name}_Isometric.pdf`; a.click(); }}
-                                            className="w-full py-2 bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex justify-center items-center gap-2 hover:bg-amber-500/30 transition-all"
-                                        >
-                                            <Download size={12} /> {tr("RETRIEVE")} — {tr("ISOMETRIC")} ({shopifySplit.notReady})
+                                            <Eye size={12} /> {tr("REVIEW")} — {tr("SHOPIFY")} ({shopifySplit.ready}) / {tr("ISOMETRIC")} ({shopifySplit.notReady})
                                         </button>
                                     )}
                                 </div>
