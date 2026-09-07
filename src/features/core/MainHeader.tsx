@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import type { InventoryItemData } from '../../lib/Types';
 // Navigation Modernization - Atomic Sync Force
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -1246,9 +1247,9 @@ const PackingBar: React.FC = () => {
                     
                     <div className="w-px h-5 bg-white/10 mx-2" />
                     
-                    <StudioAction icon={FileText} label="PDF" onClick={() => setExportPDF(true)} title={tr("Export PDF Catalog")} />
-                    <StudioAction icon={Table} label="XLSX" onClick={() => setExportXLSX(true)} title={tr("Export Spreadsheet")} />
-                    <StudioAction icon={Database} label="JSON" onClick={() => setExportJSON(true)} title={tr("Developer Data Dump")} />
+                    <StudioAction icon={FileText} label="PDF" onClick={() => setExportPDF(1)} title={tr("Export PDF Catalog")} />
+                    <StudioAction icon={Table} label="XLSX" onClick={() => setExportXLSX(1)} title={tr("Export Spreadsheet")} />
+                    <StudioAction icon={Database} label="JSON" onClick={() => setExportJSON(1)} title={tr("Developer Data Dump")} />
                 </div>
             )}
         </div>
@@ -2162,7 +2163,7 @@ export function MainHeader() {
                     rowMap.set(String(item.row), item);
                     const d: Partial<InventoryItemData> = item.data || {};
                     // Index by all raw IDs
-                    [d.itemId, d.item_id, d.tag_id, d.book_barcode, d.bookBarcode].forEach(k => {
+                    [d.itemId, d.item_id, d.book_barcode, d.bookBarcode].forEach(k => {
                         if (k && k !== '-' && k !== '') rowMap.set(String(k).toUpperCase(), item);
                     });
                     // CRITICAL: Also index by CALCULATED barcode (what shipment payloads store as itemId)
@@ -3181,7 +3182,7 @@ export function MainHeader() {
             inventory.forEach(item => {
                 rowMap.set(String(item.row), item);
                 const d = item.data as any;
-                [d.itemId, d.item_id, d.tag_id, d.book_barcode, d.bookBarcode].forEach(k => {
+                [d.itemId, d.item_id, d.book_barcode, d.bookBarcode].forEach(k => {
                     if (k && k !== '-' && k !== '') rowMap.set(String(k).toUpperCase(), item);
                 });
                 const norm = normalizeInventoryData(d);
@@ -3624,7 +3625,6 @@ export function MainHeader() {
                 const rawVendorId = String(norm.vendor_id || extractedPrefix || '').toUpperCase();
                 
                 const vendorName = vendorMapping[rawVendorId] || 
-                                   (activeVendors.find(v => String(v.id).toUpperCase() === rawVendorId)?.name) || 
                                    rawVendorId;
                 
                 const cost = calc.bookLanded || '';

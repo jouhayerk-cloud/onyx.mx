@@ -668,6 +668,13 @@ export const truckingReadyFieldsAtom = atomWithStorage<any>('truckingReadyFields
     destination: '326',
     notes: ''
 });
+// NOTE: this atom, and several others, resolve to jotai's READ-ONLY Atom<T>
+// rather than PrimitiveAtom<T>, which makes every write against them fail with
+// "this expression is not callable". The cause is not the declaration: tsconfig
+// leaves `strict` unset, so strictNullChecks is off, and null then satisfies the
+// `atom(read: Read<Value>)` overload's function parameter. Narrowing the value
+// type here does not help; enabling strictNullChecks would, and is its own
+// project.
 export const truckingRecalledShipmentAtom = atom<any>(null);
 export const truckingZoomAtom = atom<number>(1);
 

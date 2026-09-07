@@ -1397,18 +1397,18 @@ export const UnifiedInventoryView = () => {
                 comp = getVal(sB) - getVal(sA);
             }
             else if (sortKey === 'Number') {
-                const nA = parseInt(a.data.itemNumber || a.data.item_number || '0', 10);
-                const nB = parseInt(b.data.itemNumber || b.data.item_number || '0', 10);
+                const nA = parseInt(String(a.data.itemNumber || a.data.item_number || '0'), 10);
+                const nB = parseInt(String(b.data.itemNumber || b.data.item_number || '0'), 10);
                 comp = nA - nB;
             }
             else if (sortKey === 'Value') {
-                const vA = (parseFloat(a.data.price_mxn || a.data.price || 0)) * (parseInt(a.data.quantity || 1));
-                const vB = (parseFloat(b.data.price_mxn || b.data.price || 0)) * (parseInt(b.data.quantity || 1));
+                const vA = parseFloat(String(a.data.price_mxn || a.data.price || 0)) * parseInt(String(a.data.quantity || 1), 10);
+                const vB = parseFloat(String(b.data.price_mxn || b.data.price || 0)) * parseInt(String(b.data.quantity || 1), 10);
                 comp = vB - vA;
             }
             else if (sortKey === 'Qty') {
-                const qA = parseInt(a.data.quantity || 1);
-                const qB = parseInt(b.data.quantity || 1);
+                const qA = parseInt(String(a.data.quantity || 1), 10);
+                const qB = parseInt(String(b.data.quantity || 1), 10);
                 comp = qB - qA;
             }
             return sortOrder === 'desc' ? comp : -comp;
