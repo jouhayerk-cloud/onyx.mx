@@ -104,7 +104,7 @@ export function CreateItem() {
                 let val = String(d[targetField] || '').trim();
 
                 // Fallbacks for mis-saved data in v326
-                if (targetField === 'short_description' && (!val || val.toUpperCase() === 'NULL')) val = String(d.item_type || '').trim();
+                if (targetField === 'short_description' && (!val || val.toUpperCase() === 'NULL')) val = '';
 
                 if (val && val !== '-' && val.toUpperCase() !== 'NULL' && val.length > 1) {
                     // Count case-insensitively but offer the stored spelling.
@@ -130,7 +130,7 @@ export function CreateItem() {
                 allItems.forEach(i => {
                     const d = i.data || i;
                     const sh = String(d.shape || '').trim().toUpperCase();
-                    const ty = String(d.short_description || d.item_type || '').trim().toUpperCase();
+                    const ty = String(d.short_description || '').trim().toUpperCase();
                     const ds = String(d.description || '').trim().toUpperCase();
                     
                     if (itemData.shape && sh !== itemData.shape.toUpperCase() && !ds.includes(itemData.shape.toUpperCase())) return;

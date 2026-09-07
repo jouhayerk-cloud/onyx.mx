@@ -1589,7 +1589,7 @@ export function MainHeader() {
                 if (targetSet) {
                     // Add all known identifiers so manifest items can match
                     [String(item.row), norm.itemId, norm.tag_id, norm.book_barcode, norm.item_id,
-                     item.data?.itemId, item.data?.tag_id, item.data?.book_barcode, item.data?.item_id
+                     item.data?.itemId, item.data?.book_barcode, item.data?.item_id
                     ].forEach(k => {
                         if (k && k !== '-' && k !== '' && k !== 'undefined' && k !== 'null') {
                             targetSet!.add(String(k));

@@ -1,3 +1,4 @@
+import type { Database } from './database.types';
 
 export type DetectTypes =
   | '2D bounding boxes'
@@ -40,7 +41,24 @@ export type PointingType = {
   label: string;
 };
 
-export interface InventoryItemData {
+type InventoryRow = Database['public']['Tables']['inventory']['Row'];
+
+/**
+ * An inventory item as the app handles it.
+ *
+ * Extends the generated row, so every real column is available under its real
+ * name and a rename in Postgres surfaces here. The members below it are the
+ * camelCase projection produced by normalizeInventoryData plus fields that only
+ * exist in the UI (dataUrl, glbUrl, originalFile and friends).
+ */
+export interface InventoryItemData extends Partial<Omit<InventoryRow, 'quantity'>> {
+  /**
+   * The one field where the normalized projection and the column collide on
+   * name but not on type: the column is an integer, every form and export in
+   * the app carries it as a string. The projection wins here; anything writing
+   * back to Supabase must convert.
+   */
+  quantity: string;
   rowId?: string;
   timestamp?: string;
   itemId: string;
@@ -54,7 +72,6 @@ export interface InventoryItemData {
   material: string;
   description: string;
   color: string;
-  quantity: string;
   price: string;
   weightKg: string;
   heightCm: string;
@@ -69,8 +86,6 @@ export interface InventoryItemData {
   generated_description?: string;
   detailed_description?: string;
   item_id?: string;
-  item_number?: string;
-  price_mxn?: number | string;
   is_hidden?: boolean;
   hidden_reason?: string;
   updated_at?: string;
@@ -107,14 +122,22 @@ export interface InventoryItemData {
   rating?: number;
   book_barcode?: string;
   book_aq_code?: string;
-  pay_req?: boolean | string;
   dispersal_status?: 'Requested' | 'Sent' | 'Dispersed';
   payment_ids?: string;
   usdzUrl?: string;
   glbUrl?: string;
 }
 
-export interface InventoryItem {
+/**
+ * An inventory row as it reaches the app's state.
+ *
+ * DataSyncProvider builds these by spreading the whole row onto the wrapper --
+ * `{ ...row, source, row: row.id, data: normalizeInventoryData(row) }` -- so the
+ * raw columns really are present alongside the normalized projection in `data`.
+ * The type said otherwise, which is why reads like item.width_cm and
+ * item.book_barcode looked wrong to the compiler while working at runtime.
+ */
+export interface InventoryItem extends Partial<InventoryRow> {
   row: number | string;
   label: string;
   imageUrl: string | null;
@@ -239,7 +262,6 @@ export interface LogisticsRecord {
   tracking_number?: string;
   carrier?: string;
   inventory_ids?: string;
-  quantity?: number;
   cost_mxn?: number;
   date?: string;
   updated_at?: string;

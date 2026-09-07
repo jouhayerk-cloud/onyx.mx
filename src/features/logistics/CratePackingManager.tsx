@@ -919,8 +919,8 @@ export const CratePackingManager: React.FC = () => {
 
             switch (sortBy) {
                 case 'Date':
-                    valA = a.data?.updated_at || a.data?.createdAt || '';
-                    valB = b.data?.updated_at || b.data?.createdAt || '';
+                    valA = a.data?.updated_at || '';
+                    valB = b.data?.updated_at || '';
                     break;
                 case 'Status':
                     valA = a.data?.status || '';

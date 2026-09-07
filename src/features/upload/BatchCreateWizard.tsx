@@ -302,7 +302,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
       allItems.forEach(i => {
         const d = i.data || i;
         let val = String(d[targetField] || '').trim().toUpperCase();
-        if (targetField === 'short_description' && (!val || val === 'NULL')) val = String(d.item_type || '').trim().toUpperCase();
+        if (targetField === 'short_description' && (!val || val === 'NULL')) val = '';
         if (val && val !== '-' && val !== 'NULL' && val.length > 1) {
           counts[val] = (counts[val] || 0) + 1;
         }

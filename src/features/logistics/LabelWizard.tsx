@@ -81,7 +81,7 @@ export const NFCWizard: React.FC = () => {
             .filter(item => {
                 const row = String(item.row);
                 const id = String(item.data?.id);
-                const tag = String(item.data?.tag_id || item.data?.itemId || '');
+                const tag = String(item.data?.itemId || '');
                 return idStrings.has(row) || idStrings.has(id) || (tag && idStrings.has(tag));
             })
             .map(item => {
