@@ -2160,7 +2160,7 @@ export function MainHeader() {
             (inventory || []).forEach(item => {
                 if (item && item.row != null) {
                     rowMap.set(String(item.row), item);
-                    const d = item.data || {};
+                    const d: Partial<InventoryItemData> = item.data || {};
                     // Index by all raw IDs
                     [d.itemId, d.item_id, d.tag_id, d.book_barcode, d.bookBarcode].forEach(k => {
                         if (k && k !== '-' && k !== '') rowMap.set(String(k).toUpperCase(), item);

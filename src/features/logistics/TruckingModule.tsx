@@ -3477,7 +3477,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     const looseItems = useMemo(() => {
         return allInventory.filter(item => {
-            const data = item.data || {};
+            const data: Partial<InventoryItemData> = item.data || {};
             const parentId = data.parent_id || data.crate_id;
             return !parentId && !positions[String(item.row)];
         });

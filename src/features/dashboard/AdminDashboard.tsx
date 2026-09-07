@@ -453,7 +453,7 @@ export function AdminDashboard() {
                 .sort((a,b) => {
                     // Normalize labels for reliable sorting by Material (last word)
                     const matA = a.label.split(/\s+/).pop() || '';
-                    const matB = b.label.pop ? b.label.split(/\s+/).pop() : (b.label as string).split(/\s+/).pop() || ''; // Safety
+                    const matB = b.label.split(/\s+/).pop() || '';
                     
                     // Note: b.label is definitely string here, but TypeScript might want reassurance or my split logic is fine.
                     const labelA = a.label;
@@ -535,7 +535,7 @@ export function AdminDashboard() {
 
     const categoriesOption = useMemo<EChartsOption>(() => ({
         tooltip: { trigger: 'axis' },
-        xAxis: { type: 'category', data: attributeStats.topSD.slice(0, 8).map(([label]) => label.split(' - ')[0]), axisLabel: { rotate: 45, color: 'var(--text-color-secondary)', fontSize: 8 } },
+        xAxis: { type: 'category', data: attributeStats.topSD.slice(0, 8).map(([label]) => String(label).split(' - ')[0]), axisLabel: { rotate: 45, color: 'var(--text-color-secondary)', fontSize: 8 } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: 'var(--border-color)' } } },
         series: [{
             type: 'pictorialBar', symbol: 'roundRect',
@@ -971,8 +971,8 @@ export function AdminDashboard() {
                                                 {count}
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary)">{label.split(' - ')[0]}</span>
-                                                <span className="text-[11px] font-black text-(--text-color) line-clamp-1 italic tracking-tight">{label.split(' - ')[1]}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary)">{String(label).split(' - ')[0]}</span>
+                                                <span className="text-[11px] font-black text-(--text-color) line-clamp-1 italic tracking-tight">{String(label).split(' - ')[1]}</span>
                                             </div>
                                         </div>
                                         <ArrowUpRight size={18} className="text-(--text-color-secondary) group-hover:text-(--main-color) transition-all" />
