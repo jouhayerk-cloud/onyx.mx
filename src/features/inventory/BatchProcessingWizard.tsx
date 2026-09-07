@@ -46,6 +46,8 @@ import { extractDominantColorsFromImage, getStoneStyleColors, generateFallbackMa
 import { SquareCropModal } from '../../components/SquareCropModal';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { vendors } from '../../lib/consts';
+import { findDonor, isUsableDonor, TIER_LABEL } from '../../lib/variationMatch';
+import type { DonorCandidate } from '../../lib/variationMatch';
 import { tr } from '../../lib/i18n';
 
 const resolveVendorColor = (inputStr: string | undefined | null) => {
@@ -88,6 +90,9 @@ interface BatchOp {
      *  forceRegenerateDescription: forcing a description should not pay for a
      *  fresh generation of an image that has not changed. */
     forceRecleanImage?: boolean;
+    /** No photograph at all. Excluded from the image run; handled by the
+     *  variation pass, which writes text from a similar item instead. */
+    needsVariation?: boolean;
     result?: {
         description?: string;
         marketingDescription?: string;
@@ -140,9 +145,14 @@ export const BatchProcessingWizard: React.FC = () => {
     const [user] = useAtom(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
+    // Whole catalogue, not just the selection: an item with no photograph looks
+    // for a donor across everything that already has generated content.
+    const fullInventory = useAtomValue(inventoryAtom);
     const activeRate = liveExchangeRate || exchangeRate || DEFAULT_EXCHANGE_RATE;
     
     const [queue, setQueue] = useState<BatchOp[]>([]);
+    /** Queued items with no photograph that still have no generated content. */
+    const variationPending = queue.filter(op => op.needsVariation && op.status !== 'completed').length;
     const [isProcessing, setIsProcessing] = useState(false);
     const [isAborted, setIsAborted] = useState(false);
     /** 2K costs ~2.6x 1K per image but source photos are ~4000px, so 1K is a visible downgrade. */
@@ -246,6 +256,7 @@ export const BatchProcessingWizard: React.FC = () => {
                         logs: hasData ? ['[  OK  ] Loaded saved DB content'] : ['[ WAIT ] Ready for AI processing'],
                         processingMode: 'bgreplace',
                         skipImageProcessing: true,
+                        needsVariation: !hasData,
                         result: baseResultObj
                     });
                 } else {
@@ -296,7 +307,7 @@ export const BatchProcessingWizard: React.FC = () => {
 
     const callGemini = async (
         prompt: string,
-        imgData: string,
+        imgData: string | null,
         timeoutMs: number = 40000,
         modelId: string = "gemini-2.5-flash",
         responseSchema?: any,
@@ -317,8 +328,11 @@ export const BatchProcessingWizard: React.FC = () => {
                 body: JSON.stringify({ 
                     contents: [{ 
                         parts: [
-                            { text: prompt }, 
-                            { inlineData: { mimeType: 'image/jpeg', data: imgData } }
+                            { text: prompt },
+                            // Omitted entirely when there is no image: the
+                            // variation pass reasons from a sibling item's text,
+                            // and an empty inlineData is rejected by the API.
+                            ...(imgData ? [{ inlineData: { mimeType: 'image/jpeg', data: imgData } }] : []),
                         ] 
                     }],
                     // Structured output, per the OnyxMX-AIPipelineOptimization skill.
@@ -1020,6 +1034,182 @@ Instructions:
             updateOp(op.id, { status: 'failed', progress: 0 });
             throw err;
         }
+    };
+
+    /**
+     * The donor pool: every catalogue item that already has generated content to
+     * lend. Built once per run rather than per item -- at 497 rows against 87
+     * orphans the naive version re-normalizes 43,000 objects.
+     */
+    const buildDonorPool = (): DonorCandidate[] =>
+        (fullInventory || []).map((it: any) => {
+            const n = normalizeInventoryData(it.data || it);
+            return {
+                id: String(it.id || it.row || ''),
+                shape: String(n.shape || ''),
+                type: String(n.shortDescription || n.short_description || ''),
+                material: String(n.material || ''),
+                color: String(n.color || ''),
+                widthCm: Number(n.widthCm || n.width_cm) || 0,
+                heightCm: Number(n.heightCm || n.height_cm) || 0,
+                lengthCm: Number(n.lengthCm || n.length_cm) || 0,
+                description: String(n.detailedDescription || n.detailed_description || ''),
+                marketingDescription: String(n.marketingDescription || n.marketing_description || ''),
+                dominantColors: Array.isArray(n.generatedColor) ? n.generatedColor
+                    : String(n.generatedColor || n.generated_color || '')
+                        .split(',').map((c: string) => c.trim()).filter(Boolean),
+                generatedType: String(n.generatedType || n.generated_type || ''),
+            };
+        }).filter(isUsableDonor);
+
+    /**
+     * Write content for an item that has no photograph, by varying the closest
+     * item that does.
+     *
+     * Deliberately not a fresh invention. The model is handed a sibling's
+     * finished copy and asked to write the same piece of catalogue for THIS
+     * item's dimensions and colour, so the voice and structure stay consistent
+     * with everything already approved, and only what genuinely differs changes.
+     *
+     * It never writes an image field. The photograph is still owed.
+     */
+    const processVariationItem = async (op: BatchOp, donors: DonorCandidate[]) => {
+        if (cancelTokens.current[op.id]) return;
+        updateOp(op.id, { status: 'processing', progress: 15, stepLabel: 'Finding a similar item' });
+
+        const itemData = op.item.data || op.item;
+        const n = normalizeInventoryData(itemData);
+        const self: DonorCandidate = {
+            id: String(op.item.id || op.item.row || ''),
+            shape: String(n.shape || ''),
+            type: String(n.shortDescription || n.short_description || ''),
+            material: String(n.material || ''),
+            color: String(n.color || ''),
+            widthCm: Number(n.widthCm || n.width_cm) || 0,
+            heightCm: Number(n.heightCm || n.height_cm) || 0,
+            lengthCm: Number(n.lengthCm || n.length_cm) || 0,
+            description: '', marketingDescription: '', dominantColors: [], generatedType: '',
+        };
+
+        try {
+            const match = findDonor(self, donors);
+            if (!match) {
+                // Not a failure of this item so much as of the catalogue: nothing
+                // shares even its shape, so there is nothing honest to vary.
+                logOp(op.id, '[ SKIP ] No similar item in the catalogue to vary from');
+                updateOp(op.id, { status: 'idle', progress: 0, stepLabel: undefined });
+                return;
+            }
+
+            logOp(op.id, `[  OK  ] Matched on ${TIER_LABEL[match.tier]}`);
+            updateOp(op.id, { progress: 40, stepLabel: 'Writing a variation' });
+
+            const d = match.donor;
+            const selfSize = [self.widthCm, self.heightCm, self.lengthCm].filter(v => v > 0).join(' x ') || 'not recorded';
+            const donorSize = [d.widthCm, d.heightCm, d.lengthCm].filter(v => v > 0).join(' x ') || 'not recorded';
+
+            const prompt = `You are writing catalogue copy for Rare Earth Gallery, a dealer in Mexican onyx.
+
+Below is the finished copy for an item ALREADY in the catalogue. Write the equivalent copy for a DIFFERENT piece of the same kind, described underneath it.
+
+EXISTING ITEM (the template -- match its voice, length and structure):
+  Title: ${d.description}
+  Body: ${d.marketingDescription}
+  Colours: ${(d.dominantColors || []).join(', ')}
+  Type: ${d.generatedType}
+  Shape / type / material / colour: ${d.shape} / ${d.type} / ${d.material} / ${d.color}
+  Size (w x h x l cm): ${donorSize}
+
+THE NEW ITEM you are writing for:
+  Shape: ${self.shape || 'unspecified'}
+  Type: ${self.type || 'unspecified'}
+  Material: ${self.material || 'onyx'}
+  Recorded colour: ${self.color || 'unspecified'}
+  Size (w x h x l cm): ${selfSize}
+
+RULES
+- This is a VARIATION, not a copy. Do not reuse the template's sentences verbatim.
+- There is NO photograph of the new item. Describe only what its recorded
+  attributes support. Do not invent veining, patterns, inclusions or markings
+  you cannot know.
+- Where the new item's recorded colour differs from the template's, follow the
+  NEW item's colour.
+- Use the new item's own dimensions wherever the template cites size.
+- dominantColors must come from the new item's recorded colour and material,
+  not be copied from the template.
+- generatedType should match the template's unless the new item's shape or type
+  clearly indicates otherwise.`;
+
+            const data = await callGemini(prompt, null, 40000, 'gemini-2.5-flash', {
+                type: 'object',
+                properties: {
+                    description: { type: 'string' },
+                    marketingDescription: { type: 'string' },
+                    dominantColors: { type: 'array', items: { type: 'string' } },
+                    generatedType: { type: 'string' },
+                },
+                required: ['description', 'marketingDescription', 'dominantColors', 'generatedType'],
+            });
+
+            let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!resultText) throw new Error('Empty response from AI');
+            if (resultText.includes('```')) {
+                const m = resultText.match(/```(?:json)?([\s\S]*?)```/);
+                resultText = m ? m[1].trim() : resultText.replace(/```(json)?|```/g, '').trim();
+            }
+            const parsed = JSON.parse(resultText);
+            if (!parsed.description) throw new Error('Invalid output format from AI');
+
+            updateOp(op.id, {
+                status: 'completed',
+                progress: 100,
+                stepLabel: undefined,
+                result: {
+                    ...(op.result || {}),
+                    description: formatProductTitle(parsed.description),
+                    marketingDescription: parsed.marketingDescription,
+                    dominantColors: Array.isArray(parsed.dominantColors) ? parsed.dominantColors : [],
+                    generatedType: parsed.generatedType || d.generatedType || '',
+                },
+            });
+            logOp(op.id, `[  OK  ] Written as a variation of ${d.id}`);
+            setHasUnsavedChanges(true);
+        } catch (err: any) {
+            logOp(op.id, `[ FAIL ] ${err.message}`);
+            updateOp(op.id, { status: 'failed', progress: 0, stepLabel: undefined });
+        }
+    };
+
+    /**
+     * Run the variation pass over every queued item that has no photograph.
+     * Serial on purpose: these are text-only calls against the same quota as the
+     * image run, and there is nothing to gain from racing them.
+     */
+    const handleStartVariationPass = async () => {
+        const pending = queue.filter(op => op.needsVariation && op.status !== 'completed');
+        if (pending.length === 0) return;
+
+        const donors = buildDonorPool();
+        if (donors.length === 0) {
+            toast.error(tr('No items with generated content to vary from'));
+            return;
+        }
+
+        setIsProcessing(true);
+        abortRef.current = false;
+        setOverallProgress(0);
+        toast.loading(tr('Writing from similar items...'), { id: 'variation' });
+
+        let done = 0;
+        for (const op of pending) {
+            if (abortRef.current) break;
+            await processVariationItem(op, donors);
+            done += 1;
+            setOverallProgress(Math.round((done / pending.length) * 100));
+        }
+
+        setIsProcessing(false);
+        toast.success(tr('Variation pass complete'), { id: 'variation' });
     };
 
     const handleRegenerate = (id: string) => {
@@ -1833,6 +2023,11 @@ Instructions:
         setOverallProgress(0);
 
         const pending = queue.filter(op => {
+            // No photograph: nothing in this run can act on it. processSingleItem
+            // throws "No image found for item" on the first line that touches the
+            // URL, so leaving these in meant 87 guaranteed failures in the log.
+            // They belong to the variation pass instead.
+            if (op.needsVariation) return false;
             // Missing text is a reason to include an op in any run now, since
             // an images-only run backfills gaps too.
             const needsContent = (op.imageIndex || 0) === 0
@@ -2616,6 +2811,22 @@ Instructions:
                                     </a>
                                 )}
                             </>
+
+                        {/* Items with no photograph cannot be image-processed, so
+                            they are dropped from the engine run and offered here
+                            instead: their copy is written by varying the closest
+                            item that does have content. */}
+                        {variationPending > 0 && (
+                            <button
+                                onClick={handleStartVariationPass}
+                                disabled={isProcessing}
+                                title={tr("These items have no photograph. Their description, colours and type will be written by varying the most similar item that does — no image is generated.")}
+                                className="flex items-center gap-3 px-6 py-4 bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 border border-violet-400/40 font-black uppercase tracking-widest text-sm rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                <Sparkles size={20} />
+                                {tr("Write From Similar")} ({variationPending})
+                            </button>
+                        )}
 
                         <button 
                             onClick={handleStartBatch}

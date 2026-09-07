@@ -1002,6 +1002,13 @@ export const esCatalog: Record<string, string> = {
   // so. The old key stays: nothing renders it any more, but a stale build or a
   // cached bundle still would.
   'CLEAN IMAGES + FILL GAPS': 'LIMPIAR IMÁGENES + COMPLETAR FALTANTES',
+  // Variation pass: items with no photograph, written from a similar item.
+  'Write From Similar': 'Escribir Desde Similar',
+  'These items have no photograph. Their description, colours and type will be written by varying the most similar item that does — no image is generated.':
+    'Estos artículos no tienen fotografía. Su descripción, colores y tipo se escribirán variando el artículo más parecido que sí la tenga — no se genera ninguna imagen.',
+  'No items with generated content to vary from': 'No hay artículos con contenido generado para tomar como referencia',
+  'Writing from similar items...': 'Escribiendo desde artículos similares...',
+  'Variation pass complete': 'Pasada de variación completa',
   'Limits the run to items whose images need cleaning. Those items still get any missing description, colour or type filled in — anything that already has a value is left alone.':
     'Limita la ejecución a artículos cuyas imágenes necesitan limpieza. Esos artículos igual reciben la descripción, el color o el tipo que les falte — lo que ya tiene valor no se toca.',
   'Clean Images only — the run skips descriptions, colours and type, and does the image stage alone':
