@@ -6,8 +6,7 @@ import {
     inventoryAtom,
     exchangeRateAtom,
     isCratePackingManagerOpenAtom,
-    packingManagerTargetCrateIdAtom,
-} from '../../lib/atoms';
+    packingManagerTargetCrateIdAtom, CrateStatus,} from '../../lib/atoms';
 import { X, ChevronRight, Search, Info, Loader2, PackagePlus, ArrowLeft, Layers, Weight, Maximize2, Zap, LayoutGrid, Rotate3d } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -24,7 +23,7 @@ type WizardStep = 'SELECT_CRATE' | 'REVIEW_PACK';
 interface CrateRecord {
     id: string;
     type?: string;
-    status: 'Empty' | 'Packed' | 'Partial' | 'In Transit';
+    status: CrateStatus;
     length_cm?: number;
     width_cm?: number;
     height_cm?: number;

@@ -5,7 +5,7 @@ import { Box, Plus, Search, Package, ArrowLeft, ArrowRight, X, CheckCircle2, Loa
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase, useNotify } from '../../lib/hooks';
-import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom, isWarehouseSelectionModeAtom, warehouseSelectedIdsAtom, showWarehouseExportWizardAtom } from '../../lib/atoms';
+import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom, isWarehouseSelectionModeAtom, warehouseSelectedIdsAtom, showWarehouseExportWizardAtom, CrateStatus} from '../../lib/atoms';
 import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices, getCrateDisplayName } from '../../lib/utils';
 import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
 import { ExportWizard } from '../../components/ExportWizard';
@@ -125,7 +125,7 @@ export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; stat
 export interface CrateRecord {
     id: string;
     type: string;
-    status: 'Empty' | 'Packed' | 'Partial';
+    status: CrateStatus;
     length_cm: number;
     width_cm: number;
     height_cm: number;

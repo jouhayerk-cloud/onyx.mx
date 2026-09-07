@@ -23,6 +23,18 @@ import {
 
 export type UserRole = 'Developer' | 'Admin' | 'ClientBoss' | 'ClientAccounting' | 'ClientViewer' | 'Vendor';
 
+/**
+ * Crate lifecycle state, shared so the views cannot drift apart again.
+ *
+ * Three files previously declared this inline and none of them agreed:
+ * CratesInventoryView and CratePackingManager both said
+ * 'Empty' | 'Packed' | 'Partial', while PackWizard added 'In Transit'. Meanwhile
+ * logistics.status holds Deployed on 25 rows, so every branch handling a
+ * deployed or in-transit crate compared against a value its own type said was
+ * impossible -- 12 of the 15 no-overlap errors in the typecheck baseline.
+ */
+export type CrateStatus = 'Empty' | 'Partial' | 'Packed' | 'Deployed' | 'In Transit';
+
 export type User = {
   id: string;
   email: string;
@@ -224,7 +236,7 @@ export const batchActionItemsDataAtom = atom<InventoryItem[]>([]);
 export const isMarketMultiSelectModeAtom = atom(false);
 export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
-export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer' | 'welcome' | 'onyx' | 'pico-bridge' | 'onyx-reg' | 'devices'>('activeView', 'welcome', sessionJSONStorage);
+export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer' | 'welcome' | 'onyx' | 'pico-bridge' | 'onyx-reg' | 'devices' | 'threed'>('activeView', 'welcome', sessionJSONStorage);
 export const onyxMessagesAtom = atom<any[]>([]);
 export const onyxIsListeningAtom = atom<boolean>(false);
 export const onyxIsTypingAtom = atom<boolean>(false);
