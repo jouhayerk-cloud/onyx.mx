@@ -1422,12 +1422,11 @@ Instructions:
             const bookPrefix = normData.workbook || itemData.workbook || '326';
             const codes = calculateCodesAndPrices(itemData, activeRate, bookPrefix);
             
-            const vendorMapping: Record<string, string> = {
-                'ET': 'Betoeduardo', 'DH': 'Delfino', 'EM': 'Emmanuel', 'GE': 'Geraldo',
-                'JM': 'Jose', 'ML': 'Maria Luisa', 'MM': 'Mariam', 'SU': 'Susana',
-                'TE': 'Tellez', 'CA': 'Carlos', 'AM': 'Alejandro', 'CP': 'Cantera Puebla',
-                'AN': 'Angel', 'FR': 'Fountain Rock Mine', 'BT': 'Bernardo', 'RF': 'Roberto'
-            };
+            // Second copy of the same drifted mapping; both now read `vendors`
+            // from lib/consts so they cannot disagree with each other again.
+            const vendorMapping: Record<string, string> = Object.fromEntries(
+                Object.entries(vendors).map(([code, v]) => [code, v.name])
+            );
             
             const tagId = codes?.bookBarcode || normData.book_barcode || normData.itemId || '';
             const matchPrefix = tagId.match(/^[A-Za-z]+/);
