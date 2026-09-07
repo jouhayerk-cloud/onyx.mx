@@ -134,7 +134,7 @@ export function DatabaseStatsPanel() {
         if (!invError && !prodError) setDelRequests(all);
     }, []);
 
-    const handleAuthorize = async (id: string, source: string) => {
+    const handleAuthorize = async (id: string, source: 'inventory' | 'production') => {
         if (!confirm(tr("Expunge this record from core storage permanently?"))) return;
         setIsActing(id);
         try {
@@ -146,7 +146,7 @@ export function DatabaseStatsPanel() {
         setTimeout(() => setIsActing(null), 500);
     };
 
-    const handleRestore = async (id: string, source: string) => {
+    const handleRestore = async (id: string, source: 'inventory' | 'production') => {
         setIsActing(id);
         try {
             const { error } = await supabase.from(source).update({ is_hidden: false, hidden_reason: null }).eq('id', id);

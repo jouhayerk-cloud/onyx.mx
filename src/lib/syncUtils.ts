@@ -5,6 +5,7 @@
  * immediately (online) or enqueues for later (offline / forced offline mode).
  */
 import { supabase } from './supabase';
+import type { SyncTable } from './syncTables';
 import { enqueueChange, ChangeOperation } from './changeQueue';
 import { getDatabase } from './database';
 import { createClient } from '@supabase/supabase-js';
@@ -53,7 +54,7 @@ const stripGenerated = (payload: any): any => {
 };
 
 export async function syncWrite(
-    table: string,
+    table: SyncTable,
     operation: ChangeOperation,
     payload: any,
     skipLocal = false
@@ -110,6 +111,6 @@ export async function syncWrite(
 }
 
 export const offlineSupabase = {
-    upsert: (table: string, payload: any) => syncWrite(table, 'upsert', payload),
-    hide: (table: string, id: string) => syncWrite(table, 'hide', { id }),
+    upsert: (table: SyncTable, payload: any) => syncWrite(table, 'upsert', payload),
+    hide: (table: SyncTable, id: string) => syncWrite(table, 'hide', { id }),
 };

@@ -3,6 +3,7 @@ import { useAtom, useAtomValue } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
 import { themeAtom, appStyleAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom } from '../../lib/atoms';
 import { resolveUserRole } from '../../lib/utils';
+import type { UserRole } from '../../lib/atoms';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
@@ -177,11 +178,20 @@ export default function App() {
           return;
         }
 
+        const KNOWN_ROLES: UserRole[] = ['Developer', 'Admin', 'ClientBoss', 'ClientAccounting', 'ClientViewer', 'Vendor', 'Client'];
+        const role = KNOWN_ROLES.find(r => r === appUser.role);
+        if (!role) {
+          console.error('Access denied: app_users.role holds an unrecognised value.', appUser.role, email);
+          await supabase.auth.signOut();
+          setUser({ id: 'DENIED', email, name: email.split('@')[0] || 'User', role: 'ClientViewer' });
+          return;
+        }
+
         setUser({
           id: session.user.id,
           email,
           name: appUser.display_name || session.user.user_metadata?.name || email.split('@')[0] || 'User',
-          role: appUser.role,
+          role,
         });
 
         // Role picks the INITIAL language, once. Without the guard this ran on
