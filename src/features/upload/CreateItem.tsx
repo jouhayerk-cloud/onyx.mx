@@ -203,7 +203,7 @@ export function CreateItem() {
 
             const dbRow = {
                 item_id: finalItemId,
-                item_number: itemData.itemNumber || '1',
+                item_number: Number(itemData.itemNumber) || 1,
                 shape: itemData.shape,
                 material: itemData.material,
                 color: itemData.color,

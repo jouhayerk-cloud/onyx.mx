@@ -49,6 +49,16 @@ export type UserRole = 'Developer' | 'Admin' | 'ClientBoss' | 'ClientAccounting'
  */
 export type CrateStatus = 'Empty' | 'Partial' | 'Packed' | 'Deployed' | 'In Transit';
 
+export const CRATE_STATUSES: readonly CrateStatus[] = ['Empty', 'Partial', 'Packed', 'Deployed', 'In Transit'];
+
+/**
+ * Narrow logistics.status, which is a free-text column, to the union above.
+ * Anything unrecognised falls back to 'Empty' -- the state that grants the
+ * fewest assumptions about a crate's contents.
+ */
+export const toCrateStatus = (value: string | null | undefined): CrateStatus =>
+    (CRATE_STATUSES as readonly string[]).includes(value ?? '') ? (value as CrateStatus) : 'Empty';
+
 export type User = {
   id: string;
   email: string;

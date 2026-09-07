@@ -8,7 +8,7 @@
 // Regenerate with the Supabase MCP `generate_typescript_types`, or:
 //   npx supabase gen types typescript --project-id yircifkayqpuydfdqzlm
 //
-// Last generated: 2026-09-07.
+// Last generated: 2026-09-07 (regenerated after adding logistics.pay_req).
 
 export type Json =
   | string
@@ -618,6 +618,7 @@ export type Database = {
           origin: string | null
           pallet_count: number | null
           parent_id: string | null
+          pay_req: string | null
           quantity: number | null
           ship_date: string | null
           status: string | null
@@ -649,6 +650,7 @@ export type Database = {
           origin?: string | null
           pallet_count?: number | null
           parent_id?: string | null
+          pay_req?: string | null
           quantity?: number | null
           ship_date?: string | null
           status?: string | null
@@ -680,6 +682,7 @@ export type Database = {
           origin?: string | null
           pallet_count?: number | null
           parent_id?: string | null
+          pay_req?: string | null
           quantity?: number | null
           ship_date?: string | null
           status?: string | null

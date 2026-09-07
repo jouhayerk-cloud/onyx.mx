@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from './database.types';
 
 const rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -13,4 +14,4 @@ if (!rawUrl || !supabaseAnonKey || rawUrl.includes('placeholder')) {
     console.info('Ensure these are set in .env.local for local dev and GitHub Secrets for production.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey || 'placeholder');
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey || 'placeholder');

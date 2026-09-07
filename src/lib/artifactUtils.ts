@@ -92,7 +92,7 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
                 
                 if (parsedData && parsedData.length > 0) {
                     const found = parsedData.find(d => 
-                        String(d.item_id || d.itemId || d.id || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
+                        String(d.item_id || d.id || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
                     ) || parsedData[0];
                     fetched = { data: found }; 
                 }

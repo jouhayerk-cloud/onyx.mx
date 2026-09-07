@@ -6,7 +6,7 @@ import {
     inventoryAtom,
     exchangeRateAtom,
     isCratePackingManagerOpenAtom,
-    packingManagerTargetCrateIdAtom, CrateStatus,} from '../../lib/atoms';
+    packingManagerTargetCrateIdAtom, CrateStatus, toCrateStatus } from '../../lib/atoms';
 import { X, ChevronRight, Search, Info, Loader2, PackagePlus, ArrowLeft, Layers, Weight, Maximize2, Zap, LayoutGrid, Rotate3d } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -116,7 +116,7 @@ export const PackWizard: React.FC = () => {
         try {
             const { data, error } = await supabase.from('logistics').select('*').order('updated_at', { ascending: false });
             if (error) throw error;
-            setCrates(data || []);
+            setCrates((data || []).map(r => ({ ...r, status: toCrateStatus(r.status) })));
         } catch (e: any) {
             toast.error(`Failed to load containers: ${e.message}`);
         } finally {
@@ -191,7 +191,7 @@ export const PackWizard: React.FC = () => {
                         pack_date: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     })
-                    .in('id', inventoryRowsToUpdate);
+                    .in('id', inventoryRowsToUpdate.map(String));
                 if (invError) throw invError;
             }
 

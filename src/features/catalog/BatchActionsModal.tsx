@@ -200,11 +200,11 @@ export function BatchActionsModal() {
             const productionRows = batchActionItems.filter(i => i.data?.status === 'Production').map(i => i.row);
 
             if (inventoryRows.length > 0) {
-                const { error } = await supabase.from('inventory').delete().in('id', inventoryRows);
+                const { error } = await supabase.from('inventory').delete().in('id', inventoryRows.map(String));
                 if (error) throw error;
             }
             if (productionRows.length > 0) {
-                const { error } = await supabase.from('production').delete().in('id', productionRows);
+                const { error } = await supabase.from('production').delete().in('id', productionRows.map(String));
                 if (error) throw error;
             }
 
