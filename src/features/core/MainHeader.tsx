@@ -114,7 +114,8 @@ const OnyxBar: React.FC = () => null;
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { missingShopifyFields, SHOPIFY_REQUIRED_FIELDS, type ShopifyField } from '../../lib/aiContent';
 import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, toDriveDownloadUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
-import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
+import { getStoneStyleColors, generateFallbackMarketingHtml, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor';
+import { lookupCanonicalColors, toShopifyColorValue } from '../../lib/colorVocabulary';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout, useDatabase } from '../../lib/hooks';
@@ -151,6 +152,211 @@ import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 import { tr } from '../../lib/i18n';
 
 declare const __APP_VERSION__: string;
+
+// ---------------------------------------------------------------------------
+// Shopify colour normalisation (Matrixify import safety)
+//
+// 'Metafield: shopify.color-pattern' is a list.metaobject_reference, so
+// Matrixify rejects any row whose value is not one of the store's approved
+// colour metaobjects. In the 142-product file sent to Rare Earth Gallery, 26
+// products carried values that cannot exist as metaobjects -- "Green Talan"
+// (15), "Pink Zebra" (3), "green talan/black" (2), "Tehuacan Amber",
+// "Pink Serpentine", "ICE", "BLUE", "eMPEROR", "Multicolor" -- because the
+// export passed the manually entered workbook value or the AI's generated
+// value straight through without validating it.
+//
+// generatedType is already run through isAllowedProductType() before it
+// reaches the sheet, precisely because an unvalidated value broke an earlier
+// import on a different column. Colour now gets the same treatment.
+// ---------------------------------------------------------------------------
+
+// Derived locally from ALLOWED_SHOPIFY_COLORS rather than importing the
+// ShopifyColor alias, so this file depends on one exported symbol only.
+type AllowedShopifyColor = typeof ALLOWED_SHOPIFY_COLORS[number];
+
+// PROVISIONAL -- stone variety -> approved colours.
+//
+// These keys are stone varieties, not colours, so they can never be written to
+// the colour-pattern metafield as they stand. The colour sets below are our own
+// reading of each stone and have NOT been confirmed by the client. Stefi
+// Helfand at Rare Earth Gallery has been asked to confirm the mappings; revise
+// this table when she answers, and treat any value here as a placeholder until
+// then.
+/**
+ * What a stone variety looks like, for values colorVocabulary does not cover.
+ *
+ * Only BASE varieties belong here. A qualified name resolves by composition --
+ * "Pink Zebra" is the colour Pink plus what Zebra looks like -- so a composite
+ * entry would only be another place for the two to disagree. That is not
+ * theoretical: the old 'pink zebra' entry said Pink/Cream/Brown while 'zebra'
+ * said black and white, and the composite silently won.
+ *
+ * Palettes are ordered by how apparent the colour is, because the export keeps
+ * only the first MAX_SHOPIFY_COLORS of them.
+ */
+const STONE_VARIETY_COLORS: Record<string, AllowedShopifyColor[]> = {
+    'talan': ['Green', 'Brown', 'Tan'],
+    // Black and white striped onyx. It does not carry brown, whatever a
+    // qualifier in front of it may add.
+    'zebra': ['Black', 'White'],
+    'amber': ['Orange', 'Yellow', 'Brown'],
+    // "Ambar" is the Spanish spelling and it is what staff actually type.
+    // normalizeBrandTerms corrects it for the description and the title but is
+    // deliberately not applied to the colour column, so it is matched as stored.
+    'ambar': ['Orange', 'Yellow', 'Brown'],
+    'emperor': ['Brown', 'Gray', 'Cream'],
+    'ice': ['Clear', 'White', 'Gray'],
+    'pearlescent': ['Iridescent', 'White', 'Cream'],
+    'nacar': ['Iridescent', 'White', 'Cream'],
+    'cristaline': ['Clear', 'White'],
+    'galaxy': ['Black', 'Gray', 'Multicolor'],
+    // Season 826 vocabulary, entered ahead of the stock so the first item to
+    // arrive exports correctly instead of falling through to a guess. Revise
+    // these against the real stone when it lands.
+    'cloud': ['White', 'Gray', 'Cream'],
+    'cosmic': ['Black', 'Gray', 'Multicolor'],
+    // Querétaro is a place, but unlike Tehuacán its stone reads one way, so it
+    // carries a palette rather than deferring to a qualifier.
+    'queretaro': ['Green', 'Brown'],
+};
+
+/**
+ * Variety words that do not determine a colour, so the qualifier beside them
+ * has to. Two kinds end up here.
+ *
+ * PATTERNS. "Serpentine" names the serpent-like striping and is an umbrella
+ * over several colour families: Aqua Serpentine is a tan-brown-yellow onyx with
+ * one large aqua vein that gives it its name, while Pink Serpentine is mainly
+ * pink with fine black, white and yellow veins. Nothing about the word predicts
+ * either. "Zebra" is the exception that stays in the table above -- also a
+ * pattern, but always black and white.
+ *
+ * PLACES. Varieties named after WHERE the stone is quarried. They are real variety
+ * names and must be recognised as such, but the place alone does not say what
+ * the stone looks like: Tehuacán ships white, amber, grey, green and mint. So
+ * these resolve to nothing on their own and let the qualifier decide --
+ * "Guatemala Zebra" is black and white -- while a bare one has to be settled by
+ * a person, the way bare "Tehuacan" was settled as White.
+ *
+ * A place only belongs here when its stone genuinely varies. Querétaro is also
+ * a place but reads green and brown consistently, so it sits in the table above
+ * with a palette of its own.
+ */
+const COLOURLESS_VARIETIES = ['tehuacan', 'guatemala', 'serpentine'];
+
+// Longest key first, so a longer variety name is never shadowed by a shorter
+// one it happens to contain.
+const STONE_VARIETY_KEYS = Object.keys(STONE_VARIETY_COLORS).sort((a, b) => b.length - a.length);
+
+// The client asked for "the 2-3 most apparent colours".
+const MAX_SHOPIFY_COLORS = 3;
+
+// Case-insensitive match that emits the approved list's own casing, so "BLUE"
+// becomes "Blue" and "white" becomes "White" instead of being dropped.
+//
+// NOTE (open question): we emit "Multicolor" exactly as ALLOWED_SHOPIFY_COLORS
+// spells it. The client's own colour-options file spells it "Mulicolor"
+// (missing the t) and we have asked which spelling their Shopify metaobject
+// actually uses. Do not "correct" either spelling until they answer.
+const canonicalShopifyColor = (token: string): AllowedShopifyColor | null => {
+    const needle = String(token || '').trim().toLowerCase();
+    if (!needle) return null;
+    return ALLOWED_SHOPIFY_COLORS.find(c => c.toLowerCase() === needle) || null;
+};
+
+const matchStoneVariety = (token: string): string | null => {
+    const needle = String(token || '').trim().toLowerCase();
+    if (!needle) return null;
+    return STONE_VARIETY_KEYS.find(key => needle === key || needle.includes(key))
+        || COLOURLESS_VARIETIES.find(key => needle === key || needle.includes(key))
+        || null;
+};
+
+// Splits on commas and semicolons, then on slashes -- but only where the slash
+// is actually a separator. "Turquoise/Aqua" is itself one of the approved
+// colours, so a segment that already canonicalises is never split further;
+// splitting it blindly would turn a perfectly valid value into nothing.
+const splitColorTokens = (raw: string): string[] => {
+    const tokens: string[] = [];
+    // Always try the widest thing that resolves before breaking it up, at each
+    // level. "Turquoise/Aqua" and "Rose Gold" are single approved colours that
+    // contain a separator, so splitting them blindly turns a valid value into
+    // nothing.
+    const push = (segment: string, depth: number) => {
+        const t = segment.trim();
+        if (!t) return;
+        if (canonicalShopifyColor(t) || matchStoneVariety(t) === t.toLowerCase()) {
+            tokens.push(t);
+            return;
+        }
+        if (depth === 0) { t.split('/').forEach(x => push(x, 1)); return; }
+        // Last resort: words. This is what lets a qualified name compose --
+        // "Pink Zebra" becomes Pink plus Zebra's own palette, and a variety that
+        // arrives next season resolves the moment its base name is in the table
+        // above, without an entry per qualifier.
+        const words = t.split(/\s+/);
+        if (words.length > 1) { words.forEach(w => push(w, 2)); return; }
+        tokens.push(t);
+    };
+    String(raw || '').split(/[,;]+/).forEach(part => push(part, 0));
+    return tokens;
+};
+
+/**
+ * Turns a raw colour string into values the colour-pattern metafield accepts.
+ *
+ * Splits on commas, semicolons and slashes; resolves each token against
+ * ALLOWED_SHOPIFY_COLORS first, then against the stone-variety table; drops
+ * anything still unresolved (an unknown value fails the whole row, so a shorter
+ * list is always better than a rejected import). De-duplicates preserving
+ * order and caps the result at MAX_SHOPIFY_COLORS.
+ *
+ * Also reports the first stone variety it recognised, so the caller can put
+ * that name in the custom.variety column instead of discarding it.
+ */
+const normalizeShopifyColors = (raw: string): { colors: AllowedShopifyColor[]; variety: string | null } => {
+    const colors: AllowedShopifyColor[] = [];
+    const varieties: string[] = [];
+
+    // The whole value first. colorVocabulary covers every value the inventory
+    // actually holds and is reviewed as a unit, so it beats reassembling an
+    // answer token by token -- "Tehuacan" alone resolves to White there by a
+    // decision nothing in the string itself could have told us, and a value
+    // like "Cristaline Gray Amber" keeps the three colours that were reviewed
+    // rather than whatever order its tokens happen to produce.
+    const exact = lookupCanonicalColors(raw);
+    if (exact) {
+        return {
+            colors: exact.slice(0, MAX_SHOPIFY_COLORS) as AllowedShopifyColor[],
+            variety: matchStoneVariety(raw.trim().toLowerCase()),
+        };
+    }
+
+    // Otherwise fall through: a value entered after the table was generated is
+    // still worth resolving as far as its individual words allow.
+    splitColorTokens(raw)
+        .forEach(token => {
+            const direct = canonicalShopifyColor(token);
+            if (direct) {
+                if (!colors.includes(direct)) colors.push(direct);
+                return;
+            }
+            const key = matchStoneVariety(token);
+            if (key) {
+                varieties.push(key);
+                // A place-name variety is recognised but has no palette of its
+                // own, so there is nothing to add -- the qualifier beside it is
+                // what carries the colour. Indexing blind here threw on the
+                // first such value and took the whole export down with it.
+                (STONE_VARIETY_COLORS[key] || []).forEach(c => {
+                    if (!colors.includes(c)) colors.push(c);
+                });
+            }
+            // Anything still unresolved is dropped on purpose.
+        });
+
+    return { colors: colors.slice(0, MAX_SHOPIFY_COLORS), variety: varieties[0] || null };
+};
 
 // Fluorite and Nacar were retired; lib/atoms.tsx folds a persisted value for
 // either one back to the surviving theme of the same brightness, so nothing
@@ -3259,8 +3465,20 @@ export function MainHeader() {
             const sheet = workbook.addWorksheet(sheetName);
 
             // Shopify Headers (Matrixify Multi-Image Format)
+            //
+            // Matrixify matches columns by header TEXT, so a header that does
+            // not match the client's template is silently ignored and the whole
+            // column is dropped. Two names were taken from Shopify's generic
+            // CSV docs rather than from Rare Earth Gallery's own template
+            // ("revised import headers - added.xlsx") and are corrected here:
+            //   'Body (HTML)'             -> 'Body HTML'
+            //   'Included / Art Of Decor' -> 'Included / Art Of Décor'  (U+00E9)
+            // The second is the column that adds items to their wholesale
+            // catalog, so the mismatch was not cosmetic. Keep the accented e as
+            // a real UTF-8 character -- do not escape it. Header text only; the
+            // row builder's value order is unchanged.
             const headers = [
-                'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Type', 'Option1 Name', 'Option1 Value', 'Variant Position', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
+                'Handle', 'Title', 'Body HTML', 'Vendor', 'Type', 'Option1 Name', 'Option1 Value', 'Variant Position', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
                 'Variant Price', 'Variant Grams', 'Image Src', 'Image Command', 'Image Position', 'Variant Image', 
                 'Metafield: custom.product_weight [single_line_text_field]', 
                 'Variant Metafield: Vendor_SKU', 'Variant Weight Unit', 
@@ -3277,7 +3495,7 @@ export function MainHeader() {
                 'Metafield: reg.designer', 'Status', 'Published', 'Published Scope', 
                 'Variant Taxable', 'Variant Inventory Tracker', 'Variant Inventory Policy', 
                 'Variant Fulfillment Service', 'Variant Requires Shipping',
-                'Included / Art Of Decor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights'
+                'Included / Art Of Décor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights'
             ];
 
             sheet.addRow(sanitizeExcelRow(headers));
@@ -3461,20 +3679,69 @@ export function MainHeader() {
                 // a guess from the material name. generatedColor was previously
                 // ignored here, so the sheet fell through to the guess for every
                 // item the batch had already measured.
-                let colorsStr = '';
-                if (norm.color && norm.color.includes(',')) {
-                    colorsStr = norm.color;
-                } else if (norm.generatedColor && String(norm.generatedColor).trim()) {
-                    colorsStr = String(norm.generatedColor).trim();
-                } else {
-                    colorsStr = getStoneStyleColors(material, `${shape} ${shortDesc}`, color).join(', ');
-                }
+                //
+                // The first two sources used to be written to the sheet RAW --
+                // the manual workbook value was never validated and neither was
+                // the AI output. That is what put "Green Talan", "eMPEROR" and
+                // "green talan/black" into a list.metaobject_reference column
+                // and blocked the import on 26 products. Both now go through
+                // normalizeShopifyColors() first; only the getStoneStyleColors
+                // fallback is safe by construction (it is typed ShopifyColor[]).
+                const rawColorSource = (norm.color && norm.color.includes(','))
+                    ? String(norm.color)
+                    : (norm.generatedColor && String(norm.generatedColor).trim())
+                        ? String(norm.generatedColor).trim()
+                        : '';
+                const normalizedColor = normalizeShopifyColors(rawColorSource);
+                const colorsStr = (normalizedColor.colors.length > 0
+                    ? normalizedColor.colors
+                    : getStoneStyleColors(material, `${shape} ${shortDesc}`, color)
+                ).map(toShopifyColorValue).join(', ');
+
+                // custom.variety is the same for every item by decision, not by
+                // omission: everything in this catalogue is Mexican onyx and the
+                // client wants the column to read that way. The stone variety the
+                // colour normaliser recognises ("Green Talan", "Pink Zebra") is
+                // still used -- it is what resolves the Shopify colours above --
+                // it just does not get written to this column.
+                const varietyStr = 'Mexican Onyx';
 
                 const testStr = `${shape} ${shortDesc} ${productCategory} ${title} ${material}`;
-                const artOfDecorVal = 'TRUE';
+                // Left blank on purpose. This column adds the item to the
+                // wholesale catalogue, and it is the client's call which items
+                // belong there -- an empty cell lets them set it per item before
+                // importing, or fill the column in one go, whereas TRUE on every
+                // row made that decision for them the moment the header name was
+                // corrected and the column started taking effect.
+                const artOfDecorVal = '';
                 const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
                 const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
-                const handle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || tagId.toLowerCase();
+                // Handle is the product's identity key in Shopify and must be
+                // unique per SKU. It used to be derived from the title alone,
+                // so two inventory items whose generated titles matched
+                // produced the same handle. Matrixify then reads those rows as
+                // one product with several variants -- but every row in this
+                // export sets Option1 Name 'Title' / Option1 Value
+                // 'Default Title', so the variants collide on their option
+                // value and only one survives. In the 142-product file that
+                // silently lost ~11 items across 8 handles (the 5-SKU pendant
+                // box set, five wine-rack titles, the squared tower luminary).
+                //
+                // The SKU is appended ALWAYS, not only when a collision happens
+                // to occur: a handle whose shape depends on what else is in the
+                // same export is unstable, and an unstable identity key creates
+                // duplicate products on the next re-import.
+                //
+                // This deliberately does NOT implement Shopify variants. The
+                // client has asked for same-design items to be grouped as
+                // variants of one product, but that needs real Option1 values
+                // (size, finish, ...) which this export does not yet produce;
+                // merging rows that all share 'Default Title' loses them.
+                // Uniqueness first -- variants are separate future work.
+                const slugify = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                const titleSlug = slugify(title);
+                const skuSlug = slugify(tagId);
+                const handle = [titleSlug, skuSlug].filter(Boolean).join('-') || tagId.toLowerCase();
 
                 // Type: the AI classified this from the photograph against the
                 // agreed vocabulary, which beats keyword-matching the shape and
@@ -3519,7 +3786,7 @@ export function MainHeader() {
                         measurementsStr,
                         '',
                         toTitleCase(material),
-                        'Mexican Onyx',
+                        varietyStr,
                         'MX',
                         tagsList,
                         productCategory,
@@ -3547,19 +3814,18 @@ export function MainHeader() {
                 });
             });
             
-            allExportRows.sort((a, b) => {
-                const vendorA = String(a[2] || '').toLowerCase();
-                const vendorB = String(b[2] || '').toLowerCase();
-                if (vendorA < vendorB) return -1;
-                if (vendorA > vendorB) return 1;
-                
-                const catA = String(a[22] || '').toLowerCase();
-                const catB = String(b[22] || '').toLowerCase();
-                if (catA < catB) return -1;
-                if (catA > catB) return 1;
-                
-                return 0;
-            });
+            // Vendor is index 3 and Product Category index 29, per the headers
+            // array above. This read 2 and 22, which are Body HTML and the
+            // variant height -- so the sheet came out ordered by description
+            // text and then by inches, and had been doing so unnoticed because
+            // rows of one product share a description and sort together anyway.
+            const VENDOR_COL = 3;
+            const CATEGORY_COL = 29;
+            const key = (row: any[], col: number) => String(row[col] || '').toLowerCase();
+            allExportRows.sort((a, b) =>
+                key(a, VENDOR_COL).localeCompare(key(b, VENDOR_COL)) ||
+                key(a, CATEGORY_COL).localeCompare(key(b, CATEGORY_COL))
+            );
             
             allExportRows.forEach(r => sheet.addRow(sanitizeExcelRow(r)));
 

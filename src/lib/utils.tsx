@@ -432,7 +432,35 @@ export function collectExportImages(normData: any): string[] {
       // on which build wrote the row.
       const hit = processedMap[url];
       if (typeof hit === 'string' && /^https?:\/\//i.test(hit)) {
-        return getCleanImageUrl(hit) || url;
+        const substituted = getCleanImageUrl(hit) || url;
+
+        // Re-test for video AFTER the substitution, not only before it.
+        //
+        // collectAllImages already dropped every video in the SOURCE list, but
+        // that filter ran before this map, so a processed_media_urls entry that
+        // points a legitimate still at a generated .mp4 put the video straight
+        // back into the export -- past the only check there was. That is how
+        // "Artisanal L-Shaped Translucent Aqua Onyx Bar" shipped to Rare Earth
+        // with .../videos/1785391567738_4xcmno.mp4 in its Image Src; Shopify
+        // rejects a video URL in an image column and the catalogue's loader
+        // burns a full timeout failing to decode it.
+        //
+        // Both forms are tested: the raw map value still carries the extension
+        // (a Supabase ".../x.mp4&tag=Product" survives cleaning, and isVideoFile
+        // splits on /[?#&]/ so the '&tag=' suffix does not hide it), while a
+        // Drive video comes out of getCleanImageUrl as "uc?export=download&id="
+        // with no extension left to recognise -- so neither test alone is enough.
+        if (isVideoFile(hit) || isVideoFile(substituted)) {
+          // Fall back to the ORIGINAL url rather than dropping the entry. The
+          // original is a still that collectAllImages already vetted, so keeping
+          // it costs nothing and preserves the product photo; filtering the
+          // entry out would leave a blank product in the sheet and the PDF,
+          // which is a worse outcome than exporting the un-processed still.
+          // Only if the original is itself a video is there nothing to keep.
+          return isVideoFile(url) ? '' : url;
+        }
+
+        return substituted;
       }
       return url;
     })
@@ -2297,13 +2325,24 @@ export function getProductCategoryAndType(item: any): { category: string, type: 
  * "Luminaries" is left alone: it is already the correct plural of Luminary,
  * and the word boundary after "Luminarie" is what keeps this from turning it
  * into "Luminarys".
+ *
+ * The same message asked for "Ambar" to be spelled "Amber". That half was
+ * never implemented. There are no occurrences in the newest export, but the
+ * request is still outstanding and it will resurface: "Ambar" is the Spanish
+ * spelling and the source workbook is filled in by Spanish-speaking staff, so
+ * it re-enters through the material and colour columns rather than through the
+ * generator. The word boundaries matter here too -- without them "Ambar" would
+ * be rewritten inside any longer word that happens to contain it.
  */
 export function normalizeBrandTerms(text: string): string {
     if (!text) return '';
     return String(text)
         .replace(/\bLUMINARIE\b/g, 'LUMINARY')
         .replace(/\bLuminarie\b/g, 'Luminary')
-        .replace(/\bluminarie\b/g, 'luminary');
+        .replace(/\bluminarie\b/g, 'luminary')
+        .replace(/\bAMBAR\b/g, 'AMBER')
+        .replace(/\bAmbar\b/g, 'Amber')
+        .replace(/\bambar\b/g, 'amber');
 }
 
 export function formatProductTitle(title: string): string {
