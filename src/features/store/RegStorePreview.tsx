@@ -89,9 +89,9 @@ export const RegStorePreview: React.FC = () => {
         const norm = normalizeInventoryData(selectedItem.data);
         const codes = calculateCodesAndPrices(selectedItem.data, 0, selectedItem.id);
         const titleStr = selectedItem.data.title || norm.description || norm.generatedDescription || `${norm.shape || 'Onyx'} Piece`;
-        const skuStr = selectedItem.codes?.bookBarcodeDisplay || codes.tagId || norm.sku || 'OL-Aqua';
-        const priceDollars = Math.round(codes.retailPrice || 3660).toLocaleString();
-        const priceNum = codes.retailPrice || 3660;
+        const skuStr = selectedItem.codes?.bookBarcodeDisplay || codes.bookTagId || norm.sku || 'OL-Aqua';
+        const priceDollars = Math.round(Number(codes.bookRetail) || 3660).toLocaleString();
+        const priceNum = Number(codes.bookRetail) || 3660;
         const images = selectedItem.images || [];
         const currentImgUrl = images.length > 0 ? getCleanImageUrl(images[activeImageIndex]) : '/RareEarthGallery.png';
         const catStr = selectedItem.data.category || norm.workbook || norm.shape || 'Lighting';
@@ -184,7 +184,7 @@ export const RegStorePreview: React.FC = () => {
                         </nav>
 
                         <div className="flex items-center space-x-6 pl-4 border-l border-gray-200 py-1">
-                            <a href="#directions" onClick={(e) => { e.preventDefault(); toast.info(tr("Rare Earth Gallery: Cave Creek, AZ 85331")); }} className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                            <a href="#directions" onClick={(e) => { e.preventDefault(); toast(tr("Rare Earth Gallery: Cave Creek, AZ 85331")); }} className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
                                 <MapPin className="w-3.5 h-3.5" /> {tr("Directions")}
                             </a>
                             <a href="tel:4805754360" className="bg-gray-900 hover:bg-gray-800 text-white px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm">
@@ -437,7 +437,7 @@ export const RegStorePreview: React.FC = () => {
                                             <p className="text-gray-500">{tr("Usually ready in 24 hours")}</p>
                                             <a 
                                                 href="#info" 
-                                                onClick={(e) => { e.preventDefault(); toast.info(tr("6401 E Cave Creek Rd, Cave Creek, AZ 85331")); }} 
+                                                onClick={(e) => { e.preventDefault(); toast(tr("6401 E Cave Creek Rd, Cave Creek, AZ 85331")); }} 
                                                 className="text-gray-700 font-semibold underline block pt-1 hover:text-black"
                                             >
                                                 {tr("View store information")}
@@ -501,7 +501,7 @@ export const RegStorePreview: React.FC = () => {
                                     const norm = normalizeInventoryData(item.data);
                                     const codes = calculateCodesAndPrices(item.data, 0, item.id);
                                     const title = item.data.title || norm.description || norm.generatedDescription || `${norm.shape || tr("Onyx")} Piece`;
-                                    const price = Math.round(codes.retailPrice || 3660).toLocaleString();
+                                    const price = Math.round(Number(codes.bookRetail) || 3660).toLocaleString();
                                     const imgUrl = item.images && item.images.length > 0 ? getCleanImageUrl(item.images[0]) : '/RareEarthGallery.png';
 
                                     return (
@@ -530,7 +530,7 @@ export const RegStorePreview: React.FC = () => {
                                             <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
                                                 <div>
                                                     <p className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                                                        {item.codes?.bookBarcodeDisplay || codes.tagId || norm.sku || tr("OL-Aqua")}
+                                                        {item.codes?.bookBarcodeDisplay || codes.bookTagId || norm.sku || tr("OL-Aqua")}
                                                     </p>
                                                     <h3 className="font-serif font-bold text-gray-900 text-sm sm:text-base group-hover:text-amber-800 transition-colors line-clamp-2 mt-0.5 leading-snug">
                                                         {title}

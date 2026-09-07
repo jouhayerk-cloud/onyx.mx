@@ -1,4 +1,5 @@
 import React from 'react';
+import type { ItemCodes } from '../lib/utils';
 import { QRCodeSVG } from 'qrcode.react';
 import Barcode from 'react-barcode';
 
@@ -13,11 +14,7 @@ interface LabelVisualsProps {
             color?: string;
             material?: string;
         };
-        codes: {
-            bookAqCode?: string;
-            bookLandCode?: string;
-            bookBarcode: string;
-        };
+        codes: Partial<ItemCodes> & { bookBarcode: string };
     };
     scale?: number;
     className?: string;

@@ -712,7 +712,7 @@ async function drawCatalogHubPage(
     imageIndex: number = 0
 ) {
     const norm = normalizeInventoryData(item.data || item); 
-    const codes = item.codes || {};
+    const codes: Partial<CatalogArtifact['codes']> = item.codes || {};
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
 
     // 1. Top information panel: Brand Logo (direct vector/PNG without frame container)

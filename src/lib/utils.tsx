@@ -1726,7 +1726,34 @@ export const onyxRound = (n: number) => {
   return (n - floor >= 0.4) ? floor + 1 : floor;
 };
 
-export const calculateCodesAndPrices = (data: any, exchangeRate: number, workbookPrefix: string) => {
+/**
+ * What calculateCodesAndPrices returns.
+ *
+ * Declared rather than inferred because the function has three exits -- the
+ * success path and two early returns -- and they do not carry the same members.
+ * TypeScript therefore inferred their union, and reading bookTagId or
+ * acquisitionCostMxn off the result failed at every call site even though the
+ * success path provides them. The optional members are exactly the ones the
+ * error paths omit.
+ */
+export interface ItemCodes {
+  bookAcquisition: string;
+  bookLanded: string;
+  bookRetail: string;
+  bookAqCode: string;
+  bookLandCode: string;
+  bookBarcode: string;
+  bookBarcodeDisplay: string;
+  /** Legacy misspelling, emitted on purpose -- consumers still read it. */
+  bookBardcode: string;
+  vendorColor: string;
+  /** Success path only. */
+  bookTagId?: string;
+  /** Success path only. */
+  acquisitionCostMxn?: number;
+}
+
+export const calculateCodesAndPrices = (data: any, exchangeRate: number, workbookPrefix: string): ItemCodes => {
   const norm = normalizeInventoryData(data);
   const costMxn = round2(parseFloat(norm.price) || 0);
   
