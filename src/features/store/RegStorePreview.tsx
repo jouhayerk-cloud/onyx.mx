@@ -101,7 +101,9 @@ export const RegStorePreview: React.FC = () => {
         const hCm = parseFloat(norm.heightCm) || 0;
         const dCm = parseFloat(norm.lengthCm) || 0;
         const wtKg = parseFloat(norm.weightKg) || 0;
-        const dimsImp = (wCm && hCm && dCm) ? cmToImperial(wCm, hCm, dCm) : 'Dimensions TBD';
+        const dimsImp = (wCm && hCm && dCm)
+            ? `${cmToImperial(wCm)} × ${cmToImperial(hCm)} × ${cmToImperial(dCm)}`
+            : 'Dimensions TBD';
 
         return {
             norm, codes, titleStr, skuStr, priceDollars, priceNum, images, 

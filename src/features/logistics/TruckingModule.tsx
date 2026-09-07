@@ -661,7 +661,7 @@ const DockCard: React.FC<{
 // Drag delta must divide by zoom to convert screen-px Ã¢â€ â€™ canvas-px.
 const TruckCrate: React.FC<{
     crate: any; allCrates: any[]; allInventory: any[];
-    pos: { x: number; y: number; r: number };
+    pos: { x: number; y: number; r: number; z?: number };
     truckSeq?: number;
     isSelected: boolean; zoom: number;
     onSelect: () => void; onUpdatePos: (x: number, y: number) => void;
@@ -2556,7 +2556,7 @@ const ReadyTruckWizard: React.FC<{
     publicUrl?: string | null;
 }> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, fields, onFieldChange, onClose, onConfirm, onSaveDraft, onOpenDraft, isBusy, publicUrl }) => {
     const bookRate = useAtomValue(exchangeRateAtom);
-    const [progress, setProgress] = useState({ pdf: -1, allCrates: -1, xlsx: -1 });
+    const [progress, setProgress] = useState({ pdf: -1, allCrates: -1, xlsx: -1, html: -1 });
     const [urls, setUrls] = useState({ pdf: '', allCrates: '', xlsx: '', html: '' });
     const [showLiveViewer, setShowLiveViewer] = useState(false);
     const exportTimestamp = useRef(new Date().getTime());

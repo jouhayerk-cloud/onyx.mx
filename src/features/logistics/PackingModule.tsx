@@ -260,7 +260,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
                 excludeHeaderWireframe: true
             };
 
-            const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress((p: any) => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), true) as Blob;
+            const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress((p: any) => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob') as Blob;
             setUrls((u: any) => ({ ...u, pdf: URL.createObjectURL(blob) }));
             setProgress((p: any) => ({ ...p, pdf: 100 }));
         } catch (e) {

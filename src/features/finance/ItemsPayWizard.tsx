@@ -58,7 +58,7 @@ export const ItemsPayWizard: React.FC = () => {
             if (type === 'inv') {
                 norm = normalizeInventoryData(item.data);
                 status = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds);
-                cost = Number(calculateCodesAndPrices(norm, liveRate).bookAcquisition) || 0;
+                cost = Number(calculateCodesAndPrices(norm, liveRate, '326').bookAcquisition) || 0;
                 vId = norm.vendorId || String(norm.itemId || '').split('-')[0] || 'MISC';
             } else {
                 norm = item;

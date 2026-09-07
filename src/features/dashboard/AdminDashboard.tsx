@@ -952,7 +952,7 @@ export function AdminDashboard() {
                                             <span className="text-[11px] font-mono font-black text-(--text-color-secondary) group-hover:text-(--main-color) transition-colors">{count} {tr("UNITS")}</span>
                                         </div>
                                         <div className="h-0.5 bg-white/10 overflow-hidden group-hover:bg-(--main-color) transition-all">
-                                            <div className="h-full bg-(--main-color) transition-all duration-1000" style={{ width: `${(count / items.length) * 100}%` }} />
+                                            <div className="h-full bg-(--main-color) transition-all duration-1000" style={{ width: `${(Number(count) / items.length) * 100}%` }} />
                                         </div>
                                     </div>
                                 ))}
