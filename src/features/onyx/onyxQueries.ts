@@ -1,6 +1,28 @@
 
 import { supabase } from '../../lib/supabase';
+import type { Database } from '../../lib/database.types';
 import { vendors } from '../../lib/consts';
+
+type InventoryRow = Database['public']['Tables']['inventory']['Row'];
+type ProductionRow = Database['public']['Tables']['production']['Row'];
+
+/**
+ * A row from the combined inventory + production search.
+ *
+ * The two tables share only id, description, quantity, rating, status,
+ * updated_at, vendor_id, is_hidden and hidden_reason. Everything else --
+ * shape, material, colour, the dimensions, item_id, book_barcode -- exists on
+ * inventory alone, so on a production row it is simply absent.
+ *
+ * Every field is therefore optional. Consumers were already reading
+ * inventory-only fields off every element and getting undefined for production
+ * items; this type stops pretending otherwise, so the optionality is visible at
+ * the point of use instead of showing up as a blank column in Onyx's answers.
+ */
+export type OnyxSearchRow = Partial<InventoryRow> & Partial<ProductionRow> & {
+    source: 'inventory' | 'production';
+    vendor_id?: string | null;
+};
 
 /**
  * Onyx Query Engine
@@ -72,6 +94,8 @@ export const onyxQueries = {
         if (params.min_weight) invQ = invQ.gte('weight_kg', params.min_weight);
         if (params.max_weight) invQ = invQ.lte('weight_kg', params.max_weight);
 
+        const resolvedVendor = resolveVendorId(params.vendor || '');
+
         if (params.query) {
             const clean = params.query.trim();
             // Split by spaces or commas, and remove empty strings
@@ -131,7 +155,6 @@ export const onyxQueries = {
         }
         
         // Handle vendor filter carefully
-        const resolvedVendor = resolveVendorId(params.vendor || '');
         if (resolvedVendor) {
             if (resolvedVendor.length <= 3) {
                 const prefix = `${resolvedVendor}%`;
@@ -189,9 +212,9 @@ export const onyxQueries = {
             prodQ.limit(params.limit || 50)
         ]);
 
-        const combinedData = [
-            ...(invRes.data || []).map(i => ({ ...i, source: 'inventory', vendor_id: i.item_id?.substring(0, 2) })),
-            ...(prodRes.data || []).map(i => ({ ...i, source: 'production', vendor_id: i.item_id?.substring(0, 2) }))
+        const combinedData: OnyxSearchRow[] = [
+            ...(invRes.data || []).map(i => ({ ...i, source: 'inventory' as const, vendor_id: i.item_id?.substring(0, 2) })),
+            ...(prodRes.data || []).map(i => ({ ...i, source: 'production' as const, vendor_id: i.vendor_id || i.tag_id?.substring(0, 2) }))
         ];
 
         // Fetch sum separately (Inventory only for now as per business rules, or both?)
@@ -309,37 +332,59 @@ export const onyxQueries = {
     getDatabaseContext: async () => {
         const [invRes, prodRes] = await Promise.all([
             supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color'),
-            supabase.from('production').select('shape, material, item_id, book_barcode, status, color')
+            supabase.from('production').select('tag_id, vendor_id, status')
         ]);
-        
-        const data = [...(invRes.data || []), ...(prodRes.data || [])];
+
+        const inv = invRes.data || [];
+        const prod = prodRes.data || [];
+
+        const vendorFrom = (raw: string) => {
+            const idString = (raw || '').toString().toUpperCase().trim();
+            const match = VENDOR_KEYS.find(k => idString.startsWith(k.toUpperCase()));
+            return match || idString.substring(0, 2);
+        };
 
         return {
-            vendors: Array.from(new Set(data.map(i => {
-                const idString = (i.item_id || i.book_barcode || '').toString().toUpperCase().trim();
-                const match = VENDOR_KEYS.find(k => idString.startsWith(k.toUpperCase()));
-                return match || idString.substring(0, 2);
-            }).filter(Boolean))),
-            shapes: Array.from(new Set(data.map(i => i.shape?.trim()).filter(Boolean))),
-            materials: Array.from(new Set(data.map(i => i.material?.trim()).filter(Boolean))),
-            colors: Array.from(new Set(data.map(i => i.color?.trim()).filter(Boolean))),
-            statuses: Array.from(new Set(data.map(i => i.status?.trim()).filter(Boolean))),
-            total_items: data.length
+            vendors: Array.from(new Set([
+                ...inv.map(i => vendorFrom(i.item_id || i.book_barcode || '')),
+                ...prod.map(p => vendorFrom(p.vendor_id || p.tag_id || ''))
+            ].filter(Boolean))),
+            // production carries no shape, material or colour, so these describe
+            // inventory only -- as they always did in practice, because the
+            // production request was being rejected outright.
+            shapes: Array.from(new Set(inv.map(i => i.shape?.trim()).filter(Boolean))),
+            materials: Array.from(new Set(inv.map(i => i.material?.trim()).filter(Boolean))),
+            colors: Array.from(new Set(inv.map(i => i.color?.trim()).filter(Boolean))),
+            statuses: Array.from(new Set([
+                ...inv.map(i => i.status?.trim()),
+                ...prod.map(p => p.status?.trim())
+            ].filter(Boolean))),
+            total_items: inv.length + prod.length
         };
     },
 
-    getItemByAnyId: async (id: string) => {
+    getItemByAnyId: async (id: string): Promise<OnyxSearchRow | null> => {
         const [invRes, prodRes] = await Promise.all([
             supabase.from('inventory').select('*').or(`id.eq.${id},item_id.eq.${id},book_barcode.eq.${id}`).maybeSingle(),
-            supabase.from('production').select('*').or(`id.eq.${id},item_id.eq.${id},book_barcode.eq.${id}`).maybeSingle()
+            // production has neither item_id nor book_barcode -- filtering on
+            // them made PostgREST reject the request outright, so a production
+            // item could never be found by this lookup at all. It carries id and
+            // tag_id.
+            supabase.from('production').select('*').or(`id.eq.${id},tag_id.eq.${id}`).maybeSingle()
         ]);
         
-        const data = invRes.data || prodRes.data;
-        if (data) {
-            return { 
-                ...data, 
-                source: invRes.data ? 'inventory' : 'production',
-                vendor_id: data.item_id?.substring(0, 2) 
+        if (invRes.data) {
+            return {
+                ...invRes.data,
+                source: 'inventory',
+                vendor_id: invRes.data.item_id?.substring(0, 2)
+            };
+        }
+        if (prodRes.data) {
+            return {
+                ...prodRes.data,
+                source: 'production',
+                vendor_id: prodRes.data.vendor_id || prodRes.data.tag_id?.substring(0, 2)
             };
         }
         return null;
