@@ -1680,6 +1680,24 @@ export const esCatalog: Record<string, string> = {
   'RE-GENERATE XLS': 'REGENERAR XLS',
   'XLS LABELS': 'ETIQUETAS XLS',
   'CONTROL PDF': 'PDF DE CONTROL',
+
+  // Generated-document review pane (components/PdfPreview.tsx). SHOPIFY and
+  // ISOMETRIC are left untranslated on purpose: the first is a product name and
+  // the second is the term already used on the printed catalogue itself.
+  'REVIEW': 'REVISAR',
+  'REVIEW PDF': 'REVISAR PDF',
+  'CATALOG': 'CATÁLOGO',
+  'CONTROL PAGE': 'PÁGINA DE CONTROL',
+  'CLOSE': 'CERRAR',
+  'DOWNLOAD': 'DESCARGAR',
+  'NO DOCUMENT': 'SIN DOCUMENTO',
+  'LARGE DOCUMENT': 'DOCUMENTO GRANDE',
+  'RENDER ANYWAY': 'MOSTRAR DE TODOS MODOS',
+  'OPEN IN NEW TAB': 'ABRIR EN PESTAÑA NUEVA',
+  'Rendering a document this size can freeze the tab. Download works either way.':
+    'Mostrar un documento de este tamaño puede congelar la pestaña. La descarga funciona igual.',
+  'This browser cannot display a PDF inline. Open it in a new tab to review it.':
+    'Este navegador no puede mostrar un PDF incrustado. Ábrelo en una pestaña nueva para revisarlo.',
   'GENERATING...': 'GENERANDO...',
   'Catalog generated': 'Catálogo generado',
   'Catalog generation failed': 'La generación del catálogo falló',
