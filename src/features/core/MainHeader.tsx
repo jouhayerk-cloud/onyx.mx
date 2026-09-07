@@ -3567,6 +3567,12 @@ export function MainHeader() {
 
             const allExportRows: any[][] = [];
 
+            // Handle collision bookkeeping. One product spans several rows in the
+            // multi-image format, so the unit here is the item, not the row: each
+            // entry records the base handle, the SKU that disambiguates it, and
+            // every row index that must be rewritten if it loses the base.
+            const handleClaims: { base: string; sku: string; rows: number[] }[] = [];
+
             readyItems.forEach((item: any) => {
                 const rawData = item.data || item;
                 const norm = normalizeInventoryData(rawData);
@@ -3757,6 +3763,7 @@ export function MainHeader() {
                     : catAndType.type;
 
                 // Export 1 row per image
+                const rowsForThisItem: number[] = [];
                 imageList.forEach((imgRaw, idx) => {
                     const imageSrc = toDriveDownloadUrl(imgRaw);
 
@@ -3812,8 +3819,62 @@ export function MainHeader() {
                     ];
 
                     allExportRows.push(rowData);
+                    rowsForThisItem.push(allExportRows.length - 1);
                 });
+
+                handleClaims.push({ base: handle, sku: tagId, rows: rowsForThisItem });
             });
+
+            // Disambiguate handles that more than one PRODUCT claims.
+            //
+            // The handle is Shopify's product key, and Matrixify folds rows that
+            // share one into a single product with variants. Dropping the tag-id
+            // suffix made handles readable but no longer unique: measured across
+            // all 497 rows, 38 of the 208 items carrying an AI title collide, and
+            // 159 of the 289 without one, since those fall back to
+            // shape + description + colour + material.
+            //
+            // First claimant keeps the clean handle; the rest take -2, -3, and so
+            // on, which is what Shopify itself does.
+            //
+            // Order is by SKU, deliberately, NOT by the order items happen to be
+            // selected -- otherwise the same item would get a different handle
+            // from one export to the next and every re-import would create
+            // duplicate products instead of updating the existing ones.
+            //
+            // The residual caveat, worth knowing: a NEW item whose SKU sorts
+            // before an existing one takes the clean handle and pushes the
+            // existing item to a suffix. SKUs are vendor-prefixed and sequential,
+            // so within a vendor new items sort last and nothing moves; a new
+            // vendor whose prefix sorts early is the case that can shift things.
+            const byBase = new Map<string, typeof handleClaims>();
+            handleClaims.forEach(claim => {
+                if (!claim.base) return;
+                const bucket = byBase.get(claim.base);
+                if (bucket) bucket.push(claim);
+                else byBase.set(claim.base, [claim]);
+            });
+
+            let collidedProducts = 0;
+            byBase.forEach(claims => {
+                if (claims.length < 2) return;
+                collidedProducts += claims.length - 1;
+                claims
+                    .slice()
+                    .sort((a, b) => a.sku.localeCompare(b.sku))
+                    .forEach((claim, idx) => {
+                        if (idx === 0) return; // keeps the clean handle
+                        const suffixed = `${claim.base}-${idx + 1}`;
+                        claim.rows.forEach(rowIndex => { allExportRows[rowIndex][0] = suffixed; });
+                    });
+            });
+
+            if (collidedProducts > 0) {
+                console.warn(
+                    `[Shopify export] ${collidedProducts} product(s) shared a handle with another and were given a numeric suffix. ` +
+                    `Without it Matrixify would have merged them into one product with variants.`
+                );
+            }
             
             // Vendor is index 3 and Product Category index 29, per the headers
             // array above. This read 2 and 22, which are Body HTML and the
