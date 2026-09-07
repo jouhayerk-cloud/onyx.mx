@@ -296,10 +296,12 @@ function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number,
         doc.roundedRect(cx, cy, cw, ch, 2, 2, 'F');
     }
 
-    // 2. Draw the image centered in the box
-    const pad = Math.min(cw, ch) * 0.06;
-    const availW = Math.max(1, cw - pad * 2);
-    const availH = Math.max(1, ch - pad * 2);
+    // 2. Draw the image centered in the box.
+    //    No inset: the 6% that used to sit here kept the photo clear of the
+    //    frame's rounded corners, and there is no frame any more. The image is
+    //    aspect-contained, so filling the box cannot overflow it.
+    const availW = Math.max(1, cw);
+    const availH = Math.max(1, ch);
     const ir = (img.w && img.h) ? (img.w / img.h) : 1; 
     const cr = availW / availH;
     let dw: number, dh: number;
@@ -870,23 +872,23 @@ async function drawCatalogHubPage(
             const botH = (imgBoxH - gap) * 0.4;
             const botW = (fullW - gap) / 2;
             
-            const imgData0 = await loadImgData(gridImages[0], 800, false, '#FFFFFF', 32);
+            const imgData0 = await loadImgData(gridImages[0], 800, false, '#FFFFFF', 6);
             if (imgData0) drawContain(doc, imgData0, M, contentY, fullW, topH, 1.0);
             
-            const imgData1 = await loadImgData(gridImages[1], 800, false, '#FFFFFF', 32);
+            const imgData1 = await loadImgData(gridImages[1], 800, false, '#FFFFFF', 6);
             if (imgData1) drawContain(doc, imgData1, M, contentY + topH + gap, botW, botH, 1.0);
             
-            const imgData2 = await loadImgData(gridImages[2], 800, false, '#FFFFFF', 32);
+            const imgData2 = await loadImgData(gridImages[2], 800, false, '#FFFFFF', 6);
             if (imgData2) drawContain(doc, imgData2, M + botW + gap, contentY + topH + gap, botW, botH, 1.0);
         } else {
             const cellH = (imgBoxH - gap) / 2;
             for (let idx = 0; idx < 2; idx++) {
-                const imgData = await loadImgData(gridImages[idx], 800, false, '#FFFFFF', 32);
+                const imgData = await loadImgData(gridImages[idx], 800, false, '#FFFFFF', 6);
                 if (imgData) drawContain(doc, imgData, M, contentY + idx * (cellH + gap), fullW, cellH, 1.0);
             }
         }
     } else {
-        const imgData = await loadImgData(currentImgUrl, 800, false, '#FFFFFF', 32);
+        const imgData = await loadImgData(currentImgUrl, 800, false, '#FFFFFF', 6);
         if (imgData) {
             drawContain(doc, imgData, M, contentY, fullW, imgBoxH, 1.0);
         }
@@ -1087,7 +1089,7 @@ async function prefetchImgData(
             const url = unique[idx];
             let ok = false;
             try {
-                const d = await loadImgData(url, 800, false, '#FFFFFF', 32);
+                const d = await loadImgData(url, 800, false, '#FFFFFF', 6);
                 ok = !!d;
                 if (d) payloadChars += d.dataUrl.length;
             } catch { ok = false; }
@@ -1317,7 +1319,7 @@ export async function exportCatalogPdf(
                     const specY = await drawHeader(doc, item, M, PW, M - 6, exportType, { current: j + 1, total: imgs.length });
                     
                     const imgUrl = imgs[j];
-                    const d = await loadImgData(imgUrl, 800, false, '#FFFFFF', 32);
+                    const d = await loadImgData(imgUrl, 800, false, '#FFFFFF', 6);
                     const imgW = PW - M * 2 - 4;
                     const imgH = PH - specY - 24;
                     if (d) {
