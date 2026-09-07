@@ -145,7 +145,7 @@ export const ItemsPayWizard: React.FC = () => {
                         pay_req: 'requested',
                         payment_ids: finData[0].id.toString()
                     })
-                    .in('id', itemIds.map(Number));
+                    .in('id', itemIds);
                 if (invError) throw invError;
             }
 
@@ -156,7 +156,7 @@ export const ItemsPayWizard: React.FC = () => {
                         pay_req: 'requested',
                         payment_ids: finData[0].id.toString()
                     })
-                    .in('id', crateIds.map(Number));
+                    .in('id', crateIds);
                 if (crateError) throw crateError;
             }
 

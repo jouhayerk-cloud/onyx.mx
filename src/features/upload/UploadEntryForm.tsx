@@ -270,7 +270,7 @@ export function UploadEntryForm() {
 
             const dbRow = {
                 item_id: finalItemId,
-                item_number: itemData.itemNumber || '1',
+                item_number: Number(itemData.itemNumber) || 1,
                 shape: translatedShape,
                 material: translatedMaterial,
                 color: translatedColor,

@@ -355,7 +355,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
         const dbRow = {
           item_id: finalItemId,
-          item_number: item.itemNumber || String(i + 1),
+          item_number: Number(item.itemNumber) || i + 1,
           shape: item.shape || null,
           material: item.material || null,
           color: item.color || null,

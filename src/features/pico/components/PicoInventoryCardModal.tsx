@@ -54,7 +54,13 @@ export const PicoInventoryCardModal: React.FC<PicoInventoryCardModalProps> = ({
           
           // 1. Robot reaction
           setFace('happy');
-          showInventoryCard(data.id, data.title, data.price, data.stock, data.vendor);
+          showInventoryCard(
+            data.id,
+            data.short_description || data.description || '',
+            data.price_mxn ?? 0,
+            data.quantity ?? 0,
+            data.vendor_id || ''
+          );
 
           // 2. Play web audio sound
           try {

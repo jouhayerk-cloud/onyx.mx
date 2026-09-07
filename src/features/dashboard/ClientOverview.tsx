@@ -498,7 +498,7 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
                 const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
                 if (ids.length > 0) {
                     const perc = req.description?.match(/(\d+)%/)?.[1];
-                    await supabase.from('inventory').update({ pay_req: perc ? `paid ${perc}%` : true }).in('id', ids);
+                    await supabase.from('inventory').update({ pay_req: perc ? `paid ${perc}%` : 'true' }).in('id', ids);
                 }
             }
             toast.success(tr("Payment finalized."), { id: toastId });

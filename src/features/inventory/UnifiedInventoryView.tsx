@@ -1232,10 +1232,10 @@ export const UnifiedInventoryView = () => {
             
             const promises = [];
             if (inventoryIds.length > 0) {
-                promises.push(supabase.from('inventory').update({ status: 'Available', updated_at: timestamp }).in('id', inventoryIds));
+                promises.push(supabase.from('inventory').update({ status: 'Available', updated_at: timestamp }).in('id', inventoryIds.map(String)));
             }
             if (productionIds.length > 0) {
-                promises.push(supabase.from('production').update({ status: 'Available', updated_at: timestamp }).in('id', productionIds));
+                promises.push(supabase.from('production').update({ status: 'Available', updated_at: timestamp }).in('id', productionIds.map(String)));
             }
 
             const results = await Promise.all(promises);

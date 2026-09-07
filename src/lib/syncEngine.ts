@@ -6,6 +6,7 @@
  *  - Provides sync status to all consumers via Jotai atoms
  */
 import { useEffect, useCallback } from 'react';
+import type { SyncTable } from './syncTables';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { flushQueue, getQueueStats } from './changeQueue';
 import {
@@ -23,7 +24,7 @@ import { tr } from './i18n';
 const LAST_SYNC_KEY = 'onyx_last_synced_at';
 
 /** Delta pull: only fetch records updated since last sync */
-async function deltaPull(table: string, collection: any, since: string | null): Promise<number> {
+async function deltaPull(table: SyncTable, collection: any, since: string | null): Promise<number> {
     try {
         let query = supabase.from(table).select('*');
         if (since) {
@@ -91,10 +92,10 @@ export function useSyncEngine() {
             const since = localStorage.getItem(LAST_SYNC_KEY);
             const db = await getDatabase();
             const tables = [
-                { name: 'inventory', col: db.inventory },
-                { name: 'logistics', col: db.logistics },
-                { name: 'finance', col: db.finance },
-                { name: 'production', col: db.production },
+                { name: 'inventory' as const, col: db.inventory },
+                { name: 'logistics' as const, col: db.logistics },
+                { name: 'finance' as const, col: db.finance },
+                { name: 'production' as const, col: db.production },
             ];
 
             let totalPulled = 0;

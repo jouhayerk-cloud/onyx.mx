@@ -1610,7 +1610,7 @@ export function MainHeader() {
 
             try {
                 // Helper to fetch all records using pagination
-                const fetchAll = async (table: string) => {
+                const fetchAll = async (table: 'inventory' | 'production') => {
                     let all: any[] = [];
                     let page = 0;
                     const pageSize = 1000;

@@ -466,7 +466,7 @@ export function DetailsPanel() {
       const payload = { [type]: generatedDesc, updated_at: new Date().toISOString() };
       
       const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
-      const { error } = await supabase.from(tableName).update(payload).eq('id', itemRow);
+      const { error } = await supabase.from(tableName).update(payload).eq('id', String(itemRow));
       if (error) throw error;
 
       setItemData(prev => prev ? { ...prev, ...payload } : null);
@@ -529,7 +529,7 @@ export function DetailsPanel() {
         };
 
         const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
-        const { error } = await supabase.from(tableName).update(dbRow).eq('id', itemRow);
+        const { error } = await supabase.from(tableName).update(dbRow).eq('id', String(itemRow));
         if (error) throw error;
       } else {
         const finalItemId = formState.vendorId && !formState.itemId.startsWith(formState.vendorId)
@@ -586,7 +586,7 @@ export function DetailsPanel() {
     const toastId = toast.loading(isDeveloper ? 'Deleting...' : 'Marking for deletion...');
     try {
       if (isDeveloper) {
-        const { error } = await supabase.from('inventory').delete().eq('id', itemRow);
+        const { error } = await supabase.from('inventory').delete().eq('id', String(itemRow));
         if (error) throw error;
         toast.success(tr("Item deleted permanently"), { id: toastId });
       } else {
@@ -594,7 +594,7 @@ export function DetailsPanel() {
           status: 'Pending Deletion',
           marked_by: user?.email,
           updated_at: new Date().toISOString()
-        }).eq('id', itemRow);
+        }).eq('id', String(itemRow));
         if (error) throw error;
         toast.success(tr("Deletion requested"), { id: toastId });
       }
@@ -693,7 +693,7 @@ export function DetailsPanel() {
                   };
                   
                   const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
-                  const { error } = await supabase.from(tableName).update(payload).eq('id', itemRow);
+                  const { error } = await supabase.from(tableName).update(payload).eq('id', String(itemRow));
                   if (error) throw error;
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
@@ -728,7 +728,7 @@ export function DetailsPanel() {
                   };
                   
                   const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
-                  const { error } = await supabase.from(tableName).update(payload).eq('id', itemRow);
+                  const { error } = await supabase.from(tableName).update(payload).eq('id', String(itemRow));
                   if (error) throw error;
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
@@ -762,7 +762,7 @@ export function DetailsPanel() {
                   };
                   
                   const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
-                  const { error } = await supabase.from(tableName).update(payload).eq('id', itemRow);
+                  const { error } = await supabase.from(tableName).update(payload).eq('id', String(itemRow));
                   if (error) throw error;
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
