@@ -182,30 +182,61 @@ type AllowedShopifyColor = typeof ALLOWED_SHOPIFY_COLORS[number];
 // Helfand at Rare Earth Gallery has been asked to confirm the mappings; revise
 // this table when she answers, and treat any value here as a placeholder until
 // then.
+/**
+ * What a stone variety looks like, for values colorVocabulary does not cover.
+ *
+ * Only BASE varieties belong here. A qualified name resolves by composition --
+ * "Pink Zebra" is the colour Pink plus what Zebra looks like -- so a composite
+ * entry would only be another place for the two to disagree. That is not
+ * theoretical: the old 'pink zebra' entry said Pink/Cream/Brown while 'zebra'
+ * said black and white, and the composite silently won.
+ *
+ * Palettes are ordered by how apparent the colour is, because the export keeps
+ * only the first MAX_SHOPIFY_COLORS of them.
+ */
 const STONE_VARIETY_COLORS: Record<string, AllowedShopifyColor[]> = {
-    'green talan': ['Green', 'Brown', 'Tan'],
     'talan': ['Green', 'Brown', 'Tan'],
-    'tehuacan amber': ['Orange', 'Yellow', 'Brown'],
-    'amber': ['Orange', 'Yellow', 'Brown'],
-    // "Ambar" is the Spanish spelling and it is what the workbook actually
-    // holds -- 20 rows across the local data carry Ambar / Tehuacan Ambar /
-    // White Ambar in the colour column. normalizeBrandTerms fixes that spelling
-    // for the description and the title, but it is deliberately NOT applied to
-    // the colour column, so these have to be matched here in the form they are
-    // stored or they miss the map and lose the amber signal entirely.
-    'tehuacan ambar': ['Orange', 'Yellow', 'Brown'],
-    'white ambar': ['White', 'Orange', 'Cream'],
-    'ambar': ['Orange', 'Yellow', 'Brown'],
-    'zebra': ['Black', 'White', 'Brown'],
-    'pink zebra': ['Pink', 'Cream', 'Brown'],
+    // Black and white striped onyx. It does not carry brown, whatever a
+    // qualifier in front of it may add.
+    'zebra': ['Black', 'White'],
     'serpentine': ['Green', 'Brown', 'Cream'],
-    'pink serpentine': ['Pink', 'Green', 'Cream'],
+    'amber': ['Orange', 'Yellow', 'Brown'],
+    // "Ambar" is the Spanish spelling and it is what staff actually type.
+    // normalizeBrandTerms corrects it for the description and the title but is
+    // deliberately not applied to the colour column, so it is matched as stored.
+    'ambar': ['Orange', 'Yellow', 'Brown'],
     'emperor': ['Brown', 'Gray', 'Cream'],
     'ice': ['Clear', 'White', 'Gray'],
+    'pearlescent': ['Iridescent', 'White', 'Cream'],
+    'nacar': ['Iridescent', 'White', 'Cream'],
+    'cristaline': ['Clear', 'White'],
+    'galaxy': ['Black', 'Gray', 'Multicolor'],
+    // Season 826 vocabulary, entered ahead of the stock so the first item to
+    // arrive exports correctly instead of falling through to a guess. Revise
+    // these against the real stone when it lands.
+    'cloud': ['White', 'Gray', 'Cream'],
+    'cosmic': ['Black', 'Gray', 'Multicolor'],
+    // Querétaro is a place, but unlike Tehuacán its stone reads one way, so it
+    // carries a palette rather than deferring to a qualifier.
+    'queretaro': ['Green', 'Brown'],
 };
 
-// Longest key first so the specific variety wins: "pink zebra" must not resolve
-// through the shorter "zebra", and "green talan" must not resolve as "talan".
+/**
+ * Varieties named after WHERE the stone is quarried. They are real variety
+ * names and must be recognised as such, but the place alone does not say what
+ * the stone looks like: Tehuacán ships white, amber, grey, green and mint. So
+ * these resolve to nothing on their own and let the qualifier decide --
+ * "Guatemala Zebra" is black and white -- while a bare one has to be settled by
+ * a person, the way bare "Tehuacan" was settled as White.
+ *
+ * A place only belongs here when its stone genuinely varies. Querétaro is also
+ * a place but reads green and brown consistently, so it sits in the table above
+ * with a palette of its own.
+ */
+const COLOURLESS_VARIETIES = ['tehuacan', 'guatemala'];
+
+// Longest key first, so a longer variety name is never shadowed by a shorter
+// one it happens to contain.
 const STONE_VARIETY_KEYS = Object.keys(STONE_VARIETY_COLORS).sort((a, b) => b.length - a.length);
 
 // The client asked for "the 2-3 most apparent colours".
@@ -227,7 +258,9 @@ const canonicalShopifyColor = (token: string): AllowedShopifyColor | null => {
 const matchStoneVariety = (token: string): string | null => {
     const needle = String(token || '').trim().toLowerCase();
     if (!needle) return null;
-    return STONE_VARIETY_KEYS.find(key => needle === key || needle.includes(key)) || null;
+    return STONE_VARIETY_KEYS.find(key => needle === key || needle.includes(key))
+        || COLOURLESS_VARIETIES.find(key => needle === key || needle.includes(key))
+        || null;
 };
 
 // Splits on commas and semicolons, then on slashes -- but only where the slash
@@ -236,18 +269,27 @@ const matchStoneVariety = (token: string): string | null => {
 // splitting it blindly would turn a perfectly valid value into nothing.
 const splitColorTokens = (raw: string): string[] => {
     const tokens: string[] = [];
-    String(raw || '').split(/[,;]+/).forEach(part => {
-        const segment = part.trim();
-        if (!segment) return;
-        if (canonicalShopifyColor(segment)) {
-            tokens.push(segment);
+    // Always try the widest thing that resolves before breaking it up, at each
+    // level. "Turquoise/Aqua" and "Rose Gold" are single approved colours that
+    // contain a separator, so splitting them blindly turns a valid value into
+    // nothing.
+    const push = (segment: string, depth: number) => {
+        const t = segment.trim();
+        if (!t) return;
+        if (canonicalShopifyColor(t) || matchStoneVariety(t) === t.toLowerCase()) {
+            tokens.push(t);
             return;
         }
-        segment.split('/').forEach(sub => {
-            const t = sub.trim();
-            if (t) tokens.push(t);
-        });
-    });
+        if (depth === 0) { t.split('/').forEach(x => push(x, 1)); return; }
+        // Last resort: words. This is what lets a qualified name compose --
+        // "Pink Zebra" becomes Pink plus Zebra's own palette, and a variety that
+        // arrives next season resolves the moment its base name is in the table
+        // above, without an entry per qualifier.
+        const words = t.split(/\s+/);
+        if (words.length > 1) { words.forEach(w => push(w, 2)); return; }
+        tokens.push(t);
+    };
+    String(raw || '').split(/[,;]+/).forEach(part => push(part, 0));
     return tokens;
 };
 
@@ -293,7 +335,11 @@ const normalizeShopifyColors = (raw: string): { colors: AllowedShopifyColor[]; v
             const key = matchStoneVariety(token);
             if (key) {
                 varieties.push(key);
-                STONE_VARIETY_COLORS[key].forEach(c => {
+                // A place-name variety is recognised but has no palette of its
+                // own, so there is nothing to add -- the qualifier beside it is
+                // what carries the colour. Indexing blind here threw on the
+                // first such value and took the whole export down with it.
+                (STONE_VARIETY_COLORS[key] || []).forEach(c => {
                     if (!colors.includes(c)) colors.push(c);
                 });
             }
@@ -3652,7 +3698,13 @@ export function MainHeader() {
                 const varietyStr = 'Mexican Onyx';
 
                 const testStr = `${shape} ${shortDesc} ${productCategory} ${title} ${material}`;
-                const artOfDecorVal = 'TRUE';
+                // Left blank on purpose. This column adds the item to the
+                // wholesale catalogue, and it is the client's call which items
+                // belong there -- an empty cell lets them set it per item before
+                // importing, or fill the column in one go, whereas TRUE on every
+                // row made that decision for them the moment the header name was
+                // corrected and the column started taking effect.
+                const artOfDecorVal = '';
                 const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
                 const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
                 // Handle is the product's identity key in Shopify and must be
