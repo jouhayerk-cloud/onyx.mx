@@ -8,7 +8,7 @@
 // Regenerate with the Supabase MCP `generate_typescript_types`, or:
 //   npx supabase gen types typescript --project-id yircifkayqpuydfdqzlm
 //
-// Last generated: 2026-09-07 (regenerated after adding logistics.pay_req).
+// Last generated: 2026-09-07 (after adding logistics.pay_req and inventory.axo_icon_url).
 
 export type Json =
   | string
@@ -276,6 +276,7 @@ export type Database = {
         Row: {
           acquired_at: string | null
           acquired_by: string | null
+          axo_icon_url: string | null
           book_acquisition: number | null
           book_aq_code: string | null
           book_barcode: string | null
@@ -349,6 +350,7 @@ export type Database = {
         Insert: {
           acquired_at?: string | null
           acquired_by?: string | null
+          axo_icon_url?: string | null
           book_acquisition?: number | null
           book_aq_code?: string | null
           book_barcode?: string | null
@@ -422,6 +424,7 @@ export type Database = {
         Update: {
           acquired_at?: string | null
           acquired_by?: string | null
+          axo_icon_url?: string | null
           book_acquisition?: number | null
           book_aq_code?: string | null
           book_barcode?: string | null
