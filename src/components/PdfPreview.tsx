@@ -120,32 +120,32 @@ export const PdfPreview: React.FC<PdfPreviewProps> = ({ isOpen, onClose, docs, t
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[6500] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200 pointer-events-auto">
-            <div className="w-full max-w-6xl h-full max-h-[92vh] bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+        <div className="fixed inset-0 z-[6500] bg-[#0a0a0a] animate-in fade-in duration-150 pointer-events-auto">
+            <div className="w-full h-full bg-[#0a0a0a] overflow-hidden flex flex-col">
 
                 {/* Header */}
-                <div className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-white/10 bg-white/5 shrink-0">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="text-(--main-color) shrink-0" size={20} />
-                        <h3 className="text-base sm:text-lg font-black text-white tracking-wider truncate">{title}</h3>
+                <div className="flex items-center justify-between gap-3 px-3 py-1.5 border-b border-white/10 bg-white/5 shrink-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="text-(--main-color) shrink-0" size={14} />
+                        <h3 className="text-[11px] font-black text-white tracking-widest uppercase truncate">{title}</h3>
                     </div>
                     <button
                         onClick={onClose}
                         aria-label={tr("CLOSE")}
-                        className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
+                        className="w-7 h-7 shrink-0 flex items-center justify-center rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
                     >
-                        <X size={18} />
+                        <X size={15} />
                     </button>
                 </div>
 
                 {/* Tabs -- only when there is more than one document */}
                 {docs.length > 1 && (
-                    <div className="flex gap-1 px-3 sm:px-4 pt-3 border-b border-white/10 bg-black/40 shrink-0 overflow-x-auto">
+                    <div className="flex gap-1 px-2 border-b border-white/10 bg-black/40 shrink-0 overflow-x-auto">
                         {resolved.map(({ doc, bytes }) => (
                             <button
                                 key={doc.key}
                                 onClick={() => setActiveKey(doc.key)}
-                                className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-t-lg whitespace-nowrap transition-all border-b-2 ${
+                                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border-b-2 ${
                                     doc.key === activeKey
                                         ? 'bg-white/10 text-white border-(--main-color)'
                                         : 'text-white/40 hover:text-white/80 hover:bg-white/5 border-transparent'
@@ -229,7 +229,7 @@ export const PdfPreview: React.FC<PdfPreviewProps> = ({ isOpen, onClose, docs, t
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-t border-white/10 bg-white/5 shrink-0">
+                <div className="flex items-center justify-between gap-3 px-3 py-1.5 border-t border-white/10 bg-white/5 shrink-0">
                     <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest truncate">
                         {active.doc.filename}
                         {active.bytes > 0 && docs.length <= 1 && (
@@ -241,7 +241,7 @@ export const PdfPreview: React.FC<PdfPreviewProps> = ({ isOpen, onClose, docs, t
                         <button
                             onClick={download}
                             disabled={!active.url}
-                            className="px-5 py-2.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-lg flex items-center gap-2 hover:bg-emerald-500/30 transition-all disabled:opacity-40"
+                            className="px-4 py-1.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-md flex items-center gap-2 hover:bg-emerald-500/30 transition-all disabled:opacity-40"
                         >
                             <Download size={12} /> {tr("DOWNLOAD")}
                         </button>
