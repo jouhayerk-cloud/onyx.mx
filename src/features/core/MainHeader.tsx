@@ -115,7 +115,7 @@ import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { missingShopifyFields, SHOPIFY_REQUIRED_FIELDS, type ShopifyField } from '../../lib/aiContent';
 import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, toDriveDownloadUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor';
-import { lookupCanonicalColors, toShopifyColorValue } from '../../lib/colorVocabulary';
+import { lookupCanonicalColors } from '../../lib/colorVocabulary';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout, useDatabase } from '../../lib/hooks';
@@ -254,10 +254,11 @@ const MAX_SHOPIFY_COLORS = 3;
 // Case-insensitive match that emits the approved list's own casing, so "BLUE"
 // becomes "Blue" and "white" becomes "White" instead of being dropped.
 //
-// NOTE (open question): we emit "Multicolor" exactly as ALLOWED_SHOPIFY_COLORS
-// spells it. The client's own colour-options file spells it "Mulicolor"
-// (missing the t) and we have asked which spelling their Shopify metaobject
-// actually uses. Do not "correct" either spelling until they answer.
+// SETTLED: the client's colour-options file spells one value "Mulicolor",
+// missing the t. That is a typo in the file, not the name of their metaobject,
+// which is spelled correctly -- confirmed by Ramses. We emit "Multicolor"
+// exactly as ALLOWED_SHOPIFY_COLORS spells it, and there is no substitution
+// anywhere between this list and the sheet.
 const canonicalShopifyColor = (token: string): AllowedShopifyColor | null => {
     const needle = String(token || '').trim().toLowerCase();
     if (!needle) return null;
@@ -3696,7 +3697,7 @@ export function MainHeader() {
                 const colorsStr = (normalizedColor.colors.length > 0
                     ? normalizedColor.colors
                     : getStoneStyleColors(material, `${shape} ${shortDesc}`, color)
-                ).map(toShopifyColorValue).join(', ');
+                ).join(', ');
 
                 // custom.variety is the same for every item by decision, not by
                 // omission: everything in this catalogue is Mexican onyx and the
