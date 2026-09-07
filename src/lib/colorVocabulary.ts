@@ -78,6 +78,7 @@ export const CANONICAL_COLOR_MAP: Record<string, readonly ShopifyColor[]> = {
     'Purple Green':                ['Purple', 'Green'],
     'Red Pyramid':                 ['Red', 'Brown', 'Orange'],
     'Red Pyramid Jasper':          ['Red', 'Brown', 'Orange'],
+    'Serpentine':                  ['Tan', 'Brown'],
     'Tehuacan':                    ['White'],
     'Tehuacan Amber':              ['Orange', 'Yellow'],
     'Tehuacan Gray':               ['Gray'],
