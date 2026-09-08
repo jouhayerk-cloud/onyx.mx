@@ -420,12 +420,15 @@ export const ClientOverview: React.FC<{ isEmbedded?: boolean }> = ({ isEmbedded 
     }, [vendorSummaries, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items, financeData]);
 
     useEffect(() => {
-        setFinanceTotals({
+        // Functional form on purpose: TrackingPaymentsView writes pendingGroups
+        // into this same atom, and a plain object literal here would drop it.
+        setFinanceTotals(prev => ({
+            ...prev,
             queueLength: requisitions.length,
-            queueMxn: activeDestReqNetMXN,
+            queueMxn: Number(activeDestReqNetMXN) || 0,
             upcomingLength: comingPaymentsByVendor.length,
-            upcomingMxn: comingPaymentsByVendor.reduce((sum, g) => sum + g.total, 0)
-        });
+            upcomingMxn: comingPaymentsByVendor.reduce((sum, g) => sum + g.total, 0),
+        }));
     }, [requisitions.length, activeDestReqNetMXN, comingPaymentsByVendor, setFinanceTotals]);
 
     const attributeStats = useMemo(() => {

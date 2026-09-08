@@ -2479,7 +2479,7 @@ export function MainHeader() {
                                 const tagCell = row.getCell('tag_id');
                                 const vendorCode = tagIdStr.split('-')[0] || tagIdStr.substring(0, 2);
                                 const tagColor = getVendorColor(vendorCode);
-                                const rowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tagColor } };
+                                const rowFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tagColor } };
                                 const rowFont = { color: { argb: getContrastColor(tagColor) }, bold: true };
                                 
                                 row.getCell('tag_id').fill = rowFill;
@@ -3171,8 +3171,8 @@ export function MainHeader() {
                 const balRow = vSheet.addRow({});
                 balRow.getCell(14).value = 'Balance';
                 balRow.getCell(14).alignment = { horizontal: 'right' };
-                balRow.getCell(15).value = { formula: `O${subTotalRow.number}-O${tpRow.number}+O${chargesRow.number}` };
-                balRow.getCell(17).value = { formula: `Q${subTotalRow.number}-Q${tpRow.number}+Q${chargesRow.number}` };
+                balRow.getCell(15).value = { formula: `O${subTotalRow.number}-O${tpRow.number}+O${chargesRow.number}`, date1904: false };
+                balRow.getCell(17).value = { formula: `Q${subTotalRow.number}-Q${tpRow.number}+Q${chargesRow.number}`, date1904: false };
                 addBorders(balRow);
             });
 
