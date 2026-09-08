@@ -3,6 +3,23 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import { atom } from 'jotai';
+import type { PrimitiveAtom } from 'jotai';
+/**
+ * A nullable primitive atom.
+ *
+ * With `strictNullChecks` off, `null` is assignable to a function type, so
+ * jotai's read-only `atom(read)` overload matches `atom(null)` first and the
+ * result types as a read-only `Atom<T>`. Every `useSetAtom` on it then fails
+ * with "No overload matches this call", and every setter call with "This
+ * expression is not callable" -- seven errors across the app, none of which
+ * are really about the call sites.
+ *
+ * Pinning the overload here fixes all of them at the declaration. Delete this
+ * helper if `strictNullChecks` is ever turned on; it becomes unnecessary.
+ */
+export const nullableAtom = <T,>(): PrimitiveAtom<T | null> =>
+    atom(null) as unknown as PrimitiveAtom<T | null>;
+
 import { atomWithStorage, createJSONStorage } from 'jotai/utils';
 const sessionJSONStorage = createJSONStorage<any>(() => sessionStorage);
 import { colors, DEFAULT_EXCHANGE_RATE } from './consts';
@@ -124,7 +141,7 @@ export const isOfflineModeAtom = atomWithStorage<boolean>('offlineMode', false);
 export const syncStatusAtom = atom<SyncStatus>('idle');
 export const syncQueueCountAtom = atom<number>(0);
 export const lastSyncedAtAtom = atomWithStorage<string | null>('lastSyncedAt', null);
-export const syncProgressAtom = atom<SyncProgress | null>(null);
+export const syncProgressAtom = nullableAtom<SyncProgress>();
 // ────────────────────────────────────────────────────────────────────────────
 
 export const workflowStepAtom = atom<
@@ -379,7 +396,7 @@ export const isPaymentDestinationFilterOpenAtom = atom<boolean>(false);
 export const dispersalStatusFilterAtom = atom<'Requested' | 'Sent' | 'Dispersed' | 'All'>('All');
 export type PaymentsOverviewMode = 'extended' | 'minimal' | 'collapsed';
 export const paymentsOverviewModeAtom = atom<PaymentsOverviewMode>('collapsed');
-export const liveExchangeRateAtom = atom<number | null>(null);
+export const liveExchangeRateAtom = nullableAtom<number>();
 export const financeSearchTermAtom = atom('');
 export type PaymentCategory = 'All' | 'Acq' | 'Prod' | 'Monthly' | 'Sppl' | 'Labr' | 'Packing' | 'Oprt';
 export const paymentCategoryFilterAtom = atom<PaymentCategory>('All');
@@ -421,7 +438,7 @@ export const activeVendorsAtom = atom<string[]>([]);
 
 export const storeInventoryAtom = atom<any[]>([]);
 export const storeShoppingBagAtom = atom<any[]>([]);
-export const storeActiveUserAtom = atom<string | null>(null); // To view someone's store
+export const storeActiveUserAtom = nullableAtom<string>(); // To view someone's store
 export const isDummyModeAtom = atom<boolean>(false);
 
 export const workbookVersionAtom = atom<'825' | '326'>('825');
@@ -634,7 +651,7 @@ export const isPackingFiltersOpenAtom = atom<boolean>(false);
 export const isPackingNFCWizardOpenAtom = atom<boolean>(false);
 export const isPackingCrateWizardOpenAtom = atom<boolean>(false);
 export const isCratePackingManagerOpenAtom = atom<boolean>(false);
-export const packingManagerTargetCrateIdAtom = atom<string | null>(null);
+export const packingManagerTargetCrateIdAtom = nullableAtom<string>();
 export const isPaymentWizardOpenAtom = atom<boolean>(false);
 
 // Trucking Module Atoms
@@ -653,7 +670,7 @@ export const truckStatsIsCompactAtom = atomWithStorage('truck_stats_is_compact',
 
 export const logisticsDocsAtom = atom<any[]>([]);
 export const truckingPositionsAtom = atomWithStorage<Record<string, any>>('truckingPositions', {});
-export const truckingSelectedIdAtom = atom<string | null>(null);
+export const truckingSelectedIdAtom = nullableAtom<string>();
 export const truckingReadyFieldsAtom = atomWithStorage<any>('truckingReadyFields', {
     manifestId: '',
     tractorNumber: '',
@@ -675,7 +692,7 @@ export const truckingReadyFieldsAtom = atomWithStorage<any>('truckingReadyFields
 // `atom(read: Read<Value>)` overload's function parameter. Narrowing the value
 // type here does not help; enabling strictNullChecks would, and is its own
 // project.
-export const truckingRecalledShipmentAtom = atom<any>(null);
+export const truckingRecalledShipmentAtom = nullableAtom<any>();
 export const truckingZoomAtom = atom<number>(1);
 
 // Derived Trucking Stats
@@ -769,7 +786,7 @@ export const picoDevicesAtom = atomWithStorage<Record<string, PicoDevice>>('pico
   }
 });
 export const activePicoDeviceAtom = atom<string | null>('onyxchan-01');
-export const picoRemoteCommandAtom = atom<{deviceId: string, command: string, payload: any} | null>(null);
+export const picoRemoteCommandAtom = nullableAtom<{deviceId: string, command: string, payload: any}>();
 
 // Defaults ON while the 826 season is still empty: with it off, "hide archive"
 // correctly resolves to an empty list and the app looks broken on a fresh browser.

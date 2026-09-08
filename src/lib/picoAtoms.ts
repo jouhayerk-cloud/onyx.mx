@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import { atom } from 'jotai';
+import { nullableAtom } from './atoms';
 import { atomWithStorage } from 'jotai/utils';
 
 export interface PicoDevice {
@@ -44,7 +45,7 @@ export interface PicoScanEvent {
 
 // Persistent or in-memory atoms for PicoBridge
 export const picoDevicesAtom = atom<PicoDevice[]>([]);
-export const activePicoSessionAtom = atom<PicoSession | null>(null);
-export const picoRealtimePayloadAtom = atom<PicoScanEvent | null>(null);
+export const activePicoSessionAtom = nullableAtom<PicoSession>();
+export const picoRealtimePayloadAtom = nullableAtom<PicoScanEvent>();
 export const picoWorkflowStateAtom = atom<'idle' | 'labeling' | 'packing' | 'cataloging' | 'tracking'>('idle');
 export const picoRssiThresholdAtom = atomWithStorage<number>('picoRssiThreshold', -65);

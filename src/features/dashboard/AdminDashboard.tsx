@@ -119,15 +119,17 @@ const FinancialDonutChart = ({
             data: data
         }],
         graphic: [{
-            type: 'text',
-            left: 'center',
-            top: 'center',
+            type: 'text' as const,
+            left: 'center' as const,
+            top: 'center' as const,
             style: {
                 text: `${mode}\n${displayTotal >= 1000000 ? (displayTotal/1000000).toFixed(1)+'M' : (displayTotal/1000).toFixed(0)+'K'}`,
-                textAlign: 'center',
+                // zrender's text style property is `align`; `textAlign` is not
+                // one of its options and was being ignored outright.
+                align: 'center' as const,
                 fill: 'var(--text-color)',
                 fontSize: 14,
-                fontWeight: '900',
+                fontWeight: 900,
                 fontFamily: 'monospace'
             }
         }]
@@ -509,8 +511,8 @@ export function AdminDashboard() {
     const pieOption = useMemo<EChartsOption>(() => ({
         tooltip: { trigger: 'item' },
         series: [{
-            type: 'pie', radius: ['40%', '70%'],
-            data: attributeStats.topCM.map(([label, count]) => ({ name: label, value: count })),
+            type: 'pie', radius: ['40%', '70%'] as [string, string],
+            data: attributeStats.topCM.map(([label, count]) => ({ name: String(label), value: Number(count) })),
             itemStyle: { borderRadius: 10, borderColor: '#000', borderWidth: 5 },
             label: { show: false }
         }],
