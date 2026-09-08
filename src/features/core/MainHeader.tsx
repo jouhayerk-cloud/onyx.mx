@@ -3463,8 +3463,16 @@ export function MainHeader() {
             workbook.created = new Date();
             workbook.modified = new Date();
 
-            const sheetName = `Shopify Export`;
-            const sheet = workbook.addWorksheet(sheetName);
+            // Two importable sheets, split by what the product actually ships
+            // as its image. Both carry the identical Matrixify header row, so
+            // either can be imported on its own -- the split is for review, not
+            // a change of format. Items whose only image is the generated
+            // axonometric icon are the ones still owed a photograph, and Grant
+            // asked to see them apart from the finished ones.
+            const sheet = workbook.addWorksheet('Shopify Export (Photos)');
+            const iconSheet = workbook.addWorksheet('Shopify Export (Icon Only)', {
+                properties: { tabColor: { argb: 'FFB45309' } }
+            });
 
             // Shopify Headers (Matrixify Multi-Image Format)
             //
@@ -3502,6 +3510,8 @@ export function MainHeader() {
 
             sheet.addRow(sanitizeExcelRow(headers));
             sheet.getRow(1).font = { bold: true };
+            iconSheet.addRow(sanitizeExcelRow(headers));
+            iconSheet.getRow(1).font = { bold: true };
 
             // Helper for numbers
             const parseNum = (val: any) => {
@@ -3565,6 +3575,37 @@ export function MainHeader() {
                 else notReadyItems.push({ item, missing });
             });
 
+            /**
+             * Which picture this item actually ships with, reported rather than
+             * inferred: the same two collectors the export itself uses are run,
+             * and the answer is whichever one won.
+             *
+             *   processed  the hero was substituted out of processed_media_urls,
+             *              so what goes to Shopify is the background-replaced shot
+             *   uploaded   no substitution -- the original photograph ships
+             *   icon       no photograph at all; the Image Src falls back to the
+             *              rendered axonometric icon
+             *   none       no photograph and no icon yet -- this item imports
+             *              with an empty Image Src
+             */
+            const classifyMedia = (item: any): 'processed' | 'uploaded' | 'icon' | 'none' => {
+                const nn = normalizeInventoryData(item.data || item);
+                const shipped = collectExportImages(nn) || [];
+                if (shipped.length === 0) {
+                    return String(nn.axoIconUrl || nn.axo_icon_url || '').trim() ? 'icon' : 'none';
+                }
+                const originals = collectAllImages(nn, { dropVideos: true }) || [];
+                // collectExportImages returns the same list with processed URLs
+                // swapped in, so a hero that differs from the original hero is a
+                // substitution and nothing else.
+                return shipped[0] && originals[0] && shipped[0] !== originals[0] ? 'processed' : 'uploaded';
+            };
+
+            // Media class per emitted row, parallel to allExportRows. Recorded
+            // as the rows are built rather than recomputed later, so the sheet
+            // split and the Report's Media column can never disagree.
+            const rowMedia: string[] = [];
+
             const allExportRows: any[][] = [];
 
             // Handle collision bookkeeping. One product spans several rows in the
@@ -3577,6 +3618,7 @@ export function MainHeader() {
                 const rawData = item.data || item;
                 const norm = normalizeInventoryData(rawData);
                 const calc = calculateCodesAndPrices(norm, bookRate, '326');
+                const itemMedia = classifyMedia(item);
                 
                 const shape = norm.shape || '';
                 const shortDesc = norm.shortDescription || norm.type || '';
@@ -3829,6 +3871,7 @@ export function MainHeader() {
                     ];
 
                     allExportRows.push(rowData);
+                    rowMedia.push(itemMedia);
                     rowsForThisItem.push(allExportRows.length - 1);
                 });
 
@@ -3894,12 +3937,25 @@ export function MainHeader() {
             const VENDOR_COL = 3;
             const CATEGORY_COL = 29;
             const key = (row: any[], col: number) => String(row[col] || '').toLowerCase();
-            allExportRows.sort((a, b) =>
-                key(a, VENDOR_COL).localeCompare(key(b, VENDOR_COL)) ||
-                key(a, CATEGORY_COL).localeCompare(key(b, CATEGORY_COL))
+
+            // Sort rows and their media class together. Sorting allExportRows on
+            // its own would leave rowMedia pointing at the wrong rows, which is
+            // the kind of bug that produces a plausible-looking file.
+            const paired = allExportRows.map((row, i) => ({ row, media: rowMedia[i] }));
+            paired.sort((a, b) =>
+                key(a.row, VENDOR_COL).localeCompare(key(b.row, VENDOR_COL)) ||
+                key(a.row, CATEGORY_COL).localeCompare(key(b.row, CATEGORY_COL))
             );
-            
-            allExportRows.forEach(r => sheet.addRow(sanitizeExcelRow(r)));
+
+            // Handles were disambiguated across the whole selection above, before
+            // this split -- a Shopify handle is unique per store, not per sheet,
+            // so partitioning first would let a photo item and an icon item claim
+            // the same handle and silently merge on import.
+            const photoRows = paired.filter(p => p.media !== 'icon' && p.media !== 'none').map(p => p.row);
+            const iconRows  = paired.filter(p => p.media === 'icon' || p.media === 'none').map(p => p.row);
+
+            photoRows.forEach(r => sheet.addRow(sanitizeExcelRow(r)));
+            iconRows.forEach(r => iconSheet.addRow(sanitizeExcelRow(r)));
 
             // --- SHEET 2: items not ready for Shopify, in Workbook V2 format ---
             // Flat: one sheet covering every vendor, unlike the V2 master export
@@ -4020,32 +4076,6 @@ export function MainHeader() {
                 { header: '', key: 'e', width: 12 },
             ];
 
-            /**
-             * Which picture this item actually ships with, reported rather than
-             * inferred: the same two collectors the export itself uses are run,
-             * and the answer is whichever one won.
-             *
-             *   processed  the hero was substituted out of processed_media_urls,
-             *              so what goes to Shopify is the background-replaced shot
-             *   uploaded   no substitution -- the original photograph ships
-             *   icon       no photograph at all; the Image Src falls back to the
-             *              rendered axonometric icon
-             *   none       no photograph and no icon yet -- this item imports
-             *              with an empty Image Src
-             */
-            const classifyMedia = (item: any): 'processed' | 'uploaded' | 'icon' | 'none' => {
-                const nn = normalizeInventoryData(item.data || item);
-                const shipped = collectExportImages(nn) || [];
-                if (shipped.length === 0) {
-                    return String(nn.axoIconUrl || nn.axo_icon_url || '').trim() ? 'icon' : 'none';
-                }
-                const originals = collectAllImages(nn, { dropVideos: true }) || [];
-                // collectExportImages returns the same list with processed URLs
-                // swapped in, so a hero that differs from the original hero is a
-                // substitution and nothing else.
-                return shipped[0] && originals[0] && shipped[0] !== originals[0] ? 'processed' : 'uploaded';
-            };
-
             const missingCounts = SHOPIFY_REQUIRED_FIELDS.map(f => ({
                 label: tr(f.label),
                 n: notReadyItems.filter(x => x.missing.indexOf(f.key) !== -1).length,
@@ -4066,6 +4096,8 @@ export function MainHeader() {
                 ['Shopify ready', readyItems.length],
                 ['Not ready (Workbook V2)', notReadyItems.length],
                 ['Shopify rows written', allExportRows.length],
+                ['  on Photos sheet', photoRows.length],
+                ['  on Icon Only sheet', iconRows.length],
                 ['', ''],
                 ['', ''],
                 ['Media', 'items'],
@@ -4100,7 +4132,16 @@ export function MainHeader() {
             };
             readyItems.forEach((item: any) => {
                 const info = describeItem(item);
-                repSheet.addRow(sanitizeExcelRow({ a: info.tag, b: info.shape, c: 'Shopify Export', d: '-', e: classifyMedia(item) }));
+                const media = classifyMedia(item);
+                repSheet.addRow(sanitizeExcelRow({
+                    a: info.tag,
+                    b: info.shape,
+                    // Name the sheet the item actually landed on, so the Report
+                    // can be used to find a row rather than just to count them.
+                    c: (media === 'icon' || media === 'none') ? 'Shopify Export (Icon Only)' : 'Shopify Export (Photos)',
+                    d: '-',
+                    e: media,
+                }));
             });
             notReadyItems.forEach((entry) => {
                 const info = describeItem(entry.item);
