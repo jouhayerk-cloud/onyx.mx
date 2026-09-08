@@ -3481,12 +3481,15 @@ export function MainHeader() {
             // column is dropped. Two names were taken from Shopify's generic
             // CSV docs rather than from Rare Earth Gallery's own template
             // ("revised import headers - added.xlsx") and are corrected here:
-            //   'Body (HTML)'             -> 'Body HTML'
-            //   'Included / Art Of Decor' -> 'Included / Art Of Décor'  (U+00E9)
-            // The second is the column that adds items to their wholesale
-            // catalog, so the mismatch was not cosmetic. Keep the accented e as
-            // a real UTF-8 character -- do not escape it. Header text only; the
-            // row builder's value order is unchanged.
+            //   'Body (HTML)' -> 'Body HTML'
+            // The wholesale-catalog column is 'Included / Art Of Decor', plain
+            // ASCII. An earlier change here spelled it with an accented e on the
+            // belief that the client's template did; Ramses confirmed on
+            // 8 Sep 2026 that it does not, after hand-correcting the header in a
+            // generated file. Matrixify matches columns by header TEXT, so the
+            // accent silently dropped the column that adds items to the
+            // wholesale catalog -- not cosmetic. Header text only; the row
+            // builder's value order is unchanged.
             const headers = [
                 'Handle', 'Title', 'Body HTML', 'Vendor', 'Type', 'Option1 Name', 'Option1 Value', 'Variant Position', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
                 'Variant Price', 'Variant Grams', 'Image Src', 'Image Command', 'Image Position', 'Variant Image', 
@@ -3505,7 +3508,7 @@ export function MainHeader() {
                 'Metafield: reg.designer', 'Status', 'Published', 'Published Scope', 
                 'Variant Taxable', 'Variant Inventory Tracker', 'Variant Inventory Policy', 
                 'Variant Fulfillment Service', 'Variant Requires Shipping',
-                'Included / Art Of Décor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights'
+                'Included / Art Of Decor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights'
             ];
 
             sheet.addRow(sanitizeExcelRow(headers));
