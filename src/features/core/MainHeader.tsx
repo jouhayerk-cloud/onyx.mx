@@ -4020,6 +4020,32 @@ export function MainHeader() {
                 { header: '', key: 'e', width: 12 },
             ];
 
+            /**
+             * Which picture this item actually ships with, reported rather than
+             * inferred: the same two collectors the export itself uses are run,
+             * and the answer is whichever one won.
+             *
+             *   processed  the hero was substituted out of processed_media_urls,
+             *              so what goes to Shopify is the background-replaced shot
+             *   uploaded   no substitution -- the original photograph ships
+             *   icon       no photograph at all; the Image Src falls back to the
+             *              rendered axonometric icon
+             *   none       no photograph and no icon yet -- this item imports
+             *              with an empty Image Src
+             */
+            const classifyMedia = (item: any): 'processed' | 'uploaded' | 'icon' | 'none' => {
+                const nn = normalizeInventoryData(item.data || item);
+                const shipped = collectExportImages(nn) || [];
+                if (shipped.length === 0) {
+                    return String(nn.axoIconUrl || nn.axo_icon_url || '').trim() ? 'icon' : 'none';
+                }
+                const originals = collectAllImages(nn, { dropVideos: true }) || [];
+                // collectExportImages returns the same list with processed URLs
+                // swapped in, so a hero that differs from the original hero is a
+                // substitution and nothing else.
+                return shipped[0] && originals[0] && shipped[0] !== originals[0] ? 'processed' : 'uploaded';
+            };
+
             const missingCounts = SHOPIFY_REQUIRED_FIELDS.map(f => ({
                 label: tr(f.label),
                 n: notReadyItems.filter(x => x.missing.indexOf(f.key) !== -1).length,
@@ -4062,32 +4088,6 @@ export function MainHeader() {
             const hdr = repSheet.addRow({ a: 'Tag ID', b: 'Shape / Type', c: 'Destination', d: 'Missing for Shopify', e: 'Media' });
             hdr.font = { bold: true };
             hdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
-
-            /**
-             * Which picture this item actually ships with, reported rather than
-             * inferred: the same two collectors the export itself uses are run,
-             * and the answer is whichever one won.
-             *
-             *   processed  the hero was substituted out of processed_media_urls,
-             *              so what goes to Shopify is the background-replaced shot
-             *   uploaded   no substitution -- the original photograph ships
-             *   icon       no photograph at all; the Image Src falls back to the
-             *              rendered axonometric icon
-             *   none       no photograph and no icon yet -- this item imports
-             *              with an empty Image Src
-             */
-            const classifyMedia = (item: any): 'processed' | 'uploaded' | 'icon' | 'none' => {
-                const nn = normalizeInventoryData(item.data || item);
-                const shipped = collectExportImages(nn) || [];
-                if (shipped.length === 0) {
-                    return String(nn.axoIconUrl || nn.axo_icon_url || '').trim() ? 'icon' : 'none';
-                }
-                const originals = collectAllImages(nn, { dropVideos: true }) || [];
-                // collectExportImages returns the same list with processed URLs
-                // swapped in, so a hero that differs from the original hero is a
-                // substitution and nothing else.
-                return shipped[0] && originals[0] && shipped[0] !== originals[0] ? 'processed' : 'uploaded';
-            };
 
             const describeItem = (item: any) => {
                 const d = item.data || item;
