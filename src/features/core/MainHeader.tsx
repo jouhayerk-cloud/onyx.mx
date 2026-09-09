@@ -3508,7 +3508,15 @@ export function MainHeader() {
                 'Metafield: reg.designer', 'Status', 'Published', 'Published Scope', 
                 'Variant Taxable', 'Variant Inventory Tracker', 'Variant Inventory Policy', 
                 'Variant Fulfillment Service', 'Variant Requires Shipping',
-                'Included / Art Of Decor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights'
+                'Included / Art Of Decor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights',
+                // Multi-location inventory, per Grant on 9 Sep: Stefi found the
+                // products imported with no quantity at all and only the REG
+                // location stocked. Matrixify keys the location off the header
+                // text after the colon, so this name has to match the Shopify
+                // location exactly. Appended rather than inserted -- rowData is
+                // positional, and inserting mid-array silently shifts every
+                // column after it.
+                'Inventory Available: Art Of Decor'
             ];
 
             sheet.addRow(sanitizeExcelRow(headers));
@@ -3872,6 +3880,29 @@ export function MainHeader() {
                         fountainsVal,
                         pendantsVal
                     ];
+
+                    // The stock figure belongs to the variant, so it goes on the
+                    // product row only -- see the blanking pass just below.
+                    rowData.push(idx === 0 ? (Number(norm.quantity) || 1) : '');
+
+                    // Matrixify reads ANY Variant... or Option... value on a row
+                    // as a variant definition. Repeating them on the extra image
+                    // rows made it try to add a second "Default Title" variant to
+                    // a product that already had one, which is what failed 62 of
+                    // 201 products in import job #742085718. An image row carries
+                    // its Handle and its image columns and nothing else.
+                    //
+                    // Driven off the header names rather than a hand-kept list of
+                    // indexes, so a column added later is covered automatically.
+                    if (idx > 0) {
+                        headers.forEach((h, i) => {
+                            if (h.indexOf('Variant') === 0 ||
+                                h.indexOf('Option') === 0 ||
+                                h.indexOf('Inventory Available') === 0) {
+                                rowData[i] = '';
+                            }
+                        });
+                    }
 
                     allExportRows.push(rowData);
                     rowMedia.push(itemMedia);
