@@ -3516,13 +3516,7 @@ export function MainHeader() {
                 // location exactly. Appended rather than inserted -- rowData is
                 // positional, and inserting mid-array silently shifts every
                 // column after it.
-                'Inventory Available: Art Of Decor',
-                // Grant confirmed on 9 Sep that both locations live in one store.
-                // A location column SETS the quantity at that location, so the
-                // same figure in both would double the stock -- these are one-off
-                // pieces and they are in one place. The stock sits at Art Of
-                // Decor and REG is stated as 0 rather than left unsaid.
-                'Inventory Available: REG'
+                'Inventory Available: Art Of Decor'
             ];
 
             sheet.addRow(sanitizeExcelRow(headers));
@@ -3889,9 +3883,7 @@ export function MainHeader() {
 
                     // The stock figure belongs to the variant, so it goes on the
                     // product row only -- see the blanking pass just below.
-                    // Art Of Decor holds the stock; REG is stated as zero.
                     rowData.push(idx === 0 ? (Number(norm.quantity) || 1) : '');
-                    rowData.push(idx === 0 ? 0 : '');
 
                     // Matrixify reads ANY Variant... or Option... value on a row
                     // as a variant definition. Repeating them on the extra image
