@@ -316,6 +316,36 @@ const splitColorTokens = (raw: string): string[] => {
  * Also reports the first stone variety it recognised, so the caller can put
  * that name in the custom.variety column instead of discarding it.
  */
+// Colours the STORE cannot accept, mapped to the nearest one it can.
+//
+// "Turquoise/Aqua" is part of Shopify's standard colour taxonomy, so it is a
+// legitimate value and the classifier is right to produce it. Rare Earth
+// Gallery's store simply has no metaobject for it, and a
+// list.metaobject_reference silently drops a value it cannot resolve -- the
+// import reports success and the field comes through empty. Grant confirmed on
+// 9 Sep that Blue resolves and Turquoise/Aqua does not.
+//
+// This is a fact about their store, not about the stone, so it is applied here
+// at the export boundary. Everywhere else in the app aqua serpentine is still
+// aqua: the swatches, the catalogue filters and the AI classifier are unchanged.
+// If they add the metaobject later, deleting this entry is the whole rollback.
+const STORE_COLOR_SUBSTITUTIONS: Partial<Record<AllowedShopifyColor, AllowedShopifyColor>> = {
+    'Turquoise/Aqua': 'Blue',
+};
+
+/** Substitutes unsupported colours and drops the duplicate that creates -- an
+ *  item already carrying Blue must not come out as "Blue, Blue". */
+const applyStoreColorSubstitutions = (
+    colors: readonly AllowedShopifyColor[],
+): AllowedShopifyColor[] => {
+    const out: AllowedShopifyColor[] = [];
+    colors.forEach(c => {
+        const mapped = STORE_COLOR_SUBSTITUTIONS[c] || c;
+        if (out.indexOf(mapped) === -1) out.push(mapped);
+    });
+    return out;
+};
+
 const normalizeShopifyColors = (raw: string): { colors: AllowedShopifyColor[]; variety: string | null } => {
     const colors: AllowedShopifyColor[] = [];
     const varieties: string[] = [];
@@ -3756,9 +3786,14 @@ export function MainHeader() {
                         ? String(norm.generatedColor).trim()
                         : '';
                 const normalizedColor = normalizeShopifyColors(rawColorSource);
-                const colorsStr = (normalizedColor.colors.length > 0
-                    ? normalizedColor.colors
-                    : getStoneStyleColors(material, `${shape} ${shortDesc}`, color)
+                // Applied to the RESULT rather than inside the normaliser, so it
+                // also catches the getStoneStyleColors fallback -- that path
+                // returns ["Turquoise/Aqua", "Brown", "Tan"] for every aqua stone
+                // and is exactly where most of these values come from.
+                const colorsStr = applyStoreColorSubstitutions(
+                    normalizedColor.colors.length > 0
+                        ? normalizedColor.colors
+                        : getStoneStyleColors(material, `${shape} ${shortDesc}`, color)
                 ).join(', ');
 
                 // custom.variety is the same for every item by decision, not by
