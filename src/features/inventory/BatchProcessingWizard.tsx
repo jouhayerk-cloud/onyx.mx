@@ -48,6 +48,7 @@ import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { vendors } from '../../lib/consts';
 import { findDonor, isUsableDonor, TIER_LABEL } from '../../lib/variationMatch';
 import { generateAxonometricDataUrl, resolveItemColor } from '../../lib/axonometric';
+import { validateCopy, describeIssues } from '../../lib/copyValidation';
 import type { DonorCandidate } from '../../lib/variationMatch';
 import { tr } from '../../lib/i18n';
 
@@ -1144,25 +1145,64 @@ RULES
 - generatedType should match the template's unless the new item's shape or type
   clearly indicates otherwise.`;
 
-            const data = await callGemini(prompt, null, 40000, 'gemini-2.5-flash', {
-                type: 'object',
-                properties: {
-                    description: { type: 'string' },
-                    marketingDescription: { type: 'string' },
-                    dominantColors: { type: 'array', items: { type: 'string' } },
-                    generatedType: { type: 'string' },
-                },
-                required: ['description', 'marketingDescription', 'dominantColors', 'generatedType'],
-            });
+            const askModel = async (extra: string) => {
+                const data = await callGemini(prompt + extra, null, 40000, 'gemini-2.5-flash', {
+                    type: 'object',
+                    properties: {
+                        description: { type: 'string' },
+                        marketingDescription: { type: 'string' },
+                        dominantColors: { type: 'array', items: { type: 'string' } },
+                        generatedType: { type: 'string' },
+                    },
+                    required: ['description', 'marketingDescription', 'dominantColors', 'generatedType'],
+                });
+                let text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) throw new Error('Empty response from AI');
+                if (text.includes('```')) {
+                    const m = text.match(/```(?:json)?([\s\S]*?)```/);
+                    text = m ? m[1].trim() : text.replace(/```(json)?|```/g, '').trim();
+                }
+                const out = JSON.parse(text);
+                if (!out.description) throw new Error('Invalid output format from AI');
+                return out;
+            };
 
-            let resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!resultText) throw new Error('Empty response from AI');
-            if (resultText.includes('```')) {
-                const m = resultText.match(/```(?:json)?([\s\S]*?)```/);
-                resultText = m ? m[1].trim() : resultText.replace(/```(json)?|```/g, '').trim();
+            // The record is the authority. The prompt already forbids
+            // contradicting it, and on 8 Sep the model contradicted it anyway
+            // on 18 of 223 items -- wrong stone, wrong colour, the donor's
+            // dimensions. Asking is not checking, so check.
+            const recordForCheck = {
+                color: self.color,
+                material: self.material,
+                widthCm: self.widthCm,
+                heightCm: self.heightCm,
+                lengthCm: self.lengthCm,
+                quantity: Number(itemData.quantity ?? n.quantity ?? 1) || 1,
+            };
+
+            let parsed = await askModel('');
+            let issues = validateCopy(parsed.description, parsed.marketingDescription, recordForCheck);
+
+            if (issues.length > 0) {
+                logOp(op.id, `[ WARN ] Draft contradicts the record; asking again`);
+                issues.forEach(i => logOp(op.id, `         ${i.message}`));
+                updateOp(op.id, { progress: 55, stepLabel: 'Correcting the draft' });
+                parsed = await askModel(
+                    `\n\nYour previous answer was rejected because it disagreed with this ` +
+                    `item's inventory record:\n${describeIssues(issues)}\n` +
+                    `Write it again. The record above is correct and your description ` +
+                    `must not contradict it.`);
+                issues = validateCopy(parsed.description, parsed.marketingDescription, recordForCheck);
             }
-            const parsed = JSON.parse(resultText);
-            if (!parsed.description) throw new Error('Invalid output format from AI');
+
+            if (issues.length > 0) {
+                // Refusing is the right outcome. Writing copy that contradicts
+                // the record is what created this week's cleanup.
+                logOp(op.id, `[ FAIL ] Rejected after retry -- item left unchanged`);
+                issues.forEach(i => logOp(op.id, `         ${i.message}`));
+                updateOp(op.id, { status: 'failed', progress: 0, stepLabel: undefined });
+                return;
+            }
 
             updateOp(op.id, {
                 status: 'completed',
