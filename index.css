@@ -2,6 +2,11 @@
 @import "tailwindcss";
 @import "./src/styles/tokens.css";
 @import "./src/styles/slab.css";
+/* Last, and deliberately unscoped: density.css owns column tracks and type
+   metrics, which are not a stylistic position and so apply under ROCK and
+   SLAB alike. It sets no backgrounds, shadows or borders, so it cannot
+   contradict slab.css above it. */
+@import "./src/styles/density.css";
 
 html, body, #root {
   height: 100%;
