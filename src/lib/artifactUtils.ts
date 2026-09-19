@@ -37,6 +37,46 @@ async function fetchPublicArtifact(tagId: string): Promise<any | null> {
     }
 }
 
+/**
+ * The public record for one tag — the ONLY data the tag page renders, for every
+ * visitor, signed in or not. It is assembled by the `artifact` edge function on
+ * the server: processed photographs only (never a raw upload), the AI title,
+ * body, classification and colours, the specs, the AQ / LD codes and USD retail.
+ * Acquisition cost, landed cost and every MXN figure are never selected there,
+ * so they cannot reach this page by any path — which a signed-in visitor's
+ * `select('*')` through resolveArtifact used to allow.
+ */
+export interface PublicArtifactRecord {
+    tag: string;
+    vendor: string;
+    workbook: string;
+    quantity: number;
+    name: string;
+    stone: string;
+    title: string | null;
+    body: string | null;
+    type: string[];
+    colors: string[];
+    specs: { widthCm: number | null; heightCm: number | null; lengthCm: number | null; weightKg: number | null };
+    codes: { aq: string | null; ld: string | null };
+    retailUsd: number | null;
+    images: string[];
+    icon: string | null;
+}
+
+export async function fetchPublicArtifactRecord(tagId: string): Promise<PublicArtifactRecord | null> {
+    if (!tagId) return null;
+    try {
+        const res = await fetch(`${ARTIFACT_FN}?tagid=${encodeURIComponent(tagId)}&format=json`);
+        if (!res.ok) return null;
+        const body = await res.json();
+        return body?.found && body.artifact ? (body.artifact as PublicArtifactRecord) : null;
+    } catch (err) {
+        console.error('[artifact] public record lookup failed:', err);
+        return null;
+    }
+}
+
 export async function resolveArtifact(tagId: string, options: { exchangeRate?: number; workbookPrefix?: string } = {}): Promise<ResolvedArtifact | null> {
     if (!tagId) return null;
     const { exchangeRate = DEFAULT_EXCHANGE_RATE, workbookPrefix = '326' } = options;

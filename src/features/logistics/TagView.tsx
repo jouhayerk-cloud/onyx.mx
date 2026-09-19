@@ -1,16 +1,12 @@
-import React, { useMemo, useEffect, useState, useCallback } from 'react';
-import { useAtomValue } from 'jotai';
-import { exchangeRateAtom, workbookVersionAtom } from '../../lib/atoms';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, cmToImperial, formatWeightImperialOnly } from '../../lib/utils';
-import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
-import { supabase } from '../../lib/supabase';
-import { resolveArtifact, ResolvedArtifact } from '../../lib/artifactUtils';
-import {
-    Package, Loader2, ChevronLeft, ChevronRight, X,
-    ZoomIn, Share2, Maximize2, Maximize, Ruler, Scale, Layers
-} from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { formatWeightImperialOnly, formatDimensionsImperialOnly } from '../../lib/utils';
+import { vendors } from '../../lib/consts';
+import { COLOR_PALETTE } from '../../lib/colorExtractor';
+import { fetchPublicArtifactRecord, PublicArtifactRecord } from '../../lib/artifactUtils';
+import { Package, ChevronLeft, ChevronRight, X, Share2, Maximize2, Check } from 'lucide-react';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import { tr } from '../../lib/i18n';
+import './TagView.css';
 
 interface TagViewProps {
     tagId: string;
@@ -115,306 +111,272 @@ const FullscreenViewer: React.FC<{
     );
 };
 
-// ── Dynamic Image Grid (mirrored from gallery card) ─────────────────────────
-const ImageGrid: React.FC<{ images: string[]; onOpenViewer: (idx: number) => void }> = ({ images, onOpenViewer }) => {
-    const total = images.length;
-    const MAX_DISPLAY = 24;
-    const visibleUrls = images.slice(0, MAX_DISPLAY);
-    const remaining = total - MAX_DISPLAY;
+// ── The public tag page ─────────────────────────────────────────────────────
+//
+// What someone sees when they scan the QR on a piece. It renders ONE thing: the
+// curated public record the `artifact` edge function assembles on the server
+// (fetchPublicArtifactRecord) — for every visitor, signed in or not. That record
+// carries processed photographs only, the AI title / body / classification /
+// colours, the specs, the AQ and LD codes and USD retail, and nothing else: no
+// MXN figure, no acquisition or landed cost, no raw upload. Signed-in visitors
+// used to reach this page through resolveArtifact's `select('*')`, which put the
+// whole row — cost included — in the browser; they now get the same record as
+// everyone else, because a printed tag is public however it is opened.
+//
+// Neumorphic: one warm stone surface, raised and pressed forms lit from the top
+// left, a hairline on every control for contrast. The page's own styles live in
+// TagView.css, scoped to #tagview.
 
-    if (total === 0) return (
-        <div className="w-full aspect-video bg-black/40 flex items-center justify-center">
-            <Package size={80} strokeWidth={0.5} className="opacity-10 text-white" />
-        </div>
-    );
+const fmtUsd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+const imperialDims = (w: number | null, h: number | null, l: number | null) =>
+    formatDimensionsImperialOnly(w, h, l).split(' x ').map(p => p.replace(/ /g, ' ')).join(' × ');
+const metricDims = (w: number | null, h: number | null, l: number | null) =>
+    [w, h, l].filter(v => v != null).join(' × ');
 
-    if (total === 1) return (
-        <div className="relative w-full bg-black/40 cursor-zoom-in overflow-hidden" onClick={() => onOpenViewer(0)}>
-            <img src={visibleUrls[0]} className="w-full h-auto max-h-[85vh] object-contain transition-transform duration-700 hover:scale-[1.02]" />
-            <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <ZoomIn size={14} className="text-white/60" />
-            </div>
-        </div>
-    );
-
-    if (total <= 3) return (
-        <div className={`grid gap-px bg-black/60 ${total === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-            {visibleUrls.map((url, i) => (
-                <div key={i} className="relative overflow-hidden bg-black/20 cursor-zoom-in group/img" onClick={() => onOpenViewer(i)}>
-                    <img src={url} className="w-full h-auto max-h-[70vh] object-contain transition-transform duration-700 group-hover/img:scale-105" />
-                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors" />
-                </div>
-            ))}
-        </div>
-    );
-
-    // Dense grid for 4+ images
-    const gridCols = total <= 6 ? 'grid-cols-3' : total <= 12 ? 'grid-cols-4' : 'grid-cols-4 sm:grid-cols-6';
-    const aspectRatio = total > 18 ? 'auto' : total > 6 ? '16/9' : '4/3';
-
-    return (
-        <div className={`grid gap-px bg-black/60 ${gridCols}`} style={{ aspectRatio }}>
-            {visibleUrls.map((url, i) => (
-                <div key={i} className="relative overflow-hidden aspect-square cursor-zoom-in group/img" onClick={() => onOpenViewer(i)}>
-                    <img src={url} className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
-                    {i === visibleUrls.length - 1 && remaining > 0 && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                            <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-2xl font-black text-white">+{remaining}</span>
-                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">{tr("More")}</span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
+const SWATCHES: Record<string, string> = COLOR_PALETTE.reduce((acc, c) => {
+    acc[c.name.toLowerCase()] = `rgb(${c.rgb.join(', ')})`;
+    return acc;
+}, {} as Record<string, string>);
+const swatchFor = (name: string) => {
+    const k = name.trim().toLowerCase().replace('grey', 'gray');
+    if (k === 'multicolor' || k === 'rainbow') return 'conic-gradient(#dc2626, #eab308, #16a34a, #2563eb, #9333ea, #dc2626)';
+    return SWATCHES[k] || 'transparent';
 };
 
-// ── Main TagView ────────────────────────────────────────────────────────────
 export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
-    const exchangeRate = useAtomValue(exchangeRateAtom);
-    const workbookPrefix = useAtomValue(workbookVersionAtom);
-
-    const [fetchedItem, setFetchedItem] = useState<any>(null);
+    const [record, setRecord] = useState<PublicArtifactRecord | null>(null);
     const [loading, setLoading] = useState(true);
-    const [viewerIdx, setViewerIdx] = useState(0);
+    const [active, setActive] = useState(0);
     const [showViewer, setShowViewer] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    // Unlock body scroll
+    // The page scrolls itself; the app shell underneath must not.
     useEffect(() => {
-        const originalOverflow = document.body.style.overflow;
-        const originalHtmlOverflow = document.documentElement.style.overflow;
         const root = document.getElementById('root');
-        const originalRootOverflow = root?.style.overflow;
-
-        document.body.style.overflow = 'hidden'; // Lock body, scroll via TagView root
+        const prev = { body: document.body.style.overflow, html: document.documentElement.style.overflow, root: root?.style.overflow };
+        document.body.style.overflow = 'hidden';
         document.documentElement.style.overflow = 'hidden';
         if (root) root.style.overflow = 'hidden';
-
         return () => {
-            document.body.style.overflow = originalOverflow;
-            document.documentElement.style.overflow = originalHtmlOverflow;
-            if (root && originalRootOverflow !== undefined) root.style.overflow = originalRootOverflow;
+            document.body.style.overflow = prev.body;
+            document.documentElement.style.overflow = prev.html;
+            if (root && prev.root !== undefined) root.style.overflow = prev.root;
         };
     }, []);
 
-    // Fetch item
     useEffect(() => {
-        const resolve = async () => {
-            if (!tagId) return;
-            setLoading(true);
-            const resolved = await resolveArtifact(tagId, { exchangeRate: exchangeRate || DEFAULT_EXCHANGE_RATE, workbookPrefix: workbookPrefix || '326' });
-            if (resolved) {
-                setFetchedItem(resolved);
-            }
+        let alive = true;
+        setLoading(true);
+        setActive(0);
+        fetchPublicArtifactRecord(tagId).then(r => {
+            if (!alive) return;
+            setRecord(r);
             setLoading(false);
-        };
-        resolve();
-    }, [tagId, exchangeRate, workbookPrefix]);
+        });
+        return () => { alive = false; };
+    }, [tagId]);
 
-    const item = useMemo(() => {
-        if (!fetchedItem) return null;
-        return fetchedItem;
-    }, [fetchedItem]);
-
-    const openViewer = useCallback((idx: number) => { setViewerIdx(idx); setShowViewer(true); }, []);
-
-    const handleShare = useCallback(() => {
-        // Use the Unified Hub for social previews and direct access
-        const hubUrl = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${tagId}`;
-        
-        navigator.clipboard.writeText(hubUrl).then(() => {
+    const share = useCallback(() => {
+        const url = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${encodeURIComponent(tagId)}`;
+        navigator.clipboard.writeText(url).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
     }, [tagId]);
 
-    // ── Loading ─────────────────────────────────────────────────────────────
-    if (loading) return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a0a] gap-4">
-            <Loader2 className="animate-spin text-white/20" size={36} />
-            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">{tr("Resolving Artifact")}</span>
-        </div>
+    const vendorColor = (vendors as any)[(record?.vendor || tagId.slice(0, 2)).toUpperCase()]?.color || '#9CA3AF';
+    const tagText = (record?.tag || tagId).toUpperCase();
+
+    // The tag key — the printed label, rendered: vendor colour block, then the code.
+    const tagKey = (size: 'lg' | 'sm') => (
+        <span className={`tv-tag tv-tag--${size}`} aria-label={`${tr("Tag")} ${tagText}`}>
+            <span className="tv-tag-v" style={{ backgroundColor: vendorColor }}>{tagText.slice(0, 5)}</span>
+            <span className="tv-tag-c">{tagText.slice(5)}</span>
+        </span>
     );
 
-    // ── Not Found ────────────────────────────────────────────────────────────
-    if (!item) return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a0a] p-12 text-center gap-8">
-            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20">
-                <Package size={48} strokeWidth={0.75} />
-            </div>
-            <div className="flex flex-col gap-3">
-                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">{tr("Trace Lost")}</h1>
-                <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] max-w-xs">{String(tagId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()} {tr("· Artifact trace could not be resolved")}</p>
-            </div>
-        </div>
-    );
-
-    // ── Computed values ──────────────────────────────────────────────────────
-    const vendorCode = tagId.substring(0, 2).toUpperCase();
-    const vendorConfig = (vendors as any)[vendorCode];
-    const vendorColor: string = vendorConfig?.color || '#6BCEBB';
-
-    const norm = item.data;
-    const codes = item.codes;
-
-    const dimensionsStr = [
-        norm.lengthCm ? `L ${norm.lengthCm}` : '',
-        norm.widthCm ? `W ${norm.widthCm}` : '',
-        norm.heightCm ? `H ${norm.heightCm}` : '',
-    ].filter(Boolean).join(' · ') || null;
-
-    const dimensionsInchStr = [
-        norm.lengthCm ? cmToImperial(norm.lengthCm) : '',
-        norm.widthCm ? cmToImperial(norm.widthCm) : '',
-        norm.heightCm ? cmToImperial(norm.heightCm) : '',
-    ].filter(Boolean).join(' × ') || null;
-
-    const weightStr = norm.weightKg ? `${norm.weightKg} kg` : null;
-    const weightLbs = norm.weightKg ? formatWeightImperialOnly(norm.weightKg) : null;
-
-    const materialLabel = [norm.color, norm.material].filter(Boolean).join(' ') || 'Natural Stone';
-    const typeLabel = [norm.shape, norm.shortDescription].filter(Boolean).join(' ') || 'Stone Artifact';
-
-    // ── Render ───────────────────────────────────────────────────────────────
-    return (
-        <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#0a0a0a] text-white selection:bg-white/20 selection:text-white">
-            {showViewer && (
-                <FullscreenViewer images={item.images} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />
-            )}
-
-            {/* ── TOP NAV BAR ── */}
-            <div className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 h-16 bg-[#0a0a0a]/80 backdrop-blur-xl">
-                {/* Logo + back */}
-                <div className="flex items-center gap-3">
-                    {onBack ? (
-                        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90">
-                            <ChevronLeft size={20} strokeWidth={2.5} />
-                        </button>
-                    ) : null}
-                    <OnyxLogo width={20} height={20} className="opacity-60" />
-                </div>
-
-                {/* Tag ID badge */}
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: vendorColor }} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">{codes.bookBardcode}</span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-4">
-                    <button onClick={handleShare}
-                        className="flex items-center gap-2 h-10 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all active:scale-95">
-                        <Share2 size={14} strokeWidth={2.5} />
-                        <span className="hidden sm:inline">{copied ? tr("COPIED") : tr("SHARE")}</span>
+    const bar = (
+        <header className="tv-bar">
+            <div className="tv-bar-l">
+                {onBack && (
+                    <button type="button" className="tv-btn tv-btn--icon" onClick={onBack} aria-label={tr("Back")}>
+                        <ChevronLeft size={18} strokeWidth={2.5} />
                     </button>
-                    {item.images.length > 0 && (
-                        <button onClick={() => openViewer(0)}
-                            className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-95">
-                            <Maximize2 size={18} strokeWidth={2} />
-                        </button>
+                )}
+                <OnyxLogo width={22} height={22} />
+            </div>
+            {tagKey('sm')}
+            <button type="button" className="tv-btn" onClick={share} aria-live="polite">
+                {copied ? <Check size={15} strokeWidth={2.5} /> : <Share2 size={15} strokeWidth={2.5} />}
+                <span>{copied ? tr("Copied") : tr("Copy link")}</span>
+            </button>
+        </header>
+    );
+
+    // ── Loading ──────────────────────────────────────────────────────────────
+    if (loading) return (
+        <div id="tagview" aria-busy="true">
+            {bar}
+            <main className="tv-main">
+                <div className="tv-gallery"><div className="tv-well tv-hero tv-skel" /></div>
+                <div className="tv-info">
+                    <div className="tv-skel tv-skel-line" style={{ width: '40%' }} />
+                    <div className="tv-skel tv-skel-line tv-skel-title" />
+                    <div className="tv-skel tv-skel-line" style={{ width: '65%' }} />
+                    <div className="tv-cards"><div className="tv-card tv-skel-card" /><div className="tv-card tv-skel-card" /></div>
+                </div>
+            </main>
+        </div>
+    );
+
+    // ── Not found ────────────────────────────────────────────────────────────
+    if (!record) return (
+        <div id="tagview">
+            {bar}
+            <main className="tv-empty">
+                <div className="tv-well tv-empty-mark"><Package size={40} strokeWidth={1.25} /></div>
+                <h1 className="tv-empty-h">{tr("Tag not found")}</h1>
+                <p className="tv-empty-p">{tr("No piece is registered under")} <span className="tv-mono">{tagText}</span>. {tr("Check the code on the label and scan again.")}</p>
+            </main>
+        </div>
+    );
+
+    // ── The piece ────────────────────────────────────────────────────────────
+    const { specs, codes, images } = record;
+    const hasDims = specs.widthCm != null || specs.heightCm != null || specs.lengthCm != null;
+    const heroSrc = images[active] || images[0];
+
+    return (
+        <div id="tagview">
+            {showViewer && images.length > 0 && (
+                <FullscreenViewer images={images} initialIdx={active} onClose={() => setShowViewer(false)} />
+            )}
+            {bar}
+
+            <main className="tv-main">
+                {/* Photographs — processed only. Without any, the piece's
+                    axonometric render stands in, and says that it is one. */}
+                <section className="tv-gallery" aria-label={tr("Photographs")}>
+                    {images.length > 0 ? (
+                        <>
+                            <button type="button" className="tv-well tv-hero" onClick={() => setShowViewer(true)} aria-label={tr("Open photographs full screen")}>
+                                <img src={heroSrc} alt={record.title || record.name} />
+                                <span className="tv-hero-zoom" aria-hidden="true"><Maximize2 size={14} strokeWidth={2.5} /></span>
+                                {images.length > 1 && <span className="tv-hero-count">{active + 1} / {images.length}</span>}
+                            </button>
+                            {images.length > 1 && (
+                                <div className="tv-thumbs" role="tablist" aria-label={tr("Choose a photograph")}>
+                                    {images.map((src, i) => (
+                                        <button key={src} type="button" role="tab" aria-selected={i === active}
+                                            className={`tv-thumb${i === active ? ' is-on' : ''}`} onClick={() => setActive(i)}>
+                                            <img src={src} alt="" loading="lazy" />
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="tv-well tv-hero tv-hero--render">
+                            {record.icon
+                                ? <img src={record.icon} alt={tr("Proportional render of the piece")} />
+                                : <Package size={56} strokeWidth={1} />}
+                            <span className="tv-render-note">{record.icon ? tr("Proportional render · photographs in processing") : tr("Photographs in processing")}</span>
+                        </div>
                     )}
-                </div>
-            </div>
+                </section>
 
-            {/* ── MAIN CARD ── gallery-card style, full width ── */}
-            <div className="max-w-5xl mx-auto w-full px-4 sm:px-0">
-                {/* ── IMAGE GRID ── */}
-                <div className="overflow-hidden">
-                    <ImageGrid images={item.images} onOpenViewer={openViewer} />
-                </div>
-
-                {/* ── DETAILS PANEL ── */}
-                <div className="py-12 sm:py-20 flex flex-col gap-12">
-                    {/* Row 1: Barcode tag + codes + title */}
-                    <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {/* Vendor barcode tag */}
-                            <div className="px-6 py-3 rounded-2xl text-base font-black uppercase tracking-tight text-black" style={{ backgroundColor: vendorColor }}>
-                                {codes.bookBardcode || vendorCode}
-                            </div>
-                            {/* AQ / LD codes */}
-                            {codes.bookAqCode && (
-                                <div className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/40 uppercase tracking-widest">
-                                    {tr("AQ")} {codes.bookAqCode}
-                                </div>
-                            )}
-                            {codes.bookLandCode && (
-                                <div className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/40 uppercase tracking-widest">
-                                    {tr("LD")} {codes.bookLandCode}
-                                </div>
-                            )}
-                        </div>
-
-                        <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-tight wrap-break-word">
-                            {typeLabel}
-                        </h1>
-                        <p className="text-lg font-bold text-white/60 uppercase tracking-[0.25em]">
-                            {materialLabel}
-                        </p>
+                <section className="tv-info" aria-label={tr("Piece details")}>
+                    <div className="tv-id">
+                        {tagKey('lg')}
+                        {record.quantity > 1 && <span className="tv-chip">×{record.quantity} {tr("pieces")}</span>}
                     </div>
 
-                    {/* Row 2: Specs horizontal strip - BORDERLESS / LARGE TAGS / FLOATING ICONS */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-4">
-                        {dimensionsStr && (
-                            <div className="flex items-center gap-5">
-                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
-                                    <Ruler size={22} strokeWidth={1.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">{tr("Dimensions")}</span>
-                                    <span className="text-xl font-black text-white font-mono leading-tight">{dimensionsInchStr} <span className="text-[10px] text-white/40 ml-1">IN</span></span>
-                                    <span className="text-xs font-black text-white/30 font-mono mt-1">{dimensionsStr} <span className="text-[9px] opacity-60 uppercase">CM</span></span>
-                                </div>
+                    <h1 className="tv-title">{record.title || record.name || tagText}</h1>
+                    <p className="tv-sub">
+                        {record.name && <span>{record.name}</span>}
+                        {record.name && record.stone && <span className="tv-dot" aria-hidden="true">·</span>}
+                        {record.stone && <span>{record.stone}</span>}
+                    </p>
+
+                    {record.type.length > 0 && (
+                        <nav className="tv-crumbs" aria-label={tr("Category")}>
+                            {record.type.map((t, i) => (
+                                <React.Fragment key={i}>
+                                    {i > 0 && <ChevronRight size={12} strokeWidth={2.5} aria-hidden="true" />}
+                                    <span>{t}</span>
+                                </React.Fragment>
+                            ))}
+                        </nav>
+                    )}
+
+                    <div className="tv-cards">
+                        {/* SPECS */}
+                        <article className="tv-card tv-specs">
+                            <h2 className="tv-card-t">{tr("Specs")}</h2>
+                            <div className="tv-specs-body">
+                                {record.icon && (
+                                    <div className="tv-well tv-axo" aria-hidden="true"><img src={record.icon} alt="" /></div>
+                                )}
+                                <dl className="tv-measures">
+                                    {hasDims && (
+                                        <div>
+                                            <dt>{tr("Size")}</dt>
+                                            <dd>
+                                                <span className="tv-mono tv-big">{imperialDims(specs.widthCm, specs.heightCm, specs.lengthCm)}</span>
+                                                <span className="tv-mono tv-small">{metricDims(specs.widthCm, specs.heightCm, specs.lengthCm)} cm</span>
+                                            </dd>
+                                        </div>
+                                    )}
+                                    {specs.weightKg != null && (
+                                        <div>
+                                            <dt>{tr("Weight")}</dt>
+                                            <dd>
+                                                <span className="tv-mono tv-big">{formatWeightImperialOnly(specs.weightKg)}</span>
+                                                <span className="tv-mono tv-small">{specs.weightKg} kg</span>
+                                            </dd>
+                                        </div>
+                                    )}
+                                    {!hasDims && specs.weightKg == null && <div><dd className="tv-small">{tr("Measurements pending")}</dd></div>}
+                                </dl>
                             </div>
-                        )}
-                        {weightStr && (
-                            <div className="flex items-center gap-5">
-                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
-                                    <Scale size={22} strokeWidth={1.5} />
+                        </article>
+
+                        {/* RETAIL + CODES — the only figures this page carries. */}
+                        <article className="tv-card tv-value">
+                            <h2 className="tv-card-t">{tr("Retail")}</h2>
+                            {record.retailUsd != null
+                                ? <p className="tv-price"><span className="tv-price-n">{fmtUsd(record.retailUsd)}</span><span className="tv-price-u">USD</span></p>
+                                : <p className="tv-small">{tr("On request")}</p>}
+                            {(codes.aq || codes.ld) && (
+                                <div className="tv-codes" aria-label={tr("Codes")}>
+                                    {codes.aq && <span className="tv-code"><span className="tv-code-k">AQ</span><span className="tv-mono">{codes.aq}</span></span>}
+                                    {codes.ld && <span className="tv-code"><span className="tv-code-k">LD</span><span className="tv-mono">{codes.ld}</span></span>}
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">{tr("Weight")}</span>
-                                    <span className="text-xl font-black text-white font-mono leading-tight">{weightLbs} <span className="text-[10px] text-white/40 ml-1">LBS</span></span>
-                                    <span className="text-xs font-black text-white/30 font-mono mt-1">{weightStr.replace(' kg', '')} <span className="text-[9px] opacity-60 uppercase">KG</span></span>
-                                </div>
-                            </div>
-                        )}
-                        <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
-                                <Package size={22} strokeWidth={1.5} />
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">{tr("Quantity")}</span>
-                                <span className="text-xl font-black text-white font-mono leading-tight">{norm.quantity || 1} <span className="text-[10px] text-white/40 ml-1">{tr("Items")}</span></span>
-                            </div>
-                        </div>
+                            )}
+                        </article>
                     </div>
 
-                    {/* Row 3: Retail price - HIDDEN PER USER REQUEST */}
-                    {/* {codes.bookRetail && (
-                        <div className="flex items-baseline gap-3">
-                            <span className="text-4xl font-black text-white font-mono">${codes.bookRetail}</span>
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">USD · Retail</span>
+                    {record.colors.length > 0 && (
+                        <div className="tv-colors" aria-label={tr("Colours")}>
+                            {record.colors.map(c => (
+                                <span key={c} className="tv-color"><span className="tv-sw" style={{ background: swatchFor(c) }} aria-hidden="true" />{c}</span>
+                            ))}
                         </div>
-                    )} */}
-                </div>
+                    )}
 
+                    {record.body && (
+                        <article className="tv-card tv-desc">
+                            <h2 className="tv-card-t">{tr("About this piece")}</h2>
+                            <p>{record.body}</p>
+                        </article>
+                    )}
+                </section>
+            </main>
 
-                {/* ── FOOTER ── */}
-                <div className="px-6 py-8 sm:px-8 flex items-center justify-center bg-[#0a0a0a]">
-                    <OnyxLogo width={18} height={18} className="opacity-20" />
-                </div>
-            </div>
-
-            <style>{`
-                :root { color-scheme: dark; }
-                * { box-sizing: border-box; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
+            <footer className="tv-foot">
+                <OnyxLogo width={16} height={16} />
+                <span className="tv-mono">{tagText}</span>
+            </footer>
         </div>
     );
 };
