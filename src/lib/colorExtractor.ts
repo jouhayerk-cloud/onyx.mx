@@ -29,7 +29,9 @@ export const ALLOWED_SHOPIFY_COLORS = [
 export type ShopifyColor = typeof ALLOWED_SHOPIFY_COLORS[number];
 
 // Reference RGB values for distance matching
-const COLOR_PALETTE: { name: ShopifyColor; rgb: [number, number, number] }[] = [
+// Exported so the inventory panel draws its colour swatches from the same
+// reference values this matcher uses — one palette, not two that can drift.
+export const COLOR_PALETTE: { name: ShopifyColor; rgb: [number, number, number] }[] = [
     { name: "Black", rgb: [25, 25, 25] },
     { name: "White", rgb: [245, 245, 245] },
     { name: "Gray", rgb: [130, 130, 130] },

@@ -59,7 +59,7 @@ import { rowWorkbook } from '../../lib/seasons';
 import { rowMatchesShape, rowMatchesMaterialColor } from '../../lib/smartFilters';
 import { rowMatchesContent } from '../../lib/aiContent';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -67,6 +67,8 @@ import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeIcon } from './InventoryArtifact';
+import { validateCopy } from '../../lib/copyValidation';
+import { COLOR_PALETTE, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, Truck, CreditCard, Link } from 'lucide-react';
 import { tr } from '../../lib/i18n';
 
@@ -74,6 +76,89 @@ import { tr } from '../../lib/i18n';
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
 const inp = "h-12 w-full px-4 bg-(--text-color)/[0.04] border border-(--text-color)/12 rounded-2xl text-sm text-(--text-color) placeholder-(--text-color)/30 outline-none focus:border-(--main-color)/50 focus:bg-(--text-color)/[0.08] transition-all";
 const inpNum = inp + " font-mono text-center";
+
+// Typography for each column's VALUE — one definition, used by the row cell
+// AND by the panel field that stands in for it when the row drops that column.
+// A value must look the same whichever level it is shown on: an LD code is
+// yellow mono whether it sits in the row or has moved down into the panel.
+// (The panel used to restate these by hand and drifted — AQ lost its tint,
+// LD its yellow.) Panel-only siblings reuse the nearest column's style, so
+// SIZE IN reads like SIZE and LANDED/RETAIL like PRICE.
+const COL_TEXT = {
+    color:    'text-[12px] font-black text-(--text-color)/65 uppercase tracking-[0.05em]',
+    size:     'text-[13px] font-mono font-black text-(--text-color)',
+    weight:   'text-[13px] font-mono font-bold text-(--text-color)/70',
+    price:    'text-[14px] font-black text-(--text-color)',
+    total:    'text-[14px] font-black text-(--main-color)',
+    landed:   'text-[14px] font-black text-yellow-500',
+    retail:   'text-[14px] font-black text-green-500',
+    aq:       'text-[13px] font-mono font-black text-(--text-color)/75',
+    ld:       'text-[13px] font-mono font-black text-yellow-500/90',
+    unpacked: 'text-[10px] font-black text-(--text-color)/30 uppercase tracking-[0.15em] leading-none',
+};
+
+// AI bodies are stored as HTML for Shopify (231 of 445 carry tags). The panel
+// shows them as text: paragraph and line breaks kept, every tag dropped.
+// DOMParser builds an inert document — scripts in it never run — so nothing
+// in a stored body can execute here, which dangerouslySetInnerHTML could not
+// promise.
+const htmlToText = (html: string): string => {
+    if (!html) return '';
+    const marked = String(html)
+        .replace(/<\s*br\s*\/?>/gi, '\n')
+        .replace(/<\/\s*(p|div|li|h[1-6])\s*>/gi, '\n\n');
+    const text = typeof DOMParser !== 'undefined'
+        ? (new DOMParser().parseFromString(marked, 'text/html').body.textContent || '')
+        : marked.replace(/<[^>]*>/g, '');
+    return text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+};
+
+// Swatch colours for the AI colour list, from the colour matcher's own
+// reference palette. Clear has no colour and Multicolor/Rainbow are drawn as
+// a wheel; anything unrecognised gets an empty ring rather than a guess.
+const SWATCHES: Record<string, string> = COLOR_PALETTE.reduce((acc, c) => {
+    acc[c.name.toLowerCase()] = `rgb(${c.rgb.join(', ')})`;
+    return acc;
+}, {} as Record<string, string>);
+// The store's colour names. A generated colour outside this list is not
+// imported as-is: the Shopify export resolves it through the stone-variety
+// table or leaves it out (MainHeader normalizeShopifyColors), so the panel
+// marks it rather than presenting it as a colour the store will show.
+const SHOPIFY_COLOR_SET = new Set(ALLOWED_SHOPIFY_COLORS.map(c => c.toLowerCase()));
+// Titles past this are cut by the Shopify export (MainHeader, `title.slice(0, 70)`).
+const EXPORT_TITLE_MAX = 70;
+
+const swatchFor = (name: string): string => {
+    const k = name.trim().toLowerCase().replace('grey', 'gray');
+    if (k === 'multicolor' || k === 'rainbow') return 'conic-gradient(#dc2626, #eab308, #16a34a, #2563eb, #9333ea, #dc2626)';
+    return SWATCHES[k] || 'transparent';
+};
+
+// Building blocks of an open row's panel. `k` names the entry (`inv-f-<k>`).
+// `overflow` marks an entry that mirrors one of the ROW's own columns: it
+// stays hidden while the row shows that column and appears when the row drops
+// it at the current width — density.css toggles both sides from the same
+// container-width step, so a value is never lost, only moved.
+//
+// SpecRow is a spec-sheet line: a fixed label column, the value beside it.
+const SpecRow = ({ k, label, overflow = false, title, children }: {
+    k: string; label: string; overflow?: boolean; title?: string; children: React.ReactNode;
+}) => (
+    <div className={`inv-spec-row inv-f-${k}${overflow ? ' inv-f-overflow' : ''}`} title={title}>
+        <dt className="inv-spec-l">{label}</dt>
+        <dd className="inv-spec-v">{children}</dd>
+    </div>
+);
+
+// Stat is a figure with its label above it, for values read side by side.
+const Stat = ({ k, label, overflow = false, valueClassName = '', children }: {
+    k: string; label: string; overflow?: boolean; valueClassName?: string; children: React.ReactNode;
+}) => (
+    <div className={`inv-stat inv-f-${k}${overflow ? ' inv-f-overflow' : ''}`}>
+        <span className="inv-stat-l">{label}</span>
+        <span className={`inv-stat-v ${valueClassName}`}>{children}</span>
+    </div>
+);
 
 const DriveImage = ({ src, className, ...props }: any) => {
     const isIOS = typeof navigator !== 'undefined' && 
@@ -319,6 +404,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const [viewerIdx, setViewerIdx] = useState(0);
     const [modalIdx, setModalIdx] = useState(0);
     const [cardIdx, setCardIdx] = useState(0);
+    // The GENERATED body opens clamped to three lines; this expands it.
+    const [showFullBody, setShowFullBody] = useState(false);
     const [isHoveringCard, setIsHoveringCard] = useState(false);
 
 
@@ -377,6 +464,74 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const itemPriceMXN = Math.round(Number(norm.price || 0));
     const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
 
+    // ── Shared by the row, the open panel and the payment table ──
+    // Declared here, above every function that reads them, on purpose: a
+    // `const` read from a function body that runs before its declaration line
+    // is a TDZ crash that neither typecheck nor build catches (MainHeader's
+    // classifyMedia failed exactly that way).
+    // Non-breaking spaces INSIDE each measurement, ordinary ones only around
+    // the ×, so a narrow panel wraps between measurements ("3' 7 5/16" ×" /
+    // "9 1/16"") and never through one ("9" / "1/16"") — a split fraction reads
+    // as two different numbers.
+    const imperialDims = formatDimensionsImperialOnly(norm.widthCm, norm.heightCm, norm.lengthCm)
+        .split(' x ').map(part => part.replace(/ /g, ' ')).join(' × ');
+    const imperialWeight = formatWeightImperialOnly(norm.weightKg);
+    const stone = [norm.color, norm.material].filter(Boolean).join(' ');
+    const fmtMoney = (v: any) => {
+        if (!showFinancials) return '***';
+        const n = Number(v);
+        return Number.isFinite(n) ? `$${n.toLocaleString(tr("en-US"))}` : `$${v}`;
+    };
+    const fmtDate = (d: any) => {
+        if (!d) return '';
+        const t = new Date(d);
+        return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    // The AI copy. Only worked out for an open row: the body needs an HTML
+    // parse and the check a full scan, and 480 closed rows need neither.
+    const aiTitle = String(norm.detailedDescription || '').trim();
+    const aiBodyText = useMemo(() => (isExpanded ? htmlToText(norm.generatedDescription || '') : ''), [isExpanded, norm.generatedDescription]);
+    const aiColors = String(norm.generatedColor || '').split(',').map(c => c.trim()).filter(Boolean);
+    const aiTypePath = String(norm.generatedType || '').split('>').map(p => p.trim()).filter(Boolean);
+    const hasAiCopy = !!(aiTitle || aiBodyText);
+    const hasAnyAi = hasAiCopy || aiColors.length > 0 || aiTypePath.length > 0;
+    const aiIssues = useMemo(() => (isExpanded && (aiTitle || aiBodyText))
+        ? validateCopy(aiTitle, aiBodyText, {
+            color: norm.color, material: norm.material,
+            widthCm: norm.widthCm != null ? Number(norm.widthCm) : null,
+            heightCm: norm.heightCm != null ? Number(norm.heightCm) : null,
+            lengthCm: norm.lengthCm != null ? Number(norm.lengthCm) : null,
+            quantity: Number(norm.quantity) || 1,
+        })
+        : [], [isExpanded, aiTitle, aiBodyText, norm.color, norm.material, norm.widthCm, norm.heightCm, norm.lengthCm, norm.quantity]);
+    // What the panel reports: validateCopy's findings, plus the one fact it
+    // does not check — a title the export will cut. Kept here rather than
+    // added to validateCopy so the batch processor's retry rule is unchanged.
+    const aiNotes: string[] = [
+        ...aiIssues.map(iss => iss.message),
+        ...(aiTitle.length > EXPORT_TITLE_MAX
+            ? [`Title is ${aiTitle.length} characters — the Shopify export cuts it at ${EXPORT_TITLE_MAX}.`]
+            : []),
+    ];
+
+    // The vendor key. One element with two homes: the row's TAG column, and
+    // the open panel when the row has dropped that column (phone widths).
+    const tagKey = (
+        <button
+            onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(calculated.bookBarcode);
+                toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '🏷️' });
+            }}
+            title={calculated.bookBarcode}
+            className="vendor-tag inline-flex items-center rounded text-black text-[13px] leading-none font-black uppercase tracking-tight shadow-sm w-fit max-w-full hover:scale-105 active:scale-95 transition-all overflow-hidden"
+        >
+            <span className="px-1.5 py-1 shrink-0" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || 'N/A').slice(0, 5)}</span>
+            <span className="px-1.5 py-1 text-(--text-color) bg-transparent border border-white/10 truncate">{(calculated.bookBarcodeDisplay || 'N/A').slice(5)}</span>
+        </button>
+    );
+
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
@@ -403,42 +558,81 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         }).sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
     }, [isExpanded, financeDocs, item.data.id]);
 
-    const renderPaymentHistory = () => {
-        if (!itemPayments || itemPayments.length === 0) return null;
-        return (
-            <div className="payment-history col-span-full pt-6 mt-2 border-t border-(--border-color) space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-40 mb-3 ml-1">{tr("Payment History (MXN)")}</h4>
-                <div className="flex flex-col gap-2">
-                    {itemPayments.map((p: any) => {
-                        const net = p.amount || 0;
-                        const fees = p.commission || 0;
-                        const total = net + fees;
-                        const format = (val: number) => showFinancials ? `$${val.toLocaleString(tr("en-US"))}` : '***';
+    // Book 825 is prepaid by rule (getStatusClass, "Book 825 / Prepaid
+    // Override"), so its items read GREEN with no payment record behind them.
+    // The payment section says so, instead of a bare "No payments linked" under
+    // a green status dot, which reads as missing data.
+    const prepaidByBook = payStatus === 'GREEN' && !norm.payDate &&
+        (['v825', '825'].includes(String(norm.workbook || '').toLowerCase()) || String(norm.payReq || '').toLowerCase() === 'prepaid');
+    const isPrepaidByRule = prepaidByBook && itemPayments.length === 0;
 
-                        return (
-                            <div key={p.id} className="payment-row flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-3 rounded-xl bg-(--text-color)/5 border border-(--border-color) transition-all hover:bg-(--text-color)/10">
-                                <div className="flex flex-col min-w-[120px]">
-                                    <span className="text-[11px] text-(--text-color) font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric', year: 'numeric' }) : tr("Unknown Date")}</span>
-                                    <span className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${p.status === 'Paid' ? 'text-green-400' : p.status === 'Requested' ? 'text-yellow-400' : 'text-sky-400'}`}>{p.status || 'New'}</span>
-                                </div>
-                                <div className="flex items-center gap-6 sm:gap-12 w-full sm:w-auto no-scrollbar justify-between sm:justify-end">
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color) opacity-30 mb-0.5">{tr("Net Paid")}</span>
-                                        <span className="text-[11px] font-mono font-bold text-(--text-color) opacity-80">{format(net)}</span>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color) opacity-30 mb-0.5">{tr("Taxes/Fees")}</span>
-                                        <span className="text-[11px] font-mono font-bold text-red-400 opacity-80">{format(fees)}</span>
-                                    </div>
-                                    <div className="flex flex-col items-end border-l border-(--border-color) pl-6 sm:pl-12 min-w-[100px]">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--main-color) opacity-50 mb-0.5">{tr("Total")}</span>
-                                        <span className="text-[13px] font-mono font-black text-(--main-color)">{format(total)}</span>
-                                    </div>
-                                </div>
+    // The row's logistics mark — a truck when deployed, a crate when packed —
+    // shown beside the AQ / LD codes whenever the PACKING column is not in the
+    // row. Payment needs no mark: the row's coloured edge carries it.
+    const logBadge = deployedInfo ? { tone: 'dep', label: tr("Deployed"), Icon: Truck }
+        : norm.packingStatus === 'Packed' ? { tone: 'packed', label: tr("Packed"), Icon: Package }
+        : null;
+    const deployedTitle = deployedInfo
+        ? [tr("Deployed"), deployedInfo.manifestId && deployedInfo.manifestId !== 'Deployed' ? deployedInfo.manifestId : '', fmtDate(deployedInfo.date)].filter(Boolean).join(' · ')
+        : '';
+
+    // Payment history is a table, not a stack of cards: the column labels are
+    // stated once in a header row instead of being repeated inside every
+    // payment, and the amounts share right edges so they can be compared down
+    // the column. It always renders — an item with nothing linked says so,
+    // rather than the section silently not appearing.
+    //
+    // A payment is a BATCH: one finance record pays for many items, and its
+    // amounts are the batch's, not this item's share. Without the ITEMS count
+    // a $280 lamp sat above an $8,338 payment and read as an error.
+    const renderPaymentHistory = () => {
+        const rows = itemPayments.map((p: any) => {
+            const net = Number(p.amount) || 0;
+            const fees = Number(p.commission) || 0;
+            return { p, net, fees, total: net + fees };
+        });
+        const sum = (k: 'net' | 'fees' | 'total') => rows.reduce((a, r) => a + r[k], 0);
+        return (
+            <div className="payment-history inv-num">
+                <h4 className="inv-cluster-t">{tr("Payments")}<span className="inv-cluster-note">{tr("MXN · whole batch")}</span></h4>
+                {rows.length === 0 ? (
+                    <div className="inv-pay-empty">
+                        {isPrepaidByRule
+                            ? tr("Prepaid — Book 825 items carry no payment record.")
+                            : tr("No payments linked to this item yet.")}
+                    </div>
+                ) : (
+                    <div className="inv-pay-table">
+                        <div className="inv-pay inv-pay-head">
+                            <span>{tr("Date")}</span>
+                            <span>{tr("Status")}</span>
+                            <span className="inv-r" title={tr("Items covered by this payment")}>{tr("Items")}</span>
+                            <span className="inv-pay-net inv-r">{tr("Net Paid")}</span>
+                            <span className="inv-pay-fees inv-r">{tr("Taxes/Fees")}</span>
+                            <span className="inv-r">{tr("Total")}</span>
+                        </div>
+                        {rows.map(({ p, net, fees, total }) => (
+                            <div key={p.id} className="payment-row inv-pay">
+                                <span className="font-bold truncate">{p.date ? fmtDate(p.date) : tr("Unknown Date")}</span>
+                                <span className={`text-[11px] font-black uppercase tracking-widest truncate ${p.status === 'Paid' ? 'text-green-500' : p.status === 'Requested' ? 'text-yellow-600' : 'text-sky-500'}`}>{p.status || 'New'}</span>
+                                <span className="inv-r font-mono font-bold text-(--text-color)/70">{Array.isArray(p.related_ids) && p.related_ids.length ? p.related_ids.length : '—'}</span>
+                                <span className="inv-pay-net inv-r font-mono font-bold">{fmtMoney(net)}</span>
+                                <span className="inv-pay-fees inv-r font-mono font-bold text-red-400">{fmtMoney(fees)}</span>
+                                <span className="inv-r font-mono font-black text-(--main-color)">{fmtMoney(total)}</span>
                             </div>
-                        );
-                    })}
-                </div>
+                        ))}
+                        {rows.length > 1 && (
+                            <div className="inv-pay inv-pay-sum">
+                                <span>{rows.length} {tr("payments")}</span>
+                                <span />
+                                <span />
+                                <span className="inv-pay-net inv-r font-mono">{fmtMoney(sum('net'))}</span>
+                                <span className="inv-pay-fees inv-r font-mono text-red-400">{fmtMoney(sum('fees'))}</span>
+                                <span className="inv-r font-mono text-(--main-color)">{fmtMoney(sum('total'))}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         );
     };
@@ -470,37 +664,43 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         return (
             <div className="flex flex-col gap-0.5">
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-                <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                <div className={`inv-grid inv-row overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : ''}`}
                     onClick={() => onToggleExpand()} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
-                    
-                    {/* Selection Checkbox */}
-                    {isSelectionMode && (
-                        <div 
-                            className="w-10 shrink-0 flex items-center justify-center border-r border-white/5 bg-white/[0.02] hover:bg-white/5 transition-all"
-                            onClick={(e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); }}
-                        >
-                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${selectedIds.includes(item.row ?? item.data?.id) ? 'bg-(--main-color) border-(--main-color)' : 'border-white/20'}`}>
-                                {selectedIds.includes(item.row ?? item.data?.id) && <Check size={14} className="text-black" strokeWidth={4} />}
-                            </div>
-                        </div>
-                    )}
 
-                    <div className="flex flex-col min-w-[40px] shrink-0 items-center justify-center gap-2 px-2">
-                            <span 
-                                title={getPayLabel()}
-                                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" 
-                                style={{ backgroundColor: accentColor || '#38bdf8', boxShadow: `0 0 10px ${accentColor || '#38bdf8'}60` }} 
-                            />
-                            {deployedInfo && (
-                                <span 
-                                    title={deployedInfo.manifestId ? deployedInfo.manifestId.replace('TRK-', 'TRKA ') : 'Deployed'}
-                                    className="w-2.5 h-2.5 rounded-full bg-teal-400 shrink-0 shadow-sm"
-                                    style={{ boxShadow: '0 0 10px rgba(45, 212, 191, 0.4)' }}
+                    {/* RAIL — payment + deployment status, or the selection box.
+                        The checkbox REPLACES the dots rather than adding a track:
+                        a conditional extra column would shift every other column
+                        sideways the moment selection mode turned on, and the whole
+                        point of the fixed template is that it doesn't. */}
+                    <div className="inv-c-rail flex flex-col items-center justify-center gap-1"
+                        onClick={isSelectionMode ? (e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); } : undefined}>
+                        {isSelectionMode ? (
+                            <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${selectedIds.includes(item.row ?? item.data?.id) ? 'bg-(--main-color) border-(--main-color)' : 'border-white/25'}`}>
+                                {selectedIds.includes(item.row ?? item.data?.id) && <Check size={12} className="text-black" strokeWidth={4} />}
+                            </div>
+                        ) : (
+                            <>
+                                <span
+                                    title={getPayLabel()}
+                                    className="status-dot w-2 h-2 rounded-full shrink-0"
+                                    style={{ backgroundColor: accentColor || '#38bdf8', boxShadow: `0 0 8px ${accentColor || '#38bdf8'}60` }}
                                 />
-                            )}
-                        </div>
-                    <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden group/listimg isolate" 
+                                {deployedInfo && (
+                                    <span
+                                        title={deployedInfo.manifestId ? deployedInfo.manifestId.replace('TRK-', 'TRK ') : 'Deployed'}
+                                        className="status-dot w-2 h-2 rounded-full bg-teal-400 shrink-0"
+                                        style={{ boxShadow: '0 0 8px rgba(45, 212, 191, 0.4)' }}
+                                    />
+                                )}
+                            </>
+                        )}
+                    </div>
+
+                    {/* EDGE — the payment colour as a hairline down the row. */}
+                    <div className="inv-c-edge" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
+
+                    {/* MEDIA */}
+                    <div className="inv-c-media relative bg-black/40 group/listimg isolate"
                         onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}
                         onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}
                         onTouchStart={(e) => { e.stopPropagation(); setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); }}
@@ -513,197 +713,302 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                         }}>
                         {mediaUrls[cardIdx] ? <DriveImage loading="lazy" key={cardIdx} src={mediaUrls[cardIdx]} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} color={accentColor} /></div>}
-                        {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></div>}
-                        
-                        {/* List View Card Navigation Chevrons */}
+                        {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={12} /></div>}
+
                         {mediaUrls.length > 1 && (
                             <>
                                 <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
                                     className="absolute left-0 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white transition-all drop-shadow-md">
-                                    <ChevronLeft size={16} />
+                                    <ChevronLeft size={12} />
                                 </button>
                                 <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p + 1) % mediaUrls.length); }}
                                     className="absolute right-0 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white transition-all drop-shadow-md">
-                                    <ChevronRight size={16} />
+                                    <ChevronRight size={12} />
                                 </button>
                             </>
                         )}
                     </div>
-                    <div className="flex-1 flex items-center px-4 gap-5 min-w-0 overflow-x-auto no-scrollbar relative pr-10 lg:pr-16">
-                        <div className="flex flex-col min-w-[100px] shrink-0 justify-center">
-                            <button 
-                                onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    navigator.clipboard.writeText(calculated.bookBarcode); 
-                                    toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '🏷️' }); 
-                                }}
-                                className="inline-flex items-center rounded text-black text-[16px] font-black uppercase tracking-tight shadow-sm w-fit hover:scale-105 active:scale-95 transition-all overflow-hidden" 
-                            >
-                                <span className="px-2 py-0.5" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || 'N/A').slice(0, 5)}</span>
-                                <span className="px-2 py-0.5 text-(--text-color) bg-transparent border border-white/10">{(calculated.bookBarcodeDisplay || 'N/A').slice(5)}</span>
-                            </button>
-                        </div>
-                        <div className="flex flex-col shrink-0 min-w-[140px] py-1">
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-[16px] font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">
-                                    {norm.shape || tr("OBJ")} {norm.shortDescription && <span className="opacity-80 ml-1">{norm.shortDescription}</span>}
-                                </h3>
-                            </div>
-                            <div className="text-[13px] text-(--text-color)/60 uppercase tracking-widest font-black whitespace-nowrap mt-0.5">
-                                {[norm.color, norm.material].filter(Boolean).join(' ')}
-                            </div>
-                        </div>
-                        <div className="flex flex-col min-w-[140px] shrink-0 justify-center gap-0.5">
-                            <span className="text-[16px] font-mono font-black text-(--text-color)">{metricDimensionsStr || '-'}</span>
-                            <span className="text-[14px] font-mono font-bold text-(--text-color)/80">{metricWeightStr || '-'}</span>
-                        </div>
-                        <div className="flex flex-col min-w-[90px] shrink-0">
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">{tr("Price / Qty")}</span>
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-[15px] font-black text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span>
-                                <span className="text-[12px] font-black text-cyan-500 font-mono">x{norm.quantity || 1}</span>
-                            </div>
-                        </div>
-                        <div className="flex flex-col min-w-[90px] shrink-0">
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">{tr("Total MXN")}</span>
-                            <span className="text-[14px] font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span>
-                        </div>
-                        <div className="flex flex-col min-w-[70px] shrink-0">
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">{tr("AQ Code")}</span>
-                            <span className="text-[14px] text-(--text-color)/80 font-mono font-black">{calculated.bookAqCode || '-'}</span>
-                        </div>
-                        <div className="flex flex-col min-w-[70px] shrink-0">
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-widest leading-none mb-1">{tr("LD Code")}</span>
-                            <span className="text-[14px] text-yellow-500/90 font-mono font-black">{calculated.bookLandCode || '-'}</span>
-                        </div>
-                        
-                        <div className="flex flex-col min-w-[110px] shrink-0 justify-center gap-1 border-l border-white/5 pl-4 ml-2">
-                            {norm.packingStatus === 'Packed' ? (
-                                <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} />
-                            ) : (
-                                <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-widest leading-none">{tr("UNPACKED")}</span>
-                            )}
-                        </div>
-                        
-                        <div className="flex items-center gap-1 shrink-0 border-l border-white/5 pl-4 ml-2 opacity-10">
-                             {/* Expanded via row click */}
-                        </div>
+
+                    {/* TAG */}
+                    <div className="inv-c-tag flex items-center">
+                        {tagKey}
                     </div>
+
+                    {/* QTY — beside the tag rather than beside the money: it is part of
+                        what the line IS ("SU32653OO × 21"), and read before the price
+                        it tells you whether that price is for one piece or a lot. */}
+                    <div className="inv-c-qty inv-cell inv-num inv-r text-[13px] font-mono font-black text-cyan-500">{norm.quantity || 1}</div>
+
+                    {/* Two phrase columns, one line per row — see density.css. Shape and
+                        type read as one name ("HORSES PAINTED WALL PANEL"), colour and
+                        material as one stone ("TEHUACAN WHITE ONYX"), so each pair shares
+                        a column, joined by a space. Within the name the shape stays
+                        heavier than the type, so the word you scan for comes first
+                        at a glance. Each cell clips with an ellipsis and carries a
+                        `title`, so a long value never wraps the row and is never
+                        unreachable. */}
+                    <div className="inv-c-item inv-cell text-[14px] uppercase tracking-tight text-(--text-color)"
+                        title={[norm.shape, norm.shortDescription].filter(Boolean).join(' ')}>
+                        <span className="font-black">{norm.shape || tr("OBJ")}</span>
+                        {norm.shortDescription && <> <span className="font-bold text-(--text-color)/75">{norm.shortDescription}</span></>}
+                    </div>
+                    <div className={`inv-c-color inv-cell ${COL_TEXT.color}`}
+                        title={[norm.color, norm.material].filter(Boolean).join(' ')}>
+                        {[norm.color, norm.material].filter(Boolean).join(' ') || '—'}
+                    </div>
+
+                    {/* The gutter between the identity block and the figures — see
+                        density.css. Empty by design. */}
+                    <div className="inv-c-spacer" aria-hidden="true" />
+
+                    <div className={`inv-c-size inv-cell inv-num ${COL_TEXT.size}`} title={metricDimensionsStr || ''}>{metricDimensionsStr || '—'}</div>
+                    <div className={`inv-c-weight inv-cell inv-num inv-r ${COL_TEXT.weight}`}>{metricWeightStr || '—'}</div>
+
+                    <div className={`inv-c-price inv-cell inv-num inv-r ${COL_TEXT.price}`}>{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</div>
+                    <div className={`inv-c-total inv-cell inv-num inv-r ${COL_TEXT.total}`}>{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</div>
+
+                    <div className={`inv-c-aq inv-cell inv-num ${COL_TEXT.aq}`}>{calculated.bookAqCode || '—'}</div>
+                    <div className={`inv-c-ld inv-cell inv-num ${COL_TEXT.ld}`}>
+                        {calculated.bookLandCode || '—'}
+                        {/* LOGISTICS MARK — a crate when packed, a truck when deployed,
+                            beside the codes. Shown whenever the row is not showing its
+                            PACKING column (density.css), so a compact row or a phone card
+                            never loses the fact that a piece is packed or on a truck. */}
+                        {logBadge && (
+                            <span className="inv-mark inv-badge inv-badge--icon" data-tone={logBadge.tone} role="img" title={logBadge.label} aria-label={logBadge.label}>
+                                <logBadge.Icon size={11} strokeWidth={2.5} aria-hidden="true" />
+                            </span>
+                        )}
+                    </div>
+
+                    {/* STATE */}
+                    <div className="inv-c-state flex items-center min-w-0">
+                        {norm.packingStatus === 'Packed' ? (
+                            <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
+                        ) : (
+                            <span className={COL_TEXT.unpacked}>{tr("UNPACKED")}</span>
+                        )}
+                    </div>
+
                 </div>
                 {isExpanded > 0 && (
-                    <div className="w-full px-4 md:px-10 pb-2 pt-2 bg-transparent animate-in slide-in-from-top-2 duration-300 overflow-x-auto custom-scrollbar min-w-0">
-                        {/* List View Thumbnail Gallery */}
-                        {mediaUrls.length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 shrink-0 mb-1 mt-1">
-                                {mediaUrls.map((u, i) => (
-                                    <div key={i} onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
-                                        className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden shrink-0 cursor-pointer hover:border-(--main-color)/50 transition-all group/thumb relative">
-                                        <DriveImage loading="lazy" src={u} className="w-full h-full object-cover opacity-60 group-hover/thumb:opacity-100 transition-all" />
-                                        {isVideoFile(u) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/40 group-hover/thumb:text-white transition-all"><Video size={14} /></div>}
+                    <div className="inv-drawer w-full pt-2 pb-2.5 bg-transparent animate-in slide-in-from-top-2 duration-300 min-w-0">
+                        {/* THE OPEN-ROW PANEL — a spec sheet for the piece.
+
+                            Grouped, not gridded. The values sit in three clusters that
+                            say what they are — SPECS (stone, size, weight), PRICING
+                            (price, landed, retail), LOGISTICS (codes, crate, deployment)
+                            — then the AI-GENERATED copy, PAYMENTS, and a toolbar. A flat
+                            grid of equal cells
+                            gave AQ CODE the same weight as SIZE and wrapped wherever the
+                            width fell, so related values ended up lines apart.
+
+                            Every value still has two homes. `inv-f-overflow` rows mirror
+                            one of the ROW's columns and appear only when the row has
+                            dropped that column at the current width (density.css), so a
+                            value moves down one level instead of disappearing; the rest
+                            are the panel's own.
+
+                            Layout is by the list's own width: photo column | clusters |
+                            vertical toolbar on wide rows; toolbar along the bottom on
+                            medium ones; one column on a phone, toolbar last, in reach
+                            of the thumb. */}
+                        <div className="inv-drawer-body min-w-0">
+                        <div className={`inv-panel${mediaUrls.length ? '' : ' inv-panel--nomedia'}`}>
+
+                            {mediaUrls.length > 0 && (
+                                <div className="inv-panel-media">
+                                    <div role="button" tabIndex={0} className="inv-hero bg-black/40"
+                                        title={tr("Open photos")}
+                                        onClick={(e) => { e.stopPropagation(); setViewerIdx(0); setShowViewer(true); }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(0); setShowViewer(true); } }}>
+                                        <DriveImage loading="lazy" src={mediaUrls[0]} className="w-full h-full object-cover" />
+                                        {isVideoFile(mediaUrls[0]) && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></span>}
+                                        {mediaUrls.length > 1 && <span className="inv-hero-count">{mediaUrls.length}</span>}
                                     </div>
-                                ))}
+                                    {mediaUrls.length > 1 && (
+                                        <div className="inv-thumbs no-scrollbar">
+                                            {mediaUrls.slice(1).map((u, i) => (
+                                                <div key={i} role="button" tabIndex={0} className="inv-thumb bg-black/40"
+                                                    onClick={(e) => { e.stopPropagation(); setViewerIdx(i + 1); setShowViewer(true); }}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(i + 1); setShowViewer(true); } }}>
+                                                    <DriveImage loading="lazy" src={u} className="w-full h-full object-cover" />
+                                                    {isVideoFile(u) && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80"><Video size={10} /></span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="inv-clusters">
+                                {/* SPECS — the piece's axonometric silhouette beside its
+                                    measurements. No SIZE / WEIGHT titles: 5' 3" × 2' 3 9/16"
+                                    is a size and 60kg · 132.3 lbs is a weight on sight, and
+                                    the titles cost a label column the numbers can use. The
+                                    metric figures appear only once the row has dropped its
+                                    SIZE / WEIGHT column; the imperial ones are always here. */}
+                                <section className="inv-cluster" aria-label={tr("Specs")}>
+                                    <h5 className="inv-cluster-t">{tr("Specs")}</h5>
+                                    <div className="inv-specs-body">
+                                        <div className="inv-axo bg-black/40" title={tr("Proportions")} aria-hidden="true">
+                                            <WireframeIcon item={norm} color={accentColor} />
+                                        </div>
+                                        <div className="inv-measures" aria-label={tr("Size and weight")}>
+                                            <span className={`inv-fi inv-fi-size ${COL_TEXT.size}`}>{metricDimensionsStr || '—'}</span>
+                                            <span className={`inv-spec-wrap ${COL_TEXT.size}`} title={imperialDims}>{imperialDims || '—'}</span>
+                                            <span className="inv-measure-w">
+                                                <span className={`inv-fi inv-fi-weight ${COL_TEXT.weight}`}>{metricWeightStr || '—'}<span className="inv-sep" aria-hidden="true">·</span></span>
+                                                <span className={COL_TEXT.weight}>{imperialWeight || '—'}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section className="inv-cluster" aria-label={tr("Pricing")}>
+                                    <h5 className="inv-cluster-t">{tr("Pricing")}</h5>
+                                    <div className="inv-stats">
+                                        <Stat k="price" label={tr("Price MXN")} overflow valueClassName={COL_TEXT.price}>{fmtMoney(itemPriceMXN)}</Stat>
+                                        {/* TOTAL only leaves the row on a phone, where the row
+                                            gives its line to COLOR MATERIAL instead. */}
+                                        <Stat k="total" label={tr("Total MXN")} overflow valueClassName={COL_TEXT.total}>{fmtMoney(itemTotalMXN)}</Stat>
+                                        <Stat k="landed" label={tr("Landed USD")} valueClassName={COL_TEXT.landed}>{fmtMoney(calculated.bookLanded)}</Stat>
+                                        <Stat k="retail" label={tr("Retail USD")} valueClassName={COL_TEXT.retail}>{fmtMoney(calculated.bookRetail)}</Stat>
+                                    </div>
+                                </section>
+
+                                {/* Shown on a wide row only when the piece is deployed — the
+                                    row says that with a teal dot alone, and a dot is not a word.
+                                    Once the row drops AQ / LD / PACKING, it always shows. */}
+                                <section className={`inv-cluster inv-cluster--log${deployedInfo ? ' has-status' : ''}`} aria-label={tr("Logistics")}>
+                                    <h5 className="inv-cluster-t">
+                                        {tr("Logistics")}
+                                        {deployedInfo && (
+                                            <span className="inv-badge" data-tone="dep" title={deployedTitle}>
+                                                <Truck size={11} strokeWidth={2.5} aria-hidden="true" />{tr("Deployed")}
+                                            </span>
+                                        )}
+                                    </h5>
+                                    <dl className="inv-spec">
+                                        <SpecRow k="aq" label={tr("Codes")} overflow>
+                                            <span className="inv-code-k">AQ</span><span className={COL_TEXT.aq}>{calculated.bookAqCode || '—'}</span>
+                                            <span className="inv-code-k inv-code-k--next">LD</span><span className={COL_TEXT.ld}>{calculated.bookLandCode || '—'}</span>
+                                        </SpecRow>
+                                        <SpecRow k="state" label={tr("Crate")} overflow>
+                                            {norm.packingStatus === 'Packed'
+                                                ? <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
+                                                : <span className={COL_TEXT.unpacked}>{tr("UNPACKED")}</span>}
+                                        </SpecRow>
+                                    </dl>
+                                </section>
                             </div>
-                        )}
-                        
-                        <div className="flex items-start justify-between w-full min-w-fit pr-10 lg:pr-16">
-                            {/* Left side details (Dimensions, Weight, Landed, Retail) aligned roughly with the SIZES column */}
-                            <div className="flex items-start gap-8 sm:gap-16 ml-[240px] lg:ml-[280px]">
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-[12px] font-mono font-bold text-(--text-color)/50">{dimensionsStr || '-'}</span>
-                                    <span className="text-[12px] font-mono font-bold text-(--text-color)/50">{weightStr || '-'}</span>
-                                </div>
-                                <div className="flex flex-col gap-1.5">
-                                    <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.2em]">{tr("Landed")}</span>
-                                    <span className="text-[15px] font-black text-yellow-500 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span>
-                                </div>
-                                <div className="flex flex-col gap-1.5">
-                                    <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.2em]">{tr("Retail")}</span>
-                                    <span className="text-[15px] font-black text-green-500 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span>
-                                </div>
-                            </div>
-                            
-                            {/* Action Toolbar on the far right */}
-                            <div className="flex items-center gap-3 shrink-0">
-                                <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onToggleExpand(2);
-                                    }}
-                                    className="p-2 text-(--text-color)/30 hover:text-(--main-color) transition-all"
-                                    title={isExpanded === 2 ? "Hide Identity Hub" : "Show Identity Hub (Barcode/QR)"}
-                                >
-                                    <ScanBarcode size={22} strokeWidth={2} />
-                                </button>
-                                <button 
+
+                            {/* GENERATED — the AI copy this item carries for the store: the
+                                title (detailed_description), the classification
+                                (generated_type), the colour list behind Shopify's
+                                colour-pattern filter (generated_color), and the body
+                                (generated_description). The badge runs the same
+                                validateCopy check that guards the batch processor, so a
+                                title that says "brown" on a yellow stone, or a size the
+                                record does not have, is visible the moment the row opens —
+                                before it reaches an export. */}
+                            <section className="inv-panel-ai inv-cluster" aria-label={tr("Generated content")}>
+                                <h5 className="inv-cluster-t">
+                                    {tr("Generated")}
+                                    {hasAiCopy && (aiNotes.length === 0
+                                        ? <span className="inv-badge" data-tone="paid" title={tr("Title and body agree with the stone, size and quantity on record, and the title fits the export")}><Check size={11} strokeWidth={3} aria-hidden="true" />{tr("Consistent")}</span>
+                                        : <span className="inv-badge" data-tone="req" title={aiNotes.join('\n')}>{aiNotes.length} {aiNotes.length === 1 ? tr("issue") : tr("issues")}</span>)}
+                                </h5>
+                                {!hasAnyAi ? (
+                                    <p className="inv-ai-empty">{tr("No AI content yet — run the batch processor on this item.")}</p>
+                                ) : (
+                                    <div className="inv-ai">
+                                        <dl className="inv-spec inv-ai-meta">
+                                            <SpecRow k="ai-title" label={tr("Title")} title={aiTitle}>
+                                                <span className="inv-ai-title">{aiTitle || '—'}</span>
+                                            </SpecRow>
+                                            <SpecRow k="ai-type" label={tr("Type")} title={aiTypePath.join(' › ')}>
+                                                <span className="inv-ai-type">
+                                                    {aiTypePath.length ? aiTypePath.map((part, i) => (
+                                                        <React.Fragment key={i}>
+                                                            {i > 0 && <span className="inv-ai-crumb" aria-hidden="true">›</span>}
+                                                            <span>{part}</span>
+                                                        </React.Fragment>
+                                                    )) : '—'}
+                                                </span>
+                                            </SpecRow>
+                                            <SpecRow k="ai-colors" label={tr("Colors")}>
+                                                {aiColors.length ? (
+                                                    <span className="inv-ai-chips">
+                                                        {aiColors.map(c => {
+                                                            const lc = c.toLowerCase();
+                                                            const inStore = SHOPIFY_COLOR_SET.has(lc);
+                                                            const hint = !inStore
+                                                                ? tr("Not one of the store's colour names — the export resolves it through the stone table or leaves it out")
+                                                                : lc === 'turquoise/aqua' ? tr("Exports as Blue — the store has no Turquoise/Aqua value") : undefined;
+                                                            return (
+                                                                <span key={c} className={`inv-ai-chip${inStore ? '' : ' inv-ai-chip--off'}`} title={hint}>
+                                                                    <span className="inv-ai-sw" style={{ background: swatchFor(c) }} aria-hidden="true" />{c}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </span>
+                                                ) : '—'}
+                                            </SpecRow>
+                                        </dl>
+                                        <div className="inv-ai-bodywrap">
+                                            <span className="inv-ai-label">{tr("Body")}</span>
+                                            {aiBodyText
+                                                ? <p className={`inv-ai-body${showFullBody ? '' : ' is-clamped'}`}>{aiBodyText}</p>
+                                                : <p className="inv-ai-empty">—</p>}
+                                            {aiBodyText.length > 240 && (
+                                                <button type="button" className="inv-ai-more" aria-expanded={showFullBody}
+                                                    onClick={(e) => { e.stopPropagation(); setShowFullBody(v => !v); }}>
+                                                    {showFullBody ? tr("Show less") : tr("Show all")}
+                                                </button>
+                                            )}
+                                            {aiNotes.length > 0 && (
+                                                <ul className="inv-ai-issues">
+                                                    {aiNotes.map((note, i) => <li key={i}>{note}</li>)}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
+
+                            {/* Payments always have a section, even when nothing is linked
+                                yet — an absent section reads as "not loaded". */}
+                            <div className="inv-panel-pay">{renderPaymentHistory()}</div>
+
+                            {/* The toolbar. Labelled — the old icons were unlabelled 48px
+                                keys that took the whole top line on a phone. Remove is last
+                                and set apart, so the destructive action is never the one
+                                under a thumb reaching for Edit. */}
+                            <div className="inv-actions" role="toolbar" aria-label={tr("Item actions")}>
+                                <button type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
                                         toast.success(tr("Trace Link Copied"));
                                     }}
-                                    className="p-2 text-cyan-400 hover:text-cyan-300 transition-all"
-                                    title={tr("Copy Trace Link")}
-                                >
-                                    <Copy size={22} strokeWidth={2} />
+                                    title={tr("Copy Trace Link")}>
+                                    <Copy size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Copy link")}</span>
                                 </button>
                                 {isEditable && (
-                                    <button onClick={handleEdit} className="p-2 text-cyan-400 hover:text-cyan-300 transition-all" title={tr("Edit Item")}>
-                                        <Pencil size={22} strokeWidth={2} />
+                                    <button type="button" onClick={handleEdit} title={tr("Edit Item")}>
+                                        <Pencil size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Edit")}</span>
                                     </button>
                                 )}
                                 {isInternalUser && (
-                                    <button onClick={handleDelete} className="p-2 text-red-400 hover:text-red-300 transition-all" title={tr("Remove Artifact")}>
-                                        <Trash2 size={22} strokeWidth={2} />
+                                    <button type="button" className="inv-action-danger" onClick={handleDelete} title={tr("Remove Artifact")}>
+                                        <Trash2 size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Remove")}</span>
                                     </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* Consolidated Artifact Identity Hub - List View */}
-                        {isExpanded >= 2 && (
-                            <div className="mt-4 col-span-full animate-in fade-in slide-in-from-top-4 duration-500">
-                                <div className="flex flex-col sm:flex-row items-center justify-center gap-12 sm:gap-20 w-full lg:px-20 min-w-fit">
-                                    {/* Barcode Panel - High Density White */}
-                                    <div className="w-full max-w-md mx-auto bg-white rounded-none p-2 shadow-xl border border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-lg transition-all duration-500">
-                                        <div className="flex items-center justify-between px-1">
-                                            <div className="flex items-center gap-1">
-                                                <div className="w-1 h-1 rounded-none bg-black/20" />
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="px-1.5 py-0.5 rounded-none text-black text-[8px] font-black uppercase tracking-widest border border-black/5" style={{ backgroundColor: vendorColor }}>
-                                                    {calculated.bookBarcode}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-center p-1 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
-                                            <Barcode 
-                                                value={calculated.bookBarcode || 'N/A'} 
-                                                format="CODE39" 
-                                                width={4} 
-                                                height={100} 
-                                                displayValue={false}
-                                                margin={0}
-                                            />
-                                        </div>
-                                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-(--main-color) opacity-20" />
-                                    </div>
-
-                                    {/* Free-Floating QR - SVG Theme Colored */}
-                                    <div className="flex-none p-4 relative group/qr scale-90 sm:scale-100">
-                                        <QRCodeSVG 
-                                            value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`}
-                                            size={200}
-                                            level="H"
-                                            includeMargin={false}
-                                            fgColor={qrColor}
-                                            bgColor="transparent"
-                                        />
-                                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[7px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.3em]">{tr("Identity Hub")}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {renderPaymentHistory()}
+                        </div>
                     </div>
                 )}
             </div>
@@ -1117,7 +1422,12 @@ export const UnifiedInventoryView = () => {
     const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); 
     const viewSlider = useAtomValue(inventoryViewSliderAtom);
     const viewMode = viewSlider <= 33 ? 'list' : viewSlider <= 66 ? 'grid' : 'gallery';
-    const listScale = viewMode === 'list' ? 0.85 + (viewSlider / 33) * 0.3 : 1;
+    // The slider's resting position (0, the stored default) used to mean 0.85,
+    // so every list row was drawn at 85% — 13px type reached the screen at 11px
+    // and a 10px caption at 8.5px, and scaled text is also resampled, which
+    // softens it. The range now starts at 1: the resting list is drawn at its
+    // designed size, and the slider only ever enlarges it.
+    const listScale = viewMode === 'list' ? 1 + (viewSlider / 33) * 0.3 : 1;
     const gridScale = viewMode === 'grid' ? 0.85 + ((viewSlider - 34) / 32) * 0.6 : 1;
     const galleryScale = viewMode === 'gallery' ? 0.9 + ((viewSlider - 67) / 33) * 0.9 : 1;
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
@@ -1480,10 +1790,26 @@ export const UnifiedInventoryView = () => {
     const listVirtualizer = useVirtualizer({
         count: viewMode === 'list' ? filteredItems.length : 0,
         getScrollElement,
-        estimateSize: () => 120, // Better baseline estimate for list cards
+        estimateSize: () => 48, // A collapsed row is 44px + the 4px rhythm gap.
         overscan: 10,
         scrollMargin,
+        // The zoom slider renders each row inside `transform: scale(listScale)`.
+        // virtual-core measures from ResizeObserver's `borderBoxSize`, which is
+        // the LAYOUT box — transforms do not touch it. So at any zoom below 1
+        // the list reserved each row's full unscaled height while the row drew
+        // itself smaller, leaving a dead band under every one of the 483 rows
+        // (7.5px each at the default 0.85 — about 16% of the list's height,
+        // spent on nothing). Multiplying the measurement back by the same scale
+        // is what closes it, and it keeps the slider's meaning unchanged.
+        measureElement: (el: Element) => el.getBoundingClientRect().height * listScale,
     });
+
+    // A cached measurement is not re-taken when `measureElement` changes, so a
+    // move of the zoom slider has to drop the cache explicitly — the same reason
+    // the grid virtualizer re-measures below.
+    useEffect(() => {
+        if (viewMode === 'list') listVirtualizer.measure();
+    }, [listScale, viewMode]);
 
     // ── Grid virtualization ────────────────────────────────────────────────────
     // Grid is the one uniform layout of the three, so it virtualizes by row. The
@@ -1617,7 +1943,7 @@ export const UnifiedInventoryView = () => {
                             ? "relative w-full pb-32"
                             : viewMode === 'gallery'
                                 ? "grid gap-10 pb-32 auto-rows-max"
-                                : "flex flex-col gap-4 pb-32 max-w-[1600px] mx-auto w-full"
+                                : "inv-scope flex flex-col gap-1 pb-32 w-full"
                     }`}
                     style={
                         viewMode === 'grid'
@@ -1634,6 +1960,42 @@ export const UnifiedInventoryView = () => {
                             : <InventorySkeletonGrid />
                     ) : (
                         viewMode === 'list' ? (
+                            <>
+                            {/* Column header — stated ONCE, instead of repeated inside
+                                all 483 rows. Those per-row labels ("PRICE / QTY",
+                                "TOTAL MXN", "AQ CODE", "LD CODE") cost four extra lines
+                                of 10px type per row and were most of the reason a row
+                                needed 70px of height.
+
+                                It carries the same scale transform as the rows, so the
+                                zoom slider cannot slide the header out of register with
+                                the columns it labels. The transform sits INSIDE the
+                                sticky wrapper deliberately — see .inv-head-wrap. */}
+                            <div className="inv-head-wrap">
+                                <div className="inv-cq" style={{
+                                    transform: `scale(${listScale})`,
+                                    transformOrigin: 'top left',
+                                    width: `${100 / listScale}%`,
+                                }}>
+                                    <div className="inv-grid inv-head">
+                                        <div className="inv-c-rail" />
+                                        <div className="inv-c-edge" />
+                                        <div className="inv-c-media" />
+                                        <div className="inv-c-tag">{tr("TAG")}</div>
+                                        <div className="inv-c-qty inv-r">{tr("QTY")}</div>
+                                        <div className="inv-c-item">{tr("SHAPE TYPE")}</div>
+                                        <div className="inv-c-color">{tr("COLOR MATERIAL")}</div>
+                                        <div className="inv-c-spacer" />
+                                        <div className="inv-c-size">{tr("SIZE")}</div>
+                                        <div className="inv-c-weight inv-r">{tr("WEIGHT")}</div>
+                                        <div className="inv-c-price inv-r">{tr("PRICE")}</div>
+                                        <div className="inv-c-total inv-r">{tr("TOTAL MXN")}</div>
+                                        <div className="inv-c-aq">{tr("AQ")}</div>
+                                        <div className="inv-c-ld">{tr("LD")}</div>
+                                        <div className="inv-c-state">{tr("PACKING")}</div>
+                                    </div>
+                                </div>
+                            </div>
                             <div
                                 style={{
                                     height: `${listVirtualizer.getTotalSize()}px`,
@@ -1663,8 +2025,8 @@ export const UnifiedInventoryView = () => {
                                                 zIndex: expandedCards[String(item.row)] ? 10 : 1,
                                             }}
                                         >
-                                            <div style={{ 
-                                                transform: `scale(${listScale}) translateZ(0)`, 
+                                            <div className="inv-cq" style={{
+                                                transform: `scale(${listScale}) translateZ(0)`,
                                                 transformOrigin: 'top left',
                                                 width: `${100 / listScale}%`,
                                                 willChange: 'transform',
@@ -1691,6 +2053,7 @@ export const UnifiedInventoryView = () => {
                                     );
                                 })}
                             </div>
+                            </>
                         ) : viewMode === 'grid' ? (
                             <div style={{ height: `${gridVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
                                 {gridVirtualizer.getVirtualItems().map(virtualRow => {

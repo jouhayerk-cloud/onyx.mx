@@ -1,0 +1,1200 @@
+/* ==========================================================================
+   DENSITY — the data layer
+   --------------------------------------------------------------------------
+   slab.css governs how a surface FEELS (relief, state, material). This file
+   governs how DATA READS on it: column alignment, row rhythm, numeral shape.
+   The two never fight, because they touch different things — slab.css owns
+   backgrounds, shadows and borders; this file owns tracks, spacing and type
+   metrics. Rule 2 of slab.css ("relief on chrome, flat on data") is the seam
+   between them, and nothing here adds a shadow.
+
+   Unlike slab.css, NOTHING here is scoped to a style class. A column that
+   lines up is not a stylistic position, so ROCK and SLAB get it equally.
+
+   THE ONE IDEA:
+
+   A row of a table is not a row of a flexbox. The inventory list was built as
+   `flex` with `min-w-[N] shrink-0` on every cell, which means each cell is
+   sized by ITS OWN content and nothing relates one row to the next — a long
+   title on row 3 pushes that row's price 40px right of row 2's, and the eye
+   has to re-find every column on every line. It is also why the expanded
+   detail panel had to hardcode `ml-[240px]` to "align roughly" with the row
+   above it.
+
+   The fix is that the track template lives in ONE place — a custom property
+   — and the header, every row, and the accordion drawer all read it. Change
+   a column width here and the whole table follows.
+   ========================================================================== */
+
+/* ── Numerals ─────────────────────────────────────────────────────────────
+   Proportional digits make a column of money ragged: "1" is half the width of
+   "8", so $1,111 and $8,888 do not share a right edge and the eye cannot
+   compare magnitudes down the column. Tabular figures fix the advance width. */
+.tnum,
+.inv-num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
+
+/* ── One line per row, one phrase per column ─────────────────────────────
+   A row used to stack two attributes per cell — shape over colour, size over
+   weight — so reading "every YELLOW piece" meant reading the second line of
+   every cell and ignoring the first. Now every row is ONE line, so the eye
+   moves in one direction only.
+
+   Shape and type are one column, joined by a space, because together they
+   are the piece's name: HORSES PAINTED WALL PANEL, CYLINDER TABLE LAMP.
+   Colour and material are one column for the same reason — together they
+   are the stone: TEHUACAN WHITE ONYX, GREEN TALAN ONYX. Split four ways they
+   read as a form to be decoded; paired, they read as the words the gallery
+   actually uses. Every cell clips with an ellipsis rather than wrapping, and
+   carries a `title` so the clipped text is still reachable.
+
+   Read left to right, this is the row:
+
+     rail      payment + deployment status dots
+     edge      the 2px payment colour rail
+     media     thumbnail or wireframe icon
+     tag       vendor key (colour block + code)
+     qty       quantity                                 right-aligned
+     item      SHAPE TYPE      HORSES PAINTED WALL PANEL   elastic
+     color     COLOR MATERIAL  TEHUACAN WHITE ONYX         elastic
+     size      metric dimensions
+     weight    kg                                       right-aligned
+     price     unit price MXN                           right-aligned
+     total     line total MXN                           right-aligned
+     aq        acquisition code
+     ld        land code
+     state     packed badge / UNPACKED
+
+   QTY sits right after the tag, not with the money: it is part of what the
+   line is ("SU32653OO × 21"), and read before the price it tells you whether
+   that price is for one piece or for a lot.
+
+   TWO BLOCKS AND ONE GUTTER. Every column is sized to its data at compact
+   type (13-14px values): the tag to its longest code, quantity to "300",
+   the codes to four and five letters. The name and the stone may grow, but
+   only to the width of their longest value in the data (IRREGULAR BORDER
+   WALL PANEL PAIR, PINK SERPENTINE CRISTALINE ONYX) — past that, extra width
+   is not information. Whatever width is left over goes to ONE place, the
+   spacer between the identity block (tag · qty · name · stone) and the
+   figures block (size · weight · price · total · codes · packing). The
+   previous layout spread it across every column instead, and a wide row read
+   as a scatter of values with a hole after each: 410px of column for a 290px
+   name, 400px for YELLOW ONYX. Now the piece reads on the left, its numbers
+   on the right, like a ledger.
+
+   The fixed px maxima still resolve from the container width alone, so two
+   rows of the same width get the same tracks and every column aligns. */
+.inv-scope {
+    --inv-thumb: 44px;
+    --inv-media-h: 32px;
+    --inv-gap: 6px;
+    --inv-cols:
+        22px                        /* rail   */
+        2px                         /* edge   */
+        var(--inv-thumb)            /* media  */
+        124px                       /* tag    */
+        28px                        /* qty    */
+        minmax(200px, 300px)        /* item   */
+        minmax(190px, 260px)        /* color  */
+        minmax(0, 1fr)              /* spacer */
+        104px                       /* size   */
+        58px                        /* weight */
+        76px                        /* price  */
+        84px                        /* total  */
+        44px                        /* aq     */
+        48px                        /* ld     */
+        228px;                      /* state  */
+}
+
+/* Each scaled wrapper (the header's and every row's) is a size container.
+   The zoom slider draws the table inside `transform: scale(s)` at a layout
+   width of `100% / s`, so the width the grid actually has to fill is the
+   WRAPPER's, not the viewport's — and not the list's either. Querying the
+   wrapper is what lets a column drop at exactly the width where it stops
+   fitting, at every zoom, with the sidebar open or closed. A viewport media
+   query gets this wrong twice: the sidebar takes 200px it cannot see, and
+   the zoom changes the grid's width without changing the viewport. */
+.inv-cq {
+    container: inv / inline-size;
+}
+
+.inv-grid {
+    display: grid;
+    grid-template-columns: var(--inv-cols);
+    align-items: center;
+    column-gap: var(--inv-gap);
+    padding-right: 12px;
+}
+
+/* The list sits inset from the window and the sidebar. Flush, the right-
+   aligned TOTAL column ended 6px from the screen edge and read as cut off
+   even though every figure was whole. */
+.inv-scope {
+    padding-inline: 12px;
+}
+
+/* Rows carry a 1px border; the header and the drawer do not. A transparent
+   border of the same width keeps all three on identical tracks, so the
+   labels sit exactly over their columns instead of 1px to the left. */
+.inv-head,
+.inv-drawer {
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
+}
+
+/* The status rail and the payment edge are structural: they run the full
+   height of the row. */
+.inv-grid > .inv-c-rail,
+.inv-grid > .inv-c-edge {
+    align-self: stretch;
+}
+
+/* TOTAL is right-aligned and AQ left-aligned, so at a 6px gap the two met
+   edge to edge and read as one value ("$2,269 MXH"). The inset lives on the
+   AQ cell in both the header and the rows, so they stay in register; a
+   four-letter code (REAA, ~31px) still fits the 44px track. */
+.inv-grid > .inv-c-aq {
+    padding-left: 8px;
+}
+
+/* The gutter track carries nothing. */
+.inv-c-spacer {
+    min-width: 0;
+}
+
+/* The thumbnail gets a DEFINITE height, and that is not cosmetic.
+   Stretched, the cell's height stays indefinite during intrinsic sizing, so
+   the `h-full` on the <img> inside resolves to `auto` — its natural height —
+   and a single portrait photo dragged its row to 112px against the rhythm.
+   A fixed box means the image resolves against a real number and
+   `object-fit` does the cropping. */
+/* PACKING's floor (232px) fits the widest crate badge in the data — a crate
+   holding three vendors, `Aug26AMEMTE1` plus its AM / EM / TE chips, is 225px.
+   At 150px that badge spilled past the row's right edge. A crate with four or
+   more vendors would still not fit, so the cell clips rather than spill; its
+   name already spells every vendor it holds. */
+.inv-grid > .inv-c-state {
+    overflow: hidden;
+}
+
+.inv-grid > .inv-c-media {
+    height: var(--inv-media-h);
+    align-self: center;
+    overflow: hidden;
+    border-radius: 3px;
+}
+
+/* Every cell clips rather than pushes. Without `min-width: 0` a grid item
+   floors at its content width, which lets a long token escape its track. */
+.inv-grid > * {
+    min-width: 0;
+}
+
+.inv-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+/* The tag is a button, and index.css gives every button `min-height: 40px`
+   and 8px/16px padding — sensible for a toolbar key, but here it made the
+   tag the tallest thing in the row and set every row 5.6px taller than its
+   content. 24px is exactly the WCAG 2.2 target minimum. Its two
+   halves stretch to the button's height so the vendor colour block and the
+   bordered code are always the same height (they differed by 1.6px, the
+   width of the border, when centred). */
+.inv-grid .vendor-tag {
+    min-height: 24px;
+    padding: 0;
+    align-items: stretch;
+}
+
+.inv-grid .vendor-tag > span {
+    display: flex;
+    align-items: center;
+}
+
+/* Numbers align on their right edge, so magnitudes line up down the column. */
+.inv-r {
+    text-align: right;
+}
+
+/* ── The open-row panel ───────────────────────────────────────────────────
+   A SPEC SHEET FOR THE PIECE. The values an open row adds are grouped into
+   clusters that name what they are — SPECS, PRICING, LOGISTICS — then the
+   payments, then a toolbar. A flat grid of equal cells (the previous
+   version) gave AQ CODE the same weight as SIZE and wrapped wherever the
+   width happened to fall, so related values ended up lines apart.
+
+   TWO LEVELS, ONE SET OF VALUES. Every value lives in the row or in this
+   panel, never in neither:
+
+     overflow entries  the row's own columns, mirrored. Hidden while the row
+                       shows that column; shown by the SAME container step
+                       below that drops the column from the row. Narrow the
+                       list, open the sidebar or zoom in, and a value moves
+                       down one level instead of disappearing.
+     panel entries     what the row never had room for — imperial size and
+                       weight, landed and retail USD, deployment.
+
+   The switch is a container query on the row's own wrapper, so it follows
+   the width the list really has — sidebar open or closed, any zoom, any
+   device — with no JavaScript measuring anything.
+
+   Layout by that width:
+     wide    [photo] [ SPECS · PRICING · LOGISTICS ] [toolbar, vertical]
+             [photo] [ PAYMENTS                    ] [                 ]
+     medium  [photo] [ clusters ]  /  payments  /  toolbar along the bottom
+     phone   one column; the toolbar last, where a thumb reaches it */
+.inv-panel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "media clusters actions"
+        "media ai       actions"
+        "media pay      actions";
+    gap: 12px 28px;
+    align-items: start;
+}
+
+.inv-panel.inv-panel--nomedia {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "clusters actions"
+        "ai       actions"
+        "pay      actions";
+}
+
+/* ── Photos: one you can recognise the piece from, the rest in a tray ── */
+.inv-panel-media {
+    grid-area: media;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 104px;
+    min-width: 0;
+}
+
+.inv-hero {
+    position: relative;
+    flex: none;
+    width: 104px;
+    height: 104px;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: zoom-in;
+}
+
+.inv-hero-count {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1.4;
+    color: #fff;
+    background: rgb(0 0 0 / 0.62);
+}
+
+.inv-thumbs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    max-height: 68px;
+    overflow-y: auto;
+}
+
+.inv-thumb {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: zoom-in;
+}
+
+.inv-hero:focus-visible,
+.inv-thumb:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+}
+
+/* ── Clusters ── */
+.inv-clusters {
+    grid-area: clusters;
+    display: grid;
+    /* auto-FIT, not auto-fill: a hidden cluster (LOGISTICS on a wide row of
+       an undeployed piece) leaves no empty track, and the ones that remain
+       share its width instead of stopping short of the toolbar. */
+    grid-template-columns: repeat(auto-fit, minmax(224px, 1fr));
+    gap: 12px 32px;
+    align-items: start;
+    min-width: 0;
+}
+
+.inv-cluster {
+    min-width: 0;
+}
+
+.inv-cluster-t {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    line-height: 1.1;
+    color: color-mix(in srgb, var(--text-color) 78%, transparent);
+}
+
+/* A title runs a hairline out to the cluster's edge. That rule, and the
+   darker ink, are what separate SPECS from the STONE / SIZE labels under it —
+   at the same 11px caps in the same grey the two read as one list, and the
+   grouping the clusters exist for disappears. */
+.inv-cluster-t::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    margin-left: 2px;
+    background: color-mix(in srgb, var(--text-color) 12%, transparent);
+}
+
+.inv-cluster-note {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    opacity: 0.8;
+}
+
+/* LOGISTICS has nothing of its own to show on a wide row unless the piece is
+   deployed — its codes and crate are still the row's columns. The step that
+   moves those columns down shows it. */
+.inv-cluster--log:not(.has-status) {
+    display: none;
+}
+
+/* Spec-sheet lines: a fixed label column, so every value in a cluster starts
+   on the same vertical edge. */
+.inv-spec {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.inv-spec-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+}
+
+.inv-spec-l {
+    flex: 0 0 52px;
+    font-size: 10.5px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1.4;
+    color: color-mix(in srgb, var(--text-color) 50%, transparent);
+}
+
+.inv-spec-v {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+}
+
+/* SPECS: silhouette on the left, measurements stacked beside it. */
+.inv-specs-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.inv-axo {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+}
+
+.inv-measures {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
+}
+
+.inv-measure-w {
+    display: block;
+}
+
+/* The crate line holds a badge, not text: centre the label on it rather than
+   baseline-align it to the badge's bottom edge. */
+.inv-spec-row.inv-f-state {
+    align-items: center;
+}
+
+/* Imperial sizes run to 30 characters of monospace; they wrap rather than
+   clip, because a clipped measurement is a wrong measurement — and only at
+   the ×, because the value carries non-breaking spaces inside each
+   measurement (see imperialDims), so a fraction is never split from its
+   whole number. */
+.inv-spec-wrap {
+    overflow-wrap: normal;
+}
+
+/* Metric twins of the row's SIZE and WEIGHT — shown by the step that drops
+   those columns, so on a wide row the panel never repeats what the row
+   already says. */
+.inv-fi {
+    display: none;
+}
+
+.inv-sep {
+    margin: 0 6px;
+    opacity: 0.45;
+}
+
+.inv-code-k {
+    margin-right: 5px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: color-mix(in srgb, var(--text-color) 45%, transparent);
+}
+
+.inv-code-k--next {
+    margin-left: 14px;
+}
+
+/* Figures read side by side: label above, value below, equal columns. */
+.inv-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 4px 16px;
+}
+
+.inv-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.inv-stat-l {
+    font-size: 10.5px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--text-color) 50%, transparent);
+}
+
+.inv-stat-v {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Overflow entries start hidden; the responsive steps below reveal them. */
+.inv-f-overflow {
+    display: none;
+}
+
+.inv-panel-pay {
+    grid-area: pay;
+    min-width: 0;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────────
+   Labelled keys. Vertical at the right edge of a wide panel, where it costs
+   no line of its own; along the bottom from medium widths down. Remove is
+   last and set apart from the others. Sized here rather than by index.css's
+   global 40px/16px button rule, which is a toolbar-key size for the app bar,
+   not for a key inside a data panel. */
+.inv-actions {
+    grid-area: actions;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.inv-actions button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 30px;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.inv-actions button svg {
+    flex: none;
+    color: var(--main-color);
+}
+
+.inv-actions .inv-action-danger {
+    margin-top: 6px;
+    color: #dc2626;
+}
+
+.inv-actions .inv-action-danger svg {
+    color: currentColor;
+}
+
+.inv-actions button:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+}
+
+/* ── Status badges ────────────────────────────────────────────────────────
+   Status in words — the phone row and the LOGISTICS title. One tone per
+   meaning, and the text is mixed toward the theme's ink so it holds contrast
+   on the light and the dark slab alike. */
+.inv-badge {
+    --tone: #0284c7;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 18px;
+    padding: 0 6px;
+    border: 1px solid color-mix(in srgb, var(--tone) 38%, transparent);
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 900;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--tone) 70%, var(--text-color));
+    background-color: color-mix(in srgb, var(--tone) 13%, transparent);
+}
+
+.inv-badge[data-tone="paid"]   { --tone: #16a34a; }
+.inv-badge[data-tone="req"]    { --tone: #ca8a04; }
+.inv-badge[data-tone="part"]   { --tone: #dc2626; }
+.inv-badge[data-tone="new"]    { --tone: #0284c7; }
+.inv-badge[data-tone="dep"]    { --tone: #0d9488; }
+.inv-badge[data-tone="packed"] { --tone: #ea580c; }
+
+.inv-badge--icon {
+    padding: 0 3px;
+}
+
+/* The logistics mark, beside the LD code. Hidden while the PACKING column is
+   in the row — the crate badge there says the same thing — and shown by the
+   step that moves PACKING down, so every compact row and every phone card
+   keeps it. The LD track widens by 20px in those steps to make room. */
+.inv-mark {
+    display: none;
+    height: 15px;
+    margin-left: 5px;
+    padding: 0 2px;
+    vertical-align: -2px;
+}
+
+/* ── Payment history ──────────────────────────────────────────────────────
+   A table: labels once in a header, amounts right-aligned on shared edges.
+   Capped in width — five columns stretched across 1500px put a payment's
+   date 1000px from its amount, and the eye loses the line between them. */
+.payment-history {
+    max-width: 760px;
+}
+
+.inv-pay {
+    display: grid;
+    grid-template-columns:
+        minmax(96px, 1.1fr)     /* date   */
+        minmax(76px, 0.9fr)     /* status */
+        minmax(44px, 0.5fr)     /* items  */
+        minmax(88px, 1fr)       /* net    */
+        minmax(88px, 1fr)       /* fees   */
+        minmax(96px, 1fr);      /* total  */
+    column-gap: 12px;
+    align-items: center;
+    padding: 5px 10px;
+    font-size: 13px;
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
+}
+
+.inv-pay > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inv-pay-table {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.inv-pay-head {
+    padding-top: 0;
+    padding-bottom: 2px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-color) 50%, transparent);
+}
+
+.inv-pay-sum {
+    font-weight: 900;
+    font-size: 13px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 6px;
+    color: var(--text-color);
+}
+
+.inv-pay-empty {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    color: color-mix(in srgb, var(--text-color) 45%, transparent);
+}
+
+/* ── Generated ────────────────────────────────────────────────────────────
+   The AI copy, laid out the way it is read: the short facts (title,
+   classification, colours) on the left, the body beside them on a wide row
+   and under them on a narrow one. The body is capped at 72 characters a line
+   and opens clamped to three lines, because 2,300 characters of prose would
+   otherwise be the tallest thing in the panel by far. */
+.inv-panel-ai {
+    grid-area: ai;
+    min-width: 0;
+}
+
+.inv-ai {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: 8px 28px;
+    align-items: start;
+}
+
+.inv-ai-title {
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-color);
+}
+
+.inv-ai-type {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--text-color) 80%, transparent);
+}
+
+.inv-ai-crumb {
+    margin: 0 5px;
+    opacity: 0.45;
+}
+
+.inv-ai-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+}
+
+.inv-ai-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 20px;
+    padding: 0 8px 0 4px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 800;
+    color: color-mix(in srgb, var(--text-color) 85%, transparent);
+}
+
+/* A value that is not one of the store's colour names: dashed and dimmed, so
+   it reads as "not what the store will show" before anyone hovers it. */
+.inv-ai-chip--off {
+    border-style: dashed;
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
+}
+
+/* A hairline ring so White, Cream and Clear still read as swatches. */
+.inv-ai-sw {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.2);
+}
+
+.inv-ai-label {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 10.5px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-color) 50%, transparent);
+}
+
+.inv-ai-body {
+    margin: 0;
+    max-width: 72ch;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: pre-line;
+    color: color-mix(in srgb, var(--text-color) 85%, transparent);
+}
+
+.inv-ai-body.is-clamped {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+}
+
+/* Sized here, not by index.css's 40px / 16px button rule. */
+.inv-ai-more {
+    margin-top: 5px;
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.inv-ai-issues {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.inv-ai-issues li {
+    font-size: 12px;
+    font-weight: 700;
+    color: color-mix(in srgb, #ca8a04 75%, var(--text-color));
+}
+
+.inv-ai-issues li::before {
+    content: "\26A0\FE0E  ";
+}
+
+.inv-ai-empty {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--text-color) 45%, transparent);
+}
+
+/* ── Responsive: drop columns, never squeeze them ─────────────────────────
+   A narrow table gets FEWER columns, not narrower ones. Squeezing produces
+   the mid-word ellipsis on every row; dropping keeps every surviving column
+   at a legible width.
+
+   A column moves down only when it does not fit — the row shows as much as
+   its width allows. When something must go, PRIORITY decides what, highest
+   kept longest (Ramses's order: sizes and codes outrank the money):
+
+     always   TAG · QTY · SHAPE TYPE
+       1      COLOR MATERIAL
+       2      SIZE
+       3      AQ · LD
+       4      WEIGHT
+       5      TOTAL MXN
+       6      PRICE MXN
+       7      PACKING        the widest (232px) and least scanned, so first
+
+   With compact type every column fits from 1360px of list width; the
+   narrowest desktop row (tag · qty · name · stone) needs 666px at its floors
+   and ~680px to show the longest names whole, so below 685px the phone card
+   takes over — it shows those names on a line of their own. Each threshold is the sum of the
+   surviving tracks' floors, their 6px gaps and the row's 14px of right
+   padding and border, plus a little headroom.
+
+   Each step restates the template, hides the matching row cells, and SHOWS
+   the matching panel fields — so the header, the rows and the panel all move
+   a column at the same width, and a dropped column is one tap away instead
+   of gone.
+   Each threshold is the sum of the surviving tracks' floors, their gaps, and
+   the 14px every row spends on its right padding and border — plus a little
+   headroom — so a step fires just before its columns would start to clip. */
+@container inv (max-width: 1360px) {
+    .inv-grid, .inv-drawer {
+        --inv-cols:
+            22px 2px var(--inv-thumb) 124px 28px
+            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
+            104px 58px 76px 84px 44px 68px;
+    }
+    .inv-c-state { display: none; }
+    .inv-f-state { display: flex; }
+    /* PACKING has left the row: its fact goes beside the codes. */
+    .inv-mark { display: inline-flex; }
+    /* The crate has moved down, so LOGISTICS has something to show. */
+    .inv-cluster--log:not(.has-status) { display: block; }
+}
+
+@container inv (max-width: 1145px) {
+    .inv-grid, .inv-drawer {
+        --inv-cols:
+            22px 2px var(--inv-thumb) 124px 28px
+            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
+            104px 58px 84px 44px 68px;
+    }
+    .inv-c-price { display: none; }
+    .inv-f-price { display: flex; }
+}
+
+@container inv (max-width: 1065px) {
+    .inv-grid, .inv-drawer {
+        --inv-cols:
+            22px 2px var(--inv-thumb) 124px 28px
+            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
+            104px 58px 44px 68px;
+    }
+    .inv-c-total { display: none; }
+    .inv-f-total { display: flex; }
+}
+
+@container inv (max-width: 975px) {
+    .inv-grid, .inv-drawer {
+        --inv-cols:
+            22px 2px var(--inv-thumb) 124px 28px
+            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
+            104px 44px 68px;
+    }
+    .inv-c-weight { display: none; }
+    .inv-fi-weight { display: inline; }
+}
+
+@container inv (max-width: 910px) {
+    .inv-grid, .inv-drawer {
+        --inv-cols:
+            22px 2px var(--inv-thumb) 124px 28px
+            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
+            104px;
+    }
+    .inv-c-aq, .inv-c-ld { display: none; }
+    .inv-f-aq { display: flex; }
+}
+
+@container inv (max-width: 785px) {
+    .inv-grid, .inv-drawer {
+        --inv-cols:
+            22px 2px var(--inv-thumb) 124px 28px
+            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr);
+    }
+    .inv-c-size { display: none; }
+    .inv-fi-size { display: block; }
+}
+
+/* ── Phone: the row becomes three lines ──────────────────────────────────
+   One line cannot hold what a phone row needs, so the row becomes a card —
+   which piece and its codes, what it is, what it is made of and its size:
+
+     ▌[photo]  AM326 3ALE ×1         AQ LMA  LD ALE [truck]
+     ▌[photo]  HORSES PAINTED WALL PANEL
+     ▌[photo]  YELLOW ONYX                   160x70x10cm
+
+   Ramses's call: the money goes DOWN and the codes and size come UP. PRICE
+   and TOTAL MXN move to the panel's PRICING cluster; AQ · LD take TOTAL's
+   place on the first line; the size, in centimetres only, shares the stone's
+   line. There is no payment badge — the card's coloured left edge already
+   carries payment, exactly as on desktop — and the deployed / packed mark,
+   which the edge does not carry, sits beside the LD code (.inv-mark). The column header is hidden: a card has no columns for it to
+   label. */
+@container inv (max-width: 685px) {
+    .inv-grid, .inv-drawer {
+        --inv-thumb: 54px;
+        --inv-media-h: 54px;
+        /* The drawer's tracks; the row is laid out by the areas below. */
+        --inv-cols: 2px var(--inv-thumb) minmax(0, 1fr);
+    }
+    .inv-head { display: none; }
+    .inv-grid.inv-row {
+        grid-template-columns: 2px var(--inv-thumb) auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            "edge media tag   qty   .     aq    ld"
+            "edge media item  item  item  item  item"
+            "edge media color color color size  size";
+        column-gap: 6px;
+        row-gap: 3px;
+        min-height: 66px;
+        padding: 5px 10px 5px 0;
+    }
+    .inv-row > .inv-c-rail    { display: none; }
+    .inv-row > .inv-c-spacer  { display: none; }
+    .inv-row > .inv-c-edge    { grid-area: edge; }
+    .inv-row > .inv-c-media   { grid-area: media; }
+    .inv-row > .inv-c-tag     { grid-area: tag; }
+    .inv-row > .inv-c-qty     { grid-area: qty; font-size: 13px; }
+    .inv-row > .inv-c-qty::before { content: "\00D7"; opacity: 0.55; margin-right: 1px; }
+    .inv-row > .inv-c-item    { grid-area: item; font-size: 14px; }
+    .inv-row > .inv-c-color   { grid-area: color; display: block; font-size: 12px; }
+    /* The codes carry their own AQ / LD labels here — there is no header. */
+    .inv-row > .inv-c-aq      { grid-area: aq; display: block; font-size: 12px; padding-left: 4px; }
+    .inv-row > .inv-c-ld      { grid-area: ld; display: block; font-size: 12px; }
+    .inv-row > .inv-c-aq::before,
+    .inv-row > .inv-c-ld::before {
+        margin-right: 3px;
+        font-family: inherit;
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        color: color-mix(in srgb, var(--text-color) 45%, transparent);
+    }
+    .inv-row > .inv-c-aq::before { content: "AQ"; }
+    .inv-row > .inv-c-ld::before { content: "LD"; }
+    .inv-row > .inv-c-size    { grid-area: size; display: block; font-size: 12px; text-align: right; }
+    .inv-row > .inv-c-total   { display: none; }
+    .inv-mark { height: 16px; margin-left: 4px; }
+
+    /* The panel mirrors the card: what came up leaves it, what went down
+       appears in it. */
+    .inv-f-color, .inv-f-aq, .inv-fi-size { display: none; }
+    .inv-f-total { display: flex; }
+}
+
+/* A 320px screen: tag, ×qty and both codes no longer fit one line, so the
+   codes — and only here — go down to LOGISTICS. */
+@container inv (max-width: 330px) {
+    .inv-row > .inv-c-aq,
+    .inv-row > .inv-c-ld { display: none; }
+    .inv-f-aq { display: flex; }
+}
+
+/* ── Panel at medium widths: toolbar along the bottom ── */
+@container inv (max-width: 985px) {
+    .inv-panel {
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+            "media   clusters"
+            "ai      ai"
+            "pay     pay"
+            "actions actions";
+    }
+    .inv-panel.inv-panel--nomedia {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "clusters" "ai" "pay" "actions";
+    }
+    .inv-panel-media { width: 88px; }
+    /* The body gets the full width under the title, type and colours. */
+    .inv-ai { grid-template-columns: minmax(0, 1fr); }
+    .inv-hero { width: 88px; height: 88px; }
+    .inv-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .inv-actions .inv-action-danger { margin-top: 0; margin-left: 10px; }
+}
+
+/* ── Panel on a phone: one column ──
+   Photos become a strip, clusters stack under their ruled titles, labels
+   rise to 11px (the HIG mobile minimum), and the toolbar becomes four equal
+   48px keys — icon over label — at the bottom of the panel, in thumb reach.
+   The payment table keeps date, status, items and total. */
+@container inv (max-width: 685px) {
+    /* Two classes: the base .inv-drawer-body rule comes later in this file
+       and would otherwise win at equal specificity. */
+    .inv-drawer .inv-drawer-body { grid-column: 1 / -1; }
+    .inv-panel,
+    .inv-panel.inv-panel--nomedia {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "media" "clusters" "ai" "pay" "actions";
+        gap: 12px;
+    }
+    .inv-panel.inv-panel--nomedia {
+        grid-template-areas: "clusters" "ai" "pay" "actions";
+    }
+    .inv-panel-media {
+        flex-direction: row;
+        width: auto;
+        overflow-x: auto;
+    }
+    .inv-hero { width: 72px; height: 72px; }
+    .inv-thumbs {
+        display: flex;
+        max-height: none;
+        overflow: visible;
+    }
+    .inv-thumb { flex: none; width: 56px; height: 56px; align-self: flex-end; }
+    /* The drawer spans the row's full width here; the inset lines the panel's
+       photo up with the row's photo above it (edge 2px + gap 8px). */
+    .inv-drawer .inv-drawer-body { padding-inline: 10px; }
+    .inv-clusters { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .inv-cluster-t,
+    .inv-spec-l,
+    .inv-stat-l { font-size: 11px; }
+    /* PRICE and TOTAL (MXN) over LANDED and RETAIL (USD). */
+    .inv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+    .inv-spec-l { flex-basis: 60px; }
+    .inv-actions { flex-direction: row; flex-wrap: nowrap; gap: 6px; }
+    .inv-actions button {
+        flex: 1 1 0;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3px;
+        min-height: 48px;
+        padding: 4px 2px;
+        letter-spacing: 0.04em;
+    }
+    .inv-actions .inv-action-danger { margin: 0; }
+    .inv-pay {
+        grid-template-columns: minmax(80px, 1fr) minmax(56px, 0.7fr) 40px minmax(84px, 1fr);
+    }
+    .inv-pay-net, .inv-pay-fees { display: none; }
+}
+
+/* A 320px screen: the four-column payment table needed 316px and the panel
+   has ~269, so TOTAL spilled 26px past the edge. Tighter type and gaps, and
+   tracks that may shrink, keep it inside. After the phone panel block on
+   purpose — it restates .inv-pay's columns and would otherwise win. */
+@container inv (max-width: 330px) {
+    .inv-pay {
+        grid-template-columns:
+            minmax(0, 1.15fr) minmax(0, 0.7fr) minmax(0, 0.45fr) minmax(0, 1.1fr);
+        column-gap: 8px;
+        padding-inline: 6px;
+        font-size: 12px;
+    }
+}
+
+/* ── The header ───────────────────────────────────────────────────────────
+   The labels used to be repeated inside all 483 rows. Stated once at the
+   top, they give the eye a fixed reference edge to scan against.
+
+   Stickiness lives on a WRAPPER, not on .inv-head itself. The zoom slider
+   scales the header with a `transform` so it stays in register with the
+   rows, and a transformed element becomes the containing block for any
+   `sticky` descendant — which would pin the header to its own box instead of
+   to the scroll container. Wrapper outside, transform inside. */
+.inv-head-wrap {
+    position: sticky;
+    /* NOT 0. The app's own chrome (.main-header, inside a sticky wrapper that
+       is a direct child of the .app-content scroller) is already pinned to
+       the top of this same scroll container, so a column header at `top: 0`
+       sticks correctly and is then covered by it. The offset tracks
+       .main-header's `h-20`. */
+    top: var(--inv-head-offset, 80px);
+    z-index: 20;
+    /* Background and rule belong to the WRAPPER, not to .inv-head: a
+       transform does not change the layout box, so at a zoom other than 1
+       the wrapper and the band its child paints differ in height, and a
+       transparent strip would let the scrolling rows show through. */
+    background-color: var(--app-bg-solid);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* The header carries the structural cells as empty placeholders so its
+   labels land on the right tracks. They must not bring the row's sizing. */
+.inv-head .inv-c-rail,
+.inv-head .inv-c-edge,
+.inv-head .inv-c-media {
+    height: auto;
+    align-self: center;
+}
+
+.inv-head {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    line-height: 1;
+    /* Longhands on purpose: a `padding: 8px 0` shorthand here would reset
+       .inv-grid's padding-right on the header alone and shift every label
+       12px off its column. */
+    padding-top: 7px;
+    padding-bottom: 7px;
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
+}
+
+.inv-head > * {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Row rhythm ───────────────────────────────────────────────────────────
+   One height for every row: an even rhythm is what lets the eye track across
+   a line without a rule between columns. 36px holds a single line of
+   13-14px type and the 32px thumbnail, and clears the 24px WCAG 2.2 minimum
+   target size with margin. */
+.inv-row {
+    min-height: 36px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+/* ── The drawer ───────────────────────────────────────────────────────────
+   The expanded panel belongs to the row above it, so it inherits the row's
+   tracks instead of guessing at them with a hardcoded margin. Its content
+   starts under the thumbnail column — the first column that carries content
+   in every layout — so nothing sits in a dead gutter on the left. */
+.inv-drawer {
+    display: grid;
+    grid-template-columns: var(--inv-cols);
+    column-gap: var(--inv-gap);
+    padding-right: 12px;
+}
+
+.inv-drawer-body {
+    grid-column: 3 / -1;
+    min-width: 0;
+}
+
+/* ── Compact controls ─────────────────────────────────────────────────────
+   Shared sizes for controls that sit directly above data. */
+.ctl-compact {
+    height: 30px;
+    padding-inline: 10px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+}
+
+.ctl-compact-sm {
+    height: 26px;
+    padding-inline: 8px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .inv-drawer,
+    .inv-row {
+        animation: none !important;
+        transition: none !important;
+    }
+}
