@@ -838,6 +838,22 @@ html.style-slab .vendor-tag {
    surfaces instead, where it does real work — a sheen along the light axis
    reinforces the extrusion rather than competing with it. */
 
+/* Two layers, and the order is the whole trick. The SHEEN sits underneath and
+   is element-local — it is what extrudes the surface, and it has to keep
+   running top-left to bottom-right across each box individually. The VEIL sits
+   on top, is pre-diluted to ~22% in HeroBackground.tsx, and is anchored to the
+   viewport, so every surface on screen samples ONE gradient: a panel top-left
+   and a panel bottom-right catch different colour, the way they would under a
+   real coloured light, and the whole set shifts together on each click.
+
+   `background-attachment` is a positional list — `fixed, scroll` is what keeps
+   the veil viewport-anchored WITHOUT pinning the sheen, which would flatten the
+   relief. It depends on the veil being exactly one layer; HeroBackground.tsx
+   documents that constraint on the other side.
+
+   Until HeroBackground mounts and publishes it, --mesh-veil falls back to
+   `none` — still one layer, so the pairing holds and the surface is simply the
+   sheen alone. */
 html.style-slab .glass-panel,
 html.style-slab .glass-sm,
 html.style-slab .glass-md,
@@ -845,7 +861,8 @@ html.style-slab .glass-lg,
 html.style-slab .glass-tile,
 html.style-slab .sidebar,
 html.style-slab .main-header {
-    background-image: var(--slab-sheen) !important;
+    background-image: var(--mesh-veil, none), var(--slab-sheen) !important;
+    background-attachment: fixed, scroll;
 }
 
 /* Pressed surfaces take the inverse sheen so the light still reads as one
