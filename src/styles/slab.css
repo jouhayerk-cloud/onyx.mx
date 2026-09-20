@@ -1712,3 +1712,145 @@ html.style-slab .smart-chip-primary[aria-pressed="true"] {
 html.style-slab .smart-chip svg {
     flex-shrink: 0;
 }
+
+/* ── Inventory cards and the detail sheet ─────────────────────────────────
+   Rule 2 keeps a list row flat: 483 of them lie in one plane and cost
+   nothing. A CARD is a different thing — one of a dozen on screen, an object
+   on the slab that you pick up — so it walks the same scale as a key: lifted
+   at rest, raised under the pointer, pressed while its sheet is open. The
+   mesh veil and the sheen give it the surface colour every raised panel
+   carries. Everything INSIDE stays flat data, in two pressed wells: the
+   photograph (a screen set into the stone) and the readout (an instrument,
+   like .stats-readout). Layout and the ROCK base are in cards.css. */
+html.style-slab .inv-card {
+    background-color: var(--slab);
+    background-image: var(--mesh-veil, none), var(--slab-sheen);
+    border: 1px solid color-mix(in srgb, var(--pay) 45%, var(--slab-edge));
+    border-radius: var(--slab-r-lg);
+    box-shadow: var(--slab-lift);
+    transition: box-shadow var(--slab-ease), border-color var(--slab-ease);
+}
+
+html.style-slab .inv-card:hover {
+    transform: none;
+    box-shadow: var(--slab-raised);
+}
+
+html.style-slab .inv-card.is-open {
+    background-image: var(--slab-sheen-in);
+    box-shadow: var(--slab-pressed);
+    border-color: var(--slab-edge-on);
+}
+
+html.style-slab .inv-card--skel,
+html.style-slab .inv-card--skel:hover {
+    box-shadow: var(--slab-lift);
+}
+
+/* Photo wells. The bevel is drawn on the ::after rim, over the photograph,
+   because an inset shadow on the well itself paints beneath it. */
+html.style-slab .inv-card-media,
+html.style-slab .inv-gal-hero,
+html.style-slab .inv-gal-tile,
+html.style-slab .inv-xl-axo {
+    background-color: color-mix(in srgb, var(--slab-sh) 22%, var(--slab));
+}
+
+html.style-slab .inv-card-media,
+html.style-slab .inv-gal-hero {
+    border-radius: var(--slab-r-md);
+}
+
+html.style-slab .inv-card-media::after,
+html.style-slab .inv-gal-hero::after {
+    box-shadow: var(--slab-pressed), inset 0 0 0 1px var(--slab-edge);
+}
+
+/* The readout — an instrument, recessed. */
+html.style-slab .inv-readout {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border: 1px solid var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+}
+
+html.style-slab .inv-readout > *,
+html.style-slab .inv-xl-figs > .inv-ro + .inv-ro {
+    border-color: var(--slab-edge);
+}
+
+html.style-slab .inv-xl-axo {
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+}
+
+/* Keys over a photograph are round slab keys, not dark glass. They take the
+   state walk from the button rules above; only shape and ground are set. */
+html.style-slab .inv-card-nav,
+html.style-slab .inv-card-zoom,
+html.style-slab .inv-card-select {
+    border-radius: 50%;
+    border: 1px solid var(--slab-edge);
+    background-color: var(--slab);
+    color: var(--slab-ink);
+}
+
+html.style-slab .inv-card-select {
+    color: transparent;
+}
+
+html.style-slab .inv-gal-tile {
+    border-radius: var(--slab-r-sm);
+}
+
+/* The payment light sits in a socket cut into the slab. */
+html.style-slab .inv-led {
+    box-shadow:
+        inset 0 0 0 1px rgb(0 0 0 / 0.18),
+        0 0 0 2px var(--slab),
+        0 0 0 3px var(--slab-edge),
+        0 0 8px color-mix(in srgb, var(--led) 60%, transparent);
+}
+
+/* The sheet is portalled to <body>, outside #root, so it does not inherit the
+   token map #root sets for this style — it restates it. Then: one raised
+   slab over a shaded ground, with no glass (SLAB has no atmosphere). */
+html.style-slab .inv-sheet-scrim {
+    --app-bg-solid:         var(--slab);
+    --bg-color:             var(--slab);
+    --sidebar-bg:           var(--slab);
+    --glass-bg:             var(--slab);
+    --border-color:         var(--slab-edge);
+    --text-color:           var(--slab-ink);
+    --text-color-primary:   var(--slab-ink);
+    --text-color-secondary: var(--slab-dim);
+    background-color: color-mix(in srgb, var(--slab-sh) 62%, transparent);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+html.style-slab .inv-sheet {
+    background-color: var(--slab);
+    background-image: var(--mesh-veil, none), var(--slab-sheen);
+    background-attachment: fixed, scroll;
+    border: 1px solid var(--slab-edge);
+    border-radius: var(--slab-r-lg);
+    box-shadow: var(--slab-float);
+}
+
+html.style-slab .inv-sheet-bar {
+    border-bottom-color: var(--slab-edge);
+}
+
+html.style-slab .inv-sheet-close {
+    border-radius: var(--slab-r-md);
+}
+
+@media (max-width: 640px) {
+    html.style-slab .inv-sheet {
+        border: 0;
+        border-radius: 0;
+    }
+}

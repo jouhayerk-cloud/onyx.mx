@@ -2,28 +2,29 @@ import React from 'react';
 import { SkeletonBox, SkeletonText, SkeletonAvatar, SkeletonBadge } from '../../components/Skeleton';
 import { tr } from '../../lib/i18n';
 
-/** Grid skeleton — mirrors the 2→3→4→5 col responsive grid */
+/** Grid skeleton — the Standard card's own shell (cards.css): photo well,
+ *  tag line, name, readout and codes, so nothing moves when the data lands. */
 export const InventorySkeletonGrid = () => (
     <div
         role="status"
         aria-busy="true"
         aria-label={tr("Loading inventory")}
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
+        className="grid gap-5 px-3 pt-3"
+        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}
     >
         {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="bg-white/3 border border-white/5 rounded-2xl overflow-hidden flex flex-col">
-                {/* Image area */}
-                <SkeletonBox className="w-full aspect-square rounded-none" />
-                {/* Content */}
-                <div className="p-2.5 flex flex-col gap-2">
-                    <SkeletonText lines={2} lastLineWidth="55%" />
-                    <div className="flex gap-1.5 mt-1">
-                        <SkeletonBadge width={38} />
-                        <SkeletonBadge width={38} />
+            <div key={i} className="inv-card inv-card--skel" aria-hidden="true">
+                <div className="inv-card-media"><SkeletonBox /></div>
+                <div className="inv-card-body">
+                    <div className="inv-card-id">
+                        <SkeletonBox className="h-5 w-28" />
+                        <SkeletonBox className="h-3 w-6" />
                     </div>
-                    <div className="flex justify-between items-center mt-1">
+                    <SkeletonText lines={2} lastLineWidth="60%" />
+                    <div className="inv-readout" style={{ height: 50 }} />
+                    <div className="inv-card-foot">
                         <SkeletonBox className="h-3 w-16" />
-                        <SkeletonBox className="h-3 w-8" />
+                        <SkeletonBox className="h-3 w-16" />
                     </div>
                 </div>
             </div>
