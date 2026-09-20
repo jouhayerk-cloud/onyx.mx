@@ -38,7 +38,7 @@
         var(--tv-surface) 50%,
         color-mix(in srgb, var(--tv-sh) 18%, var(--tv-surface)) 100%);
 
-    --tv-display: "Outfit", "Atkinson Hyperlegible", system-ui, sans-serif;
+    --tv-display: "Montserrat", "Atkinson Hyperlegible", system-ui, sans-serif;
     --tv-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
     --tv-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 

@@ -43,7 +43,7 @@ export function WelcomePage({ onComplete }: { onComplete: () => void }) {
                     <CheckCircle className="w-12 h-12 text-[var(--main-color)]" strokeWidth={1.5} />
                 </div>
 
-                <h1 className="welcome-animate text-4xl font-black text-white mb-4 tracking-tighter italic" style={{ fontFamily: 'Playfair Display, serif' }}>
+                <h1 className="welcome-animate text-4xl font-black text-white mb-4 tracking-tighter italic" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                     {tr("Activation")} <span className="text-[var(--main-color)]">{tr("Successful")}</span>
                 </h1>
 
