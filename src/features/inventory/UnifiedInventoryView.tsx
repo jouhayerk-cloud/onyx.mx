@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useDeferredValue, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useDeferredValue, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
-import Barcode from 'react-barcode';
-import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
@@ -90,6 +88,7 @@ const COL_TEXT = {
     weight:   'text-[13px] font-mono font-bold text-(--text-color)/70',
     price:    'text-[14px] font-black text-(--text-color)',
     total:    'text-[14px] font-black text-(--main-color)',
+    acq:      'text-[14px] font-black text-cyan-500',
     landed:   'text-[14px] font-black text-yellow-500',
     retail:   'text-[14px] font-black text-green-500',
     aq:       'text-[13px] font-mono font-black text-(--text-color)/75',
@@ -660,6 +659,202 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         } catch (err: any) { toast.error(err.message, { id: tid }); }
     };
 
+    // ── The open item, in pieces ─────────────────────────────────────────
+    // Each block is defined once and composed two ways: into the drawer under
+    // a list row, and into the detail sheet a grid or gallery card opens. The
+    // sheet has no row to share its fields with, so it shows every one
+    // (cards.css reveals the overflow entries there) and adds acquisition USD,
+    // which the old modal carried.
+    const clusters = (full = false) => (
+        <div className="inv-clusters">
+            {/* SPECS — the piece's axonometric silhouette beside its
+                measurements. No SIZE / WEIGHT titles: 5' 3" × 2' 3 9/16"
+                is a size and 60kg · 132.3 lbs is a weight on sight, and
+                the titles cost a label column the numbers can use. The
+                metric figures appear only once the row has dropped its
+                SIZE / WEIGHT column; the imperial ones are always here. */}
+            <section className="inv-cluster" aria-label={tr("Specs")}>
+                <h5 className="inv-cluster-t">{tr("Specs")}</h5>
+                <div className="inv-specs-body">
+                    <div className="inv-axo bg-black/40" title={tr("Proportions")} aria-hidden="true">
+                        <WireframeIcon item={norm} color={accentColor} />
+                    </div>
+                    <div className="inv-measures" aria-label={tr("Size and weight")}>
+                        <span className={`inv-fi inv-fi-size ${COL_TEXT.size}`}>{metricDimensionsStr || '—'}</span>
+                        <span className={`inv-spec-wrap ${COL_TEXT.size}`} title={imperialDims}>{imperialDims || '—'}</span>
+                        <span className="inv-measure-w">
+                            <span className={`inv-fi inv-fi-weight ${COL_TEXT.weight}`}>{metricWeightStr || '—'}<span className="inv-sep" aria-hidden="true">·</span></span>
+                            <span className={COL_TEXT.weight}>{imperialWeight || '—'}</span>
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <section className="inv-cluster" aria-label={tr("Pricing")}>
+                <h5 className="inv-cluster-t">{tr("Pricing")}</h5>
+                <div className="inv-stats">
+                    <Stat k="price" label={tr("Price MXN")} overflow valueClassName={COL_TEXT.price}>{fmtMoney(itemPriceMXN)}</Stat>
+                    {/* TOTAL only leaves the row on a phone, where the row
+                        gives its line to COLOR MATERIAL instead. */}
+                    <Stat k="total" label={tr("Total MXN")} overflow valueClassName={COL_TEXT.total}>{fmtMoney(itemTotalMXN)}</Stat>
+                    {full && <Stat k="acq" label={tr("Acq. USD")} valueClassName={COL_TEXT.acq}>{fmtMoney(calculated.bookAcquisition)}</Stat>}
+                    <Stat k="landed" label={tr("Landed USD")} valueClassName={COL_TEXT.landed}>{fmtMoney(calculated.bookLanded)}</Stat>
+                    <Stat k="retail" label={tr("Retail USD")} valueClassName={COL_TEXT.retail}>{fmtMoney(calculated.bookRetail)}</Stat>
+                </div>
+            </section>
+
+            {/* Shown on a wide row only when the piece is deployed — the
+                row says that with a teal dot alone, and a dot is not a word.
+                Once the row drops AQ / LD / PACKING, it always shows. */}
+            <section className={`inv-cluster inv-cluster--log${deployedInfo ? ' has-status' : ''}`} aria-label={tr("Logistics")}>
+                <h5 className="inv-cluster-t">
+                    {tr("Logistics")}
+                    {deployedInfo && (
+                        <span className="inv-badge" data-tone="dep" title={deployedTitle}>
+                            <Truck size={11} strokeWidth={2.5} aria-hidden="true" />{tr("Deployed")}
+                        </span>
+                    )}
+                </h5>
+                <dl className="inv-spec">
+                    <SpecRow k="aq" label={tr("Codes")} overflow>
+                        <span className="inv-code-k">AQ</span><span className={COL_TEXT.aq}>{calculated.bookAqCode || '—'}</span>
+                        <span className="inv-code-k inv-code-k--next">LD</span><span className={COL_TEXT.ld}>{calculated.bookLandCode || '—'}</span>
+                    </SpecRow>
+                    <SpecRow k="state" label={tr("Crate")} overflow>
+                        {norm.packingStatus === 'Packed'
+                            ? <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
+                            : <span className={COL_TEXT.unpacked}>{tr("UNPACKED")}</span>}
+                    </SpecRow>
+                </dl>
+            </section>
+        </div>
+    );
+
+    // GENERATED — the AI copy this item carries for the store: the title
+    // (detailed_description), the classification (generated_type), the colour
+    // list behind Shopify's colour-pattern filter (generated_color), and the
+    // body (generated_description). The badge runs the same validateCopy check
+    // that guards the batch processor, so a title that says "brown" on a
+    // yellow stone, or a size the record does not have, is visible the moment
+    // the item opens — before it reaches an export.
+    const aiSection = (
+        <section className="inv-panel-ai inv-cluster" aria-label={tr("Generated content")}>
+            <h5 className="inv-cluster-t">
+                {tr("Generated")}
+                {hasAiCopy && (aiNotes.length === 0
+                    ? <span className="inv-badge" data-tone="paid" title={tr("Title and body agree with the stone, size and quantity on record, and the title fits the export")}><Check size={11} strokeWidth={3} aria-hidden="true" />{tr("Consistent")}</span>
+                    : <span className="inv-badge" data-tone="req" title={aiNotes.join('\n')}>{aiNotes.length} {aiNotes.length === 1 ? tr("issue") : tr("issues")}</span>)}
+            </h5>
+            {!hasAnyAi ? (
+                <p className="inv-ai-empty">{tr("No AI content yet — run the batch processor on this item.")}</p>
+            ) : (
+                <div className="inv-ai">
+                    <dl className="inv-spec inv-ai-meta">
+                        <SpecRow k="ai-title" label={tr("Title")} title={aiTitle}>
+                            <span className="inv-ai-title">{aiTitle || '—'}</span>
+                        </SpecRow>
+                        <SpecRow k="ai-type" label={tr("Type")} title={aiTypePath.join(' › ')}>
+                            <span className="inv-ai-type">
+                                {aiTypePath.length ? aiTypePath.map((part, i) => (
+                                    <React.Fragment key={i}>
+                                        {i > 0 && <span className="inv-ai-crumb" aria-hidden="true">›</span>}
+                                        <span>{part}</span>
+                                    </React.Fragment>
+                                )) : '—'}
+                            </span>
+                        </SpecRow>
+                        <SpecRow k="ai-colors" label={tr("Colors")}>
+                            {aiColors.length ? (
+                                <span className="inv-ai-chips">
+                                    {aiColors.map(c => {
+                                        const lc = c.toLowerCase();
+                                        const inStore = SHOPIFY_COLOR_SET.has(lc);
+                                        const hint = !inStore
+                                            ? tr("Not one of the store's colour names — the export resolves it through the stone table or leaves it out")
+                                            : lc === 'turquoise/aqua' ? tr("Exports as Blue — the store has no Turquoise/Aqua value") : undefined;
+                                        return (
+                                            <span key={c} className={`inv-ai-chip${inStore ? '' : ' inv-ai-chip--off'}`} title={hint}>
+                                                <span className="inv-ai-sw" style={{ background: swatchFor(c) }} aria-hidden="true" />{c}
+                                            </span>
+                                        );
+                                    })}
+                                </span>
+                            ) : '—'}
+                        </SpecRow>
+                    </dl>
+                    <div className="inv-ai-bodywrap">
+                        <span className="inv-ai-label">{tr("Body")}</span>
+                        {aiBodyText
+                            ? <p className={`inv-ai-body${showFullBody ? '' : ' is-clamped'}`}>{aiBodyText}</p>
+                            : <p className="inv-ai-empty">—</p>}
+                        {aiBodyText.length > 240 && (
+                            <button type="button" className="inv-ai-more" aria-expanded={showFullBody}
+                                onClick={(e) => { e.stopPropagation(); setShowFullBody(v => !v); }}>
+                                {showFullBody ? tr("Show less") : tr("Show all")}
+                            </button>
+                        )}
+                        {aiNotes.length > 0 && (
+                            <ul className="inv-ai-issues">
+                                {aiNotes.map((note, i) => <li key={i}>{note}</li>)}
+                            </ul>
+                        )}
+                    </div>
+                </div>
+            )}
+        </section>
+    );
+
+    // The toolbar keys. Labelled — the old icons were unlabelled 48px keys
+    // that took the whole top line on a phone. Remove is last and set apart,
+    // so the destructive action is never the one under a thumb reaching for
+    // Edit.
+    const actionButtons = (
+        <>
+        <button type="button"
+            onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
+                toast.success(tr("Trace Link Copied"));
+            }}
+            title={tr("Copy Trace Link")}>
+            <Copy size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Copy link")}</span>
+        </button>
+        {isEditable && (
+            <button type="button" onClick={handleEdit} title={tr("Edit Item")}>
+                <Pencil size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Edit")}</span>
+            </button>
+        )}
+        {isInternalUser && (
+            <button type="button" className="inv-action-danger" onClick={handleDelete} title={tr("Remove Artifact")}>
+                <Trash2 size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Remove")}</span>
+            </button>
+        )}
+        </>
+    );
+
+    // ── Card and sheet plumbing ──────────────────────────────────────────────
+    // Declared above the list branch because hooks cannot follow an early
+    // return; they cost a list row nothing, since sheetOpen is never true there.
+    const cardRef = useRef<HTMLElement | null>(null);
+    const sheetCloseRef = useRef<HTMLButtonElement | null>(null);
+    const sheetTitleId = useId();
+    const sheetOpen = !!isExpanded && viewMode !== 'list';
+    // Focus moves into the sheet when it opens and back to its card when it
+    // closes, so a keyboard user is never left on the page behind the scrim.
+    useEffect(() => {
+        if (!sheetOpen) return;
+        const card = cardRef.current;
+        sheetCloseRef.current?.focus({ preventScroll: true });
+        return () => { card?.focus({ preventScroll: true }); };
+    }, [sheetOpen]);
+    // Escape closes the sheet — but not while the photo viewer is over it.
+    useEffect(() => {
+        if (!sheetOpen || showViewer) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onToggleExpand(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [sheetOpen, showViewer, onToggleExpand]);
+
     if (viewMode === 'list') {
         return (
             <div className="flex flex-col gap-0.5">
@@ -841,171 +1036,15 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 </div>
                             )}
 
-                            <div className="inv-clusters">
-                                {/* SPECS — the piece's axonometric silhouette beside its
-                                    measurements. No SIZE / WEIGHT titles: 5' 3" × 2' 3 9/16"
-                                    is a size and 60kg · 132.3 lbs is a weight on sight, and
-                                    the titles cost a label column the numbers can use. The
-                                    metric figures appear only once the row has dropped its
-                                    SIZE / WEIGHT column; the imperial ones are always here. */}
-                                <section className="inv-cluster" aria-label={tr("Specs")}>
-                                    <h5 className="inv-cluster-t">{tr("Specs")}</h5>
-                                    <div className="inv-specs-body">
-                                        <div className="inv-axo bg-black/40" title={tr("Proportions")} aria-hidden="true">
-                                            <WireframeIcon item={norm} color={accentColor} />
-                                        </div>
-                                        <div className="inv-measures" aria-label={tr("Size and weight")}>
-                                            <span className={`inv-fi inv-fi-size ${COL_TEXT.size}`}>{metricDimensionsStr || '—'}</span>
-                                            <span className={`inv-spec-wrap ${COL_TEXT.size}`} title={imperialDims}>{imperialDims || '—'}</span>
-                                            <span className="inv-measure-w">
-                                                <span className={`inv-fi inv-fi-weight ${COL_TEXT.weight}`}>{metricWeightStr || '—'}<span className="inv-sep" aria-hidden="true">·</span></span>
-                                                <span className={COL_TEXT.weight}>{imperialWeight || '—'}</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </section>
+                            {clusters()}
 
-                                <section className="inv-cluster" aria-label={tr("Pricing")}>
-                                    <h5 className="inv-cluster-t">{tr("Pricing")}</h5>
-                                    <div className="inv-stats">
-                                        <Stat k="price" label={tr("Price MXN")} overflow valueClassName={COL_TEXT.price}>{fmtMoney(itemPriceMXN)}</Stat>
-                                        {/* TOTAL only leaves the row on a phone, where the row
-                                            gives its line to COLOR MATERIAL instead. */}
-                                        <Stat k="total" label={tr("Total MXN")} overflow valueClassName={COL_TEXT.total}>{fmtMoney(itemTotalMXN)}</Stat>
-                                        <Stat k="landed" label={tr("Landed USD")} valueClassName={COL_TEXT.landed}>{fmtMoney(calculated.bookLanded)}</Stat>
-                                        <Stat k="retail" label={tr("Retail USD")} valueClassName={COL_TEXT.retail}>{fmtMoney(calculated.bookRetail)}</Stat>
-                                    </div>
-                                </section>
-
-                                {/* Shown on a wide row only when the piece is deployed — the
-                                    row says that with a teal dot alone, and a dot is not a word.
-                                    Once the row drops AQ / LD / PACKING, it always shows. */}
-                                <section className={`inv-cluster inv-cluster--log${deployedInfo ? ' has-status' : ''}`} aria-label={tr("Logistics")}>
-                                    <h5 className="inv-cluster-t">
-                                        {tr("Logistics")}
-                                        {deployedInfo && (
-                                            <span className="inv-badge" data-tone="dep" title={deployedTitle}>
-                                                <Truck size={11} strokeWidth={2.5} aria-hidden="true" />{tr("Deployed")}
-                                            </span>
-                                        )}
-                                    </h5>
-                                    <dl className="inv-spec">
-                                        <SpecRow k="aq" label={tr("Codes")} overflow>
-                                            <span className="inv-code-k">AQ</span><span className={COL_TEXT.aq}>{calculated.bookAqCode || '—'}</span>
-                                            <span className="inv-code-k inv-code-k--next">LD</span><span className={COL_TEXT.ld}>{calculated.bookLandCode || '—'}</span>
-                                        </SpecRow>
-                                        <SpecRow k="state" label={tr("Crate")} overflow>
-                                            {norm.packingStatus === 'Packed'
-                                                ? <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
-                                                : <span className={COL_TEXT.unpacked}>{tr("UNPACKED")}</span>}
-                                        </SpecRow>
-                                    </dl>
-                                </section>
-                            </div>
-
-                            {/* GENERATED — the AI copy this item carries for the store: the
-                                title (detailed_description), the classification
-                                (generated_type), the colour list behind Shopify's
-                                colour-pattern filter (generated_color), and the body
-                                (generated_description). The badge runs the same
-                                validateCopy check that guards the batch processor, so a
-                                title that says "brown" on a yellow stone, or a size the
-                                record does not have, is visible the moment the row opens —
-                                before it reaches an export. */}
-                            <section className="inv-panel-ai inv-cluster" aria-label={tr("Generated content")}>
-                                <h5 className="inv-cluster-t">
-                                    {tr("Generated")}
-                                    {hasAiCopy && (aiNotes.length === 0
-                                        ? <span className="inv-badge" data-tone="paid" title={tr("Title and body agree with the stone, size and quantity on record, and the title fits the export")}><Check size={11} strokeWidth={3} aria-hidden="true" />{tr("Consistent")}</span>
-                                        : <span className="inv-badge" data-tone="req" title={aiNotes.join('\n')}>{aiNotes.length} {aiNotes.length === 1 ? tr("issue") : tr("issues")}</span>)}
-                                </h5>
-                                {!hasAnyAi ? (
-                                    <p className="inv-ai-empty">{tr("No AI content yet — run the batch processor on this item.")}</p>
-                                ) : (
-                                    <div className="inv-ai">
-                                        <dl className="inv-spec inv-ai-meta">
-                                            <SpecRow k="ai-title" label={tr("Title")} title={aiTitle}>
-                                                <span className="inv-ai-title">{aiTitle || '—'}</span>
-                                            </SpecRow>
-                                            <SpecRow k="ai-type" label={tr("Type")} title={aiTypePath.join(' › ')}>
-                                                <span className="inv-ai-type">
-                                                    {aiTypePath.length ? aiTypePath.map((part, i) => (
-                                                        <React.Fragment key={i}>
-                                                            {i > 0 && <span className="inv-ai-crumb" aria-hidden="true">›</span>}
-                                                            <span>{part}</span>
-                                                        </React.Fragment>
-                                                    )) : '—'}
-                                                </span>
-                                            </SpecRow>
-                                            <SpecRow k="ai-colors" label={tr("Colors")}>
-                                                {aiColors.length ? (
-                                                    <span className="inv-ai-chips">
-                                                        {aiColors.map(c => {
-                                                            const lc = c.toLowerCase();
-                                                            const inStore = SHOPIFY_COLOR_SET.has(lc);
-                                                            const hint = !inStore
-                                                                ? tr("Not one of the store's colour names — the export resolves it through the stone table or leaves it out")
-                                                                : lc === 'turquoise/aqua' ? tr("Exports as Blue — the store has no Turquoise/Aqua value") : undefined;
-                                                            return (
-                                                                <span key={c} className={`inv-ai-chip${inStore ? '' : ' inv-ai-chip--off'}`} title={hint}>
-                                                                    <span className="inv-ai-sw" style={{ background: swatchFor(c) }} aria-hidden="true" />{c}
-                                                                </span>
-                                                            );
-                                                        })}
-                                                    </span>
-                                                ) : '—'}
-                                            </SpecRow>
-                                        </dl>
-                                        <div className="inv-ai-bodywrap">
-                                            <span className="inv-ai-label">{tr("Body")}</span>
-                                            {aiBodyText
-                                                ? <p className={`inv-ai-body${showFullBody ? '' : ' is-clamped'}`}>{aiBodyText}</p>
-                                                : <p className="inv-ai-empty">—</p>}
-                                            {aiBodyText.length > 240 && (
-                                                <button type="button" className="inv-ai-more" aria-expanded={showFullBody}
-                                                    onClick={(e) => { e.stopPropagation(); setShowFullBody(v => !v); }}>
-                                                    {showFullBody ? tr("Show less") : tr("Show all")}
-                                                </button>
-                                            )}
-                                            {aiNotes.length > 0 && (
-                                                <ul className="inv-ai-issues">
-                                                    {aiNotes.map((note, i) => <li key={i}>{note}</li>)}
-                                                </ul>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </section>
+                            {aiSection}
 
                             {/* Payments always have a section, even when nothing is linked
                                 yet — an absent section reads as "not loaded". */}
                             <div className="inv-panel-pay">{renderPaymentHistory()}</div>
 
-                            {/* The toolbar. Labelled — the old icons were unlabelled 48px
-                                keys that took the whole top line on a phone. Remove is last
-                                and set apart, so the destructive action is never the one
-                                under a thumb reaching for Edit. */}
-                            <div className="inv-actions" role="toolbar" aria-label={tr("Item actions")}>
-                                <button type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
-                                        toast.success(tr("Trace Link Copied"));
-                                    }}
-                                    title={tr("Copy Trace Link")}>
-                                    <Copy size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Copy link")}</span>
-                                </button>
-                                {isEditable && (
-                                    <button type="button" onClick={handleEdit} title={tr("Edit Item")}>
-                                        <Pencil size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Edit")}</span>
-                                    </button>
-                                )}
-                                {isInternalUser && (
-                                    <button type="button" className="inv-action-danger" onClick={handleDelete} title={tr("Remove Artifact")}>
-                                        <Trash2 size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Remove")}</span>
-                                    </button>
-                                )}
-                            </div>
+                            <div className="inv-actions" role="toolbar" aria-label={tr("Item actions")}>{actionButtons}</div>
                         </div>
 
                         </div>
@@ -1016,403 +1055,327 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     }
 
 
-    const FullscreenModal = !!isExpanded && viewMode !== 'list' && createPortal(
-        <div className="fixed inset-0 z-90 bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onClick={() => onToggleExpand()}>
-            <div className="relative w-full max-w-6xl bg-[#0e0e0e] rounded-[40px] overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
-                <div className="absolute top-6 right-6 z-10 flex gap-2">
-                    {isEditable && <button onClick={handleEdit} className="h-10 px-4 rounded-xl bg-(--main-color)/20 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all">{tr("Edit Item")}</button>}
-                    <button onClick={() => onToggleExpand()} className="h-10 px-4 rounded-xl bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">{tr("Close")}</button>
-                </div>
-                <div className="h-72 sm:h-96 bg-black relative shrink-0 group/hero isolate">
-                    {mediaUrls[modalIdx] ? (
-                        <div className="w-full h-full relative cursor-zoom-in" onClick={() => { setViewerIdx(modalIdx); setShowViewer(true); }}>
-                            {isVideoFile(mediaUrls[modalIdx]) ? (
-                                <video preload="none" src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" autoPlay muted loop />
-                            ) : (
-                                <DriveImage loading="lazy" src={mediaUrls[modalIdx]} className="w-full h-full object-contain" />
-                            )}
-                            
-                            {/* Modal Hero Navigation Chevrons */}
-                            {mediaUrls.length > 1 && (
-                                <>
-                                    <button onClick={(e) => { e.stopPropagation(); setModalIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
-                                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/hero:opacity-100 hover:text-white transition-all">
-                                        <ChevronLeft size={24} />
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); setModalIdx(p => (p + 1) % mediaUrls.length); }}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/hero:opacity-100 hover:text-white transition-all">
-                                        <ChevronRight size={24} />
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    ) : <div className="w-full h-full flex items-center justify-center opacity-80 mix-blend-screen scale-[1.5]"><WireframeIcon item={norm} color={accentColor} /></div>}
-                </div>
+    // ── Shared by the Standard card, the Spacious card and the sheet ─────────
+    // Payment rides as a light, not a word — the same call as the list, where
+    // the coloured edge replaced the PAID / NEW badge. The light carries the
+    // word as its accessible name and tooltip, so it is never colour alone.
+    const ledColor = payStatus ? col : '#38bdf8';
+    const payLabel = getPayLabel();
+    const payTone = payStatus === 'GREEN' ? 'paid' : payStatus === 'YELLOW' ? 'req' : payStatus === 'RED' ? 'part' : 'new';
+    const rowId = item.row ?? item.data?.id;
+    const isSelected = selectedIds.includes(rowId);
+    const cardName = [norm.shape || tr("OBJ"), norm.shortDescription].filter(Boolean).join(' ');
+    const sheetIdx = Math.min(modalIdx, Math.max(0, mediaUrls.length - 1));
+    const heroIdx = Math.min(cardIdx, Math.max(0, mediaUrls.length - 1));
 
-                {/* Modal Thumbnail Gallery Bar */}
-                {mediaUrls.length > 1 && (
-                    <div className="px-8 py-3 bg-black/40 border-b border-white/5 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
-                        {mediaUrls.map((u, i) => (
-                            <div key={i} onClick={() => setModalIdx(i)}
-                                className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${modalIdx === i ? 'border-(--main-color) scale-110' : 'border-transparent opacity-40 hover:opacity-100'}`}>
-                                <DriveImage loading="lazy" src={u} className="w-full h-full object-cover" />
-                            </div>
-                        ))}
+    const openOnKey = (e: React.KeyboardEvent) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleExpand(); }
+    };
+    const stepPhoto = (d: number) => setCardIdx(p => (p + d + mediaUrls.length) % mediaUrls.length);
+    const stepSheet = (d: number) => setModalIdx(p => (Math.min(p, mediaUrls.length - 1) + d + mediaUrls.length) % mediaUrls.length);
+    const openViewer = (i: number) => { setViewerIdx(i); setShowViewer(true); };
+    const swipeHandlers = {
+        onTouchStart: (e: React.TouchEvent) => { e.stopPropagation(); setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); },
+        onTouchMove: (e: React.TouchEvent) => { e.stopPropagation(); setTouchEnd(e.targetTouches[0].clientX); },
+        onTouchEnd: (e: React.TouchEvent) => {
+            e.stopPropagation();
+            if (touchStart == null || touchEnd == null || mediaUrls.length < 2) return;
+            const dist = touchStart - touchEnd;
+            if (dist > 30) stepPhoto(1);
+            if (dist < -30) stepPhoto(-1);
+        },
+    };
+
+    const payLed = (
+        <span className="inv-led" style={{ '--led': ledColor } as React.CSSProperties}
+            role="img" aria-label={`${tr("Payment")}: ${payLabel}`} title={payLabel} />
+    );
+    const qtyChip = <span className="inv-card-qty" title={tr("Quantity")}>{norm.quantity || 1}</span>;
+    const cardCodes = (withMark: boolean) => (
+        <span className="inv-card-codes">
+            <span className="inv-card-code"><span className="inv-code-k">AQ</span><span className={COL_TEXT.aq}>{calculated.bookAqCode || '—'}</span></span>
+            <span className="inv-card-code"><span className="inv-code-k">LD</span><span className={COL_TEXT.ld}>{calculated.bookLandCode || '—'}</span></span>
+            {withMark && logBadge && (
+                <span className="inv-badge inv-badge--icon" data-tone={logBadge.tone} role="img"
+                    title={deployedInfo ? deployedTitle : logBadge.label} aria-label={logBadge.label}>
+                    <logBadge.Icon size={11} strokeWidth={2.5} aria-hidden="true" />
+                </span>
+            )}
+        </span>
+    );
+    const nameEl = (className: string, id?: string) => (
+        <h3 id={id} className={className} title={cardName}>
+            <b>{norm.shape || tr("OBJ")}</b>{norm.shortDescription && <> <span>{norm.shortDescription}</span></>}
+        </h3>
+    );
+    const selectKey = isSelectionMode && (
+        <button type="button" className="inv-card-select" aria-pressed={isSelected}
+            aria-label={isSelected ? tr("Deselect item") : tr("Select item")}
+            onClick={(e) => { e.stopPropagation(); handleToggleSelection(rowId); }}>
+            <Check size={14} strokeWidth={4} aria-hidden="true" />
+        </button>
+    );
+    // The piece's silhouette, standing in for a photo it does not have yet.
+    const axoFill = (
+        <div className="inv-card-axo mix-blend-screen"><WireframeIcon item={norm} color={accentColor} /></div>
+    );
+    // Photo keys over a hero: previous / next, the position, and an explicit
+    // full-screen key — the hero itself is not a button, so these never nest.
+    const heroKeys = (idx: number, step: (d: number) => void, size: number) => mediaUrls.length > 0 && (
+        <>
+            {mediaUrls.length > 1 && (
+                <>
+                    <button type="button" className="inv-card-nav inv-card-nav--prev" aria-label={tr("Previous photo")}
+                        onClick={(e) => { e.stopPropagation(); step(-1); }}>
+                        <ChevronLeft size={size} strokeWidth={2.5} aria-hidden="true" />
+                    </button>
+                    <button type="button" className="inv-card-nav inv-card-nav--next" aria-label={tr("Next photo")}
+                        onClick={(e) => { e.stopPropagation(); step(1); }}>
+                        <ChevronRight size={size} strokeWidth={2.5} aria-hidden="true" />
+                    </button>
+                    <span className="inv-card-count">{idx + 1} / {mediaUrls.length}</span>
+                </>
+            )}
+            <button type="button" className="inv-card-zoom" aria-label={tr("Open photo full screen")} title={tr("Full screen")}
+                onClick={(e) => { e.stopPropagation(); openViewer(idx); }}>
+                <Maximize2 size={13} strokeWidth={2.5} aria-hidden="true" />
+            </button>
+        </>
+    );
+    const heroMedia = (idx: number, imgClass: string) => mediaUrls[idx] ? (
+        <>
+            <DriveImage loading="lazy" key={idx} src={mediaUrls[idx]} className={`${imgClass} animate-in fade-in duration-500`} />
+            {isVideoFile(mediaUrls[idx]) && <span className="inv-card-video" aria-hidden="true"><Video size={28} /></span>}
+        </>
+    ) : axoFill;
+    // The tray under a hero. Choosing a tile makes it the hero; the last tile
+    // of a long set says how many more there are and opens the viewer on them.
+    const STRIP_MAX = 24;
+    const photoStrip = (current: number, choose: (i: number) => void) => mediaUrls.length > 1 && (
+        <div className="inv-gal-strip" role="group" aria-label={tr("Photos")}>
+            {mediaUrls.slice(0, STRIP_MAX).map((u, i) => {
+                const more = i === STRIP_MAX - 1 ? mediaUrls.length - STRIP_MAX : 0;
+                const pick = () => (more > 0 ? openViewer(i) : choose(i));
+                return (
+                    <div key={i} role="button" tabIndex={0} className={`inv-gal-tile${i === current ? ' is-on' : ''}`}
+                        aria-label={more > 0 ? `${more} ${tr("more photos")}` : `${tr("Photo")} ${i + 1}`} aria-current={i === current || undefined}
+                        onClick={(e) => { e.stopPropagation(); pick(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); pick(); } }}>
+                        <DriveImage loading="lazy" src={u} className="inv-gal-img inv-gal-img--cover" />
+                        {isVideoFile(u) && <span className="inv-card-video" aria-hidden="true"><Video size={12} /></span>}
+                        {more > 0 && <span className="inv-gal-more">+{more}</span>}
                     </div>
-                )}
+                );
+            })}
+        </div>
+    );
+    const viewer = showViewer && (
+        <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />
+    );
 
-                <div className="p-8 overflow-y-auto grow custom-scrollbar flex flex-col gap-8">
-                    <div><h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || tr("OBJ")} {norm.shortDescription}</h3><p className="text-[13px] font-bold text-white/50 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/2 border border-white/5">
-                        <div><p className={lbl}>{tr("AQ Code")}</p><p className="text-2xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
-                        <div><p className={lbl}>{tr("LD Code")}</p><p className="text-2xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
-                        <div><p className={lbl}>{tr("Acq. MXN")}</p><p className="text-2xl font-black text-green-400">{showFinancials ? `$${itemPriceMXN}` : '***'}</p></div>
-                        <div><p className={lbl}>{tr("Acq. USD")}</p><p className="text-2xl font-black text-cyan-400">{showFinancials ? `$${calculated.bookAcquisition}` : '***'}</p></div>
-                        <div><p className={lbl}>{tr("Landed USD")}</p><p className="text-2xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
-                        <div><p className={lbl}>{tr("Retail USD")}</p><p className="text-2xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
-                        <div><p className={lbl}>{tr("Dimensions")}</p><p className="text-[15px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
-                        <div><p className={lbl}>{tr("Weight")}</p><p className="text-[15px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
-                        
-                        {norm.detailedDescription && (
-                            <div className="col-span-full border-t border-white/5 pt-6 mt-2">
-                                <p className={lbl}>{tr("AI Visual Analysis")}</p>
-                                <p className="text-sm font-mono text-white/70 leading-relaxed mt-2 whitespace-pre-wrap">{norm.detailedDescription}</p>
-                            </div>
+    // ── THE DETAIL SHEET ─────────────────────────────────────────────────────
+    // What a grid or gallery card opens. It replaces a black modal that had
+    // its own hand-written field grid and the barcode / QR block the list
+    // panel already dropped; it is now the SAME spec sheet as the list —
+    // SPECS · PRICING · LOGISTICS, GENERATED, PAYMENTS and the toolbar — laid
+    // around the photographs, on the slab. Everything a card leaves out is
+    // here: nothing the old modal showed is lost (acquisition USD included).
+    const FullscreenModal = sheetOpen && createPortal(
+        <div className="inv-sheet-scrim" onClick={() => onToggleExpand()}>
+            <div className="inv-sheet" role="dialog" aria-modal="true" aria-labelledby={sheetTitleId} onClick={e => e.stopPropagation()}>
+                <header className="inv-sheet-bar">
+                    <div className="inv-sheet-id">
+                        {tagKey}
+                        {qtyChip}
+                        <span className="inv-badge" data-tone={payTone} style={payStatus === 'PURPLE' ? { '--tone': col } as React.CSSProperties : undefined}>{payLabel}</span>
+                        {deployedInfo && (
+                            <span className="inv-badge" data-tone="dep" title={deployedTitle}>
+                                <Truck size={11} strokeWidth={2.5} aria-hidden="true" />{tr("Deployed")}
+                            </span>
                         )}
-
-                        <div className="col-span-full border-t border-white/5 pt-6 flex items-center justify-between">
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
-                                    toast.success(tr("Trace Link Copied"));
-                                }}
-                                className="flex items-center gap-2 h-10 px-4 rounded-xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all text-[10px] font-black uppercase tracking-widest"
-                                title={tr("Copy Trace Link")}
-                            >
-                                <Copy size={16} /> {tr("COPY TRACE LINK")}
-                            </button>
-                            {isInternalUser && (
-                                <button onClick={handleDelete} className="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><Trash2 size={16} /> {tr("REMOVE ARTIFACT")}</button>
-                            )}
-                        </div>
                     </div>
-                    {/* Consolidated Artifact Identity Hub - Modal View */}
-                    <div className="flex flex-col gap-4">
-                        <div className="flex flex-col sm:flex-row items-center gap-8 justify-center">
-                            {/* Barcode Panel - Modal Scale */}
-                            <div className="flex-none bg-white rounded-none p-1.5 shadow-2xl border border-black/10 flex flex-col gap-1.5 overflow-hidden relative group/hub hover:shadow-xl transition-all duration-500 w-full sm:w-64">
-                                <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-1.5 h-1.5 rounded-none bg-black/20" />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button 
-                                            onClick={(e) => { 
-                                                e.stopPropagation(); 
-                                                navigator.clipboard.writeText(calculated.bookBarcode); 
-                                                toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '📋' }); 
-                                            }}
-                                            className="inline-flex items-center rounded-none text-black text-[10px] font-black uppercase tracking-[0.2em] border border-black/5 hover:scale-105 active:scale-95 transition-all overflow-hidden" 
-                                        >
-                                            <span className="px-2 py-1" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || '').slice(0, 5)}</span>
-                                            <span className="px-2 py-1 text-(--text-color) bg-transparent border border-white/10">{(calculated.bookBarcodeDisplay || '').slice(5)}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-center p-1.5 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
-                                    {isExpanded > 0 && (
-                                        <Barcode 
-                                            value={calculated.bookBarcode || 'N/A'} 
-                                            format="CODE39" 
-                                            width={1.6} 
-                                            height={50} 
-                                            displayValue={false}
-                                            margin={0}
-                                        />
-                                    )}
-                                </div>
-                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-(--main-color) opacity-25" />
-                            </div>
-
-                            {/* Free-Floating Modal QR - SVG Theme Colored */}
-                            <div className="flex-none p-4 relative group/modal-qr">
-                                {isExpanded > 0 && (
-                                    <QRCodeSVG 
-                                        value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`}
-                                        size={150}
-                                        level="H"
-                                        includeMargin={false}
-                                        fgColor={qrColor}
-                                        bgColor="transparent"
-                                    />
-                                )}
-                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.4em] whitespace-nowrap">{tr("Secure Identity Artifact")}</div>
-                            </div>
-                        </div>
+                    <div className="inv-sheet-title">
+                        {nameEl('inv-sheet-name', sheetTitleId)}
+                        <p className={`inv-sheet-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
                     </div>
-                    {renderPaymentHistory()}
+                    <div className="inv-actions inv-sheet-actions" role="toolbar" aria-label={tr("Item actions")}>{actionButtons}</div>
+                    <button ref={sheetCloseRef} type="button" className="inv-sheet-close" onClick={() => onToggleExpand()}
+                        aria-label={tr("Close")} title={`${tr("Close")} (Esc)`}>
+                        <X size={18} strokeWidth={2.5} aria-hidden="true" />
+                    </button>
+                </header>
+
+                <div className="inv-sheet-body">
+                    <section className="inv-sheet-gal" aria-label={tr("Photos")}>
+                        <div className={`inv-gal-hero${mediaUrls.length ? "" : " is-axo"}`} {...swipeHandlers}
+                            onTouchEnd={(e) => {
+                                e.stopPropagation();
+                                if (touchStart == null || touchEnd == null || mediaUrls.length < 2) return;
+                                const dist = touchStart - touchEnd;
+                                if (dist > 30) stepSheet(1);
+                                if (dist < -30) stepSheet(-1);
+                            }}
+                            onClick={() => { if (mediaUrls.length) openViewer(sheetIdx); }}>
+                            {heroMedia(sheetIdx, 'inv-gal-img')}
+                            {heroKeys(sheetIdx, stepSheet, 20)}
+                        </div>
+                        {photoStrip(sheetIdx, setModalIdx)}
+                    </section>
+
+                    <div className="inv-sheet-info">
+                        {clusters(true)}
+                        {aiSection}
+                    </div>
+
+                    <div className="inv-panel-pay">{renderPaymentHistory()}</div>
                 </div>
             </div>
         </div>, document.body
     );
 
+    // ── SPACIOUS — the gallery card ──────────────────────────────────────────
+    // Large photographs, and the most a card carries: the AI title and
+    // classification, the specs readout with the piece's silhouette, the
+    // money in both currencies, the store colours and the crate. Side by side
+    // once the card is wide enough to give both halves room (cards.css), so a
+    // full-width card is a spread instead of a photo with a caption under it.
     if (viewMode === 'gallery') {
         return (
             <>
-            <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl ${isExpanded > 0 ? 'ring-2 ring-(--main-color)/40' : 'hover:border-(--main-color)/30'}`}
-                 style={{ borderColor: payStatus ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={() => onToggleExpand()}>
-                
-                {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-                
-                {(() => {
-                    const total = mediaUrls.length;
-                    const displayCount = 24;
-                    const visibleUrls = mediaUrls.slice(0, displayCount);
-                    const remaining = total - displayCount;
-                    
-                    // Dynamic Grid Configuration - Fixed Aspect Ratio for few images (Landscape/Portrait)
-                    if (total === 1) {
-                        return (
-                            <div className="relative w-full bg-black/40 overflow-hidden cursor-pointer"
-                                 onClick={(e) => { e.stopPropagation(); setViewerIdx(0); setShowViewer(true); }}>
-                                <DriveImage loading="lazy" src={visibleUrls[0]} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 hover:scale-105" />
-                                {isVideoFile(visibleUrls[0]) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={32} className="text-white/60" /></div>}
+                <article ref={cardRef as React.RefObject<HTMLElement>} className={`inv-card inv-card--xl${isExpanded ? ' is-open' : ''}`}
+                    style={{ '--pay': payStatus ? col : 'transparent' } as React.CSSProperties}
+                    tabIndex={0} aria-haspopup="dialog" aria-label={`${calculated.bookBarcode} · ${cardName}`}
+                    onClick={() => onToggleExpand()} onKeyDown={openOnKey}>
+                    {selectKey}
+                    <div className="inv-card-layout">
+                        <div className="inv-gal">
+                            <div className={`inv-gal-hero${mediaUrls.length ? "" : " is-axo"}`} {...swipeHandlers}
+                                onClick={(e) => { e.stopPropagation(); if (mediaUrls.length) openViewer(heroIdx); else onToggleExpand(); }}>
+                                {heroMedia(heroIdx, 'inv-gal-img')}
+                                {heroKeys(heroIdx, stepPhoto, 18)}
                             </div>
-                        );
-                    }
-                    
-                    if (total <= 3) {
-                        return (
-                            <div className={`grid gap-px bg-black/40 ${total === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                                {visibleUrls.map((url, i) => (
-                                    <div key={i} className="relative overflow-hidden cursor-pointer bg-black/20"
-                                         onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
-                                        <DriveImage loading="lazy" src={url} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 hover:scale-110" />
-                                        {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={24} className="text-white/60" /></div>}
+                            {photoStrip(heroIdx, setCardIdx)}
+                        </div>
+
+                        <div className="inv-card-body">
+                            <div className="inv-xl-head">
+                                <div className="inv-xl-id">
+                                    {tagKey}
+                                    {qtyChip}
+                                    {payLed}
+                                    {cardCodes(false)}
+                                </div>
+                                <div className="inv-xl-total">
+                                    <span className="inv-ro-l">{tr("Total MXN")}</span>
+                                    <span className={`inv-xl-total-v inv-num ${COL_TEXT.total}`}>{fmtMoney(itemTotalMXN)}</span>
+                                </div>
+                            </div>
+
+                            {nameEl('inv-card-name')}
+                            <p className={`inv-card-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
+                            {aiTitle && <p className="inv-xl-ai" title={aiTitle}>{aiTitle}</p>}
+                            {aiTypePath.length > 0 && (
+                                <p className="inv-xl-type" title={aiTypePath.join(' › ')}>
+                                    {aiTypePath.map((part, i) => (
+                                        <React.Fragment key={i}>
+                                            {i > 0 && <span className="inv-ai-crumb" aria-hidden="true">›</span>}
+                                            <span>{part}</span>
+                                        </React.Fragment>
+                                    ))}
+                                </p>
+                            )}
+
+                            <div className="inv-readout inv-readout--xl">
+                                <div className="inv-xl-specs">
+                                    <div className="inv-xl-axo" aria-hidden="true"><WireframeIcon item={norm} color={accentColor} /></div>
+                                    <div className="inv-xl-measure">
+                                        <span className={`inv-ro-v ${COL_TEXT.size}`}>{metricDimensionsStr || '—'}</span>
+                                        <span className="inv-xl-imp">{imperialDims || '—'}</span>
                                     </div>
-                                ))}
+                                    <div className="inv-xl-measure inv-r">
+                                        <span className={`inv-ro-v ${COL_TEXT.weight}`}>{metricWeightStr || '—'}</span>
+                                        <span className="inv-xl-imp">{imperialWeight || '—'}</span>
+                                    </div>
+                                </div>
+                                <div className="inv-xl-figs">
+                                    <span className="inv-ro"><span className="inv-ro-l">{tr("Price MXN")}</span><span className={`inv-ro-v ${COL_TEXT.price}`}>{fmtMoney(itemPriceMXN)}</span></span>
+                                    <span className="inv-ro"><span className="inv-ro-l">{tr("Landed USD")}</span><span className={`inv-ro-v ${COL_TEXT.landed}`}>{fmtMoney(calculated.bookLanded)}</span></span>
+                                    <span className="inv-ro"><span className="inv-ro-l">{tr("Retail USD")}</span><span className={`inv-ro-v ${COL_TEXT.retail}`}>{fmtMoney(calculated.bookRetail)}</span></span>
+                                </div>
                             </div>
-                        );
-                    }
 
-                    const gridCols = total <= 6 ? 'grid-cols-3' : total <= 12 ? 'grid-cols-4 md:grid-cols-4' : 'grid-cols-4 md:grid-cols-6';
-
-                    return (
-                        <div className={`grid gap-px bg-black/40 ${gridCols}`} style={{ aspectRatio: total > 6 ? (total > 18 ? 'auto' : '16/9') : '4/3' }}>
-                            {visibleUrls.map((url, i) => (
-                                <div key={i} className={`relative overflow-hidden group/galimg aspect-square cursor-pointer`}
-                                     onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
-                                    <DriveImage loading="lazy" src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
-                                    {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
-                                    {i === visibleUrls.length - 1 && remaining > 0 && (
-                                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-xl font-black text-white">+{remaining}</span>
-                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mt-1">{tr("More")}</span>
-                                            </div>
-                                        </div>
+                            <div className="inv-card-foot inv-xl-foot">
+                                {aiColors.length > 0 && (
+                                    <span className="inv-ai-chips" aria-label={tr("Colors")}>
+                                        {aiColors.map(c => (
+                                            <span key={c} className={`inv-ai-chip${SHOPIFY_COLOR_SET.has(c.toLowerCase()) ? '' : ' inv-ai-chip--off'}`}>
+                                                <span className="inv-ai-sw" style={{ background: swatchFor(c) }} aria-hidden="true" />{c}
+                                            </span>
+                                        ))}
+                                    </span>
+                                )}
+                                <span className="inv-xl-log">
+                                    {deployedInfo && (
+                                        <span className="inv-badge" data-tone="dep" title={deployedTitle}>
+                                            <Truck size={11} strokeWidth={2.5} aria-hidden="true" />{tr("Deployed")}
+                                        </span>
                                     )}
-                                </div>
-                            ))}
-                        </div>
-                    );
-                })()}
-
-                <div className="p-5 flex flex-col gap-3">
-                    <div className="flex justify-between items-start">
-                        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-                             <div className="flex items-center gap-2">
-                                <button 
-                                    onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        navigator.clipboard.writeText(calculated.bookBarcode); 
-                                        toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '📋' }); 
-                                    }}
-                                    className="inline-flex items-center rounded text-black text-[13px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all overflow-hidden" 
-                                >
-                                    <span className="px-2 py-1.5" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || vendorPrefix || 'N/A').slice(0, 5)}</span>
-                                    <span className="px-2 py-1.5 text-(--text-color) bg-transparent border border-white/10">{(calculated.bookBarcodeDisplay || vendorPrefix || 'N/A').slice(5)}</span>
-                                </button>
-                                <div className="flex gap-1">
-                                     <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookAqCode}</div>
-                                     <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookLandCode}</div>
-                                </div>
-                             </div>
-                             <h3 className="text-2xl font-black text-(--text-color) uppercase tracking-tighter leading-tight mt-1.5 truncate">
-                                 {norm.shape || tr("OBJECT")} 
-                                 <span className="text-[14px] font-black text-(--text-color)/80 uppercase tracking-[0.2em] ml-2">{norm.shortDescription}</span>
-                             </h3>
-                             <div className="text-[12px] text-(--text-color)/70 uppercase tracking-widest font-black mt-1.5">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
-                        </div>
-                        <div className="flex flex-col items-end ml-4 shrink-0">
-                            <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.3em] mb-1">{tr("TOTAL MXN")}</span>
-                            <span className="text-3xl font-mono font-black text-(--main-color) whitespace-nowrap leading-none">
-                                {showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}
-                            </span>
-                            <div className="flex items-center gap-2 mt-2.5">
-                                <span className="text-[12px] font-black text-(--text-color)/40 uppercase tracking-[0.3em]">{tr("QTY")} {norm.quantity || 1}</span>
-                                <span className="w-px h-3 bg-white/10" />
-                                <span className="text-[12px] font-mono font-bold text-(--text-color)/60">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 py-3 border-y border-white/5">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">{tr("Dimensions")}</span>
-                            <span className="text-[14px] font-mono font-black text-(--text-color)">{metricDimensionsStr || '—'}</span>
-                        </div>
-                        <div className="w-px h-6 bg-white/5" />
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">{tr("Weight")}</span>
-                            <span className="text-[14px] font-mono font-black text-(--text-color)">{metricWeightStr || '—'}</span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-auto">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
-                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{getPayLabel()}</span>
-                        </div>
-                        {deployedInfo && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded">
-                                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
-                                <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none">
-                                    {deployedInfo.manifestId
-                                        ? deployedInfo.manifestId.replace(tr("TRK-"), tr("TRK·"))
-                                        : `TRK·${new Date(deployedInfo.date).toLocaleDateString(tr("en-US"), { month: 'short', year: '2-digit' })}`
-                                    }
+                                    {norm.packingStatus === 'Packed'
+                                        ? <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
+                                        : !deployedInfo && <span className={COL_TEXT.unpacked}>{tr("UNPACKED")}</span>}
                                 </span>
                             </div>
-                        )}
-                        {norm.packingStatus === 'Packed' && (
-                            <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
-                        )}
-                    </div>
-                </div>
-                
-                {isSelectionMode && (
-                    <div className="absolute top-4 right-4 z-20" onClick={(e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); }}>
-                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${selectedIds.includes(item.row ?? item.data?.id) ? 'bg-(--main-color) border-(--main-color) shadow-lg' : 'bg-black/40 border-white/20 backdrop-blur-md'}`}>
-                            {selectedIds.includes(item.row ?? item.data?.id) && <Check size={16} className="text-black" strokeWidth={4} />}
                         </div>
                     </div>
-                )}
-            </div>
-            {FullscreenModal}
+                </article>
+                {FullscreenModal}
+                {viewer}
             </>
         );
     }
 
-
+    // ── STANDARD — the grid card ─────────────────────────────────────────────
+    // A photograph in a pressed well, then the line the list leads with (tag,
+    // ×qty, payment light), the name, the stone, a readout of size · weight ·
+    // price · total, and the codes with the packed / deployed mark. Every
+    // value is the list's, in the list's type (COL_TEXT), so a piece reads the
+    // same whichever view it is found in.
     return (
         <>
-            <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
-                 style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={() => onToggleExpand()}
-             onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
-            {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-            <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/gridimg isolate" 
-                onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}
-                onTouchStart={(e) => { e.stopPropagation(); setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); }}
-                onTouchMove={(e) => { e.stopPropagation(); setTouchEnd(e.targetTouches[0].clientX); }}
-                onTouchEnd={(e) => {
-                    e.stopPropagation();
-                    if (!touchStart || !touchEnd) return;
-                    const dist = touchStart - touchEnd;
-                    if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
-                    if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
-                }}>
-                {mediaUrls[cardIdx] ? <DriveImage loading="lazy" key={cardIdx} src={mediaUrls[cardIdx]} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="absolute inset-0 flex items-center justify-center opacity-80 mix-blend-screen scale-[1.3] group-hover:scale-[1.35] transition-transform duration-700"><WireframeIcon item={norm} color={accentColor} /></div>}
-                {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Video size={32} className="text-white/70 shadow-lg drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" /></div>}
-                
-                {/* Grid View Card Navigation Chevrons */}
-                {mediaUrls.length > 1 && (
-                    <>
-                        <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/gridimg:opacity-100 hover:text-white transition-all drop-shadow-lg">
-                            <ChevronLeft size={28} />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p + 1) % mediaUrls.length); }}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/gridimg:opacity-100 hover:text-white transition-all drop-shadow-lg">
-                            <ChevronRight size={28} />
-                        </button>
+            <article ref={cardRef as React.RefObject<HTMLElement>} className={`inv-card inv-card--std${isExpanded ? ' is-open' : ''}`}
+                style={{ '--pay': payStatus ? col : 'transparent' } as React.CSSProperties}
+                tabIndex={0} aria-haspopup="dialog" aria-label={`${calculated.bookBarcode} · ${cardName}`}
+                onClick={() => onToggleExpand()} onKeyDown={openOnKey}
+                onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
+                {selectKey}
+                <div className="inv-card-media" {...swipeHandlers}
+                    onClick={(e) => { if (mediaUrls.length > 1) { e.stopPropagation(); stepPhoto(1); } }}>
+                    {heroMedia(heroIdx, 'inv-card-img')}
+                    {heroKeys(heroIdx, stepPhoto, 16)}
+                </div>
 
-                        {/* Progress Dots */}
-                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover/gridimg:opacity-100 transition-opacity">
-                            {mediaUrls.map((_, i) => (
-                                <div key={i} className={`w-1 h-1 rounded-full ${cardIdx === i ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-white/20'}`} />
-                            ))}
-                        </div>
-                    </>
-                )}
-                
-                <button 
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        navigator.clipboard.writeText(calculated.bookBarcode); 
-                        toast.success(`Tag ID Copied: ${calculated.bookBarcode}`, { icon: '📋' }); 
-                    }}
-                    className="absolute top-2 left-2 z-10 flex items-center rounded text-[11px] font-black uppercase text-black shadow-md hover:scale-105 active:scale-95 transition-all overflow-hidden" 
-                >
-                    <span className="px-2 py-0.5" style={{ backgroundColor: vendorColor }}>{(calculated.bookBarcodeDisplay || vendorPrefix || '').slice(0, 5)}</span>
-                    <span className="px-2 py-0.5 text-white bg-transparent backdrop-blur-md bg-black/40 border border-white/10">{(calculated.bookBarcodeDisplay || vendorPrefix || '').slice(5)}</span>
-                </button>
-            </div>
-            <div className="p-3 flex flex-col gap-2 flex-1">
-                <div className="flex items-start justify-between">
-                    <div className="flex flex-col flex-1 min-w-0">
-                        <div className="font-black text-[15px] text-(--text-color) uppercase tracking-tight truncate">{norm.shape || tr("OBJ")}</div>
-                        <div className="text-[11px] font-black text-(--text-color)/30 uppercase tracking-widest">{norm.shortDescription}</div>
+                <div className="inv-card-body">
+                    <div className="inv-card-id">
+                        {tagKey}
+                        {qtyChip}
+                        {payLed}
                     </div>
-                    <span className="text-[13px] font-black text-(--main-color) font-mono ml-2 shrink-0">x{norm.quantity || 1}</span>
-                </div>
-                <div className="text-[11px] text-(--text-color)/60 uppercase tracking-widest font-black truncate">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
-                <div className="flex flex-col gap-0.5 my-1">
-                    <span className="text-[11px] font-mono text-(--text-color)/40 truncate">{dimensionsStr || '—'}</span>
-                    <span className="text-[11px] font-mono text-(--text-color)/20 truncate">{weightStr || '—'}</span>
-                </div>
-                {/* Financial Summary Overlay */}
-                <div className="flex flex-col gap-0.5 pt-2 mb-1 border-t border-white/5">
-                    <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-tight">
-                        <span className="text-(--text-color)/30">{tr("Cost MXN")}</span>
-                        <span className="text-(--text-color)/80 font-mono">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
+                    {nameEl('inv-card-name')}
+                    <p className={`inv-card-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
+                    <div className="inv-readout">
+                        <span className={`inv-ro-v ${COL_TEXT.size}`} title={imperialDims}>{metricDimensionsStr || '—'}</span>
+                        <span className={`inv-ro-v inv-r ${COL_TEXT.weight}`} title={imperialWeight}>{metricWeightStr || '—'}</span>
+                        <span className="inv-ro"><span className="inv-ro-l">{tr("Price")}</span><span className={`inv-ro-v ${COL_TEXT.price}`}>{fmtMoney(itemPriceMXN)}</span></span>
+                        <span className="inv-ro inv-r"><span className="inv-ro-l">{tr("Total MXN")}</span><span className={`inv-ro-v ${COL_TEXT.total}`}>{fmtMoney(itemTotalMXN)}</span></span>
                     </div>
-                    <div className="flex justify-between items-center text-[13px] font-black uppercase tracking-tight">
-                        <span className="text-(--main-color)/40">{tr("Total MXN")}</span>
-                        <span className="text-(--main-color) font-mono">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span>
-                    </div>
+                    <div className="inv-card-foot">{cardCodes(true)}</div>
                 </div>
-                <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
-                    <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[11px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{getPayLabel()}</span></div>
-                {deployedInfo && (
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded">
-                            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
-                            <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none">
-                                {deployedInfo.manifestId
-                                    ? deployedInfo.manifestId.replace(tr("TRK-"), tr("TRK·"))
-                                    : `TRK·${new Date(deployedInfo.date).toLocaleDateString(tr("en-US"), { month: 'short', year: '2-digit' })}`
-                                }
-                            </span>
-                        </div>
-                    )}
-                    {norm.packingStatus === 'Packed' && (
-                        <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
-                    )}
-                </div>
-            </div>
-            {isSelectionMode && (
-                <div className="absolute top-4 right-4 z-20" onClick={(e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); }}>
-                    <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${selectedIds.includes(item.row ?? item.data?.id) ? 'bg-(--main-color) border-(--main-color) shadow-lg' : 'bg-black/40 border-white/20 backdrop-blur-md'}`}>
-                        {selectedIds.includes(item.row ?? item.data?.id) && <Check size={16} className="text-black" strokeWidth={4} />}
-                    </div>
-                </div>
-            )}
-        </div>
-        
-        {FullscreenModal}
-    </>
-);
+            </article>
+            {FullscreenModal}
+            {viewer}
+        </>
+    );
 });
 
 export const UnifiedInventoryView = () => {
@@ -1817,14 +1780,22 @@ export const UnifiedInventoryView = () => {
     // `repeat(auto-fill, minmax(Npx, 1fr))` — the browser decides how many columns
     // fit and never tells JS, so we reproduce auto-fill's arithmetic from the
     // measured host width.
-    const GRID_GAP = 32; // Tailwind `gap-8`
+    // 20px between cards: enough for a raised card's bevel (SLAB's lift spreads
+    // ~10px) to read against its neighbour's, where the old 32px spent a card's
+    // worth of width on gutters in every row. Each virtual row carries GRID_PAD
+    // of inset on both sides so the outermost cards' bevels are not cut off at
+    // the scroll container's edge.
+    const GRID_GAP = 20;
+    const GRID_PAD = 12;
+    const gridInner = Math.max(0, hostWidth - 2 * GRID_PAD);
     const gridMinColumn = 200 * gridScale;
-    const gridColumns = Math.max(1, Math.floor((hostWidth + GRID_GAP) / (gridMinColumn + GRID_GAP)));
+    const gridColumns = Math.max(1, Math.floor((gridInner + GRID_GAP) / (gridMinColumn + GRID_GAP)));
     const gridRowEstimate = useMemo(() => {
-        const colWidth = hostWidth > 0 ? (hostWidth - (gridColumns - 1) * GRID_GAP) / gridColumns : gridMinColumn;
-        // 4:3 media block + the fixed-height info block under it + the row gap.
-        return colWidth * 0.75 + 170 + GRID_GAP;
-    }, [hostWidth, gridColumns, gridMinColumn]);
+        const colWidth = gridInner > 0 ? (gridInner - (gridColumns - 1) * GRID_GAP) / gridColumns : gridMinColumn;
+        // The card's 8px inset around a 4:3 photo well, the info block under it
+        // (see cards.css), and the row's own gap.
+        return (colWidth - 18) * 0.75 + 198 + GRID_GAP;
+    }, [gridInner, gridColumns, gridMinColumn]);
 
     const gridVirtualizer = useVirtualizer({
         count: viewMode === 'grid' ? Math.ceil(filteredItems.length / gridColumns) : 0,
@@ -1942,7 +1913,7 @@ export const UnifiedInventoryView = () => {
                             // context, and each virtual ROW carries the grid template.
                             ? "relative w-full pb-32"
                             : viewMode === 'gallery'
-                                ? "grid gap-10 pb-32 auto-rows-max"
+                                ? "grid gap-5 px-3 pt-3 pb-32 auto-rows-max"
                                 : "inv-scope flex flex-col gap-1 pb-32 w-full"
                     }`}
                     style={
@@ -1950,7 +1921,10 @@ export const UnifiedInventoryView = () => {
                             ? {}
                             : viewMode === 'list'
                                 ? {} // Removed zoom here to prevent virtualization double-scale distortion
-                                : { gridTemplateColumns: `repeat(auto-fill, minmax(${300 * galleryScale}px, 1fr))` }
+                                // min(…, 100%): at the larger zoom steps the minimum (up to
+                                // 540px) is wider than a phone, and the one column overran
+                                // the host's right padding.
+                                : { gridTemplateColumns: `repeat(auto-fill, minmax(min(${300 * galleryScale}px, 100%), 1fr))` }
                     }
                 >
 
@@ -2064,13 +2038,22 @@ export const UnifiedInventoryView = () => {
                                         <div
                                             key={virtualRow.key}
                                             data-index={virtualRow.index}
-                                            ref={gridVirtualizer.measureElement}
-                                            className="grid gap-8"
+                                            // Inline, like the list's: a stable ref is attached once, and
+                                            // after measure() clears the cache (zoom, resize) nothing
+                                            // re-reads a row whose size did not change — so every row sat
+                                            // at the ESTIMATE, and a card taller than it overlapped the
+                                            // next row. A fresh callback re-measures on each render.
+                                            ref={(el) => { gridVirtualizer.measureElement(el); }}
+                                            className="grid"
                                             style={{
                                                 position: 'absolute',
                                                 top: 0,
                                                 left: 0,
                                                 width: '100%',
+                                                boxSizing: 'border-box',
+                                                columnGap: `${GRID_GAP}px`,
+                                                paddingInline: `${GRID_PAD}px`,
+                                                paddingTop: `${GRID_GAP / 2}px`,
                                                 // scrollMargin is in the virtualizer's coordinate space (offsets
                                                 // from the top of .app-content); this container starts below the
                                                 // sticky header, so subtract it back out.
@@ -2080,8 +2063,9 @@ export const UnifiedInventoryView = () => {
                                                 // silently wraps onto a second line and rows overlap.
                                                 gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
                                                 // The row gap lives inside the measured element so measureElement
-                                                // reports a height that already accounts for it.
-                                                paddingBottom: `${GRID_GAP}px`,
+                                                // reports a height that already accounts for it — split top and
+                                                // bottom, so the first row's bevel clears the sticky header too.
+                                                paddingBottom: `${GRID_GAP / 2}px`,
                                             }}
                                         >
                                             {rowItems.map(item => (

@@ -1,0 +1,901 @@
+/* ==========================================================================
+   INVENTORY CARDS — Standard (grid) · Spacious (gallery) · the detail sheet
+   --------------------------------------------------------------------------
+   Layout, type metrics and a theme-neutral base, which ROCK uses as it is.
+   The neumorphic relief lives in slab.css ("Inventory cards"), scoped to
+   SLAB — the same split the list uses (density.css here, relief there).
+
+   One vocabulary with the list: the tag key, ×qty, COL_TEXT for every value,
+   the AQ / LD keys and the badge tones all come from density.css and the
+   component. A card is not a second design of the same data; it is the same
+   data given a photograph, so a piece reads the same in every view.
+
+   Unlayered, like density.css, so these beat Tailwind's utilities — the card
+   markup carries almost none, on purpose: SLAB's attribute-substring rules
+   (bg-black/…, border-white/…, rounded-…) would otherwise restyle it.
+   ========================================================================== */
+
+/* ── The card ─────────────────────────────────────────────────────────────
+   --pay is the payment colour (transparent when there is none). It tints the
+   card's edge, as the coloured edge does on a list row. */
+.inv-card {
+    --pay: transparent;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--pay) 40%, var(--border-color));
+    background-color: var(--sidebar-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.inv-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgb(0 0 0 / 0.35);
+}
+
+.inv-card.is-open {
+    border-color: color-mix(in srgb, var(--main-color) 55%, transparent);
+}
+
+.inv-card:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+/* ── Photo wells ──────────────────────────────────────────────────────────
+   The Standard card's photo is cropped to fill (a grid of equal tiles scans
+   faster); the Spacious hero and the sheet show the whole photograph, since
+   seeing the piece whole is what those views are for. */
+.inv-card-media,
+.inv-gal-hero {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    border-radius: 6px;
+    background-color: rgb(0 0 0 / 0.28);
+}
+
+.inv-card-media {
+    flex: none;
+    aspect-ratio: 4 / 3;
+}
+
+.inv-gal-hero {
+    aspect-ratio: 4 / 3;
+    cursor: zoom-in;
+}
+
+/* No photograph yet: the silhouette needs a band, not a 4:3 screen — a
+   half-width card spent 380px of height on a 120px drawing. */
+.inv-gal-hero.is-axo {
+    aspect-ratio: 5 / 2;
+    cursor: default;
+}
+
+.inv-card-img,
+.inv-gal-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.inv-card-img,
+.inv-gal-img--cover {
+    object-fit: cover;
+}
+
+/* The well's rim sits OVER the photo. An inset box-shadow on the well itself
+   paints beneath its content, so a full-bleed photo would hide it entirely;
+   slab.css deepens this into the pressed bevel. */
+.inv-card-media::after,
+.inv-gal-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+/* The piece's silhouette, standing in for a photo it does not have yet. */
+.inv-card-axo {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.inv-card-axo img {
+    width: 74%;
+    height: 74%;
+}
+
+.inv-card-video {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgb(255 255 255 / 0.88);
+    background: rgb(0 0 0 / 0.22);
+    pointer-events: none;
+}
+
+/* ── Keys over a photo ────────────────────────────────────────────────────
+   Previous / next, and full screen. They appear on hover or focus; on touch,
+   where nothing hovers, they stay visible — except a Standard card's arrows,
+   which swiping replaces. Sized here, not by index.css's 40px button rule. */
+.inv-card-nav,
+.inv-card-zoom {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgb(255 255 255 / 0.16);
+    color: #fff;
+    background-color: rgb(0 0 0 / 0.45);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.inv-card-nav {
+    top: 50%;
+    width: 30px;
+    height: 30px;
+    margin-top: -15px;
+}
+
+.inv-card-nav--prev { left: 6px; }
+.inv-card-nav--next { right: 6px; }
+
+.inv-card-zoom {
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+}
+
+.inv-card-media:hover > .inv-card-nav,
+.inv-card-media:hover > .inv-card-zoom,
+.inv-gal-hero:hover > .inv-card-nav,
+.inv-gal-hero:hover > .inv-card-zoom,
+.inv-card-nav:focus-visible,
+.inv-card-zoom:focus-visible {
+    opacity: 1;
+}
+
+.inv-card-nav:focus-visible,
+.inv-card-zoom:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+}
+
+@media (hover: none) {
+    .inv-card-nav,
+    .inv-card-zoom { opacity: 1; }
+    .inv-card--std .inv-card-nav { display: none; }
+}
+
+.inv-card-count {
+    position: absolute;
+    z-index: 2;
+    right: 6px;
+    bottom: 6px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+    background: rgb(0 0 0 / 0.55);
+    pointer-events: none;
+}
+
+/* Selection replaces nothing: it sits over the photo's top-left corner,
+   which the tag key used to occupy before it moved under the photo. */
+.inv-card-select {
+    position: absolute;
+    z-index: 3;
+    top: 14px;
+    left: 14px;
+    width: 28px;
+    height: 28px;
+    min-height: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px solid rgb(255 255 255 / 0.45);
+    color: transparent;
+    background-color: rgb(0 0 0 / 0.45);
+}
+
+.inv-card-select[aria-pressed="true"] {
+    color: #000;
+    border-color: var(--main-color);
+    background-color: var(--main-color);
+}
+
+/* ── Photo tray ───────────────────────────────────────────────────────────
+   Under a hero: choosing a tile makes it the hero. */
+.inv-gal {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.inv-gal-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 5px;
+}
+
+.inv-gal-tile {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: rgb(0 0 0 / 0.25);
+}
+
+.inv-gal-tile.is-on {
+    outline: 2px solid var(--main-color);
+    outline-offset: 1px;
+}
+
+.inv-gal-tile:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+}
+
+.inv-gal-more {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 900;
+    color: #fff;
+    background: rgb(0 0 0 / 0.58);
+}
+
+/* ── The information block ────────────────────────────────────────────── */
+.inv-card-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    padding: 0 2px 1px;
+}
+
+.inv-card-id,
+.inv-xl-id,
+.inv-sheet-id {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+/* The tag key is a <button>: keep index.css's 40px / 16px key size off it. */
+.inv-card .vendor-tag,
+.inv-sheet .vendor-tag {
+    min-height: 24px;
+    padding: 0;
+    flex: 0 1 auto;
+}
+
+.inv-card .vendor-tag > span,
+.inv-sheet .vendor-tag > span {
+    display: flex;
+    align-items: center;
+}
+
+/* ×qty — the list's QTY column, as a suffix to the tag it qualifies. */
+.inv-card-qty {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    color: #06b6d4;
+}
+
+.inv-card-qty::before {
+    content: "\00D7";
+    margin-right: 1px;
+    opacity: 0.6;
+}
+
+/* The payment light. Its colour is the list edge's; its word is its label. */
+.inv-led {
+    --led: #38bdf8;
+    flex: none;
+    width: 9px;
+    height: 9px;
+    margin-left: auto;
+    border-radius: 50%;
+    background-color: var(--led);
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--led) 18%, transparent),
+        0 0 8px color-mix(in srgb, var(--led) 55%, transparent);
+}
+
+.inv-card-name {
+    margin: 0;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.25;
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-color);
+}
+
+.inv-card-name b,
+.inv-sheet-name b {
+    font-weight: 900;
+}
+
+.inv-card-name span,
+.inv-sheet-name span {
+    font-weight: 700;
+    color: color-mix(in srgb, var(--text-color) 72%, transparent);
+}
+
+.inv-card-stone {
+    margin: 0;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── The readout ──────────────────────────────────────────────────────────
+   An instrument set into the card: size · weight over price · total. Size
+   and weight carry no labels (a size and a weight are one on sight — the
+   list's SPECS made the same call); the money does, because PRICE and TOTAL
+   look alike. The size cell is the wider one: 100x100x100cm is 13 digits. */
+.inv-readout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    margin-top: 2px;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 9%, transparent);
+    background-color: color-mix(in srgb, var(--text-color) 4%, transparent);
+}
+
+.inv-readout > * {
+    min-width: 0;
+    padding: 5px 8px;
+}
+
+.inv-readout > :nth-child(2n) {
+    border-left: 1px solid color-mix(in srgb, var(--text-color) 9%, transparent);
+}
+
+.inv-readout > :nth-child(n + 3) {
+    border-top: 1px solid color-mix(in srgb, var(--text-color) 9%, transparent);
+}
+
+.inv-ro {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.inv-ro.inv-r {
+    align-items: flex-end;
+}
+
+.inv-ro-l {
+    font-size: 9.5px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--text-color) 50%, transparent);
+}
+
+.inv-ro-v {
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+}
+
+.inv-card--std .inv-ro-v {
+    font-size: 13px;
+}
+
+/* ── The foot: codes and the logistics mark ── */
+.inv-card-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin-top: auto;
+}
+
+.inv-card-codes {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.inv-card-code {
+    display: inline-flex;
+    align-items: baseline;
+}
+
+.inv-card-codes .inv-code-k {
+    margin-right: 4px;
+}
+
+.inv-card--std .inv-card-codes {
+    flex: 1 1 auto;
+}
+
+/* The mark closes the line, at the card's right edge. */
+.inv-card--std .inv-card-codes .inv-badge {
+    margin-left: auto;
+}
+
+/* ── SPACIOUS ─────────────────────────────────────────────────────────────
+   A card that is wide enough becomes a spread — photographs left,
+   information right — instead of a photo with a caption under it. The switch
+   is a container query on the card, so it follows the width the gallery
+   actually gives each card (a full-width card of ten photos, a two-column
+   card of three) rather than the viewport's. */
+.inv-card--xl {
+    container: invcard / inline-size;
+    padding: 10px;
+}
+
+.inv-card-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    min-width: 0;
+}
+
+@container invcard (min-width: 760px) {
+    .inv-card-layout {
+        grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr);
+        gap: 20px;
+        align-items: start;
+    }
+    .inv-card--xl .inv-card-body {
+        padding-top: 4px;
+    }
+}
+
+.inv-card--xl .inv-card-body {
+    gap: 7px;
+    padding: 2px 4px;
+}
+
+.inv-xl-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.inv-xl-id {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+}
+
+.inv-xl-id .inv-led {
+    margin-left: 0;
+}
+
+.inv-xl-total {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.inv-xl-total-v {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+.inv-card--xl .inv-card-name {
+    font-size: 22px;
+    line-height: 1.15;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.inv-card--xl .inv-card-stone {
+    font-size: 13px;
+}
+
+/* The generated title — what the store will call it — under our name. */
+.inv-xl-ai {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: color-mix(in srgb, var(--text-color) 82%, transparent);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+.inv-xl-type {
+    margin: 0;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: color-mix(in srgb, var(--text-color) 60%, transparent);
+}
+
+/* Specs over money, in one instrument. */
+.inv-readout--xl {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 4px;
+}
+
+.inv-readout--xl > * {
+    padding: 0;
+}
+
+.inv-readout--xl > :nth-child(2n) {
+    border-left: 0;
+}
+
+.inv-readout--xl > :nth-child(n + 2) {
+    border-top: 1px solid color-mix(in srgb, var(--text-color) 9%, transparent);
+}
+
+.inv-xl-specs {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+}
+
+.inv-xl-axo {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+    background-color: rgb(0 0 0 / 0.2);
+}
+
+.inv-xl-measure {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.inv-xl-measure.inv-r {
+    align-items: flex-end;
+}
+
+/* Imperial wraps at the × only: imperialDims keeps each measurement whole
+   with non-breaking spaces, so a fraction never parts from its number. */
+.inv-xl-imp {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    color: color-mix(in srgb, var(--text-color) 62%, transparent);
+}
+
+.inv-xl-figs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.inv-xl-figs > .inv-ro {
+    padding: 7px 10px;
+}
+
+.inv-xl-figs > .inv-ro + .inv-ro {
+    border-left: 1px solid color-mix(in srgb, var(--text-color) 9%, transparent);
+}
+
+.inv-xl-foot {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 12px;
+    margin-top: 2px;
+}
+
+.inv-xl-log {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+/* ── THE DETAIL SHEET ─────────────────────────────────────────────────────
+   What a Standard or Spacious card opens: the list's spec sheet (clusters,
+   GENERATED, payments, toolbar) laid around the photographs. Photos left and
+   clusters + GENERATED right on a wide sheet; one column below 860px of
+   sheet; full screen on a phone. */
+.inv-sheet-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: rgb(0 0 0 / 0.62);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: inv-sheet-fade 0.18s ease-out;
+}
+
+.inv-sheet {
+    container: invsheet / inline-size;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(1180px, 100%);
+    max-height: calc(100dvh - 40px);
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background-color: var(--app-bg-solid, #0a0a0f);
+    color: var(--text-color);
+    box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
+    animation: inv-sheet-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes inv-sheet-fade { from { opacity: 0; } }
+@keyframes inv-sheet-rise { from { opacity: 0; transform: translateY(10px) scale(0.99); } }
+
+.inv-sheet-bar {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 10px 12px 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.inv-sheet-id {
+    flex: none;
+    gap: 8px;
+}
+
+.inv-sheet-title {
+    flex: 1 1 260px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.inv-sheet-name {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.2;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.inv-sheet-stone {
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.inv-actions.inv-sheet-actions {
+    flex: none;
+    flex-direction: row;
+    gap: 6px;
+}
+
+.inv-sheet-actions button {
+    min-height: 32px;
+}
+
+.inv-actions.inv-sheet-actions .inv-action-danger {
+    margin: 0 0 0 4px;
+}
+
+.inv-sheet-close {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    min-height: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.inv-sheet-close:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+}
+
+.inv-sheet-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.inv-sheet-gal {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.inv-sheet-info {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+}
+
+/* density.css places these by grid-area names the sheet's grid does not
+   define; an undefined area name lands an item on implicit tracks. */
+.inv-sheet-body > .inv-panel-pay {
+    grid-area: auto;
+    grid-column: 1 / -1;
+}
+
+@container invsheet (min-width: 860px) {
+    .inv-sheet-body {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+        gap: 20px 26px;
+        padding: 16px 18px 18px;
+    }
+}
+
+/* Every field shows here: the sheet has no row to share them with. */
+.inv-sheet .inv-spec-row.inv-f-overflow,
+.inv-sheet .inv-stat.inv-f-overflow {
+    display: flex;
+}
+
+.inv-sheet .inv-measures .inv-fi-size {
+    display: block;
+}
+
+.inv-sheet .inv-measures .inv-fi-weight {
+    display: inline;
+}
+
+.inv-sheet .inv-cluster.inv-cluster--log {
+    display: block;
+}
+
+/* GENERATED sits in a column here: the facts, then the body under them. */
+.inv-sheet .inv-ai {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.inv-sheet .inv-clusters {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 16px 24px;
+}
+
+@media (max-width: 640px) {
+    .inv-sheet-scrim {
+        padding: 0;
+        align-items: stretch;
+    }
+    .inv-sheet {
+        width: 100%;
+        height: 100dvh;
+        max-height: none;
+        border: 0;
+        border-radius: 0;
+    }
+}
+
+/* A narrow sheet: tag, status and Close on the first line, the name on the
+   second, the toolbar as three equal keys on the third — in thumb reach of
+   the top rather than lost at the bottom of a long scroll. */
+@container invsheet (max-width: 640px) {
+    .inv-sheet-id { flex: 1 1 auto; flex-wrap: wrap; }
+    .inv-sheet-title { order: 3; flex-basis: 100%; }
+    .inv-actions.inv-sheet-actions { order: 4; flex: 1 1 100%; }
+    .inv-sheet-actions button { flex: 1 1 0; justify-content: center; min-height: 40px; }
+    .inv-sheet-body { padding: 12px; gap: 16px; }
+    .inv-sheet .inv-cluster-t,
+    .inv-sheet .inv-spec-l,
+    .inv-sheet .inv-stat-l { font-size: 11px; }
+    .inv-sheet .inv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+    .inv-sheet .inv-pay {
+        grid-template-columns: minmax(80px, 1fr) minmax(56px, 0.7fr) 40px minmax(84px, 1fr);
+    }
+    .inv-sheet .inv-pay-net,
+    .inv-sheet .inv-pay-fees { display: none; }
+}
+
+/* ── Loading ── */
+.inv-card--skel {
+    cursor: default;
+}
+
+.inv-card--skel:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.inv-card--skel .inv-card-media .skeleton {
+    width: 100%;
+    height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .inv-card,
+    .inv-sheet,
+    .inv-sheet-scrim,
+    .inv-card-nav,
+    .inv-card-zoom {
+        animation: none !important;
+        transition: none !important;
+    }
+    .inv-card:hover { transform: none; }
+}
