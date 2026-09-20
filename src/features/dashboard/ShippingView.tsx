@@ -169,16 +169,16 @@ const ThreeScene = ({ setCrates, cratesVersion, user, store }: { setCrates: any,
             const textColor = getTextColorForBg(vendorColor);
             ctx.fillStyle = textColor;
             ctx.textAlign = 'center';
-            ctx.font = 'bold 52px "DM Sans"';
+            ctx.font = 'bold 52px "Atkinson Hyperlegible"';
             ctx.fillText(crate.id, size / 2, 70);
-            ctx.font = '32px "DM Sans"';
+            ctx.font = '32px "Atkinson Hyperlegible"';
             ctx.fillText(`Weight: ${crate.weight.toFixed(1)} kg`, size / 2, 120);
             ctx.textAlign = 'left';
-            ctx.font = 'bold 28px "DM Sans"';
+            ctx.font = 'bold 28px "Atkinson Hyperlegible"';
             let yPos = 180;
             ctx.fillText(`Contents: (${crate.inventoryItems.length})`, 30, yPos);
             yPos += 40;
-            ctx.font = '24px "DM Sans"';
+            ctx.font = '24px "Atkinson Hyperlegible"';
             crate.inventoryItems.slice(0, 8).forEach(item => {
                 if (yPos > size - 40) return;
                 ctx.fillText(`${item.itemId}-${item.itemNumber}: ${item.shape}`, 40, yPos);

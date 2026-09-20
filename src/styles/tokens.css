@@ -3,7 +3,27 @@
 :root {
   /* Layout & Spacing */
   --box-radius: 16px;
-  
+
+  /* ── Typography ─────────────────────────────────────────────────────────
+     Two webfaces, loaded once from the <link> in index.html. Never add an
+     @import for fonts in CSS: it is a second render-blocking request that the
+     preconnect does not cover.
+
+     Atkinson Hyperlegible is a legibility-first face from the Braille
+     Institute, chosen deliberately — its letterforms are disambiguated
+     (1/l/I, 0/O, rn/m), which is what a dense operational UI needs.
+
+     TABULAR FIGURES: both webfaces are PROPORTIONAL by default. Measured at
+     40px, Atkinson renders "1111111111" at 160.8px and "0000000000" at
+     259.2px — a ~98px drift that will visibly misalign any numeric column.
+     Both support the `tnum` feature, so any column of figures MUST opt in,
+     via --font-mono or the .tabular-figures helper below. */
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Montserrat", "Atkinson Hyperlegible", system-ui, sans-serif;
+  /* Monospace is a system stack on purpose: no extra request, and a monospace
+     face is tabular by construction, so figures align with no opt-in. */
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
   /* Shared Base Colors (Used as fallbacks or overlays) */
   --app-bg: transparent;
   --app-bg-solid: #0a0a0f;
@@ -96,4 +116,15 @@ html.theme-aqua {
   filter: brightness(1.1) contrast(1.1) saturate(1.3) drop-shadow(0 10px 30px rgba(0,0,0,0.5));
   will-change: filter;
   transition: filter 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tabular figures.
+   Atkinson Hyperlegible and Montserrat both ship proportional digits, so a
+   column of amounts drifts unless it opts in. Apply this to any element whose
+   numerals must line up vertically — quantities, money, weights, counts.
+   --font-mono needs no opt-in; a monospace face is already tabular. */
+.tabular-figures,
+.tabular-figures * {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
 }
