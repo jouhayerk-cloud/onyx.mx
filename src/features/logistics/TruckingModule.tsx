@@ -40,7 +40,12 @@ import { el } from '../../lib/i18nEnums';
 export const TRUCK_L_CM = 1615;
 export const TRUCK_W_CM = 244;
 export const TRUCK_H_CM = 279;
-export const BASE_SCALE = 1.5; // px/cm Ã¢â‚¬â€ canvas is 2422 Ãƒâ€” 366 px at zoom=1
+export const BASE_SCALE = 1.5; // px/cm — canvas is 2422 × 366 px at zoom=1
+// A floor well above zero: the map used to be able to collapse to a 240px
+// sliver (10%), which reads as "the trailer view is broken", not as "zoomed
+// out". At 25% a 53' deck is still 600px wide and every crate is visible.
+export const MIN_ZOOM = 0.25;
+export const MAX_ZOOM = 3;
 
 // getCrateDisplayName moved to utils.tsx
 
@@ -63,7 +68,7 @@ export function getTruckCrateNumbering(truckCrates: any[], positions: Record<str
     return map;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Weight: sum item.weight_kg Ãƒâ€” qty from inventory_ids Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Weight: sum item.weight_kg × qty from inventory_ids ─────────────────────
 export function computeCrateWeight(crate: any, allInventory: any[], allCrates: any[], visited = new Set<string>()): number {
     if (!crate || visited.has(crate.id)) return 0;
     visited.add(crate.id);
@@ -100,7 +105,7 @@ export function computeCrateWeight(crate: any, allInventory: any[], allCrates: a
     return crate.weight_kg || Math.round((w * l * h) / 5000);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ CM Grid (LANDSCAPE: X=truck length 1615cm, Y=truck width 244cm) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── CM Grid (LANDSCAPE: X=truck length 1615cm, Y=truck width 244cm) ──────────
 const CmGrid: React.FC<{ isVertical?: boolean }> = ({ isVertical }) => {
     const minor = 50; const major = 100;
     const xLines: number[] = []; const yLines: number[] = [];
@@ -126,7 +131,7 @@ const CmGrid: React.FC<{ isVertical?: boolean }> = ({ isVertical }) => {
                         y1={isVertical ? xPos : 0} 
                         x2={isVertical ? W : xPos} 
                         y2={isVertical ? xPos : W}
-                        stroke={x % major === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'} 
+                        stroke={x % major === 0 ? 'var(--trk-grid-major)' : 'var(--trk-grid-minor)'} 
                         strokeWidth={x % major === 0 ? 1 : 0.5} 
                     />
                 );
@@ -140,23 +145,23 @@ const CmGrid: React.FC<{ isVertical?: boolean }> = ({ isVertical }) => {
                         y1={isVertical ? 0 : yPos} 
                         x2={isVertical ? yPos : L} 
                         y2={isVertical ? 0 : yPos}
-                        stroke={y % major === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'} 
+                        stroke={y % major === 0 ? 'var(--trk-grid-major)' : 'var(--trk-grid-minor)'} 
                         strokeWidth={y % major === 0 ? 1 : 0.5} 
                     />
                 );
             })}
             {!isVertical && xLines.filter(x => x % major === 0 && x > 0).map(x => (
-                <text key={`xl${x}`} x={x * BASE_SCALE + 3} y={12} fill="rgba(255,255,255,0.25)" fontSize={9} fontFamily="monospace">{x}cm</text>
+                <text key={`xl${x}`} x={x * BASE_SCALE + 3} y={12} fill="var(--trk-ink-dim)" fontSize={9} fontFamily="monospace">{x}cm</text>
             ))}
             {!isVertical && yLines.filter(y => y % major === 0 && y > 0).map(y => (
-                <text key={`yl${y}`} x={3} y={y * BASE_SCALE - 3} fill="rgba(255,255,255,0.25)" fontSize={9} fontFamily="monospace">{y}</text>
+                <text key={`yl${y}`} x={3} y={y * BASE_SCALE - 3} fill="var(--trk-ink-dim)" fontSize={9} fontFamily="monospace">{y}</text>
             ))}
         </svg>
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Dock Card Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Isometric Wireframe Icon Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Dock Card ────────────────────────────────────────────────────────────────
+// ─── Isometric Wireframe Icon ────────────────────────────────────────────────────
 export const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string; size?: number; solid?: boolean }> = ({ w, l, h, color, size = 44, solid = false }) => {
     const maxDim = Math.max(w, l, h, 1);
     const W = w / maxDim; const L = l / maxDim; const H = h / maxDim;
@@ -192,7 +197,7 @@ export const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: 
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Compact Data-Dense Card components Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Compact Data-Dense Card components ─────────────────────────────────────
 function getDynamicCrateIdComponents(crate: any, allCrates: any[], allInventory: any[]) {
     if (!crate.inventory_ids || crate.status === 'Empty') return { date: '', vendors: [], sequence: crate.id.slice(0, 8).toUpperCase() };
     
@@ -263,7 +268,7 @@ export const CompactDockCard: React.FC<{
     }, [crate, financeDocs]);
 
     return (
-        <div className={`flex items-center transition-all group shrink-0 text-left ${isCompact ? 'gap-2 px-3 py-0.5 min-w-[120px]' : 'gap-6 px-4 py-3 min-w-[200px]'}`}>
+        <div className={`flex items-center transition-all group shrink-0 text-left ${isCompact ? 'gap-2 px-3 py-0.5 min-w-[120px]' : 'gap-3 px-3 py-1.5 min-w-[186px]'}`}>
             <button
                 onClick={onLoad}
                 className="flex items-center gap-3 transition-all active:scale-[0.95]"
@@ -324,7 +329,7 @@ export const CompactDockCard: React.FC<{
                     </div>
                     {!isCompact && (
                         <div className="flex items-center gap-4 leading-none">
-                            <span className="font-black text-white/80 uppercase tracking-widest text-[12px]">{crate.width_cm}Ãƒâ€”{crate.length_cm}</span>
+                            <span className="font-black text-white/80 uppercase tracking-widest text-[12px]">{crate.width_cm}×{crate.length_cm}</span>
                             <div className="w-1 h-1 rounded-full bg-white/20" />
                             <span className="font-black tracking-tighter text-[13px]" style={{ color: 'var(--main-color)' }}>{w}KG</span>
                         </div>
@@ -396,7 +401,7 @@ export const CompactItemCard: React.FC<{
                         {data.width_cm && (
                             <div className="flex items-center gap-1">
                                 <Maximize2 size={8} />
-                                <span className="text-[7px] font-black">{data.width_cm}Ãƒâ€”{data.length_cm}</span>
+                                <span className="text-[7px] font-black">{data.width_cm}×{data.length_cm}</span>
                             </div>
                         )}
                         {data.material && (
@@ -412,7 +417,7 @@ export const CompactItemCard: React.FC<{
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Mini Iso View for Deployed Trailers (SVG based) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Mini Iso View for Deployed Trailers (SVG based) ──────────────────────────
 const MiniIsoView: React.FC<{
     truckCrates: any[];
     positions: Record<string, any>;
@@ -631,7 +636,7 @@ const DockCard: React.FC<{
             {/* Dims & Vol */}
             <div className="flex flex-col gap-0.5">
                 <span className="text-[11px] font-black uppercase tracking-widest text-white/80">
-                    {crate.width_cm}Ãƒâ€”{crate.length_cm}Ãƒâ€”{crate.height_cm || '?'} CM
+                    {crate.width_cm}×{crate.length_cm}×{crate.height_cm || '?'} CM
                 </span>
                 <span className="text-[9px] font-bold text-white/20 uppercase">
                     {tr("Vol:")} {Math.round((crate.width_cm * crate.length_cm * (crate.height_cm||100))/1000)} {tr("Liters")}
@@ -654,11 +659,11 @@ const DockCard: React.FC<{
 
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Truck Crate Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Truck Crate ──────────────────────────────────────────────────────────────
 
 // IMPORTANT: items live in the UNSCALED canvas coordinate space.
 // CSS transform(zoom) is applied to the parent; layout uses BASE_SCALE only.
-// Drag delta must divide by zoom to convert screen-px Ã¢â€ â€™ canvas-px.
+// Drag delta must divide by zoom to convert screen-px → canvas-px.
 const TruckCrate: React.FC<{
     crate: any; allCrates: any[]; allInventory: any[];
     pos: { x: number; y: number; r: number; z?: number };
@@ -771,7 +776,7 @@ const TruckCrate: React.FC<{
                 style={{
                     backgroundColor: primaryColor,
                     boxShadow: isSelected 
-                        ? `0 20px 60px -10px rgba(0,0,0,0.8), inset 0 0 40px rgba(255,255,255,0.4)` 
+                        ? `0 20px 60px -10px rgba(0,0,0,0.5), inset 0 0 40px rgba(255,255,255,0.35)` 
                         : `0 8px 24px -4px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.1)`,
                 }}
             >
@@ -812,14 +817,14 @@ const TruckCrate: React.FC<{
 
                 {/* Selection Overlay */}
                 {isSelected && (
-                    <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none" />
+                    <div className="trk-crate-sel pointer-events-none" />
                 )}
             </div>
         </div>
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Isometric View (interactive 3-D perspective view) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Isometric View (interactive 3-D perspective view) ─────────────────────────
 const IsoView: React.FC<{
     truckCrates: any[];
     positions: Record<string, { x: number; y: number; r: number; z?: number }>;
@@ -849,24 +854,24 @@ const IsoView: React.FC<{
     }, [positions]);
 
     return (
-        <div className="w-full h-full backdrop-blur-3xl bg-white/[0.02] border-t border-white/10 shadow-inner relative overflow-auto flex items-center justify-center">
-            <div className="p-10 lg:p-20" style={{ minWidth: W * zoom + 200, minHeight: H * zoom + 200 }}>
+        <div className="trk-stage relative overflow-auto flex items-center justify-center">
+            <div className="p-6 lg:p-8" style={{ minWidth: W * zoom + 200, minHeight: H * zoom + 200 }}>
                 <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} 
                     style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible' }}
                     onClick={() => onSelect('')}
                 >
                     <path 
                         d={`M ${iso(0,0,0).join(',')} L ${iso(TRUCK_L_CM,0,0).join(',')} L ${iso(TRUCK_L_CM,TRUCK_W_CM,0).join(',')} L ${iso(0,TRUCK_W_CM,0).join(',')} Z`} 
-                        fill="rgba(255,255,255,0.03)" 
-                        stroke="rgba(255,255,255,0.15)" 
+                        fill="var(--trk-fill)" 
+                        stroke="var(--trk-grid-major)" 
                         strokeWidth={1} 
                     />
                     
                     {Array.from({ length: Math.floor(TRUCK_L_CM / 100) + 1 }).map((_, i) => (
-                        <path key={`x${i}`} d={`M ${iso(i * 100, 0, 0).join(',')} L ${iso(i * 100, TRUCK_W_CM, 0).join(',')}`} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+                        <path key={`x${i}`} d={`M ${iso(i * 100, 0, 0).join(',')} L ${iso(i * 100, TRUCK_W_CM, 0).join(',')}`} stroke="var(--trk-grid-minor)" strokeWidth={1} />
                     ))}
                     {Array.from({ length: Math.floor(TRUCK_W_CM / 100) + 1 }).map((_, i) => (
-                        <path key={`y${i}`} d={`M ${iso(0, i * 100, 0).join(',')} L ${iso(TRUCK_L_CM, i * 100, 0).join(',')}`} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+                        <path key={`y${i}`} d={`M ${iso(0, i * 100, 0).join(',')} L ${iso(TRUCK_L_CM, i * 100, 0).join(',')}`} stroke="var(--trk-grid-minor)" strokeWidth={1} />
                     ))}
                     
                     
@@ -905,19 +910,19 @@ const IsoView: React.FC<{
                                     points={ptsStr([4,5,6,7])} 
                                     fill={col} 
                                     fillOpacity={isSelected ? 1.0 : 0.95} 
-                                    stroke={isSelected ? '#fff' : col} 
+                                    stroke={isSelected ? 'var(--trk-select)' : col} 
                                     strokeWidth={isSelected ? 2.5 : 1} 
                                     className="transition-all duration-300"
                                 />
                                 
                                 {/* Inner glow for selection */}
                                 {isSelected && (
-                                    <polygon points={ptsStr([4,5,6,7])} fill="white" fillOpacity={0.1} filter="blur(12px)" />
+                                    <polygon points={ptsStr([4,5,6,7])} fill="var(--trk-glow)" fillOpacity={0.1} filter="blur(12px)" />
                                 )}
 
                                 {/* Label - Floating above */}
                                 <text x={pts[4][0] + (pts[6][0] - pts[4][0])/2} y={pts[4][1] + (pts[6][1] - pts[4][1])/2} 
-                                    textAnchor="middle" fill={isSelected ? "white" : "rgba(0,0,0,0.7)"} 
+                                    textAnchor="middle" fill={isSelected ? "var(--trk-select-ink)" : "rgba(0,0,0,0.7)"} 
                                     fontSize={Math.min(14, dX/3)} fontWeight="900" 
                                     style={{ pointerEvents: 'none', filter: isSelected ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' : 'none' }}>
                                     {label}
@@ -931,7 +936,7 @@ const IsoView: React.FC<{
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Side View (interactive 2-D lateral view) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Side View (interactive 2-D lateral view) ────────────────────────────────
 const SideView: React.FC<{
     truckCrates: any[];
     positions: Record<string, {x:number;y:number;r:number;z?:number}>;
@@ -1005,9 +1010,9 @@ const SideView: React.FC<{
 
     return (
         <div 
-            className="w-full h-full backdrop-blur-3xl bg-white/[0.02] border-t border-white/10 shadow-inner relative"
+            className="trk-stage relative"
         >
-            <div className="p-10 lg:p-20 flex flex-col items-center" style={{ minWidth: SVG_W * zoom + 200, minHeight: SVG_H * zoom + 200 }}>
+            <div className="p-6 lg:p-8 flex flex-col items-center" style={{ minWidth: SVG_W * zoom + 200, minHeight: SVG_H * zoom + 200 }}>
                 {/* Header bar */}
                 <div className="flex items-center gap-6 mb-6 px-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
@@ -1061,34 +1066,34 @@ const SideView: React.FC<{
                     <svg ref={svgRef} width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
                         style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible', cursor: 'default' }}>
                         {/* Trailer shell */}
-                        <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" strokeWidth={1} rx={8} />
+                        <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="var(--trk-fill)" stroke="var(--trk-grid-major)" strokeWidth={1} rx={8} />
                         {/* Floor */}
-                        <rect x={0} y={SVG_H - 8} width={SVG_W} height={8} fill="rgba(255,255,255,0.08)" />
-                        <line x1={0} y1={SVG_H - 8} x2={SVG_W} y2={SVG_H - 8} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+                        <rect x={0} y={SVG_H - 8} width={SVG_W} height={8} fill="var(--trk-grid-major)" />
+                        <line x1={0} y1={SVG_H - 8} x2={SVG_W} y2={SVG_H - 8} stroke="var(--trk-grid-major)" strokeWidth={1} />
                         {/* Height grid every 50cm */}
                         {Array.from({ length: Math.floor(TRUCK_H_CM / 50) }, (_, i) => (i + 1) * 50).map(y => (
                             <g key={y}>
                                 <line x1={0} y1={SVG_H - y * BASE_SCALE} x2={SVG_W} y2={SVG_H - y * BASE_SCALE}
-                                    stroke={y % 100 === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'} strokeWidth={y % 100 === 0 ? 1 : 0.5} />
-                                <text x={6} y={SVG_H - y * BASE_SCALE - 3} fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily="monospace" fontWeight="bold">{y}cm</text>
+                                    stroke={y % 100 === 0 ? 'var(--trk-grid-major)' : 'var(--trk-grid-minor)'} strokeWidth={y % 100 === 0 ? 1 : 0.5} />
+                                <text x={6} y={SVG_H - y * BASE_SCALE - 3} fill="var(--trk-ink)" fontSize={9} fontFamily="monospace" fontWeight="bold">{y}cm</text>
                             </g>
                         ))}
                         {/* Axle lines */}
                         {[0.72, 0.82, 0.90].map(f => (
                             <line key={f} x1={f * SVG_W} y1={0} x2={f * SVG_W} y2={SVG_H}
-                                stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="5,4" />
+                                stroke="var(--trk-grid-major)" strokeWidth={1} strokeDasharray="5,4" />
                         ))}
-                        {/* Crates Ã¢â‚¬â€ non-selected first, selected on top */}
+                        {/* Crates — non-selected first, selected on top */}
                         {[...crateItems.filter(cr => !cr.isSelected), ...crateItems.filter(cr => cr.isSelected)].map(cr => (
                             <g key={cr.id} style={{ cursor: 'grab' }} onMouseDown={e => handleCrateMouseDown(e, cr)}>
                                 {/* Selection Glow & Shadow */}
                                 {cr.isSelected && (
                                     <>
-                                        <rect x={cr.px - 4} y={cr.py - 4} width={cr.pw + 8} height={cr.ph + 8} fill="white" opacity={0.15} filter="blur(12px)" rx={8} />
+                                        <rect x={cr.px - 4} y={cr.py - 4} width={cr.pw + 8} height={cr.ph + 8} fill="var(--trk-glow)" opacity={0.15} filter="blur(12px)" rx={8} />
                                         <rect x={cr.px + 4} y={cr.py + 4} width={cr.pw} height={cr.ph} fill="rgba(0,0,0,0.5)" rx={4} />
                                     </>
                                 )}
-                                {/* Body Ã¢â‚¬â€ full solid color */}
+                                {/* Body — full solid color */}
                                 <rect x={cr.px} y={cr.py} width={cr.pw} height={cr.ph}
                                     fill={cr.col}
                                     stroke={cr.isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
@@ -1111,8 +1116,8 @@ const SideView: React.FC<{
 
                                 {/* Selection ring */}
                                 {cr.isSelected && <rect x={cr.px - 2} y={cr.py - 2} width={cr.pw + 4} height={cr.ph + 4}
-                                    fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1} rx={4} strokeDasharray="4,3" />}
-                                {/* Label Ã¢â‚¬â€ dark text over solid fill for contrast */}
+                                    fill="none" stroke="var(--trk-ink)" strokeWidth={1} rx={4} strokeDasharray="4,3" />}
+                                {/* Label — dark text over solid fill for contrast */}
                                 {cr.pw > 18 && cr.ph > 16 && (
                                     <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 3}
                                         textAnchor="middle" fontSize={Math.min(10, cr.pw / 4.2)} fill="rgba(0,0,0,0.85)"
@@ -1140,8 +1145,8 @@ const SideView: React.FC<{
                             </g>
                         ))}
                         {/* Cab block */}
-                        <rect x={SVG_W - 12} y={0} width={12} height={SVG_H} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" strokeWidth={1} rx={2} />
-                        <text x={SVG_W - 6} y={SVG_H / 2} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.25)" fontFamily="monospace" fontWeight="black"
+                        <rect x={SVG_W - 12} y={0} width={12} height={SVG_H} fill="var(--trk-grid-minor)" stroke="var(--trk-grid-major)" strokeWidth={1} rx={2} />
+                        <text x={SVG_W - 6} y={SVG_H / 2} textAnchor="middle" fontSize={8} fill="var(--trk-ink-dim)" fontFamily="monospace" fontWeight="black"
                             transform={`rotate(-90, ${SVG_W - 6}, ${SVG_H / 2})`}>{tr("FRONT (CAB)")}</text>
                     </svg>
                 </div>
@@ -1150,7 +1155,7 @@ const SideView: React.FC<{
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Draft Save / Load / Export / Import System Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Draft Save / Load / Export / Import System ───────────────────────────────
 const DRAFTS_KEY = 'onyx_truck_drafts';
 const TRUCKLOAD_EXT = '.truckload';
 const TRUCKLOAD_MIME = 'application/json';
@@ -1186,7 +1191,7 @@ interface TruckloadFile {
     shipmentData?: TruckDraft['shipmentData'];
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Thumbnail generator Ã¢â‚¬â€ draws exact trailer map without padding Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Thumbnail generator — draws exact trailer map without padding ─────────────
 function generateTrailerThumbnail(
     truckCrates: any[],
     positions: Record<string, { x: number; y: number; r: number; z?: number }>,
@@ -1237,7 +1242,7 @@ function generateTrailerThumbnail(
     // Watermark
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 36px monospace';
-    ctx.fillText('ONYX Ã‚Â· TRUCKLOAD TOP VIEW', 40, H - 40);
+    ctx.fillText('ONYX · TRUCKLOAD TOP VIEW', 40, H - 40);
     
     // Cab end marker (at front)
     ctx.fillStyle = 'rgba(0,0,0,0.1)';
@@ -1318,7 +1323,7 @@ function generateSideViewThumbnail(
     // Watermark
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 36px monospace';
-    ctx.fillText('ONYX Ã‚Â· TRUCKLOAD SIDEVIEW', 40, H - 40);
+    ctx.fillText('ONYX · TRUCKLOAD SIDEVIEW', 40, H - 40);
 
     // Labels & Weights
     for (const [id, pos] of Object.entries(positions)) {
@@ -1462,7 +1467,7 @@ function generateIsoViewThumbnail(
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.font = 'bold 36px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('ONYX Ã‚Â· TRUCKLOAD ISOMETRIC VIEW', 40, H - 40);
+        ctx.fillText('ONYX · TRUCKLOAD ISOMETRIC VIEW', 40, H - 40);
     }
 
     return canvas.toDataURL('image/png', 0.85);
@@ -1482,11 +1487,11 @@ function generateMasterThumbnail(
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
     
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Background Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Background ──
     ctx.fillStyle = '#0F111A'; // Deep midnight
     ctx.fillRect(0, 0, W, H);
     
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Layout Dividers Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Layout Dividers ──
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1497,7 +1502,7 @@ function generateMasterThumbnail(
     const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ 1. ISOMETRIC VIEW (Top Half) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── 1. ISOMETRIC VIEW (Top Half) ──
     const drawIso = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
         const scale = rect.w / (TRUCK_L_CM + TRUCK_W_CM) * 0.8;
         const S = scale * 0.85;
@@ -1552,10 +1557,10 @@ function generateMasterThumbnail(
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('ISOMETRIC LOAD VIEW Ã‚Â· SOLID MATRIX', rect.x + 40, rect.y + rect.h - 40);
+        ctx.fillText('ISOMETRIC LOAD VIEW · SOLID MATRIX', rect.x + 40, rect.y + rect.h - 40);
     };
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ 2. TOP VIEW (Bottom Left) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── 2. TOP VIEW (Bottom Left) ──
     const drawTop = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
         const padding = 60;
         const availW = rect.w - padding * 2;
@@ -1588,10 +1593,10 @@ function generateMasterThumbnail(
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('TOP VIEW Ã‚Â· DISTRIBUTION MAP', rect.x + 40, rect.y + rect.h - 40);
+        ctx.fillText('TOP VIEW · DISTRIBUTION MAP', rect.x + 40, rect.y + rect.h - 40);
     };
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ 3. SIDE VIEW (Bottom Right) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── 3. SIDE VIEW (Bottom Right) ──
     const drawSide = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
         const padding = 60;
         const availW = rect.w - padding * 2;
@@ -1625,22 +1630,22 @@ function generateMasterThumbnail(
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('SIDE VIEW Ã‚Â· STACKING PROFILE', rect.x + 40, rect.y + rect.h - 40);
+        ctx.fillText('SIDE VIEW · STACKING PROFILE', rect.x + 40, rect.y + rect.h - 40);
     };
 
     drawIso(ctx, {x:0, y:0, w:W, h:H/2});
     drawTop(ctx, {x:0, y:H/2, w:W/2, h:H/2});
     drawSide(ctx, {x:W/2, y:H/2, w:W/2, h:H/2});
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Master Branding Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Master Branding ──
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '900 24px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`ONYX LOGISTICS Ã‚Â· MASTER LOAD ARCHIVE Ã‚Â· ${draftName?.toUpperCase() || 'UNTITLED LOAD'}`, W/2, 50);
+    ctx.fillText(`ONYX LOGISTICS · MASTER LOAD ARCHIVE · ${draftName?.toUpperCase() || 'UNTITLED LOAD'}`, W/2, 50);
     
     ctx.font = 'bold 12px monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillText(`GENERATED: ${new Date().toLocaleString()} Ã‚Â· v${TRUCKLOAD_VERSION} HYBRID ENGINE`, W/2, 75);
+    ctx.fillText(`GENERATED: ${new Date().toLocaleString()} · v${TRUCKLOAD_VERSION} HYBRID ENGINE`, W/2, 75);
 
     return canvas.toDataURL('image/jpeg', 0.90);
 }
@@ -1656,7 +1661,7 @@ function deleteDraft(id: string) {
     localStorage.setItem(DRAFTS_KEY, JSON.stringify(getDrafts().filter(d => d.id !== id)));
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Nesting Target Selector Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Nesting Target Selector ──────────────────────────────────────────────────
 const NestingTargetModal: React.FC<{
     boxId: string;
     allCrates: any[];
@@ -1804,7 +1809,7 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
     } catch (e) { console.error('Draft import failed', e); return null; }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Export Card Component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Export Card Component ──────────────────────────────────────────────────
 const ExportCard: React.FC<{
     id: string;
     title: string;
@@ -1859,7 +1864,7 @@ const ExportCard: React.FC<{
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Export Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Export Modal ────────────────────────────────────────────────────────────
 const TruckExportModal: React.FC<{
     truckCrates: any[];
     allCrates: any[];
@@ -1947,7 +1952,7 @@ const TruckExportModal: React.FC<{
             const calculated = calculateCodesAndPrices(norm, bookRate, '326');
             const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
             const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
-            const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : '');
+            const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
             const cost = calculated.acquisitionCostMxn || 0;
             ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims, cost });
         });
@@ -1993,7 +1998,7 @@ const TruckExportModal: React.FC<{
                     index: idx, vendorPrefix, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
                     name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
                     material: data.material || data.Material || '', color: data.color || data.Color || '',
-                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : ''),
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
                     weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                     costMxn: 0, costUsd: 0,
                     imageUrls: [], 
@@ -2023,7 +2028,7 @@ const TruckExportModal: React.FC<{
                 }
 
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}Ãƒâ€”${c.length_cm}Ãƒâ€”${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100,
                     parentLabel
@@ -2031,7 +2036,7 @@ const TruckExportModal: React.FC<{
             });
 
             const meta = {
-                dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}Ãƒâ€”${TRUCK_W_CM} cm`,
+                dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
                 crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
                 allTruckCrates: allTruckCratesMeta,
@@ -2088,7 +2093,7 @@ const TruckExportModal: React.FC<{
                     index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(inv.row),
                     name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
                     material: data.material || '', color: data.color || '',
-                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : ''),
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
                     weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                     costMxn: 0, costUsd: 0,
                     imageUrls: photos,
@@ -2098,7 +2103,7 @@ const TruckExportModal: React.FC<{
                 };
             });
             const meta = {
-                dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}Ãƒâ€”${crate.length_cm}Ãƒâ€”${crate.height_cm||'?'} cm`,
+                dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm||'?'} cm`,
                 crateType: crate.type, fillPct: 100, exportedAt: new Date().toLocaleString(),
                 excludeImages: !withImages, crateColor: vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280',
                 excludeHeaderQr: false, excludeHeaderWireframe: false,
@@ -2116,14 +2121,14 @@ const TruckExportModal: React.FC<{
             const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
             return {
-                id: c.id, label, type: c.type, dims: `${c.width_cm}Ãƒâ€”${c.length_cm}Ãƒâ€”${c.height_cm||'?'} cm`,
+                id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
                 weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                 l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
             };
         });
 
         const trailerMeta = {
-            dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}Ãƒâ€”${TRUCK_W_CM} cm`,
+            dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
             crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
             topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
             allTruckCrates: allTruckCratesMeta,
@@ -2172,7 +2177,7 @@ const TruckExportModal: React.FC<{
                 const calculated = calculateCodesAndPrices(norm, bookRate, '326');
                 const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
                 const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
-                const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : '');
+                const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
                 ws.addRow({ 
                     tag, 
                     qty: item.qty, 
@@ -2292,8 +2297,8 @@ const TruckExportModal: React.FC<{
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Interactive Truck Viewer (Local Preview) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-// Ã¢â€â‚¬Ã¢â€â‚¬ Interactive Truck Viewer (Local Preview) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Interactive Truck Viewer (Local Preview) ──────────────────────────────────
+// ── Interactive Truck Viewer (Local Preview) ──────────────────────────────────
 const InteractiveTruckViewer: React.FC<{
     truckCrates: any[];
     positions: Record<string, any>;
@@ -2536,7 +2541,7 @@ const InteractiveTruckViewer: React.FC<{
     return <div ref={containerRef} className="w-full h-full cursor-pointer" />;
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Ready Truck Wizard Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ─── Ready Truck Wizard ──────────────────────────────────────────────────────
 const ReadyTruckWizard: React.FC<{
     truckCrates: any[];
     allCrates: any[];
@@ -2610,7 +2615,7 @@ const ReadyTruckWizard: React.FC<{
                     index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
                     name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
                     material: data.material || '', color: data.color || '',
-                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : ''),
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
                     weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                     costMxn: 0, costUsd: 0, imageUrls: [], tagColor: (vendors as any)[vP]?.color || '#6b7280', dbItemCount: data.quantity || 1,
                     packetIn: Array.from(item.crates).join(', ')
@@ -2632,14 +2637,14 @@ const ReadyTruckWizard: React.FC<{
                     if (parent) parentLabel = getCrateDisplayName(parent, allCrates, allInventory, truckNumbering[parent.id]).label;
                 }
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}Ãƒâ€”${c.length_cm}Ãƒâ€”${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100, parentLabel
                 };
             });
 
             const meta: ManifestoMeta = {
-                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}Ãƒâ€”${TRUCK_W_CM} cm`,
+                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
                 crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
                 allTruckCrates: allTruckCratesMeta,
@@ -2672,7 +2677,7 @@ const ReadyTruckWizard: React.FC<{
             const textWhite: any = { color: { argb: 'FFFFFFFF' }, bold: true };
 
             // 1. Shipment Info
-            ws.addRow(['ONYX LOGISTICS Ã‚Â· TRAILER PACKING LIST']);
+            ws.addRow(['ONYX LOGISTICS · TRAILER PACKING LIST']);
             ws.getCell('A1').font = { size: 16, bold: true, color: { argb: 'FFF97316' } };
             ws.addRow([`Exported At: ${new Date().toLocaleString()}`]);
             ws.addRow([]);
@@ -2723,7 +2728,7 @@ const ReadyTruckWizard: React.FC<{
                     const calculated = calculateCodesAndPrices(norm, bookRate, '326');
                     const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
                     const desc = [data.color, data.material, data.shape, data.shortDescription].filter(Boolean).join(' - ');
-                    const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”');
+                    const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×');
                     
                     const row = ws.addRow({
                         crate: label,
@@ -2789,14 +2794,14 @@ const ReadyTruckWizard: React.FC<{
                         index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(inv.row),
                         name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
                         material: data.material || '', color: data.color || '',
-                        dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('Ãƒâ€”') + (data.lengthCm ? ' cm' : ''),
+                        dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
                         weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                         costMxn: 0, costUsd: 0, imageUrls: [], tagColor: (vendors as any)[vP]?.color || '#6b7280', dbItemCount: data.quantity || 1,
                         packetIn: item.packetIn || '', boxLabel: item.boxLabel || ''
                     };
                 });
                 const meta = {
-                    dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}Ãƒâ€”${crate.length_cm}Ãƒâ€”${crate.height_cm||'?'} cm`,
+                    dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm||'?'} cm`,
                     crateType: crate.type, fillPct: 100, exportedAt: new Date().toLocaleString(),
                     excludeImages: true, crateColor: (vendors as any)[vendorList[0]]?.color || '#6b7280',
                     excludeHeaderQr: false, excludeHeaderWireframe: false, exportBruteWeight: crate.brute_weight_kg
@@ -2810,13 +2815,13 @@ const ReadyTruckWizard: React.FC<{
             const allTruckCratesMeta = truckCrates.map(c => {
                 const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}Ãƒâ€”${c.length_cm}Ãƒâ€”${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: (vendors as any)[vendorList[0]]?.color || '#6b7280',
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
                 };
             });
             const trailerMeta: ManifestoMeta = {
-                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}Ãƒâ€”${TRUCK_W_CM} cm`,
+                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
                 crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView, allTruckCrates: allTruckCratesMeta,
                 truckStats: {
@@ -2938,7 +2943,7 @@ const ReadyTruckWizard: React.FC<{
                     <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-6 flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black font-black">Ã¢Å“â€œ</div>
+                                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black font-black">✓</div>
                                 <div>
                                     <h4 className="text-sm font-black text-white uppercase tracking-tight">{tr("Shipment Live in Registry")}</h4>
                                     <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">{tr("3D Digital Mirror Created")}</p>
@@ -3299,7 +3304,7 @@ const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProp
     );
 };
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Floating Ready Truck HUD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Floating Ready Truck HUD ──────────────────────────────────────────────────
 const ReadyTruckHUD: React.FC<{ metadata: any, stats: any }> = ({ metadata, stats }) => {
     return (
         <div className="absolute top-40 left-10 z-[50] p-8 rounded-[2.5rem] bg-black/40 backdrop-blur-[40px] border border-white/5 flex flex-col gap-6 shadow-2xl animate-in slide-in-from-left-10 duration-1000">
@@ -3316,11 +3321,11 @@ const ReadyTruckHUD: React.FC<{ metadata: any, stats: any }> = ({ metadata, stat
             <div className="grid grid-cols-2 gap-x-10 gap-y-4">
                 <div className="flex flex-col gap-1">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Tractor")}</span>
-                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.tractorNumber || 'Ã¢â‚¬â€'}</span>
+                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.tractorNumber || '—'}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Trailer")}</span>
-                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.trailerNumber || 'Ã¢â‚¬â€'}</span>
+                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.trailerNumber || '—'}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Load Weight")}</span>
@@ -3395,7 +3400,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                                     onMouseEnter={() => draft.thumbnail ? setPreview(draft.thumbnail) : setPreview(null)}
                                     onMouseLeave={() => setPreview(null)}
                                 >
-                                    {/* Thumbnail strip Ã¢â‚¬â€ shown on hover if available */}
+                                    {/* Thumbnail strip — shown on hover if available */}
                                     {draft.thumbnail && (
                                         <div className="overflow-hidden transition-all" style={{ maxHeight: preview === draft.thumbnail ? '90px' : '0', opacity: preview === draft.thumbnail ? 1 : 0 }}>
                                             <img src={draft.thumbnail} alt={draft.name} className="w-full object-cover" style={{ height: '88px', filter: 'brightness(0.9)' }} />
@@ -3441,7 +3446,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [isSaving, setIsSaving] = useAtom(truckIsBusyAtom);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number; z?: number }>>({});
-    const [zoom, setZoom] = useState(1.0);
+    // Corrected by the first fit once the workspace has been measured: a 53'
+    // trailer is 2,422px across at 100%, so opening at 100% showed a third of
+    // the deck with no hint that the rest was off-screen.
+    const [zoom, setZoom] = useState(0.5);
+    const hasFitRef = useRef(false);
     const [topBarState, setTopBarState] = useAtom(truckTopBarStateAtom);
     const [recentShipments, setRecentShipments] = useState<any[]>([]);
     const [loadingShipments, setLoadingShipments] = useState(false);
@@ -3586,7 +3595,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     // The DB only stores crate status (Packed/Deployed) set by Ready Truck.
 
     const allCrates = useMemo(() => {
-        // Exclude 'Deployed' Ã¢â‚¬â€ deployed crates have been shipped and are not part of active trucking
+        // Exclude 'Deployed' — deployed crates have been shipped and are not part of active trucking
         const live = docs.filter(d => {
             const s = (d.status || '').toLowerCase().trim();
             return ['packed', 'partial', 'in transit'].includes(s);
@@ -3656,7 +3665,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     }, [selectedId, inventoryArtifactConfig.isOpen, allCrates, allInventory, setInventoryArtifactConfig]);
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Memoized panel stats Ã¢â‚¬â€ independent of zoom Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Memoized panel stats — independent of zoom ──
     const panelStats = useMemo(() => {
         const MAX_KG = 20411;
         const TRUCK_VOL_M3 = (TRUCK_L_CM * TRUCK_W_CM * 279) / 1e6;
@@ -3680,7 +3689,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         return { MAX_KG, TRUCK_VOL_M3, usedVol, volPct, payloadPct, remaining, avgW, nCrates, nPallets, nBoxes, rPct, mPct, fPct, status, statusColor };
     }, [truckCrates, totalWeight, positions]);
 
-    // Smart auto-position: pack from FRONT (cab, right side xÃ¢â€°Ë†TRUCK_L_CM) toward rear, row-by-row
+    // Smart auto-position: pack from FRONT (cab, right side x≈TRUCK_L_CM) toward rear, row-by-row
     const computeAutoPosition = useCallback((crate: any, currentPositions: Record<string, {x:number;y:number;r:number}>, allCrates: any[]) => {
         const W = parseFloat(crate.width_cm) || 60;
         const D = parseFloat(crate.length_cm) || 60;
@@ -3855,7 +3864,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         });
     }, []);
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Interaction Handlers Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Interaction Handlers ──
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (e.button === 1) { // Middle click
@@ -3890,9 +3899,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             // Global shortcuts
-            if (e.key === '+' || e.key === '=') { setZoom(z => Math.min(3, z + 0.1)); e.preventDefault(); }
-            if (e.key === '-' || e.key === '_') { setZoom(z => Math.max(0.15, z - 0.1)); e.preventDefault(); }
-            if (e.key === '0' && e.ctrlKey) { setZoom(1.0); e.preventDefault(); }
+            if (e.key === '+' || e.key === '=') { setZoom(z => Math.min(MAX_ZOOM, z + 0.1)); e.preventDefault(); }
+            if (e.key === '-' || e.key === '_') { setZoom(z => Math.max(MIN_ZOOM, z - 0.1)); e.preventDefault(); }
+            if (e.key === '0' && e.ctrlKey) { fitToView(); e.preventDefault(); }
             
             if (selectedId) {
                 if (e.key === 'r' || e.key === 'R') { handleRotate(selectedId); e.preventDefault(); }
@@ -3979,7 +3988,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         setTopBarState('crates');
     };
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Ready Truck Ã¢â‚¬â€ sync DB + PDF + XLSX Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Ready Truck — sync DB + PDF + XLSX ──
     const handleReadyTruck = async (f = readyTruckFields) => {
         if (!confirm(tr("Are you sure you want to finalize this shipment and synchronize with the cloud?"))) return;
         setIsSaving(true);
@@ -4036,7 +4045,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         status: newStatus, 
                         description: finalDesc, 
                         updated_at: dispatchTs,
-                        // Clear live trailer fields Ã¢â‚¬â€ position is now stored in shipment payload
+                        // Clear live trailer fields — position is now stored in shipment payload
                         truck_id: null,
                         truck_position: null
                     }).eq('id', c.id);
@@ -4183,7 +4192,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const shareUrl = `${window.location.origin}${window.location.pathname}?truckid=${manifestId}`;
             setPublicUrl(shareUrl);
 
-            notify.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: 'Ã°Å¸Å¡Å¡', duration: 10000 });
+            notify.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: '🚚', duration: 10000 });
             // Wizard stays open to show the public link
         } catch (err: any) { 
             notify.error(err.message || 'Synchronization failed', { id: tid }); 
@@ -4202,7 +4211,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     }, [truckReadyTrigger, setShowReadyWizard]);
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Draft handlers Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Draft handlers ──
     const buildDraft = useCallback((name: string, fields?: any): TruckDraft => {
         const payload = {
             id: `draft_${Date.now()}`,
@@ -4221,14 +4230,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const handleSaveDraft = (name: string) => {
         const draft = buildDraft(name);
         saveDraft(draft);
-        notify.success(`Draft "${name}" saved to local storage`, { icon: 'Ã°Å¸â€™Â¾' });
+        notify.success(`Draft "${name}" saved to local storage`, { icon: '💾' });
         setShowSaveDraft(false);
     };
 
     const handleExportDraft = (name: string) => {
         const draft = buildDraft(name);
         exportDraftFile(draft);
-        notify.success(`Draft "${name}" exported as file`, { icon: 'Ã°Å¸â€œÂ¤' });
+        notify.success(`Draft "${name}" exported as file`, { icon: '📤' });
         setShowSaveDraft(false);
     };
 
@@ -4270,14 +4279,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const newDist = Math.hypot(dx, dy);
                 const scale = newDist / pinchRef.current.dist;
-                setZoom(Math.max(0.2, Math.min(3, pinchRef.current.zoom * scale)));
+                setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchRef.current.zoom * scale)));
             }
         };
         const onTouchEnd = () => { pinchRef.current = null; };
         const onWheel = (e: WheelEvent) => {
             if (e.ctrlKey) {
                 e.preventDefault();
-                setZoom(z => Math.max(0.1, Math.min(4, z - e.deltaY * 0.001 * z)));
+                setZoom(z => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z - e.deltaY * 0.001 * z)));
             }
         };
         el.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -4309,6 +4318,43 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             }
         }
     }, [selectedId]);
+
+    // ── Fit the whole trailer into the workspace ────────────────────────────
+    // The deck is 2,422 × 366px at 100% and the workspace is rarely half that
+    // wide, so "100%" is not a useful default or reset — it puts most of the
+    // trailer off-screen, which is what made the map look empty or missing.
+    // Each view is measured on its own drawing: the deck from above, the
+    // trailer's height from the side, the taller isometric box.
+    const fitToView = useCallback(() => {
+        const el = canvasRef.current;
+        if (!el || !el.clientWidth) return;
+        const long = TRUCK_L_CM * BASE_SCALE;
+        const across = TRUCK_W_CM * BASE_SCALE;
+        const tall = TRUCK_H_CM * BASE_SCALE;
+        const [drawW, drawH] =
+            viewMode === 'side' ? [long, tall] :
+            viewMode === 'iso'  ? [long, (TRUCK_W_CM + TRUCK_H_CM) * BASE_SCALE * 1.2] :
+            isMobile            ? [across, long] : [long, across];
+        // Room for the deck / bulkhead captions and the workspace padding.
+        const z = Math.min((el.clientWidth - 96) / drawW, (el.clientHeight - 190) / drawH);
+        setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z)));
+    }, [viewMode, isMobile]);
+
+    // Fit on the first paint of each view, and whenever the workspace resizes
+    // while the user has not zoomed themselves.
+    useEffect(() => {
+        hasFitRef.current = false;
+        const t = setTimeout(() => { fitToView(); hasFitRef.current = true; }, 60);
+        return () => clearTimeout(t);
+    }, [viewMode, fitToView]);
+
+    useEffect(() => {
+        const el = canvasRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return;
+        const ro = new ResizeObserver(() => { if (!hasFitRef.current) fitToView(); });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [fitToView]);
 
     useEffect(() => {
         const el = canvasRef.current;
@@ -4354,10 +4400,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [zoom, viewMode]);
 
     return (
-        <div className="relative flex-1 w-full h-full flex flex-col overflow-hidden bg-transparent select-none">
-            {/* Ã¢â€â‚¬Ã¢â€â‚¬ FLOATING STUDIO HUB (Persistent Glassmorphic Panel) Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        <div id="trucking" className="trk relative flex-1 w-full h-full flex flex-col overflow-hidden bg-transparent select-none">
+            {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
             {showPanels && (
-            <div className="relative z-[60] p-6 pb-0 pointer-events-none shrink-0">
+            <div className="trk-hub relative z-[60] shrink-0">
                 <div 
                     className={`pointer-events-auto flex flex-col backdrop-blur-3xl bg-black/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 hover:bg-black/10 ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
                     onWheel={e => e.stopPropagation()}
@@ -4366,28 +4412,28 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
 
                 {/* Bar 1: Primary Selector (Crates or Deployed) */}
-                <div className={`flex items-center gap-4 px-6 border-b border-white/5 transition-all duration-500 ${isCompact ? 'py-0.5' : 'py-3'}`}>
+                <div className={`flex items-center gap-4 px-6 border-b border-white/5 transition-all duration-500 ${isCompact ? 'py-0.5' : 'py-1.5'}`}>
                     <button 
                         onClick={() => setTopBarState(topBarState === 'crates' ? 'trailers' : 'crates')}
-                        className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-4 text-white/30 hover:text-white'}`}
+                        className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-2 text-white/30 hover:text-white'}`}
                         title={topBarState === 'crates' ? 'Switch to Deployed History' : 'Switch to Crates'}
                     >
                         {topBarState === 'trailers' ? (
-                            <Truck size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
+                            <Truck size={isCompact ? 14 : 22} strokeWidth={1.5} style={{ color: 'var(--main-color)' }} />
                         ) : (
-                            <Truck size={isCompact ? 14 : 32} strokeWidth={1.25} className="opacity-20" />
+                            <Truck size={isCompact ? 14 : 22} strokeWidth={1.5} className="opacity-20" />
                         )}
                     </button>
 
                     <button 
                         onClick={() => setTopBarState('deployed')}
-                        className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-4 text-white/30 hover:text-white'}`}
+                        className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-2 text-white/30 hover:text-white'}`}
                         title={tr("View All Deployed Crates")}
                     >
-                        <SquareLibrary size={isCompact ? 14 : 32} strokeWidth={1.25} style={topBarState === 'deployed' ? { color: 'var(--main-color)' } : { opacity: 0.2 }} />
+                        <SquareLibrary size={isCompact ? 14 : 22} strokeWidth={1.5} style={topBarState === 'deployed' ? { color: 'var(--main-color)' } : { opacity: 0.2 }} />
                     </button>
 
-                    <div className={`flex-1 overflow-x-auto custom-scrollbar flex items-center gap-6 no-scrollbar px-2 ${isCompact ? 'py-0' : 'py-2'}`}>
+                    <div className={`trk-strip flex-1 overflow-x-auto custom-scrollbar flex items-center gap-4 no-scrollbar px-2 ${isCompact ? 'py-0' : 'py-1.5'}`}>
                         {topBarState === 'crates' ? (
                             <>
                                 {dockCrates.length === 0 ? (
@@ -4497,8 +4543,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
 
 
-                {/* Ã¢â€¢ÂÃ¢â€¢Â CONSOLIDATED HIGH-DENSITY DETAILS PANEL Ã¢â€¢ÂÃ¢â€¢Â */}
-                <div className={`px-4 transition-all duration-500 flex items-center backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-5'}`}>
+                {/* ══ CONSOLIDATED HIGH-DENSITY DETAILS PANEL ══ */}
+                <div className={`px-4 transition-all duration-500 flex items-center backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-2.5'}`}>
                     <div className={`flex items-center w-full ${isCompact ? 'gap-8 justify-between' : 'gap-1 justify-start'}`}>
                         <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-2' : 'gap-4 flex-1 min-w-0'}`}>
                             {!isCompact && (
@@ -4506,7 +4552,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <h2 className="font-black uppercase tracking-tighter text-white leading-none text-4xl">53&apos;</h2>
                                     <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 leading-none opacity-20">
                                         <span className="text-[5px] font-black tracking-widest uppercase">1615</span>
-                                        <span className="text-[5px] font-black tracking-widest uppercase">Ãƒâ€”</span>
+                                        <span className="text-[5px] font-black tracking-widest uppercase">×</span>
                                         <span className="text-[5px] font-black tracking-widest uppercase">244</span>
                                         <span className="text-[5px] font-black tracking-widest uppercase">CM</span>
                                     </div>
@@ -4516,7 +4562,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 {isCompact ? (
                                     <div className="flex items-center gap-3">
                                         <span className="font-black text-white/40 text-[9px] uppercase tracking-widest">{tr("53FT")}</span>
-                                        <span className="font-mono font-black text-white/60 uppercase tracking-widest text-[9px]">{TRUCK_L_CM}Ãƒâ€”{TRUCK_W_CM}</span>
+                                        <span className="font-mono font-black text-white/60 uppercase tracking-widest text-[9px]">{TRUCK_L_CM}×{TRUCK_W_CM}</span>
                                         <div className="w-1 h-1 rounded-full bg-white/10" />
                                         <span className="font-black tracking-tighter text-white text-[14px] leading-none">{truckCrates.length}</span>
                                         <span className="text-white/30 font-black uppercase tracking-widest text-[7px] leading-none">{tr("UNITS")}</span>
@@ -4590,7 +4636,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             <Shield size={10} className="text-emerald-400 opacity-60" />
                                             <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Tractor")}</span>
                                         </div>
-                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.tractorNumber || 'Ã¢â‚¬â€'}</span>
+                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.tractorNumber || '—'}</span>
                                         {!isCompact && (
                                             <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.truckPlates || tr("NO PLATES")}</span>
                                         )}
@@ -4602,7 +4648,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             <Truck size={10} className="text-white/40" />
                                             <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">{tr("Trailer")}</span>
                                         </div>
-                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.trailerNumber || 'Ã¢â‚¬â€'}</span>
+                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.trailerNumber || '—'}</span>
                                         {!isCompact && (
                                             <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.trailerPlates || tr("NO PLATES")}</span>
                                         )}
@@ -4667,7 +4713,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         </div>
     )}
 
-            {/* Ã¢â€â‚¬Ã¢â€â‚¬ FULL-SCREEN WORKSPACE (Scrolls Behind Hub) Ã¢â€â‚¬Ã¢â€â‚¬ */}
+            {/* ── FULL-SCREEN WORKSPACE (Scrolls Behind Hub) ── */}
             <div 
                 ref={canvasRef}
                 className="flex-1 overflow-auto custom-scrollbar relative bg-white/[0.02] backdrop-blur-3xl"
@@ -4706,7 +4752,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     </div>
                 ) : (
                 <div 
-                    className="min-w-full min-h-full flex flex-col items-center justify-center p-10 lg:p-20"
+                    className="min-w-full min-h-full flex flex-col items-center justify-center p-6 lg:p-8"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {
                             setSelectedId(null);
@@ -4717,13 +4763,17 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         id="trailer-main-map"
                         className="flex flex-col items-center animate-in fade-in zoom-in duration-1000" 
                         style={{ 
-                            width: (isMobile ? TRUCK_W_CM : TRUCK_L_CM) * BASE_SCALE * zoom + 100,
-                            height: (isMobile ? TRUCK_L_CM : TRUCK_W_CM) * BASE_SCALE * zoom + 100
+                            // The map is exactly the deck's size; the breathing
+                            // room comes from the workspace's own padding. The
+                            // old +100 made this box wider than the workspace at
+                            // fit zoom, so both deck captions were scrolled out.
+                            width: (isMobile ? TRUCK_W_CM : TRUCK_L_CM) * BASE_SCALE * zoom,
+                            height: (isMobile ? TRUCK_L_CM : TRUCK_W_CM) * BASE_SCALE * zoom + 64
                         }}
                     >
                         {/* Direction labels - Adaptive Layout */}
                         {!isMobile ? (
-                            <div className="flex items-center gap-10 mb-12 w-full max-w-[1600px]">
+                            <div className="trk-ends flex items-center gap-10 mb-4 w-full">
                                 <div className="flex flex-col items-center gap-3">
                                     <div className="w-8 h-8 flex items-center justify-center bg-emerald-500/5">
                                         <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)]" />
@@ -4751,7 +4801,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             width: (isMobile ? TRUCK_W_CM : TRUCK_L_CM) * BASE_SCALE * zoom, 
                             height: (isMobile ? TRUCK_L_CM : TRUCK_W_CM) * BASE_SCALE * zoom, 
                             position: 'relative' 
-                        }} className="shadow-[0_120px_250px_-80px_rgba(0,0,0,0.8)] bg-transparent">
+                        }} className="trk-bed">
                             <div
                                 className="absolute inset-0 overflow-hidden"
                                 style={{ 
@@ -4769,16 +4819,16 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 <CmGrid isVertical={isMobile} />
                                 {isMobile ? (
                                     [0.2, 0.4, 0.6, 0.8].map(frac => (
-                                        <div key={frac} className="absolute left-0 right-0 h-px bg-white/10 pointer-events-none" style={{ top: (1 - frac) * TRUCK_L_CM * BASE_SCALE }}>
-                                            <div className="absolute left-6 -top-3 px-3 py-1.5 bg-black/60 backdrop-blur-xl rounded-lg text-[10px] font-black text-white tracking-[0.2em]">
+                                        <div key={frac} className="trk-rule trk-rule--h" style={{ top: (1 - frac) * TRUCK_L_CM * BASE_SCALE }}>
+                                            <div className="trk-rule-label">
                                                 {Math.round(frac * TRUCK_L_CM)} CM
                                             </div>
                                         </div>
                                     ))
                                 ) : (
                                     [0.2, 0.4, 0.6, 0.8].map(frac => (
-                                        <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/10 pointer-events-none" style={{ left: frac * TRUCK_L_CM * BASE_SCALE }}>
-                                            <div className="absolute bottom-6 left-3 px-3 py-1.5 bg-black/60 backdrop-blur-xl rounded-lg text-[10px] font-black text-white tracking-[0.2em]">
+                                        <div key={frac} className="trk-rule trk-rule--v" style={{ left: frac * TRUCK_L_CM * BASE_SCALE }}>
+                                            <div className="trk-rule-label">
                                                 {Math.round(frac * TRUCK_L_CM)} CM
                                             </div>
                                         </div>
@@ -4886,9 +4936,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 />
             )}
 
-            {/* Ã¢â€â‚¬Ã¢â€â‚¬ FIXED BOTTOM CONTROL BAR (Glassmorphic) Ã¢â€â‚¬Ã¢â€â‚¬ */}
-            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
-                <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+            {/* ── FIXED BOTTOM CONTROL BAR (Glassmorphic) ── */}
+            {/* The control bar is DOCKED to the bottom of the module, not fixed to
+                the viewport: floating mid-screen it covered the trailer at some
+                window heights and sat over other modules' content at others. */}
+            <div className="trk-bar shrink-0 z-[100]">
+                <div className="trk-bar-inner">
                     <button
                         onClick={() => setViewMode(v => v === 'top' ? 'side' : v === 'side' ? 'iso' : 'top')}
                         title={viewMode === 'top' ? 'Lateral View' : viewMode === 'side' ? 'Axonometric View' : 'Overhead View'}
@@ -4901,9 +4954,15 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     <div className="w-px h-8 bg-white/10 mx-2" />
                     
                     <div className="flex items-center gap-1">
-                        <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title={tr("Zoom Out")}><ZoomOut size={22} /></button>
-                        <button onClick={() => setZoom(1.0)} className="px-4 text-[13px] font-black text-white hover:scale-110 transition-all tracking-tighter">{Math.round(zoom * 100)}%</button>
-                        <button onClick={() => setZoom(z => Math.min(4, z + 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title="Zoom In"><ZoomIn size={22} /></button>
+                        <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - 0.1))} className="trk-key" title={tr("Zoom Out")}><ZoomOut size={20} /></button>
+                        {/* FIT, not 100%. The bed is 2,422px across at 100% and the
+                            workspace is rarely half that, so "reset" used to leave
+                            the trailer running off both edges. */}
+                        <button onClick={fitToView} className="trk-zoom" title={tr("Fit trailer to view")}>
+                            <Maximize2 size={13} strokeWidth={2.5} aria-hidden="true" />
+                            <span>{Math.round(zoom * 100)}%</span>
+                        </button>
+                        <button onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + 0.1))} className="trk-key" title="Zoom In"><ZoomIn size={20} /></button>
                     </div>
 
                     <div className="w-px h-8 bg-white/10 mx-2" />

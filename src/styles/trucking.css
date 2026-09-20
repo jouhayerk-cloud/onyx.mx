@@ -1,0 +1,240 @@
+/* ==========================================================================
+   TRUCKING — the trailer map, its stages and the module's two bars
+   --------------------------------------------------------------------------
+   The module was drawn for one ground only: every rule, grid line and panel
+   was white at 2–15% alpha over near-black. On the light slab SLAB flattens
+   `bg-white/*` to the surface colour, so the whole wireframe — deck outline,
+   50cm grid, measure rules — dissolved into the page and the map read as
+   missing. The drawing now takes its ink from the tokens below, which are
+   defined once per ground, so one wireframe works on both.
+
+   Contrast, not alpha: the deck sits on its own surface, a step off the page,
+   with a hairline edge that clears WCAG's 3:1 for UI boundaries. The 100cm
+   grid is drawn twice as strong as the 50cm one, so the reading order is
+   deck edge → metre lines → half-metre lines → crates.
+   ========================================================================== */
+
+#trucking {
+    /* Dark ground (ROCK, and the Talan slab) — the original values. */
+    --trk-ink:        rgb(255 255 255 / 0.62);
+    --trk-ink-dim:    rgb(255 255 255 / 0.34);
+    --trk-grid-major: rgb(255 255 255 / 0.16);
+    --trk-grid-minor: rgb(255 255 255 / 0.07);
+    --trk-fill:       rgb(255 255 255 / 0.03);
+    --trk-glow:       rgb(255 255 255 / 0.9);
+    --trk-select:     #ffffff;
+    --trk-select-ink: #ffffff;
+    --trk-bed:        rgb(255 255 255 / 0.04);
+    --trk-edge:       rgb(255 255 255 / 0.22);
+    --trk-chip:       rgb(0 0 0 / 0.6);
+    --trk-chip-ink:   #ffffff;
+
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Light ground: the same drawing in ink instead of chalk. Alpha values are
+   lower because dark-on-light reads heavier at the same opacity. */
+html.style-slab:not(.theme-talan) #trucking,
+html.style-paper #trucking {
+    --trk-ink:        color-mix(in srgb, var(--slab-ink, #1a1614) 72%, transparent);
+    --trk-ink-dim:    color-mix(in srgb, var(--slab-ink, #1a1614) 45%, transparent);
+    --trk-grid-major: color-mix(in srgb, var(--slab-ink, #1a1614) 26%, transparent);
+    --trk-grid-minor: color-mix(in srgb, var(--slab-ink, #1a1614) 12%, transparent);
+    --trk-fill:       color-mix(in srgb, var(--slab-ink, #1a1614) 3%, transparent);
+    --trk-glow:       rgb(0 0 0 / 0.14);
+    --trk-select:     var(--main-color);
+    --trk-select-ink: #ffffff;
+    --trk-bed:        color-mix(in srgb, var(--slab-sh, #bfc5bd) 30%, var(--slab, #e7eae6));
+    --trk-edge:       color-mix(in srgb, var(--slab-ink, #1a1614) 38%, transparent);
+    --trk-chip:       color-mix(in srgb, var(--slab-ink, #1a1614) 88%, transparent);
+    --trk-chip-ink:   var(--slab, #e7eae6);
+}
+
+/* ── The deck ─────────────────────────────────────────────────────────────
+   Was `bg-transparent` with a drop shadow — which is invisible on a light
+   ground, since a shadow under nothing casts onto nothing. */
+#trucking .trk-bed {
+    position: relative;
+    background-color: var(--trk-bed);
+    border: 1px solid var(--trk-edge);
+    border-radius: 4px;
+    box-shadow:
+        inset 0 0 0 1px rgb(255 255 255 / 0.03),
+        0 40px 90px -40px rgb(0 0 0 / 0.55);
+}
+
+html.style-slab #trucking .trk-bed {
+    box-shadow: var(--slab-pressed), 0 30px 70px -45px rgb(0 0 0 / 0.5);
+}
+
+/* Selection is a ring, not a wash. The old `bg-white/10` overlay was flattened
+   to an OPAQUE surface by SLAB's white-utility rule, so selecting a crate
+   painted it out completely — the crate looked like it had been deleted. */
+#trucking .trk-crate-sel {
+    position: absolute;
+    inset: 0;
+    box-shadow:
+        inset 0 0 0 2px var(--trk-select),
+        inset 0 0 0 4px rgb(0 0 0 / 0.25);
+    animation: trk-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes trk-pulse {
+    50% { box-shadow: inset 0 0 0 3px var(--trk-select), inset 0 0 0 5px rgb(0 0 0 / 0.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #trucking .trk-crate-sel { animation: none; }
+}
+
+/* ── Measure rules every 20% of the deck ── */
+#trucking .trk-rule {
+    position: absolute;
+    background-color: var(--trk-grid-major);
+    pointer-events: none;
+}
+
+#trucking .trk-rule--v { top: 0; bottom: 0; width: 1px; }
+#trucking .trk-rule--h { left: 0; right: 0; height: 1px; }
+
+#trucking .trk-rule-label {
+    position: absolute;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    line-height: 1.4;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--trk-chip-ink);
+    background-color: var(--trk-chip);
+}
+
+#trucking .trk-rule--v > .trk-rule-label { bottom: 10px; left: 5px; }
+#trucking .trk-rule--h > .trk-rule-label { top: -10px; left: 14px; }
+
+/* ── Side and isometric stages ────────────────────────────────────────────
+   Both were `bg-white/[0.02] border-t border-white/10`, i.e. nothing at all
+   on a light ground, which is why those two views looked like empty pages. */
+#trucking .trk-stage {
+    width: 100%;
+    height: 100%;
+    background-color: var(--trk-fill);
+    border-top: 1px solid var(--trk-grid-major);
+}
+
+/* ── The two bars ─────────────────────────────────────────────────────────
+   The hub was an overlay with `pointer-events-none` padding that clipped its
+   own cards, and the control bar was `position: fixed` to the VIEWPORT — it
+   floated over the trailer at short window heights and over other modules
+   at tall ones. Both are now ordinary rows of the module's column: the hub
+   at the top, the controls docked at the bottom, the workspace between them
+   taking the rest. */
+#trucking .trk-hub {
+    padding: 12px 16px 0;
+    min-width: 0;
+}
+
+#trucking .trk-hub > * {
+    max-width: 100%;
+}
+
+/* The dock's crate strip scrolls sideways. Its trailing edge fades, so a
+   half-visible card reads as "there are more, scroll" rather than as a panel
+   that failed to finish drawing. */
+#trucking .trk-hub .no-scrollbar,
+#trucking .trk-hub [class*="overflow-x-auto"] {
+    scrollbar-width: none;
+}
+
+#trucking .trk-strip {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 44px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 44px), transparent 100%);
+}
+
+/* The deck / bulkhead captions belong to the deck's width. They used to sit
+   on a 1600px row inside a box padded by 80px a side, so at fit zoom both
+   ends were scrolled out of the workspace. */
+#trucking .trk-ends {
+    min-width: 0;
+    padding-inline: 2px;
+}
+
+#trucking .trk-ends span {
+    white-space: nowrap;
+}
+
+#trucking .trk-bar {
+    display: flex;
+    justify-content: center;
+    padding: 10px 16px 14px;
+    background: linear-gradient(to top, var(--app-bg-solid, #0a0a0f) 55%, transparent);
+}
+
+#trucking .trk-bar-inner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 6px 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background-color: var(--sidebar-bg);
+    box-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.6);
+}
+
+#trucking .trk-bar-inner::-webkit-scrollbar { display: none; }
+
+html.style-slab #trucking .trk-bar {
+    background: linear-gradient(to top, var(--slab) 55%, transparent);
+}
+
+html.style-slab #trucking .trk-bar-inner {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-lg);
+    box-shadow: var(--slab-raised);
+}
+
+/* Keys in the bar: sized here, not by index.css's 40px button rule. */
+#trucking .trk-key,
+#trucking .trk-zoom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    min-height: 0;
+    padding: 0;
+    width: 38px;
+    height: 34px;
+    border-radius: 9px;
+    color: var(--text-color);
+}
+
+#trucking .trk-zoom {
+    gap: 6px;
+    width: auto;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+#trucking .trk-key:focus-visible,
+#trucking .trk-zoom:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+    #trucking .trk-hub { padding: 8px 10px 0; }
+    #trucking .trk-bar { padding: 8px 10px 10px; }
+    #trucking .trk-bar-inner { gap: 4px; padding: 5px 8px; }
+}
