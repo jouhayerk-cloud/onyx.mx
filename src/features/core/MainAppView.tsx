@@ -36,6 +36,7 @@ import {
     Barcode, Box, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d, History, Brain, Cpu
 } from 'lucide-react';
 
+import { LiquidBar } from '../../components/LiquidBar';
 import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
@@ -543,10 +544,16 @@ export function MainAppView() {
                         }
                     }}
                 >
-                    <div className="sticky top-0 z-[500] w-full flex flex-col bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl">
+                    {/* app-topbar: the band that paints behind the iOS status bar.
+                        It is sticky at top:0 inside the scroller, so with
+                        viewport-fit=cover its background already reaches the top
+                        of the display — the class makes that explicit and pays
+                        the inset back as padding, so the bar's CONTENT clears the
+                        clock and the notch while its GLASS runs underneath. */}
+                    <LiquidBar className="app-topbar sticky top-0 z-[500] w-full flex flex-col bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl">
                         <MainHeader />
                         <UniversalToolsBar />
-                    </div>
+                    </LiquidBar>
 
                     <main className="flex-1 flex flex-col min-h-0 p-0 m-0">
                         {/* Suspense catches lazy-loaded view chunks during navigation */}
