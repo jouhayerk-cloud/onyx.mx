@@ -36,6 +36,7 @@ import {
     normalizeBrandTerms,
     formatProductTitle
 } from '../../lib/utils';
+import { normalizeContour, saveSegmentation, type SegmentationResult } from '../../lib/segmentationStore';
 import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2, Layers, Video, Maximize2, Image as ImageIcon, Wand2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { removeBackground } from '@imgly/background-removal';
@@ -74,6 +75,28 @@ const resolveVendorColor = (inputStr: string | undefined | null) => {
 type ProcessingMode = 'bgreplace' | 'local' | 'cloud' | 'hybrid';
 
 const MODE_CYCLE: ProcessingMode[] = ['bgreplace', 'local', 'cloud', 'hybrid'];
+
+/** The mode chip's label. The chip is always pressed — one of the four is
+ *  always engaged — so the mode is told by word, icon and tint together, never
+ *  by the colour of the label alone. `data-mode` on the button picks the tint
+ *  and the icon colour in batchproc.css. */
+const MODE_LABEL: Record<ProcessingMode, string> = {
+    bgreplace: 'STUDIO',
+    hybrid: 'HYBRID',
+    cloud: 'CLOUD',
+    local: 'LOCAL',
+};
+
+/** Which meaning colour a log line carries. The prefixes are written by logOp
+ *  and are the only thing that distinguishes a finished step from a failed one,
+ *  so they stay coloured — the line is data, not chrome. */
+const logTone = (line: string): string => {
+    if (line.includes('[ FAIL ]')) return 'is-fail';
+    if (line.includes('[  OK  ]')) return 'is-ok';
+    if (line.includes('[ WARN ]')) return 'is-warn';
+    if (line.includes('[ SKIP ]')) return 'is-skip';
+    return '';
+};
 
 interface BatchOp {
     id: string;
@@ -122,6 +145,19 @@ interface BatchOp {
         rows?: number;
         localSegmentationMasks?: string;
         cloudSegmentationMasks?: string;
+        /**
+         * Real segmentation output, bound for the `item_segmentation` table.
+         *
+         * Separate from everything above because segmentation and background
+         * cleaning are independent processes: cleaning keeps writing cleanedUrl
+         * into processed_media_urls exactly as before, and this carries the
+         * cutout and vectors on its own path.
+         *
+         * It exists because localSegmentationMasks / cloudSegmentationMasks have
+         * no column behind them in Postgres OR in the RxDB schema, so everything
+         * assigned to them was computed and then dropped.
+         */
+        segmentation?: SegmentationResult;
         videoGen?: string;
     };
 }
@@ -758,6 +794,22 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         width: img.width, height: img.height,
                         svgData: svgData, layers: masks
                     });
+                    // Same values, on a path that actually reaches the database.
+                    // cloudSegmentationMasks above has no column behind it in
+                    // Postgres or RxDB, so it is computed and dropped; it is left
+                    // in place only because the SVG-upload step at the save site
+                    // still reads it. `simplifiedFull` is the raw contour the
+                    // curve-smoothing discards, kept here because the 3D
+                    // generators need points rather than a bezier path.
+                    op.result.segmentation = {
+                        svgData,
+                        points: normalizeContour(simplifiedFull, maskImgFull.width, maskImgFull.height),
+                        cutoutDataUrl: pngData,
+                        imageWidth: img.width,
+                        imageHeight: img.height,
+                        sourceImageUrl: imageUrl,
+                        method: 'cloud',
+                    };
                     logOp(op.id, '[  OK  ] Cloud Mask generated');
 
                 } catch (e: any) {
@@ -823,6 +875,19 @@ Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "s
                         path: svgPath, pointCount: simplified.length,
                         points: simplified.map(p => [Math.round((p.y / maskImg.height) * 1000), Math.round((p.x / maskImg.width) * 1000)])
                     });
+                    // As above: localSegmentationMasks has no column behind it.
+                    // This carries the same contour on a path that persists, in
+                    // {x, y} 0..1 form rather than the [y, x] 0..1000 pairs, so
+                    // consumers do not have to know which branch produced it.
+                    op.result.segmentation = {
+                        svgData: svgPath,
+                        points: normalizeContour(simplified, maskImg.width, maskImg.height),
+                        cutoutDataUrl: initialLocalMaskUrl,
+                        imageWidth: maskImg.width,
+                        imageHeight: maskImg.height,
+                        sourceImageUrl: imageUrl,
+                        method: 'hybrid',
+                    };
                     logOp(op.id, `[  OK  ] [HYBRID 2/4] Extracted ${simplified.length} vector points`);
 
                     logOp(op.id, '[ WAIT ] [HYBRID 3/4] Prompting Cloud AI for multi-layer refinement...');
@@ -965,6 +1030,18 @@ Instructions:
                             path: svgPath, pointCount: simplified.length,
                             points: simplified.map(p => [Math.round((p.y / maskImg.height) * 1000), Math.round((p.x / maskImg.width) * 1000)])
                         });
+                        // The persisted twin of the line above, which has no
+                        // column to land in. localMaskUrl is the alpha-masked
+                        // cutout, which is the real segmented image.
+                        op.result.segmentation = {
+                            svgData: svgPath,
+                            points: normalizeContour(simplified, maskImg.width, maskImg.height),
+                            cutoutDataUrl: localMaskUrl,
+                            imageWidth: maskImg.width,
+                            imageHeight: maskImg.height,
+                            sourceImageUrl: imageUrl,
+                            method: 'local',
+                        };
                     } catch (vErr) {
                         console.warn("Could not parse local vector mask:", vErr);
                     }
@@ -1388,6 +1465,15 @@ RULES
                 const parsed = safeParseMasks(op.result.cloudSegmentationMasks);
                 if (parsed !== undefined) updatePayload.spatial_masks = parsed;
             }
+
+            // Segmentation goes to its own table, independently of everything
+            // above. Awaited but never allowed to throw -- saveSegmentation
+            // swallows its own failures -- because the description, pricing and
+            // cleaned-image work in this same payload must not be lost to a
+            // cutout upload timing out.
+            if (op.result.segmentation && itemData?.id) {
+                void saveSegmentation(itemData.id, op.result.segmentation, user);
+            }
             
             // Generate and save Classification and Type
             const catAndType = getProductCategoryAndType({
@@ -1460,7 +1546,11 @@ RULES
                 let lastMarketingDescription = '';
                 let lastColors: string[] = [];
                 let lastGeneratedType = '';
-                
+                // Every op in this group is an angle of the SAME item, so they
+                // all attach to one item id. Resolved before the loop because
+                // `itemData` below is only read from ops[0] afterwards.
+                const primaryItemId = (ops[0]?.item?.data || ops[0]?.item as any)?.id;
+
                 for (const op of ops) {
                     if (op.result?.maskUrl && op.result.maskUrl.startsWith('data:')) {
                         const ext = op.result.maskUrl.startsWith('data:image/webp') ? 'webp' : 'png';
@@ -1487,6 +1577,19 @@ RULES
                         } catch (e) {
                             console.warn('Could not persist SVG outline:', e);
                         }
+                    }
+
+                    // Persist this angle's segmentation before the index moves on.
+                    // One row per photographed angle, which is the shape
+                    // `spatial_masks` was being bent into -- except these rows
+                    // carry real contours and a real cutout, and they cannot
+                    // collide with the cleaned-photo columns.
+                    if (op.result?.segmentation && primaryItemId) {
+                        void saveSegmentation(
+                            primaryItemId,
+                            { ...op.result.segmentation, angleIndex: combinedMaskUrls.length },
+                            user,
+                        );
                     }
 
                     if (op.result?.maskUrl) {
@@ -2259,74 +2362,88 @@ RULES
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[1000] flex animate-in fade-in duration-500 bg-black/40 backdrop-blur-md">
-            <div className="relative w-full h-full flex flex-col bg-transparent">
-                
-                {/* Fullscreen Image Gallery Mode */}
+        <div id="batchproc" className="animate-in fade-in duration-500">
+            <div className="bp-shell">
+
+                {/* Fullscreen Image Gallery Mode.
+                    The scrim is deliberately NOT a bg-black/* utility: SLAB
+                    flattens every one of those to the page colour, which on the
+                    light slab turned the lightbox into a white sheet with a
+                    white-on-white photograph in it. A scrim over a photograph
+                    stays dark on both grounds — the image is what is lit. */}
                 {fullscreenImage && (
-                    <div 
-                        className="fixed inset-0 z-[3000] flex flex-col items-center justify-center bg-black/95 backdrop-blur-md animate-in fade-in"
+                    <div
+                        className="bp-lightbox animate-in fade-in"
                         onClick={() => { setFullscreenImage(null); setZoomLevel(1); }}
                     >
-                        <div className="absolute top-6 right-6 flex gap-4 z-50">
-                            <button onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.min(z + 0.5, 4)); }} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl text-white backdrop-blur-md transition-all">
-                                <ZoomIn size={24} />
+                        <div className="bp-lightbox-bar">
+                            <button type="button" aria-label={tr("Zoom in")} onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.min(z + 0.5, 4)); }} className="bp-lightbox-key">
+                                <ZoomIn size={22} />
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.max(z - 0.5, 1)); }} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl text-white backdrop-blur-md transition-all">
-                                <ZoomOut size={24} />
+                            <button type="button" aria-label={tr("Zoom out")} onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.max(z - 0.5, 1)); }} className="bp-lightbox-key">
+                                <ZoomOut size={22} />
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); setFullscreenImage(null); setZoomLevel(1); }} className="p-3 bg-white/10 hover:bg-rose-500/20 hover:text-rose-400 rounded-xl text-white backdrop-blur-md transition-all">
-                                <X size={24} />
+                            <button type="button" aria-label={tr("Close")} onClick={(e) => { e.stopPropagation(); setFullscreenImage(null); setZoomLevel(1); }} className="bp-lightbox-key">
+                                <X size={22} />
                             </button>
                         </div>
-                        <div 
-                            className="w-full h-full p-12 flex items-center justify-center overflow-auto scrollbar-none"
+                        <div
+                            className="bp-lightbox-stage scrollbar-none"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <img 
-                                src={fullscreenImage} 
+                            <img
+                                src={fullscreenImage}
                                 style={{ transform: `scale(${zoomLevel})` }}
-                                className="max-w-full max-h-full object-contain transition-transform duration-300 ease-out cursor-zoom-in drop-shadow-2xl" 
+                                className="bp-lightbox-img"
                                 onClick={(e) => { e.stopPropagation(); setZoomLevel(z => z === 1 ? 2 : 1); }}
                             />
                         </div>
                     </div>
                 )}
 
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/20">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-(--main-color)/20 flex items-center justify-center text-(--main-color)">
+                {/* Header.
+                    Chrome: raised once, for the whole bar. Every key in the
+                    tool rail is a `.bp-key` — the depth walk, the hairline and
+                    the focus ring are written once in batchproc.css instead of
+                    once per button in utilities SLAB then flattens. */}
+                <div className="bp-head">
+                    <div className="bp-brand">
+                        <div className="bp-mark">
                             <Bot size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black uppercase tracking-tight text-white">{tr("Onyx.mx - Catalog Hub")}</h2>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{tr("Batch segmentation & description logic")}</p>
+                            <h2 className="bp-title">{tr("Onyx.mx - Catalog Hub")}</h2>
+                            <p className="bp-sub">{tr("Batch segmentation & description logic")}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button 
+                    <div className="bp-tools">
+                        {/* A two-state control: engaged seats pressed and
+                            tinted, and the amber rides on the icon, never on
+                            the 10px label. */}
+                        <button
+                            type="button"
                             onClick={toggleAllImageProcessing}
-                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg ${
-                                allSkippingImage 
-                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' 
-                                    : 'bg-(--main-color)/20 text-(--main-color) border-(--main-color)/40 hover:bg-(--main-color)/30'
-                            }`}
+                            aria-pressed={!allSkippingImage}
+                            data-sig={allSkippingImage ? 'amber' : 'accent'}
+                            className="bp-key"
                             title={tr("Toggle Image Processing (Masks & Transparency) ON/OFF for ALL items")}
                         >
-                            <UploadCloud size={16} className={allSkippingImage ? 'text-amber-300' : 'text-(--main-color)'} />
+                            <UploadCloud size={16} className="bp-sig" />
                             <span>{allSkippingImage ? tr("IMG PROCESSING: OFF (ORIGINALS)") : tr("IMG PROCESSING: ON (MASKS)")}</span>
                         </button>
+
                         {/* Force a fresh clean on every image. Sits beside
                             REGENERATE DESCRIPTIONS because it is the same kind of
                             control — force the work again — for the other half of
                             the pipeline. */}
                         <button
+                            type="button"
                             onClick={handleRecleanAllImages}
-                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30"
+                            data-sig="sky"
+                            className="bp-key"
                             title={tr("Re-clean ALL images (force a new background replacement on every image of every item, not just the first)")}
                         >
-                            <ImageIcon size={16} className="text-sky-300" />
+                            <ImageIcon size={16} className="bp-sig" />
                             <span>{tr("RE-CLEAN IMAGES")}</span>
                         </button>
 
@@ -2336,16 +2453,14 @@ RULES
                             description, colour or type filled in; what is
                             already there is never regenerated either way. */}
                         <button
+                            type="button"
                             onClick={() => setImagesOnly(v => !v)}
                             aria-pressed={imagesOnly}
-                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg ${
-                                imagesOnly
-                                    ? 'bg-sky-500/25 text-sky-200 border-sky-400/50 hover:bg-sky-500/35'
-                                    : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10'
-                            }`}
+                            data-sig={imagesOnly ? 'sky' : 'dim'}
+                            className="bp-key"
                             title={tr("Limits the run to items whose images need cleaning. Those items still get any missing description, colour or type filled in — anything that already has a value is left alone.")}
                         >
-                            <Wand2 size={16} className={imagesOnly ? 'text-sky-200' : 'text-white/40'} />
+                            <Wand2 size={16} className="bp-sig" />
                             <span>{imagesOnly ? tr("CLEAN IMAGES + FILL GAPS") : tr("IMAGES + DESCRIPTIONS")}</span>
                         </button>
 
@@ -2353,66 +2468,75 @@ RULES
                             hero-only with no control, which is why multi-image
                             items only ever came back with one cleaned photo. */}
                         <button
+                            type="button"
                             onClick={() => setHeroOnly(v => !v)}
                             aria-pressed={!heroOnly}
-                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg ${
-                                heroOnly
-                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-                                    : 'bg-(--main-color)/20 text-(--main-color) border-(--main-color)/40 hover:bg-(--main-color)/30'
-                            }`}
+                            data-sig={heroOnly ? 'amber' : 'accent'}
+                            className="bp-key"
                             title={tr("All images per item, or only the first. Hero-only is cheaper — roughly half the images — but leaves the rest uncleaned.")}
                         >
-                            <Layers size={16} className={heroOnly ? 'text-amber-300' : 'text-(--main-color)'} />
+                            <Layers size={16} className="bp-sig" />
                             <span>{heroOnly ? tr("HERO IMAGE ONLY") : tr("ALL IMAGES")}</span>
                         </button>
 
-                        <button 
+                        <button
+                            type="button"
                             onClick={handleRegenerateAllDescriptions}
-                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border shadow-lg bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
+                            data-sig="emerald"
+                            className="bp-key"
                             title={tr("Regenerate ALL Descriptions (Force AI body descriptions and color info for all active items)")}
                         >
-                            <Sparkles size={16} className="text-emerald-300" />
+                            <Sparkles size={16} className="bp-sig" />
                             <span>{tr("REGENERATE DESCRIPTIONS")}</span>
                         </button>
-                        <button onClick={handleClearGen} title={tr("Clear AI Generated Data")} className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-rose-500 transition-all">
-                            <Trash2 size={24} />
+
+                        <button type="button" onClick={handleClearGen} title={tr("Clear AI Generated Data")} aria-label={tr("Clear AI Generated Data")} data-sig="rose" className="bp-key bp-key--icon">
+                            <Trash2 size={20} className="bp-sig" />
                         </button>
-                        <button onClick={handleOptimizeLegacyPNGs} title={tr("Optimize Legacy PNG Masks to WebP")} className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-amber-400 transition-all">
-                            <Sparkles size={24} />
+                        <button type="button" onClick={handleOptimizeLegacyPNGs} title={tr("Optimize Legacy PNG Masks to WebP")} aria-label={tr("Optimize Legacy PNG Masks to WebP")} data-sig="amber" className="bp-key bp-key--icon">
+                            <Sparkles size={20} className="bp-sig" />
                         </button>
-                        <button onClick={() => setShowApiModal(true)} title={tr("API Settings")} className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition-all">
-                            <Settings2 size={24} />
+                        <button type="button" onClick={() => setShowApiModal(true)} title={tr("API Settings")} aria-label={tr("API Settings")} className="bp-key bp-key--icon">
+                            <Settings2 size={20} />
                         </button>
-                        <button onClick={handleClose} className="p-3 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition-all">
-                            <X size={24} />
+                        <button type="button" onClick={handleClose} title={tr("Close")} aria-label={tr("Close")} className="bp-key bp-key--icon">
+                            <X size={20} />
                         </button>
                     </div>
                 </div>
 
                 {/* Queue List */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-12 space-y-6">
-                    {queue.map((op, idx) => (
-                        <div key={op.id} className="relative overflow-hidden bg-black/10 backdrop-blur-2xl rounded-2xl p-4 md:p-6 flex flex-col md:flex-row items-start gap-4 md:gap-6 shadow-2xl">
-                            {/* Glowing Progress Background */}
-                            <div 
-                                className="absolute top-0 left-0 bottom-0 bg-(--main-color)/30 transition-all duration-500 ease-out z-0"
-                                style={{ width: `${op.progress}%` }}
-                            />
-                            
+                <div className="bp-queue">
+                    {queue.map((op) => (
+                        <div key={op.id} className="bp-op">
+                            {/* Progress wash. DATA: it is this item's own
+                                progress painted across its card, so it keeps
+                                the accent on both grounds. */}
+                            <div className="bp-op-prog" style={{ width: `${op.progress}%` }} />
+
                             {/* Missing Data Indicator */}
                             {(op.imageIndex || 0) === 0 && (!op.result?.description || !op.result?.dominantColors?.length || !op.result?.hexString || !op.result?.generatedType) && (
-                                <div 
-                                    className="absolute top-4 right-4 z-20 w-4 h-4 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.8)]" 
+                                <div
+                                    className="bp-op-flag"
                                     title={tr("Incomplete Data: Missing Description, Colors, Hex Map, or Type")}
                                 />
                             )}
-                            
+
                             {/* Images Side-by-Side Container */}
-                            <div className="flex gap-4 shrink-0 relative z-10">
+                            <div className="bp-shots">
                                 {/* Source Image */}
-                                <div 
-                                    className="w-24 h-24 md:w-32 md:h-32 rounded-xl bg-black/40 overflow-hidden shrink-0 border border-white/5 cursor-pointer group relative"
+                                <div
+                                    className="bp-well"
+                                    role="button"
+                                    tabIndex={0}
+                                    title={tr("View source image")}
                                     onClick={() => {
+                                        const img = op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data && op.item.data.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : null);
+                                        if (img) setFullscreenImage(getCleanImageUrl(img)!);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                                        e.preventDefault();
                                         const img = op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data && op.item.data.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : null);
                                         if (img) setFullscreenImage(getCleanImageUrl(img)!);
                                     }}
@@ -2420,29 +2544,29 @@ RULES
                                     {(() => {
                                         const thumbUrl = getCleanImageUrl(op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data?.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : ''));
                                         if (!thumbUrl) return (
-                                            <div className="w-full h-full flex flex-col items-center justify-center text-white/20">
+                                            <div className="bp-well-empty">
                                                 <UploadCloud size={24} />
-                                                <span className="text-[10px] font-black uppercase mt-2">{tr("No Image")}</span>
+                                                <span>{tr("No Image")}</span>
                                             </div>
                                         );
-                                        
+
                                         const isThumbVideo = /\.(mov|mp4|webm|m4v)(\?|$)/i.test(thumbUrl);
-                                        
+
                                         return (
                                             <>
                                                 {isThumbVideo ? (
-                                                    <video src={thumbUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500 pointer-events-none" muted playsInline loop autoPlay />
+                                                    <video src={thumbUrl} className="bp-well-img" muted playsInline loop autoPlay />
                                                 ) : (
-                                                    <img src={thumbUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
+                                                    <img src={thumbUrl} className="bp-well-img" alt="" />
                                                 )}
-                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-all">
-                                                    <ZoomIn size={24} className="text-white drop-shadow-md" />
+                                                <div className="bp-well-veil">
+                                                    <ZoomIn size={24} />
                                                 </div>
                                             </>
                                         );
                                     })()}
                                 </div>
-                                
+
                                 {/* Background-replaced result.
                                   *
                                   * Studio mode ('bgreplace') short-circuits the
@@ -2458,192 +2582,236 @@ RULES
                                   */}
                                 {op.result?.cleanedUrl && (
                                     <div
-                                        className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden shrink-0 bg-black/40 flex items-center justify-center border border-sky-400/40 group relative cursor-pointer"
+                                        className="bp-well"
+                                        role="button"
+                                        tabIndex={0}
                                         onClick={() => setFullscreenImage(getCleanImageUrl(op.result!.cleanedUrl!) || op.result!.cleanedUrl!)}
+                                        onKeyDown={(e) => {
+                                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                                            e.preventDefault();
+                                            setFullscreenImage(getCleanImageUrl(op.result!.cleanedUrl!) || op.result!.cleanedUrl!);
+                                        }}
                                         title={tr("Cleaned image")}
                                     >
                                         {/* Through getCleanImageUrl, not raw: cleanedUrl is a Drive
                                           * URL now, and Drive's own uc?export=view form does not
                                           * render reliably in an img tag. The rewrite turns it into
                                           * the lh3 form that does. */}
-                                        <img src={getCleanImageUrl(op.result.cleanedUrl) || op.result.cleanedUrl} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-300" />
-                                        <div className="absolute bottom-0 inset-x-0 bg-sky-500/80 text-white text-[8px] font-black uppercase text-center py-0.5 tracking-wider">
-                                            {tr("Cleaned")}
-                                        </div>
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                                            <ZoomIn size={20} className="text-white drop-shadow-md" />
+                                        <img src={getCleanImageUrl(op.result.cleanedUrl) || op.result.cleanedUrl} className="bp-well-img" alt="" />
+                                        <div className="bp-well-cap">{tr("Cleaned")}</div>
+                                        <div className="bp-well-veil">
+                                            <ZoomIn size={20} />
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Generated Mask Image */}
+                                {/* Generated Mask Image. The well shows
+                                    transparency, so its ground is a checker
+                                    drawn from the ground ink rather than a
+                                    base64 sheet that only reads on one. */}
                                 {op.result?.maskUrl && (
-                                    <div 
-                                        className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden shrink-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+Cjwvc3ZnPg==')] flex flex-col items-center justify-center border border-white/20 group relative cursor-pointer"
+                                    <div
+                                        className="bp-well bp-well--checker"
+                                        role="button"
+                                        tabIndex={0}
+                                        title={tr("Generated mask")}
                                         onClick={() => setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!)}
+                                        onKeyDown={(e) => {
+                                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                                            e.preventDefault();
+                                            setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!);
+                                        }}
                                     >
-                                        <img src={getCleanImageUrl(op.result.maskUrl)!} className="w-full h-full object-contain drop-shadow-2xl group-hover:scale-110 transition-all duration-300" />
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 md:gap-4">
-                                            <button onClick={(e) => { e.stopPropagation(); handleUploadMask(op); }} className="flex flex-col items-center text-white/80 hover:text-white hover:scale-110 transition-all">
+                                        <img src={getCleanImageUrl(op.result.maskUrl)!} className="bp-well-img bp-well-img--fit" alt="" />
+                                        <div className="bp-well-veil">
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); handleUploadMask(op); }} className="bp-well-act">
                                                 <UploadCloud size={16} />
-                                                <span className="text-[8px] font-black uppercase mt-1">{tr("Upload")}</span>
+                                                <span>{tr("Upload")}</span>
                                             </button>
-                                            <button onClick={(e) => { e.stopPropagation(); setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!); }} className="flex flex-col items-center text-white/80 hover:text-white hover:scale-110 transition-all">
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!); }} className="bp-well-act">
                                                 <ZoomIn size={16} />
-                                                <span className="text-[8px] font-black uppercase mt-1">{tr("View")}</span>
+                                                <span>{tr("View")}</span>
                                             </button>
                                         </div>
                                     </div>
                                 )}
                             </div>
-                            
-                            <div className="flex-1 relative z-10 w-full flex flex-col justify-center min-w-0">
-                                {/* Progress Line */}
-                                <div className="flex items-center gap-1.5 text-[8px] md:text-[9px] font-black uppercase tracking-widest mb-3 whitespace-nowrap overflow-x-auto scrollbar-none">
-                                    <div className={`flex items-center gap-1.5 transition-all ${op.progress >= 5 ? 'text-(--main-color)' : 'text-white/20'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${op.progress >= 5 ? 'bg-(--main-color) shadow-[0_0_8px_var(--main-color)]' : 'bg-white/20'}`} /> {tr("IMG")}
-                                    </div>
-                                    <div className="w-4 h-[1px] bg-white/5" />
-                                    <div className={`flex items-center gap-1.5 transition-all ${op.progress >= 15 ? 'text-(--main-color)' : 'text-white/20'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${op.progress >= 15 ? 'bg-(--main-color) shadow-[0_0_8px_var(--main-color)]' : 'bg-white/20'}`} /> {tr("MASK")}
-                                    </div>
-                                    <div className="w-4 h-[1px] bg-white/5" />
-                                    <div className={`flex items-center gap-1.5 transition-all ${op.progress >= 70 ? 'text-(--main-color)' : 'text-white/20'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${op.progress >= 70 ? 'bg-(--main-color) shadow-[0_0_8px_var(--main-color)]' : 'bg-white/20'}`} /> AI
-                                    </div>
-                                    <div className="w-4 h-[1px] bg-white/5" />
-                                    <div className={`flex items-center gap-1.5 transition-all ${op.status === 'completed' ? 'text-emerald-400' : 'text-white/20'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${op.status === 'completed' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,1)]' : 'bg-white/20'}`} /> {tr("DONE")}
-                                    </div>
+
+                            <div className="bp-body">
+                                {/* Stage rail. Data: four stages, each either
+                                    reached or not, and the difference between
+                                    the two is the only thing the rail says. */}
+                                <div className="bp-stages">
+                                    <span className={`bp-stage${op.progress >= 5 ? ' is-on' : ''}`}>
+                                        <span className="bp-stage-dot" /> {tr("IMG")}
+                                    </span>
+                                    <span className="bp-stage-rule" />
+                                    <span className={`bp-stage${op.progress >= 15 ? ' is-on' : ''}`}>
+                                        <span className="bp-stage-dot" /> {tr("MASK")}
+                                    </span>
+                                    <span className="bp-stage-rule" />
+                                    <span className={`bp-stage${op.progress >= 70 ? ' is-on' : ''}`}>
+                                        <span className="bp-stage-dot" /> AI
+                                    </span>
+                                    <span className="bp-stage-rule" />
+                                    <span className={`bp-stage bp-stage--done${op.status === 'completed' ? ' is-on' : ''}`}>
+                                        <span className="bp-stage-dot" /> {tr("DONE")}
+                                    </span>
                                 </div>
-                                
-                                <div className="flex flex-col xl:flex-row items-start justify-between w-full gap-4">
-                                    <div>
-                                        <h4 className="text-xl md:text-2xl font-black uppercase tracking-tight">
+
+                                <div className="bp-op-head">
+                                    <div className="bp-op-id">
+                                        <h4 className="bp-op-title">
                                             {(() => {
                                                 const norm = normalizeInventoryData(op.item.data || op.item);
                                                 const calc = calculateCodesAndPrices(norm, activeRate, norm.workbook || op.item.workbook || '326');
                                                 const tagId = calc?.bookBarcode || norm.book_barcode || norm.itemId || `Item ${norm.itemNumber}`;
-                                                
+
                                                 const match = tagId.replace(/\s+/g, '').match(/^([A-Za-z]+\d{2,4})(\d{2}[A-Za-z]*)$/);
                                                 if (match) {
                                                     const [_, section1, section2] = match;
                                                     return (
-                                                        <div className="flex gap-2 items-center">
+                                                        <>
+                                                            {/* The vendor half of the tag carries the
+                                                                vendor's printed colour: that is a
+                                                                physical standard and is left exactly
+                                                                as it is. The second half has no vendor
+                                                                meaning, so it takes the ground's ink. */}
                                                             <span style={{ color: resolveVendorColor(section1) }}>{section1}</span>
-                                                            <span className="text-white/90">{section2}</span>
-                                                        </div>
+                                                            <span className="bp-tag-tail">{section2}</span>
+                                                        </>
                                                     );
                                                 }
                                                 return <span style={{ color: resolveVendorColor(tagId) }}>{tagId}</span>;
                                             })()}
                                         </h4>
-                                        {/* Item Details - Enlarger Text */}
-                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2 text-[10px] md:text-xs font-black uppercase tracking-widest text-white/50">
-                                            <span className="text-white/80">{(op.item.data || op.item).shape || 'N/A'}</span>
-                                            <span className="text-white/20">•</span>
-                                            <span className="text-white/80">{(op.item.data || op.item).color || 'N/A'}</span>
-                                            <span className="text-white/20">•</span>
-                                            <span className="text-white/80">{(op.item.data || op.item).material || 'N/A'}</span>
+                                        {/* Item Details */}
+                                        <div className="bp-meta">
+                                            <span className="bp-meta-v">{(op.item.data || op.item).shape || 'N/A'}</span>
+                                            <span className="bp-meta-sep">•</span>
+                                            <span className="bp-meta-v">{(op.item.data || op.item).color || 'N/A'}</span>
+                                            <span className="bp-meta-sep">•</span>
+                                            <span className="bp-meta-v">{(op.item.data || op.item).material || 'N/A'}</span>
                                             {((op.item.data || op.item).dimensions) && (
                                                 <>
-                                                    <span className="text-white/20">•</span>
-                                                    <span className="text-white/60 bg-white/5 px-2 py-0.5 rounded-md">{(op.item.data || op.item).dimensions}</span>
+                                                    <span className="bp-meta-sep">•</span>
+                                                    <span className="bp-chip">{(op.item.data || op.item).dimensions}</span>
                                                 </>
                                             )}
                                             {((op.item.data || op.item).vendor || (op.item.data || op.item).supplier) && (
                                                 <>
-                                                    <span className="text-white/20">•</span>
-                                                    <span className="bg-white/5 px-2 py-0.5 rounded-md" style={{ color: resolveVendorColor((op.item.data || op.item).vendor || (op.item.data || op.item).supplier) }}>
+                                                    <span className="bp-meta-sep">•</span>
+                                                    <span className="bp-chip" style={{ color: resolveVendorColor((op.item.data || op.item).vendor || (op.item.data || op.item).supplier) }}>
                                                         {(op.item.data || op.item).vendor || (op.item.data || op.item).supplier}
                                                     </span>
                                                 </>
                                             )}
                                         </div>
                                     </div>
-                                    
-                                    {/* Actions & Hex Map */}
-                                    <div className="flex flex-col items-end gap-3 shrink-0">
-                                        {/* Buttons */}
-                                        <div className="flex flex-wrap gap-2 opacity-70 hover:opacity-100 transition-opacity justify-end">
-                                        <button 
-                                            onClick={() => toggleImageProcessing(op.id)}
-                                            disabled={op.status !== 'idle'}
-                                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-[9px] font-black uppercase tracking-widest ${
-                                                !op.skipImageProcessing 
-                                                    ? 'text-rose-400 hover:text-rose-300 bg-black/40 hover:bg-white/10'
-                                                    : 'text-white/40 hover:text-white/60 bg-black/40 hover:bg-white/10'
-                                            } ${op.status !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            title={tr("Toggle Image Processing")}
-                                        >
-                                            <UploadCloud size={14} /> {tr("IMG")}
-                                        </button>
-                                        <button 
-                                            onClick={() => toggleProcessingMode(op.id)}
-                                            disabled={op.status !== 'idle' || op.skipImageProcessing}
-                                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-[9px] font-black uppercase tracking-widest ${
-                                                op.processingMode === 'bgreplace'
-                                                    ? 'text-amber-300 hover:text-amber-200 bg-amber-500/10 border border-amber-500/30'
-                                                    : op.processingMode === 'hybrid'
-                                                    ? 'text-purple-400 hover:text-purple-300 bg-purple-500/10 border border-purple-500/30'
-                                                    : op.processingMode === 'cloud' 
-                                                    ? 'text-blue-400 hover:text-blue-300 bg-black/40 hover:bg-white/10'
-                                                    : 'text-(--main-color) hover:text-(--main-color) bg-black/40 hover:bg-white/10'
-                                            } ${op.status !== 'idle' || op.skipImageProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            title={tr("Toggle Studio / Local / Cloud / Hybrid Processing")}
-                                        >
-                                            {op.processingMode === 'bgreplace' ? <Sparkles size={14} /> : op.processingMode === 'hybrid' ? <Layers size={14} className="animate-pulse" /> : op.processingMode === 'cloud' ? <Cloud size={14} /> : <Cpu size={14} />}
-                                            {op.processingMode === 'bgreplace' ? tr("STUDIO") : op.processingMode === 'hybrid' ? tr("HYBRID") : op.processingMode === 'cloud' ? tr("CLOUD") : tr("LOCAL")}
-                                        </button>
-                                        
-                                        {op.status === 'processing' && (
-                                            <button 
-                                                onClick={() => handleAbort(op.id)}
-                                                className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-red-400 hover:text-red-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                title={tr("Abort Processing")}
+
+                                    {/* Actions & instruments */}
+                                    <div className="bp-op-side">
+                                        <div className="bp-ops">
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleImageProcessing(op.id)}
+                                                disabled={op.status !== 'idle'}
+                                                aria-pressed={!op.skipImageProcessing}
+                                                data-sig={!op.skipImageProcessing ? 'rose' : 'dim'}
+                                                className="bp-op-key"
+                                                title={tr("Toggle Image Processing")}
                                             >
-                                                <XCircle size={14} /> {tr("ABORT")}
+                                                <UploadCloud size={14} className="bp-sig" /> {tr("IMG")}
                                             </button>
-                                        )}
-                                        {op.status === 'completed' && (
-                                            <>
-                                                <button 
-                                                    onClick={() => handleRegenerate(op.id)}
-                                                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-amber-400 hover:text-amber-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                    title={tr("Re-Generate Mask")}
+
+                                            {/* The processing mode. Four states,
+                                                one key, and exactly one of them
+                                                is always engaged — so the key is
+                                                ALWAYS pressed, never lifted, and
+                                                the tint moves with the mode.
+                                                CLOUD and LOCAL used to share a
+                                                fill and be told apart by the
+                                                colour of their label alone; they
+                                                are now distinguished by tint, by
+                                                icon and by the word, with the
+                                                hue carried on the icon where it
+                                                does not have to be read at 9px. */}
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleProcessingMode(op.id)}
+                                                disabled={op.status !== 'idle' || op.skipImageProcessing}
+                                                data-mode={op.processingMode || 'bgreplace'}
+                                                aria-label={`${tr("Processing mode")}: ${tr(MODE_LABEL[op.processingMode || 'bgreplace'])}`}
+                                                className="bp-mode"
+                                                title={tr("Toggle Studio / Local / Cloud / Hybrid Processing")}
+                                            >
+                                                {op.processingMode === 'hybrid'
+                                                    ? <Layers size={14} className="bp-sig" />
+                                                    : op.processingMode === 'cloud'
+                                                    ? <Cloud size={14} className="bp-sig" />
+                                                    : op.processingMode === 'local'
+                                                    ? <Cpu size={14} className="bp-sig" />
+                                                    : <Sparkles size={14} className="bp-sig" />}
+                                                {tr(MODE_LABEL[op.processingMode || 'bgreplace'])}
+                                            </button>
+
+                                            {op.status === 'processing' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAbort(op.id)}
+                                                    data-sig="rose"
+                                                    className="bp-op-key"
+                                                    title={tr("Abort Processing")}
                                                 >
-                                                    <RefreshCw size={14} /> {tr("RE-GENERATE")}
+                                                    <XCircle size={14} className="bp-sig" /> {tr("ABORT")}
                                                 </button>
-                                                <button 
-                                                    onClick={() => handleRegenerateAI(op.id)}
-                                                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-blue-400 hover:text-blue-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                    title={tr("Re-Generate AI Info")}
-                                                >
-                                                    <RefreshCw size={14} /> {tr("RE-GEN INFO")}
-                                                </button>
-                                                <button 
-                                                    onClick={() => {
-                                                        const rawUrl = op.result?.maskUrl || op.item?.generatedPngUrl || op.imageUrl || op.item?.imageUrl || '';
-                                                        const cleanUrl = getCleanImageUrl(rawUrl) || rawUrl;
-                                                        setCropModalState({ isOpen: true, opId: op.id, imageSrc: cleanUrl });
-                                                    }}
-                                                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all text-purple-400 hover:text-purple-300 bg-black/40 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest"
-                                                    title={tr("1:1 Square Crop Tool")}
-                                                >
-                                                    <Maximize2 size={14} /> {tr("1:1 CROP")}
-                                                </button>
-                                            </>
-                                        )}
+                                            )}
+                                            {op.status === 'completed' && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRegenerate(op.id)}
+                                                        data-sig="amber"
+                                                        className="bp-op-key"
+                                                        title={tr("Re-Generate Mask")}
+                                                    >
+                                                        <RefreshCw size={14} className="bp-sig" /> {tr("RE-GENERATE")}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRegenerateAI(op.id)}
+                                                        data-sig="blue"
+                                                        className="bp-op-key"
+                                                        title={tr("Re-Generate AI Info")}
+                                                    >
+                                                        <RefreshCw size={14} className="bp-sig" /> {tr("RE-GEN INFO")}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const rawUrl = op.result?.maskUrl || op.item?.generatedPngUrl || op.imageUrl || op.item?.imageUrl || '';
+                                                            const cleanUrl = getCleanImageUrl(rawUrl) || rawUrl;
+                                                            setCropModalState({ isOpen: true, opId: op.id, imageSrc: cleanUrl });
+                                                        }}
+                                                        data-sig="purple"
+                                                        className="bp-op-key"
+                                                        title={tr("1:1 Square Crop Tool")}
+                                                    >
+                                                        <Maximize2 size={14} className="bp-sig" /> {tr("1:1 CROP")}
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
-                                        
-                                        {/* HEX Map Top Area */}
+
+                                        {/* HEX Map. A readout with one key in
+                                            it, so the panel itself is pressed. */}
                                         {op.result?.bitmapUrl && (
-                                            <div className="flex items-center gap-3 bg-black/40 p-1.5 rounded-xl border border-white/10 animate-in fade-in zoom-in-95">
-                                                <span className="text-[10px] font-black uppercase text-amber-400 flex items-center gap-1.5 pl-2">
-                                                    <Sparkles size={12} className="text-amber-400"/> {op.result.cols || 20}x{op.result.rows || 20}
+                                            <div className="bp-panel animate-in fade-in" data-sig="amber">
+                                                <span className="bp-panel-cap">
+                                                    <Sparkles size={12} className="bp-sig" /> {op.result.cols || 20}x{op.result.rows || 20}
                                                 </span>
-                                                <img src={op.result.bitmapUrl} className="h-10 md:h-12 w-auto rounded-lg border border-white/20 shadow-lg" style={{ imageRendering: 'pixelated' }} />
-                                                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(op.result?.hexString || ''); toast.success(tr("Hexadecimal pixel map copied to clipboard!")); }} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white/90 transition-all cursor-pointer">
+                                                <img src={op.result.bitmapUrl} className="bp-bitmap" alt="" />
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(op.result?.hexString || ''); toast.success(tr("Hexadecimal pixel map copied to clipboard!")); }} className="bp-op-key">
                                                     {tr("Copy Map")}
                                                 </button>
                                             </div>
@@ -2661,15 +2829,15 @@ RULES
                                             }
                                             if (clipUrls.length === 0) return null;
                                             return (
-                                                <div className="flex flex-col gap-2 bg-black/40 p-2 rounded-xl border border-white/10 animate-in fade-in zoom-in-95">
-                                                    <span className="text-[10px] font-black uppercase text-purple-400 flex items-center gap-1.5 pl-1">
-                                                        <Video size={12} className="text-purple-400"/> {tr("AI Generated Video")}{clipUrls.length > 1 ? ` — ${clipUrls.length} Clips` : ''}
+                                                <div className="bp-panel bp-panel--col animate-in fade-in" data-sig="purple">
+                                                    <span className="bp-panel-cap">
+                                                        <Video size={12} className="bp-sig" /> {tr("AI Generated Video")}{clipUrls.length > 1 ? ` — ${clipUrls.length} ${tr("Clips")}` : ''}
                                                     </span>
-                                                    <div className={`flex gap-2 ${clipUrls.length > 1 ? 'overflow-x-auto pb-1' : ''}`}>
+                                                    <div className={`bp-clips${clipUrls.length > 1 ? ' bp-clips--many' : ''}`}>
                                                         {clipUrls.map((url, ci) => (
-                                                            <div key={ci} className="flex flex-col items-center gap-1 shrink-0">
+                                                            <div key={ci} className="bp-clip-wrap">
                                                                 {clipUrls.length > 1 && (
-                                                                    <span className="text-[9px] font-bold text-white/40 uppercase">{tr("Clip")} {ci + 1}</span>
+                                                                    <span className="bp-clip-n">{tr("Clip")} {ci + 1}</span>
                                                                 )}
                                                                 <video
                                                                     src={url}
@@ -2677,7 +2845,7 @@ RULES
                                                                     autoPlay={ci === 0}
                                                                     loop
                                                                     muted
-                                                                    className="h-48 md:h-64 w-auto rounded-lg border border-white/20 shadow-lg object-contain"
+                                                                    className="bp-clip"
                                                                 />
                                                             </div>
                                                         ))}
@@ -2690,103 +2858,111 @@ RULES
 
                                 {/* Step Label & Progress text */}
                                 {op.status === 'processing' && (
-                                    <div className="mt-4 flex items-center justify-between text-[10px] md:text-xs font-black uppercase tracking-widest text-(--main-color)">
-                                        <span className="flex items-center gap-2 animate-pulse"><Loader2 size={12} className="animate-spin"/> {op.stepLabel || tr("Processing...")}</span>
-                                        <span>{Math.round(op.progress)}%</span>
+                                    <div className="bp-step">
+                                        <span><Loader2 size={12} className="animate-spin" /> {op.stepLabel || tr("Processing...")}</span>
+                                        <span className="bp-step-pct">{Math.round(op.progress)}%</span>
                                     </div>
                                 )}
 
-                                {/* Streaming Logs */}
-                                <div className="mt-3 text-[9px] md:text-[10px] font-mono text-(--main-color)/60 truncate">
-                                    {op.logs.length > 0 && (
-                                        <div className={op.logs[op.logs.length - 1].includes('[ FAIL ]') ? 'text-rose-400' : op.logs[op.logs.length - 1].includes('[  OK  ]') ? 'text-emerald-400' : ''}>
-                                            {">"} {op.logs[op.logs.length - 1]}
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {/* Free-Floating Generated Description */}
+                                {/* Streaming logs. A READOUT: pressed, mono,
+                                    tabular, and it takes no hover and no press.
+                                    OK / FAIL / WARN / SKIP keep their meaning
+                                    colour, because which of the four a line is
+                                    is the whole point of the line. */}
+                                {op.logs.length > 0 && (
+                                    <div className="bp-log" role="status" aria-live="polite">
+                                        {op.logs.slice(-3).map((line, li) => (
+                                            <span key={`${op.id}-log-${li}`} className={`bp-log-line ${logTone(line)}`}>{line}</span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Generated content */}
                                 {op.result && (
-                                    <div className="mt-4 flex flex-col gap-3 animate-in slide-in-from-top-2 w-full">
-                                        {/* Compact Generated Content Area */}
-                                        <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-white/5">
+                                    <div className="bp-gen animate-in slide-in-from-top-2">
+                                        <div className="bp-gen-row">
                                             {op.result.generatedType && (
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    <span className="text-[9px] font-black uppercase text-white/40">{tr("AI:")}</span>
-                                                    <span className="px-2 py-0.5 rounded bg-(--main-color)/20 border border-(--main-color)/40 text-[9px] font-extrabold text-(--main-color) uppercase tracking-wider">
-                                                        {op.result.generatedType}
-                                                    </span>
+                                                <div className="bp-pair">
+                                                    <span className="bp-label">{tr("AI:")}</span>
+                                                    <span className="bp-badge">{op.result.generatedType}</span>
                                                 </div>
                                             )}
-                                            
+
                                             {op.result.dominantColors && op.result.dominantColors.length > 0 && (
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    <span className="text-[9px] font-black uppercase text-white/40">{tr("Colors:")}</span>
-                                                    <div className="flex items-center gap-1">
+                                                <div className="bp-pair">
+                                                    <span className="bp-label">{tr("Colors:")}</span>
+                                                    <div className="bp-chips">
                                                         {op.result.dominantColors.map((c, i) => (
-                                                            <span key={i} className="px-1.5 py-0.5 rounded bg-white/10 border border-white/10 text-[8px] font-bold text-white/90 whitespace-nowrap">
-                                                                {c}
-                                                            </span>
+                                                            <span key={i} className="bp-swatch">{c}</span>
                                                         ))}
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="max-w-4xl">
-                                            <label className="text-[9px] font-black uppercase tracking-wider text-white/40 block mb-1">{tr("Title Description")}</label>
-                                            <textarea 
+
+                                        <div className="bp-gen-block">
+                                            <label className="bp-label" htmlFor={`bp-desc-${op.id}`}>{tr("Title Description")}</label>
+                                            <textarea
+                                                id={`bp-desc-${op.id}`}
                                                 value={op.result.description || ''}
                                                 onChange={(e) => {
                                                     updateOp(op.id, { result: { ...op.result, description: e.target.value } });
                                                     setHasUnsavedChanges(true);
                                                 }}
-                                                className="w-full min-h-[44px] bg-black/30 border border-white/5 hover:border-white/20 rounded-xl p-3 text-xs md:text-sm text-white/90 font-mono leading-relaxed focus:outline-none focus:border-(--main-color) transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
+                                                className="bp-input"
                                                 placeholder={tr("AI generated title description...")}
                                             />
                                         </div>
+
                                         {op.result.marketingDescription !== undefined && (
-                                            <div className="max-w-5xl">
-                                                <div className="flex items-center justify-between mb-1.5">
-                                                    <label className="text-[9px] font-black uppercase tracking-wider text-amber-400/90 flex items-center gap-1.5">
-                                                        <Sparkles size={12}/> {tr("Marketing Description (Embedded HTML Review)")}
-                                                    </label>
-                                                    <button 
+                                            <div className="bp-gen-block">
+                                                <div className="bp-gen-head">
+                                                    <span className="bp-label bp-label--sig">
+                                                        <Sparkles size={12} className="bp-sig" /> {tr("Marketing Description (Embedded HTML Review)")}
+                                                    </span>
+                                                    <button
+                                                        type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setEditHtmlId(editHtmlId === op.id ? null : op.id);
                                                         }}
-                                                        className="text-[9px] font-black text-amber-400 hover:text-amber-300 underline uppercase tracking-wider cursor-pointer bg-white/5 px-2 py-0.5 rounded border border-white/10"
+                                                        aria-pressed={editHtmlId === op.id}
+                                                        data-sig="amber"
+                                                        className="bp-op-key"
                                                     >
                                                         {editHtmlId === op.id ? tr("View Styled Preview") : tr("Edit Source HTML")}
                                                     </button>
                                                 </div>
                                                 {editHtmlId === op.id ? (
-                                                    <textarea 
+                                                    <textarea
                                                         value={op.result.marketingDescription || ''}
                                                         onChange={(e) => {
                                                             updateOp(op.id, { result: { ...op.result, marketingDescription: e.target.value } });
                                                             setHasUnsavedChanges(true);
                                                         }}
-                                                        className="w-full min-h-[100px] bg-black/60 border border-amber-500/40 rounded-xl p-3 text-xs text-amber-200/90 font-mono leading-relaxed focus:outline-none focus:border-amber-400 transition-all resize-y scrollbar-thin scrollbar-thumb-white/20"
+                                                        className="bp-input bp-input--html"
                                                         placeholder={tr("AI generated HTML marketing description...")}
                                                     />
                                                 ) : (
-                                                    <div className="w-full min-h-[60px] bg-black/50 border border-white/15 rounded-xl p-4 text-xs md:text-sm text-white/90 leading-relaxed overflow-y-auto max-h-[220px] space-y-3 font-sans shadow-inner">
-                                                        <style>{`
-                                                            .marketing-preview-${op.id} p { margin-bottom: 0.75rem; line-height: 1.6; color: rgba(255, 255, 255, 0.92); font-size: 0.85rem; }
-                                                            .marketing-preview-${op.id} strong { color: #f59e0b; font-weight: 700; }
-                                                            .marketing-preview-${op.id} ul { list-style-type: disc; padding-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
-                                                            .marketing-preview-${op.id} li { margin-bottom: 0.35rem; color: rgba(255, 255, 255, 0.85); font-size: 0.85rem; }
-                                                        `}</style>
-                                                        <div className={`marketing-preview-${op.id}`} dangerouslySetInnerHTML={{ __html: op.result.marketingDescription || '<p className="text-white/40 italic">No HTML description generated yet.</p>' }} />
-                                                    </div>
+                                                    /* The rendered copy. This used to carry a
+                                                       per-item <style> tag hardcoding
+                                                       rgba(255,255,255,.92) — one per queue entry,
+                                                       and white-on-white on the light slab. It is
+                                                       one rule in batchproc.css now, and it takes
+                                                       the ground's ink. */
+                                                    <div
+                                                        className="bp-md"
+                                                        dangerouslySetInnerHTML={{ __html: op.result.marketingDescription || '<p>No HTML description generated yet.</p>' }}
+                                                    />
                                                 )}
                                             </div>
                                         )}
-                                        <div className="flex justify-end">
-                                            <button 
+
+                                        <div className="bp-gen-foot">
+                                            <button
+                                                type="button"
                                                 onClick={(e) => { e.stopPropagation(); handleSaveDescription(op); }}
-                                                className="flex items-center gap-2 px-4 py-2 bg-(--main-color)/20 hover:bg-(--main-color) text-(--main-color) hover:text-black text-[10px] font-black uppercase tracking-widest rounded-lg border border-(--main-color)/30 transition-all"
+                                                className="bp-key bp-key--go bp-key--sm"
                                             >
                                                 <Save size={14} />
                                                 {tr("Save Description & Colors")}
@@ -2795,143 +2971,159 @@ RULES
                                     </div>
                                 )}
                             </div>
-                            
-                            <div className="relative z-10 w-12 h-12 md:w-16 md:h-16 flex items-center justify-center shrink-0 ml-auto md:ml-0 mt-4 md:mt-0 bg-black/30 rounded-2xl border border-white/10">
-                                {op.status === 'processing' && <Loader2 size={24} className="text-(--main-color) animate-spin" />}
-                                {op.status === 'completed' && <CheckCircle2 size={24} className="text-emerald-500" />}
-                                {op.status === 'failed' && <AlertCircle size={24} className="text-rose-500" />}
-                                {op.status === 'idle' && <span className="text-[9px] md:text-[10px] font-black text-white/20">{tr("WAIT")}</span>}
+
+                            {/* Status. An instrument: it reports where the item
+                                is and cannot be pressed. */}
+                            <div className={`bp-status${op.status === 'processing' ? ' bp-status--run' : op.status === 'completed' ? ' bp-status--done' : op.status === 'failed' ? ' bp-status--failed' : ''}`}>
+                                {op.status === 'processing' && <Loader2 size={24} className="animate-spin" />}
+                                {op.status === 'completed' && <CheckCircle2 size={24} />}
+                                {op.status === 'failed' && <AlertCircle size={24} />}
+                                {op.status === 'idle' && <span>{tr("WAIT")}</span>}
                             </div>
                         </div>
                     ))}
                 </div>
 
-                {/* Global Progress Bar */}
-                <div className="w-full bg-black/40 border-t border-white/5 p-4 flex flex-col gap-2 relative z-20">
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-white/60 px-4">
+                {/* Global Progress. The track is a well; the fill is data and
+                    keeps the accent. */}
+                <div className="bp-total">
+                    <div className="bp-total-head">
                         <span>{isSavingDb ? tr("Saving to DB...") : tr("Total Progress")}</span>
-                        <span>{Math.round(overallProgress)}%</span>
+                        <span className="bp-total-pct">{Math.round(overallProgress)}%</span>
                     </div>
-                    <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden mx-4 w-[calc(100%-2rem)]">
-                        <div 
-                            className="h-full bg-(--main-color) shadow-[0_0_20px_var(--main-color)] transition-all duration-500"
-                            style={{ width: `${overallProgress}%` }}
-                        />
+                    <div
+                        className="bp-track"
+                        role="progressbar"
+                        aria-valuenow={Math.round(overallProgress)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                    >
+                        <div className="bp-fill" style={{ width: `${overallProgress}%` }} />
                     </div>
                 </div>
 
                 {/* Footer Controls */}
-                <div className="px-8 pb-8 pt-4 bg-black/60 flex flex-col md:flex-row items-center justify-end gap-6 relative z-20">
-                    <div className="flex flex-wrap items-center justify-end gap-4 w-full">
-                        <div className="flex items-center gap-2 border border-white/10 p-2 rounded-2xl bg-black/40">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/50 whitespace-nowrap ml-2">{tr("PDF BRAND")}</label>
-                            <select 
-                                value={pdfBrand} 
-                                onChange={(e) => setPdfBrand(e.target.value as any)} 
-                                className="bg-black/50 text-white text-xs font-bold px-3 py-2 rounded-xl outline-none border border-white/5 focus:border-(--main-color)"
-                            >
-                                <option value="ArtOfDecor">{tr("ART OF DECOR")}</option>
-                                <option value="RareEarth">{tr("RARE EARTH GALLERY")}</option>
-                            </select>
-                        </div>
-                        
-                        <button 
-                            onClick={handleExportDatabase}
-                            disabled={completedOps.length === 0 || !hasUnsavedChanges}
-                            className={`flex items-center gap-3 px-6 py-4 font-black uppercase tracking-widest rounded-2xl transition-all shrink-0 ${(!hasUnsavedChanges && completedOps.length > 0) ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500 hover:bg-blue-400 text-black shadow-[0_0_20px_rgba(59,130,246,0.3)]'} ${(completedOps.length === 0 || !hasUnsavedChanges) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                <div className="bp-foot">
+                    <div className="bp-field">
+                        <label className="bp-label" htmlFor="bp-pdf-brand">{tr("PDF BRAND")}</label>
+                        <select
+                            id="bp-pdf-brand"
+                            value={pdfBrand}
+                            onChange={(e) => setPdfBrand(e.target.value as any)}
+                            className="bp-select"
                         >
-                            {(!hasUnsavedChanges && completedOps.length > 0) ? <CheckCircle2 size={20} /> : <Save size={20} />}
-                            {(!hasUnsavedChanges && completedOps.length > 0) ? tr("SAVED TO DB") : tr("SAVE TO DB")}
-                        </button>
-                        
-                            <>
-                                {!xlsxUrl ? (
-                                    <button 
-                                        onClick={handleGenerateXLSX}
-                                        disabled={!isFullyGenerated || hasUnsavedChanges || isGeneratingXlsx}
-                                        className="flex items-center gap-3 px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 shrink-0"
-                                    >
-                                        {isGeneratingXlsx ? <Loader2 size={20} className="animate-spin" /> : <Settings2 size={20} />}
-                                        {tr("Generate XLSX")}
-                                    </button>
-                                ) : (
-                                    <a 
-                                        href={xlsxUrl}
-                                        download={`Shopify_Export_AI_${new Date().toISOString().split('T')[0]}.xlsx`}
-                                        className="flex items-center gap-3 px-6 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-widest rounded-2xl transition-all shrink-0"
-                                    >
-                                        <Save size={20} />
-                                        {tr("Download XLSX")}
-                                    </a>
-                                )}
-                                
-                                {!pdfUrl ? (
-                                    <button 
-                                        onClick={handleGeneratePDF}
-                                        disabled={!isFullyGenerated || hasUnsavedChanges || isGeneratingPdf}
-                                        className="flex items-center gap-3 px-6 py-4 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 shrink-0"
-                                    >
-                                        {isGeneratingPdf ? <Loader2 size={20} className="animate-spin" /> : <Settings2 size={20} />}
-                                        {tr("Generate PDF")}
-                                    </button>
-                                ) : (
-                                    <a 
-                                        href={pdfUrl}
-                                        download={`Catalog_AI_${new Date().toISOString().split('T')[0]}.pdf`}
-                                        className="flex items-center gap-3 px-6 py-4 bg-rose-500 hover:bg-rose-400 text-black font-black uppercase tracking-widest rounded-2xl transition-all shrink-0"
-                                    >
-                                        <Save size={20} />
-                                        {tr("Download PDF")}
-                                    </a>
-                                )}
-                            </>
-
-                        {/* Items with no photograph cannot be image-processed, so
-                            they are dropped from the engine run and offered here
-                            instead: their copy is written by varying the closest
-                            item that does have content. */}
-                        {variationPending > 0 && (
-                            <button
-                                onClick={handleStartVariationPass}
-                                disabled={isProcessing}
-                                title={tr("These items have no photograph. Their description, colours and type will be written by varying the most similar item that does — no image is generated.")}
-                                className="flex items-center gap-3 px-6 py-4 bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 border border-violet-400/40 font-black uppercase tracking-widest text-sm rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                                <Sparkles size={20} />
-                                {tr("Write From Similar")} ({variationPending})
-                            </button>
-                        )}
-
-                        <button 
-                            onClick={handleStartBatch}
-                            disabled={!needsProcessing || isProcessing}
-                            className="flex items-center gap-3 px-8 py-4 bg-(--main-color) hover:bg-(--main-color)/80 text-black font-black uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                        >
-                            {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} />}
-                            {isProcessing ? tr("Processing...") : tr("Start Engine")}
-                        </button>
+                            <option value="ArtOfDecor">{tr("ART OF DECOR")}</option>
+                            <option value="RareEarth">{tr("RARE EARTH GALLERY")}</option>
+                        </select>
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={handleExportDatabase}
+                        disabled={completedOps.length === 0 || !hasUnsavedChanges}
+                        data-sig={(!hasUnsavedChanges && completedOps.length > 0) ? 'emerald' : 'blue'}
+                        className="bp-key bp-key--solid"
+                    >
+                        {(!hasUnsavedChanges && completedOps.length > 0) ? <CheckCircle2 size={18} /> : <Save size={18} />}
+                        {(!hasUnsavedChanges && completedOps.length > 0) ? tr("SAVED TO DB") : tr("SAVE TO DB")}
+                    </button>
+
+                    {!xlsxUrl ? (
+                        <button
+                            type="button"
+                            onClick={handleGenerateXLSX}
+                            disabled={!isFullyGenerated || hasUnsavedChanges || isGeneratingXlsx}
+                            data-sig="emerald"
+                            className="bp-key bp-key--solid"
+                        >
+                            {isGeneratingXlsx ? <Loader2 size={18} className="animate-spin" /> : <Settings2 size={18} />}
+                            {tr("Generate XLSX")}
+                        </button>
+                    ) : (
+                        <a
+                            href={xlsxUrl}
+                            download={`Shopify_Export_AI_${new Date().toISOString().split('T')[0]}.xlsx`}
+                            data-sig="emerald"
+                            className="bp-key bp-key--solid"
+                        >
+                            <Save size={18} />
+                            {tr("Download XLSX")}
+                        </a>
+                    )}
+
+                    {!pdfUrl ? (
+                        <button
+                            type="button"
+                            onClick={handleGeneratePDF}
+                            disabled={!isFullyGenerated || hasUnsavedChanges || isGeneratingPdf}
+                            data-sig="rose"
+                            className="bp-key bp-key--solid"
+                        >
+                            {isGeneratingPdf ? <Loader2 size={18} className="animate-spin" /> : <Settings2 size={18} />}
+                            {tr("Generate PDF")}
+                        </button>
+                    ) : (
+                        <a
+                            href={pdfUrl}
+                            download={`Catalog_AI_${new Date().toISOString().split('T')[0]}.pdf`}
+                            data-sig="rose"
+                            className="bp-key bp-key--solid"
+                        >
+                            <Save size={18} />
+                            {tr("Download PDF")}
+                        </a>
+                    )}
+
+                    {/* Items with no photograph cannot be image-processed, so
+                        they are dropped from the engine run and offered here
+                        instead: their copy is written by varying the closest
+                        item that does have content. */}
+                    {variationPending > 0 && (
+                        <button
+                            type="button"
+                            onClick={handleStartVariationPass}
+                            disabled={isProcessing}
+                            title={tr("These items have no photograph. Their description, colours and type will be written by varying the most similar item that does — no image is generated.")}
+                            data-sig="violet"
+                            className="bp-key bp-key--solid"
+                        >
+                            <Sparkles size={18} />
+                            {tr("Write From Similar")} ({variationPending})
+                        </button>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={handleStartBatch}
+                        disabled={!needsProcessing || isProcessing}
+                        className="bp-key bp-key--go"
+                    >
+                        {isProcessing ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+                        {isProcessing ? tr("Processing...") : tr("Start Engine")}
+                    </button>
                 </div>
 
             </div>
 
-            {/* API Key Modal */}
+            {/* API Key Modal. A panel that is not itself a hover target, so it
+                is `raised`, not `float`. */}
             {showApiModal && (
-                <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-sm w-full flex flex-col gap-6 shadow-2xl">
+                <div className="bp-modal animate-in fade-in">
+                    <div className="bp-card">
                         <div>
-                            <h3 className="text-lg font-black text-white uppercase tracking-tight">{tr("API Key Required")}</h3>
-                            <p className="text-xs text-white/40 mt-2 font-mono">{tr("Please enter your Gemini API Key. It will be stored securely in your local device storage.")}</p>
+                            <h3>{tr("API Key Required")}</h3>
+                            <p>{tr("Please enter your Gemini API Key. It will be stored securely in your local device storage.")}</p>
                         </div>
-                        <input 
+                        <input
                             ref={apiInputRef}
                             type="password"
                             placeholder={tr("AIzaSy...")}
-                            className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-(--main-color) transition-all"
+                            aria-label={tr("API Key Required")}
+                            className="bp-input bp-input--line"
                         />
-                        <div className="flex justify-end gap-3 mt-2">
-                            <button onClick={() => setShowApiModal(false)} className="px-4 py-2 text-xs font-bold text-white/60 hover:text-white uppercase tracking-wider">{tr("Cancel")}</button>
-                            <button onClick={saveApiKey} className="px-6 py-2 bg-(--main-color) text-black text-xs font-black uppercase tracking-wider rounded-lg hover:bg-white transition-all">{tr("Save & Start")}</button>
+                        <div className="bp-card-row">
+                            <button type="button" onClick={() => setShowApiModal(false)} className="bp-key">{tr("Cancel")}</button>
+                            <button type="button" onClick={saveApiKey} className="bp-key bp-key--go bp-key--sm">{tr("Save & Start")}</button>
                         </div>
                     </div>
                 </div>

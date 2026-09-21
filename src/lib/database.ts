@@ -125,6 +125,43 @@ const shipmentsSchema = {
     }
 };
 
+/**
+ * Real segmentation output: contour vectors and the RGBA cutout.
+ *
+ * A separate collection rather than fields on `inventory`, so the 497-row
+ * inventory schema stays at version 18 and needs no migration. It also lets one
+ * item hold a segmentation per photographed angle, which inventory's flat shape
+ * cannot express.
+ *
+ * Nothing here overlaps with background cleaning. `processed_media_urls` and
+ * `generated_png_url` remain the cleaned-photo columns and are untouched.
+ */
+const itemSegmentationSchema = {
+    title: 'item segmentation schema',
+    version: 0,
+    primaryKey: 'id',
+    type: 'object',
+    properties: {
+        id: { type: 'string', maxLength: 100 },
+        item_id: { type: ['string', 'null'] },
+        source_image_url: { type: ['string', 'null'] },
+        angle_index: { type: ['number', 'null'] },
+        // Both vector forms are kept. The SVG path serves the editor and the
+        // export pipeline; the raw points serve the 3D mesh generators. Deriving
+        // points back from a smoothed bezier path loses precision exactly where
+        // it matters most, so neither is computed from the other.
+        svg_data: { type: ['string', 'null'] },
+        contour_points: { type: ['array', 'null'], items: { type: 'object' } },
+        cutout_png_file_id: { type: ['string', 'null'] },
+        image_width: { type: ['number', 'null'] },
+        image_height: { type: ['number', 'null'] },
+        method: { type: ['string', 'null'] },
+        generated_at: { type: ['string', 'null'] },
+        updated_at: { type: ['string', 'null'] },
+    },
+    required: ['id'],
+};
+
 const inventorySchema = {
     title: 'inventory schema',
     version: 18,
@@ -242,6 +279,9 @@ const draftsSchema = {
 
 export type OnyxDatabase = RxDatabase<{
     inventory: RxCollection<any>;
+    // Pull-only: the wizard writes segmentation straight to Supabase, so this
+    // collection exists to cache it locally, never to queue changes upward.
+    item_segmentation: RxCollection<any>;
     finance: RxCollection<any>;
     logistics: RxCollection<any>;
     production: RxCollection<any>;
@@ -325,6 +365,11 @@ const createDatabase = async () => {
                     // them in.
                     18: (oldDoc) => oldDoc,
                 }
+            },
+            // New collection, so it starts at version 0 with no migration
+            // strategies and leaves `inventory` untouched at 18.
+            item_segmentation: {
+                schema: itemSegmentationSchema,
             },
             finance: {
                 schema: financeSchema,

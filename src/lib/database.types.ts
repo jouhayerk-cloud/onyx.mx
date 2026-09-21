@@ -8,7 +8,7 @@
 // Regenerate with the Supabase MCP `generate_typescript_types`, or:
 //   npx supabase gen types typescript --project-id yircifkayqpuydfdqzlm
 //
-// Last generated: 2026-09-07 (after adding logistics.pay_req and inventory.axo_icon_url).
+// Last generated: 2026-09-21 (after adding item_segmentation).
 
 export type Json =
   | string
@@ -601,6 +601,107 @@ export type Database = {
           width_cm?: number | null
         }
         Relationships: []
+      }
+      inventory_photo_copy_backup_20260908: {
+        Row: {
+          backed_up_at: string | null
+          book_barcode: string | null
+          detailed_description: string | null
+          generated_description: string | null
+          id: string | null
+        }
+        Insert: {
+          backed_up_at?: string | null
+          book_barcode?: string | null
+          detailed_description?: string | null
+          generated_description?: string | null
+          id?: string | null
+        }
+        Update: {
+          backed_up_at?: string | null
+          book_barcode?: string | null
+          detailed_description?: string | null
+          generated_description?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
+      inventory_title_backup_20260908: {
+        Row: {
+          backed_up_at: string | null
+          book_barcode: string | null
+          detailed_description: string | null
+          generated_description: string | null
+          id: string | null
+        }
+        Insert: {
+          backed_up_at?: string | null
+          book_barcode?: string | null
+          detailed_description?: string | null
+          generated_description?: string | null
+          id?: string | null
+        }
+        Update: {
+          backed_up_at?: string | null
+          book_barcode?: string | null
+          detailed_description?: string | null
+          generated_description?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
+      item_segmentation: {
+        Row: {
+          angle_index: number
+          contour_points: Json | null
+          cutout_png_file_id: string | null
+          generated_at: string
+          id: string
+          image_height: number | null
+          image_width: number | null
+          item_id: string
+          method: string | null
+          source_image_url: string | null
+          svg_data: string | null
+          updated_at: string
+        }
+        Insert: {
+          angle_index?: number
+          contour_points?: Json | null
+          cutout_png_file_id?: string | null
+          generated_at?: string
+          id?: string
+          image_height?: number | null
+          image_width?: number | null
+          item_id: string
+          method?: string | null
+          source_image_url?: string | null
+          svg_data?: string | null
+          updated_at?: string
+        }
+        Update: {
+          angle_index?: number
+          contour_points?: Json | null
+          cutout_png_file_id?: string | null
+          generated_at?: string
+          id?: string
+          image_height?: number | null
+          image_width?: number | null
+          item_id?: string
+          method?: string | null
+          source_image_url?: string | null
+          svg_data?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_segmentation_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       logistics: {
         Row: {

@@ -93,6 +93,15 @@ export interface InventoryItemData extends Partial<Omit<InventoryRow, 'quantity'
   workbook?: string;
   vendor_id?: string;
   generatedImageUrls?: string;
+  /**
+   * Shopify taxonomy category, e.g. `'Home Decor > Pendant Lights'`.
+   *
+   * `normalizeInventoryData` has always produced this (utils.tsx) but it was
+   * never declared here, so every consumer had to reach for it untyped. The 3D
+   * visualizer dispatches on it -- it is populated on 444 of 497 rows and is far
+   * more reliable than `shape`, which mixes form with sizes like `medium`.
+   */
+  generatedType?: string;
   image_urls?: string[];
   drive_ids?: string[];
   generatedPngUrl?: string;

@@ -96,6 +96,10 @@ export function useSyncEngine() {
                 { name: 'logistics' as const, col: db.logistics },
                 { name: 'finance' as const, col: db.finance },
                 { name: 'production' as const, col: db.production },
+                // Pulled like any other table. Rows are written directly to
+                // Supabase by the wizard rather than queued locally, so this
+                // only ever needs to come down.
+                { name: 'item_segmentation' as const, col: db.item_segmentation },
             ];
 
             let totalPulled = 0;

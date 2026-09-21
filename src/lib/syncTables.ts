@@ -3,7 +3,7 @@ import type { Database } from './database.types';
 /**
  * The tables that participate in offline sync.
  *
- * These are the five passed to syncCollection in database.ts:474-478, which are
+ * These are the ones passed to syncCollection in database.ts:474-478, which are
  * also the only tables changeQueue can replay against.
  *
  * This exists for a second reason beyond documentation. `supabase.from(x)` with
@@ -16,7 +16,7 @@ import type { Database } from './database.types';
  */
 export type SyncTable = Extract<
     keyof Database['public']['Tables'],
-    'inventory' | 'production' | 'logistics' | 'finance' | 'shipments'
+    'inventory' | 'production' | 'logistics' | 'finance' | 'shipments' | 'item_segmentation'
 >;
 
 export const SYNC_TABLES: readonly SyncTable[] = [
@@ -25,6 +25,10 @@ export const SYNC_TABLES: readonly SyncTable[] = [
     'logistics',
     'finance',
     'shipments',
+    // Pull-only. It is in this union because deltaPull types its table name
+    // against it; changeQueue never replays a local write here, because the
+    // wizard writes segmentation directly to Supabase.
+    'item_segmentation',
 ] as const;
 
 /** Narrow an untrusted string (a queued record, a stored job) to a SyncTable. */
