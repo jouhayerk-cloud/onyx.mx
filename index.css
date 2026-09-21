@@ -13,8 +13,26 @@
 /* After density.css: the inventory cards reuse its panel pieces (clusters,
    badges, payment table) and restate a few of them for the detail sheet. */
 @import "./src/styles/cards.css";
+/* After cards.css, because it reuses that card vocabulary rather than adding a
+   third one: the catalog hub and the background-cleaning STUDIO, plus the one
+   PROCESSED / RAW badge all four of its components render. */
+@import "./src/styles/catalog.css";
+/* The 3D catalogue and showroom were drawn on one ground only, so the module
+   carries its own ink tokens — same arrangement as trucking.css below. It
+   also has to outrank slab.css's generic ON rule for two toggles, which is
+   why it lands after it rather than before. */
+@import "./src/styles/threed.css";
 /* The trailer map draws its own wireframe, so it carries its own ink tokens. */
 @import "./src/styles/trucking.css";
+/* The AI batch wizard, same arrangement: its own ink tokens per ground, so the
+   header, the queue cards, the photo wells and the per-op log survive the
+   light slab instead of flattening into it. */
+@import "./src/styles/batchproc.css";
+/* LABS › Process, last of the per-module sheets: the segmentation workspace,
+   the batch pipeline and the vault carried their own ink tokens too, and it
+   has to outrank slab.css's generic ON rule for the light-slab label and
+   focus corrections, which is why it lands after it rather than before. */
+@import "./src/styles/process.css";
 
 html, body, #root {
   height: 100%;
@@ -294,6 +312,46 @@ html, body, #root {
   flex-direction: column;
   flex: 1;
   position: relative;
+}
+
+/* ── iOS safe areas ────────────────────────────────────────────────────────
+   index.html declares viewport-fit=cover, so the page now extends under the
+   notch and the home indicator and content scrolls BEHIND the top bar rather
+   than stopping short of it. That is the effect we want; the cost is that
+   anything anchored to an edge would otherwise sit under the hardware.
+
+   So the chrome pays the inset back, and only the chrome: the header adds the
+   top inset to its own padding, the sidebar and the content take the side
+   insets (which are non-zero only in landscape), and bars docked to the
+   bottom clear the home indicator. Scrolling regions are left alone on
+   purpose — passing behind the bar is the point.
+
+   env() resolves to 0 on every browser that does not letterbox, so these are
+   inert on desktop and on Android; no media query is needed to guard them. */
+.main-header {
+  padding-top: env(safe-area-inset-top);
+  height: calc(5rem + env(safe-area-inset-top));
+  max-height: calc(5rem + env(safe-area-inset-top));
+}
+
+.app-content,
+.sidebar {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Docked bars: the trucking control bar and anything else fixed to the bottom
+   edge. The inset is added to whatever padding the component already sets. */
+#trucking .trk-bar {
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
+
+/* The inventory list's sticky column header pins itself below .main-header by
+   a fixed 80px (density.css, --inv-head-offset). The header is now taller by
+   the top inset, so the offset has to grow with it or the labels scroll under
+   the bar on a notched device. */
+:root {
+  --inv-head-offset: calc(5rem + env(safe-area-inset-top));
 }
 
 .main-header {
