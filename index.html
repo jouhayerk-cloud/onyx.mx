@@ -3,7 +3,13 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- viewport-fit=cover: the layout extends under the notch and the home
+       indicator on iOS, so content scrolls behind the translucent top bar
+       instead of stopping at a letterboxed edge. It is what makes the
+       env(safe-area-inset-*) values non-zero; without it they are all 0 and
+       the padding rules that read them do nothing. Anything that must stay
+       tappable pays that inset back in CSS — see index.css. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Onyx-mx.app</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
