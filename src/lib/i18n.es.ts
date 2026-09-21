@@ -2299,6 +2299,26 @@ export const esCatalog: Record<string, string> = {
   'AR Ready': 'Listo para RA',
   'Camera Height': 'Altura de la Cámara',
   'No 3D Models Configured': 'No Hay Modelos 3D Configurados',
+  'Generating 3D model...': 'Generando el modelo 3D...',
+  'Loading texture...': 'Cargando la textura...',
+  'Creating procedural texture...': 'Creando la textura procedural...',
+  'Error rendering 3D model:': 'Error al renderizar el modelo 3D:',
+  'Select an item from the inventory to view it in 3D.':
+    'Selecciona un artículo del inventario para verlo en 3D.',
+  // Scene environments
+  'Outdoor Sunset': 'Atardecer Exterior',
+  'Studio': 'Estudio',
+  'Dark Void': 'Fondo Oscuro',
+  // Mesh inspection
+  'Realistic': 'Realista',
+  'Wireframe': 'Malla',
+  'Toggle mesh wireframe': 'Alternar la malla del modelo',
+  // Geometry strategy badges — how the mesh was built, not what the piece is
+  'Turned': 'Torneado',
+  'Slab': 'Losa',
+  'Tray': 'Bandeja',
+  'Mirror': 'Espejo',
+  'Unmodelled': 'Sin Modelar',
   'No item selected.': 'No hay ningún artículo seleccionado.',
   'Item Details': 'Detalles del Artículo',
   'Item #': 'Artículo #',
