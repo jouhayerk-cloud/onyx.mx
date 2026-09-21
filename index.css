@@ -33,6 +33,10 @@
    has to outrank slab.css's generic ON rule for the light-slab label and
    focus corrections, which is why it lands after it rather than before. */
 @import "./src/styles/process.css";
+/* LAST, and deliberately after every module sheet: slab-glass.css reverses
+   SLAB's opaque-surface premise for the chrome, so it has to outrank both
+   slab.css and anything a module restated from it. One line to revert. */
+@import "./src/styles/slab-glass.css";
 
 html, body, #root {
   height: 100%;
@@ -314,6 +318,13 @@ html, body, #root {
   position: relative;
 }
 
+/* The top bar paints behind the status bar. The inset is padding on the BAND,
+   not on the header inside it, so the glass runs edge to edge under the clock
+   while the keys sit below it. .main-header keeps its own 5rem height. */
+.app-topbar {
+  padding-top: env(safe-area-inset-top);
+}
+
 /* ── iOS safe areas ────────────────────────────────────────────────────────
    index.html declares viewport-fit=cover, so the page now extends under the
    notch and the home indicator and content scrolls BEHIND the top bar rather
@@ -328,12 +339,6 @@ html, body, #root {
 
    env() resolves to 0 on every browser that does not letterbox, so these are
    inert on desktop and on Android; no media query is needed to guard them. */
-.main-header {
-  padding-top: env(safe-area-inset-top);
-  height: calc(5rem + env(safe-area-inset-top));
-  max-height: calc(5rem + env(safe-area-inset-top));
-}
-
 .app-content,
 .sidebar {
   padding-left: env(safe-area-inset-left);

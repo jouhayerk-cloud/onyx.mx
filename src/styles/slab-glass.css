@@ -1,0 +1,619 @@
+/* ==========================================================================
+   SLAB · GLASS — translucent surfaces for the carved style
+   --------------------------------------------------------------------------
+   SLAB was built on one premise: a single OPAQUE material, where ground and
+   control share a colour and depth comes only from the bevel. ROCK is the
+   opposite — translucent glass in layers. This file brings ROCK's
+   translucency into SLAB while keeping SLAB's relief, which is a deliberate
+   reversal of the original rule and the reason it lives in its own file
+   rather than being edited into slab.css: one import turns it off again.
+
+   WHAT HAD TO GIVE, AND WHY IT STILL WORKS
+
+   A neumorphic bevel needs the surface to sit mid-tone against its ground,
+   because the highlight must be lighter than the surface and the shadow
+   darker. A fully transparent surface has no tone of its own and the bevel
+   collapses. So surfaces are not transparent here — they are TINTED GLASS:
+   the slab colour at 55-72% over a backdrop blur. That keeps enough of the
+   mid-tone for --slab-hi and --slab-sh to read, while what is behind now
+   shows through, which is what was asked for.
+
+   Three things stay opaque on purpose:
+
+   · Inputs and readouts. They are pressed wells, and a pressed shadow over a
+     moving backdrop reads as dirt on the glass rather than as depth.
+   · Anything over a photograph — the media wells in the inventory cards, the
+     3-D viewport, the trailer deck. Glass over an image is two images.
+   · Meaning colour. Rule 3 is untouched: vendor codes, the payment traffic
+     light and the status badges keep their exact fills.
+
+   WHAT THIS FILE UNDOES FROM slab.css
+
+   slab.css suppresses `backdrop-filter` globally (its "No glass" section) and
+   flattens every bg-white/* and bg-black/* utility to the surface colour.
+   Both are restated here for the chrome surfaces only. The flattener stays in
+   force everywhere else, because it is what keeps 6,000 hardcoded utilities
+   from punching holes in the app.
+
+   Unlayered and imported last, so these outrank slab.css at equal
+   specificity without needing !important on every line.
+   ========================================================================== */
+
+html.style-slab {
+    /* How much of the slab's own colour a glass surface keeps. Lower is more
+       transparent; below about 45% the bevel stops reading. */
+    --slab-glass-strength: 40%;
+    /* The bars are the LEAST opaque surface, not the most: the whole point is
+       that the list keeps moving underneath them. Blur, not opacity, is what
+       keeps their labels legible over whatever scrolls past. */
+    --slab-glass-strength-hi: 34%;
+    --slab-glass-blur: 18px;
+
+    /* The tinted glass itself. color-mix keeps this tied to the theme's slab,
+       so Aqua and Talan each get their own glass with no second palette. */
+    --slab-glass:    color-mix(in srgb, var(--slab) var(--slab-glass-strength), transparent);
+    --slab-glass-hi: color-mix(in srgb, var(--slab) var(--slab-glass-strength-hi), transparent);
+    --slab-glass-lo: color-mix(in srgb, var(--slab) 30%, transparent);
+
+    /* A rim, not a border. On glass the hairline has to be brighter than on
+       an opaque surface or it disappears against whatever passes behind. */
+    --slab-glass-rim: color-mix(in srgb, var(--slab-hi) 55%, transparent);
+}
+
+/* The dark slab has less tonal headroom, so its glass holds more of its own
+   colour — at Aqua's 62% a dark surface over a light photograph goes muddy. */
+html.style-slab.theme-talan {
+    --slab-glass-strength: 48%;
+    --slab-glass-strength-hi: 42%;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+    /* No backdrop-filter (older Firefox): translucency without blur is just a
+       washed-out panel, so those browsers keep the opaque slab. */
+    html.style-slab {
+        --slab-glass:    var(--slab);
+        --slab-glass-hi: var(--slab);
+        --slab-glass-lo: var(--slab);
+    }
+}
+
+/* ── The ground ───────────────────────────────────────────────────────────
+   Glass needs something to refract. SLAB suppressed the app's mesh gradient
+   because a gradient ground destroys a bevel; with translucent surfaces the
+   opposite is true — an opaque flat ground behind glass looks like frosted
+   plastic. The mesh comes back, heavily diluted, as the thing the surfaces
+   are lit by. --mesh-image is published by HeroBackground.tsx on each click. */
+html.style-slab body {
+    background-color: var(--slab);
+    background-image: var(--mesh-image, none) !important;
+    background-attachment: fixed;
+}
+
+html.style-slab body::after {
+    /* Dilutes the mesh to a wash. Without this the ground competes with the
+       relief exactly as slab.css warned; at this strength it only gives the
+       glass something to pick up. */
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-color: color-mix(in srgb, var(--slab) 62%, transparent);
+}
+
+/* ── Chrome: the surfaces that become glass ───────────────────────────── */
+html.style-slab .glass-panel,
+html.style-slab .glass-sm,
+html.style-slab .glass-md,
+html.style-slab .glass-lg,
+html.style-slab .glass-tile,
+html.style-slab .inv-sheet,
+html.style-slab .inv-card,
+html.style-slab #trucking .trk-bar-inner,
+html.style-slab #batchproc .bp-panel,
+html.style-slab #batchproc .bp-card,
+html.style-slab #process .proc-panel,
+html.style-slab #threed .threed-card,
+html.style-slab #catalog .cat-modal {
+    background-color: var(--slab-glass) !important;
+    /* !important throughout: slab.css's "No glass" section suppresses
+       backdrop-filter with !important on anything carrying a backdrop-blur
+       utility, and its bg-white/* flattener repaints the surface. Both are
+       exactly what this file is reversing, so it has to outrank them. */
+    backdrop-filter: blur(24px) saturate(1.7) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(1.7) !important;
+    border-color: var(--slab-glass-rim);
+}
+
+/* Bars and headers sit over scrolling content and carry the densest text, so
+   they take the stronger tint and a wider blur. */
+html.style-slab .main-header,
+html.style-slab .app-topbar,
+html.style-slab .sidebar,
+html.style-slab #trucking .trk-hub > *,
+html.style-slab #batchproc .bp-head,
+html.style-slab #batchproc .bp-foot,
+html.style-slab #process .proc-hud {
+    background-color: var(--slab-glass-hi) !important;
+    backdrop-filter: blur(34px) saturate(1.9) !important;
+    -webkit-backdrop-filter: blur(34px) saturate(1.9) !important;
+}
+
+/* The band behind the status bar: the app's own chrome, edge to edge. */
+html.style-slab .app-topbar {
+    border-bottom: 1px solid var(--slab-glass-rim);
+}
+
+/* Controls. A key is glass too, but keeps its full bevel — the walk from
+   lift to raised to pressed is unchanged, only the fill moved. */
+html.style-slab button,
+html.style-slab [role="button"],
+html.style-slab summary {
+    background-color: var(--slab-glass-lo) !important;
+    backdrop-filter: blur(10px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(1.4) !important;
+}
+
+/* Hover and press restate their own fills, so they need the glass treatment
+   restated too or a hovered key turns opaque mid-interaction. */
+html.style-slab button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover,
+html.style-slab [role="button"]:not([aria-pressed="true"]):hover,
+html.style-slab summary:hover {
+    background-color: color-mix(in srgb, var(--slab-tint-hover) 72%, transparent) !important;
+}
+
+html.style-slab button[aria-pressed="true"],
+html.style-slab button[data-active="true"],
+html.style-slab [role="button"][aria-pressed="true"],
+html.style-slab.theme-talan button[aria-pressed="true"],
+html.style-slab.theme-talan button[data-active="true"] {
+    background-color: color-mix(in srgb, var(--slab-tint-on) 80%, transparent) !important;
+}
+
+/* ── What stays opaque ────────────────────────────────────────────────────
+   Restated AFTER the glass rules above, because each of these would
+   otherwise be caught by one of them. */
+
+/* Pressed wells: inputs, readouts, the payment table, the panel drawer. A
+   moving backdrop under an inset shadow reads as a smudge, not a recess. */
+html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.style-slab textarea,
+html.style-slab select,
+html.style-slab .stats-readout,
+html.style-slab .payment-row,
+html.style-slab .logo-panel,
+html.style-slab .inv-readout,
+html.style-slab #batchproc .bp-log,
+html.style-slab #process .proc-log,
+html.style-slab #process .proc-terminal {
+    background-color: var(--slab) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Over a photograph. Glass over an image is two images, and the media wells
+   are the one place in the app where the picture is the content. */
+html.style-slab .inv-card-media,
+html.style-slab .inv-gal-hero,
+html.style-slab .inv-gal-tile,
+html.style-slab .inv-hero,
+html.style-slab .inv-thumb,
+html.style-slab .threed-scrim,
+html.style-slab #threed .threed-well,
+html.style-slab #trucking .trk-bed {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Meaning colour is not chrome and never becomes glass — rule 3 stands. */
+html.style-slab .vendor-tag,
+html.style-slab .vendor-tag > span,
+html.style-slab .inv-badge,
+html.style-slab .inv-led,
+html.style-slab .crate-badge__vendor,
+html.style-slab [class*="bg-blue-"],
+html.style-slab [class*="bg-green-"],
+html.style-slab [class*="bg-red-"],
+html.style-slab [class*="bg-rose-"],
+html.style-slab [class*="bg-amber-"],
+html.style-slab [class*="bg-emerald-"],
+html.style-slab #threed .threed-badge {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* A modal scrim is the one surface that SHOULD be heavy: it exists to take
+   the page behind it out of play. */
+html.style-slab .inv-sheet-scrim,
+html.style-slab #catalog .cat-scrim,
+html.style-slab #process .proc-scrim {
+    backdrop-filter: blur(10px) saturate(0.9) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(0.9) !important;
+}
+
+/* ── Accessibility ────────────────────────────────────────────────────────
+   Reduced transparency is a system setting people turn on because glass is
+   hard for them to read. Honour it: every surface goes back to solid, and
+   the design still works because the relief never depended on the
+   translucency. Forced colours likewise. */
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    html.style-slab {
+        --slab-glass:    var(--slab);
+        --slab-glass-hi: var(--slab);
+        --slab-glass-lo: var(--slab);
+        --slab-glass-rim: var(--slab-edge);
+    }
+
+    html.style-slab *,
+    html.style-slab *::before,
+    html.style-slab *::after {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    html.style-slab body {
+        background-image: none !important;
+    }
+}
+
+/* ── Class-scoped keys ────────────────────────────────────────────────────
+   The generic `button` rule above is (0,1,2) and loses to every CLASS-scoped
+   key in slab.css — .tool-btn, .smart-chip, the docks — which are (0,2,1) and
+   repaint with !important. Those are the app's most visible controls, so they
+   are restated here rather than left as the one opaque thing on a glass bar.
+
+   The bevel, the hairline and the whole state walk stay exactly as slab.css
+   sets them; only the fill is replaced. ON states are NOT listed: an engaged
+   control keeps its accent tint at full strength, because that tint is how
+   the state is read and glass would dilute it. */
+html.style-slab .tool-btn:not([aria-pressed="true"]):not([data-active="true"]),
+html.style-slab .smart-chip:not([aria-pressed="true"]),
+html.style-slab .ctl-compact:not([aria-pressed="true"]),
+html.style-slab .selection-dock button:not([aria-pressed="true"]),
+html.style-slab .print-job-bar button:not([aria-pressed="true"]),
+html.style-slab #trucking .trk-key,
+html.style-slab #trucking .trk-zoom,
+html.style-slab .inv-actions button,
+html.style-slab .inv-sheet-close {
+    background-color: var(--slab-glass-lo) !important;
+    backdrop-filter: blur(10px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(1.4) !important;
+}
+
+/* The bars those keys sit in. .selection-dock and .print-job-bar float over
+   the list, which is exactly the case glass is for. */
+html.style-slab .selection-dock,
+html.style-slab .print-job-bar,
+html.style-slab .info-notch {
+    background-color: var(--slab-glass-hi) !important;
+    backdrop-filter: blur(34px) saturate(1.9) !important;
+    -webkit-backdrop-filter: blur(34px) saturate(1.9) !important;
+}
+
+/* ── Data surfaces ────────────────────────────────────────────────────────
+   Rows and cards asked for transparency too, but they are the one place it
+   costs something: 13px type over a moving photograph is harder to read than
+   the same type on stone. They therefore keep MORE of their tint than the
+   bars do — enough that the ground reads through as colour rather than as
+   detail. Rule 2 is untouched: this is a fill change, not relief, and a row
+   still carries no shadow of its own. */
+html.style-slab [class*="bg-(--sidebar-bg)"]:not(.payment-row) {
+    background-color: color-mix(in srgb, var(--slab-hi) 20%, color-mix(in srgb, var(--slab) 46%, transparent)) !important;
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+}
+
+html.style-slab [class*="bg-(--sidebar-bg)"]:not(.payment-row):hover {
+    background-color: color-mix(in srgb, var(--slab-hi) 64%, transparent) !important;
+}
+
+/* The list's column header sits above the rows and must stay readable while
+   they scroll under it — same treatment as a bar, not as a row. */
+html.style-slab .inv-head-wrap {
+    background-color: var(--slab-glass-hi) !important;
+    backdrop-filter: blur(34px) saturate(1.9) !important;
+    -webkit-backdrop-filter: blur(34px) saturate(1.9) !important;
+}
+
+/* ── Every tool bar in the app ────────────────────────────────────────────
+   One list, so a bar added to any module later has an obvious place to join
+   rather than being left as the single opaque strip on a glass page. The
+   split is by ROLE, not by module: a bar that floats over scrolling content
+   takes the thin bar tint and the wide blur; a bar that is part of a panel's
+   own frame takes the panel tint, because it has nothing moving behind it. */
+html.style-slab .universal-tools-bar,
+html.style-slab .tools-bar,
+html.style-slab .filter-bar,
+html.style-slab .smart-filters-main,
+html.style-slab .smart-filters-shape,
+html.style-slab .inv-sheet-bar,
+html.style-slab #threed .threed-hud,
+html.style-slab #threed .threed-hud--top,
+html.style-slab #threed .threed-dock,
+html.style-slab #threed .threed-dock--left,
+html.style-slab #threed .threed-ar-dock,
+html.style-slab #threed .threed-tabs,
+html.style-slab #process .proc-anglebar,
+html.style-slab #process .proc-segbar,
+html.style-slab #batchproc .bp-lightbox-bar,
+html.style-slab #catalog .cat-selbar,
+html.style-slab #catalog .cat-modal-foot,
+html.style-slab #trucking .trk-hub,
+html.style-slab .crate-badge {
+    background-color: var(--slab-glass-hi) !important;
+    backdrop-filter: blur(34px) saturate(1.9) !important;
+    -webkit-backdrop-filter: blur(34px) saturate(1.9) !important;
+}
+
+/* Panel-frame bars: heads and feet that belong to a card, not to the page. */
+html.style-slab #batchproc .bp-head,
+html.style-slab #batchproc .bp-foot,
+html.style-slab #batchproc .bp-gen-head,
+html.style-slab #batchproc .bp-gen-foot,
+html.style-slab #threed .threed-catalog-head,
+html.style-slab #threed .threed-detail-head,
+html.style-slab #threed .threed-ar-head,
+html.style-slab #threed .threed-card-foot,
+html.style-slab .inv-head-wrap,
+html.style-slab .inv-drawer-body {
+    background-color: var(--slab-glass) !important;
+    backdrop-filter: blur(18px) saturate(1.6) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.6) !important;
+}
+
+/* ── Generic backgrounds ──────────────────────────────────────────────────
+   The long tail: panels built from Tailwind utilities that slab.css flattened
+   to the surface colour and that no module stylesheet has claimed yet. They
+   become glass as a class, so the app has no opaque islands left, EXCEPT the
+   wells and meaning colours already exempted above — those rules come later
+   in this file for the pressed wells and are restated here for the utilities,
+   since a utility-built well would otherwise be caught by this sweep. */
+html.style-slab [class*="bg-white/"]:not(input):not(textarea):not(select):not(.payment-row):not(.stats-readout):not(.vendor-tag):not(.inv-badge),
+html.style-slab [class*="bg-black/"]:not(input):not(textarea):not(select):not(.payment-row):not(.stats-readout):not(.vendor-tag):not(.inv-badge) {
+    background-color: var(--slab-glass) !important;
+    backdrop-filter: blur(16px) saturate(1.5);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+}
+
+/* Restated last: anything over a photograph, and the pressed wells, stay
+   solid even when they were built from those utilities. */
+html.style-slab .inv-card-media[class*="bg-"],
+html.style-slab .inv-gal-hero[class*="bg-"],
+html.style-slab .inv-hero[class*="bg-"],
+html.style-slab .inv-thumb[class*="bg-"],
+html.style-slab .inv-card-media,
+html.style-slab .inv-gal-hero,
+html.style-slab .inv-axo,
+html.style-slab .threed-scrim {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* The main top bar, stated last and on its own.
+   It is the most-looked-through surface in the app: the inventory list runs
+   underneath it continuously, and the ask was that the rows stay visible
+   there. It therefore takes the LOWEST tint of anything in this file and
+   leans entirely on blur for legibility — .app-topbar carries the band, and
+   .main-header inside it must not paint a second, denser layer on top. */
+html.style-slab .app-topbar,
+html.style-slab .app-topbar .main-header,
+html.style-slab .app-topbar .universal-tools-bar,
+html.style-slab .app-topbar > * {
+    background-color: color-mix(in srgb, var(--slab) 46%, transparent) !important;
+    backdrop-filter: blur(34px) saturate(1.9) !important;
+    -webkit-backdrop-filter: blur(34px) saturate(1.9) !important;
+}
+
+/* Only the band itself paints; the header and tools bar inside it are
+   transparent, or three stacked tints add back the opacity just removed. */
+html.style-slab .app-topbar .main-header,
+html.style-slab .app-topbar .universal-tools-bar,
+html.style-slab .app-topbar > * {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* ── When quick-liquid is driving the bar ─────────────────────────────────
+   The library paints its own stack inside the element — lens, tint, sheen,
+   rim — and that stack IS the glass. Our own fill and blur then sit on top of
+   it, and two tints read as one opaque bar, which is what made the top bar
+   look solid while every other surface had gone translucent.
+
+   So when the lens is present the band paints nothing at all and contributes
+   only its layout. :has() is the right test because the library injects those
+   children at runtime; there is no class on the host to key off, and if the
+   module fails to load the selector simply never matches and the CSS glass
+   above stays in charge. */
+html.style-slab .app-topbar:has(> .ql-lens),
+html.style-slab .ql-glass:has(> .ql-lens) {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* The library's own tint layer, dialled down. Its presets are built for a
+   photo wallpaper behind the glass; over a dense data list the same value
+   reads as frosting. */
+html.style-slab .app-topbar > .ql-tint {
+    opacity: 0.35;
+}
+
+/* Every bar INSIDE the band stays transparent so the lens shows through:
+   the header, the universal tools bar and their own inner strips. */
+html.style-slab .app-topbar .main-header,
+html.style-slab .app-topbar .universal-tools-bar,
+html.style-slab .app-topbar .ql-content > *,
+html.style-slab .app-topbar [class*="bg-white/"],
+html.style-slab .app-topbar [class*="bg-black/"] {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* The logo panel and the pressed wells were exempted from the glass sweep
+   because an inset shadow over a moving backdrop reads as a smudge. At these
+   tints that exemption made them the only solid objects on the screen, so
+   they keep their bevel but take a light fill instead of the full slab. */
+html.style-slab .logo-panel,
+html.style-slab .stats-readout,
+html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.style-slab textarea,
+html.style-slab select,
+html.style-slab .inv-readout {
+    background-color: color-mix(in srgb, var(--slab) 55%, transparent) !important;
+    backdrop-filter: blur(14px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.4) !important;
+}
+
+/* ── LAST WORD: the bar when the lens is live ─────────────────────────────
+   This block must be the final one in the file. An earlier version of the
+   hand-off sat above the .app-topbar tint rule, so the tint won on source
+   order: the bar painted 48% of the slab AND dropped its own blur, which is
+   exactly the "still not translucent" the top strip showed while every panel
+   below it had gone to glass.
+
+   With quick-liquid mounted the element paints nothing itself — the lens,
+   tint, sheen and rim it injects are the surface, and they refract what
+   scrolls under the bar rather than tinting it. Without the library (module
+   still loading, or a reduced-transparency preference) the selector does not
+   match and the CSS glass above stays in charge. */
+html.style-slab .app-topbar:has(> .ql-lens) {
+    /* A TINT, not nothing. Handing the whole surface to the lens left the
+       band with no material at all: the list read straight through the
+       filter chips and the vendor swatches. The lens refracts and blurs;
+       this is the sheet of glass it refracts through, and it is the one
+       surface both rows share — the header and the tools bar inside stay
+       transparent so it is never painted twice. */
+    background-color: color-mix(in srgb, var(--slab) 44%, transparent) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Its own blur belongs to the lens plate, not to the host. */
+html.style-slab .app-topbar > .ql-lens {
+    backdrop-filter: blur(26px) saturate(1.75) !important;
+    -webkit-backdrop-filter: blur(26px) saturate(1.75) !important;
+}
+
+/* Both rows inside the band — the header and the ACTIONS / TOOLS / VIEW /
+   FILTER / SEARCH / TAGS bar — stay fully transparent so one glass plate
+   serves both. Three stacked tints was what made the strip read solid. */
+html.style-slab .app-topbar .main-header,
+html.style-slab .app-topbar .universal-tools-bar,
+html.style-slab .app-topbar .ql-content > *,
+html.style-slab .app-topbar .ql-content > * > * {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* ── The library's tint plate ─────────────────────────────────────────────
+   quick-liquid paints its own `linear-gradient(rgba(20,24,34,.46) …)` over
+   the refraction. That colour is the library's, not the theme's — a blue-grey
+   wash that reads as a solid gradient band across the top of the app and
+   ignores which slab is active. The lens and the rim are what we want from
+   it; the tint we supply ourselves, from the theme's own token, on the host. */
+html.style-slab .app-topbar > .ql-tint {
+    background-image: none !important;
+    background-color: transparent !important;
+}
+
+html.style-slab .app-topbar:has(> .ql-lens) {
+    background-color: color-mix(in srgb, var(--slab) 38%, transparent) !important;
+}
+
+/* ── Modals are read ON, not through ──────────────────────────────────────
+   A dialog is the one surface where translucency actively harms: it exists to
+   take the page out of play, and the list behind it competes with its own
+   text. The glass sweep above caught them through .glass-panel and the
+   bg-white/* utilities, which is why Settings went see-through.
+
+   They keep a hint of the material — enough to belong to the same system —
+   and lean on a heavy blur plus a darker scrim to separate from the page. */
+html.style-slab [role="dialog"],
+html.style-slab [role="alertdialog"],
+html.style-slab .studio-settings,
+html.style-slab .studio-settings-portal,
+html.style-slab .modal-panel,
+html.style-slab .inv-sheet,
+html.style-slab #catalog .cat-modal,
+html.style-slab #batchproc .bp-card,
+html.style-slab .fixed.inset-0 > .glass-panel,
+html.style-slab .fixed.inset-0 > .glass-lg,
+html.style-slab .fixed.inset-0 > .glass-md {
+    background-color: color-mix(in srgb, var(--slab) 92%, transparent) !important;
+    backdrop-filter: blur(40px) saturate(1.5) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(1.5) !important;
+}
+
+/* A dialog's own panels sit on that sheet, so they take the panel tint again
+   rather than inheriting the near-solid one above. */
+html.style-slab [role="dialog"] .glass-panel,
+html.style-slab .studio-settings .glass-panel,
+html.style-slab .inv-sheet .inv-readout {
+    background-color: var(--slab-glass) !important;
+}
+
+/* The scrim behind any modal: dark enough that the page stops competing. */
+html.style-slab .inv-sheet-scrim,
+html.style-slab #catalog .cat-scrim,
+html.style-slab #process .proc-scrim,
+html.style-slab .threed-scrim,
+html.style-slab [class*="z-\[9"] > .fixed.inset-0 {
+    background-color: color-mix(in srgb, #000 62%, transparent) !important;
+    backdrop-filter: blur(12px) saturate(0.85) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(0.85) !important;
+}
+
+/* ── Overlay scrims built as a child, not as the host ─────────────────────
+   Studio Settings (and the wizards that copy it) put their scrim in an
+   `absolute inset-0 bg-black/20 backdrop-blur-[80px]` child and give the
+   panel itself no background at all — the blurred scrim IS the panel's
+   surface. The bg-black/* sweep above therefore hit exactly the wrong
+   element: it lightened the scrim to panel glass and dropped the 80px blur
+   that was doing all the work, so the inventory list read straight through
+   the settings text.
+
+   Any full-bleed child that carries a backdrop-blur inside a fixed overlay is
+   a scrim by construction, so it is treated as one: dark, and blurred hard. */
+html.style-slab .fixed > .absolute.inset-0[class*="backdrop-blur"],
+html.style-slab .fixed .absolute.inset-0[class*="backdrop-blur"] {
+    background-color: color-mix(in srgb, var(--slab) 88%, transparent) !important;
+    backdrop-filter: blur(60px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(60px) saturate(1.3) !important;
+}
+
+/* ── No painted gradient on the bars ──────────────────────────────────────
+   slab.css gives every raised surface `background-image: var(--mesh-veil),
+   var(--slab-sheen)` — the click-changing mesh, painted ON the element. On an
+   opaque slab that is the point: the surface picks up the room's colour. On
+   glass it is the opposite of what is wanted, because an opaque gradient
+   IMAGE sits in front of whatever is behind the element: the bar rendered as
+   a solid brown-gold band with nothing showing through, however low its
+   background-COLOR alpha went.
+
+   The bars therefore paint no image at all. What tints them is the
+   translucent colour above plus the backdrop blur, so the inventory rows
+   scrolling underneath stay visible through them — which is the ROCK
+   behaviour being asked for. Panels and cards keep their sheen: they sit on
+   the page rather than over moving content, and the veil is what ties them
+   to the theme. */
+html.style-slab .app-topbar,
+html.style-slab .app-topbar *,
+html.style-slab .main-header,
+html.style-slab .universal-tools-bar,
+html.style-slab .smart-filters-main,
+html.style-slab .smart-filters-shape,
+html.style-slab .inv-head-wrap,
+html.style-slab .selection-dock,
+html.style-slab .print-job-bar,
+html.style-slab #trucking .trk-bar-inner,
+html.style-slab #trucking .trk-hub > * {
+    background-image: none !important;
+}
+
+/* The mark keeps its own panel treatment — it is identity, not a bar. */
+html.style-slab .app-topbar .logo-panel {
+    background-image: var(--slab-sheen-in) !important;
+}
