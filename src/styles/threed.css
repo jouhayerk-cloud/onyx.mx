@@ -1,0 +1,1077 @@
+/* ==========================================================================
+   3D AND AR — the artifact catalogue, the showroom and the chrome around it
+   --------------------------------------------------------------------------
+   The module was drawn for one ground only. Every surface in it was a
+   `bg-black/*` or `bg-white/*` utility over near-black: the catalogue page
+   (`bg-black/50`), the tab bar (`bg-black/40`), each card (`bg-white/5`),
+   the photo well behind every thumbnail (`bg-black/30`), the scene dock
+   (`bg-white/8`) and both badges. SLAB flattens all of those to the surface
+   colour with !important, so on the light slab the page, the bar, the card,
+   the well and the badges all resolved to the SAME value — #E7EAE6 on Aqua,
+   measured — and the catalogue read as a grid of floating text with no
+   objects under it. This is the trailer-map failure again, and the fix is
+   the same one: semantic classes taking their ink from tokens defined once
+   per ground.
+
+   Two things this file does differently from trucking.css, both deliberate:
+
+   · The ground switch is `html.style-slab #threed`, not a theme test. SLAB
+     already publishes --slab / --slab-ink / --slab-dim / --slab-edge per
+     theme, so one block re-points the module for BOTH slabs at once and
+     cannot drift when a theme's values move. The theme test is only needed
+     for ROCK, which has no such token set.
+
+   · The geometry badge and the AR badge are NOT re-pointed per ground. They
+     name how a mesh was built (turned / slab / tray / mirror / unmodelled)
+     and whether a captured file exists — that is data, not chrome, so under
+     rule 3 the colour rides ON the slab and stays identical in every theme.
+     Their fills are chosen dark enough that #ffffff clears 4.5:1 on each:
+     7.2, 5.0, 5.5, 6.6, 7.6 and 8.0 to one decimal.
+
+   Relief follows the six-step scale: chrome carries it, data does not, and
+   the WebGL viewport carries none at all — `canvas` is exempt from every
+   relief rule in the system, so the frame around it does the work instead.
+   ========================================================================== */
+
+#threed {
+    /* Dark ground (ROCK, and the Talan slab) — the module's original values. */
+    --td-ink:        var(--text-color, #f5f5f0);
+    --td-dim:        rgb(255 255 255 / 0.58);
+    --td-line:       rgb(255 255 255 / 0.14);
+    --td-panel:      rgb(255 255 255 / 0.05);
+    --td-well:       rgb(0 0 0 / 0.30);
+    /* A chip that has to read over an HDRI sky rather than over the app's
+       ground: the 3D viewport is a photograph, so nothing sitting on top of
+       it can borrow the page's contrast. */
+    --td-scrim:      rgb(12 12 14 / 0.86);
+    --td-scrim-ink:  #ffffff;
+    --td-radius:     10px;
+    --td-radius-sm:  6px;
+
+    /* ── Meaning colour — data, never chrome (rule 3) ──────────────────────
+       One per geometry strategy, so an approximation is never mistaken for a
+       scan at a glance. These are NOT redefined for the light ground. */
+    --td-geo-lathe:   #6d28d9;  /* Turned     — rotationally symmetric */
+    --td-geo-extrude: #b45309;  /* Slab       — prismatic */
+    --td-geo-tray:    #0f766e;  /* Tray       — outline with a recess */
+    --td-geo-mirror:  #1d4ed8;  /* Mirror     — frame plus a glass face */
+    --td-geo-none:    #52525b;  /* Unmodelled — no usable signal */
+    --td-ar:          #4338ca;  /* A captured .usdz/.glb exists */
+
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    color: var(--td-ink);
+}
+
+/* Light ROCK (Aqua without SLAB): the same drawing in ink instead of chalk.
+   Alphas are lower because dark-on-light reads heavier at equal opacity. */
+html.theme-aqua #threed {
+    --td-dim:       rgb(26 22 20 / 0.62);
+    --td-line:      rgb(26 22 20 / 0.16);
+    --td-panel:     rgb(26 22 20 / 0.04);
+    --td-well:      rgb(26 22 20 / 0.08);
+    --td-scrim:     rgb(253 252 240 / 0.92);
+    --td-scrim-ink: #1a1614;
+}
+
+/* SLAB, both grounds at once. The four ink tokens are already per-theme in
+   slab.css, so this block never needs a theme test of its own. */
+html.style-slab #threed {
+    --td-ink:       var(--slab-ink);
+    --td-dim:       var(--slab-dim);
+    --td-line:      var(--slab-edge);
+    --td-panel:     var(--slab);
+    --td-well:      color-mix(in srgb, var(--slab-sh) 22%, var(--slab));
+    --td-scrim:     var(--slab);
+    --td-scrim-ink: var(--slab-ink);
+    --td-radius:    var(--slab-r-lg);
+    --td-radius-sm: var(--slab-r-md);
+    background-color: var(--slab);
+}
+
+/* ── The tab bar ──────────────────────────────────────────────────────────
+   Static chrome, so `raised` rather than `lift`. It was `bg-black/40` with a
+   `border-white/5` underline; both flattened, leaving the bar and the page
+   indistinguishable. */
+#threed .threed-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    min-height: 48px;
+    padding: 0 16px;
+    background-color: var(--td-panel);
+    border-bottom: 1px solid var(--td-line);
+}
+
+html.style-slab #threed .threed-tabs {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    box-shadow: var(--slab-raised);
+    border-bottom-color: var(--slab-edge);
+}
+
+#threed .threed-tab {
+    flex: none;
+    min-height: 0;
+    padding: 7px 18px;
+    border-radius: var(--td-radius-sm);
+    border: 1px solid var(--td-line);
+    background-color: transparent;
+    color: var(--td-dim);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+/* The engaged tab is carved in and tinted. The LABEL stays --slab-ink and
+   only the fill and border carry the accent: on Aqua the accent is 1.7:1 on
+   its own tint-on fill, which is unreadable, and SLAB's generic ON rule sets
+   `color: var(--main-color) !important`. This is (1,3,1) and lands after
+   slab.css in index.css, so it outranks that. */
+html.style-slab #threed .threed-tab[aria-pressed="true"] {
+    background-color: var(--slab-tint-on) !important;
+    background-image: var(--slab-sheen-on);
+    border-color: var(--slab-edge-on) !important;
+    box-shadow: var(--slab-pressed) !important;
+    color: var(--slab-ink) !important;
+}
+
+/* ON + hover seats DEEPER. An engaged control must never rise like an idle
+   one or the two states blur into each other. */
+html.style-slab #threed .threed-tab[aria-pressed="true"]:hover {
+    background-color: var(--slab-tint-on-hi) !important;
+    box-shadow: var(--slab-pressed-deep) !important;
+}
+
+html.style-slab #threed .threed-tab:not([aria-pressed="true"]) {
+    box-shadow: var(--slab-lift);
+    background-color: var(--slab);
+    color: var(--slab-dim);
+}
+
+html.style-slab #threed .threed-tab:not([aria-pressed="true"]):hover {
+    box-shadow: var(--slab-raised);
+    color: var(--slab-ink);
+}
+
+#threed .threed-tab:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+/* ── The catalogue page ───────────────────────────────────────────────────
+   `bg-black/50` — flattened to the ground, which is the correct RESULT here
+   (the catalogue IS the page), so it is stated as such instead of being left
+   to an !important accident. */
+#threed .threed-catalog {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 24px 28px 32px;
+    background-color: transparent;
+}
+
+#threed .threed-catalog-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--td-line);
+}
+
+/* A heading takes no relief at all — it is not a control and it holds
+   nothing. */
+#threed .threed-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    color: var(--td-ink);
+}
+
+#threed .threed-count {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--td-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+#threed .threed-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    gap: 18px;
+}
+
+/* ── A catalogue card ─────────────────────────────────────────────────────
+   One of a dozen objects on the slab, not a list row, so it walks the same
+   scale as a key: lift at rest, raised under the pointer. `float` is not
+   used — this file adds no hoverable free-standing panel. The precedent is
+   .inv-card in slab.css and the vocabulary is deliberately the same one. */
+#threed .threed-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 9px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--td-radius);
+    border: 1px solid var(--td-line);
+    background-color: var(--td-panel);
+    color: var(--td-ink);
+}
+
+html.style-slab #threed .threed-card {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-lg);
+    box-shadow: var(--slab-lift);
+    transition: box-shadow var(--slab-ease), border-color var(--slab-ease);
+}
+
+html.style-slab #threed .threed-card:hover {
+    transform: none;
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+}
+
+#threed .threed-card:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+/* The photo well. A screen set into the stone: pressed, and it gets no hover
+   and no press of its own — it is the card that is pressable, not this. The
+   bevel is drawn on an ::after rim OVER the photograph, because an inset
+   shadow on the well itself paints underneath the image. */
+#threed .threed-card-well {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    isolation: isolate;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: var(--td-radius-sm);
+    background-color: var(--td-well);
+}
+
+#threed .threed-card-well::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+html.style-slab #threed .threed-card-well::after {
+    box-shadow: var(--slab-pressed), inset 0 0 0 1px var(--slab-edge);
+}
+
+#threed .threed-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 12px;
+}
+
+/* No photograph on file. Labelled rather than blank, so an empty tile is not
+   read as a failed load. */
+#threed .threed-card-noimg {
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--td-dim);
+}
+
+/* ── Badges: data, not chrome ─────────────────────────────────────────────
+   Flat (step 0), solid meaning fill, white label, identical on both grounds.
+   The inner ring keeps the chip's own boundary at 3:1 on the dark slab,
+   where the neutral "Unmodelled" fill would otherwise sit at 2.4:1. */
+#threed .threed-badges {
+    position: absolute;
+    /* Above the well's ::after rim, which is generated last and would
+       otherwise lay its inset bevel across the chips. */
+    z-index: 2;
+    top: 7px;
+    left: 7px;
+    right: 7px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    pointer-events: none;
+}
+
+#threed .threed-badge {
+    display: inline-block;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: #ffffff;
+    background-color: var(--td-geo-none);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28);
+}
+
+#threed .threed-badge[data-geo="lathe"]   { background-color: var(--td-geo-lathe); }
+#threed .threed-badge[data-geo="extrude"] { background-color: var(--td-geo-extrude); }
+#threed .threed-badge[data-geo="tray"]    { background-color: var(--td-geo-tray); }
+#threed .threed-badge[data-geo="mirror"]  { background-color: var(--td-geo-mirror); }
+#threed .threed-badge[data-geo="placeholder"] { background-color: var(--td-geo-none); }
+#threed .threed-badge--ar { background-color: var(--td-ar); }
+
+/* ── The card foot ────────────────────────────────────────────────────────
+   Flat data. The id and the money are figure columns and both opt in to
+   tabular figures — Atkinson and Montserrat are proportional and a grid of
+   prices drifts visibly without it. */
+#threed .threed-card-foot {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    padding: 0 2px 2px;
+}
+
+#threed .threed-card-idwrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+#threed .threed-card-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    color: var(--td-ink);
+}
+
+#threed .threed-card-id {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--td-dim);
+}
+
+/* Money was `text-green-400`, which is 1.6:1 on the light slab. The amount
+   is data, but the green carried no meaning that the figure does not — it
+   was decoration — so it goes to ink and keeps the alignment instead. */
+#threed .threed-card-price {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--td-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Empty catalogue ──────────────────────────────────────────────────── */
+#threed .threed-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 240px;
+    padding: 32px 24px;
+    text-align: center;
+    border-radius: var(--td-radius);
+    border: 1px solid var(--td-line);
+    background-color: var(--td-well);
+}
+
+html.style-slab #threed .threed-empty {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    box-shadow: var(--slab-pressed);
+}
+
+#threed .threed-empty-head {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--td-ink);
+}
+
+#threed .threed-empty-sub {
+    max-width: 44ch;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--td-dim);
+}
+
+/* ── The showroom ─────────────────────────────────────────────────────── */
+#threed .threed-showroom {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+}
+
+/* The stage frames the viewport. The WebGL canvas itself takes NO relief —
+   `canvas` and `svg` are exempt from every relief rule in the system — so
+   the depth is carried by this frame, which is a well that CONTAINS the
+   render rather than a control that can be pressed. */
+#threed .threed-stage {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background-color: var(--td-well);
+}
+
+html.style-slab #threed .threed-stage {
+    background-color: color-mix(in srgb, var(--slab-sh) 14%, var(--slab));
+    box-shadow: var(--slab-pressed);
+}
+
+/* Unscoped, like .threed-message below and for the same reason: ThreeDCanvas
+   is a shared component and this is its own mount element. */
+.threed-canvas-mount {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#threed .threed-stage canvas {
+    box-shadow: none;
+    border: 0;
+    border-radius: 0;
+}
+
+/* ── Status text over the render ──────────────────────────────────────────
+   Deliberately NOT scoped to #threed: ThreeDCanvas is a shared component and
+   the message element is created imperatively by it, so the rule has to
+   reach every mount of that canvas.
+
+   It used to be bare text on `absolute inset-0`, sitting directly on a 4K
+   sunset HDRI, and the error state added `text-red-400` — #f87171, which is
+   2.1:1 on the light slab and barely better over a bright sky. A chip gives
+   it a ground of its own. */
+.threed-message {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    max-width: min(80%, 400px);
+    padding: 10px 14px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.45;
+    border-radius: 6px;
+    color: var(--td-scrim-ink, #ffffff);
+    background-color: var(--td-scrim, rgb(12 12 14 / 0.86));
+    box-shadow: inset 0 0 0 1px var(--td-line, rgb(255 255 255 / 0.14));
+}
+
+html.style-slab .threed-message {
+    border: 1px solid var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-raised);
+}
+
+/* Failure colour is meaning colour: one value, both grounds, white label. */
+.threed-message.is-error {
+    color: #ffffff;
+    background-color: #b91c1c;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.3);
+}
+
+html.style-slab .threed-message.is-error {
+    border-color: rgb(255 255 255 / 0.3);
+}
+
+/* ── Floating chrome over the stage ──────────────────────────────────────
+   Every one of these was a `backdrop-blur` + `bg-white/*` overlay, i.e. the
+   ground colour with !important under SLAB and therefore invisible. They are
+   panels of chrome now: raised, hairlined, opaque. */
+#threed .threed-hud,
+#threed .threed-dock {
+    position: absolute;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: var(--td-radius-sm);
+    border: 1px solid var(--td-line);
+    background-color: var(--td-scrim);
+    color: var(--td-scrim-ink);
+}
+
+html.style-slab #threed .threed-hud,
+html.style-slab #threed .threed-dock {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-lg);
+    box-shadow: var(--slab-raised);
+    color: var(--slab-ink);
+}
+
+#threed .threed-hud--top {
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(360px, calc(100% - 140px));
+}
+
+#threed .threed-dock--left {
+    bottom: 18px;
+    left: 16px;
+    flex-wrap: wrap;
+    max-width: calc(100% - 32px);
+}
+
+/* The AR dock is a positioner only: what sits in it already carries its own
+   ground, and either state would otherwise be panelled twice. */
+#threed .threed-ar-dock {
+    position: absolute;
+    z-index: 20;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+}
+
+#threed .threed-key {
+    position: absolute;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 36px;
+    height: 34px;
+    min-height: 0;
+    padding: 0;
+    border-radius: var(--td-radius-sm);
+    border: 1px solid var(--td-line);
+    background-color: var(--td-scrim);
+    color: var(--td-scrim-ink);
+    cursor: pointer;
+}
+
+html.style-slab #threed .threed-key {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-lift);
+    color: var(--slab-ink);
+}
+
+html.style-slab #threed .threed-key:hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+}
+
+html.style-slab #threed .threed-key[aria-pressed="true"] {
+    background-image: var(--slab-sheen-on);
+    box-shadow: var(--slab-pressed) !important;
+    color: var(--slab-ink) !important;
+}
+
+html.style-slab #threed .threed-key[aria-pressed="true"]:hover {
+    box-shadow: var(--slab-pressed-deep) !important;
+}
+
+#threed .threed-key--inventory { top: 14px; left: 16px; }
+#threed .threed-key--details   { top: 14px; right: 16px; }
+
+#threed .threed-key:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+#threed .threed-key svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ── Labels, fields and readouts inside the docks ──────────────────────── */
+#threed .threed-hud-label,
+#threed .threed-field-label {
+    flex: none;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--td-dim);
+}
+
+html.style-slab #threed .threed-hud-label,
+html.style-slab #threed .threed-field-label {
+    color: var(--slab-dim);
+}
+
+#threed .threed-slider {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--main-color);
+}
+
+#threed .threed-slider:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+/* A readout is an instrument: pressed, always, and it gets no hover and no
+   press. If a readout could be raised, "raised" would stop meaning "you can
+   press this". Figures are tabular so the number does not jitter as it
+   changes. */
+#threed .threed-readout {
+    flex: none;
+    min-width: 56px;
+    padding: 3px 8px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.3;
+    border-radius: 4px;
+    border: 1px solid var(--td-line);
+    background-color: var(--td-well);
+    color: var(--td-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+html.style-slab #threed .threed-readout {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-pressed);
+    color: var(--slab-ink);
+}
+
+#threed .threed-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+/* A field is a well cut into the slab — pressed, always. */
+#threed .threed-select {
+    min-width: 0;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid var(--td-line);
+    background-color: var(--td-well);
+    color: var(--td-ink);
+}
+
+html.style-slab #threed .threed-select {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-pressed);
+    color: var(--slab-ink);
+}
+
+#threed .threed-select:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+/* ── The wireframe toggle ─────────────────────────────────────────────────
+   Two states, and both are named in the label, so the depth is confirmation
+   rather than the only signal. ON is pressed + tint-on; ON + hover seats
+   deeper. The label stays --slab-ink: on Aqua the accent is 1.7:1 on its own
+   ON fill, so the accent carries the fill and the border only. */
+#threed .threed-toggle {
+    flex: none;
+    min-height: 0;
+    padding: 6px 12px;
+    border-radius: var(--td-radius-sm);
+    border: 1px solid var(--td-line);
+    background-color: var(--td-panel);
+    color: var(--td-dim);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+html.style-slab #threed .threed-toggle {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-lift);
+    color: var(--slab-dim);
+}
+
+html.style-slab #threed .threed-toggle:hover {
+    box-shadow: var(--slab-raised);
+    background-color: var(--slab-tint-hover) !important;
+    color: var(--slab-ink);
+}
+
+html.style-slab #threed .threed-toggle[aria-pressed="true"] {
+    background-color: var(--slab-tint-on) !important;
+    background-image: var(--slab-sheen-on);
+    border-color: var(--slab-edge-on) !important;
+    box-shadow: var(--slab-pressed) !important;
+    color: var(--slab-ink) !important;
+}
+
+html.style-slab #threed .threed-toggle[aria-pressed="true"]:hover {
+    background-color: var(--slab-tint-on-hi) !important;
+    box-shadow: var(--slab-pressed-deep) !important;
+}
+
+#threed .threed-toggle:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+/* ── AR entry point ───────────────────────────────────────────────────────
+   Most items have no captured model — `usdzUrl` is empty on the large
+   majority of the catalogue — and the old markup rendered NOTHING at all in
+   that case, so the one control that answers "can I put this in my room?"
+   was simply absent with no explanation. There are two states now and both
+   are labelled: an action when a file exists, and a readout when it does
+   not. The readout takes pressed geometry and no hover, because it is an
+   instrument reporting a fact, not a control that failed. */
+#threed .threed-ar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    text-decoration: none;
+    border-radius: var(--td-radius-sm);
+    border: 1px solid var(--td-line);
+    background-color: var(--td-scrim);
+    color: var(--td-scrim-ink);
+}
+
+/* The action. AR-capable is the same fact the catalogue badge states, so it
+   keeps the same meaning colour and a white label. */
+#threed a.threed-ar {
+    background-color: var(--td-ar);
+    border-color: rgb(255 255 255 / 0.28);
+    color: #ffffff;
+}
+
+html.style-slab #threed a.threed-ar {
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-lift);
+}
+
+html.style-slab #threed a.threed-ar:hover {
+    box-shadow: var(--slab-raised);
+}
+
+#threed a.threed-ar:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+#threed .threed-ar--empty {
+    align-items: flex-start;
+    max-width: 420px;
+    background-color: var(--td-well);
+    color: var(--td-ink);
+}
+
+html.style-slab #threed .threed-ar--empty {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+    color: var(--slab-ink);
+}
+
+#threed .threed-ar-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+}
+
+#threed .threed-ar--empty .threed-ar-icon {
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    opacity: 0.6;
+}
+
+#threed .threed-ar-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+#threed .threed-ar-head {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+#threed .threed-ar-sub {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--td-dim);
+}
+
+html.style-slab #threed .threed-ar-sub {
+    color: var(--slab-dim);
+}
+
+/* The geometry strategy of the piece on stage, restated beside the empty
+   state so the badge vocabulary is the same in both views. */
+#threed .threed-ar--empty .threed-badge {
+    align-self: flex-start;
+    margin-top: 2px;
+}
+
+/* ── The two sliding side panels ──────────────────────────────────────── */
+#threed .threed-panel {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    z-index: 30;
+    transition: transform 0.3s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #threed .threed-panel { transition: none; }
+}
+
+#threed .threed-panel--left  { left: 0;  width: 280px; max-width: 86vw; }
+#threed .threed-panel--right { right: 0; width: 420px; max-width: 92vw; }
+
+#threed .threed-panel.is-closed.threed-panel--left  { transform: translateX(-100%); }
+#threed .threed-panel.is-closed.threed-panel--right { transform: translateX(100%); }
+
+#threed .threed-panel-inner {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── The details panel ────────────────────────────────────────────────── */
+#threed .threed-detail {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+#threed .threed-detail-head {
+    flex: none;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--td-line);
+}
+
+#threed .threed-detail-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--td-ink);
+}
+
+#threed .threed-detail-sub {
+    margin: 2px 0 0;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--td-dim);
+}
+
+#threed .threed-detail-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* One shared well for the photograph and for its loading / failed states, so
+   the panel does not change shape as the image resolves. */
+#threed .threed-well {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: var(--td-radius-sm);
+    background-color: var(--td-well);
+}
+
+html.style-slab #threed .threed-well {
+    background-color: color-mix(in srgb, var(--slab-sh) 22%, var(--slab));
+    box-shadow: var(--slab-pressed), inset 0 0 0 1px var(--slab-edge);
+}
+
+#threed .threed-well--square { width: 100%; aspect-ratio: 1 / 1; }
+
+#threed .threed-well-note {
+    padding: 8px 12px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--td-dim);
+}
+
+/* Failure is meaning colour and keeps it on both grounds. */
+#threed .threed-well-note.is-error { color: #b91c1c; }
+html.style-slab.theme-talan #threed .threed-well-note.is-error { color: #f87171; }
+
+#threed .threed-detail-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Flat data in a two-line pair. Values opt in to tabular figures: the panel
+   stacks dimensions, weight, price and quantity in one column. */
+#threed .threed-dl {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+#threed .threed-dl-k {
+    font-size: 9.5px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    line-height: 1;
+    color: var(--td-dim);
+}
+
+#threed .threed-dl-v {
+    font-size: 13px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    color: var(--td-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Material colour is a printed physical standard — it rides on the slab and
+   is never remapped into it. The ring is the chip's boundary, not a tint. */
+#threed .threed-swatch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#threed .threed-swatch {
+    width: 44px;
+    height: 22px;
+    flex: none;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25), 0 0 0 1px var(--td-line);
+}
+
+/* ── Narrow ───────────────────────────────────────────────────────────────
+   At 390px the two docks and the camera HUD cannot share a row with the
+   corner keys, so the HUD moves under them and the scene dock spans the
+   width instead of floating in a corner. */
+@media (max-width: 640px) {
+    #threed .threed-catalog { padding: 16px 12px 24px; }
+    #threed .threed-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    #threed .threed-title { font-size: 16px; letter-spacing: 0.08em; }
+    #threed .threed-tabs { padding: 0 10px; gap: 6px; }
+    #threed .threed-tab { padding: 6px 12px; letter-spacing: 0.1em; }
+
+    #threed .threed-hud--top {
+        top: 58px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        transform: none;
+    }
+
+    #threed .threed-dock--left {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        max-width: none;
+        justify-content: space-between;
+    }
+
+    #threed .threed-ar-dock {
+        left: 12px;
+        right: 12px;
+        bottom: 74px;
+        transform: none;
+        max-width: none;
+    }
+
+    #threed .threed-key--inventory { left: 12px; }
+    #threed .threed-key--details   { right: 12px; }
+    #threed .threed-panel--left  { width: 86vw; }
+    #threed .threed-panel--right { width: 92vw; }
+}
+
+/* ── Full-screen scrims ───────────────────────────────────────────────────
+   The viewer and the fullscreen showroom dimmed the page with `bg-black/70`
+   and `bg-black/80`. SLAB flattens every bg-black utility to the SURFACE
+   colour with !important, so on the light slab both resolved to opaque
+   #E7EAE6: the scrim stopped dimming anything and became a solid sheet of
+   page colour with the 3-D view sitting on it. Photographs and a rendered
+   model both need a dark ground to read against, so these keep a real
+   translucent black on every theme and take no token. */
+#threed .threed-scrim,
+.threed-scrim {
+    background-color: rgb(0 0 0 / 0.72) !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.threed-scrim--deep {
+    background-color: rgb(0 0 0 / 0.85) !important;
+}

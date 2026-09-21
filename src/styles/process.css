@@ -1,0 +1,1253 @@
+/* ==========================================================================
+   PROCESS — LABS › Process: the segmentation workspace, its batch pipeline
+   and the inventory vault
+   --------------------------------------------------------------------------
+   The module was drawn for one ground only. Every panel, well, divider and
+   chip in it was `bg-white/*`, `bg-black/*`, `border-white/*` or a literal
+   rgba(255 255 255 / …) over near-black, and its card component asked for
+   `bg-(--stitch-card-bg)/40` — a token that was decommissioned, so the panels
+   had had no background at all for some time.
+
+   SLAB flattens every one of those utilities to the surface colour with
+   !important and remaps `rounded-*`, so on the light slab the whole module
+   dissolved into the page: the tool keys read as three grey dots, the canvas
+   stage as a blank sheet, the log console as loose coloured text on nothing.
+   That is the same failure the trailer map had, and it is fixed the same way —
+   the utilities are gone from the TSX and the drawing takes its ink from the
+   tokens below, defined once per ground.
+
+   THREE THINGS THIS FILE IS CAREFUL ABOUT
+
+   1. Depth is SLAB's, not ours. Rest is `lift`, hover `raised`, an engaged
+      control seats deeper (`pressed-deep`) rather than rising, and containers
+      and readouts are `pressed`. slab.css already walks that scale for every
+      <button>, including the ON state via [data-active="true"], so the
+      toggles here carry that attribute and inherit the walk instead of
+      restating it. What this file adds is the label colour SLAB cannot get
+      right on Aqua (below), and the pieces that are not buttons.
+
+   2. Relief on chrome, flat on data. The panels, the HUD, the segmented bar
+      and the angle strip carry depth. Layer rows, vault rows and log lines do
+      not. Batch operation tiles and gallery tiles do carry relief, because
+      they are objects rather than rows — the same precedent as the inventory
+      grid cards in cards.css.
+
+   3. Meaning colour rides on the slab and is never remapped into it. The log
+      levels, the per-op status, the layer swatches and the mask overlay are
+      information. They keep their hue; on the light ground they are taken to
+      a darker step of the SAME hue so they clear 4.5:1, exactly as the trailer
+      wireframe is re-inked rather than recoloured. --proc-ok/-warn/-bad below.
+
+   THE AQUA ACCENT. #00bcd4 is 1.7:1 for an ON label and 1.9:1 for a focus
+   ring against the light slab. Per the system's accessibility note the accent
+   keeps fill and border and the label takes --slab-ink; where an accent-
+   coloured figure is genuinely the point (the active step label) it uses
+   --proc-accent-ink, the documented #005f68. slab.css paints ON labels with
+   `color: var(--main-color) !important` at (0,3,2), so the corrections here
+   are id-scoped and !important to outrank it. When Ramses lands the token fix
+   in tokens.css those two rules become no-ops rather than wrong.
+   ========================================================================== */
+
+/* ── Ground tokens ─────────────────────────────────────────────────────────
+   Dark ground is the default: ROCK on either theme, and the Talan slab. The
+   values are the module's original ones, so nothing moves where it already
+   worked. */
+
+#process {
+    --proc-surface:     rgb(255 255 255 / 0.04);
+    --proc-surface-2:   rgb(0 0 0 / 0.28);
+    --proc-ink:         rgb(255 255 255 / 0.92);
+    --proc-ink-dim:     rgb(255 255 255 / 0.55);
+    --proc-ink-faint:   rgb(255 255 255 / 0.32);
+    --proc-edge:        rgb(255 255 255 / 0.10);
+    --proc-edge-strong: rgb(255 255 255 / 0.22);
+    --proc-grid:        rgb(255 255 255 / 0.07);
+    --proc-scrim:       rgb(0 0 0 / 0.72);
+    --proc-well:        rgb(0 0 0 / 0.35);
+
+    --proc-accent:      var(--main-color);
+    --proc-accent-ink:  var(--main-color);
+    --proc-on-fill:     color-mix(in srgb, var(--main-color) 18%, transparent);
+    --proc-on-edge:     color-mix(in srgb, var(--main-color) 45%, transparent);
+
+    /* Meaning colour. Hue is fixed; only the step moves per ground. */
+    --proc-ok:          #34d399;
+    --proc-warn:        #fbbf24;
+    --proc-bad:         #fb7185;
+    --proc-mask:        #fbbf24;
+
+    /* Relief. ROCK has no bevel, so these are the flat/glass equivalents and
+       every rule below can be written once against the token. */
+    --proc-lift:        none;
+    --proc-raised:      0 12px 28px -18px rgb(0 0 0 / 0.65);
+    --proc-float:       0 22px 48px -24px rgb(0 0 0 / 0.7);
+    --proc-pressed:     inset 0 1px 0 rgb(255 255 255 / 0.04);
+    --proc-pressed-deep:inset 0 2px 6px rgb(0 0 0 / 0.45);
+    --proc-sheen:       none;
+    --proc-sheen-in:    none;
+
+    --proc-r-sm:        4px;
+    --proc-r-md:        6px;
+    --proc-r-lg:        10px;
+    --proc-ease:        0.16s cubic-bezier(0.4, 0, 0.2, 1);
+
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    color: var(--proc-ink);
+}
+
+/* Light ground — Aqua, under either style. The alphas drop because dark-on-
+   light reads heavier at the same opacity, and the meaning hues step down to
+   their 600/700 weights so coloured text clears 4.5:1 on a #e7eae6 ground
+   (emerald 4.8:1, amber 4.6:1, rose 5.6:1 measured against the light slab). */
+
+html.theme-aqua #process {
+    --proc-surface:     rgb(20 40 38 / 0.05);
+    --proc-surface-2:   rgb(20 40 38 / 0.07);
+    --proc-ink:         #1a1614;
+    --proc-ink-dim:     #444b47;
+    --proc-ink-faint:   rgb(26 22 20 / 0.42);
+    --proc-edge:        rgb(20 40 38 / 0.16);
+    --proc-edge-strong: rgb(20 40 38 / 0.34);
+    --proc-grid:        rgb(20 40 38 / 0.10);
+    --proc-scrim:       rgb(18 24 24 / 0.62);
+    --proc-well:        rgb(20 40 38 / 0.08);
+
+    --proc-accent-ink:  #005f68;
+    --proc-ok:          #047857;
+    --proc-warn:        #b45309;
+    --proc-bad:         #be123c;
+    --proc-mask:        #b45309;
+}
+
+/* SLAB — hand the module the system's own surface, ink, hairline and the six
+   step shadows. Both themes are covered in one block because the slab tokens
+   are already per-theme; only the meaning colours need a per-ground step, and
+   those came from the two blocks above. */
+
+html.style-slab #process {
+    --proc-surface:     var(--slab);
+    --proc-surface-2:   var(--slab);
+    --proc-ink:         var(--slab-ink);
+    --proc-ink-dim:     var(--slab-dim);
+    --proc-ink-faint:   var(--slab-dim);
+    --proc-edge:        var(--slab-edge);
+    --proc-edge-strong: color-mix(in srgb, var(--slab-sh) 70%, transparent);
+    --proc-grid:        color-mix(in srgb, var(--slab-sh) 55%, transparent);
+    --proc-well:        var(--slab);
+
+    --proc-on-fill:     var(--slab-tint-on);
+    --proc-on-edge:     var(--slab-edge-on);
+
+    --proc-lift:        var(--slab-lift);
+    --proc-raised:      var(--slab-raised);
+    --proc-float:       var(--slab-float);
+    --proc-pressed:     var(--slab-pressed);
+    --proc-pressed-deep:var(--slab-pressed-deep);
+    --proc-sheen:       var(--slab-sheen);
+    --proc-sheen-in:    var(--slab-sheen-in);
+
+    --proc-r-sm:        var(--slab-r-sm);
+    --proc-r-md:        var(--slab-r-md);
+    --proc-r-lg:        var(--slab-r-lg);
+    --proc-ease:        var(--slab-ease);
+}
+
+/* ── Shell ────────────────────────────────────────────────────────────────
+   The module is one column: the tab body takes whatever is left. */
+
+#process .proc-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ── Panel ────────────────────────────────────────────────────────────────
+   Static chrome, so `raised` (step 2), never `float` — nothing here is itself
+   a hover target. Replaces StitchCard, whose background token no longer
+   exists. */
+
+#process .proc-panel {
+    background-color: var(--proc-surface);
+    background-image: var(--proc-sheen);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-lg);
+    box-shadow: var(--proc-raised);
+    color: var(--proc-ink);
+    min-width: 0;
+}
+
+/* A panel that HOLDS rather than presents — the console and the log column.
+   Pressed, per the elevation guideline's container rule. */
+#process .proc-panel--well {
+    background-image: var(--proc-sheen-in);
+    box-shadow: var(--proc-pressed);
+}
+
+#process .proc-divider-b { border-bottom: 1px solid var(--proc-edge); }
+#process .proc-divider-t { border-top: 1px solid var(--proc-edge); }
+#process .proc-rule-v {
+    width: 1px;
+    align-self: stretch;
+    background-color: var(--proc-edge);
+}
+
+#process .proc-title { color: var(--proc-ink); }
+#process .proc-title-icon { color: var(--proc-ink-dim); }
+
+#process .proc-dim   { color: var(--proc-ink-dim); }
+#process .proc-faint { color: var(--proc-ink-faint); }
+
+/* Both webfaces ship proportional digits, so every column of figures in this
+   module — op percentages, angle numbers, mask counts, dimensions, weights,
+   log timestamps — opts in. */
+#process .proc-figures,
+#process .proc-readout,
+#process .proc-chip,
+#process .proc-log {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────
+   slab.css already gives every <button> the hairline, the lift, the hover
+   raise, the active press, the disabled flat and the focus outline. These
+   rules carry the same walk to the non-SLAB grounds and undo index.css's
+   global 40px/8px-16px button box, which was sized for the top bar and is far
+   too large for a dense workspace. */
+
+#process button {
+    min-height: 0;
+    padding: 0;
+    border-radius: var(--proc-r-sm);
+}
+
+#process .proc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 12px;
+    min-height: 30px;
+    background-color: var(--proc-surface);
+    background-image: var(--proc-sheen);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: var(--proc-lift);
+    color: var(--proc-ink);
+    cursor: pointer;
+    transition: box-shadow var(--proc-ease), background-color var(--proc-ease),
+                border-color var(--proc-ease), color var(--proc-ease);
+}
+
+#process .proc-btn:not(:disabled):hover {
+    box-shadow: var(--proc-raised);
+    border-color: var(--proc-edge-strong);
+}
+
+#process .proc-btn:disabled {
+    box-shadow: none;
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Square key. Sized here rather than by the global button rule. */
+#process .proc-key {
+    width: 32px;
+    height: 30px;
+    padding: 0;
+    flex: none;
+}
+
+#process .proc-key--lg { width: 36px; height: 34px; }
+
+/* Icon-only affordance inside a row or a well: no box at rest, so it does not
+   compete with the container it sits in, but it still takes a hairline and a
+   lift the moment it is hovered. */
+#process .proc-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border: 1px solid transparent;
+    border-radius: var(--proc-r-sm);
+    background-color: transparent;
+    box-shadow: none;
+    color: var(--proc-ink-dim);
+    cursor: pointer;
+    transition: box-shadow var(--proc-ease), background-color var(--proc-ease),
+                border-color var(--proc-ease), color var(--proc-ease);
+}
+
+#process .proc-icon-btn:hover {
+    border-color: var(--proc-edge);
+    box-shadow: var(--proc-lift);
+    color: var(--proc-ink);
+}
+
+#process .proc-icon-btn--danger:hover { color: var(--proc-bad); }
+
+/* A text-only action. Still a control, so it still needs a focus ring, which
+   slab.css supplies; it takes no box until hover. */
+#process .proc-btn-quiet {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px;
+    min-height: 26px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--proc-r-sm);
+    box-shadow: none;
+    color: var(--proc-ink-dim);
+    cursor: pointer;
+    transition: color var(--proc-ease), border-color var(--proc-ease);
+}
+
+#process .proc-btn-quiet:hover { color: var(--proc-ink); border-color: var(--proc-edge); }
+#process .proc-btn-quiet--danger:hover { color: var(--proc-bad); border-color: var(--proc-bad); }
+
+/* The primary action. The accent carries the fill and the border; the label
+   is ink, because #00bcd4 under black or white text is the contrast failure
+   the accessibility guideline documents. */
+#process .proc-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px;
+    min-height: 34px;
+    background-color: var(--proc-on-fill);
+    background-image: none;
+    border: 1px solid var(--proc-on-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: var(--proc-lift);
+    color: var(--proc-ink);
+    cursor: pointer;
+    transition: box-shadow var(--proc-ease), background-color var(--proc-ease),
+                border-color var(--proc-ease), color var(--proc-ease);
+}
+
+#process .proc-btn-primary:not(:disabled):hover {
+    box-shadow: var(--proc-raised);
+    background-color: color-mix(in srgb, var(--proc-accent) 26%, transparent);
+}
+
+html.style-slab #process .proc-btn-primary:not(:disabled):hover {
+    background-color: var(--slab-tint-on-hi) !important;
+}
+
+#process .proc-btn-primary:disabled {
+    box-shadow: none;
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#process .proc-btn-go {
+    width: 100%;
+    min-height: 52px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Stop is a meaning colour — it is signal, not chrome, so it keeps a solid
+   rose fill with white text on both grounds, per rule 3. */
+#process .proc-btn-stop {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 52px;
+    background-color: #e11d48;
+    background-image: none;
+    border: 1px solid rgb(0 0 0 / 0.2);
+    border-radius: var(--proc-r-md);
+    box-shadow: var(--proc-lift);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+#process .proc-btn-stop:hover { box-shadow: var(--proc-raised); filter: brightness(1.06); }
+
+/* slab.css repaints any hovered or pressed <button> with --slab-tint-hover /
+   --slab !important. Stop is signal, not chrome, so its fill has to survive
+   both — brightness alone carries the hover, and the press is the shadow. */
+html.style-slab #process .proc-btn-stop,
+html.style-slab #process .proc-btn-stop:hover,
+html.style-slab #process .proc-btn-stop:active {
+    background-color: #e11d48 !important;
+}
+
+/* ── ON state ─────────────────────────────────────────────────────────────
+   The toggles carry data-active="true" so slab.css supplies pressed + tint-on
+   + edge-on, and pressed-deep on hover. Here is the non-SLAB equivalent, and
+   the Aqua label correction. */
+
+#process .proc-toggle[data-active="true"],
+#process .proc-seg[data-active="true"] {
+    background-color: var(--proc-on-fill);
+    border-color: var(--proc-on-edge);
+    box-shadow: var(--proc-pressed);
+    color: var(--proc-ink);
+}
+
+#process .proc-toggle[data-active="true"]:hover,
+#process .proc-seg[data-active="true"]:hover {
+    box-shadow: var(--proc-pressed-deep);
+}
+
+/* Aqua only. slab.css paints an ON label `var(--main-color) !important` at
+   (0,3,2); on the light slab that is 1.7:1. This is (1,3,2) and puts the
+   label back on --slab-ink, which is what the accessibility guideline's
+   second option prescribes — the accent still carries tint and border, so the
+   state is not being weakened, only made readable. */
+html.style-slab.theme-aqua #process button[data-active="true"],
+html.style-slab.theme-aqua #process button[data-active="true"] span,
+html.style-slab.theme-aqua #process button[aria-pressed="true"],
+html.style-slab.theme-aqua #process button[aria-pressed="true"] span {
+    color: var(--slab-ink) !important;
+}
+
+/* The focus ring has the same problem: 2px of #00bcd4 is 1.9:1 on the light
+   slab, under the 3:1 WCAG 2.2 asks of a focus indicator. An ink ring with
+   the accent as its inner companion clears it, which is the guideline's third
+   option. Talan keeps the plain accent ring, which passes at 6.6:1. */
+html.style-slab.theme-aqua #process :focus-visible {
+    outline: 2px solid var(--slab-ink);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--proc-accent) 40%, transparent);
+}
+
+/* ── Wells and readouts ───────────────────────────────────────────────────
+   A well contains; a readout reports. Both are pressed, and a readout takes
+   no hover and no press — it is an instrument, not a control. */
+
+#process .proc-well {
+    background-color: var(--proc-well);
+    background-image: var(--proc-sheen-in);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: var(--proc-pressed);
+    overflow: hidden;
+}
+
+#process .proc-readout {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    background-color: var(--proc-well);
+    background-image: var(--proc-sheen-in);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: var(--proc-pressed);
+    color: var(--proc-ink);
+}
+
+#process .proc-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    background-color: var(--proc-well);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: var(--proc-pressed);
+    color: var(--proc-ink);
+}
+
+/* index.css:806 gives every bare `input` a 9999px pill with `background`,
+   `border` and `border-radius` all !important, and input[type=text] adds
+   8px/12px of padding. An id-scoped rule outranks both, but only on the
+   properties it restates, so the ones that matter carry !important too. */
+#process .proc-input {
+    background-color: var(--proc-well) !important;
+    background-image: var(--proc-sheen-in) !important;
+    border: 1px solid var(--proc-edge) !important;
+    border-radius: var(--proc-r-sm) !important;
+    box-shadow: var(--proc-pressed);
+    color: var(--proc-ink) !important;
+    min-height: 30px;
+    padding: 0 10px !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* Room for the leading glyph in the vault filter. */
+#process .proc-input--search { padding-left: 28px !important; }
+
+#process .proc-input::placeholder { color: var(--proc-ink-faint) !important; opacity: 1; }
+
+/* ── Badges ───────────────────────────────────────────────────────────────
+   A badge here is either a count (a readout) or a state (meaning colour on
+   the slab, never into it). */
+
+#process .proc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border: 1px solid currentColor;
+    border-radius: var(--proc-r-sm);
+    background-color: transparent;
+}
+
+#process .proc-badge--ok    { color: var(--proc-ok); }
+#process .proc-badge--warn  { color: var(--proc-warn); }
+#process .proc-badge--bad   { color: var(--proc-bad); }
+
+#process .proc-badge--muted {
+    color: var(--proc-ink-dim);
+    border-color: var(--proc-edge);
+    background-color: var(--proc-well);
+    box-shadow: var(--proc-pressed);
+}
+
+/* ── Segmented bar (vault filters) ────────────────────────────────────────
+   The bar is a container, so it is pressed; the keys inside walk the scale. */
+
+#process .proc-segbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background-color: var(--proc-well);
+    background-image: var(--proc-sheen-in);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-md);
+    box-shadow: var(--proc-pressed);
+    min-width: 0;
+}
+
+#process .proc-seg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    min-height: 30px;
+    white-space: nowrap;
+    background-color: var(--proc-surface);
+    background-image: var(--proc-sheen);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: var(--proc-lift);
+    color: var(--proc-ink-dim);
+    cursor: pointer;
+    transition: box-shadow var(--proc-ease), background-color var(--proc-ease),
+                border-color var(--proc-ease), color var(--proc-ease);
+}
+
+#process .proc-seg:hover { box-shadow: var(--proc-raised); color: var(--proc-ink); }
+
+/* ── The HUD ──────────────────────────────────────────────────────────────
+   A docked toolbar, not an overlay. It used to be `absolute top-6 left-1/2`
+   over the canvas with `bg-black/40 backdrop-blur-3xl` — flattened to an
+   opaque slab that sat on top of the drawing. It is now a row of the
+   workspace column, above the stage. */
+
+#process .proc-hud {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    background-color: var(--proc-surface);
+    background-image: var(--proc-sheen);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-lg);
+    box-shadow: var(--proc-raised);
+}
+
+/* ── The stage ────────────────────────────────────────────────────────────
+   The stage holds the canvas, so it is pressed. `canvas` takes no relief —
+   the system exempts canvas and svg from every relief rule — so the bitmap
+   gets a hairline and a radius and nothing else. */
+
+#process .proc-stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-color: var(--proc-well);
+    background-image: var(--proc-sheen-in);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-lg);
+    box-shadow: var(--proc-pressed);
+}
+
+/* The 20px setting-out grid. Was two rgba(255 255 255 / .1) gradients at 2%
+   opacity, i.e. nothing at all on a light ground. */
+#process .proc-grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(var(--proc-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--proc-grid) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+#process .proc-canvas {
+    position: relative;
+    z-index: 1;
+    max-width: 100%;
+    max-height: 100%;
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-md);
+    background-color: var(--proc-well);
+}
+
+/* ── Angle strip ──────────────────────────────────────────────────────────
+   Docked to the foot of the stage. Each thumb is an object, so it takes
+   relief; the selected one seats into the strip rather than rising. */
+
+#process .proc-anglebar {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100% - 24px);
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 8px 10px;
+    background-color: var(--proc-surface);
+    background-image: var(--proc-sheen);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-lg);
+    box-shadow: var(--proc-raised);
+}
+
+#process .proc-anglebar::-webkit-scrollbar { display: none; }
+
+#process .proc-angle {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    flex: none;
+    overflow: hidden;
+    padding: 0;
+    background-color: var(--proc-well);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-md);
+    box-shadow: var(--proc-lift);
+    cursor: pointer;
+    transition: box-shadow var(--proc-ease), border-color var(--proc-ease);
+}
+
+#process .proc-angle:hover { box-shadow: var(--proc-raised); }
+
+#process .proc-angle[data-active="true"] {
+    border-color: var(--proc-on-edge);
+    box-shadow: var(--proc-pressed);
+}
+
+#process .proc-angle[data-active="true"]:hover { box-shadow: var(--proc-pressed-deep); }
+
+/* The index on the thumb is a figure over a photograph, so it keeps a solid
+   plate and white text on both grounds — the same exception the rule-label
+   chips take on the trailer map. */
+#process .proc-angle-no {
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    padding: 0 4px;
+    border-radius: 3px;
+    background-color: rgb(0 0 0 / 0.66);
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Overlays ─────────────────────────────────────────────────────────────
+   A scrim is one of the few places a literal is right: it is not a surface,
+   it is an absence of one. It must not be `bg-black/*`, which SLAB flattens
+   into an opaque panel — that is what turned the refinement sheet into a
+   solid slab with the editor missing. */
+
+#process .proc-scrim {
+    position: absolute;
+    inset: 0;
+    background-color: var(--proc-scrim);
+    backdrop-filter: blur(2px);
+}
+
+#process .proc-maskwell {
+    background-color: var(--proc-well);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-lg);
+    box-shadow: var(--proc-pressed);
+    overflow: hidden;
+}
+
+#process .proc-telemetry {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    background-color: color-mix(in srgb, var(--proc-scrim) 45%, transparent);
+}
+
+#process .proc-spinner {
+    width: 104px;
+    height: 104px;
+    border-radius: 999px;
+    border: 2px solid var(--proc-edge);
+    border-top-color: var(--proc-accent);
+    animation: proc-spin 0.9s linear infinite;
+}
+
+#process .proc-spinner-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background-color: var(--proc-surface);
+    border: 1px solid var(--proc-edge);
+    box-shadow: var(--proc-raised);
+    color: var(--proc-ink);
+}
+
+#process .proc-telemetry-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-top: 28px;
+    padding: 8px 18px;
+    background-color: var(--proc-surface);
+    background-image: var(--proc-sheen);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-lg);
+    box-shadow: var(--proc-raised);
+    color: var(--proc-accent-ink);
+}
+
+@keyframes proc-spin { to { transform: rotate(360deg); } }
+
+/* ── Progress ─────────────────────────────────────────────────────────────
+   A progress track is a container: pressed, no hover. The fill is data, so it
+   keeps the accent, and "done" keeps the success hue. */
+
+#process .proc-progress {
+    width: 100%;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background-color: var(--proc-well);
+    box-shadow: var(--proc-pressed);
+}
+
+#process .proc-progress-fill {
+    height: 100%;
+    background-color: var(--proc-accent);
+    transition: width 0.3s linear;
+}
+
+#process .proc-progress-fill.is-done { background-color: var(--proc-ok); }
+
+/* ── Sliders ──────────────────────────────────────────────────────────────
+   slab.css styles input[type=range] fully; this only supplies the non-SLAB
+   track and keeps the accent on the thumb. */
+
+#process .proc-range {
+    width: 100%;
+    accent-color: var(--proc-accent);
+}
+
+html:not(.style-slab) #process .proc-range {
+    height: 4px;
+    border-radius: 999px;
+    background-color: var(--proc-well);
+}
+
+/* ── Layer rows ───────────────────────────────────────────────────────────
+   Data. Flat, per rule 2 — no shadow at rest and none on hover. The active
+   row is marked by fill and hairline, which is a colour change rather than a
+   depth one and so survives forced-colors. */
+
+#process .proc-layer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid transparent;
+    border-radius: var(--proc-r-sm);
+    background-color: transparent;
+    box-shadow: none;
+    transition: background-color var(--proc-ease), border-color var(--proc-ease);
+}
+
+#process .proc-layer:hover { background-color: var(--proc-surface); }
+
+#process .proc-layer.is-active {
+    background-color: var(--proc-on-fill);
+    border-color: var(--proc-on-edge);
+}
+
+#process .proc-layer-thumb {
+    width: 30px;
+    height: 30px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-color: var(--proc-well);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: var(--proc-pressed);
+}
+
+/* The layer swatch is the mask's own colour — data. Left exactly as set. */
+#process .proc-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background-color: currentColor;
+}
+
+#process .proc-swatch-btn {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    padding: 0;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-color: var(--proc-swatch-fill, transparent);
+    box-shadow: var(--proc-lift);
+    cursor: pointer;
+}
+
+#process .proc-swatch-btn[data-active="true"] {
+    border-color: var(--proc-ink);
+    box-shadow: var(--proc-pressed);
+}
+
+/* The swatch fill is the mask's own colour — data — and it arrives as the
+   inline --proc-swatch-fill rather than an inline background, because SLAB's
+   ON and hover rules repaint a button with --slab-tint-on / --slab-tint-hover
+   !important and an !important author rule outranks an inline declaration.
+   Restated here at (1,4,1) so the colour survives every state. */
+html.style-slab #process .proc-swatch-btn,
+html.style-slab #process .proc-swatch-btn:hover,
+html.style-slab #process .proc-swatch-btn:active,
+html.style-slab #process .proc-swatch-btn[data-active="true"],
+html.style-slab #process .proc-swatch-btn[data-active="true"]:hover {
+    background-color: var(--proc-swatch-fill) !important;
+}
+
+/* The eye and the include-in-output tick. Their ON colour is meaning, not
+   chrome: visible is the accent, included is the mask hue. */
+#process .proc-layer-flag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex: none;
+    border: 1px solid transparent;
+    border-radius: var(--proc-r-sm);
+    background: transparent;
+    box-shadow: none;
+    color: var(--proc-ink-faint);
+    cursor: pointer;
+}
+
+#process .proc-layer-flag[data-active="true"] { color: var(--proc-accent-ink); }
+#process .proc-layer-flag--out[data-active="true"] { color: var(--proc-mask); }
+
+/* These two are the one place the Aqua label correction above must not reach:
+   the glyph colour IS the state — accent for visible, mask hue for included —
+   rather than a label riding on an accent fill, and both are already the
+   darkened light-ground steps (#005f68 and #b45309, 7.0:1 and 4.6:1 on the
+   light slab). (1,4,1) so it outranks the (1,3,2) correction. */
+html.style-slab.theme-aqua #process button.proc-layer-flag[data-active="true"],
+html.style-slab.theme-aqua #process button.proc-layer-flag[aria-pressed="true"] {
+    color: var(--proc-accent-ink) !important;
+}
+
+html.style-slab.theme-aqua #process button.proc-layer-flag--out[data-active="true"],
+html.style-slab.theme-aqua #process button.proc-layer-flag--out[aria-pressed="true"] {
+    color: var(--proc-mask) !important;
+}
+
+/* ── Checkbox tile ────────────────────────────────────────────────────────
+   These are divs, not inputs, so slab.css's checkbox walk does not reach
+   them. Same grammar, restated: a pressable tile that seats in when checked,
+   with a drawn tick rather than a glyph. */
+
+#process .proc-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    background-color: var(--proc-surface);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-md);
+    box-shadow: var(--proc-lift);
+    color: transparent;
+    transition: box-shadow var(--proc-ease), background-color var(--proc-ease),
+                border-color var(--proc-ease), color var(--proc-ease);
+}
+
+#process .proc-check.is-on {
+    background-color: var(--proc-on-fill);
+    border-color: var(--proc-on-edge);
+    box-shadow: var(--proc-pressed);
+    color: var(--proc-ink);
+}
+
+#process .proc-check--lg { width: 22px; height: 22px; }
+
+/* ── Batch operation tile ─────────────────────────────────────────────────
+   An object, not a row — the same reading as the inventory grid cards — so it
+   carries relief: lift at rest, raised toward the pointer, and it seats into
+   the slab when it is selected for the run. */
+
+#process .proc-op {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    min-width: 0;
+    background-color: var(--proc-surface);
+    background-image: var(--proc-sheen);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-md);
+    box-shadow: var(--proc-lift);
+    cursor: pointer;
+    transition: box-shadow var(--proc-ease), background-color var(--proc-ease),
+                border-color var(--proc-ease), opacity var(--proc-ease);
+}
+
+#process .proc-op:hover { box-shadow: var(--proc-raised); }
+
+#process .proc-op.is-selected {
+    background-color: var(--proc-on-fill);
+    background-image: var(--proc-sheen-in);
+    border-color: var(--proc-on-edge);
+    box-shadow: var(--proc-pressed);
+}
+
+#process .proc-op.is-selected:hover { box-shadow: var(--proc-pressed-deep); }
+
+/* Not selected reads as "not in this run". It was `opacity-50 gray-scale` —
+   `gray-scale` is not a Tailwind class and never did anything; the intent is
+   kept with a real filter and a lighter dim, because 50% on a mid-tone ground
+   takes the caption below 4.5:1. */
+#process .proc-op:not(.is-selected) {
+    opacity: 0.78;
+    filter: saturate(0.35);
+}
+
+#process .proc-op:not(.is-selected):hover { opacity: 1; filter: none; }
+
+#process .proc-op-media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background-color: var(--proc-well);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: var(--proc-pressed);
+}
+
+/* Status pips sit on a photograph, so they keep a solid fill and white ink. */
+#process .proc-pip {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+    border-radius: 999px;
+    color: #ffffff;
+}
+
+#process .proc-pip--ok  { background-color: #059669; }
+#process .proc-pip--bad { background-color: #e11d48; }
+
+#process .proc-op-busy {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--proc-scrim);
+}
+
+#process .proc-op-busy .proc-spinner { width: 30px; height: 30px; }
+
+/* ── Vault rows ───────────────────────────────────────────────────────────
+   Data. Flat: a hairline, a fill on hover, and a tint plus accent hairline
+   when selected. No shadow on any of the 500-odd rows. */
+
+#process .proc-vault-row {
+    display: flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    min-height: 78px;
+    overflow: hidden;
+    cursor: pointer;
+    background-color: var(--proc-surface);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-sm);
+    box-shadow: none;
+    transition: background-color var(--proc-ease), border-color var(--proc-ease);
+}
+
+#process .proc-vault-row:hover { border-color: var(--proc-edge-strong); }
+
+#process .proc-vault-row.is-selected {
+    background-color: var(--proc-on-fill);
+    border-color: var(--proc-on-edge);
+}
+
+#process .proc-vault-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    flex: none;
+    border-right: 1px solid var(--proc-edge);
+}
+
+#process .proc-vault-check:hover { background-color: var(--proc-surface-2); }
+
+#process .proc-vault-media {
+    width: 68px;
+    flex: none;
+    overflow: hidden;
+    background-color: var(--proc-well);
+    border-right: 1px solid var(--proc-edge);
+}
+
+#process .proc-vault-media img { width: 100%; height: 100%; object-fit: cover; }
+
+#process .proc-vault-label {
+    color: var(--proc-ink-dim);
+    letter-spacing: 0.18em;
+}
+
+/* ── Gallery tiles ────────────────────────────────────────────────────────
+   Objects, like the batch tiles. */
+
+#process .proc-gal {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    cursor: pointer;
+    background-color: var(--proc-well);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-lg);
+    box-shadow: var(--proc-lift);
+    transition: box-shadow var(--proc-ease), border-color var(--proc-ease);
+}
+
+#process .proc-gal:hover { box-shadow: var(--proc-raised); border-color: var(--proc-on-edge); }
+
+/* The caption sits over the photograph, so it takes a plate rather than
+   relying on the image being dark enough. */
+#process .proc-gal-caption {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 5px 9px;
+    border-radius: var(--proc-r-sm);
+    background-color: rgb(0 0 0 / 0.62);
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+}
+
+#process .proc-gal-open {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background-color: var(--proc-mask);
+    color: #ffffff;
+    opacity: 0;
+    transition: opacity var(--proc-ease);
+}
+
+#process .proc-gal:hover .proc-gal-open { opacity: 1; }
+
+/* The mask overlay is the module's subject. It keeps its hue on both grounds
+   — it is data drawn over a photograph, not chrome. */
+#process .proc-mask-overlay { color: var(--proc-mask); }
+
+/* ── Console ──────────────────────────────────────────────────────────────
+   A readout: pressed well, mono, tabular figures, and no hover and no press
+   anywhere in it. The level colours are the information. */
+
+#process .proc-log {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+    background-color: var(--proc-well);
+    background-image: var(--proc-sheen-in);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-md);
+    box-shadow: var(--proc-pressed);
+}
+
+#process .proc-log-row {
+    display: flex;
+    gap: 8px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--proc-edge);
+}
+
+#process .proc-log-row:last-child { border-bottom: 0; }
+
+#process .proc-log-time { flex: none; color: var(--proc-ink-dim); }
+#process .proc-log-msg  { color: var(--proc-ink); min-width: 0; overflow-wrap: anywhere; }
+
+#process .proc-log-msg--ok   { color: var(--proc-ok); }
+#process .proc-log-msg--warn { color: var(--proc-warn); }
+#process .proc-log-msg--bad  { color: var(--proc-bad); }
+
+#process .proc-terminal {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background-color: var(--proc-surface);
+    background-image: var(--proc-sheen);
+    border: 1px solid var(--proc-edge);
+    border-radius: var(--proc-r-lg);
+    box-shadow: var(--proc-float);
+}
+
+/* ── Empty states ─────────────────────────────────────────────────────────
+   These were `text-white/10`, floored by SLAB to --slab-dim but invisible
+   under ROCK-on-light. A dim tone that is actually readable, and centred. */
+
+#process .proc-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    height: 100%;
+    padding: 24px;
+    text-align: center;
+    color: var(--proc-ink-dim);
+}
+
+/* ── Layout and density ───────────────────────────────────────────────────
+   Not a redesign — the arrangement is unchanged. What moves is the point at
+   which the fixed 320px inspector stops fitting beside the stage. It never
+   did below about 900px: the stage collapsed to a sliver and the canvas,
+   sized min(76vh, 76vw), overflowed it. Below 900px the column stacks; below
+   640px the batch grid drops to two and the vault row wraps its metrics. */
+
+#process .proc-workspace {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    overflow: hidden;
+}
+
+#process .proc-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+#process .proc-aside {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 300px;
+    flex: none;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* The batch tab is the same two-column arrangement — queue beside console —
+   inside a centred measure, so it needs the same stacking point as the
+   workspace rather than keeping a 300px console beside a 90px queue. */
+#process .proc-batch {
+    display: flex;
+    gap: 12px;
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    min-height: 0;
+}
+
+@media (max-width: 900px) {
+    #process .proc-workspace {
+        flex-direction: column;
+        padding: 10px;
+        overflow-y: auto;
+    }
+
+    #process .proc-aside {
+        width: 100%;
+        flex: none;
+        min-height: 260px;
+    }
+
+    #process .proc-stack { min-height: 320px; }
+
+    #process .proc-batch { flex-direction: column; }
+
+    #process .proc-canvas { width: min(72vw, 72vh) !important; height: min(72vw, 72vh) !important; }
+}
+
+@media (max-width: 640px) {
+    #process .proc-hud { padding: 5px 6px; gap: 4px; }
+    #process .proc-key { width: 30px; height: 28px; }
+    #process .proc-angle { width: 44px; height: 44px; }
+    #process .proc-btn { padding: 0 9px; }
+    #process .proc-segbar { flex-wrap: wrap; }
+    #process .proc-vault-row { min-height: 0; }
+    #process .proc-vault-media { width: 56px; }
+}
+
+/* Reduced motion: the states here are shadow and colour, so nothing is lost. */
+@media (prefers-reduced-motion: reduce) {
+    #process .proc-spinner { animation-duration: 3s; }
+    #process *,
+    #process *::before,
+    #process *::after {
+        transition-duration: 0.01ms !important;
+    }
+}

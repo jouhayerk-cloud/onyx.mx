@@ -82,7 +82,7 @@ export function CatalogMarketView() {
         };
 
         return (
-            <div className="flex flex-col md:flex-row grow overflow-hidden relative m-4 mt-0 gap-4 h-full">
+            <div id="catalog" className="catalog-hub flex flex-col md:flex-row grow overflow-hidden relative m-4 mt-0 gap-4 h-full">
                 {/* Inventory Panel - shows on desktop, or on mobile if isInventoryPanelOpen */}
                 <div className={` ${isInventoryPanelOpen ? 'flex' : 'hidden'} flex-col w-full h-full md:flex md:w-[280px] md:shrink-0`}>
                     <MarketInventoryView />
@@ -102,7 +102,7 @@ export function CatalogMarketView() {
     } 
 
     return (
-         <div className="flex flex-col md:flex-row grow overflow-hidden relative m-4 mt-0 gap-4 h-full">
+         <div id="catalog" className="catalog-hub flex flex-col md:flex-row grow overflow-hidden relative m-4 mt-0 gap-4 h-full">
             {/* Main Content: Inventory Grid */}
             <div className="flex-grow h-full glass-panel overflow-hidden p-4">
               <InventoryImages mode="catalog" />

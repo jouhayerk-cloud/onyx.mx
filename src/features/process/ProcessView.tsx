@@ -109,32 +109,41 @@ const getApiKey = () => {
 
 /* --- Aesthetic Components --- */
 
+/* The card asked for `bg-(--stitch-card-bg)/40`, a token that no longer
+   exists, so the panels had no background at all; the backdrop-blur and the
+   border-white/5 beside it are both flattened to the surface by SLAB. It is
+   the module's panel, so it takes .proc-panel and its `raised` step. */
 const StitchCard = ({ children, className = "", noPadding = false }: { children: React.ReactNode, className?: string, noPadding?: boolean }) => (
-    <div className={`bg-(--stitch-card-bg)/40 backdrop-blur-xl border border-white/5 rounded-xl ${noPadding ? '' : 'p-4'} ${className}`}>
+    <div className={`proc-panel ${noPadding ? '' : 'p-3'} ${className}`}>
         {children}
     </div>
 );
 
+/* The icon was `text-(--main-color)`: 1.7:1 on the light slab. Per the
+   accessibility note the accent keeps fill and border and label ink comes
+   from the slab, so the glyph drops to --proc-ink-dim and the title to ink. */
 const SectionTitle = ({ title, icon: Icon }: { title: string, icon?: any }) => (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5 min-w-0">
         {Icon && (
-            <div className="text-(--main-color)">
-                <Icon size={18} />
+            <div className="proc-title-icon flex items-center">
+                <Icon size={16} />
             </div>
         )}
-        <h3 className="text-[12px] font-black uppercase tracking-[0.2em]">{title}</h3>
+        <h3 className="proc-title text-[11px] font-black uppercase tracking-[0.2em] truncate">{title}</h3>
     </div>
 );
 
 const Badge = ({ children, color = "main" }: { children: React.ReactNode, color?: "main" | "green" | "red" | "blue" }) => {
-    const colors = {
-        main: "bg-(--main-color)/10 text-(--main-color) border-(--main-color)/20",
-        green: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-        red: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-        blue: "bg-sky-500/10 text-sky-400 border-sky-500/20"
+    /* A count is a readout, so the default tone is the muted (pressed) badge;
+       the other three are meaning colour, which rides on the slab. */
+    const tone = {
+        main: "proc-badge--muted",
+        green: "proc-badge--ok",
+        red: "proc-badge--bad",
+        blue: "proc-badge--muted"
     };
     return (
-        <span className={`px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${colors[color]}`}>
+        <span className={`proc-badge proc-figures ${tone[color]} text-[9px] font-black uppercase tracking-widest`}>
             {children}
         </span>
     );
@@ -779,6 +788,11 @@ export const ProcessView: React.FC = () => {
         const ctx = cv.getContext('2d');
         if (!ctx) return;
         ctx.clearRect(0, 0, cv.width, cv.height);
+        /* The active-mask outline asked for the literal string '(---main-color)',
+           which is not a colour, so canvas silently kept whatever strokeStyle was
+           already set and the selected layer never got its accent. Read the token
+           off the element instead — it is the same value on either ground. */
+        const accentStroke = getComputedStyle(cv).getPropertyValue('--main-color').trim() || '#00bcd4';
         // Sort by Z-Index
         [...layers].sort((a, b) => a.zIndex - b.zIndex).forEach(l => {
             if (!l.visible) return;
@@ -824,7 +838,7 @@ export const ProcessView: React.FC = () => {
                 
                 // Active stroke
                 if (activeLayerId === l.id) {
-                    ctx.strokeStyle = '(---main-color)';
+                    ctx.strokeStyle = accentStroke;
                     ctx.lineWidth = 3 / scaleX;
                     ctx.stroke(path);
                 } else {
@@ -856,8 +870,8 @@ export const ProcessView: React.FC = () => {
     // --- GALLERY COMPONENT ---
     const MultiAngleGallery = () => {
         if (!selectedItem) return (
-            <div className="w-full h-full flex flex-col items-center justify-center text-white/10 gap-4">
-                <ImageIcon size={64} strokeWidth={1} />
+            <div className="proc-empty">
+                <ImageIcon size={56} strokeWidth={1} />
                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">{tr("Initialize Workspace First")}</span>
             </div>
         );
@@ -865,8 +879,8 @@ export const ProcessView: React.FC = () => {
         const images = selectedItem.mediaUrls?.split(',').map((u: string) => u.trim()).filter(Boolean) || [selectedItem.image_url].filter(Boolean);
         
         return (
-            <div className="w-full h-full p-8 overflow-y-auto no-scrollbar bg-black/20">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="w-full h-full p-4 overflow-y-auto no-scrollbar">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {images.map((url: string, idx: number) => {
                         const angleKey = `angle_${idx}`;
                         const savedMasks = selectedItem.spatialMasks || selectedItem.spatial_masks || {};
@@ -881,23 +895,23 @@ export const ProcessView: React.FC = () => {
                                     switchAngle(idx);
                                     setWorkspaceViewMode('editor');
                                 }}
-                                className="group relative aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/5 hover:border-amber-400/50 transition-all cursor-pointer"
+                                className="proc-gal group"
                             >
-                                <img src={url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-                                
-                                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40 group-hover:opacity-70 transition-opacity" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                <img src={url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+
+                                {/* The mask outline is the module's subject: data drawn over a
+                                    photograph, so it keeps its hue on both grounds. */}
+                                <svg className="proc-mask-overlay absolute inset-0 w-full h-full pointer-events-none opacity-50 group-hover:opacity-80 transition-opacity" viewBox="0 0 100 100" preserveAspectRatio="none">
                                     {angleMasks.map((m: any, mIdx: number) => (
-                                        <polygon key={mIdx} points={m.points.map((p: any) => `${p.x * 100},${p.y * 100}`).join(' ')} fill="currentColor" className="text-amber-400" />
+                                        <polygon key={mIdx} points={m.points.map((p: any) => `${p.x * 100},${p.y * 100}`).join(' ')} fill="currentColor" />
                                     ))}
                                 </svg>
 
-                                <div className="absolute bottom-4 left-4 flex flex-col gap-1">
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Angle")} {(idx + 1).toString().padStart(2, '0')}</span>
-                                    <span className="text-[14px] font-black text-white uppercase tracking-tight">{angleMasks.length} {tr("Masks")}</span>
+                                <div className="proc-gal-caption">
+                                    <span className="text-[9px] font-black uppercase tracking-widest opacity-70">{tr("Angle")} {(idx + 1).toString().padStart(2, '0')}</span>
+                                    <span className="text-[13px] font-black uppercase tracking-tight">{angleMasks.length} {tr("Masks")}</span>
                                 </div>
-                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="px-3 py-1.5 bg-amber-400 text-black text-[9px] font-black uppercase tracking-widest rounded-full">{tr("Open Editor")}</div>
-                                </div>
+                                <div className="proc-gal-open text-[9px] font-black uppercase tracking-widest">{tr("Open Editor")}</div>
                             </div>
                         );
                     })}
@@ -907,41 +921,43 @@ export const ProcessView: React.FC = () => {
     };
 
     return (
-        <div className="process-view-container w-full h-full bg-transparent flex flex-col relative overflow-hidden">
-             {/* Unified Tools Header (Minimal floating HUD for Engine Workspace) */}
-             {activeTab === 'workspace' && (
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1 bg-black/40 backdrop-blur-3xl rounded-xl border border-white/10 shadow-2xl z-50 animate-in slide-in-from-top-4 duration-500">
-                    <button 
+        <div id="process" className="process-view-container w-full h-full relative overflow-hidden">
+            <main className="proc-main">
+                {activeTab === 'workspace' && (
+                    <div className="proc-workspace">
+                        <div className="proc-stack">
+             {/* Unified tools HUD. It used to be `absolute top-6 left-1/2` with
+                 bg-black/40 + backdrop-blur-3xl over the canvas, which SLAB
+                 flattens to an opaque slab sitting on top of the drawing. It is
+                 now a docked row of the workspace column, above the stage. */}
+                <div className="proc-hud">
+                    <button
                         onClick={() => setWorkspaceViewMode(workspaceViewMode === 'editor' ? 'gallery' : 'editor')}
-                        className={`h-9 px-4 flex items-center gap-2 font-black text-[9px] uppercase tracking-widest rounded-lg transition-all duration-300 ${workspaceViewMode === 'gallery' ? 'bg-amber-400 text-black' : 'text-white/30 hover:text-white hover:bg-white/5 border border-white/5'}`}
+                        data-active={workspaceViewMode === 'gallery'}
+                        className="proc-btn proc-toggle font-black text-[9px] uppercase tracking-widest"
                         title={tr("Toggle Gallery/Editor")}
                     >
                         {workspaceViewMode === 'gallery' ? <Target size={12} /> : <ImageIcon size={12} />}
-                        {workspaceViewMode === 'gallery' ? tr("Editor") : tr("Gallery")}
+                        <span>{workspaceViewMode === 'gallery' ? tr("Editor") : tr("Gallery")}</span>
                     </button>
-                    <div className="w-px h-5 bg-white/10 mx-1" />
+                    <div className="proc-rule-v" />
                     {[
                         { id: 'move', icon: MousePointer2, title: tr("Move Workspace") },
                         { id: 'mask', icon: Scissors, title: tr("Segmentation Match") },
                         { id: 'point', icon: Target, title: tr("AI Refinement") }
                     ].map(t => (
-                        <button key={t.id} onClick={() => setTool(t.id as any)} className={`h-9 w-9 flex items-center justify-center rounded-lg transition-all ${tool === t.id ? 'bg-white text-black' : 'text-white/40 hover:text-white hover:bg-white/5'}`} title={t.title}>
+                        <button key={t.id} onClick={() => setTool(t.id as any)} data-active={tool === t.id} aria-pressed={tool === t.id} className="proc-btn proc-key proc-toggle" title={t.title}>
                             <t.icon size={16} />
                         </button>
                     ))}
-                    <div className="w-px h-5 bg-white/10 mx-1" />
-                    <button onClick={handleManualCommit} className="h-9 px-4 flex items-center gap-2 text-green-400 font-black text-[9px] uppercase tracking-widest hover:bg-green-400/10 rounded-lg transition-all">
+                    <div className="proc-rule-v" />
+                    <button onClick={handleManualCommit} className="proc-btn font-black text-[9px] uppercase tracking-widest">
                         <Upload size={12} strokeWidth={2.5} />
-                        {tr("Sync")}
+                        <span>{tr("Sync")}</span>
                     </button>
                 </div>
-            )}
-
-            <main className="flex-1 overflow-hidden relative">
-                {activeTab === 'workspace' && (
-                    <div className="absolute inset-0 flex gap-4 p-4 overflow-hidden">
-                <div className="flex-1 min-w-0 flex items-center justify-center bg-black/20 rounded-2xl border border-white/5 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+                <div className="proc-stage">
+                    <div className="proc-grid" />
                     <canvas
                         ref={canvasRef}
                         width={1600} 
@@ -1018,24 +1034,26 @@ export const ProcessView: React.FC = () => {
                         }}
                         onMouseUp={() => setIsDragging(false)}
                         style={{ width: 'min(76vh, 76vw)', height: 'min(76vh, 76vw)', display: refiningLayerId ? 'none' : 'block' }}
-                        className="max-w-full max-h-full shadow-2xl hdr-vibrant bg-black/40 rounded-xl z-10"
+                        className="proc-canvas hdr-vibrant"
                     />
 
                     {/* Angle Navigator Strip */}
                     {selectedItem && (selectedItem.mediaUrls?.split(',').length || 0) > 1 && (
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-3 bg-black/60 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl z-40 animate-in slide-in-from-bottom-10 fade-in duration-700">
+                        <div className="proc-anglebar">
                              {selectedItem.mediaUrls.split(',').map((u: string, i: number) => {
                                  const isActive = activeAngleIndex === i;
                                  const cleanUrl = getCleanImageUrl(u);
                                  return (
-                                     <button 
+                                     <button
                                         key={i}
                                         onClick={() => switchAngle(i)}
-                                        className={`group relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all duration-500 scale-vibrant ${isActive ? 'border-(--main-color) ring-4 ring-(--main-color)/20' : 'border-white/5 opacity-40 hover:opacity-100'}`}
+                                        data-active={isActive}
+                                        aria-pressed={isActive}
+                                        className="proc-angle group"
+                                        title={`${tr("Angle")} ${i + 1}`}
                                      >
-                                         <img src={cleanUrl!} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                         <div className={`absolute inset-0 bg-(--main-color)/10 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`} />
-                                         <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-[8px] font-black text-white uppercase tracking-tighter shadow-lg">#{i+1}</div>
+                                         <img src={cleanUrl!} className={`w-full h-full object-cover transition-opacity ${isActive ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`} />
+                                         <span className="proc-angle-no text-[8px] font-black uppercase tracking-tighter">#{i+1}</span>
                                      </button>
                                  );
                              })}
@@ -1043,16 +1061,16 @@ export const ProcessView: React.FC = () => {
                     )}
 
                     {refiningLayerId && (
-                        <div className="absolute inset-0 z-30 bg-black/80 flex flex-col items-center justify-center p-8 overflow-hidden">
-                             <div className="w-full max-w-4xl h-full flex flex-col gap-4">
-                                 <div className="flex items-center justify-between">
+                        <div className="proc-scrim z-30 flex flex-col items-center justify-center p-6 overflow-hidden">
+                             <div className="w-full max-w-4xl h-full flex flex-col gap-3">
+                                 <div className="flex items-center justify-between gap-3">
                                      <SectionTitle title={tr("Manual Edge Refinement")} icon={Pipette} />
-                                     <div className="flex items-center gap-3">
-                                         <button 
+                                     <div className="flex items-center gap-2">
+                                         <button
                                             onClick={() => setRefiningLayerId(null)}
-                                            className="px-4 py-2 rounded-lg bg-white/5 text-[10px] font-black uppercase hover:bg-white/10"
+                                            className="proc-btn text-[10px] font-black uppercase"
                                          >{tr("Cancel")}</button>
-                                         <button 
+                                         <button
                                             onClick={() => {
                                                 if (maskEditorRef.current?.maskCanvas) {
                                                     const mask = toMask(maskEditorRef.current.maskCanvas);
@@ -1061,11 +1079,11 @@ export const ProcessView: React.FC = () => {
                                                     addLog(`Refined mask applied to layer ${refiningLayerId}`, 'success');
                                                 }
                                             }}
-                                            className="px-6 py-2 rounded-lg bg-(--main-color) text-black text-[10px] font-black uppercase"
+                                            className="proc-btn-primary text-[10px] font-black uppercase"
                                          >{tr("Apply Changes")}</button>
                                      </div>
                                  </div>
-                                 <div className="flex-1 bg-black rounded-2xl overflow-hidden border border-white/10 relative">
+                                 <div className="proc-maskwell flex-1 relative">
                                     <MaskEditor 
                                         src={layers.find(l => l.type === 'image')?.data.src || ''}
                                         canvasRef={maskEditorRef}
@@ -1081,210 +1099,218 @@ export const ProcessView: React.FC = () => {
 
                     {/* Engine Telemetry Overlay */}
                     {isProcessingGlobal && (
-                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none bg-black/20 backdrop-blur-[2px] animate-in fade-in duration-500">
+                        <div className="proc-telemetry animate-in fade-in duration-500">
                              <div className="relative">
-                                 <div className="w-32 h-32 rounded-full border-2 border-(--main-color)/20 border-t-(--main-color) animate-spin" />
-                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-full backdrop-blur-md border border-white/5 shadow-2xl">
-                                     <Activity size={24} className="text-(--main-color) animate-pulse mb-1" />
-                                     <span className="text-[8px] font-black uppercase text-white tracking-[0.2em]">{engineStatus}</span>
+                                 <div className="proc-spinner" />
+                                 <div className="proc-spinner-face">
+                                     <Activity size={22} className="proc-dim animate-pulse mb-1" />
+                                     <span className="text-[8px] font-black uppercase tracking-[0.2em]">{engineStatus}</span>
                                  </div>
                              </div>
-                             <div className="mt-8 px-6 py-2 bg-black/60 rounded-full border border-white/5 backdrop-blur-xl shadow-2xl flex flex-col items-center gap-1">
-                                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-(--main-color)">{activeStepLabel}</span>
-                                 <div className="w-32 h-0.5 bg-white/5 rounded-full overflow-hidden">
-                                     <div className="h-full bg-(--main-color) transition-all duration-500" style={{ 
-                                         width: engineStatus === 'analyzing' ? '30%' : engineStatus === 'vectorizing' ? '70%' : engineStatus === 'committing' ? '90%' : '5%' 
+                             <div className="proc-telemetry-chip">
+                                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">{activeStepLabel}</span>
+                                 <div className="proc-progress w-32">
+                                     <div className="proc-progress-fill" style={{
+                                         width: engineStatus === 'analyzing' ? '30%' : engineStatus === 'vectorizing' ? '70%' : engineStatus === 'committing' ? '90%' : '5%'
                                      }} />
                                  </div>
                              </div>
                         </div>
                     )}
                 </div>
-                <aside className="w-80 h-full shrink-0 flex flex-col gap-4 relative overflow-hidden pr-2">
+                        </div>
+                <aside className="proc-aside">
                     {/* Layer Properties Panel (Conditional) */}
                     {activeLayerId && (
-                        <StitchCard className="shrink-0 flex flex-col gap-3 p-3 bg-black/40 border-white/5 overflow-hidden">
+                        <StitchCard className="shrink-0 flex flex-col gap-2.5 overflow-hidden">
                             <SectionTitle title={tr("Properties")} icon={Palette} />
-                            <div className="flex flex-col gap-3 mt-1">
+                            <div className="flex flex-col gap-2.5 mt-0.5">
                                 {layers.find(l => l.id === activeLayerId)?.type === 'mask' && (
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Color")}</label>
+                                        <label className="proc-dim text-[8px] font-black uppercase tracking-widest">{tr("Color")}</label>
                                         <div className="flex gap-2">
                                             {['#6BCEBB', '#F7941D', '#F36F21', '#a78bfa', '#FFFFFF'].map(c => (
-                                                <button 
+                                                <button
                                                     key={c}
                                                     onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, data: { ...l.data, color: c } } : l))}
-                                                    className={`w-5 h-5 rounded-full border-2 ${layers.find(l => l.id === activeLayerId)?.data.color === c ? 'border-white' : 'border-transparent'}`}
-                                                    style={{ backgroundColor: c }}
+                                                    data-active={layers.find(l => l.id === activeLayerId)?.data.color === c}
+                                                    className="proc-swatch-btn"
+                                                    title={c}
+                                                    /* The fill is the mask's own colour — data. It goes through a
+                                                       custom property because SLAB repaints a hovered or ON button
+                                                       with --slab-tint-on/-hover !important, which outranks an
+                                                       inline background and would wash the swatch off the slab. */
+                                                    style={{ ['--proc-swatch-fill' as any]: c, backgroundColor: c }}
                                                 />
                                             ))}
                                         </div>
                                     </div>
                                 )}
                                 {refinePoints.length > 0 && (
-                                     <div className="flex flex-col gap-2 p-2 bg-black/40 rounded-lg border border-(--main-color)/20">
-                                         <button 
+                                     <div className="proc-well flex flex-col gap-2 p-2">
+                                         <button
                                              onClick={() => processItem('single', refinePoints)}
-                                             className="w-full py-2 bg-(--main-color) text-black text-[9px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-(--main-color)/20 active:scale-95 transition-all"
+                                             className="proc-btn-primary proc-figures w-full text-[9px] font-black uppercase tracking-widest"
                                          >{tr("Refine via")} {refinePoints.length} {tr("Points")}</button>
-                                         <button 
+                                         <button
                                              onClick={() => setRefinePoints([])}
-                                             className="w-full py-1 text-white/20 text-[8px] font-black uppercase hover:text-rose-400 transition-colors"
+                                             className="proc-btn-quiet proc-btn-quiet--danger w-full justify-center text-[8px] font-black uppercase"
                                          >{tr("Reset Points")}</button>
                                      </div>
                                 )}
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-2.5">
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Opacity")}</label>
-                                        <input 
-                                            type="range" min="0" max="1" step="0.01" 
+                                        <label className="proc-dim text-[8px] font-black uppercase tracking-widest">{tr("Opacity")}</label>
+                                        <input
+                                            type="range" min="0" max="1" step="0.01"
                                             value={layers.find(l => l.id === activeLayerId)?.opacity || 0}
                                             onChange={(e) => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, opacity: parseFloat(e.target.value) } : l))}
-                                            className="w-full h-1 bg-white/5 rounded-full appearance-none accent-(--main-color)"
+                                            className="proc-range"
                                         />
                                     </div>
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Scale")}</label>
-                                        <input 
-                                            type="range" min="0.1" max="3" step="0.01" 
+                                        <label className="proc-dim text-[8px] font-black uppercase tracking-widest">{tr("Scale")}</label>
+                                        <input
+                                            type="range" min="0.1" max="3" step="0.01"
                                             value={layers.find(l => l.id === activeLayerId)?.scale || 1}
                                             onChange={(e) => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, scale: parseFloat(e.target.value) } : l))}
-                                            className="w-full h-1 bg-white/5 rounded-full appearance-none accent-(--main-color)"
+                                            className="proc-range"
                                         />
                                     </div>
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Rotate")}</label>
-                                        <input 
-                                            type="range" min="-180" max="180" step="1" 
+                                        <label className="proc-dim text-[8px] font-black uppercase tracking-widest">{tr("Rotate")}</label>
+                                        <input
+                                            type="range" min="-180" max="180" step="1"
                                             value={layers.find(l => l.id === activeLayerId)?.rotation || 0}
                                             onChange={(e) => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, rotation: parseInt(e.target.value) } : l))}
-                                            className="w-full h-1 bg-white/5 rounded-full appearance-none accent-(--main-color)"
+                                            className="proc-range"
                                         />
                                     </div>
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">{tr("Z-Order")}</label>
+                                        <label className="proc-dim text-[8px] font-black uppercase tracking-widest">{tr("Z-Order")}</label>
                                         <div className="flex gap-2">
-                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: Math.max(0, l.zIndex - 1) } : l))} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1 text-[8px] font-black">{tr("BACK")}</button>
-                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: l.zIndex + 1 } : l))} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1 text-[8px] font-black">{tr("FRONT")}</button>
+                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: Math.max(0, l.zIndex - 1) } : l))} className="proc-btn flex-1 text-[8px] font-black">{tr("BACK")}</button>
+                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: l.zIndex + 1 } : l))} className="proc-btn flex-1 text-[8px] font-black">{tr("FRONT")}</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </StitchCard>
                     )}
-                    <StitchCard className="flex-1 flex flex-col gap-4 overflow-hidden">
-                        <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{tr("Layers")}</span>
+                    <StitchCard className="flex-1 flex flex-col gap-3 overflow-hidden">
+                        <div className="proc-divider-b flex items-center justify-between pb-2.5">
+                            <span className="proc-dim text-[10px] font-black uppercase tracking-widest">{tr("Layers")}</span>
                             <Badge>{layers.length}</Badge>
                         </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
                             {layers.map(l => (
-                                <div key={l.id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${activeLayerId === l.id ? 'bg-white/5 border-(--main-color)/40 shadow-xl' : 'bg-transparent border-transparent hover:bg-white/2'}`}>
+                                <div key={l.id} className={`proc-layer ${activeLayerId === l.id ? 'is-active' : ''}`}>
                                     <div className="flex flex-col gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                                        <button 
+                                        <button
                                             onClick={() => setLayers(ls => ls.map(layer => layer.id === l.id ? { ...layer, visible: !layer.visible } : layer))}
-                                            className={`w-6 h-6 flex items-center justify-center rounded-md transition-colors ${l.visible ? 'text-(--main-color)' : 'text-white/10'}`}
+                                            data-active={!!l.visible}
+                                            aria-pressed={!!l.visible}
+                                            className="proc-layer-flag"
                                             title={tr("Toggle Visibility")}
                                         >
                                             <Layers size={14} />
                                         </button>
                                         {l.type === 'mask' && (
-                                            <button 
+                                            <button
                                                 onClick={() => setLayers(ls => ls.map(layer => layer.id === l.id ? { ...layer, includeInOutput: !layer.includeInOutput } : layer))}
-                                                className={`w-6 h-6 flex items-center justify-center rounded-md transition-colors ${l.includeInOutput ? 'text-amber-400' : 'text-white/10'}`}
+                                                data-active={!!l.includeInOutput}
+                                                aria-pressed={!!l.includeInOutput}
+                                                className="proc-layer-flag proc-layer-flag--out"
                                                 title={tr("Include in Output")}
                                             >
                                                 <Check size={14} />
                                             </button>
                                         )}
                                     </div>
-                                    <div onClick={() => setActiveLayerId(l.id)} className="flex-1 flex items-center gap-3 cursor-pointer min-w-0">
-                                        <div className="w-8 h-8 rounded-md bg-black/40 shrink-0 border border-white/5 overflow-hidden flex items-center justify-center relative">
-                                            {l.type === 'image' && <img src={l.data.src} className="w-full h-full object-cover opacity-60" />}
-                                            {l.type === 'mask' && <div className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]" style={{ color: l.data.color }} />}
+                                    <div onClick={() => setActiveLayerId(l.id)} className="flex-1 flex items-center gap-2.5 cursor-pointer min-w-0">
+                                        <div className="proc-layer-thumb">
+                                            {l.type === 'image' && <img src={l.data.src} className="w-full h-full object-cover" />}
+                                            {l.type === 'mask' && <span className="proc-swatch" style={{ color: l.data.color }} />}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[9px] font-black text-white/80 uppercase italic truncate tracking-widest">{l.id.split('-').pop()}</p>
-                                            <div className="text-[10px] text-white/40 line-clamp-2 wrap-break-word px-1 mt-auto">{l.type}</div>
+                                            <p className="proc-title text-[9px] font-black uppercase italic truncate tracking-widest">{l.id.split('-').pop()}</p>
+                                            <div className="proc-dim text-[9px] truncate">{l.type}</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         {l.type === 'mask' && (
-                                            <button 
+                                            <button
                                                 onClick={() => setRefiningLayerId(l.id)}
-                                                className="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center text-white/20 hover:text-(--main-color) transition-all"
+                                                className="proc-icon-btn"
                                                 title={tr("Refine Edges")}
                                             >
                                                 <Pipette size={14} />
                                             </button>
                                         )}
-                                        {activeLayerId === l.id && <div className="w-1 h-1 rounded-full bg-(--main-color) shadow-[0_0_5px_var(--main-color)]" />}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
-                            <button 
+                        <div className="proc-divider-t pt-2 flex flex-col gap-2">
+                            <button
                                 onClick={handleManualCommit}
                                 disabled={isProcessingGlobal || layers.filter(l => l.type === 'mask' && l.includeInOutput).length === 0}
-                                className="w-full py-2.5 rounded-lg bg-(--main-color)/10 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all disabled:opacity-20 flex items-center justify-center gap-2"
+                                className="proc-btn-primary w-full text-[10px] font-black uppercase tracking-widest"
                             >
                                 <Save size={12} />
-                                {tr("Sync Selection")}
+                                <span>{tr("Sync Selection")}</span>
                             </button>
                         </div>
                     </StitchCard>
 
                     {showTerminal && (
-                        <div className="absolute inset-0 z-10 flex flex-col">
-                            <StitchCard className="flex-1 bg-black/90 backdrop-blur-3xl border-(--main-color)/20 shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col p-4">
-                                <div className="flex items-center justify-between mb-3 text-emerald-500">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{tr("Engine Console")}</span>
-                                            <button 
-                                                onClick={() => {
-                                                    const val = window.prompt("Enter Gemini API Key (Case-Sensitive):", getApiKey());
-                                                    if (val !== null) {
-                                                        localStorage.setItem('ONYX_GEMINI_KEY', val.trim());
-                                                        window.location.reload();
-                                                    }
-                                                }}
-                                                className="text-white/20 hover:text-(--main-color) transition-colors"
-                                                title={tr("Configure API Key")}
-                                            >
-                                                <Bug size={10} />
-                                            </button>
-                                        </div>
-                                        <button 
-                                            onClick={() => {
-                                                const text = logs.map(l => `[${l.time}] ${l.msg}`).join('\n');
-                                                navigator.clipboard.writeText(text);
-                                                toast.success(tr("Logs copied to clipboard"));
-                                            }}
-                                            className="w-6 h-6 flex items-center justify-center rounded-md bg-white/5 text-white/40 hover:text-white transition-all"
-                                            title={tr("Copy Logs")}
-                                        >
-                                            <Download size={12} />
-                                        </button>
+                        <div className="proc-terminal">
+                            <div className="proc-divider-b flex items-center justify-between gap-2 pb-2.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <SectionTitle title={tr("Engine Console")} icon={Terminal} />
+                                    <button
+                                        onClick={() => {
+                                            const val = window.prompt("Enter Gemini API Key (Case-Sensitive):", getApiKey());
+                                            if (val !== null) {
+                                                localStorage.setItem('ONYX_GEMINI_KEY', val.trim());
+                                                window.location.reload();
+                                            }
+                                        }}
+                                        className="proc-icon-btn"
+                                        title={tr("Configure API Key")}
+                                    >
+                                        <Bug size={12} />
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const text = logs.map(l => `[${l.time}] ${l.msg}`).join('\n');
+                                            navigator.clipboard.writeText(text);
+                                            toast.success(tr("Logs copied to clipboard"));
+                                        }}
+                                        className="proc-icon-btn"
+                                        title={tr("Copy Logs")}
+                                    >
+                                        <Download size={12} />
+                                    </button>
+                                </div>
+                                <button onClick={() => setShowTerminal(false)} className="proc-icon-btn proc-icon-btn--danger" title={tr("Close")}><X size={14} /></button>
+                            </div>
+                            <div className="proc-log flex flex-col-reverse text-[10px] leading-relaxed">
+                                {logs.map(log => (
+                                    <div key={log.id} className="proc-log-row">
+                                        <span className="proc-log-time text-[9px]">[{log.time}]</span>
+                                        <span className={
+                                            'proc-log-msg ' + (
+                                                log.type === 'error' ? 'proc-log-msg--bad font-bold' :
+                                                log.type === 'success' ? 'proc-log-msg--ok font-bold' :
+                                                log.type === 'warn' ? 'proc-log-msg--warn' : ''
+                                            )
+                                        }>
+                                            {log.msg}
+                                        </span>
                                     </div>
-                                    <button onClick={() => setShowTerminal(false)} className="text-white/20 hover:text-white transition-all"><X size={14} /></button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto pr-1 flex flex-col-reverse gap-2 text-[11px] font-mono leading-relaxed scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                                    {logs.map(log => (
-                                        <div key={log.id} className="group border-b border-white/5 pb-1 last:border-0 wrap-break-word">
-                                            <span className="text-white/10 group-hover:text-white/30 mr-2 text-[9px]">[{log.time}]</span>
-                                            <span className={
-                                                log.type === 'error' ? 'text-rose-400 font-bold' : 
-                                                log.type === 'success' ? 'text-emerald-400 font-bold' : 
-                                                log.type === 'warn' ? 'text-amber-400' : 'text-white/60'
-                                            }>
-                                                {log.msg}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </StitchCard>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </aside>
@@ -1292,112 +1318,113 @@ export const ProcessView: React.FC = () => {
                 )}
 
                 {activeTab === 'batch' && (
-                    <div className="absolute inset-x-0 bottom-0 top-0 bg-(--app-bg)/60 backdrop-blur-md flex p-4 z-60 animate-in slide-in-from-bottom-full overflow-hidden">
-                         <div className="flex gap-4 w-full max-w-7xl mx-auto flex-1 h-full">
-                             <StitchCard className="flex-1 flex flex-col gap-6 overflow-hidden">
-                                 <div className="flex items-center justify-between">
+                    <div className="proc-workspace">
+                         <div className="proc-batch">
+                             <StitchCard className="flex-1 flex flex-col gap-3 overflow-hidden min-w-0">
+                                 <div className="proc-divider-b flex items-center justify-between gap-3 pb-2.5">
                                      <SectionTitle title={tr("Batch Pipeline")} icon={FolderKanban} />
-                                     <div className="flex items-center gap-3">
-                                         <button onClick={() => setBatchQueue([])} className="px-4 py-2 border border-white/5 rounded-lg text-[10px] font-bold text-white/30 hover:text-red-400">{tr("Clear Queue")}</button>
-                                         <button onClick={() => setShowBatchList(false)} className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white">
-                                              <X size={20} />
+                                     <div className="flex items-center gap-2">
+                                         <button onClick={() => setBatchQueue([])} className="proc-btn-quiet proc-btn-quiet--danger text-[10px] font-bold uppercase">{tr("Clear Queue")}</button>
+                                         <button onClick={() => setShowBatchList(false)} className="proc-btn proc-key" title={tr("Close")}>
+                                              <X size={16} />
                                          </button>
                                      </div>
                                  </div>
-                                 
-                                 <div className="grid grid-cols-4 lg:grid-cols-5 gap-3 overflow-y-auto custom-scrollbar flex-1 pr-1">
+
+                                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 overflow-y-auto custom-scrollbar flex-1 pr-1">
                                      {batchQueue.map(op => (
-                                         <div 
-                                             key={op.id} 
+                                         <div
+                                             key={op.id}
                                              onClick={() => toggleBatchItemSelection(op.id)}
-                                             className={`p-2 bg-black/20 rounded-xl border flex flex-col gap-2 relative group hover:border-white/20 transition-all cursor-pointer ${op.selected ? 'border-(--main-color)/40 ring-1 ring-(--main-color)/10 shadow-[0_0_15px_rgba(107,206,187,0.05)]' : 'border-white/5 opacity-50 gray-scale hover:opacity-80'}`}
+                                             className={`proc-op group ${op.selected ? 'is-selected' : ''}`}
                                          >
-                                             <div className="aspect-video rounded-lg bg-black overflow-hidden border border-white/5 relative">
-                                                 <img src={getCleanImageUrl(op.item.activeImageUrl || op.item.mediaUrls?.split(',')[0])!} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700 hdr-vibrant" />
-                                                 
+                                             <div className="proc-op-media">
+                                                 <img src={getCleanImageUrl(op.item.activeImageUrl || op.item.mediaUrls?.split(',')[0])!} className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity duration-500 hdr-vibrant" />
+
                                                  {/* Interactive Selection Checkbox */}
                                                  <div className="absolute top-2 left-2 z-20">
-                                                     <div className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${op.selected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/40 border-white/20'}`}>
-                                                         {op.selected && <Check size={10} className="text-black" strokeWidth={4} />}
+                                                     <div className={`proc-check ${op.selected ? 'is-on' : ''}`}>
+                                                         {op.selected && <Check size={11} strokeWidth={4} />}
                                                      </div></div>
-                                                 
+
                                                  {op.status === 'processing' && (
-                                                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 shadow-inner">
-                                                         <div className="w-8 h-8 rounded-full border-2 border-(--main-color)/20 border-t-(--main-color) animate-spin" />
+                                                     <div className="proc-op-busy">
+                                                         <div className="proc-spinner" />
                                                      </div>
                                                  )}
                                                  {op.status === 'completed' && (
-                                                     <div className="absolute top-2 right-2 bg-emerald-500 rounded-full p-1 shadow-lg shadow-emerald-500/20">
-                                                         <CheckCircle2 size={12} className="text-white" />
+                                                     <div className="proc-pip proc-pip--ok">
+                                                         <CheckCircle2 size={12} />
                                                      </div>
                                                  )}
-                                                 {op.status === 'failed' && <AlertCircle size={16} className="absolute top-2 right-2 text-rose-500 drop-shadow-lg" />}
+                                                 {op.status === 'failed' && (
+                                                     <div className="proc-pip proc-pip--bad">
+                                                         <AlertCircle size={12} />
+                                                     </div>
+                                                 )}
                                              </div>
-                                             <div className="flex flex-col gap-1">
-                                                  <div className="flex items-center justify-between">
-                                                       <span className="text-[9px] font-black text-white italic truncate uppercase">{op.item.itemId}</span>
-                                                       {op.status === 'completed' && <span className="text-[7px] font-black text-emerald-400 uppercase tracking-tighter ml-2">{tr("DONE")}</span>}
+                                             <div className="flex flex-col gap-1 min-w-0">
+                                                  <div className="flex items-center justify-between gap-2">
+                                                       <span className="proc-title text-[9px] font-black italic truncate uppercase">{op.item.itemId}</span>
+                                                       {op.status === 'completed' && <span className="proc-badge proc-badge--ok text-[7px] font-black uppercase tracking-tighter shrink-0">{tr("DONE")}</span>}
                                                   </div>
-                                                  <div className="flex items-center justify-between text-[7px] font-bold text-white/25 uppercase">
-                                                       <span>{op.stepLabel}</span>
-                                                       <span className={op.progress > 0 ? 'text-(--main-color)' : ''}>{op.progress}%</span>
+                                                  <div className="proc-dim proc-figures flex items-center justify-between gap-2 text-[8px] font-bold uppercase">
+                                                       <span className="truncate">{op.stepLabel}</span>
+                                                       <span className="shrink-0">{op.progress}%</span>
                                                   </div>
-                                                  <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden">
-                                                       <div className={`h-full transition-all duration-300 ${op.status === 'completed' ? 'bg-emerald-400' : 'bg-(--main-color)'}`} style={{ width: `${op.progress}%` }} />
+                                                  <div className="proc-progress">
+                                                       <div className={`proc-progress-fill ${op.status === 'completed' ? 'is-done' : ''}`} style={{ width: `${op.progress}%` }} />
                                                   </div>
                                              </div>
                                          </div>
                                      ))}
-                                     {batchQueue.length === 0 && <div className="col-span-full h-full flex items-center justify-center text-[10px] font-black uppercase text-white/10 tracking-[0.2em]">{tr("Queue Empty")}</div>}
+                                     {batchQueue.length === 0 && <div className="proc-empty col-span-full text-[10px] font-black uppercase tracking-[0.2em]">{tr("Queue Empty")}</div>}
                                  </div>
 
-                                 <div className="flex gap-4">
+                                 <div className="flex gap-3">
                                       {!isProcessingGlobal || isAborted ? (
-                                          <button 
-                                              onClick={runBatchSequence} 
-                                              disabled={isProcessingGlobal || batchQueue.length === 0} 
-                                              className="flex-1 py-5 rounded-2xl bg-(--main-color) text-black text-[12px] font-black uppercase tracking-[0.3em] shadow-xl shadow-(--main-color)/20 disabled:grayscale disabled:opacity-20 active:scale-[0.98] transition-all"
-                                          >{tr("Execute Batch Sequence")}</button>
+                                          <button
+                                              onClick={runBatchSequence}
+                                              disabled={isProcessingGlobal || batchQueue.length === 0}
+                                              className="proc-btn-primary proc-btn-go text-[12px] font-black uppercase tracking-[0.3em]"
+                                          ><span>{tr("Execute Batch Sequence")}</span></button>
                                       ) : (
-                                          <button 
+                                          <button
                                               onClick={() => {
                                                   setIsAborted(true);
                                                   addLog("Termination signal sent to engine...", "warn");
-                                              }} 
-                                              className="flex-1 py-5 rounded-2xl bg-rose-500 text-white text-[12px] font-black uppercase tracking-[0.3em] shadow-xl shadow-rose-500/20 active:scale-[0.98] transition-all animate-pulse"
-                                          >{tr("Stop Batch Sequence")}</button>
+                                              }}
+                                              className="proc-btn-stop text-[12px] font-black uppercase tracking-[0.3em]"
+                                          ><span>{tr("Stop Batch Sequence")}</span></button>
                                       )}
                                   </div>
                              </StitchCard>
 
                              {/* Shared Terminal in Sidebar */}
-                             <aside className="w-72 flex flex-col gap-4">
-                                 <StitchCard className="flex-1 bg-black/40 flex flex-col gap-4 overflow-hidden">
-                                     <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                                         <div className="flex items-center gap-2 text-emerald-400">
-                                            <Terminal size={14} />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">{tr("Live Engine")}</span>
-                                         </div>
-                                         <div className="flex items-center gap-2">
-                                              <button 
+                             <aside className="proc-aside">
+                                 <StitchCard className="proc-panel--well flex-1 flex flex-col gap-3 overflow-hidden">
+                                     <div className="proc-divider-b flex items-center justify-between gap-2 pb-2.5">
+                                         <SectionTitle title={tr("Live Engine")} icon={Terminal} />
+                                         <div className="flex items-center gap-1">
+                                              <button
                                                   onClick={() => {
                                                       const text = (logs || []).map((l: any) => `[${l.time}] ${l.msg}`).join('\n');
                                                       navigator.clipboard.writeText(text);
                                                       toast.success(tr("Telemetry logs copied"));
                                                   }}
-                                                  className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-(--main-color) transition-all"
+                                                  className="proc-icon-btn"
                                                   title={tr("Copy All Progress Logs")}
                                               >
                                                   <Copy size={12} />
                                               </button>
-                                              <button onClick={() => setLogs([])} className="text-[8px] font-black uppercase text-white/20 hover:text-white transition-colors">{tr("Clear")}</button>
+                                              <button onClick={() => setLogs([])} className="proc-btn-quiet text-[8px] font-black uppercase">{tr("Clear")}</button>
                                           </div>
                                      </div>
-                                     <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col-reverse gap-3 pr-1 text-[9px] font-mono">
+                                     <div className="proc-log flex flex-col-reverse text-[9px]">
                                          {logs.map(log => (
-                                             <div key={log.id} className="opacity-60 flex gap-2">
-                                                 <span className="shrink-0 text-white/20">[{log.time}]</span>
-                                                 <span className={log.type === 'error' ? 'text-rose-400' : log.type === 'success' ? 'text-emerald-400' : 'text-white/60'}>{log.msg}</span>
+                                             <div key={log.id} className="proc-log-row">
+                                                 <span className="proc-log-time text-[9px]">[{log.time}]</span>
+                                                 <span className={'proc-log-msg ' + (log.type === 'error' ? 'proc-log-msg--bad' : log.type === 'success' ? 'proc-log-msg--ok' : log.type === 'warn' ? 'proc-log-msg--warn' : '')}>{log.msg}</span>
                                              </div>
                                          ))}
                                      </div>
@@ -1408,49 +1435,53 @@ export const ProcessView: React.FC = () => {
                 )}
 
                 {activeTab === 'vault' && (
-                    <div className="w-full flex flex-col h-full overflow-hidden p-6 lg:p-10">
-                        <div className="flex flex-col gap-6 h-full max-w-[1800px] mx-auto w-full">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                                <div className="flex bg-black/40 rounded-xl border border-white/5 p-1 gap-1">
-                                    <button 
+                    <div className="proc-workspace flex-col">
+                        <div className="flex flex-col gap-3 h-full max-w-[1800px] mx-auto w-full min-h-0">
+                            <div className="proc-segbar">
+                                    <button
                                         onClick={() => setVaultFilter('ALL')}
-                                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${vaultFilter === 'ALL' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                                    >{tr("All Data")}</button>
-                                    <button 
+                                        data-active={vaultFilter === 'ALL'}
+                                        aria-pressed={vaultFilter === 'ALL'}
+                                        className="proc-seg text-[10px] font-black uppercase tracking-widest"
+                                    ><span>{tr("All Data")}</span></button>
+                                    <button
                                         onClick={() => setVaultFilter('STORE')}
-                                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${vaultFilter === 'STORE' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                                    >{tr("Store List")}</button>
-                                    <button 
+                                        data-active={vaultFilter === 'STORE'}
+                                        aria-pressed={vaultFilter === 'STORE'}
+                                        className="proc-seg text-[10px] font-black uppercase tracking-widest"
+                                    ><span>{tr("Store List")}</span></button>
+                                    <button
                                         onClick={() => setVaultFilter('INVENTORY')}
-                                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${vaultFilter === 'INVENTORY' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                                    >{tr("Inventory Tracker")}</button>
-                                    
-                                    <div className="w-px h-6 bg-white/10 mx-2 self-center" />
-                                    
-                                    <div className="relative group">
-                                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-(--main-color) transition-colors" />
-                                        <input 
-                                            type="text" 
-                                            placeholder={tr("FILTER TAG ID...")} 
+                                        data-active={vaultFilter === 'INVENTORY'}
+                                        aria-pressed={vaultFilter === 'INVENTORY'}
+                                        className="proc-seg text-[10px] font-black uppercase tracking-widest"
+                                    ><span>{tr("Inventory Tracker")}</span></button>
+
+                                    <div className="proc-rule-v mx-1" />
+
+                                    <div className="relative group min-w-0">
+                                        <Search size={14} className="proc-dim absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                        <input
+                                            type="text"
+                                            placeholder={tr("FILTER TAG ID...")}
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="bg-transparent text-[10px] font-bold text-white pl-9 pr-4 py-2 focus:outline-none w-64 uppercase tracking-widest placeholder:text-white/10 border-0"
+                                            className="proc-input proc-input--search w-56 max-w-full text-[10px] font-bold uppercase tracking-widest"
                                         />
                                     </div>
-                                    
+
                                     {selectedIds.size > 0 && (
-                                        <button 
+                                        <button
                                             onClick={addSelectedToBatch}
-                                            className="ml-auto bg-(--main-color) text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                            className="proc-btn-primary proc-figures ml-auto text-[10px] font-black uppercase tracking-widest"
                                         >
-                                            <Play size={10} fill="black" />
-                                            {tr("Add")} {selectedIds.size} to Batch
+                                            <Play size={10} />
+                                            <span>{tr("Add")} {selectedIds.size} to Batch</span>
                                         </button>
                                     )}
-                                </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-1">
+                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 flex flex-col gap-1">
                                 {filteredItems.map(item => {
                                     const isSelected = selectedIds.has(item.row);
                                     let dim = '—';
@@ -1462,67 +1493,67 @@ export const ProcessView: React.FC = () => {
                                     const hasData = item.generatedPngUrl || item.spatial_masks || item.spatialMasks || item.glbUrl;
 
                                     return (
-                                        <div 
-                                            key={item.id} 
-                                            className={`flex items-stretch shrink-0 min-h-[90px] overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isSelected ? 'ring-1 ring-(--main-color)/30 border-(--main-color)/30' : 'border-white/5'}`}
+                                        <div
+                                            key={item.id}
+                                            className={`proc-vault-row group ${isSelected ? 'is-selected' : ''}`}
                                         >
                                             {/* Selection Checkbox */}
-                                            <div 
-                                                className="w-12 shrink-0 flex items-center justify-center border-r border-white/5 bg-white/2 hover:bg-white/5 transition-all"
+                                            <div
+                                                className="proc-vault-check"
                                                 onClick={(e) => { e.stopPropagation(); toggleSelection(item.row); }}
                                             >
-                                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/20'}`}>
-                                                    {isSelected && <Check size={14} className="text-black" strokeWidth={4} />}
+                                                <div className={`proc-check proc-check--lg ${isSelected ? 'is-on' : ''}`}>
+                                                    {isSelected && <Check size={13} strokeWidth={4} />}
                                                 </div>
                                             </div>
 
-                                            <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 bg-black/40 relative overflow-hidden" 
+                                            <div className="proc-vault-media"
                                                 onClick={() => handleSelectItem(item)}>
-                                                <img 
-                                                    src={getCleanImageUrl(item.mediaUrls?.split(',')[0] || item.generatedPngUrl)!} 
-                                                    className={`w-full h-full object-cover transition-all hdr-vibrant ${isSelected ? '' : 'group-hover:scale-105 opacity-80 group-hover:opacity-100'}`} 
+                                                <img
+                                                    src={getCleanImageUrl(item.mediaUrls?.split(',')[0] || item.generatedPngUrl)!}
+                                                    className="hdr-vibrant"
                                                 />
                                             </div>
 
-                                            <div className="flex-1 flex items-center px-6 gap-8 min-w-0" onClick={() => handleSelectItem(item)}>
+                                            <div className="flex-1 flex flex-wrap items-center px-4 gap-x-6 gap-y-1 min-w-0" onClick={() => handleSelectItem(item)}>
                                                 <div className="flex flex-col shrink-0 min-w-[140px] py-1">
                                                     <div className="flex items-baseline gap-3">
-                                                        <h3 className="text-sm font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">{item.shape || tr("OBJ")} {item.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{item.shortDescription}</span>}</h3>
+                                                        <h3 className="proc-title text-[13px] font-black uppercase tracking-tight whitespace-nowrap">{item.shape || tr("OBJ")} {item.shortDescription && <span className="proc-dim font-black ml-1 text-[9px] uppercase tracking-widest">{item.shortDescription}</span>}</h3>
                                                     </div>
-                                                    <div className="text-[9px] text-(--text-color)/30 uppercase tracking-[0.2em] font-black whitespace-nowrap mt-1">{[item.color, item.material].filter(Boolean).join(' ')}</div>
+                                                    <div className="proc-dim text-[9px] uppercase tracking-[0.2em] font-black whitespace-nowrap mt-0.5">{[item.color, item.material].filter(Boolean).join(' ')}</div>
                                                 </div>
-                                                
+
                                                 <div className="flex flex-col min-w-[70px] shrink-0">
-                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">{tr("Ident")}</span>
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-white/10 text-white text-[10px] font-black uppercase tracking-tight w-fit">
+                                                    <span className="proc-vault-label text-[8px] font-black uppercase leading-none mb-1">{tr("Ident")}</span>
+                                                    <span className="proc-chip text-[10px] font-black uppercase tracking-tight w-fit">
                                                         {item.itemId || `N/A`}
                                                     </span>
                                                 </div>
 
                                                 <div className="flex flex-col min-w-[120px] shrink-0">
-                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">{tr("Metrics")}</span>
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <span className="text-[9px] font-mono text-(--text-color)/60">{dim}</span>
-                                                        <span className="text-[9px] font-mono text-(--text-color)/40">{wg}</span>
+                                                    <span className="proc-vault-label text-[8px] font-black uppercase leading-none mb-1">{tr("Metrics")}</span>
+                                                    <div className="proc-figures flex flex-col gap-0.5 font-mono">
+                                                        <span className="proc-title text-[9px]">{dim}</span>
+                                                        <span className="proc-dim text-[9px]">{wg}</span>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex flex-col min-w-[120px] shrink-0 ml-auto items-end pr-4">
-                                                    <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-2">{tr("Engine Data")}</span>
+                                                <div className="flex flex-col min-w-[120px] shrink-0 ml-auto items-end pr-2">
+                                                    <span className="proc-vault-label text-[8px] font-black uppercase leading-none mb-1.5">{tr("Engine Data")}</span>
                                                     <div className="flex items-center gap-2">
                                                         {hasData ? (
-                                                            <div className="px-2 py-0.5 rounded text-[9px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest flex items-center gap-1">
+                                                            <div className="proc-badge proc-badge--ok text-[9px] font-black uppercase tracking-widest">
                                                                 <Check strokeWidth={3} size={10} /> {tr("Valid")}
                                                             </div>
                                                         ) : (
-                                                            <div className="px-2 py-0.5 rounded text-[9px] font-black bg-white/5 text-white/40 uppercase tracking-widest">
+                                                            <div className="proc-badge proc-badge--muted text-[9px] font-black uppercase tracking-widest">
                                                                 {tr("Empty")}
                                                             </div>
                                                         )}
                                                         {item.generatedPngUrl && (
-                                                            <button 
+                                                            <button
                                                                 onClick={(e) => handleClearResult(item, e)}
-                                                                className="w-5 h-5 rounded hover:bg-rose-500/20 text-rose-500 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                                                                className="proc-icon-btn proc-icon-btn--danger"
                                                                 title={tr("Clear Engine Result")}
                                                             >
                                                                 <Trash2 size={12} />
