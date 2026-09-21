@@ -124,70 +124,61 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
   const statusClass = getStatusClass(norm);
   const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
 
+  /* Rule 2, flat on data: this is a list row in a 280px rail, not an object on
+     the slab, so it carries no relief and selection is a tint plus an inset
+     accent bar rather than a depth change or a ring. The row used to paint the
+     item's own gradient across its full width at opacity-40 and then stack
+     white-on-it text; on the light slab SLAB floors that text to near-black
+     while the inline gradient survives, so the row went unreadable. The colour
+     is a swatch on the thumbnail now — meaning colour rides ON the slab. */
   return (
     <button
-      className={`w-full h-24 p-2 rounded-lg flex gap-3 text-left transition-all duration-200 relative overflow-hidden inventory-item-card ${isSelected ? 'ring-2 ring-(--main-color)' : ''}`}
+      type="button"
+      className={`cat-row${isSelected ? ' is-on' : ''}`}
       onClick={handleClick}
+      aria-pressed={isSelectMode ? isSelected : undefined}
       title={`${norm.shape} #${norm.itemNumber}`}
     >
-      {/* Background Gradient */}
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{ background: item.data.color || 'transparent' }}
-      />
-
-      {/* Moved ID Tag */}
-      <div
-        className="vendor-tag text-xs! px-2! py-1! absolute top-0 left-0 rounded-none! rounded-br-lg rounded-tl-lg z-20"
-        style={{ backgroundColor: vendorColor, color: getTextColorForBg(vendorColor) }}
-      >
-        {vendorPrefix}
-      </div>
-
-      {/* Floating Image */}
-      <div className="w-20 h-20 shrink-0 relative flex items-center justify-center">
-        {statusClass && <div className={`status-dot ${statusClass} absolute top-1 right-1 z-10`} title={`Status: ${statusClass}`}></div>}
-        {isLoading && <div className="scale-50"><LoadingIndicator /></div>}
+      <div className="cat-row-media">
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{ background: item.data.color || 'transparent' }}
+        />
+        {statusClass && <div className={`status-dot ${statusClass} absolute top-1 right-1 z-[2]`} title={`Status: ${statusClass}`}></div>}
+        {isLoading && <div className="absolute inset-0 flex items-center justify-center scale-50"><LoadingIndicator /></div>}
         {imageDataUrl ? (
-          <img src={imageDataUrl} alt={norm.shape} className="max-w-full max-h-full object-contain drop-shadow-lg" />
+          <img src={imageDataUrl} alt={norm.shape} />
         ) : (
-          !isLoading && <div className="w-1/2 h-1/2 opacity-30 text-(--secondary-color)"><OnyxMiniLogo /></div>
+          !isLoading && <div className="absolute inset-0 m-auto w-1/2 h-1/2 opacity-30 text-(--secondary-color)"><OnyxMiniLogo /></div>
         )}
       </div>
 
-      {/* Info */}
-      <div className="flex flex-col grow min-w-0 relative z-10 justify-between py-1">
-        <div className="flex justify-between items-start">
-          <p className="font-bold text-sm truncate">{norm.shape}</p>
-          <span className="font-mono text-[10px] opacity-70 shrink-0 ml-2">#{norm.itemNumber}</span>
+      <div className="cat-row-body">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span
+            className="vendor-tag shrink-0 px-1.5 py-0.5 text-[10px] font-black leading-none"
+            style={{ backgroundColor: vendorColor, color: getTextColorForBg(vendorColor) }}
+            title={`${tr("Vendor")}: ${vendorPrefix}`}>
+            {vendorPrefix}
+          </span>
+          <p className="cat-row-name">{norm.shape}</p>
+          <span className="cat-num ml-auto shrink-0 text-[10px] font-bold opacity-70">#{norm.itemNumber}</span>
         </div>
 
-        <div>
-          <p className="text-xs opacity-80 truncate">{norm.material}</p>
-          {dimensions && <p className="text-[10px] opacity-70 truncate font-mono mt-1">{dimensions} cm</p>}
-        </div>
+        <p className="cat-row-meta">
+          {norm.material}{dimensions ? ` · ${dimensions} cm` : ''}
+        </p>
 
-        <div className="flex justify-end items-center mt-1">
-          {norm.price && (
-            <div className="flex gap-2 items-center">
-              <div className="flex flex-col text-[9px] text-right font-mono opacity-80 leading-none">
-                <span>{tr("AQ:")} {calculated.bookAqCode}</span>
-                <span>{tr("LD:")} {calculated.bookLandCode}</span>
-              </div>
-              <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
-                <span className="font-bold text-green-300 text-sm">{fmtUSD(onyxRound(parseFloat(String(norm.price)) / exchangeRate))}</span>
-                <span className="text-[10px] text-green-300/60 leading-tight">({calculated.bookRetail})</span>
-              </div>
-            </div>
-          )}
-        </div>
+        {norm.price && (
+          <div className="cat-figs">
+            <span><span className="cat-fig-k">{tr("AQ")}</span> {calculated.bookAqCode}</span>
+            <span><span className="cat-fig-k">{tr("LD")}</span> {calculated.bookLandCode}</span>
+            <span className="ml-auto font-black text-(--cat-ink)">
+              {fmtUSD(onyxRound(parseFloat(String(norm.price)) / exchangeRate))}
+            </span>
+          </div>
+        )}
       </div>
-
-      {isSelectMode && (
-        <div className={`absolute top-2 right-2 w-4 h-4 border-2 rounded-sm flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-400' : 'bg-black/50 border-white/50'}`}>
-          {isSelected && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
-        </div>
-      )}
     </button>
   );
 };
@@ -247,31 +238,35 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
       );
     });
 
+  /* This view mounts inside LABS > 3D and AR, outside the #catalog root, so
+     it carries .catalog-hub itself. */
   return (
-    <div className="glass-panel rounded-xl shrink-0 w-full h-full p-4 flex flex-col gap-4">
-      <div className="flex justify-between items-center">
-        <h2 className="uppercase font-bold text-sm">{tr("Market Inventory")}</h2>
+    <div className="catalog-hub glass-panel rounded-xl shrink-0 w-full h-full p-4 flex flex-col gap-4 min-h-0">
+      <div className="cat-head">
+        <h2 className="cat-title">{tr("Market Inventory")}</h2>
         <button
+          type="button"
+          aria-pressed={isMarketSelect}
           onClick={() => {
             setIsMarketSelect(!isMarketSelect);
             if (isMarketSelect) setMarketSelected([]); // Clear selection when exiting select mode
           }}
-          className={`button secondary min-h-0! text-xs py-1 ${!isMarketSelect && 'opacity-60'}`}
+          className="cat-key"
         >
           {isMarketSelect ? tr("Cancel") : tr("Select")}
         </button>
       </div>
 
       {isMarketSelect && marketSelected.length > 0 && (
-        <div className="flex items-center justify-between p-2 rounded-lg bg-black/20">
-          <span className="text-xs font-semibold">{marketSelected.length} selected</span>
-          <button onClick={() => setMarketSelected([])} className="text-xs underline opacity-70 hover:opacity-100">{tr("Clear")}</button>
+        <div className="cat-selbar">
+          <span className="cat-selbar-n">{marketSelected.length} {tr("selected")}</span>
+          <button type="button" onClick={() => setMarketSelected([])} className="cat-key cat-key--quiet">{tr("Clear")}</button>
         </div>
       )}
 
-      <div className="grow overflow-y-auto pr-2 -mr-2 space-y-2">
+      <div className="cat-scroll cat-rail">
         {filteredInventory.length === 0 ? (
-          <p className="text-center text-sm text-(--text-color-secondary) pt-4">{t.noInventoryFound}</p>
+          <div className="cat-empty">{t.noInventoryFound}</div>
         ) : (
           filteredInventory.map(item => (
             <MarketItemCard

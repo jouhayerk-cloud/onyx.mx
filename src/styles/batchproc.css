@@ -1,0 +1,1577 @@
+/* ==========================================================================
+   BATCHPROC — the AI BATCH PROCESS wizard
+   --------------------------------------------------------------------------
+   The wizard was drawn for one ground only. Its shell, header, footer, photo
+   wells and every one of its keys were built from `bg-black/10..60`,
+   `bg-white/5..20` and `border-white/5..20`, which SLAB flattens to the
+   surface colour with !important. On the light slab that means the header,
+   the footer, the per-item card, the status tile and the progress track all
+   resolved to exactly the page colour and the whole wizard read as one
+   undifferentiated sheet — the same failure that made the trailer map
+   disappear, and fixed here the same way: semantic classes, scoped to an id
+   on the module root, with per-ground ink tokens defined once.
+
+   Three things this file is careful about, because they are the three the
+   design system says are most often got wrong:
+
+   1. DEPTH IS THE GRAMMAR. Rest is `lift`; hover is `raised`; a control that
+      is engaged seats DEEPER on hover (`pressed-deep`) rather than rising,
+      so an ON toggle never animates the same direction as an idle one. Every
+      interactive control keeps a 1px hairline IN ADDITION to its shadow, and
+      focus is an outline — never a depth change.
+
+   2. RELIEF ON CHROME, FLAT ON DATA. The queue card is styled once, as an
+      object; the stage rail, the metadata line and the colour chips inside it
+      stay flat. The log is a READOUT: pressed, mono, tabular, and it takes no
+      hover and no press, because that is what keeps "raised means pressable"
+      readable.
+
+   3. MEANING COLOUR RIDES ON THE SLAB. Per-stage status, per-item progress,
+      the four processing modes, OK/FAIL/WARN in the log and the vendor ink in
+      the title are DATA. They keep their hue on both grounds; only the
+      lightness moves, so they stay legible on a light ground without becoming
+      a different signal. They are never remapped into the surface.
+
+   One more, specific to Aqua: its accent (#00bcd4) is 1.7:1 against the slab
+   and cannot carry small text. Every ON label here is --slab-ink and the
+   accent carries fill and border only.
+   ========================================================================== */
+
+#batchproc {
+    /* ── Ground ink ───────────────────────────────────────────────────────
+       Dark ground (ROCK, and the Talan slab) — the values the module was
+       drawn with, named instead of inlined. */
+    --bp-ink:       #f5f5f0;
+    --bp-dim:       rgb(255 255 255 / 0.62);
+    --bp-faint:     rgb(255 255 255 / 0.30);
+    --bp-edge:      rgb(255 255 255 / 0.12);
+    --bp-edge-hi:   rgb(255 255 255 / 0.22);
+    --bp-surface:   rgb(255 255 255 / 0.05);
+    --bp-well:      rgb(0 0 0 / 0.40);
+    --bp-scrim:     rgb(0 0 0 / 0.45);
+    --bp-checker:   rgb(255 255 255 / 0.08);
+    /* Text that sits ON a solid accent fill. Black clears 8:1 against both
+       themes' accents; white clears neither. */
+    --bp-on-accent: #0b0908;
+    /* Text that sits ON a solid MEANING fill. The meaning colours invert
+       between the grounds — light on the dark ground, dark on the light one —
+       so the ink on top of them has to invert with them. A single hardcoded
+       #fff was 1.9:1 on the dark ground's emerald. */
+    --bp-sig-ink: #0b0908;
+
+    /* ── Meaning colours ──────────────────────────────────────────────────
+       Data, not chrome. Same hue on both grounds, lightness moved so each one
+       clears 4.5:1 as text against its own ground — a status that is legible
+       on one theme and not the other is not a status. */
+    --bp-sig-amber:   #fbbf24;
+    --bp-sig-sky:     #38bdf8;
+    --bp-sig-blue:    #60a5fa;
+    --bp-sig-emerald: #34d399;
+    --bp-sig-rose:    #fb7185;
+    --bp-sig-violet:  #c4b5fd;
+    --bp-sig-purple:  #c084fc;
+
+    display: flex;
+    min-width: 0;
+}
+
+/* Light ground: the same drawing in ink instead of chalk. */
+html.style-slab:not(.theme-talan) #batchproc,
+html.style-paper #batchproc {
+    --bp-ink:       var(--slab-ink, #1a1614);
+    --bp-dim:       var(--slab-dim, #444b47);
+    --bp-faint:     color-mix(in srgb, var(--slab-ink, #1a1614) 42%, transparent);
+    --bp-edge:      var(--slab-edge, rgba(20, 40, 38, 0.14));
+    --bp-edge-hi:   color-mix(in srgb, var(--slab-ink, #1a1614) 34%, transparent);
+    --bp-surface:   var(--slab, #e7eae6);
+    --bp-well:      color-mix(in srgb, var(--slab-sh, #bfc5bd) 34%, var(--slab, #e7eae6));
+    --bp-scrim:     rgb(0 0 0 / 0.55);
+    --bp-checker:   color-mix(in srgb, var(--slab-ink, #1a1614) 9%, transparent);
+    --bp-sig-ink:   #ffffff;
+
+    --bp-sig-amber:   #a16207;
+    --bp-sig-sky:     #0369a1;
+    --bp-sig-blue:    #1d4ed8;
+    --bp-sig-emerald: #047857;
+    --bp-sig-rose:    #be123c;
+    --bp-sig-violet:  #6d28d9;
+    --bp-sig-purple:  #7e22ce;
+}
+
+/* The dark slab reuses the dark-ground block above, but its ink comes from
+   the theme rather than from flat white, so the two surfaces agree. */
+html.style-slab.theme-talan #batchproc {
+    --bp-ink:     var(--slab-ink, #f5f5f0);
+    --bp-dim:     var(--slab-dim, #b4aea2);
+    --bp-faint:   color-mix(in srgb, var(--slab-ink, #f5f5f0) 38%, transparent);
+    --bp-edge:    var(--slab-edge, rgba(245, 245, 240, 0.13));
+    --bp-edge-hi: color-mix(in srgb, var(--slab-ink, #f5f5f0) 30%, transparent);
+    --bp-surface: var(--slab, #191614);
+    --bp-well:    color-mix(in srgb, var(--slab-sh, #0b0908) 60%, var(--slab, #191614));
+    --bp-checker: rgb(245 245 240 / 0.07);
+}
+
+/* ══ Shell ════════════════════════════════════════════════════════════════
+   The wizard is a full-screen surface, not a dialog floating over one. Under
+   ROCK it keeps its scrim; under SLAB it is the slab itself — a slab has no
+   atmosphere behind it, so there is nothing to blur. */
+#batchproc {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background-color: var(--bp-scrim);
+    color: var(--bp-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+html.style-slab #batchproc {
+    background-color: var(--slab);
+}
+
+#batchproc .bp-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+}
+
+/* ══ Header ═══════════════════════════════════════════════════════════════
+   Static chrome: raised, once, for the whole bar. */
+#batchproc .bp-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+}
+
+html.style-slab #batchproc .bp-head {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-bottom-color: var(--slab-edge);
+    box-shadow: var(--slab-raised);
+    /* Above the queue, so the bar's own shadow is not painted over by the
+       first card scrolling under it. */
+    position: relative;
+    z-index: 2;
+}
+
+#batchproc .bp-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+/* The mark sits in a well — it is an emblem, not a key. */
+#batchproc .bp-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-well);
+    color: var(--main-color);
+}
+
+html.style-slab #batchproc .bp-mark {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+}
+
+#batchproc .bp-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    color: var(--bp-ink);
+    margin: 0;
+}
+
+#batchproc .bp-sub {
+    margin: 2px 0 0;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--bp-dim);
+}
+
+#batchproc .bp-tools {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* ══ Keys ═════════════════════════════════════════════════════════════════
+   One key vocabulary for the whole module. The state walk is written out in
+   full rather than inherited, because slab.css's generic button rules set
+   `color: var(--main-color) !important` on an ON control — 1.7:1 on Aqua.
+   These selectors are (1,3,2) against that rule's (0,2,2), so the label here
+   stays --slab-ink and the accent is left to carry fill and border. */
+#batchproc .bp-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: none;
+    min-height: 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+    color: var(--bp-ink);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease,
+                box-shadow 0.16s ease, color 0.16s ease;
+}
+
+#batchproc .bp-key--icon {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    justify-content: center;
+    color: var(--bp-dim);
+}
+
+/* The signal an action belongs to rides on its icon, never on its label —
+   a hue that must also be readable at 10px is a hue that cannot be a signal. */
+#batchproc .bp-key .bp-sig {
+    color: var(--bp-sig, currentColor);
+    flex: none;
+}
+
+#batchproc .bp-key:not(:disabled):hover {
+    background-color: color-mix(in srgb, var(--bp-ink) 8%, transparent);
+    border-color: var(--bp-edge-hi);
+}
+
+#batchproc .bp-key:disabled,
+#batchproc .bp-key[aria-disabled="true"] {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+
+html.style-slab #batchproc .bp-key {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border: 1px solid var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-lift);
+    color: var(--slab-ink);
+}
+
+/* Idle → rises toward the pointer. */
+html.style-slab #batchproc .bp-key:not(:disabled):not([aria-pressed="true"]):hover {
+    background-color: var(--slab-tint-hover) !important;
+    border-color: color-mix(in srgb, var(--slab-sh) 60%, transparent);
+    box-shadow: var(--slab-raised);
+}
+
+html.style-slab #batchproc .bp-key:not(:disabled):active {
+    background-color: var(--slab) !important;
+    box-shadow: var(--slab-pressed) !important;
+}
+
+/* ON → carved in, tinted, and the label stays ink. */
+html.style-slab #batchproc .bp-key[aria-pressed="true"],
+html.style-slab.theme-talan #batchproc .bp-key[aria-pressed="true"] {
+    background-color: var(--slab-tint-on) !important;
+    background-image: var(--slab-sheen-on) !important;
+    border-color: var(--slab-edge-on) !important;
+    box-shadow: var(--slab-pressed) !important;
+    color: var(--slab-ink) !important;
+}
+
+/* ON + hover seats DEEPER. An engaged control must never rise like an idle
+   one, or the two states blur into each other. */
+html.style-slab #batchproc .bp-key[aria-pressed="true"]:not(:disabled):hover,
+html.style-slab.theme-talan #batchproc .bp-key[aria-pressed="true"]:not(:disabled):hover {
+    background-color: var(--slab-tint-on-hi) !important;
+    box-shadow: var(--slab-pressed-deep) !important;
+}
+
+html.style-slab #batchproc .bp-key:disabled {
+    background-color: var(--slab) !important;
+    background-image: none !important;
+    border-color: color-mix(in srgb, var(--slab-edge) 50%, transparent) !important;
+    box-shadow: var(--slab-flat) !important;
+}
+
+/* Focus is an outline, never a depth change. The hairline goes to ink at the
+   same time: on Aqua a 2px accent ring alone is 1.9:1 against the slab, and
+   an ink boundary is what actually carries the 3:1. */
+#batchproc .bp-key:focus-visible,
+#batchproc .bp-mode:focus-visible,
+#batchproc .bp-input:focus-visible,
+#batchproc .bp-select:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+    border-color: var(--bp-ink);
+}
+
+/* …and the ink hairline has to be restated at slab specificity, or it never
+   lands. Measured: a focused .bp-key on the Aqua slab kept the edge at
+   rgba(20,40,38,.14), because `html.style-slab #batchproc .bp-key` is (1,2,1)
+   against the block above's (1,2,0) and wins on element count. That left the
+   2px accent ring carrying the focus indicator alone — 1.9:1 on this ground,
+   under the 3:1 a non-text indicator needs. The ring is what you see; this is
+   what makes it pass. */
+html.style-slab #batchproc .bp-key:focus-visible,
+html.style-slab #batchproc .bp-mode:focus-visible,
+html.style-slab #batchproc .bp-op-key:focus-visible,
+html.style-slab #batchproc .bp-input:focus-visible,
+html.style-slab #batchproc .bp-select:focus-visible {
+    border-color: var(--slab-ink) !important;
+}
+
+/* The commit action keeps the accent as a FILL — the accent is unreadable as
+   small text on Aqua but perfectly readable underneath near-black. */
+#batchproc .bp-key--go {
+    padding: 12px 22px;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    background-color: var(--main-color);
+    border-color: color-mix(in srgb, var(--main-color) 70%, #000);
+    color: var(--bp-on-accent);
+}
+
+html.style-slab #batchproc .bp-key--go {
+    background-color: var(--main-color) !important;
+    background-image: none !important;
+    border-color: color-mix(in srgb, var(--main-color) 70%, #000) !important;
+    color: var(--bp-on-accent) !important;
+    box-shadow: var(--slab-lift);
+}
+
+html.style-slab #batchproc .bp-key--go:not(:disabled):hover {
+    background-color: var(--main-color) !important;
+    box-shadow: var(--slab-raised);
+    filter: brightness(1.08);
+}
+
+/* The export keys are signal, not chrome: they keep a solid meaning fill. */
+#batchproc .bp-key--solid {
+    padding: 12px 18px;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    background-color: var(--bp-sig);
+    border-color: color-mix(in srgb, var(--bp-sig) 70%, #000);
+    color: var(--bp-sig-ink);
+}
+
+html.style-slab #batchproc .bp-key--solid {
+    background-color: var(--bp-sig) !important;
+    background-image: none !important;
+    border-color: color-mix(in srgb, var(--bp-sig) 70%, #000) !important;
+    color: var(--bp-sig-ink) !important;
+    box-shadow: var(--slab-lift);
+}
+
+/* A smaller commit key, for the one that lives inside a queue card rather than
+   in the footer. Same key, one size down — not a different control. */
+#batchproc .bp-key--sm {
+    padding: 8px 14px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+}
+
+/* ══ Meaning tokens ═══════════════════════════════════════════════════════
+   `data-sig` names WHICH meaning a control carries; the rules above decide
+   whether that meaning is spent on an icon (.bp-sig), on a fill
+   (.bp-key--solid) or on a tint (.bp-mode). Written once here so the hue and
+   its per-ground lightness are never re-picked at the call site. */
+#batchproc [data-sig="accent"]  { --bp-sig: var(--main-color); }
+#batchproc [data-sig="amber"]   { --bp-sig: var(--bp-sig-amber); }
+#batchproc [data-sig="sky"]     { --bp-sig: var(--bp-sig-sky); }
+#batchproc [data-sig="blue"]    { --bp-sig: var(--bp-sig-blue); }
+#batchproc [data-sig="emerald"] { --bp-sig: var(--bp-sig-emerald); }
+#batchproc [data-sig="rose"]    { --bp-sig: var(--bp-sig-rose); }
+#batchproc [data-sig="violet"]  { --bp-sig: var(--bp-sig-violet); }
+#batchproc [data-sig="purple"]  { --bp-sig: var(--bp-sig-purple); }
+#batchproc [data-sig="dim"]     { --bp-sig: var(--bp-faint); }
+
+html.style-slab #batchproc .bp-key--solid:not(:disabled):hover {
+    background-color: var(--bp-sig) !important;
+    box-shadow: var(--slab-raised);
+    filter: brightness(1.08);
+}
+
+/* ══ Queue ════════════════════════════════════════════════════════════════ */
+#batchproc .bp-queue {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+}
+
+/* One item. Styled once, as an object — everything inside it stays flat. */
+#batchproc .bp-op {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+    contain: layout style;
+}
+
+@media (min-width: 768px) {
+    #batchproc .bp-op {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 22px;
+        padding: 20px;
+    }
+}
+
+html.style-slab #batchproc .bp-op {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-lg);
+    box-shadow: var(--slab-raised);
+}
+
+/* Progress wash — DATA. It is the item's own progress painted across its
+   card, so it keeps the accent and only its alpha is tuned per ground. */
+#batchproc .bp-op-prog {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-color: color-mix(in srgb, var(--main-color) 26%, transparent);
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.style-slab:not(.theme-talan) #batchproc .bp-op-prog {
+    background-color: color-mix(in srgb, var(--main-color) 20%, transparent);
+}
+
+#batchproc .bp-op > *:not(.bp-op-prog) {
+    position: relative;
+    z-index: 1;
+}
+
+/* Incomplete-data flag. A status dot: colour and geometry are the message, so
+   it takes no relief. */
+#batchproc .bp-op-flag {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 3;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--bp-sig-amber);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--bp-sig-amber) 24%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    #batchproc .bp-op-flag { animation: bp-pulse 1.8s ease-in-out infinite; }
+}
+
+@keyframes bp-pulse {
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bp-sig-amber) 10%, transparent); }
+}
+
+/* ══ Photo wells ══════════════════════════════════════════════════════════
+   A photograph is a screen set into the stone: pressed, always. */
+#batchproc .bp-shots {
+    display: flex;
+    gap: 12px;
+    flex: none;
+    flex-wrap: wrap;
+}
+
+#batchproc .bp-well {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 96px;
+    height: 96px;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-well);
+    cursor: pointer;
+}
+
+@media (min-width: 768px) {
+    #batchproc .bp-well { width: 128px; height: 128px; }
+}
+
+html.style-slab #batchproc .bp-well {
+    background-color: var(--bp-well);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+}
+
+#batchproc .bp-well:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+}
+
+#batchproc .bp-well-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#batchproc .bp-well-img--fit { object-fit: contain; }
+
+/* The mask well shows transparency, so it needs a checker rather than a
+   colour. Drawn from the ground ink so it reads on both. */
+#batchproc .bp-well--checker {
+    background-color: var(--bp-surface);
+    background-image:
+        linear-gradient(45deg, var(--bp-checker) 25%, transparent 25%, transparent 75%, var(--bp-checker) 75%),
+        linear-gradient(45deg, var(--bp-checker) 25%, transparent 25%, transparent 75%, var(--bp-checker) 75%);
+    background-size: 12px 12px;
+    background-position: 0 0, 6px 6px;
+}
+
+html.style-slab #batchproc .bp-well--checker {
+    background-color: var(--slab);
+}
+
+#batchproc .bp-well-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    height: 100%;
+    color: var(--bp-dim);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+/* A well's caption is a printed label on the image, not chrome. */
+#batchproc .bp-well-cap {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    padding: 2px 4px;
+    text-align: center;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #ffffff;
+    background-color: color-mix(in srgb, var(--bp-sig-sky) 88%, #000);
+}
+
+#batchproc .bp-well-veil {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    opacity: 0;
+    color: #ffffff;
+    background-color: rgb(0 0 0 / 0.55);
+    transition: opacity 0.16s ease;
+}
+
+#batchproc .bp-well:hover > .bp-well-veil,
+#batchproc .bp-well:focus-within > .bp-well-veil { opacity: 1; }
+
+#batchproc .bp-well-act {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 6px;
+    border: 1px solid rgb(255 255 255 / 0.45);
+    border-radius: 6px;
+    background-color: rgb(0 0 0 / 0.35);
+    color: #ffffff;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+/* ══ Body ═════════════════════════════════════════════════════════════════ */
+#batchproc .bp-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    gap: 12px;
+}
+
+/* ── Stage rail ───────────────────────────────────────────────────────────
+   Data: four stages, each either reached or not. The reached ones take the
+   accent (DONE takes the emerald that means "finished"); the unreached ones
+   are deliberately faint, because the difference between the two is the only
+   thing the rail says. A dim tier at 7.4:1 would make every stage look on. */
+#batchproc .bp-stages {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+#batchproc .bp-stage {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--bp-faint);
+}
+
+#batchproc .bp-stage-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+    flex: none;
+}
+
+#batchproc .bp-stage.is-on { color: var(--bp-stage-on, var(--main-color)); }
+
+#batchproc .bp-stage--done.is-on { --bp-stage-on: var(--bp-sig-emerald); }
+
+#batchproc .bp-stage-rule {
+    width: 16px;
+    height: 1px;
+    background-color: var(--bp-edge);
+    flex: none;
+}
+
+/* ── Title and metadata ───────────────────────────────────────────────────
+   The tag id carries the vendor's printed colour. That colour is a physical
+   standard and is left exactly as it is; only the second half of the id,
+   which has no vendor meaning, takes the ground's ink. */
+#batchproc .bp-op-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+}
+
+#batchproc .bp-op-title .bp-tag-tail { color: var(--bp-ink); }
+
+#batchproc .bp-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 6px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--bp-dim);
+}
+
+#batchproc .bp-meta-v { color: var(--bp-ink); }
+#batchproc .bp-meta-sep { color: var(--bp-faint); }
+
+/* A measurement is a figure: pressed, and tabular so a column of them lines
+   up. Both webfaces ship proportional digits. */
+#batchproc .bp-chip {
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+    color: var(--bp-ink);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+
+html.style-slab #batchproc .bp-chip {
+    background-color: var(--slab);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-pressed);
+}
+
+/* ══ The processing-mode control ══════════════════════════════════════════
+   STUDIO / HYBRID / CLOUD / LOCAL. Four states, one key, and exactly one of
+   them is always engaged — so the key is ALWAYS pressed, never lifted, and
+   the tint moves with the mode. Before this, CLOUD and LOCAL shared a fill
+   and were told apart by the colour of their label alone, which is precisely
+   what rule "never by colour alone" forbids: the two are now distinguished by
+   depth-plus-tint, by icon, and by the word itself, with the mode's hue
+   carried on the icon where it does not have to be read at 9px. */
+#batchproc .bp-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    padding: 6px 11px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--bp-sig) 45%, transparent);
+    background-color: color-mix(in srgb, var(--bp-sig) 16%, transparent);
+    color: var(--bp-ink);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease,
+                box-shadow 0.16s ease;
+}
+
+#batchproc .bp-mode .bp-sig { color: var(--bp-sig); flex: none; }
+
+/* The mode's hue is bound to `data-mode` on the button, so the tint, the
+   hairline and the icon all move together when the key is cycled. Measured on
+   both grounds with all four states: each resolves to its own fill AND its own
+   hairline — STUDIO amber, LOCAL emerald, CLOUD blue, HYBRID purple — so no
+   two of them are ever separated by the colour of the icon alone. */
+#batchproc .bp-mode[data-mode="bgreplace"] { --bp-sig: var(--bp-sig-amber); }
+#batchproc .bp-mode[data-mode="hybrid"]    { --bp-sig: var(--bp-sig-purple); }
+#batchproc .bp-mode[data-mode="cloud"]     { --bp-sig: var(--bp-sig-blue); }
+#batchproc .bp-mode[data-mode="local"]     { --bp-sig: var(--bp-sig-emerald); }
+
+html.style-slab #batchproc .bp-mode {
+    border-radius: var(--slab-r-sm);
+    border-color: color-mix(in srgb, var(--bp-sig) 45%, transparent) !important;
+    background-color: color-mix(in srgb, var(--bp-sig) 13%, var(--slab)) !important;
+    background-image: none !important;
+    color: var(--slab-ink) !important;
+    box-shadow: var(--slab-pressed) !important;
+}
+
+/* Engaged, so hover seats it deeper rather than raising it. */
+html.style-slab #batchproc .bp-mode:not(:disabled):hover {
+    background-color: color-mix(in srgb, var(--bp-sig) 22%, var(--slab)) !important;
+    box-shadow: var(--slab-pressed-deep) !important;
+}
+
+#batchproc .bp-mode:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+
+html.style-slab #batchproc .bp-mode:disabled {
+    box-shadow: var(--slab-flat) !important;
+    background-color: var(--slab) !important;
+    border-color: color-mix(in srgb, var(--slab-edge) 50%, transparent) !important;
+}
+
+/* ── Per-item action keys ─────────────────────────────────────────────────
+   Small keys inside a card. They take the same walk as .bp-key, one size
+   down, with their signal on the icon. */
+#batchproc .bp-ops {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+#batchproc .bp-op-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+    color: var(--bp-ink);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+#batchproc .bp-op-key .bp-sig { color: var(--bp-sig, currentColor); flex: none; }
+
+#batchproc .bp-op-key:disabled { opacity: 0.42; cursor: not-allowed; }
+
+html.style-slab #batchproc .bp-op-key {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-lift);
+    color: var(--slab-ink);
+}
+
+html.style-slab #batchproc .bp-op-key:not(:disabled):not([aria-pressed="true"]):hover {
+    background-color: var(--slab-tint-hover) !important;
+    box-shadow: var(--slab-raised);
+}
+
+html.style-slab #batchproc .bp-op-key[aria-pressed="true"] {
+    background-color: var(--slab-tint-on) !important;
+    background-image: var(--slab-sheen-on) !important;
+    border-color: var(--slab-edge-on) !important;
+    box-shadow: var(--slab-pressed) !important;
+    color: var(--slab-ink) !important;
+}
+
+html.style-slab #batchproc .bp-op-key[aria-pressed="true"]:not(:disabled):hover {
+    background-color: var(--slab-tint-on-hi) !important;
+    box-shadow: var(--slab-pressed-deep) !important;
+}
+
+html.style-slab #batchproc .bp-op-key:disabled {
+    box-shadow: var(--slab-flat) !important;
+    background-image: none !important;
+    border-color: color-mix(in srgb, var(--slab-edge) 50%, transparent) !important;
+}
+
+#batchproc .bp-op-key:focus-visible,
+#batchproc .bp-well-act:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 3px;
+    border-color: var(--bp-ink);
+}
+
+/* ── Step line ────────────────────────────────────────────────────────────
+   The caption and the percentage while an item runs. The percentage is a
+   figure and is tabular, so it does not jitter as it counts up. */
+#batchproc .bp-step {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--main-color);
+}
+
+html.style-slab:not(.theme-talan) #batchproc .bp-step {
+    /* Aqua's accent is 1.7:1 as small text. The running caption is text, so
+       it takes ink; the accent keeps the progress wash and the bar. */
+    color: var(--bp-ink);
+}
+
+#batchproc .bp-step-pct {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+
+/* ══ The log ══════════════════════════════════════════════════════════════
+   A READOUT. Pressed, mono, tabular, and it takes no hover and no press —
+   that is what keeps "raised means you can press this" meaningful elsewhere.
+   OK / FAIL / WARN keep their meaning colour: the whole point of the line is
+   which of the three it is. */
+#batchproc .bp-log {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-well);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+}
+
+html.style-slab #batchproc .bp-log {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-pressed);
+}
+
+/* Explicit: an instrument is not a control. */
+#batchproc .bp-log:hover,
+#batchproc .bp-log:active {
+    box-shadow: inherit;
+    background-color: inherit;
+    cursor: default;
+}
+
+#batchproc .bp-log-line {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--bp-dim);
+}
+
+#batchproc .bp-log-line:last-child { color: var(--bp-ink); }
+
+#batchproc .bp-log-line.is-ok   { color: var(--bp-sig-emerald); }
+#batchproc .bp-log-line.is-fail { color: var(--bp-sig-rose); }
+#batchproc .bp-log-line.is-warn { color: var(--bp-sig-amber); }
+#batchproc .bp-log-line.is-skip { color: var(--bp-dim); }
+
+/* ══ Generated content ════════════════════════════════════════════════════ */
+#batchproc .bp-gen {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+#batchproc .bp-gen-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--bp-edge);
+}
+
+#batchproc .bp-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--bp-dim);
+}
+
+#batchproc .bp-label--sig {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--bp-ink);
+    margin-bottom: 0;
+}
+
+#batchproc .bp-label--sig .bp-sig { color: var(--bp-sig-amber); }
+
+/* The AI type badge and the colour chips are values, so they are wells. */
+#batchproc .bp-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--main-color) 45%, transparent);
+    background-color: color-mix(in srgb, var(--main-color) 14%, transparent);
+    color: var(--bp-ink);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+html.style-slab #batchproc .bp-badge {
+    background-color: var(--slab-tint-on);
+    border-color: var(--slab-edge-on);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-pressed);
+    color: var(--slab-ink);
+}
+
+#batchproc .bp-swatch {
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+    color: var(--bp-ink);
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+html.style-slab #batchproc .bp-swatch {
+    background-color: var(--slab);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-pressed);
+}
+
+/* A field is a well cut into the slab — slab.css already presses every
+   textarea; what is set here is the ground for ROCK and the type. */
+#batchproc .bp-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-well);
+    color: var(--bp-ink);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+#batchproc .bp-input--html { min-height: 108px; }
+
+html.style-slab #batchproc .bp-input {
+    background-color: var(--slab) !important;
+    color: var(--slab-ink) !important;
+    border-color: var(--slab-edge) !important;
+    border-radius: var(--slab-r-sm) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+/* The rendered marketing copy. This used to be a per-item <style> tag hard-
+   coding rgba(255,255,255,.92) — one per queue entry, and white-on-white on
+   the light slab. It is one rule now, and it takes the ground's ink. */
+#batchproc .bp-md {
+    width: 100%;
+    min-height: 60px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 14px;
+    border-radius: 6px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-well);
+    color: var(--bp-ink);
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+html.style-slab #batchproc .bp-md {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-sm);
+    box-shadow: var(--slab-pressed);
+}
+
+#batchproc .bp-md p { margin: 0 0 0.7rem; }
+#batchproc .bp-md p:last-child { margin-bottom: 0; }
+#batchproc .bp-md strong { color: var(--bp-sig-amber); font-weight: 800; }
+#batchproc .bp-md ul { list-style: disc; padding-left: 1.4rem; margin: 0.4rem 0; }
+#batchproc .bp-md li { margin-bottom: 0.3rem; color: var(--bp-dim); }
+
+/* ── The hex map and the clip strip ───────────────────────────────────── */
+#batchproc .bp-panel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px;
+    border-radius: 8px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+}
+
+#batchproc .bp-panel--col {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+html.style-slab #batchproc .bp-panel {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+}
+
+#batchproc .bp-panel-cap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--bp-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+#batchproc .bp-bitmap {
+    height: 44px;
+    width: auto;
+    border-radius: 4px;
+    border: 1px solid var(--bp-edge-hi);
+    image-rendering: pixelated;
+}
+
+#batchproc .bp-clip {
+    height: 190px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 6px;
+    border: 1px solid var(--bp-edge-hi);
+}
+
+/* ══ Status tile ══════════════════════════════════════════════════════════
+   An instrument: it reports where the item is and cannot be pressed. */
+#batchproc .bp-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 52px;
+    height: 52px;
+    margin-left: auto;
+    border-radius: 8px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-well);
+    color: var(--bp-dim);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+@media (min-width: 768px) {
+    #batchproc .bp-status { width: 60px; height: 60px; margin-left: 0; }
+}
+
+html.style-slab #batchproc .bp-status {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+}
+
+#batchproc .bp-status--run    { color: var(--main-color); }
+#batchproc .bp-status--done   { color: var(--bp-sig-emerald); }
+#batchproc .bp-status--failed { color: var(--bp-sig-rose); }
+
+/* ══ Total progress ═══════════════════════════════════════════════════════
+   The track is a well; the fill is data and keeps the accent. */
+#batchproc .bp-total {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+}
+
+html.style-slab #batchproc .bp-total {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-top-color: var(--slab-edge);
+}
+
+#batchproc .bp-total-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--bp-dim);
+}
+
+#batchproc .bp-total-pct {
+    color: var(--bp-ink);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+
+#batchproc .bp-track {
+    height: 10px;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 999px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-well);
+}
+
+html.style-slab #batchproc .bp-track {
+    background-color: var(--slab);
+    border-color: var(--slab-edge);
+    box-shadow: var(--slab-pressed);
+}
+
+#batchproc .bp-fill {
+    height: 100%;
+    background-color: var(--main-color);
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ══ Footer ═══════════════════════════════════════════════════════════════ */
+#batchproc .bp-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px 18px;
+    border-top: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+}
+
+html.style-slab #batchproc .bp-foot {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-top-color: var(--slab-edge);
+    box-shadow: var(--slab-raised);
+    position: relative;
+    z-index: 2;
+}
+
+/* A label plus its select, held together in one well. */
+#batchproc .bp-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: auto;
+    padding: 6px 6px 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-well);
+}
+
+html.style-slab #batchproc .bp-field {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen-in);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-md);
+    box-shadow: var(--slab-pressed);
+}
+
+#batchproc .bp-field > .bp-label { margin-bottom: 0; white-space: nowrap; }
+
+#batchproc .bp-select {
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--bp-surface);
+    color: var(--bp-ink);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+html.style-slab #batchproc .bp-select {
+    background-color: var(--slab) !important;
+    color: var(--slab-ink) !important;
+    border-color: var(--slab-edge) !important;
+    border-radius: var(--slab-r-sm) !important;
+    box-shadow: var(--slab-pressed);
+}
+
+/* ══ Overlays ═════════════════════════════════════════════════════════════ */
+
+/* The lightbox is a scrim over a photograph, not a slab surface: it must stay
+   dark on BOTH grounds so the image is what is lit. It carries no
+   bg-black/* utility precisely so SLAB cannot flatten it to the page colour. */
+#batchproc .bp-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(8 8 8 / 0.94);
+}
+
+#batchproc .bp-lightbox-bar {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    z-index: 5;
+    display: flex;
+    gap: 10px;
+}
+
+#batchproc .bp-lightbox-key {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    border: 1px solid rgb(255 255 255 / 0.35);
+    background-color: rgb(255 255 255 / 0.10);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+#batchproc .bp-lightbox-key:hover { background-color: rgb(255 255 255 / 0.2); }
+
+#batchproc .bp-lightbox-key:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 3px;
+}
+
+html.style-slab #batchproc .bp-lightbox-key {
+    background-color: rgb(255 255 255 / 0.10) !important;
+    background-image: none !important;
+    border-color: rgb(255 255 255 / 0.35) !important;
+    color: #ffffff !important;
+    box-shadow: none;
+}
+
+#batchproc .bp-lightbox-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 44px;
+    overflow: auto;
+}
+
+#batchproc .bp-lightbox-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    cursor: zoom-in;
+    transition: transform 0.3s ease-out;
+}
+
+/* The API-key dialog. A panel that is not a hover target, so it is `raised`,
+   not `float`. */
+#batchproc .bp-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: rgb(8 8 8 / 0.70);
+}
+
+#batchproc .bp-card {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+    max-width: 380px;
+    padding: 26px;
+    border-radius: 10px;
+    border: 1px solid var(--bp-edge);
+    background-color: var(--app-bg-solid, #111);
+    color: var(--bp-ink);
+}
+
+html.style-slab #batchproc .bp-card {
+    background-color: var(--slab);
+    background-image: var(--slab-sheen);
+    border-color: var(--slab-edge);
+    border-radius: var(--slab-r-lg);
+    box-shadow: var(--slab-raised);
+}
+
+#batchproc .bp-card h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    color: var(--bp-ink);
+}
+
+#batchproc .bp-card p {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--bp-dim);
+}
+
+#batchproc .bp-card-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* ══ Layout only ══════════════════════════════════════════════════════════
+   No relief and no colour in this block — these exist so the card's interior
+   can be arranged without reaching back for utilities that SLAB remaps. */
+
+/* Wherever a signal rides on an icon rather than on a label. The key, mode and
+   op-key rules below restate this at higher specificity for their own icons;
+   this is the fallback for an icon inside a panel caption. */
+#batchproc .bp-sig {
+    color: var(--bp-sig, currentColor);
+    flex: none;
+}
+
+/* Title-and-metadata on the left, actions and instruments on the right. */
+#batchproc .bp-op-id { min-width: 0; }
+
+#batchproc .bp-op-head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    width: 100%;
+    min-width: 0;
+}
+
+@media (min-width: 1280px) {
+    #batchproc .bp-op-head { flex-direction: row; }
+}
+
+#batchproc .bp-op-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex: none;
+    gap: 10px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* A caption and the value it names, kept on one line. */
+#batchproc .bp-pair {
+    display: flex;
+    align-items: center;
+    flex: none;
+    gap: 6px;
+}
+
+#batchproc .bp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+#batchproc .bp-gen-block {
+    width: 100%;
+    max-width: 68rem;
+    min-width: 0;
+}
+
+#batchproc .bp-gen-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+#batchproc .bp-gen-foot {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* The generated clips. More than one means a strip that scrolls rather than a
+   row that pushes the card wide. */
+#batchproc .bp-clips {
+    display: flex;
+    gap: 8px;
+    max-width: 100%;
+}
+
+#batchproc .bp-clips--many {
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+#batchproc .bp-clip-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: none;
+    gap: 4px;
+}
+
+#batchproc .bp-clip-n {
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--bp-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+/* A single-line field is the same well, without the drag handle. */
+#batchproc .bp-input--line {
+    min-height: 0;
+    resize: none;
+}
+
+/* A photograph answers the pointer from inside its own well; the well itself
+   does not move, because it is a screen set into the stone, not a key. */
+#batchproc .bp-well-img {
+    transition: transform 0.3s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    #batchproc .bp-well:hover .bp-well-img { transform: scale(1.07); }
+}
+
+/* ══ Narrow ═══════════════════════════════════════════════════════════════
+   At phone width the header's tool cluster is the only thing that has to
+   change shape: it becomes a scrolling rail rather than wrapping into four
+   rows and pushing the queue off the screen. */
+@media (max-width: 640px) {
+    #batchproc .bp-head { padding: 10px 12px; gap: 10px; }
+    #batchproc .bp-tools {
+        flex-wrap: nowrap;
+        width: 100%;
+        overflow-x: auto;
+        scrollbar-width: none;
+        justify-content: flex-start;
+        padding-bottom: 2px;
+    }
+    #batchproc .bp-tools::-webkit-scrollbar { display: none; }
+    #batchproc .bp-queue { padding: 12px; gap: 12px; }
+    #batchproc .bp-op { padding: 12px; }
+    #batchproc .bp-op-title { font-size: 17px; }
+    #batchproc .bp-total { padding: 10px 12px; }
+    #batchproc .bp-foot { padding: 12px; gap: 8px; }
+    #batchproc .bp-field { margin-right: 0; width: 100%; }
+    #batchproc .bp-key--go,
+    #batchproc .bp-key--solid { flex: 1 1 auto; justify-content: center; }
+    #batchproc .bp-ops { justify-content: flex-start; }
+    #batchproc .bp-clip { height: 150px; }
+    #batchproc .bp-op-side { align-items: stretch; width: 100%; }
+    #batchproc .bp-stages {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    #batchproc .bp-stages::-webkit-scrollbar { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #batchproc *,
+    #batchproc *::before,
+    #batchproc *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}

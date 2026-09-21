@@ -17,6 +17,7 @@ import { BoundingBox2DType, BoundingBoxMaskType, InventoryItem, PointingType } f
 import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, simplifyContour, extractGradientFromMask } from '../../lib/utils';
 import { useTranslation, useNotify } from '../../lib/hooks';
 import { tr } from '../../lib/i18n';
+import { MediaOriginNote } from './ItemMediaPanel';
 
 
 
@@ -40,12 +41,23 @@ export function BatchActionsModal() {
     const [progress, setProgress] = useState(0);
     const [currentTask, setCurrentTask] = useState('');
 
-    const ACTIONS: { id: ActionType, label: string, adminOnly: boolean }[] = [
-        { id: 'boxes', label: 'Generate 2D Boxes & Points', adminOnly: false },
-        { id: 'masks', label: 'Generate Segmentation Masks (inc. PNG/SVG)', adminOnly: false },
-        { id: 'shortDesc', label: 'Generate Short Description', adminOnly: false },
-        { id: 'normalDesc', label: 'Generate Bullet Points', adminOnly: false },
-        { id: 'detailedDesc', label: 'Generate Detailed Description', adminOnly: false },
+    /* `masks` is the one action on this list that produces a PROCESSED image:
+       it writes generatedPngData, which is the frame every other catalog
+       surface labels PROCESSED and the only one the Shopify export ships. An
+       operator picking actions for 40 items could not tell that from
+       "Generate Segmentation Masks", so the row says it in the same two words
+       the badges use. */
+    const ACTIONS: { id: ActionType, label: string, desc?: string, adminOnly: boolean }[] = [
+        { id: 'boxes', label: tr('Generate 2D Boxes & Points'), adminOnly: false },
+        {
+            id: 'masks',
+            label: tr('Generate Segmentation Masks (inc. PNG/SVG)'),
+            desc: tr('Produces the PROCESSED image — the background-cleaned frame shown publicly. Leaves the RAW uploads untouched.'),
+            adminOnly: false,
+        },
+        { id: 'shortDesc', label: tr('Generate Short Description'), adminOnly: false },
+        { id: 'normalDesc', label: tr('Generate Bullet Points'), adminOnly: false },
+        { id: 'detailedDesc', label: tr('Generate Detailed Description'), adminOnly: false },
         { id: 'delete', label: t.deleteItems, adminOnly: true },
     ];
 
@@ -325,36 +337,61 @@ export function BatchActionsModal() {
     const availableActions = ACTIONS.filter(a => !a.adminOnly || user?.role === 'Admin');
     const totalItems = batchActionItems.length;
 
+    const pct = totalItems > 0 ? Math.round((progress / totalItems) * 100) : 0;
+
+    /* This modal is portalled at the app shell, outside the #catalog root, so
+       its own root carries .catalog-hub. The scrim is a compound selector
+       (`.catalog-hub.cat-scrim`), hence both classes on the same element. */
     return (
-        <div className="glass-overlay-fullscreen">
-            <div className="glass-panel p-6 shadow-2xl border border-white/20 w-[90vw] max-w-xl! mx-auto flex flex-col gap-4">
-                <div className="modal-header border-b border-white/10 pb-4 text-xl font-bold">
-                    {t.batchActionsTitle(totalItems)}
+        <div className="catalog-hub cat-scrim">
+            <div className="cat-modal" role="dialog" aria-modal="true" aria-label={t.batchActionsTitle(totalItems)}>
+                <div className="cat-head">
+                    <h2 className="cat-title">{t.batchActionsTitle(totalItems)}</h2>
                 </div>
-                <div className="modal-body">
+                <hr className="cat-rule" />
+                <div className="cat-modal-body">
                     {isProcessing ? (
-                        <div className="flex flex-col items-center gap-4 p-4">
-                            <p>{currentTask}</p>
-                            <progress className="w-full" max={totalItems} value={progress}></progress>
-                            <p>{Math.round((progress / totalItems) * 100)}%</p>
+                        /* An instrument: pressed, mono, tabular. The native
+                           <progress> could not be given the module's well, and
+                           its percentage was proportional-figure text that
+                           jittered as it counted. */
+                        <div className="cat-progress" role="status" aria-live="polite">
+                            <p className="cat-progress-task">{currentTask}</p>
+                            <div
+                                className="cat-progress-track"
+                                role="progressbar"
+                                aria-valuemin={0}
+                                aria-valuemax={totalItems}
+                                aria-valuenow={progress}>
+                                <div className="cat-progress-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="cat-progress-n">{progress} / {totalItems} · {pct}%</span>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-4">
-                            <p>{t.batchActionsPrompt}</p>
-                            <div className="flex flex-col gap-2">
-                                {availableActions.map(action => (
-                                    <label key={action.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 cursor-pointer border border-transparent has-checked:border-(--accent-color) has-checked:bg-blue-900/20">
-                                        <input type="checkbox" name="batchAction" value={action.id} checked={selectedActions.has(action.id)} onChange={() => handleActionToggle(action.id)} />
-                                        <span>{action.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
+                        <>
+                            <p className="cat-sub">{t.batchActionsPrompt}</p>
+                            {availableActions.map(action => (
+                                <label key={action.id} className="cat-action">
+                                    <input
+                                        type="checkbox"
+                                        name="batchAction"
+                                        value={action.id}
+                                        checked={selectedActions.has(action.id)}
+                                        onChange={() => handleActionToggle(action.id)} />
+                                    <span className="min-w-0">
+                                        <span className="cat-action-t">{action.label}</span>
+                                        {action.desc && <span className="cat-action-d">{action.desc}</span>}
+                                    </span>
+                                </label>
+                            ))}
+                            {/* The rule in words, said once on this surface too. */}
+                            <MediaOriginNote />
+                        </>
                     )}
                 </div>
-                <div className="modal-footer">
-                    <button onClick={handleClose} className="button secondary" disabled={isProcessing}>{t.cancel}</button>
-                    <button onClick={handleStart} className="button" disabled={isProcessing || selectedActions.size === 0}>
+                <div className="cat-modal-foot">
+                    <button type="button" onClick={handleClose} className="cat-key cat-key--quiet" disabled={isProcessing}>{t.cancel}</button>
+                    <button type="button" onClick={handleStart} className="cat-key" disabled={isProcessing || selectedActions.size === 0}>
                         {isProcessing ? t.processing : `${t.start} (${selectedActions.size})`}
                     </button>
                 </div>

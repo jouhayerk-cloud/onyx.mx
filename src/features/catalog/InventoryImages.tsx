@@ -32,8 +32,22 @@ import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { DetectTypes, InventoryItem, InventoryItemData } from '../../lib/Types';
 import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, extractFileId, resizeImage, generateVideoThumbnail } from '../../lib/utils';
-import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { tr } from '../../lib/i18n';
+import { MediaOriginBadge, MediaOriginNote, mediaOriginOf } from './ItemMediaPanel';
+
+/* The list's value classes, restated here so a card and a row render the same
+   figure the same way. Kept in sync with UnifiedInventoryView's COL_TEXT by
+   hand: it is not exported, and importing the 2,000-line list into the grid to
+   get five class strings would be a worse trade. */
+const COL_TEXT = {
+    color:  'text-[12px] font-black text-(--text-color)/65 uppercase tracking-[0.05em]',
+    size:   'text-[13px] font-mono font-black text-(--text-color)',
+    weight: 'text-[13px] font-mono font-bold text-(--text-color)/70',
+    price:  'text-[14px] font-black text-(--text-color)',
+    total:  'text-[14px] font-black text-(--main-color)',
+    aq:     'text-[13px] font-mono font-black text-(--text-color)/75',
+    ld:     'text-[13px] font-mono font-black text-yellow-500/90',
+};
 
 export const StatusMarkers = ({
   data,
@@ -82,13 +96,14 @@ export const StatusMarkers = ({
     if (interactiveMarkers.length === 0) return null;
 
     return (
-      <div className="flex border border-gray-500 rounded-full p-0.5 text-xs bg-black/10 dark:bg-white/10">
+      <div className="catalog-hub cat-markers cat-markers--select">
         {interactiveMarkers.map(({ key, label, title, detectType }) => (
           <button
             key={key as string}
+            type="button"
             title={`View saved ${title}`}
             onClick={() => onMarkerClick && onMarkerClick(key, detectType!)}
-            className="px-3 py-0.5 rounded-full font-bold bg-transparent text-(--text-color-primary) hover:bg-(--accent-color) hover:text-white transition-colors">
+            className="cat-marker">
             {label}
           </button>
         ))}
@@ -97,20 +112,16 @@ export const StatusMarkers = ({
   }
 
   return (
-    <div className="flex flex-row gap-1">
+    <div className="catalog-hub cat-markers">
       {markers.map(({ key, label, title }) => {
         const isActive = !!data[key as keyof InventoryItemData];
-        const activeClasses = 'bg-green-500 text-black';
-        const inactiveClasses =
-          'bg-transparent border border-(--text-color-secondary) text-(--text-color-secondary) opacity-40';
         return (
-          <div
+          <span
             key={key as string}
-            title={title}
-            className={`w-4 h-4 text-[8px] rounded-full flex items-center justify-center font-bold cursor-default ${isActive ? activeClasses : inactiveClasses
-              }`}>
+            title={`${title}: ${isActive ? tr("saved") : tr("not generated yet")}`}
+            className={`cat-marker${isActive ? ' is-on' : ''}`}>
             {label}
-          </div>
+          </span>
         );
       })}
     </div>
@@ -163,6 +174,15 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
       }
     };
   }, []);
+
+  /* The gallery is built the same way everywhere in this module: the cleaned
+     PNG first, then the raw uploads. `cleanedUrl` is kept beside it so the
+     frame on screen can say WHICH of the two it is, rather than leaving the
+     reader to infer it from an array position they cannot see. */
+  const cleanedUrl = useMemo(
+    () => normalizeInventoryData(item.data).generatedPngUrl || null,
+    [item.data],
+  );
 
   const mediaUrls = useMemo(() => {
     const norm = normalizeInventoryData(item.data);
@@ -292,114 +312,137 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   const dimensions = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x');
   const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
 
+  /* Which of the two this frame is. The badge names it on the face of the
+     photograph, because the whole point of the cleaning STUDIO is telling a
+     cleaned shot from the original it came from. */
+  const origin = mediaOriginOf(mediaUrls[activeMediaIndex], cleanedUrl);
+
+  const openOnKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
-    <div 
-      className="relative group/card aspect-4/3"
+    <article
+      ref={ref as unknown as React.RefObject<HTMLElement>}
+      className={`catalog-hub inv-card inv-card--std${isSelected ? ' is-open' : ''}`}
+      tabIndex={0}
+      aria-label={`${calculated.bookBarcode || norm.itemId || ''} · ${norm.shape || tr("Unknown Object")}`}
+      title={item.label}
+      onClick={handleClick}
+      onKeyDown={openOnKey}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <button
-        ref={ref}
-        className="inventory-item-card w-full h-full relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all duration-300 rounded-2xl border border-white/5 bg-black/40 group-hover/card:border-white/20 group-hover/card:scale-[1.02] group-hover/card:z-10"
-        onClick={handleClick}
-        title={item.label}
-        disabled={isLoading}>
-        {isLoading && <div className="scale-50 relative z-20"><LoadingIndicator /></div>}
-        {error && <div className="text-red-500 relative z-20">{error}</div>}
-        {imageDataUrl && (
+      {isSelectMode && (
+        <button
+          type="button"
+          className="inv-card-select"
+          aria-pressed={isSelected}
+          aria-label={tr("Select item")}
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(item); }}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+          </svg>
+        </button>
+      )}
+
+      {/* The photograph, in the pressed well cards.css already defines. The
+          information used to be painted ON this picture over a black scrim;
+          on the light slab SLAB floors every `text-white` to near-black ink
+          while Tailwind v4's `bg-linear-*` scrim survives untouched, so the
+          whole caption rendered black-on-black. It lives in .inv-card-body
+          below the photo now, which is where a card puts it anyway. */}
+      <div
+        className="inv-card-media cat-media"
+        onClick={(e) => { if (mediaUrls.length > 1) { e.stopPropagation(); handleNavigate(e, 1); } }}>
+        {imageDataUrl ? (
+          <img src={imageDataUrl} alt={norm.shape || ''} className="inv-card-img" />
+        ) : !isLoading && (
+          <div className="cat-media-empty">{error || tr("No photo yet")}</div>
+        )}
+
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="scale-50"><LoadingIndicator /></div>
+          </div>
+        )}
+
+        {isVideo && imageDataUrl && (
+          <span className="inv-card-video" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          </span>
+        )}
+
+        {/* The distinction, in a word, on the face of the frame it describes. */}
+        {imageDataUrl && <MediaOriginBadge origin={origin} variant="onmedia" />}
+
+        {mediaUrls.length > 1 && (
           <>
-            <img src={imageDataUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover/card:scale-110 opacity-80 group-hover/card:opacity-100" />
-            {isVideo && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-8 h-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/card:scale-125 transition-transform duration-500">
-                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1" />
-                </div>
-              </div>
-            )}
+            <button
+              type="button"
+              className="cat-media-key cat-media-key--prev"
+              aria-label={tr("Previous photo")}
+              onClick={(e) => handleNavigate(e, -1)}>
+              <ChevronLeft size={15} strokeWidth={3} />
+            </button>
+            <button
+              type="button"
+              className="cat-media-key cat-media-key--next"
+              aria-label={tr("Next photo")}
+              onClick={(e) => handleNavigate(e, 1)}>
+              <ChevronRight size={15} strokeWidth={3} />
+            </button>
+            <span className="cat-media-count">{activeMediaIndex + 1} / {mediaUrls.length}</span>
           </>
         )}
-        {!isLoading && !imageDataUrl && !error && (
-          <div className="absolute top-2 right-2 z-10 text-(--secondary-color)">
-            <OnyxMiniLogo />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
+      </div>
 
-        {/* Top badges */}
-        <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black shadow-lg text-[10px]"
-            style={{ backgroundColor: vendorColor }}
-            title={`Vendor: ${vendorPrefix}`}>
-            {vendorPrefix || '?'}
-          </div>
+      <div className="inv-card-body">
+        <div className="inv-card-id">
+          <span
+            className="vendor-tag inline-flex items-center text-black text-[12px] leading-none font-black uppercase tracking-tight w-fit max-w-full overflow-hidden"
+            title={`${tr("Vendor")}: ${vendorPrefix}`}>
+            <span className="px-1.5 py-1 shrink-0" style={{ backgroundColor: vendorColor }}>{vendorPrefix || '?'}</span>
+          </span>
+          <span className="inv-card-qty" title={tr("Quantity")}>{norm.quantity || 1}</span>
+          <span className="cat-num ml-auto text-[11px] font-bold text-(--text-color)/60">#{norm.itemNumber}</span>
         </div>
 
-        {/* Bottom text block */}
-        <div className="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/80 to-transparent">
-          <div className="flex items-end justify-between mb-1">
-            <p className="font-black text-white text-base leading-tight truncate">{norm.shape || tr("Unknown Object")}</p>
-            <p className="font-mono text-[9px] text-white/50 shrink-0 ml-2">#{norm.itemNumber}</p>
-          </div>
+        <h3 className="inv-card-name" title={item.label}>
+          <b>{norm.shape || tr("Unknown Object")}</b>
+          {norm.shortDescription && <> <span>{norm.shortDescription}</span></>}
+        </h3>
+        <p className={`inv-card-stone ${COL_TEXT.color}`} title={norm.material || ''}>
+          {norm.material || tr("Mixed Material")}
+        </p>
 
-          <div className="flex items-center justify-between text-[10px] text-white/70 mb-2">
-            <p className="truncate uppercase font-medium tracking-wide">{norm.material || tr("Mixed Material")} · {norm.shortDescription || tr("Misc")}</p>
-          </div>
-
-          <div className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5">
-            <div className="flex items-center gap-1.5 font-mono text-[9px] text-white/90 shrink-0">
-              <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
-              <span>{dimensions ? `${dimensions}` : '—'}</span>
-              <span className="text-white/40 ml-1">{norm.weightKg ? `${norm.weightKg}kg` : ''}</span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="font-bold text-[11px] text-[#AEE6F5] pr-1">{calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '-'}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-1">
-            <span className="font-mono text-[8px] text-white/40 tracking-widest">{calculated.bookBardcode || 'N/A'}</span>
-            <div className="flex items-center gap-1">
-              <span className="text-[7px] text-white/30 uppercase tracking-widest">{tr("Retail")}</span>
-              <span className="font-medium text-[9px] text-green-300">${calculated.bookRetail}</span>
-            </div>
-          </div>
+        {/* The instrument: size and weight over landed and retail. Every cell
+            is a figure column, so every cell is tabular — both webfaces ship
+            proportional digits and a stack of them visibly drifts. */}
+        <div className="inv-readout">
+          <span className={`inv-ro-v ${COL_TEXT.size}`}>{dimensions ? `${dimensions}cm` : '—'}</span>
+          <span className={`inv-ro-v inv-r ${COL_TEXT.weight}`}>{norm.weightKg ? `${norm.weightKg}kg` : '—'}</span>
+          <span className="inv-ro">
+            <span className="inv-ro-l">{tr("Landed")}</span>
+            <span className={`inv-ro-v ${COL_TEXT.price}`}>{calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '—'}</span>
+          </span>
+          <span className="inv-ro inv-r">
+            <span className="inv-ro-l">{tr("Retail")}</span>
+            <span className={`inv-ro-v ${COL_TEXT.total}`}>{calculated.bookRetail !== '-' ? `$${calculated.bookRetail}` : '—'}</span>
+          </span>
         </div>
 
-        {isSelectMode && (
-          <div className={`absolute top-3 right-3 w-5 h-5 border-2 rounded-sm flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-400' : 'bg-black/50 border-white/50'}`}>
-            {isSelected && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
-          </div>
-        )}
-      </button>
-
-      {/* Grid Item Navigation Overlay */}
-      {mediaUrls.length > 1 && (
-        <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 flex justify-between px-2 opacity-0 group-hover/card:opacity-100 transition-opacity z-30 pointer-events-none">
-            <button 
-                onClick={(e) => handleNavigate(e, -1)}
-                className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto shadow-xl"
-            >
-                <ChevronLeft size={16} strokeWidth={3} />
-            </button>
-            <button 
-                onClick={(e) => handleNavigate(e, 1)}
-                className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto shadow-xl"
-            >
-                <ChevronRight size={16} strokeWidth={3} />
-            </button>
+        <div className="inv-card-foot">
+          <span className="inv-card-codes">
+            <span className="inv-card-code"><span className="inv-code-k">AQ</span><span className={COL_TEXT.aq}>{calculated.bookAqCode || '—'}</span></span>
+            <span className="inv-card-code"><span className="inv-code-k inv-code-k--next">LD</span><span className={COL_TEXT.ld}>{calculated.bookLandCode || '—'}</span></span>
+          </span>
         </div>
-      )}
-
-      {/* Media Indicator Dots */}
-      {mediaUrls.length > 1 && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 flex gap-1 z-30 pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity">
-            {mediaUrls.map((_, i) => (
-                <div key={i} className={`h-1 rounded-full transition-all ${i === activeMediaIndex ? 'w-3 bg-(--main-color)' : 'w-1 bg-white/20'}`} />
-            ))}
-        </div>
-      )}
-    </div>
+      </div>
+    </article>
   );
 };
 
@@ -525,11 +568,17 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
     return <div className="flex justify-center items-center h-full"><LoadingIndicator /></div>;
   }
 
+  /* The selection bars used to be `bg-black/20`, which SLAB flattens to the
+     page colour with !important — the bar and the page behind it resolved to
+     the same rgb, so on the light slab a live selection was invisible. They
+     are readouts now: pressed, hairlined, and the count is tabular. */
   return (
-    <div className="flex flex-col gap-4 w-full h-full">
-      <div className="flex justify-between items-center">
-        <h2 className="uppercase font-bold">{t.inventory}</h2>
+    <div className="catalog-hub flex flex-col gap-4 w-full h-full min-h-0">
+      <div className="cat-head">
+        <h2 className="cat-title">{t.inventory}</h2>
         <button
+          type="button"
+          aria-pressed={isSelectMode}
           onClick={() => {
             if (mode === 'catalog') {
               setIsCatSelect(!isCatSelect);
@@ -539,33 +588,37 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
               setMarketSelected([]);
             }
           }}
-          className={`button secondary min-h-0! text-xs py-1 ${!isSelectMode && 'opacity-60'}`}>
+          className="cat-key">
           {isSelectMode ? t.cancel : t.select}
         </button>
       </div>
 
+      {/* Said once per surface, so the badge on each frame does not have to
+          carry the whole rule on its own. */}
+      <MediaOriginNote />
+
       {isSelectMode && mode === 'catalog' && catSelected.length > 0 && (
-        <div className="flex items-center justify-between p-2 rounded-lg bg-black/20">
-          <span className="text-xs font-semibold">{catSelected.length} selected</span>
+        <div className="cat-selbar">
+          <span className="cat-selbar-n">{catSelected.length} {tr("selected")}</span>
           <div className="flex items-center gap-2">
-            <button onClick={() => setCatSelected([])} className="text-xs underline opacity-70 hover:opacity-100">{t.clear}</button>
-            <button onClick={handleBatchAction} className="button secondary min-h-0! text-xs py-1">{t.batchActions}</button>
+            <button type="button" onClick={() => setCatSelected([])} className="cat-key cat-key--quiet">{t.clear}</button>
+            <button type="button" onClick={handleBatchAction} className="cat-key">{t.batchActions}</button>
           </div>
         </div>
       )}
 
       {isSelectMode && mode === 'market' && marketSelected.length > 0 && (
-        <div className="flex items-center justify-between p-2 rounded-lg bg-black/20">
-          <span className="text-xs font-semibold">{marketSelected.length} selected</span>
-          <button onClick={() => setMarketSelected([])} className="text-xs underline opacity-70 hover:opacity-100">{t.clear}</button>
+        <div className="cat-selbar">
+          <span className="cat-selbar-n">{marketSelected.length} {tr("selected")}</span>
+          <button type="button" onClick={() => setMarketSelected([])} className="cat-key cat-key--quiet">{t.clear}</button>
         </div>
       )}
 
-      <div className="grow overflow-y-auto pr-2 -mr-2">
+      <div className="cat-scroll">
         {inventory.length === 0 && !isLoading ? (
-          <p className="text-center text-sm text-(--text-color-secondary) pt-4">{t.noInventoryFound}</p>
+          <div className="cat-empty">{t.noInventoryFound}</div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+          <div className="cat-grid">
             {filteredInventory.map((item) => (
               <InventoryImageItem
                 key={item.row}

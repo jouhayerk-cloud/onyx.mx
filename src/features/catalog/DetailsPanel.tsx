@@ -35,6 +35,7 @@ import { createCurvePath, imageCache, normalizeInventoryData, calculateCodesAndP
 import { exchangeRateAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { tr } from '../../lib/i18n';
+import { MediaOriginBadge, MediaOriginNote, mediaOriginOf, mediaOriginTitle } from './ItemMediaPanel';
 
 
 
@@ -225,15 +226,21 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
     }
   };
 
+  /* Which of the two the hero currently shows. Same helper, same two words and
+     same tooltip as the grid card and the media panel — the gallery is built
+     generatedPngUrl-first, so index 0 is the PROCESSED frame and everything
+     after it is a RAW upload. */
+  const heroOrigin = mediaOriginOf(fullGallery[activeMediaIndex], data.generatedPngUrl);
+
   return (
-    <div className="space-y-4">
+    <div className="catalog-hub space-y-4">
       <div className="relative group">
         {isMediaLoading ? (
-          <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center">
+          <div className="cat-hero flex items-center justify-center">
             <LoadingIndicator />
           </div>
         ) : activeMediaUrl ? (
-          <div className="relative cursor-zoom-in" onClick={handleOpenFullscreen}>
+          <div className="cat-hero cursor-zoom-in" onClick={handleOpenFullscreen}>
             {activeIsVideo ? (
               <video
                 src={activeMediaUrl}
@@ -242,95 +249,92 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
                 muted
                 playsInline
                 loop
-                className="w-full h-auto max-h-80 object-contain rounded-xl bg-black/40 shadow-2xl border border-white/10"
               />
             ) : (
-              <img 
-                src={activeMediaUrl} 
-                alt={data.shape} 
-                className="w-full h-auto max-h-80 object-contain rounded-xl bg-black/40 shadow-2xl border border-white/10" 
-              />
+              <img src={activeMediaUrl} alt={data.shape} />
             )}
-            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-               {data.generatedPngUrl && fullGallery[activeMediaIndex] === data.generatedPngUrl && (
-                   <button 
-                       onClick={(e) => { e.stopPropagation(); handleDeleteGeneratedImage(); }}
-                       className="bg-red-500/60 hover:bg-red-500 backdrop-blur-md p-2 rounded-full border border-white/20 text-white transition-colors"
-                       title={tr("Remove Generated Image")}
-                   >
-                       <Trash2 size={16} />
-                   </button>
-               )}
-               <div className="bg-black/60 backdrop-blur-md p-2 rounded-full border border-white/20">
-                  <Maximize2 size={16} className="text-white" />
-               </div>
-            </div>
-            
+
+            {/* The distinction, in a word, on the face of the frame. */}
+            <MediaOriginBadge origin={heroOrigin} variant="onmedia" />
+
+            {data.generatedPngUrl && fullGallery[activeMediaIndex] === data.generatedPngUrl && (
+                <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteGeneratedImage(); }}
+                    className="cat-media-key cat-media-key--kill"
+                    title={tr("Remove Generated Image")}
+                    aria-label={tr("Remove Generated Image")}
+                >
+                    <Trash2 size={15} />
+                </button>
+            )}
+            <span className="cat-media-key cat-media-key--zoom" aria-hidden="true">
+               <Maximize2 size={15} />
+            </span>
+
             {/* Navigation Arrows Overlay */}
             {fullGallery.length > 1 && (
-              <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 flex justify-between px-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+              <>
                 <button
+                  type="button"
                   onClick={(e) => { e.stopPropagation(); setActiveMediaIndex(prev => (prev - 1 + fullGallery.length) % fullGallery.length); }}
-                  className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-black pointer-events-auto shadow-lg"
+                  className="cat-media-key cat-media-key--prev"
+                  aria-label={tr("Previous photo")}
                 >
-                  <ChevronLeft size={16} strokeWidth={3} />
+                  <ChevronLeft size={15} strokeWidth={3} />
                 </button>
                 <button
+                  type="button"
                   onClick={(e) => { e.stopPropagation(); setActiveMediaIndex(prev => (prev + 1) % fullGallery.length); }}
-                  className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-black pointer-events-auto shadow-lg"
+                  className="cat-media-key cat-media-key--next"
+                  aria-label={tr("Next photo")}
                 >
-                  <ChevronRight size={16} strokeWidth={3} />
+                  <ChevronRight size={15} strokeWidth={3} />
                 </button>
-              </div>
-            )}
-            
-            {/* Dots */}
-            {fullGallery.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-                {fullGallery.map((_, i) => (
-                  <div key={i} className={`h-1 rounded-full transition-all ${i === activeMediaIndex ? 'w-4 bg-(--main-color)' : 'w-1 bg-white/40'}`} />
-                ))}
-              </div>
+                {/* A figure, so tabular — the dots said nothing about position. */}
+                <span className="cat-media-count">{activeMediaIndex + 1} / {fullGallery.length}</span>
+              </>
             )}
           </div>
         ) : (
-           <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center text-white/20">
-             <ImageIcon size={48} />
+           <div className="cat-hero flex items-center justify-center">
+             <ImageIcon size={48} className="opacity-30" />
            </div>
         )}
       </div>
 
+      <MediaOriginNote />
+
       {fullGallery.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div className="cat-tray">
           {fullGallery.map((url, idx) => {
             const fid = extractFileId(url);
             const cached = fid ? imageCache.get(fid) : null;
+            const tileOrigin = mediaOriginOf(url, data.generatedPngUrl);
             return (
               <button
+                type="button"
                 key={idx}
                 onClick={() => setActiveMediaIndex(idx)}
-                className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${
-                  activeMediaIndex === idx ? 'border-(--main-color) scale-105 shadow-lg' : 'border-white/10 opacity-60 hover:opacity-100'
-                }`}
+                title={mediaOriginTitle(tileOrigin)}
+                aria-label={mediaOriginTitle(tileOrigin)}
+                aria-pressed={activeMediaIndex === idx}
+                className={`cat-tile${activeMediaIndex === idx ? ' is-on' : ''}`}
               >
                 {cached ? (
-                   <img src={cached} className="w-full h-full object-cover" />
+                   <img src={cached} alt="" />
                 ) : !fid ? (
                    /\.(mov|mp4|webm|m4v)$/i.test(url.split(/[#?]/)[0]) ? (
-                     <div className="relative w-full h-full">
-                       <video src={url} className="w-full h-full object-cover" muted playsInline />
-                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                         <span className="text-[10px] font-bold text-white/80">▶</span>
-                       </div>
-                     </div>
+                     <video src={url} muted playsInline />
                    ) : (
-                     <img src={url} className="w-full h-full object-cover" />
+                     <img src={url} alt="" />
                    )
                 ) : (
-                  <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-white/30">{idx + 1}</span>
-                  </div>
+                  <span className="cat-num absolute inset-0 flex items-center justify-center text-[10px] font-bold opacity-50">{idx + 1}</span>
                 )}
+                {/* No room for the word on a 52px tile, so the same two words
+                    cut to their initial; the full word stays in the title. */}
+                <MediaOriginBadge origin={tileOrigin} variant="stamp" />
               </button>
             );
           })}
