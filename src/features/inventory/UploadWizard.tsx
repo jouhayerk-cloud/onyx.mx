@@ -869,8 +869,8 @@ export const UploadWizard: React.FC = () => {
                                 {state.vendorId ? (
                                     <button 
                                         onClick={() => set('vendorId', '')}
-                                        className="h-20 w-full px-8 rounded-3xl flex items-center justify-between text-2xl font-black shadow-xl border border-white/20 animate-in zoom-in-95 duration-300 group relative overflow-hidden"
-                                        style={{ backgroundColor: (vendors as any)[state.vendorId]?.color, color: getTextColorForBg((vendors as any)[state.vendorId]?.color) }}
+                                        className="vendor-btn h-20 w-full px-8 rounded-3xl flex items-center justify-between text-2xl font-black shadow-xl border border-white/20 animate-in zoom-in-95 duration-300 group relative overflow-hidden"
+                                        style={{ ['--vendor-color' as string]: (vendors as any)[state.vendorId]?.color, backgroundColor: (vendors as any)[state.vendorId]?.color, color: getTextColorForBg((vendors as any)[state.vendorId]?.color) } as React.CSSProperties}
                                     >
                                         <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors" />
                                         <span>{state.vendorId}</span>
@@ -880,8 +880,8 @@ export const UploadWizard: React.FC = () => {
                                     <div className="flex gap-2 overflow-x-auto no-scrollbar py-2 animate-in slide-in-from-right-4 duration-500">
                                         {Object.entries(vendors).map(([id, v]: [string, any]) => (
                                             <button key={id} onClick={() => set('vendorId', id)}
-                                                className="shrink-0 h-20 px-8 rounded-3xl flex items-center justify-center text-lg font-black transition-all hover:scale-105 active:scale-95 shadow-lg border border-white/10 hover:border-white/40"
-                                                style={{ backgroundColor: v.color, color: getTextColorForBg(v.color) }}>
+                                                className="vendor-btn shrink-0 h-20 px-8 rounded-3xl flex items-center justify-center text-lg font-black transition-all hover:scale-105 active:scale-95 shadow-lg border border-white/10 hover:border-white/40"
+                                                style={{ ['--vendor-color' as string]: v.color, backgroundColor: v.color, color: getTextColorForBg(v.color) } as React.CSSProperties}>
                                                 {id}
                                             </button>
                                         ))}
