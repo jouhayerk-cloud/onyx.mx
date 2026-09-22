@@ -56,7 +56,19 @@ export default defineConfig(({ mode }) => {
                 navigateFallback: '/index.html',
                 navigateFallbackAllowlist: [/^(?!\/__).*/],
             },
+            // Every path here is RELATIVE, and that is the whole point. The site
+            // is served from /onyx.mx/, not from the domain root, so a leading
+            // slash escapes the app: the previous manifest asked for
+            // /OnyxLogo.png and /OnyxMini.svg (both 404) and declared
+            // start_url '/' (also 404, that is the GitHub Pages root). The
+            // installed app therefore had no icon it could fetch and a launch
+            // URL that did not exist. Relative paths resolve against `scope`,
+            // which vite-plugin-pwa fills in from `base`.
+            //
+            // OnyxMini.svg does not exist in public/ at all and has been
+            // dropped rather than repointed — it 404s at every path.
             manifest: {
+                id: './',
                 name: 'Onyx — Inventory & Logistics',
                 short_name: 'Onyx',
                 description: 'Warehouse inventory management, crate packing, and logistics for Jouhayerk',
@@ -64,15 +76,29 @@ export default defineConfig(({ mode }) => {
                 background_color: '#0a0a0a',
                 display: 'standalone',
                 orientation: 'any',
-                start_url: '/',
+                start_url: './',
                 icons: [
-                    { src: '/OnyxLogo.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-                    { src: '/OnyxMini.svg', sizes: 'any', type: 'image/svg+xml' },
+                    // 'any' and 'maskable' are deliberately separate entries.
+                    // A maskable icon is cropped to the platform's shape with
+                    // roughly a 20% safe zone, so a mark that was not drawn
+                    // with that padding loses its edges. Declaring one file as
+                    // both let Android crop the full-bleed logo.
+                    { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                    { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                    { src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
+                    { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
                 ],
                 categories: ['business', 'productivity', 'utilities'],
             },
         }),
     ].filter(Boolean),
+    // ⚠️  SECURITY: loadEnv() above uses an empty prefix, so `env` contains
+    // EVERY variable from .env.local — including SUPABASE_SERVICE_ROLE_KEY
+    // when the MCP server is configured. Only the keys listed below are
+    // inlined into the client bundle. NEVER spread `...env` into this object
+    // or add non-VITE_ keys. The service role key must never reach the
+    // browser or the GitHub Pages static deployment.
+    // See also: .env.example lines 18-21 (retired VITE_CYPHER_KEY warning).
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
@@ -115,4 +141,4 @@ export default defineConfig(({ mode }) => {
       }
     }
   };
-});
+});
