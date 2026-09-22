@@ -10,6 +10,22 @@
        the padding rules that read them do nothing. Anything that must stay
        tappable pays that inset back in CSS — see index.css. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- iOS standalone (Home Screen) is a SEPARATE gate from viewport-fit=cover,
+       and it is the one that was missing. Installed to the Home Screen, iOS
+       reserves the status-bar strip and fills it with theme-color unless the
+       style is black-translucent; in that reserved mode env(safe-area-inset-top)
+       also resolves to 0, so every safe-area rule in index.css is inert and the
+       top bar stops dead below an opaque band. black-translucent hands the full
+       display to the web view: the bar's glass runs under the clock and the
+       inventory scrolls behind it.
+
+       Cost of the mode, deliberately accepted: iOS then draws the status-bar
+       glyphs WHITE and offers no way to ask for dark ones. On the light Aqua
+       slab the clock sits on pale glass. The alternative is the opaque band. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>Onyx-mx.app</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

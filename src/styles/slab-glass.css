@@ -41,19 +41,23 @@
 
 html.style-slab {
     /* How much of the slab's own colour a glass surface keeps. Lower is more
-       transparent; below about 45% the bevel stops reading. */
-    --slab-glass-strength: 40%;
+       transparent. These sit deliberately low — the bevel does stop carrying
+       the surface on its own down here, which is why --slab-glass-blur rose
+       with them: below roughly 45% it is BLUR, not tint, that separates a
+       panel from the list behind it. Do not lower one without raising the
+       other or the chrome dissolves into whatever it is sitting on. */
+    --slab-glass-strength: 32%;
     /* The bars are the LEAST opaque surface, not the most: the whole point is
        that the list keeps moving underneath them. Blur, not opacity, is what
        keeps their labels legible over whatever scrolls past. */
-    --slab-glass-strength-hi: 34%;
-    --slab-glass-blur: 18px;
+    --slab-glass-strength-hi: 26%;
+    --slab-glass-blur: 24px;
 
     /* The tinted glass itself. color-mix keeps this tied to the theme's slab,
        so Aqua and Talan each get their own glass with no second palette. */
     --slab-glass:    color-mix(in srgb, var(--slab) var(--slab-glass-strength), transparent);
     --slab-glass-hi: color-mix(in srgb, var(--slab) var(--slab-glass-strength-hi), transparent);
-    --slab-glass-lo: color-mix(in srgb, var(--slab) 30%, transparent);
+    --slab-glass-lo: color-mix(in srgb, var(--slab) 22%, transparent);
 
     /* A rim, not a border. On glass the hairline has to be brighter than on
        an opaque surface or it disappears against whatever passes behind. */
@@ -63,8 +67,8 @@ html.style-slab {
 /* The dark slab has less tonal headroom, so its glass holds more of its own
    colour — at Aqua's 62% a dark surface over a light photograph goes muddy. */
 html.style-slab.theme-talan {
-    --slab-glass-strength: 48%;
-    --slab-glass-strength-hi: 42%;
+    --slab-glass-strength: 40%;
+    --slab-glass-strength-hi: 34%;
 }
 
 @supports not (backdrop-filter: blur(1px)) {
@@ -98,7 +102,7 @@ html.style-slab body::after {
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background-color: color-mix(in srgb, var(--slab) 62%, transparent);
+    background-color: color-mix(in srgb, var(--slab) 50%, transparent);
 }
 
 /* ── Chrome: the surfaces that become glass ───────────────────────────── */
@@ -159,7 +163,7 @@ html.style-slab summary {
 html.style-slab button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover,
 html.style-slab [role="button"]:not([aria-pressed="true"]):hover,
 html.style-slab summary:hover {
-    background-color: color-mix(in srgb, var(--slab-tint-hover) 72%, transparent) !important;
+    background-color: color-mix(in srgb, var(--slab-tint-hover) 62%, transparent) !important;
 }
 
 html.style-slab button[aria-pressed="true"],
@@ -167,7 +171,7 @@ html.style-slab button[data-active="true"],
 html.style-slab [role="button"][aria-pressed="true"],
 html.style-slab.theme-talan button[aria-pressed="true"],
 html.style-slab.theme-talan button[data-active="true"] {
-    background-color: color-mix(in srgb, var(--slab-tint-on) 80%, transparent) !important;
+    background-color: color-mix(in srgb, var(--slab-tint-on) 70%, transparent) !important;
 }
 
 /* ── What stays opaque ────────────────────────────────────────────────────
@@ -181,7 +185,6 @@ html.style-slab textarea,
 html.style-slab select,
 html.style-slab .stats-readout,
 html.style-slab .payment-row,
-html.style-slab .logo-panel,
 html.style-slab .inv-readout,
 html.style-slab #batchproc .bp-log,
 html.style-slab #process .proc-log,
@@ -298,13 +301,13 @@ html.style-slab .info-notch {
    detail. Rule 2 is untouched: this is a fill change, not relief, and a row
    still carries no shadow of its own. */
 html.style-slab [class*="bg-(--sidebar-bg)"]:not(.payment-row) {
-    background-color: color-mix(in srgb, var(--slab-hi) 20%, color-mix(in srgb, var(--slab) 46%, transparent)) !important;
+    background-color: color-mix(in srgb, var(--slab-hi) 18%, color-mix(in srgb, var(--slab) 36%, transparent)) !important;
     backdrop-filter: blur(14px) saturate(1.4);
     -webkit-backdrop-filter: blur(14px) saturate(1.4);
 }
 
 html.style-slab [class*="bg-(--sidebar-bg)"]:not(.payment-row):hover {
-    background-color: color-mix(in srgb, var(--slab-hi) 64%, transparent) !important;
+    background-color: color-mix(in srgb, var(--slab-hi) 52%, transparent) !important;
 }
 
 /* The list's column header sits above the rows and must stay readable while
@@ -399,9 +402,9 @@ html.style-slab .app-topbar,
 html.style-slab .app-topbar .main-header,
 html.style-slab .app-topbar .universal-tools-bar,
 html.style-slab .app-topbar > * {
-    background-color: color-mix(in srgb, var(--slab) 46%, transparent) !important;
-    backdrop-filter: blur(34px) saturate(1.9) !important;
-    -webkit-backdrop-filter: blur(34px) saturate(1.9) !important;
+    background-color: color-mix(in srgb, var(--slab) 34%, transparent) !important;
+    backdrop-filter: blur(40px) saturate(1.9) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(1.9) !important;
 }
 
 /* Only the band itself paints; the header and tools bar inside it are
@@ -455,14 +458,13 @@ html.style-slab .app-topbar [class*="bg-black/"] {
    because an inset shadow over a moving backdrop reads as a smudge. At these
    tints that exemption made them the only solid objects on the screen, so
    they keep their bevel but take a light fill instead of the full slab. */
-html.style-slab .logo-panel,
 html.style-slab .stats-readout,
 html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 html.style-slab textarea,
 html.style-slab select,
 html.style-slab .inv-readout {
-    background-color: color-mix(in srgb, var(--slab) 55%, transparent) !important;
-    backdrop-filter: blur(14px) saturate(1.4) !important;
+    background-color: color-mix(in srgb, var(--slab) 46%, transparent) !important;
+    backdrop-filter: blur(18px) saturate(1.4) !important;
     -webkit-backdrop-filter: blur(14px) saturate(1.4) !important;
 }
 
@@ -485,14 +487,14 @@ html.style-slab .app-topbar:has(> .ql-lens) {
        this is the sheet of glass it refracts through, and it is the one
        surface both rows share — the header and the tools bar inside stay
        transparent so it is never painted twice. */
-    background-color: color-mix(in srgb, var(--slab) 44%, transparent) !important;
+    background-color: color-mix(in srgb, var(--slab) 32%, transparent) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
 
 /* Its own blur belongs to the lens plate, not to the host. */
 html.style-slab .app-topbar > .ql-lens {
-    backdrop-filter: blur(26px) saturate(1.75) !important;
+    backdrop-filter: blur(32px) saturate(1.75) !important;
     -webkit-backdrop-filter: blur(26px) saturate(1.75) !important;
 }
 
@@ -520,7 +522,7 @@ html.style-slab .app-topbar > .ql-tint {
 }
 
 html.style-slab .app-topbar:has(> .ql-lens) {
-    background-color: color-mix(in srgb, var(--slab) 38%, transparent) !important;
+    background-color: color-mix(in srgb, var(--slab) 28%, transparent) !important;
 }
 
 /* ── Modals are read ON, not through ──────────────────────────────────────
@@ -613,7 +615,9 @@ html.style-slab #trucking .trk-hub > * {
     background-image: none !important;
 }
 
-/* The mark keeps its own panel treatment — it is identity, not a bar. */
-html.style-slab .app-topbar .logo-panel {
-    background-image: var(--slab-sheen-in) !important;
+/* The mark is a key, so it takes a key's OUTER sheen — restated because the
+   rule above blanks every background-image inside .app-topbar, and without
+   this the mark would be the only key in the row wearing no veil. */
+html.style-slab .app-topbar .logo-panel.tool-btn {
+    background-image: var(--slab-sheen) !important;
 }

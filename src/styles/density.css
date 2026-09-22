@@ -955,6 +955,29 @@
     }
     .inv-row > .inv-c-rail    { display: none; }
     .inv-row > .inv-c-spacer  { display: none; }
+
+    /* ...except in selection mode, where the rail is the only thing carrying
+       the checkbox. On desktop the box REPLACES the status dots in a track
+       that is always there, so no column moves. Here the track is gone, so
+       there is nothing to replace and the box had nowhere to render — the
+       phone simply had no way to select an item.
+
+       The track therefore comes back, as a real named area rather than an
+       auto-placed child, and only while .is-selecting is set. The shift it
+       causes is uniform across every row and lasts exactly as long as the
+       mode does, which is the one case the fixed template was never meant to
+       rule out. */
+    .inv-row.is-selecting {
+        grid-template-columns: 20px 2px var(--inv-thumb) auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            "rail edge media tag   qty   .     aq    ld"
+            "rail edge media item  item  item  item  item"
+            "rail edge media color color color size  size";
+    }
+    .inv-row.is-selecting > .inv-c-rail {
+        display: flex;
+        grid-area: rail;
+    }
     .inv-row > .inv-c-edge    { grid-area: edge; }
     .inv-row > .inv-c-media   { grid-area: media; }
     .inv-row > .inv-c-tag     { grid-area: tag; }

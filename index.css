@@ -318,11 +318,25 @@ html, body, #root {
   position: relative;
 }
 
+/* The four insets, once, as tokens. env() cannot be overridden — it is not a
+   custom property — so while every rule reads env() directly there is no way
+   to reproduce a notched device anywhere except on the device itself, and a
+   layout that depends on the inset can only ever be checked by hand on a
+   phone. Reading them through variables costs nothing at runtime and makes
+   the geometry measurable in a desktop browser: set --sa-top on :root and the
+   whole app lays out as if it were on an iPhone. */
+:root {
+  --sa-top: env(safe-area-inset-top);
+  --sa-right: env(safe-area-inset-right);
+  --sa-bottom: env(safe-area-inset-bottom);
+  --sa-left: env(safe-area-inset-left);
+}
+
 /* The top bar paints behind the status bar. The inset is padding on the BAND,
    not on the header inside it, so the glass runs edge to edge under the clock
    while the keys sit below it. .main-header keeps its own 5rem height. */
 .app-topbar {
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--sa-top);
 }
 
 /* ── iOS safe areas ────────────────────────────────────────────────────────
@@ -341,14 +355,25 @@ html, body, #root {
    inert on desktop and on Android; no media query is needed to guard them. */
 .app-content,
 .sidebar {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  padding-left: var(--sa-left);
+  padding-right: var(--sa-right);
+}
+
+/* The sidebar is a column anchored to the TOP edge, not a scroller, so unlike
+   .app-content it has nothing passing behind the status bar — its first child
+   is the Onyx mark, which simply sat under the clock. The sidebar-header's
+   own pt-10 (40px) was enough before viewport-fit=cover; a notched iPhone
+   asks for ~47-59px, so the mark has to clear the inset as well as its own
+   padding. Stated on the element rather than the header so anything else that
+   ever pins to the sidebar's top edge inherits the clearance. */
+.sidebar {
+  padding-top: var(--sa-top);
 }
 
 /* Docked bars: the trucking control bar and anything else fixed to the bottom
    edge. The inset is added to whatever padding the component already sets. */
 #trucking .trk-bar {
-  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  padding-bottom: calc(14px + var(--sa-bottom));
 }
 
 /* The inventory list's sticky column header pins itself below .main-header by
@@ -356,25 +381,55 @@ html, body, #root {
    the top inset, so the offset has to grow with it or the labels scroll under
    the bar on a notched device. */
 :root {
-  --inv-head-offset: calc(5rem + env(safe-area-inset-top));
+  --inv-head-offset: calc(5rem + var(--sa-top));
 }
 
 .main-header {
   display: flex;
   justify-content: space-between;
-  /* flex-start, and this is the rule that decides it: Tailwind is imported on
+  /* flex-END, and this is the rule that decides it: Tailwind is imported on
      line 2, so this selector comes AFTER the utilities and beats any
      items-end / items-start class on the element. Alignment classes in
-     MainHeader.tsx have no effect while this line disagrees with them.
+     MainHeader.tsx have no effect while this line disagrees with them — so
+     the clusters inside carry items-end to match, and changing one without
+     the other silently does nothing.
 
-     Keys must align along their TOPS. A tool cell is two rows tall when it
-     carries a label and one row when it does not, so centring or
-     bottom-aligning them lines the label of one control up against the key of
-     another — which is what made the bar look jumbled. */
-  align-items: flex-start;
+     This was flex-start, on the reasoning that a tool cell is two rows tall
+     when it carries a label and one row when it does not, so any other
+     alignment lines the label of one control up against the key of another.
+     The reasoning was sound and the conclusion was still wrong: the row it
+     protected was the LABEL row, which is the row that has to sit on one
+     baseline for the bar to read. Hanging the cells from a common BOTTOM puts
+     every label on that baseline and lets the unlabelled keys float up, which
+     is the right way round — a key with no label has nothing to misalign.
+
+     The one control that must not do this is the details readout. It deploys
+     downward from the top edge, so it is pinned with items-start in
+     MainHeader.tsx and is deliberately the only exception in the bar. */
+  align-items: flex-end;
   background-color: var(--main-header-bg);
   flex-shrink: 0;
   padding: 0 1rem;
+}
+
+/* Bottom alignment hangs each CELL from a common bottom edge, which is right
+   for the labels and wrong for the icons: a .tool-cell is a 44px key plus a
+   4px gap plus an 8px label, so a key with no label under it drops a whole
+   label row lower than its neighbours and its icon sits off the line. The
+   Onyx mark was the visible case.
+
+   A bare key therefore reserves the label row it does not have. Written as a
+   token because the two numbers belong to .tool-cell in MainHeader.tsx
+   (gap-1 + text-[8px] leading-none) and must move together with it.
+
+   The details readout is untouched: it is absolutely positioned against the
+   header wrapper, so no flex alignment reaches it. */
+:root {
+  --tool-label-row: calc(0.25rem + 8px);
+}
+
+.main-header .tool-btn:not(.tool-cell > .tool-btn) {
+  margin-bottom: var(--tool-label-row);
 }
 
 .main-header .search-wrapper {

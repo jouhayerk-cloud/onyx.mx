@@ -4325,7 +4325,7 @@ export function MainHeader() {
                 </>
             )}
 
-            <div ref={headerRef} className={`main-header h-20 max-h-20 flex items-start pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
+            <div ref={headerRef} className={`main-header h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -4334,10 +4334,18 @@ export function MainHeader() {
                                 const isMobile = window.innerWidth <= 768;
                                 setSidebarState(isMobile ? 'compact' : 'expanded');
                             }}
-                            className="logo-panel p-1 px-2 rounded-xl transition-all flex items-center gap-2 group/logo mr-4"
+                            /* Sized and classed as a tool key on purpose. It opens the
+                               sidebar, so it IS a control, and at 48px in its own wider
+                               panel it was the one object in the bar that did not sit on
+                               the 44px grid — it read as a logo plate parked next to the
+                               keys rather than as the first key. .tool-btn carries the
+                               box, the glass fill and the lift/raised/pressed walk; the
+                               .logo-panel class stays only as a hook for the mark's own
+                               opacity, not for a second surface treatment. */
+                            className="logo-panel tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all shrink-0 group/logo mr-3"
                             title={tr("Onyx.mx Menu")}
                         >
-                            <OnyxMiniLogo className="w-12 h-12 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                            <OnyxMiniLogo className="w-7 h-7 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
                         </button>
                     )}
                 </div>
@@ -4359,7 +4367,7 @@ export function MainHeader() {
                         readout moved into the notch, which put this cluster on a
                         different baseline from the right-hand one and opened a band
                         of dead space under both. */}
-                    <div className="flex items-start gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
+                    <div className="flex items-end gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
                         {activeView === 'inventory' && <InventoryBar />}
                         {activeView === 'store' && <StoreBar />}
                         {activeView === 'finance' && <FinanceBar />}
@@ -4411,14 +4419,19 @@ export function MainHeader() {
                     entirely rather than hidden when that gap is too narrow, so
                     it never contributes width to a bar that is already
                     overflowing. */}
+                {/* items-start, alone in a bar of items-end. The readout is a
+                    two-row block that hangs from the top edge — bottom-aligning it
+                    would drop its second row below the label baseline and make it
+                    the tallest thing in the row. Its collapsed form deploys
+                    downward from the same edge, so both states share one anchor. */}
                 {activeView === 'inventory' && notchFits && (
-                    <div className="flex items-start shrink-0 mx-auto px-4">
+                    <div className="flex items-start self-start shrink-0 mx-auto px-4">
                         <InfoNotch />
                     </div>
                 )}
 
-                <div ref={rightRef} className={`flex items-start justify-end shrink-0 pl-2 sm:pl-4 ${activeView === 'inventory' && notchFits ? '' : 'ml-auto'}`}>
-                    <div className="flex items-start gap-1 sm:gap-6">
+                <div ref={rightRef} className={`flex items-end justify-end shrink-0 pl-2 sm:pl-4 ${activeView === 'inventory' && notchFits ? '' : 'ml-auto'}`}>
+                    <div className="flex items-end gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
                         {sentTruckId && (
