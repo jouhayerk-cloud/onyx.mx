@@ -376,6 +376,46 @@ html, body, #root {
   padding-bottom: calc(14px + var(--sa-bottom));
 }
 
+/* ── Full-screen layers ───────────────────────────────────────────────────
+   Everything above pays the inset for the app's own chrome. That covers the
+   normal case, because a view renders inside .app-content, below a top bar
+   that already clears the status bar.
+
+   It does NOT cover anything position:fixed. A fixed element resolves against
+   the viewport, and with viewport-fit=cover the viewport now starts at the
+   top of the display — so every modal, wizard, drawer and full-screen view in
+   the app (52 `fixed inset-0` layers at the last count) puts its first row of
+   content under the clock. There are far too many to patch one at a time, and
+   a new one would arrive broken, so the inset is paid here, once, by the
+   layer itself.
+
+   padding rather than a margin or a top offset: box-sizing is border-box
+   app-wide, so the layer keeps covering the full display while its content
+   box starts below the status bar. A centred panel drops by half the inset, a
+   full-height panel simply loses that much height, and neither overflows.
+
+   Three kinds of layer are excluded, because for them full-bleed IS the
+   point and a 59px strip of page showing through the top would be the bug:
+
+     z--2         the hero background, which paints the app's ground
+     *scrim*      the dimming sheets behind modals
+     z-10000      the fullscreen image viewer — a photo, edge to edge
+
+   Phone widths only. On a desktop or an Android browser env() is 0 and this
+   is inert anyway, but the media query keeps the intent legible. */
+@media (max-width: 768px) {
+  .fixed.inset-0:not([class*="z--"]):not([class*="scrim"]):not([class*="z-10000"]) {
+    padding-top: var(--sa-top);
+  }
+
+  /* Bars pinned to the top edge rather than filling the screen: the same
+     problem, and the same inset, but they size to their content so it goes
+     on as padding above whatever they already carry. */
+  .fixed.top-0:not([class*="z--"]) {
+    padding-top: var(--sa-top);
+  }
+}
+
 /* The inventory list's sticky column header pins itself below .main-header by
    a fixed 80px (density.css, --inv-head-offset). The header is now taller by
    the top inset, so the offset has to grow with it or the labels scroll under
