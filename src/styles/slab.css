@@ -1207,21 +1207,16 @@ html.style-slab .payment-history .text-\(--main-color\) {
 }
 
 /* ── Logo panel ───────────────────────────────────────────────────────────
-   The mark is set into the slab rather than sitting on it, matching the info
-   notch: both are identity, not controls, and neither should read as
-   pressable. It keeps its own hover because it still opens the sidebar. */
-html.style-slab .logo-panel {
-    background-color: var(--slab) !important;
-    background-image: var(--slab-sheen-in) !important;
-    border: 1px solid var(--slab-edge) !important;
-    border-radius: var(--slab-r-md) !important;
-    box-shadow: var(--slab-pressed) !important;
-}
+   The mark USED to be set into the slab like the info notch, on the reading
+   that identity is not a control. That reading was wrong: the thing opens the
+   sidebar, so it is the first key in the bar, and a seated well next to a row
+   of raised keys made it the only object on the grid that did not respond the
+   way its neighbours do.
 
-html.style-slab .logo-panel:hover {
-    box-shadow: var(--slab-pressed-deep) !important;
-    background-color: var(--slab-tint-hover) !important;
-}
+   It now carries .tool-btn in MainHeader.tsx and takes the key treatment from
+   the .tool-btn rules below — box, fill, and the lift → raised → pressed walk.
+   Nothing is restated here, because a second declaration on .logo-panel is
+   exactly what would put the well back. The class survives only as a hook. */
 
 /* Two-row season switch: the track sits above its label, so the control reads
    top-to-bottom like every other labelled figure in the bar. */

@@ -859,14 +859,22 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         return (
             <div className="flex flex-col gap-0.5">
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-                <div className={`inv-grid inv-row overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                <div className={`inv-grid inv-row overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isSelectionMode ? 'is-selecting' : ''} ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : ''}`}
                     onClick={() => onToggleExpand()} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
 
                     {/* RAIL — payment + deployment status, or the selection box.
                         The checkbox REPLACES the dots rather than adding a track:
                         a conditional extra column would shift every other column
                         sideways the moment selection mode turned on, and the whole
-                        point of the fixed template is that it doesn't. */}
+                        point of the fixed template is that it doesn't.
+
+                        That holds only while the rail exists. Under 685px the
+                        row re-lays out as a card and density.css drops the rail
+                        entirely — the coloured edge already carries payment — so
+                        on a phone there was nothing left for the checkbox to
+                        replace and selection mode had no visible control at all.
+                        .is-selecting puts the track back for that width, and only
+                        for that mode: see density.css. */}
                     <div className="inv-c-rail flex flex-col items-center justify-center gap-1"
                         onClick={isSelectionMode ? (e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); } : undefined}>
                         {isSelectionMode ? (

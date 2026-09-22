@@ -55,10 +55,12 @@ export const LiquidBar: React.FC<Props> = ({ children, ...rest }) => {
                 // 'thin' over 'regular': this bar sits above a dense list and
                 // the point is that the list stays visible through it.
                 material: 'thin',
-                blur: 26,
+                blur: 32,
                 // The library tints on top of its own refraction; over a data
                 // list anything heavier reads as frosting rather than glass.
-                tintOpacity: 0.22,
+                // The theme's own tint is applied to the host in slab-glass.css,
+                // so this only has to avoid cancelling it out.
+                tintOpacity: 0.12,
                 saturation: 1.7,
                 refractionStrength: 0.42,
                 chromaticAberration: 0.18,
