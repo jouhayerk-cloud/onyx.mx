@@ -35,7 +35,11 @@
   <link rel="icon" href="https://jouhayerk-cloud.github.io/onyx.mx/favicon.svg?v=1.75.1" />
   <link rel="icon" type="image/png" href="https://jouhayerk-cloud.github.io/onyx.mx/favicon.png?v=1.75.1" />
   <link rel="icon" type="image/png" sizes="192x192" href="https://jouhayerk-cloud.github.io/onyx.mx/icon-192.png?v=1.75.1" />
-  <link rel="apple-touch-icon" href="https://jouhayerk-cloud.github.io/onyx.mx/apple-touch-icon.png?v=1.75.1" />
+  <!-- sizes is not decoration: with several apple-touch-icon links iOS picks
+       by declared size, and an undeclared one is treated as 60x60 — the
+       lowest-priority candidate. 180x180 is the largest iOS uses for the Home
+       Screen (60pt @3x); it downscales for iPad's 152/167. -->
+  <link rel="apple-touch-icon" sizes="180x180" href="https://jouhayerk-cloud.github.io/onyx.mx/apple-touch-icon.png?v=1.75.1" />
   <link rel="manifest" href="https://jouhayerk-cloud.github.io/onyx.mx/manifest.webmanifest?v=1.75.1" />
   <meta name="theme-color" content="#fdfcf0" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d0b0a" media="(prefers-color-scheme: dark)" />
