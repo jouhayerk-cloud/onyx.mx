@@ -568,8 +568,8 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
                 {/* Tag ID preview */}
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-black"
-                    style={{ backgroundColor: vendorData?.color || '#ccc', color: getTextColorForBg(vendorData?.color || '#ccc') }}>
+                  <span className="vendor-tag px-2 py-0.5 rounded text-[10px] font-black"
+                    style={{ ['--vendor-color' as string]: vendorData?.color || '#ccc', backgroundColor: vendorData?.color || '#ccc', color: getTextColorForBg(vendorData?.color || '#ccc') } as React.CSSProperties}>
                     {vendorKey} 826
                   </span>
                   <span className="text-xs font-black text-black">{item.itemNumber}</span>

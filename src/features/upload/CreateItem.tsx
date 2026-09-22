@@ -304,8 +304,8 @@ export function CreateItem() {
                                     type="button"
                                     key={id}
                                     onClick={() => set('vendorId', id)}
-                                    className="min-w-0 flex-1 px-1 h-8 rounded text-[9px] font-black transition-all hover:-translate-y-1 active:translate-y-0 shadow-sm whitespace-nowrap"
-                                    style={{ backgroundColor: v.color, color: getTextColorForBg(v.color) }}
+                                    className="vendor-btn min-w-0 flex-1 px-1 h-8 rounded text-[9px] font-black transition-all hover:-translate-y-1 active:translate-y-0 shadow-sm whitespace-nowrap"
+                                    style={{ ['--vendor-color' as string]: v.color, backgroundColor: v.color, color: getTextColorForBg(v.color) } as React.CSSProperties}
                                 >
                                     {id}
                                 </button>
@@ -317,8 +317,8 @@ export function CreateItem() {
                         {/* Selected Vendor & Tag ID Preview */}
                         <div className="flex items-center gap-2">
                             <button type="button" onClick={() => set('vendorId', '')} 
-                                className="px-3 py-1 flex items-center justify-center text-2xl font-black transition-all active:scale-95 shadow-sm rounded"
-                                style={{ backgroundColor: vendorData?.color || '#333', color: getTextColorForBg(vendorData?.color || '#333') }}>
+                                className="vendor-btn px-3 py-1 flex items-center justify-center text-2xl font-black transition-all active:scale-95 shadow-sm rounded"
+                                style={{ ['--vendor-color' as string]: vendorData?.color || '#333', backgroundColor: vendorData?.color || '#333', color: getTextColorForBg(vendorData?.color || '#333') } as React.CSSProperties}>
                                 <span>{tagPreview?.vendor} {tagPreview?.season}</span>
                             </button>
                             <div className="flex items-center gap-2 px-2">
