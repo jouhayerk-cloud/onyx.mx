@@ -857,6 +857,23 @@ html.theme-aqua {
    letting it follow the active theme.
    ========================================================================== */
 
+/* Top-most and full-screen, in every style. The wizard was written as
+   `absolute inset-0 z-[400] pt-[128px]` and is mounted inside .app-content,
+   which is the SCROLL container — so it covered the scroller's box instead of
+   the display, scrolled away with the list if the list had been scrolled, and
+   sat UNDER the top band (z-500) with a 128px gap left open for it. The
+   inventory rows showed straight through that gap and around it. Fixed here
+   rather than in UploadWizard.tsx because another agent is editing that file.
+   No ancestor of .entry-wizard carries a transform, filter or backdrop-filter,
+   so position:fixed resolves against the viewport. z-index 1100 clears the top
+   band (500) and the phone sidebar (1000); toasts (portal, 9999) stay above. */
+.entry-wizard {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1100 !important;
+  padding-top: var(--sa-top) !important;
+}
+
 .entry-wizard [class*="text-white/"] {
   color: var(--text-color-secondary) !important;
 }
@@ -865,7 +882,7 @@ html.theme-aqua {
   color: var(--text-color-primary) !important;
 }
 
-.entry-wizard [class*="bg-white/"] {
+.entry-wizard [class*="bg-white/"]:not([class~="bg-white/0"]) {
   background-color: var(--glass-bg) !important;
 }
 

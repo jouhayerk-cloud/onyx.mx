@@ -55,20 +55,23 @@ export const LiquidBar: React.FC<Props> = ({ children, ...rest }) => {
                 // 'thin' over 'regular': this bar sits above a dense list and
                 // the point is that the list stays visible through it.
                 material: 'thin',
-                blur: 32,
+                blur: 38,
                 // The library tints on top of its own refraction; over a data
                 // list anything heavier reads as frosting rather than glass.
                 // The theme's own tint is applied to the host in slab-glass.css,
                 // so this only has to avoid cancelling it out.
-                tintOpacity: 0.12,
+                tintOpacity: 0.08,
                 saturation: 1.7,
-                refractionStrength: 0.42,
-                chromaticAberration: 0.18,
+                refractionStrength: 0.55,
+                chromaticAberration: 0.24,
                 // The rim is what makes a glass edge read as an edge — SLAB's
-                // rule 1 in the library's own terms.
+                // rule 1 in the library's own terms. Raised with the 2026-09-22
+                // translucency step: as the tint thins, refraction, the rim and
+                // the specular highlight are what still say "this is a surface";
+                // lower them together with tintOpacity and the bar disappears.
                 bezelWidth: 12,
-                edgeHighlight: 0.55,
-                specularStrength: 0.35,
+                edgeHighlight: 0.7,
+                specularStrength: 0.45,
                 // Light from the top left, the same axis every SLAB bevel uses.
                 lightAngle: 135,
                 elevation: 0,

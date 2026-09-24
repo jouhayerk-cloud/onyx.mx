@@ -107,6 +107,7 @@ import {
     inventoryToolsOpenAtom,
     isInventorySmartFiltersOpenAtom
 } from '../../lib/atoms';
+import { batchCreateModeAtom, isAiProcessingEnabledAtom } from '../../lib/atoms';
 import { WORKBOOK_IDS, type WorkbookId } from '../../lib/seasons';
 // Consolidated imports to prevent duplicates
 
@@ -1324,11 +1325,51 @@ const ProcessBar: React.FC = () => {
 
 const UploadBar: React.FC = () => {
     const [itemData, setItemData] = useAtom(uploadItemDataAtom);
+    const [mode, setMode] = useAtom(batchCreateModeAtom);
+    const [, setUploadWizardOpen] = useAtom(isUploadWizardOpenAtom);
+    const [aiEnabled, setAiEnabled] = useAtom(isAiProcessingEnabledAtom);
     const activeWb = itemData.workbook || 'v326';
 
+    const openLegacyWizard = () => {
+        setItemData({ itemId: '', quantity: '1', itemNumber: '1', vendorId: '', workbook: 'v326' });
+        setUploadWizardOpen(true);
+    };
+
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 w-full">
             <ModuleBadge icon="upload" label={tr("Add Entry")} color="var(--color-upload)" />
+            
+            <div className="flex items-center gap-1.5 ml-2">
+                <StudioAction 
+                    icon={Layers}
+                    label={tr("SINGLE ITEM")}
+                    active={mode === 'single'}
+                    onClick={() => setMode('single')}
+                />
+                <StudioAction 
+                    icon={Layers}
+                    label={tr("BATCH XLSX")}
+                    active={mode === 'batch'}
+                    onClick={() => setMode('batch')}
+                />
+                
+                <div className="w-px h-4 bg-white/10 mx-2" />
+                
+                <StudioAction 
+                    icon={FolderUp}
+                    label={tr("LEGACY 825/326/826")}
+                    active={false}
+                    onClick={openLegacyWizard}
+                />
+                <div className="w-px h-6 bg-white/10 mx-2" />
+                <StudioAction 
+                    icon={Brain}
+                    label={tr("AI PROCESSES")}
+                    active={aiEnabled}
+                    onClick={() => setAiEnabled(!aiEnabled)}
+                    color={aiEnabled ? '#38bdf8' : '#777'}
+                />
+            </div>
         </div>
     );
 };

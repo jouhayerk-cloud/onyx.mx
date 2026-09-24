@@ -32,6 +32,7 @@ import {
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
+import { LivePreviewCard } from '../../components/inventory/LivePreviewCard';
 import { supabase } from '../../lib/supabase';
 import { 
     getTextColorForBg, 
@@ -629,6 +630,9 @@ export const UploadWizard: React.FC = () => {
             const payload = {
                 id: itemData.id || crypto.randomUUID(),
                 item_id: `${state.vendorId}-${String(state.itemNumber).padStart(3, '0')}`,
+                // Never written by this surface, so its new items had vendor_id NULL.
+                // Also repairs a NULL on any existing item saved through Edit Entry.
+                vendor_id: state.vendorId || null,
                 book_barcode: calculated.bookBarcode || '',
                 book_aq_code: calculated.bookAqCode || '',
                 status: state.status || 'Production',
@@ -727,6 +731,24 @@ export const UploadWizard: React.FC = () => {
 
     const isDuplicate = state.existingNumbers.includes(state.itemNumber);
 
+    
+    const tagPreview = useMemo(() => {
+        if (!state.vendorId) return null;
+        const finalItemId = `${state.vendorId}-${itemData.itemId || 'temp'}`;
+        const calculated = calculateCodesAndPrices(
+            { price: state.price, itemId: finalItemId, workbook: itemData.workbook || 'v826', itemNumber: state.itemNumber || '1' },
+            19,
+            'v826'
+        );
+        return {
+            vendor: state.vendorId,
+            season: String(itemData.workbook || 'v826').replace('v', ''),
+            count: state.itemNumber || '1',
+            cypher: calculated.bookLandCode || 'XXXX',
+            display: calculated.bookBarcodeDisplay
+        };
+    }, [state.vendorId, state.price, itemData.itemId, itemData.workbook, state.itemNumber]);
+
     if (!isOpen) return null;
 
     return (
@@ -758,7 +780,7 @@ export const UploadWizard: React.FC = () => {
                     className="flex-1 overflow-y-auto no-scrollbar px-6 md:px-12 pb-48 pt-6 md:pt-10 animate-in slide-in-from-bottom-4 duration-300"
                     onClick={() => setGlobalSuggestionIndex(prev => prev + 1)}
                 >
-                    <div className="max-w-[1200px] mx-auto space-y-8 md:space-y-12" onClick={(e) => e.stopPropagation()}>
+                    <div className="w-full max-w-[1400px] mx-auto space-y-8 md:space-y-12" onClick={(e) => e.stopPropagation()}>
                         
                         {/* Unified Protocol Header */}
                         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 pb-10 border-b border-white/5">
@@ -826,7 +848,9 @@ export const UploadWizard: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Core Metadata Stack - Status, Vendor, Index */}
+                        <div className="flex flex-col xl:flex-row gap-6 items-start w-full">
+        <div className="flex-1 w-full space-y-8 bg-black/20 backdrop-blur-3xl rounded-3xl p-6 shadow-sm border border-white/10">
+            {/* Core Metadata Stack - Status, Vendor, Index */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
                             {/* Status Selection - Dynamic Panel */}
                             <div className="lg:col-span-4 space-y-3">
@@ -977,10 +1001,28 @@ export const UploadWizard: React.FC = () => {
                                 className="bg-transparent border-none text-base font-black text-white outline-none placeholder:text-white/10 uppercase w-full transition-all tracking-widest" 
                             />
                         </div>
-                    </div>
-                </div>
+                        </div>
+        
+        {/* Right Sidebar - Preview & AI */}
+        <div className="w-full xl:w-[450px] shrink-0 flex flex-col gap-6 sticky top-6">
+            <LivePreviewCard 
+                itemData={state} 
+                selectedVendorKey={state.vendorId} 
+                exchangeRate={exchangeRate} 
+                vendorData={state.vendorId ? (vendors as any)[state.vendorId] : null} 
+                tagPreview={tagPreview} 
+                onClearVendor={() => set('vendorId', '')} 
+                aiResults={null} 
+            />
+            {/* AI Tools moved to sidebar */}
+        </div>
+    </div>
+    
+    </div>
+    </div>
+    
+    {/* FLOATING ACTION BUTTONS */}
 
-                {/* FLOATING ACTION BUTTONS */}
                 <div className="absolute bottom-10 left-0 right-0 px-10 md:px-24 flex justify-between items-center pointer-events-none z-[100]">
                     <button 
                         onClick={() => setIsOpen(false)} 

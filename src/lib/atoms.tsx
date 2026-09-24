@@ -191,6 +191,7 @@ export const PointsAtom = atom(
 export type SidebarState = 'expanded' | 'compact' | 'hidden';
 export const sidebarStateAtom = atomWithStorage<SidebarState>('sidebarState', 'expanded', sessionJSONStorage);
 export const isUploadWizardOpenAtom = atom<boolean>(false);
+export const isAiProcessingEnabledAtom = atomWithStorage<boolean>('isAiProcessingEnabled', true, sessionJSONStorage);
 
 // Studio Settings Portal
 export type StudioSettingsViewMode = 'settings' | 'about';
