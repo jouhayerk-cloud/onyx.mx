@@ -21,7 +21,7 @@ export function CreateItem() {
     const [mediaFiles, setMediaFiles] = useAtom(uploadMediaFilesAtom);
     const user = useAtomValue(userAtom);
     const db = useDatabase();
-    const fileInputRef = useRef<HTMLInputElement>(null);
+        const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isSaving, setIsSaving] = useState(false);
     const [savingProgress, setSavingProgress] = useState(0);
@@ -60,12 +60,44 @@ export function CreateItem() {
     }, []);
 
     const selectedVendorKey = itemData.vendorId;
+
+
+
+    // Auto-fetch next item number for selected vendor
+    useEffect(() => {
+        if (!selectedVendorKey || mode === 'batch') return;
+
+        const fetchNextItemNumber = async () => {
+            const { data: items } = await db.from('inventory')
+                .select('item_number, itemNumber')
+                .eq('vendor_id', selectedVendorKey)
+                .eq('workbook', itemData.workbook || 'v826');
+            
+            let maxNum = 0;
+            if (items) {
+                items.forEach((i: any) => {
+                    const numStr = String(i.item_number || i.itemNumber || '');
+                    if (numStr) {
+                        const num = parseInt(numStr);
+                        if (!isNaN(num) && num > maxNum) maxNum = num;
+                    }
+                });
+            }
+            
+            // ALWAYS override itemNumber when the vendor changes, unless they manually typed something AFTER selecting this vendor.
+            // But since this effect runs when selectedVendorKey changes, we can safely assume it's a new vendor selection.
+            setItemData(prev => {
+                return { ...prev, itemNumber: String(maxNum + 1) };
+            });
+        };
+        fetchNextItemNumber();
+    }, [selectedVendorKey, itemData.workbook, mode, db]);
     const vendorData = selectedVendorKey ? vendors[selectedVendorKey as keyof typeof vendors] : null;
 
     // Derived tag ID preview
     const tagPreview = useMemo(() => {
         if (!selectedVendorKey) return null;
-        const finalItemId = `${selectedVendorKey}-${itemData.itemId || 'temp'}`;
+        const finalItemId = `${selectedVendorKey}-${String(itemData.itemNumber || 1).padStart(3, '0')}`;
         const calculated = calculateCodesAndPrices(
             { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v826', itemNumber: itemData.itemNumber || '1' },
             19, // Exchange rate (mocked for preview, could use context if available)
@@ -178,6 +210,8 @@ export function CreateItem() {
         
         try {
             let uploadedUrls: string[] = [];
+
+            
             
             if (mediaFiles.length > 0) {
                 for (let i = 0; i < mediaFiles.length; i++) {
@@ -194,7 +228,11 @@ export function CreateItem() {
                 setSavingProgress(70);
             }
             
-            const finalItemId = `${selectedVendorKey}-${itemData.itemId}`;
+            // itemData.itemId is generateUniqueId() — a form-session key reset on
+            // every clear, never the item's index. Building item_id from it is what
+            // produced "EM-4LJ82BZS" on test item EM8261ONAF instead of the
+            // VENDOR-NNN every other surface, the barcode and the duplicate check use.
+            const finalItemId = `${selectedVendorKey}-${String(itemData.itemNumber || 1).padStart(3, '0')}`;
             const calculated = calculateCodesAndPrices(
                 { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v826', itemNumber: itemData.itemNumber || '1' },
                 19,
@@ -204,6 +242,9 @@ export function CreateItem() {
             const dbRow = {
                 item_id: finalItemId,
                 item_number: Number(itemData.itemNumber) || 1,
+                // Never written before, so every item saved here had vendor_id NULL;
+                // only the barcode trigger's split_part(item_id) fallback hid it.
+                vendor_id: selectedVendorKey,
                 shape: itemData.shape,
                 material: itemData.material,
                 color: itemData.color,

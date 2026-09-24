@@ -489,6 +489,13 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
     // The AI copy. Only worked out for an open row: the body needs an HTML
     // parse and the check a full scan, and 480 closed rows need neither.
+    // Canonical columns, the same ones BatchProcessingWizard's
+    // handleSaveDescription writes and the Shopify export reads: the AI TITLE
+    // lives in detailed_description, the marketing HTML in
+    // generated_description. `description` is the vendor's own text. (A
+    // working-tree edit had moved these to description/detailedDescription to
+    // match an Add Entry writer that was itself wrong — that showed the wrong
+    // copy on every batch-processed item.)
     const aiTitle = String(norm.detailedDescription || '').trim();
     const aiBodyText = useMemo(() => (isExpanded ? htmlToText(norm.generatedDescription || '') : ''), [isExpanded, norm.generatedDescription]);
     const aiColors = String(norm.generatedColor || '').split(',').map(c => c.trim()).filter(Boolean);
@@ -2144,3 +2151,4 @@ export const UnifiedInventoryView = () => {
         </div>
     );
 };
+

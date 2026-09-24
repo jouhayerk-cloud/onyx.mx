@@ -9,6 +9,7 @@ import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
+import { useDatabase } from '../../lib/hooks';
 
 interface DBItem {
     id: string;
@@ -33,6 +34,7 @@ interface DBItem {
 }
 
 export function DataBaseArtifact() {
+    const db = useDatabase();
     const [inventory] = useAtom(inventoryAtom);
     const [storeInventory] = useAtom(storeInventoryAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
@@ -74,6 +76,10 @@ export function DataBaseArtifact() {
             const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
 
             return matchesSearch && matchesVendor && matchesStatus;
+        }).sort((a, b) => {
+            const dateA = new Date(a.created_at || a.timestamp || 0).getTime();
+            const dateB = new Date(b.created_at || b.timestamp || 0).getTime();
+            return dateB - dateA;
         });
     }, [allItems, search, vendorFilter, statusFilter]);
 
@@ -117,12 +123,24 @@ export function DataBaseArtifact() {
                 if (updateData[key] !== undefined) cleanUpdate[key] = updateData[key];
             });
             
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('inventory')
                 .update(cleanUpdate)
-                .eq('id', id);
+                .eq('id', id)
+                .select()
+                .single();
 
             if (error) throw error;
+            
+            // Instantly update RxDB so the UI reflects changes without waiting for Realtime
+            if (db && data) {
+                try {
+                    const existing = await db.inventory.findOne(id).exec();
+                    if (existing) {
+                        await existing.patch(data);
+                    }
+                } catch(e) { console.error("Local db patch failed", e); }
+            }
             
             toast.success(tr("Artifact Synchronized"));
             setEditingId(null);
@@ -456,18 +474,20 @@ export function DataBaseArtifact() {
                                         {isEditing ? (
                                             <div className="flex justify-end gap-3 scale-90">
                                                 <button 
-                                                    onClick={handleCancelEdit}
-                                                    disabled={isCurrentSaving}
-                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 transition-all"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                                <button 
                                                     onClick={() => handleSave(item.id)}
                                                     disabled={isCurrentSaving}
                                                     className="w-8 h-8 rounded-full bg-(--main-color) text-black flex items-center justify-center hover:scale-110 active:scale-90 transition-all shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]"
+                                                    title={tr("Save changes")}
                                                 >
                                                     {isCurrentSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                                </button>
+                                                <button 
+                                                    onClick={handleCancelEdit}
+                                                    disabled={isCurrentSaving}
+                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 transition-all"
+                                                    title={tr("Cancel")}
+                                                >
+                                                    <X size={14} />
                                                 </button>
                                             </div>
                                         ) : (
