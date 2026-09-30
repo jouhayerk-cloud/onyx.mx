@@ -84,6 +84,29 @@ html.style-slab {
     --slab-glass-wash:      color-mix(in srgb, var(--slab) 40%, transparent);  /* over the mesh ground */
     --slab-glass-modal:     color-mix(in srgb, var(--slab) 20%, transparent);  /* read ON, not through — the blur does the rest */
     --slab-glass-sheet:     color-mix(in srgb, var(--slab) 78%, transparent);  /* child-built modal scrims */
+    --slab-glass-pop:       color-mix(in srgb, var(--slab) 56%, transparent);  /* toasts, tooltips, dropdowns over busy content */
+
+    /* The sheens, made of light instead of stone (2026-09-30). slab.css builds
+       every sheen by mixing into var(--slab), so each stop is OPAQUE — and it
+       paints them as a background-IMAGE, with !important, on every panel
+       (.glass-*, .sidebar), key, well and module card: 70+ rules. An image
+       sits in front of the background colour, so all the glass fills in this
+       file were being painted underneath a solid gradient. That is why
+       surfaces the audit counted as glass still looked solid. Mixing into
+       transparent keeps the same light direction and strength over a
+       translucent surface. Over an opaque slab (reduced transparency, no
+       backdrop-filter) it composites to the original gradient. */
+    --slab-sheen: linear-gradient(145deg,
+        color-mix(in srgb, var(--slab-hi) 42%, transparent) 0%,
+        transparent 46%,
+        color-mix(in srgb, var(--slab-sh) 20%, transparent) 100%);
+    --slab-sheen-in: linear-gradient(145deg,
+        color-mix(in srgb, var(--slab-sh) 20%, transparent) 0%,
+        transparent 54%,
+        color-mix(in srgb, var(--slab-hi) 34%, transparent) 100%);
+    --slab-sheen-on: linear-gradient(145deg,
+        color-mix(in srgb, var(--main-color) 22%, transparent) 0%,
+        color-mix(in srgb, var(--main-color) 10%, transparent) 100%);
 }
 
 /* The dark slab has less tonal headroom, so its glass holds more of its own
@@ -320,6 +343,7 @@ html.style-slab #process .proc-scrim {
         --slab-glass-wash:      var(--slab);
         --slab-glass-modal:     var(--slab);
         --slab-glass-sheet:     var(--slab);
+        --slab-glass-pop:       var(--slab);
     }
 
     html.style-slab *,
@@ -526,7 +550,15 @@ html.style-slab .stats-readout,
 html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 html.style-slab textarea,
 html.style-slab select,
-html.style-slab .inv-readout {
+html.style-slab .inv-readout,
+/* The payment table, logs and terminals were the last opaque wells (2026-09-30
+   audit): every surface is glass now. They take the densest glass, not the
+   base coat, because they are read line by line. */
+html.style-slab .payment-row,
+html.style-slab .crate-badge__icon,
+html.style-slab #batchproc .bp-log,
+html.style-slab #process .proc-log,
+html.style-slab #process .proc-terminal {
     background-color: var(--slab-glass-well) !important;
     backdrop-filter: blur(22px) saturate(1.4) !important;
     -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
@@ -702,3 +734,301 @@ html.style-slab .app-topbar .logo-panel.tool-btn {
 }
 
 
+
+/* ── Every surface is glass: the 2026-09-30 module audit ──────────────────
+   A module-by-module audit listed what still rendered SOLID (an opaque fill
+   no glass rule reached: module stylesheets painting var(--slab), and
+   var(--glass-bg) / var(--bg-color), which SLAB resolves to the opaque slab)
+   or THIN / TRANSPARENT (an overlay with no material, or a dialog that only
+   got the base coat's chrome tint). Each is restated here by role. The
+   module sheets are imported before this file, so equal specificity wins. */
+
+/* Wells: chips, fields, tracks and readouts. */
+html.style-slab .entry-wizard [class*="bg-white/"]:not([class~="bg-white/0"]):not(button),
+html.style-slab .custom-scrollbar[class*="slide-in-from-top"],
+html.style-slab #batchproc .bp-status,
+html.style-slab #batchproc .bp-field,
+html.style-slab #batchproc .bp-md,
+html.style-slab #batchproc .bp-mark,
+html.style-slab #batchproc .bp-track,
+html.style-slab #batchproc .bp-chip,
+html.style-slab #batchproc .bp-swatch {
+    /* .entry-wizard: index.css remaps the wizard's bg-white/* utilities to
+       var(--glass-bg) at (0,3,0) !important — the opaque slab under SLAB. */
+    background-color: var(--slab-glass-well) !important;
+    backdrop-filter: blur(22px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+}
+
+html.style-slab .payment-row:hover {
+    background-color: var(--slab-glass-row-hover) !important;
+}
+
+/* Panels and cards that sit on the page. */
+html.style-slab .create-item,
+html.style-slab .create-item .bg-white,
+html.style-slab #batchproc .bp-op,
+html.style-slab .modal-content,
+html.style-slab .stat-card,
+html.style-slab .project-box,
+html.style-slab .timeline-content,
+html.style-slab .timeline-icon,
+html.style-slab .shipping-sidebar {
+    background-color: var(--slab-glass) !important;
+    backdrop-filter: blur(30px) saturate(1.8) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(1.8) !important;
+}
+
+/* The Add Entry page painted an opaque ground over the mesh. */
+html.style-slab .create-item-shell {
+    background-color: transparent !important;
+}
+
+/* The expanded-row drawer wrapper: slab.css paints every div after a
+   bg-(--sidebar-bg) row opaque; its .inv-drawer-body already carries the glass. */
+html.style-slab .inv-row + .inv-drawer {
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
+/* Rows. The Finance payments list is an ink wash with no blur. */
+html.style-slab .group.relative.flex-col.p-3[class*="bg-(--text-color)/5"] {
+    background-color: var(--slab-glass-row) !important;
+    backdrop-filter: blur(18px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.4) !important;
+}
+
+/* Bars that float over scrolling content. */
+html.style-slab #batchproc .bp-total,
+html.style-slab .dashboard-tabs,
+html.style-slab .shipping-sidebar-footer,
+html.style-slab .fixed[class*="z-[9999]"] .absolute.left-12.right-12.z-50 {
+    background-color: var(--slab-glass-hi) !important;
+    background-image: none !important;
+    backdrop-filter: blur(42px) saturate(1.9) !important;
+    -webkit-backdrop-filter: blur(42px) saturate(1.9) !important;
+}
+
+/* The Inventory Artifact's floating header and footer were frameless over
+   the scrolling item grid; they need an edge to read as bars. */
+html.style-slab .fixed[class*="z-[9999]"] .absolute.left-12.right-12.z-50 {
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--slab-r-lg);
+    border: 1px solid var(--slab-glass-rim);
+}
+
+/* Dialogs, drawers and full-screen wizards: read ON, not through. */
+html.style-slab #batchproc,
+html.style-slab #batchproc .fixed.inset-2[class*="bg-[#"],
+html.style-slab .fixed.top-0.right-0.h-full[class*="backdrop-blur-[60px]"],
+html.style-slab .relative.max-w-4xl[class*="bg-(--sidebar-bg)/90"],
+html.style-slab .fixed.inset-0 > div[class*="max-w-[820px]"],
+html.style-slab .fixed.inset-0 > .absolute[class*="md:w-[580px]"],
+html.style-slab .fixed.inset-0 > .absolute.right-0[class*="bg-[#"],
+/* A panel sitting directly on a bg-black/* scrim is that scrim's dialog. */
+html.style-slab .fixed.inset-0[class*="bg-black/"] > [class*="bg-white/"]:not(button) {
+    background-color: var(--slab-glass-modal) !important;
+    backdrop-filter: blur(48px) saturate(1.5) !important;
+    -webkit-backdrop-filter: blur(48px) saturate(1.5) !important;
+}
+
+/* The Payments Artifact carries bg-(--sidebar-bg), so it also inherited the
+   ROW treatment: the whole dialog repainted on hover and lost its corners. */
+html.style-slab .relative.max-w-4xl[class*="bg-(--sidebar-bg)/90"] {
+    border-radius: var(--slab-r-lg) !important;
+    box-shadow: var(--slab-float) !important;
+}
+
+/* Scrims built as a child of an absolute (not fixed) host — the Finance
+   payment wizards. Same role as the fixed-host rule above: the blurred
+   child IS the dialog's surface. */
+html.style-slab .absolute.inset-0[class*="z-[1000]"] > .absolute.inset-0[class*="backdrop-blur"],
+html.style-slab .create-item form > .absolute.inset-0 {
+    background-color: var(--slab-glass-sheet) !important;
+    backdrop-filter: blur(60px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(60px) saturate(1.3) !important;
+}
+
+/* Popovers: toasts, tooltips, suggestion menus and chart tooltips. They float
+   over busy content, so they hold more tint than chrome. ECharts writes its
+   tooltip fill and text colour inline and theme-blind (#fff or #050505);
+   !important is what outranks an inline style. */
+html.style-slab .toast-liquid-glass,
+html.style-slab .entry-wizard .absolute.top-full[class*="bg-black/"],
+html.style-slab .group > .absolute.bottom-full.pointer-events-none[class*="bg-(--sidebar-bg)"],
+html.style-slab button.group > .absolute.pointer-events-none[class*="bg-black/"],
+html.style-slab .echarts-for-react > div:is([style*="z-index: 9999999"], [style*="z-index:9999999"]) {
+    background-color: var(--slab-glass-pop) !important;
+    backdrop-filter: blur(32px) saturate(1.6) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(1.6) !important;
+}
+
+html.style-slab .echarts-for-react > div:is([style*="z-index: 9999999"], [style*="z-index:9999999"]) {
+    color: var(--slab-ink) !important;
+    border-color: var(--slab-glass-rim) !important;
+}
+html.style-slab .echarts-for-react > div:is([style*="z-index: 9999999"], [style*="z-index:9999999"]) * {
+    color: inherit !important;
+}
+
+/* ── Every surface is glass, part 2: core, logistics, studio, shared ──────
+   The second half of the 2026-09-30 audit. Same roles as part 1. Where a
+   finding repeated a pattern, the rule states the PATTERN, so the next dialog
+   built the same way is covered without a new line here. */
+
+/* Dialog panels with an opaque dark fill on a bg-black/* scrim: bg-black,
+   bg-neutral-900 and near-black hex fills (Pico, Onyx, Scanner Center, Label
+   print settings, Nesting). Their inner bg-black body goes clear, so the
+   panel's glass is the only surface. */
+html.style-slab .fixed.inset-0[class*="bg-black/"] > :is(.bg-black, .bg-neutral-900, [class*="bg-[#0"], [class*="bg-[#1"], [class*="bg-black/40"][class*="rounded-[48px]"]),
+/* Dialogs whose scrim is a SIBLING child (absolute inset-0) rather than the
+   host: the panel is the next .relative. Trucking, Export Crates, Printables,
+   crate create/edit sheets. */
+html.style-slab .fixed.inset-0 > .absolute.inset-0 ~ .relative,
+html.style-slab .fixed.inset-0 > .relative.z-10:is([class*="bg-[#"], [class*="bg-white/"], [style*="background-color"]),
+html.style-slab .fixed.inset-0[class*="z-[10005]"] > [class*="bg-[#0a0a0a]"],
+html.style-slab .fixed.inset-0.bg-white[class*="z-[10000]"],
+html.style-slab .absolute.inset-0[class*="bg-black/"] > [class*="bg-[#1e1e1e]"],
+html.style-slab .absolute.inset-0[class*="z-[60]"][class*="bg-black/80"],
+html.style-slab .absolute.inset-0[class*="z-[2000]"] > .relative[class*="bg-black/10"],
+html.style-slab .absolute.inset-0.z-100:has(iframe[src*="phomemo-designer"]),
+html.style-slab .label-wizard > .absolute.inset-0[class*="z-[5010]"],
+html.style-slab .label-wizard.nfc-wizard,
+html.style-slab .fixed.inset-0[class*="z-[6500]"] > [class*="bg-[#0a0a0a]"],
+html.style-slab .absolute.top-0.right-0.bottom-0[class*="w-[520px]"] {
+    background-color: var(--slab-glass-modal) !important;
+    background-image: none !important;
+    backdrop-filter: blur(48px) saturate(1.5) !important;
+    -webkit-backdrop-filter: blur(48px) saturate(1.5) !important;
+}
+html.style-slab .fixed.inset-0[class*="bg-black/"] > .bg-black > .bg-black,
+html.style-slab .fixed.inset-0 > [class*="bg-[#0a0a0a]"] > .border-t.bg-black,
+html.style-slab .label-wizard.fixed,
+html.style-slab #trucking .trk-bar {
+    background: none !important;
+}
+
+/* Full-screen hosts and workspaces: a sheet, dense enough to work on. */
+html.style-slab .fixed.inset-0[class*="z-[6500]"],
+html.style-slab body > .fixed.inset-0[class*="z-[600]"][class*="bg-black/60"],
+html.style-slab .h-screen.bg-black:has(.welcome-animate) {
+    background-color: var(--slab-glass-sheet) !important;
+    backdrop-filter: blur(60px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(60px) saturate(1.3) !important;
+}
+
+/* Scrims with a tint and no blur. */
+html.style-slab .catalog-hub.cat-scrim,
+html.style-slab #process .proc-telemetry {
+    backdrop-filter: blur(12px) saturate(0.85) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(0.85) !important;
+}
+
+/* Module grounds and panels that sit on the page. */
+html.style-slab #threed,
+html.style-slab .flex-col.relative[class*="bg-[#050505]"],
+html.style-slab .label-wizard :is([class*="bg-black/3"], [class*="bg-black/4"], [class*="bg-white/[0.0"]),
+html.style-slab .nfc-wizard > :is([class*="bg-black/40"], [class*="bg-black/20"]),
+html.style-slab #process .proc-op,
+html.style-slab .batch-import-container,
+html.style-slab .group.relative.bg-black[class*="rounded-[2.5rem]"] {
+    background-color: var(--slab-glass) !important;
+    backdrop-filter: blur(30px) saturate(1.8) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(1.8) !important;
+}
+
+/* Rows. bg-[var(--sidebar-bg)] is the bracket spelling of the row utility
+   that the data-surface rule already catches in its paren form. */
+html.style-slab [class*="bg-[var(--sidebar-bg)]"],
+html.style-slab .crate-card,
+html.style-slab .catalog-hub .cat-action,
+html.style-slab #process .proc-vault-row,
+html.style-slab .nfc-wizard [class*="bg-white/[0.04]"] {
+    background-color: var(--slab-glass-row) !important;
+    backdrop-filter: blur(18px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.4) !important;
+}
+html.style-slab .crate-card:hover,
+html.style-slab .catalog-hub .cat-action:hover,
+html.style-slab #process .proc-layer:hover,
+html.style-slab #process .proc-vault-row:hover,
+html.style-slab .sidebar-list-item:not(.active):hover,
+html.style-slab .sidebar-submenu-item:not(.active):hover {
+    background-color: var(--slab-glass-row-hover) !important;
+}
+/* Selected and active rows keep the accent, as glass. */
+html.style-slab .crate-card.is-selected,
+html.style-slab .catalog-hub .cat-action:has(input:checked),
+html.style-slab #process .proc-op.is-selected,
+html.style-slab #process .proc-vault-row.is-selected,
+html.style-slab #process .proc-layer.is-active,
+html.style-slab .sidebar-list-item.active,
+html.style-slab .sidebar-submenu-item.active {
+    background-color: var(--slab-glass-on) !important;
+}
+
+/* Wells: chips, tracks, readouts and drawn wells inside glass. */
+html.style-slab .crate-wire,
+html.style-slab .crate-stat,
+html.style-slab .wizard-readout,
+html.style-slab #threed .threed-empty,
+html.style-slab #threed .threed-readout,
+html.style-slab .catalog-hub .cat-scroll,
+html.style-slab .catalog-hub .cat-progress,
+html.style-slab .catalog-hub .cat-progress-track,
+html.style-slab #process .proc-well,
+html.style-slab #process .proc-chip,
+html.style-slab #process .proc-progress,
+html.style-slab h2 > span.rounded-full.bg-neutral-900 {
+    background-color: var(--slab-glass-well) !important;
+    backdrop-filter: blur(22px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+}
+
+/* Bars over scrolling content, and sticky table cells. */
+html.style-slab .app-topbar .smart-filters,
+html.style-slab .catalog-hub .cat-selbar,
+html.style-slab #trucking .sticky.top-0[class*="bg-[rgba(12,12,18"],
+html.style-slab table :is(th, td).sticky[class*="bg-[#0a0a0a]"],
+html.style-slab tr.group:hover > td.sticky[class*="bg-[#0f0f0f]"],
+html.style-slab :is(thead, th).sticky[class*="bg-[#0f1115]"],
+html.style-slab .absolute.inset-0[class*="z-[2000]"] > .absolute.bottom-0[class*="bg-gradient-to-t"],
+html.style-slab .fixed.inset-0[class*="z-[600]"] > .absolute[class*="z-[700]"] > .pointer-events-auto {
+    background-color: var(--slab-glass-hi) !important;
+    background-image: none !important;
+    backdrop-filter: blur(42px) saturate(1.9) !important;
+    -webkit-backdrop-filter: blur(42px) saturate(1.9) !important;
+}
+
+/* Popovers: tooltips, fly-outs, floating chips and toasts. The dock
+   tooltips, the compact-sidebar tooltip and the sync toast were INVERSE
+   chips (dark fill, light text); as glass they take the ink colour. */
+html.style-slab .selection-dock button span[class*="absolute"],
+html.style-slab .app-container.sidebar-compact .sidebar-submenu,
+html.style-slab .sidebar-compact-tooltip,
+html.style-slab [style*="z-index: 25000"] > .pointer-events-auto.rounded-xl,
+html.style-slab #threed .threed-message:not(.is-error),
+html.style-slab #threed .threed-ar--empty,
+html.style-slab .catalog-hub .cat-media-count,
+html.style-slab .catalog-hub .cat-origin--onmedia,
+html.style-slab #process .proc-telemetry-chip,
+html.style-slab #process .proc-spinner-face,
+html.style-slab canvas + .absolute.z-20 > [class*="backdrop-blur"] {
+    background-color: var(--slab-glass-pop) !important;
+    background-image: none !important;
+    backdrop-filter: blur(32px) saturate(1.6) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(1.6) !important;
+}
+html.style-slab .selection-dock button span[class*="absolute"],
+html.style-slab .sidebar-compact-tooltip,
+html.style-slab [style*="z-index: 25000"] > .pointer-events-auto.rounded-xl {
+    color: var(--slab-ink) !important;
+    border: 1px solid var(--slab-glass-rim) !important;
+}
+/* The AR notice card is the glass now; its dock stays clear so the two do
+   not stack into a double panel. */
+html.style-slab #threed .threed-ar-dock:has(.threed-ar--empty) {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
