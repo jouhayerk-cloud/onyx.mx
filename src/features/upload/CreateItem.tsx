@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { uploadItemDataAtom, uploadMediaFilesAtom, userAtom, inventoryAtom, batchCreateModeAtom, isUploadWizardOpenAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
-import { vendors } from '../../lib/consts';
+import { vendors, DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 import { BatchCreateWizard } from './BatchCreateWizard';
 import { calculateCodesAndPrices, handleFileUpload, readFileAsDataURL, getTextColorForBg, generateUniqueId } from '../../lib/utils';
 import toast from 'react-hot-toast';
@@ -100,7 +100,7 @@ export function CreateItem() {
         const finalItemId = `${selectedVendorKey}-${String(itemData.itemNumber || 1).padStart(3, '0')}`;
         const calculated = calculateCodesAndPrices(
             { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v826', itemNumber: itemData.itemNumber || '1' },
-            19, // Exchange rate (mocked for preview, could use context if available)
+            DEFAULT_EXCHANGE_RATE, // the book rate the database trigger uses (17)
             'v826'
         );
         return {
@@ -235,7 +235,7 @@ export function CreateItem() {
             const finalItemId = `${selectedVendorKey}-${String(itemData.itemNumber || 1).padStart(3, '0')}`;
             const calculated = calculateCodesAndPrices(
                 { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v826', itemNumber: itemData.itemNumber || '1' },
-                19,
+                DEFAULT_EXCHANGE_RATE,
                 'v826'
             );
 

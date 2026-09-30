@@ -30,7 +30,7 @@ import {
     truckShowReadyWizardAtom,
     truckShowPanelsAtom
 } from '../../lib/atoms';
-import { vendors } from '../../lib/consts';
+import { vendors, DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { LivePreviewCard } from '../../components/inventory/LivePreviewCard';
 import { supabase } from '../../lib/supabase';
@@ -737,7 +737,7 @@ export const UploadWizard: React.FC = () => {
         const finalItemId = `${state.vendorId}-${itemData.itemId || 'temp'}`;
         const calculated = calculateCodesAndPrices(
             { price: state.price, itemId: finalItemId, workbook: itemData.workbook || 'v826', itemNumber: state.itemNumber || '1' },
-            19,
+            DEFAULT_EXCHANGE_RATE,
             'v826'
         );
         return {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAtom } from 'jotai';
 import { dashboardExpDataAtom } from '../../lib/atoms';
-import { vendors } from '../../lib/consts';
+import { vendors, DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 import { getTextColorForBg } from '../../lib/utils';
 import { WorkbookItemViewer } from './WorkbookItemViewer';
 import { useDatabase } from '../../lib/hooks';
@@ -14,7 +14,7 @@ const DashboardEXP: React.FC<DashboardEXPProps> = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSheet, setActiveSheet] = useState<string | null>(null);
-  const [exchangeRate, setExchangeRate] = useState(18.0);
+  const [exchangeRate, setExchangeRate] = useState(DEFAULT_EXCHANGE_RATE);
   const [workbookPrefix, setWorkbookPrefix] = useState('825');
   const db = useDatabase();
 

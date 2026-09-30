@@ -124,8 +124,11 @@ export const appStyleAtom = atomWithStorage<AppStyle>('appStyle', 'rock', appSty
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v2', true);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 // NOTE: atomWithStorage persists, so a browser that stored an older rate keeps it
-// until changed in Settings — this default only applies to fresh sessions.
-export const exchangeRateAtom = atomWithStorage<number>('exchangeRate', DEFAULT_EXCHANGE_RATE);
+// until changed in Settings — this default only applies to fresh sessions. The key
+// was renamed from 'exchangeRate' on 2026-09-30: browsers from before April still
+// held the old 18 default and priced book codes off it instead of the 17 the
+// database trigger uses. The new key starts every browser at 17 once.
+export const exchangeRateAtom = atomWithStorage<number>('exchangeRate.v17', DEFAULT_EXCHANGE_RATE);
 export type CurrencyMode = 'MXN' | 'USD';
 export const currencyModeAtom = atomWithStorage<CurrencyMode>('currencyMode', 'MXN');
 
