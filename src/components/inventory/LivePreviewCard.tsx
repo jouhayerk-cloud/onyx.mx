@@ -2,13 +2,14 @@ import React, { useMemo } from 'react';
 import { tr } from '../../lib/i18n';
 import { calculateCodesAndPrices } from '../../lib/utils';
 import { getTextColorForBg } from '../../lib/utils';
+import { DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 import { WireframeIcon } from '../../features/inventory/InventoryArtifact';
 
 export const LivePreviewCard = ({ itemData, selectedVendorKey, exchangeRate, vendorData, tagPreview, onClearVendor, aiResults }: any) => {
     const finalItemId = `${selectedVendorKey}-${itemData.itemNumber || "1"}`;
     const calculated = calculateCodesAndPrices(
         { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || "v826", itemNumber: itemData.itemNumber || "1", ...itemData },
-        exchangeRate || 19,
+        exchangeRate || DEFAULT_EXCHANGE_RATE,
         "v826"
     );
     

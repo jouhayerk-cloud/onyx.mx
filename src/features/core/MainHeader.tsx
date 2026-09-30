@@ -591,7 +591,10 @@ const InfoNotch: React.FC = () => {
     const openSettingsPortal = useSetAtom(isStudioSettingsOpenAtom);
 
     const items = useAtomValue(inventoryAtom);
-    const exRate = useAtomValue(exchangeRateAtom) || useAtomValue(liveExchangeRateAtom) || 19;
+    // Both hooks always run (a short-circuited hook breaks React's hook order).
+    const storedRate = useAtomValue(exchangeRateAtom);
+    const liveRate = useAtomValue(liveExchangeRateAtom);
+    const exRate = storedRate || liveRate || DEFAULT_EXCHANGE_RATE;
     const db = useDatabase();
     const setInvVersion = useSetAtom(InventoryVersionAtom);
     const [isSyncingCalc, setIsSyncingCalc] = useState(false);
@@ -760,7 +763,10 @@ const InventoryAddButton: React.FC = () => {
 
 const SheetsUploadButton: React.FC = () => {
     const items = useAtomValue(inventoryAtom);
-    const exRate = useAtomValue(exchangeRateAtom) || useAtomValue(liveExchangeRateAtom) || 19;
+    // Both hooks always run (a short-circuited hook breaks React's hook order).
+    const storedRate = useAtomValue(exchangeRateAtom);
+    const liveRate = useAtomValue(liveExchangeRateAtom);
+    const exRate = storedRate || liveRate || DEFAULT_EXCHANGE_RATE;
     const user = useAtomValue(userAtom);
     const handleGoogleSheetsUpload = async () => {
         const webhookUrl = import.meta.env.VITE_GOOGLE_SHEETS_WEBHOOK;
