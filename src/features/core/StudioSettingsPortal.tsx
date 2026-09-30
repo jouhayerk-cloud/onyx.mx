@@ -141,7 +141,7 @@ export const StudioSettingsPortal: React.FC = () => {
                         {viewMode === 'settings' && (
                             <div className="hidden xl:flex w-1/4 flex-col justify-center items-start pr-16 animate-in slide-in-from-left-12 duration-700">
                                 <div className="relative group">
-                                    <OnyxLogo className={`w-56 h-56 transition-all duration-700 group-hover:scale-110 ${L ? 'text-black/15 group-hover:text-black/30' : 'text-white/15 group-hover:text-white/30'}`} />
+                                    <OnyxLogo mono className={`w-56 h-56 transition-all duration-700 group-hover:scale-110 ${L ? 'text-black/15 group-hover:text-black/30' : 'text-white/15 group-hover:text-white/30'}`} />
                                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--main-color)_0%,transparent_70%)] opacity-30 blur-3xl animate-pulse" />
                                 </div>
                             </div>

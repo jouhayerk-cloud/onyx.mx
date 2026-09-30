@@ -149,7 +149,7 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
         {imageDataUrl ? (
           <img src={imageDataUrl} alt={norm.shape} />
         ) : (
-          !isLoading && <div className="absolute inset-0 m-auto w-1/2 h-1/2 opacity-30 text-(--secondary-color)"><OnyxMiniLogo /></div>
+          !isLoading && <div className="absolute inset-0 m-auto w-1/2 h-1/2 opacity-30 text-(--secondary-color)"><OnyxMiniLogo mono /></div>
         )}
       </div>
 

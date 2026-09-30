@@ -267,7 +267,7 @@ export const ItemsPayWizard: React.FC = () => {
                             <div className="hidden xl:flex xl:col-span-4 flex-col justify-start pt-12 animate-in slide-in-from-left-20 duration-1000 delay-500">
                                 <div className="sticky top-12 space-y-16">
                                     <div className="relative group">
-                                        <OnyxLogo className="w-80 h-80 text-white/5 transition-all duration-1000 group-hover:text-white/10 group-hover:scale-105" />
+                                        <OnyxLogo mono className="w-80 h-80 text-white/5 transition-all duration-1000 group-hover:text-white/10 group-hover:scale-105" />
                                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--main-color)_0%,transparent_70%)] opacity-10 blur-3xl" />
                                     </div>
                                     <div className="space-y-8 pl-8 border-l border-white/5">

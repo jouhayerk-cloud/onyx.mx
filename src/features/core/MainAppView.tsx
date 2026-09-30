@@ -518,7 +518,7 @@ export function MainAppView() {
                     >
                         {sidebarState === 'expanded' && (
                             <>
-                                <OnyxMiniLogo className={`w-8 h-8 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
+                                <OnyxMiniLogo className={`w-8 h-8 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90' : 'opacity-80 group-hover:opacity-100'}`} />
                                 <div className="mt-4">
                                     <SyncStatusBadge />
                                 </div>
@@ -526,7 +526,7 @@ export function MainAppView() {
                         )}
                         {sidebarState === 'compact' && (
                             <>
-                                <OnyxMiniLogo className={`w-7 h-7 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
+                                <OnyxMiniLogo className={`w-7 h-7 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90' : 'opacity-80 group-hover:opacity-100'}`} />
                                 <div className="mt-3 scale-75 origin-center">
                                     <SyncStatusBadge />
                                 </div>
