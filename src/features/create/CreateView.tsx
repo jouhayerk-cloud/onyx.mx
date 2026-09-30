@@ -27,7 +27,7 @@ export function CreateView() {
 
     return (
         <div className="flex items-center justify-center h-full text-center p-8">
-            <OnyxLogo className="w-48 h-48 text-[var(--secondary-text-color)] opacity-25" />
+            <OnyxLogo mono className="w-48 h-48 text-[var(--secondary-text-color)] opacity-25" />
         </div>
     );
 }

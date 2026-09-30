@@ -59,7 +59,7 @@ export const ItemThumbnail = ({ imageUrl, color, shape, material }: { imageUrl: 
                 dataUrl ?
                     <img src={dataUrl} alt="Item thumbnail" className="relative w-full h-full object-contain" /> :
                     <div className="w-1/2 h-1/2 opacity-30 text-[var(--secondary-color)]">
-                        <OnyxMiniLogo />
+                        <OnyxMiniLogo mono />
                     </div>
             }
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-2 text-white text-left z-10">
