@@ -1,0 +1,26 @@
+# Supabase project configuration for Onyx.mx
+# See: https://supabase.com/docs/guides/functions/config
+
+[project]
+id = "yircifkayqpuydfdqzlm"
+
+# ── Edge Function Configuration ────────────────────────────────────────────────
+# Each function's verify_jwt setting is explicit so a new function added
+# without one here is denied by default (Supabase's default is verify_jwt=true).
+
+[functions.artifact]
+# Public QR-tag lookup endpoint. Runs on service_role internally but the
+# endpoint itself is unauthenticated (anyone can scan a tag).
+verify_jwt = false
+
+[functions.onyxchan-mcp]
+# Accepts both staff JWTs AND hardware device tokens (ocd_ prefix).
+# Device tokens are NOT JWTs, so Supabase's JWT verification must be off.
+# The function enforces its own auth at the application layer (index.ts:41-64).
+verify_jwt = false
+
+[functions.onyx-mcp]
+# Data MCP server for agents and the web app. JWT-only authentication.
+# All callers must provide a valid Supabase JWT. The function then checks
+# the caller's role in app_users before granting access to tools.
+verify_jwt = true

@@ -1,0 +1,3 @@
+# Already covered by root .gitignore patterns, but kept as documentation
+node_modules/
+dist/
