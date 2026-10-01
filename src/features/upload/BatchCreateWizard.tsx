@@ -128,7 +128,7 @@ RULES:
 - Keep translations SHORT (1-3 words max for single attributes)
 - Use standard inventory/product terminology in English
 - If a word is already English or is a proper noun, keep it as-is
-- ALL CAPS output
+- Keep the input's capitalisation; write translated words in Title Case
 
 Input array:
 ${JSON.stringify(textsToTranslate)}
@@ -161,7 +161,9 @@ Return ONLY the JSON array, no markdown, no explanation.`;
       textsToTranslate.forEach((original, i) => {
         const value = translated[i];
         if (typeof value === 'string' && value.trim()) {
-          translationMap.set(original.toUpperCase(), value.trim().toUpperCase());
+          // Text that came back unchanged apart from case keeps the sheet's spelling.
+          const out = value.trim();
+          translationMap.set(original.toUpperCase(), out.toUpperCase() === original.toUpperCase() ? original : out);
         }
       });
 
@@ -235,17 +237,20 @@ Return ONLY the JSON array, no markdown, no explanation.`;
           items.push({
             id: generateUniqueId(),
             itemNumber: mapped.itemNumber || String(maxVendorItemNumber + items.length + 1),
-            shape: (mapped.shape || '').toUpperCase(),
-            itemType: (mapped.itemType || '').toUpperCase(),
-            color: (mapped.color || '').toUpperCase(),
-            material: (mapped.material || '').toUpperCase(),
+            // Text is kept exactly as typed in the sheet. It used to be upper-cased,
+            // which stored LARGE / BLUE ARGENTINA beside the Title Case the other
+            // screens and the existing rows use.
+            shape: mapped.shape || '',
+            itemType: mapped.itemType || '',
+            color: mapped.color || '',
+            material: mapped.material || '',
             widthCm: mapped.widthCm || '',
             heightCm: mapped.heightCm || '',
             lengthCm: mapped.lengthCm || '',
             weightKg: mapped.weightKg || '',
             price: mapped.price || '',
             quantity: mapped.quantity || '1',
-            description: (mapped.description || '').toUpperCase(),
+            description: mapped.description || '',
             mediaFiles: [],
           });
         }
@@ -330,7 +335,8 @@ Return ONLY the JSON array, no markdown, no explanation.`;
   }, [setBatchItems]);
 
   const getItemCodes = useCallback((item: BatchCreateItem) => {
-    const finalItemId = `${vendorKey}-${item.id}`;
+    // item.id is this batch's random row key; the saved item_id uses the number.
+    const finalItemId = `${vendorKey}-${String(item.itemNumber || 1).padStart(3, '0')}`;
     return calculateCodesAndPrices(
       { price: item.price, itemId: finalItemId, workbook: 'v826', itemNumber: item.itemNumber || '1' },
       exchangeRate || DEFAULT_EXCHANGE_RATE,
@@ -340,16 +346,21 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
   const suggestions = useMemo(() => {
     const getCascadingVals = (targetField: string) => {
+      // Grouped case-insensitively, but each chip shows the spelling used most
+      // often, so picking one doesn't write an upper-cased variant.
       const counts: Record<string, number> = {};
+      const spellings: Record<string, Record<string, number>> = {};
       allItems.forEach(i => {
         const d = i.data || i;
-        let val = String(d[targetField] || '').trim().toUpperCase();
-        if (targetField === 'short_description' && (!val || val === 'NULL')) val = '';
-        if (val && val !== '-' && val !== 'NULL' && val.length > 1) {
-          counts[val] = (counts[val] || 0) + 1;
+        const raw = String(d[targetField] || '').trim();
+        const key = raw.toUpperCase();
+        if (key && key !== '-' && key !== 'NULL' && key.length > 1) {
+          counts[key] = (counts[key] || 0) + 1;
+          (spellings[key] ||= {})[raw] = (spellings[key][raw] || 0) + 1;
         }
       });
-      return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(e => e[0]).slice(0, 6);
+      return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6)
+        .map(([key]) => Object.entries(spellings[key]).sort((a, b) => b[1] - a[1])[0][0]);
     };
     return {
       shape: getCascadingVals('shape'),
