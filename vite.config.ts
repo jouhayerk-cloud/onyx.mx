@@ -63,8 +63,12 @@ export default defineConfig(({ mode }) => {
                         },
                     },
                 ],
-                // SPA fallback
-                navigateFallback: '/index.html',
+                // SPA fallback. RELATIVE on purpose: workbox resolves it against
+                // sw.js (/onyx.mx/sw.js). '/index.html' pointed at the domain root,
+                // which isn't precached, so workbox threw 'non-precached-url' while
+                // evaluating sw.js and the service worker never installed: from
+                // 2026-05-02 to 2026-09-30 offline mode never ran.
+                navigateFallback: 'index.html',
                 navigateFallbackAllowlist: [/^(?!\/__).*/],
             },
             // Every path here is RELATIVE, and that is the whole point. The site
