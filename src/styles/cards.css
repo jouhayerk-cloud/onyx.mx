@@ -679,7 +679,6 @@
     padding: 20px;
     background-color: rgb(0 0 0 / 0.62);
     backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     animation: inv-sheet-fade 0.18s ease-out;
 }
 

@@ -157,7 +157,6 @@ html, body, #root {
   flex-shrink: 0;
   background-color: var(--sidebar-bg);
   backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -582,7 +581,6 @@ html, body, #root {
   top: 0;
   background: var(--sidebar-bg);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   padding: 0.5rem;
   border-radius: 8px;
   border: 1px solid var(--border-color);
@@ -716,7 +714,6 @@ body {
   bottom: 0;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   filter: url(#liquid-glass);
   z-index: -1;
   margin: -30px;
@@ -729,7 +726,6 @@ body {
   z-index: 9999;
   background: rgba(10, 10, 15, 0.4);
   backdrop-filter: blur(25px) saturate(130%);
-  -webkit-backdrop-filter: blur(25px) saturate(130%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -747,7 +743,6 @@ body {
 .toast-liquid-glass {
   background: var(--toast-bg) !important;
   backdrop-filter: blur(30px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
   border: 1px solid var(--toast-border) !important;
   border-left: 8px solid var(--main-color, #F97316) !important;
   color: var(--toast-text) !important;
@@ -939,7 +934,6 @@ html.theme-aqua .entry-wizard > .absolute.inset-0 {
   transform: translateY(-50%) scale(0.95);
   background: var(--sidebar-bg);
   backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
   color: var(--text-color-primary);
   padding: 8px 16px;
   border-radius: 12px;
@@ -975,7 +969,6 @@ textarea,
   border-radius: 9999px !important;
   transition: all 0.2s ease-in-out;
   backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
 }
 
 input:focus,
@@ -1319,7 +1312,6 @@ button.secondary {
   border-radius: var(--box-radius) !important;
   background: rgba(28, 28, 32, 0.35) !important;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
@@ -1924,7 +1916,6 @@ button.secondary {
   bottom: 0;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   filter: url(#liquid-glass);
   z-index: -1;
   margin: -30px;
@@ -2031,7 +2022,6 @@ button.secondary {
 .stat-card {
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
   border-radius: var(--box-radius);
   padding: 1rem;
@@ -2789,7 +2779,6 @@ html.performance-mode-active .shipping-sidebar-footer,
 html.performance-mode-active .crate-content-label,
 html.performance-mode-active .login-initial-button::before {
   backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 /* Provide solid/translucent fallback backgrounds */
@@ -2938,7 +2927,6 @@ body {
   max-width: 420px;
   background: color-mix(in srgb, var(--sidebar-bg) 95%, transparent);
   backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
   border-radius: 16px;
   padding: 16px;
@@ -3012,7 +3000,6 @@ body {
   border-radius: 14px;
   background: var(--sidebar-bg);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   /* backdrop-filter intentionally omitted — FAB uses sidebar-bg which is already semi-transparent */
   border: 1px solid var(--border-color);
   display: flex;

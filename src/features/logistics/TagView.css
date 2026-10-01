@@ -103,7 +103,6 @@
     padding: 12px clamp(14px, 4vw, 32px);
     background: color-mix(in srgb, var(--tv-surface) 92%, transparent);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--tv-edge);
 }
 

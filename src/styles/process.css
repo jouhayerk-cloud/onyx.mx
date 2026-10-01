@@ -472,7 +472,6 @@ html.style-slab.theme-aqua #process :focus-visible {
     min-height: 30px;
     padding: 0 10px !important;
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
 }
 
 /* Room for the leading glyph in the vault filter. */

@@ -1069,7 +1069,6 @@ html.style-slab.theme-talan #threed .threed-well-note.is-error { color: #f87171;
 .threed-scrim {
     background-color: rgb(0 0 0 / 0.72) !important;
     backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
 }
 
 .threed-scrim--deep {
