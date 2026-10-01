@@ -8,6 +8,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
+// Bump with every icon redesign. Browsers, iOS and installed apps cache icons
+// by URL, so an unchanged URL keeps showing the old cube. This one value is
+// appended as ?v= to every icon link in index.html (the __ICON_VERSION__
+// placeholder) and to every icon in the web app manifest below.
+const ICON_VERSION = '1.84';
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
@@ -20,8 +26,13 @@ export default defineConfig(({ mode }) => {
       allowedHosts: ['.loca.lt'],
     },
     plugins: [
-        react(), 
-        tailwindcss(), 
+        react(),
+        tailwindcss(),
+        {
+            name: 'onyx-icon-version',
+            // 'pre' so Vite still prefixes `base` onto the rewritten icon URLs.
+            transformIndexHtml: { order: 'pre', handler: (html: string) => html.replaceAll('__ICON_VERSION__', ICON_VERSION) },
+        },
         mode === 'development' ? basicSsl() : null,
         VitePWA({
             registerType: 'autoUpdate',
@@ -83,14 +94,14 @@ export default defineConfig(({ mode }) => {
                     // roughly a 20% safe zone, so a mark that was not drawn
                     // with that padding loses its edges. Declaring one file as
                     // both let Android crop the full-bleed logo.
-                    { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-                    { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                    { src: `icon-192.png?v=${ICON_VERSION}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+                    { src: `icon-512.png?v=${ICON_VERSION}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
                     // The abalone cube sits inside the central 80% circle
                     // (checked against its corners), so the same render is
                     // safe to crop as maskable.
-                    { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-                    { src: 'apple-touch-icon-dark.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
-                    { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+                    { src: `icon-maskable-512.png?v=${ICON_VERSION}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+                    { src: `apple-touch-icon-dark.png?v=${ICON_VERSION}`, sizes: '180x180', type: 'image/png', purpose: 'any' },
+                    { src: `favicon.svg?v=${ICON_VERSION}`, sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
                 ],
                 categories: ['business', 'productivity', 'utilities'],
             },
