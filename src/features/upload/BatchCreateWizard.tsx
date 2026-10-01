@@ -4,17 +4,18 @@ import { batchCreateItemsAtom, inventoryAtom, userAtom, exchangeRateAtom, isAiPr
 import { supabase } from '../../lib/supabase';
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { ai } from '../../lib/ai';
-import { calculateCodesAndPrices, handleFileUpload, readFileAsDataURL, getTextColorForBg, generateUniqueId, getCleanImageUrl, normalizeBrandTerms, formatProductTitle } from '../../lib/utils';
+import { calculateCodesAndPrices, handleFileUpload, getTextColorForBg, generateUniqueId, getCleanImageUrl, normalizeBrandTerms, formatProductTitle } from '../../lib/utils';
 import { useDatabase } from '../../lib/hooks';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { Trash2, Save, X, Plus, Image as ImageIcon, FileSpreadsheet, ChevronLeft, Check, AlertTriangle, Languages, Loader2 } from 'lucide-react';
+import { Trash2, Save, X, Plus, Image as ImageIcon, FileSpreadsheet, ChevronLeft, Check, AlertTriangle, Languages, Loader2, FolderOpen, Images } from 'lucide-react';
 import { tr } from '../../lib/i18n';
 import { processSingleItem, type BatchOp, type PipelineContext } from '../../lib/catalogHubPipeline';
 import { CatalogHubProcessesPanel } from '../../components/CatalogHubProcessesPanel';
 import { CATALOG_PROCESSES, mapResultsByProcessId } from '../../lib/catalogHubProcesses';
 import { processQueueWithConcurrency } from '../../lib/queueProcessor';
 import { callGemini } from '../../lib/geminiClient';
+import { collectDroppedFiles, collectInputFiles, isImageFile, makePhotoPreview, matchPhotosToRows, type PhotoCandidate } from './batchPhotoMatch';
 
 
 const lbl = "text-[9px] font-black text-white/50 uppercase tracking-[0.1em] mb-0.5 flex items-center gap-1";
@@ -41,6 +42,16 @@ const COLUMN_MAP: Record<string, string> = {
 };
 
 const MAX_ITEMS = 100;
+// Photos upload to Drive through the Apps Script endpoint; four at a time is
+// well inside its concurrent-execution limit and several times faster than one.
+const UPLOAD_CONCURRENCY = 4;
+const TRAY_MIME = 'application/x-onyx-photo';
+
+// A small preview for the row thumbnails; the full file is uploaded at save.
+const previewFor = async (file: File) => {
+  try { return await makePhotoPreview(file); }
+  catch { return URL.createObjectURL(file); }
+};
 
 interface BatchCreateWizardProps {
   vendorKey: string;
@@ -63,6 +74,17 @@ export function BatchCreateWizard({ vendorKey }: BatchCreateWizardProps) {
   const [processedItems, setProcessedItems] = useState<any[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  // Photo auto-attach (step 2) and upload progress (step 3)
+  const [photoTray, setPhotoTray] = useState<{ id: string; file: File; preview: string; reason: string }[]>([]);
+  const [photoSummary, setPhotoSummary] = useState<{ files: number; rows: number; unmatched: number; ignored: number; duplicates: number } | null>(null);
+  const [isMatchingPhotos, setIsMatchingPhotos] = useState(false);
+  const [photoDropOver, setPhotoDropOver] = useState(false);
+  const [rowDropOver, setRowDropOver] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [photoFailures, setPhotoFailures] = useState<{ row: number; name: string; reason: string }[]>([]);
+  const photoFilesInputRef = useRef<HTMLInputElement>(null);
+  const photoFolderInputRef = useRef<HTMLInputElement>(null);
 
   const [aiSelected, setAiSelected] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
@@ -316,17 +338,72 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     setBatchItems(prev => prev.filter(item => item.id !== id));
   }, [setBatchItems]);
 
-  const addImageToItem = useCallback(async (id: string, files: FileList) => {
+  const addImageToItem = useCallback(async (id: string, files: FileList | File[]) => {
     const uploaded = [];
     for (const file of Array.from(files)) {
-      if (!file.type.startsWith('image/')) continue;
-      const localUrl = await readFileAsDataURL(file, 'image');
-      uploaded.push({ type: 'image' as const, localUrl, originalFile: file, tag: 'Item' });
+      if (!isImageFile(file)) continue;
+      uploaded.push({ type: 'image' as const, localUrl: await previewFor(file), originalFile: file, name: file.name, tag: 'Item' as const });
     }
     setBatchItems(prev => prev.map(item =>
       item.id === id ? { ...item, mediaFiles: [...item.mediaFiles, ...uploaded] } : item
     ));
   }, [setBatchItems]);
+
+  // Drop a folder (or many photos) once: each file goes to the row whose item
+  // number is in its name (EM-004.jpg, EM-004-2.jpg). See batchPhotoMatch.ts.
+  const attachPhotos = useCallback(async (candidates: PhotoCandidate[]) => {
+    if (!candidates.length) return;
+    setIsMatchingPhotos(true);
+    try {
+      const match = matchPhotosToRows(candidates, batchItems, vendorKey);
+      const files = [...Array.from(match.assigned.values()).flat(), ...match.unmatched.map(u => u.file)];
+      const previews = new Map<File, string>();
+      await processQueueWithConcurrency(files, 4, async (file) => { previews.set(file, await previewFor(file)); });
+
+      setBatchItems(prev => prev.map(item => {
+        const add = match.assigned.get(item.id);
+        if (!add) return item;
+        return { ...item, mediaFiles: [...item.mediaFiles, ...add.map(file => ({ type: 'image' as const, localUrl: previews.get(file), originalFile: file, name: file.name, tag: 'Item' as const }))] };
+      }));
+      setPhotoTray(prev => [...prev, ...match.unmatched.map(u => ({ id: generateUniqueId(), file: u.file, preview: previews.get(u.file) || '', reason: u.reason }))]);
+
+      const attached = Array.from(match.assigned.values()).reduce((n, f) => n + f.length, 0);
+      setPhotoSummary({ files: attached, rows: match.assigned.size, unmatched: match.unmatched.length, ignored: match.ignored, duplicates: match.duplicates });
+      if (attached) toast.success(`${attached} photo${attached !== 1 ? 's' : ''} attached to ${match.assigned.size} row${match.assigned.size !== 1 ? 's' : ''}`);
+      else toast.error(tr("No photo names matched an item number in this batch"));
+    } catch (err: any) {
+      console.error('[BatchCreate] Photo matching failed', err);
+      toast.error(tr("Could not read those photos"));
+    } finally {
+      setIsMatchingPhotos(false);
+    }
+  }, [batchItems, vendorKey, setBatchItems]);
+
+  const handlePhotoDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setPhotoDropOver(false);
+    if (e.dataTransfer.types.includes(TRAY_MIME)) return;
+    await attachPhotos(await collectDroppedFiles(e.dataTransfer));
+  }, [attachPhotos]);
+
+  const moveTrayPhotoToRow = useCallback((trayId: string, rowId: string) => {
+    const t = photoTray.find(p => p.id === trayId);
+    if (!t) return;
+    setBatchItems(prev => prev.map(item => item.id === rowId
+      ? { ...item, mediaFiles: [...item.mediaFiles, { type: 'image' as const, localUrl: t.preview, originalFile: t.file, name: t.file.name, tag: 'Item' as const }] }
+      : item));
+    setPhotoTray(prev => prev.filter(p => p.id !== trayId));
+  }, [photoTray, setBatchItems]);
+
+  // A row accepts a photo dragged from the unmatched tray, or files from the desktop.
+  const handleRowDrop = useCallback((e: React.DragEvent, rowId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRowDropOver(null);
+    const trayId = e.dataTransfer.getData(TRAY_MIME);
+    if (trayId) return moveTrayPhotoToRow(trayId, rowId);
+    if (e.dataTransfer.files.length) addImageToItem(rowId, e.dataTransfer.files);
+  }, [moveTrayPhotoToRow, addImageToItem]);
 
   const removeImageFromItem = useCallback((id: string, imgIdx: number) => {
     setBatchItems(prev => prev.map(item =>
@@ -394,20 +471,40 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     const ops: BatchOp[] = [];
     const itemDataCache: any[] = [];
     
+    // Every photo of every row uploads through one queue, UPLOAD_CONCURRENCY at a
+    // time (it used to be one photo after another). Each keeps its slot, so a
+    // row's photos stay in the order they were attached, and a failed photo is
+    // retried once, then reported; its row still saves with the other photos.
+    const uploads = batchItems.flatMap((item, i) =>
+      item.mediaFiles.map((media, m) => ({ i, m, file: media.originalFile })).filter(u => u.file));
+    const urlSlots: (string | null)[][] = batchItems.map(item => item.mediaFiles.map(() => null));
+    const uploadFailures: { row: number; name: string; reason: string }[] = [];
+    let uploadsDone = 0;
+    setPhotoFailures([]);
+    setUploadProgress(uploads.length ? { done: 0, total: uploads.length } : null);
+    await processQueueWithConcurrency(uploads, UPLOAD_CONCURRENCY, async ({ i, m, file }) => {
+      let reason = '';
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const result = await handleFileUpload(file!, user);
+          if (result) { urlSlots[i][m] = result.thumbnailUrl; reason = ''; break; }
+          reason = 'Upload returned no file';
+        } catch (err: any) {
+          reason = err?.message || 'Upload failed';
+        }
+      }
+      if (reason) uploadFailures.push({ row: i + 1, name: file!.name, reason });
+      uploadsDone++;
+      setUploadProgress({ done: uploadsDone, total: uploads.length });
+      setSaveProgress(Math.round((uploadsDone / uploads.length) * 30)); // 30% for media
+    });
+    setUploadProgress(null);
+    setPhotoFailures(uploadFailures);
+
     for (let i = 0; i < batchItems.length; i++) {
       const item = batchItems[i];
-      let uploadedUrls: string[] = [];
-      try {
-        for (const media of item.mediaFiles) {
-          if (media.originalFile) {
-            const result = await handleFileUpload(media.originalFile, user);
-            if (result) uploadedUrls.push(result.thumbnailUrl);
-          }
-        }
-      } catch (err) {
-        console.error("Media upload error:", err);
-      }
-      
+      const uploadedUrls = urlSlots[i].filter((u): u is string => !!u);
+
       itemDataCache[i] = { uploadedUrls, aiResults: {} as Record<string, any> };
 
       if (anyAiSelected && uploadedUrls.length > 0) {
@@ -426,7 +523,6 @@ Return ONLY the JSON array, no markdown, no explanation.`;
           });
         });
       }
-      setSaveProgress(Math.round(((i + 1) / batchItems.length) * 30)); // 30% for media
     }
 
     // Pass 2: Run AI across all items
@@ -583,6 +679,9 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     setSaveResults({ success: 0, errors: 0 });
     setFailedItems([]);
     setProcessedItems([]);
+    setPhotoTray([]);
+    setPhotoSummary(null);
+    setPhotoFailures([]);
   };
 
   // ═══════════════════════════════════════════════════════════════
@@ -635,6 +734,9 @@ Return ONLY the JSON array, no markdown, no explanation.`;
         <p className="text-[10px] text-white/30 uppercase tracking-wider max-w-lg text-center">
           {tr("Columns: cantidad · forma · tipo · color · material · ancho · alto · fondo · precio")}
         </p>
+        <p className="text-[10px] text-white/30 tracking-wider max-w-lg text-center">
+          {tr("Optional: # (item number) · descripcion · kg. Name photos by item number (EM-004.jpg, EM-004-2.jpg) and drop the folder on the next step.")}
+        </p>
       </div>
     );
   }
@@ -651,7 +753,9 @@ Return ONLY the JSON array, no markdown, no explanation.`;
               <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${saveProgress}%` }} />
             </div>
             <span className="text-xs font-black uppercase tracking-widest text-white/60">
-              {tr("Saving")} {saveResults.success + saveResults.errors} / {batchItems.length}...
+              {uploadProgress
+                ? <>{tr("Uploading photos")} {uploadProgress.done} / {uploadProgress.total}...</>
+                : <>{tr("Saving")} {saveResults.success + saveResults.errors} / {batchItems.length}...</>}
             </span>
             <div className="flex gap-4 text-[10px] font-black uppercase tracking-wider">
               <span className="text-emerald-400">{saveResults.success} ✓</span>
@@ -676,6 +780,18 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                   <div key={f.row} className="text-left">
                     <p className="text-[11px] font-black text-white/70">{tr("Row")} {f.row} • {f.label}</p>
                     <p className="text-[10px] text-rose-400/80 font-medium break-words">{f.reason}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {photoFailures.length > 0 && (
+              <div className="w-full max-w-md max-h-48 overflow-y-auto rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 flex flex-col gap-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">{tr("Saved without these photos — add them in Edit Entry")}</p>
+                {photoFailures.map((f, i) => (
+                  <div key={i} className="text-left">
+                    <p className="text-[11px] font-black text-white/70">{tr("Row")} {f.row} • {f.name}</p>
+                    <p className="text-[10px] text-amber-400/80 font-medium break-words">{f.reason}</p>
                   </div>
                 ))}
               </div>
@@ -760,6 +876,72 @@ Return ONLY the JSON array, no markdown, no explanation.`;
         </button>
       </div>
 
+      {/* Photos: drop a folder once; files named by item number go to their row */}
+      <div
+        onDragOver={(e) => { if (!e.dataTransfer.types.includes(TRAY_MIME)) { e.preventDefault(); setPhotoDropOver(true); } }}
+        onDragLeave={() => setPhotoDropOver(false)}
+        onDrop={handlePhotoDrop}
+        className={`rounded-xl border border-dashed p-3 flex flex-col gap-2 transition-all ${photoDropOver ? 'border-cyan-400 bg-cyan-500/10' : 'border-white/15 bg-black/20 backdrop-blur-3xl'}`}>
+        <div className="flex items-center gap-3 flex-wrap">
+          {isMatchingPhotos ? <Loader2 size={16} className="text-cyan-400 animate-spin shrink-0" /> : <Images size={16} className="text-white/40 shrink-0" />}
+          <div className="flex-1 min-w-[12rem]">
+            <p className="text-[11px] font-black text-white/70">{isMatchingPhotos ? tr("Matching photos...") : tr("Drop a photo folder here")}</p>
+            <p className="text-[9px] font-bold text-white/40">{tr("Each photo goes to the row whose item number is in its name: EM-004.jpg, EM-004-2.jpg, 004b.jpg. Item subfolders (EM-004/) work too.")}</p>
+          </div>
+          <input type="file" ref={photoFilesInputRef} className="hidden" multiple accept="image/*"
+            onChange={(e) => { if (e.target.files) attachPhotos(collectInputFiles(e.target.files)); e.target.value = ''; }} />
+          {/* webkitdirectory isn't in React's input props, so it is set on the element. */}
+          <input type="file" className="hidden" multiple
+            ref={(el) => { photoFolderInputRef.current = el; el?.setAttribute('webkitdirectory', ''); }}
+            onChange={(e) => { if (e.target.files) attachPhotos(collectInputFiles(e.target.files)); e.target.value = ''; }} />
+          <button type="button" disabled={isMatchingPhotos} onClick={() => photoFolderInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-white/15 text-[10px] font-black uppercase tracking-wider text-white/60 hover:border-cyan-400 hover:text-cyan-400 transition-all disabled:opacity-50">
+            <FolderOpen size={12} /> {tr("Choose folder")}
+          </button>
+          <button type="button" disabled={isMatchingPhotos} onClick={() => photoFilesInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-white/15 text-[10px] font-black uppercase tracking-wider text-white/60 hover:border-cyan-400 hover:text-cyan-400 transition-all disabled:opacity-50">
+            <ImageIcon size={12} /> {tr("Choose photos")}
+          </button>
+        </div>
+
+        {photoSummary && (
+          <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-[9px] font-black uppercase tracking-wider">
+            <span className="text-emerald-400">{photoSummary.files} {tr("attached to")} {photoSummary.rows} {tr("rows")}</span>
+            {photoSummary.unmatched > 0 && <span className="text-amber-400">{photoSummary.unmatched} {tr("unmatched")}</span>}
+            {photoSummary.duplicates > 0 && <span className="text-white/40">{photoSummary.duplicates} {tr("already attached")}</span>}
+            {photoSummary.ignored > 0 && <span className="text-white/40">{photoSummary.ignored} {tr("in other subfolders, ignored")}</span>}
+            {batchItems.filter(i => i.mediaFiles.length === 0).length > 0 && (
+              <span className="text-white/50 normal-case tracking-normal font-bold">
+                {tr("No photo:")} {batchItems.filter(i => i.mediaFiles.length === 0).map(i => `#${i.itemNumber}`).join(', ')}
+              </span>
+            )}
+          </div>
+        )}
+
+        {photoTray.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[9px] font-black uppercase tracking-wider text-amber-400">{tr("Unmatched — drag onto a row")}</p>
+              <button type="button" onClick={() => setPhotoTray([])}
+                className="text-[9px] font-black uppercase tracking-wider text-white/40 hover:text-white/70">{tr("Clear")}</button>
+            </div>
+            <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+              {photoTray.map(t => (
+                <div key={t.id} draggable title={`${t.file.name} — ${t.reason}`}
+                  onDragStart={(e) => { e.dataTransfer.setData(TRAY_MIME, t.id); e.dataTransfer.effectAllowed = 'move'; }}
+                  className="shrink-0 w-20 cursor-grab active:cursor-grabbing">
+                  {t.preview
+                    ? <img src={t.preview} alt={t.file.name} className="w-20 h-16 object-cover rounded border border-amber-400/30" />
+                    : <div className="w-20 h-16 rounded border border-amber-400/30 flex items-center justify-center"><ImageIcon size={14} className="text-white/30" /></div>}
+                  <p className="text-[8px] font-bold text-white/50 truncate mt-0.5">{t.file.name}</p>
+                  <p className="text-[8px] text-amber-400/70 truncate">{t.reason}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Items list */}
       <div className="flex flex-col gap-2 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
         {batchItems.map((item, idx) => {
@@ -768,7 +950,11 @@ Return ONLY the JSON array, no markdown, no explanation.`;
           const itemImgInputRef = React.createRef<HTMLInputElement>();
 
           return (
-            <div key={item.id} className="bg-black/20 backdrop-blur-3xl rounded-xl border border-white/10 p-3 shadow-sm hover:shadow-md transition-shadow">
+            <div key={item.id}
+              onDragOver={(e) => { e.preventDefault(); if (rowDropOver !== item.id) setRowDropOver(item.id); }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setRowDropOver(null); }}
+              onDrop={(e) => handleRowDrop(e, item.id)}
+              className={`bg-black/20 backdrop-blur-3xl rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow ${rowDropOver === item.id ? 'border-cyan-400 ring-1 ring-cyan-400/50' : 'border-white/10'}`}>
               {/* Row 1: Tag preview + core info + actions */}
               <div className="flex items-start gap-3">
                 {/* Item number */}
@@ -818,7 +1004,9 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                     <div className="flex gap-0.5">
                       {item.mediaFiles.slice(0, 2).map((f, mi) => (
                         <div key={mi} className="relative w-8 h-8 rounded overflow-hidden group">
-                          <img src={f.localUrl} className="w-full h-full object-cover" />
+                          {f.localUrl
+                            ? <img src={f.localUrl} alt={f.name || ''} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full bg-white/5 flex items-center justify-center"><ImageIcon size={10} className="text-white/30" /></div>}
                           <button type="button" onClick={() => removeImageFromItem(item.id, mi)}
                             className="absolute inset-0 bg-red-500/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <X size={10} className="text-white" strokeWidth={3} />
@@ -959,7 +1147,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
           <span>{tr("Items:")} {batchItems.length}</span>
           <span>{tr("Qty:")} {batchItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0)}</span>
           <span>{tr("MXN: $")}{batchItems.reduce((acc, i) => acc + ((Number(i.price) || 0) * (Number(i.quantity) || 1)), 0).toLocaleString()}</span>
-          <span>{tr("Images:")} {batchItems.filter(i => i.mediaFiles.length > 0).length}</span>
+          <span>{tr("Images:")} {batchItems.reduce((n, i) => n + i.mediaFiles.length, 0)} · {batchItems.filter(i => i.mediaFiles.length > 0).length}/{batchItems.length} {tr("rows")}</span>
         </div>
       </div>
     </div>
