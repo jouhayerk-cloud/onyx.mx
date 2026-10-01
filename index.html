@@ -32,8 +32,9 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
     rel="stylesheet">
-  <!-- ?v= is bumped with every icon redesign: iOS and the service worker both
-       cache icons by URL, so an unchanged URL keeps serving the old cube.
+  <!-- ?v=1.84 is replaced at build time by ICON_VERSION in
+       vite.config.ts, the one place to bump with every icon redesign: browsers
+       and iOS cache icons by URL, so an unchanged URL keeps serving the old cube.
        The PNG comes first with sizes and the SVG last with its type, so
        browsers that draw SVG favicons (Chrome, Firefox) take the theme-aware
        SVG and Safari, which does not, falls back to the PNG. -->
@@ -52,7 +53,6 @@
        which ignores media still lands on the abalone render. -->
   <link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: light)" href="https://jouhayerk-cloud.github.io/onyx.mx/apple-touch-icon.png?v=1.84" />
   <link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: dark)" href="https://jouhayerk-cloud.github.io/onyx.mx/apple-touch-icon-dark.png?v=1.84" />
-  <link rel="manifest" href="https://jouhayerk-cloud.github.io/onyx.mx/manifest.webmanifest?v=1.84" />
   <meta name="theme-color" content="#fdfcf0" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d0b0a" media="(prefers-color-scheme: dark)" />
 
