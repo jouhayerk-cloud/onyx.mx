@@ -21,8 +21,19 @@
  */
 
 import { Modality } from '@google/genai';
-import { ai } from './ai';
 import { loadImage, handleProcessedFileUpload } from './utils';
+import { getGeminiKey } from './ai/keys';
+import { AI_MODELS, modelChain } from './ai/models';
+import { getGenAiSdk, aiSleep, backoffMs, retryDelayFrom } from './ai/client';
+import { withAiSlot } from './ai/limiter';
+import {
+    AiCancelledError,
+    AiError,
+    AiKeyMissingError,
+    AiQuotaError,
+    AiResponseError,
+    AiTimeoutError,
+} from './ai/errors';
 
 /**
  * Bumped whenever the prompt changes, so cached results are invalidated.
@@ -45,14 +56,10 @@ export const BG_PROMPT_VERSION = 'dark-room-v7';
 
 export type BgQuality = '1K' | '2K';
 
-/**
- * Tried in order. 3.1 is the only one that can return 2K, which matters
- * because source photos are ~4000px and 1K is a visible downgrade in the
- * catalogue. 2.5 is the fallback because SceneComposerView already proves it
- * works against our key — if the preview model is not enabled on the account,
- * we still produce an image rather than failing the batch.
+/*
+ * The model chain (3.1 image preview, then 2.5 image) lives in
+ * lib/ai/models.ts as AI_MODELS.bgReplace, with the reasoning for the order.
  */
-const MODEL_CHAIN = ['gemini-3.1-flash-image-preview', 'gemini-2.5-flash-image'] as const;
 
 /** Ratios the image models accept. Snapping to one stops silent reframing. */
 const SUPPORTED_RATIOS: [string, number][] = [
@@ -194,19 +201,81 @@ export interface BgResult {
     aspectRatio: string;
 }
 
+/** The SDK's ApiError carries the HTTP status; a fetch failure does not. */
+const statusOf = (err: any): number | undefined =>
+    typeof err?.status === 'number' ? err.status
+        : typeof err?.code === 'number' ? err.code
+            : undefined;
+
+/**
+ * One generateContent call through the SDK, with a timeout and the caller's
+ * AbortSignal wired into the request itself -- checkAbort used to stop
+ * waiting while the request carried on running and billing.
+ */
+async function generateImageOnce(
+    model: string,
+    parts: unknown[],
+    config: Record<string, unknown>,
+    timeoutMs: number,
+    signal?: AbortSignal,
+): Promise<any> {
+    if (signal?.aborted) throw new AiCancelledError();
+    const controller = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    const onAbort = () => controller.abort();
+    signal?.addEventListener('abort', onAbort, { once: true });
+    try {
+        return await getGenAiSdk().models.generateContent({
+            model,
+            contents: { parts } as any,
+            config: { ...config, abortSignal: controller.signal } as any,
+        });
+    } catch (err: any) {
+        if (controller.signal.aborted) {
+            if (timedOut) throw new AiTimeoutError(timeoutMs);
+            throw new AiCancelledError();
+        }
+        if (statusOf(err) === 429 || /RESOURCE_EXHAUSTED/.test(String(err?.message))) {
+            const quota = new AiQuotaError(String(err?.message || ''));
+            (quota as any).retryAfterMs = retryDelayFrom(String(err?.message || ''));
+            throw quota;
+        }
+        throw err;
+    } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+    }
+}
+
 /**
  * Ask the model for the piece standing in an empty dark room.
  *
- * Walks MODEL_CHAIN, and within each model retries once without `imageConfig`
- * — older image models reject the field outright, and losing size control is a
- * far better outcome than failing the item.
+ * Walks the AI_MODELS.bgReplace chain, and within each model retries once
+ * without `imageConfig` -- older image models reject the field outright, and
+ * losing size control is a far better outcome than failing the item.
+ *
+ * A 429 is not a model rejection. Walking the chain on one used to fire up to
+ * four image requests back to back into the same exhausted quota; now it
+ * waits once (the server's RetryInfo, else a short backoff), retries the same
+ * request, and gives up with AiQuotaError if the quota is still out.
+ *
+ * Holds one 'image' slot of the shared limiter for the whole chain, so the
+ * Catalog Hub and Batch Create running together still send at most two image
+ * generations at a time.
+ *
+ * The whole chain shares one AI_MODELS.bgReplace.timeoutMs deadline, and a
+ * timeout ends it: it is not a rejection, so walking on to the next config
+ * and model gave every attempt its own full timeout and could hold that slot
+ * for twelve minutes per photo.
  */
 export async function replaceBackgroundWithDarkRoom(
     imageUrl: string,
     subject: BgSubject,
-    opts: { quality?: BgQuality; onLog?: (msg: string) => void } = {},
+    opts: { quality?: BgQuality; onLog?: (msg: string) => void; signal?: AbortSignal } = {},
 ): Promise<BgResult> {
-    const { quality = '2K', onLog } = opts;
+    const { quality = '2K', onLog, signal } = opts;
+    if (!getGeminiKey()) throw new AiKeyMissingError();
 
     const source = await loadImageForGeneration(imageUrl);
     const aspectRatio = nearestAspectRatio(source.width, source.height);
@@ -216,39 +285,62 @@ export async function replaceBackgroundWithDarkRoom(
         { inlineData: { mimeType: source.mimeType, data: source.data } },
         { text: prompt },
     ];
+    const timeoutMs = AI_MODELS.bgReplace.timeoutMs;
+    const deadline = Date.now() + timeoutMs;
 
-    let lastError: Error | null = null;
+    return withAiSlot('image', async () => {
+        let lastError: Error | null = null;
+        let quotaRetried = false;
 
-    for (const model of MODEL_CHAIN) {
-        for (const withImageConfig of [true, false]) {
-            try {
-                onLog?.(`[ WAIT ] ${model}${withImageConfig ? ` @ ${quality}` : ''}...`);
-                const response = await ai.models.generateContent({
-                    model,
-                    contents: { parts: requestParts },
-                    config: {
-                        responseModalities: [Modality.IMAGE],
-                        ...(withImageConfig ? { imageConfig: { aspectRatio, imageSize: quality } } : {}),
-                    } as any,
-                });
-
-                const image = extractImagePart(response);
-                if (!image) throw new Error('Model returned no image part');
-
-                onLog?.(`[  OK  ] Background replaced via ${model}`);
-                return {
-                    dataUrl: `data:${image.mimeType};base64,${image.data}`,
-                    modelUsed: model,
-                    aspectRatio,
+        for (const model of modelChain('bgReplace')) {
+            for (const withImageConfig of [true, false]) {
+                const config = {
+                    responseModalities: [Modality.IMAGE],
+                    ...(withImageConfig ? { imageConfig: { aspectRatio, imageSize: quality } } : {}),
                 };
-            } catch (err: any) {
-                lastError = err instanceof Error ? err : new Error(String(err));
-                onLog?.(`[ WARN ] ${model} rejected: ${lastError.message}`);
+                for (;;) {
+                    const remaining = deadline - Date.now();
+                    if (remaining <= 0) throw new AiTimeoutError(timeoutMs);
+                    try {
+                        onLog?.(`[ WAIT ] ${model}${withImageConfig ? ` @ ${quality}` : ''}...`);
+                        const response = await generateImageOnce(model, requestParts, config, remaining, signal);
+
+                        const image = extractImagePart(response);
+                        if (!image) {
+                            const finish = response?.candidates?.[0]?.finishReason;
+                            throw new AiResponseError(`Model returned no image${finish ? ` (${finish})` : ''}`);
+                        }
+
+                        onLog?.(`[  OK  ] Background replaced via ${model}`);
+                        return {
+                            dataUrl: `data:${image.mimeType};base64,${image.data}`,
+                            modelUsed: model,
+                            aspectRatio,
+                        };
+                    } catch (err: any) {
+                        if (err instanceof AiCancelledError || err instanceof AiKeyMissingError) throw err;
+                        if (err instanceof AiTimeoutError) throw new AiTimeoutError(timeoutMs);
+                        if (err instanceof AiQuotaError) {
+                            if (quotaRetried) throw err;
+                            quotaRetried = true;
+                            onLog?.(`[ WARN ] ${model}: ${err.message}; retrying once`);
+                            await aiSleep(backoffMs(err), signal);
+                            continue;
+                        }
+                        lastError = err instanceof Error ? err : new Error(String(err));
+                        onLog?.(`[ WARN ] ${model} rejected: ${lastError.message}`);
+                        break;
+                    }
+                }
             }
         }
-    }
 
-    throw lastError || new Error('All image models rejected the request');
+        if (lastError instanceof AiError) throw lastError;
+        throw new AiResponseError(
+            `All image models rejected the request${lastError ? `: ${lastError.message.slice(0, 160)}` : ''}`,
+            { cause: lastError },
+        );
+    }, signal);
 }
 
 /** Stable, non-cryptographic hash — only needs to detect "same input as before". */

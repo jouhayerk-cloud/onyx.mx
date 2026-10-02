@@ -1,20 +1,23 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { batchCreateItemsAtom, inventoryAtom, userAtom, exchangeRateAtom, isAiProcessingEnabledAtom, BatchCreateItem } from '../../lib/atoms';
+import { batchCreateItemsAtom, inventoryAtom, userAtom, isAiProcessingEnabledAtom, BatchCreateItem } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
-import { ai } from '../../lib/ai';
-import { calculateCodesAndPrices, handleFileUpload, getTextColorForBg, generateUniqueId, getCleanImageUrl, normalizeBrandTerms, formatProductTitle } from '../../lib/utils';
+import { generateJson } from '../../lib/ai/client';
+import { aiErrorMessage } from '../../lib/ai/errors';
+import { buildTranslatePrompt, type TranslationPair } from '../../lib/ai/prompts';
+import { calculateCodesAndPrices, handleFileUpload, getTextColorForBg, generateUniqueId } from '../../lib/utils';
+import { hasGeminiKey } from '../../lib/ai/keys';
+import { aiResultFromOps, buildAiPatch, saveAiPatch, isEmptyPatch } from '../../lib/ai/persist';
 import { useDatabase } from '../../lib/hooks';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { Trash2, Save, X, Plus, Image as ImageIcon, FileSpreadsheet, ChevronLeft, Check, AlertTriangle, Languages, Loader2, FolderOpen, Images } from 'lucide-react';
 import { tr } from '../../lib/i18n';
-import { processSingleItem, type BatchOp, type PipelineContext } from '../../lib/catalogHubPipeline';
+import { processSingleItem, type BatchOp, type PipelineContext, type ProcessId } from '../../lib/catalogHubPipeline';
 import { CatalogHubProcessesPanel } from '../../components/CatalogHubProcessesPanel';
 import { CATALOG_PROCESSES, mapResultsByProcessId } from '../../lib/catalogHubProcesses';
 import { processQueueWithConcurrency } from '../../lib/queueProcessor';
-import { callGemini } from '../../lib/geminiClient';
 import { collectDroppedFiles, collectInputFiles, isImageFile, makePhotoPreview, matchPhotosToRows, type PhotoCandidate } from './batchPhotoMatch';
 
 
@@ -61,7 +64,6 @@ export function BatchCreateWizard({ vendorKey }: BatchCreateWizardProps) {
   const allItems = useAtomValue(inventoryAtom);
   const [batchItems, setBatchItems] = useAtom(batchCreateItemsAtom);
   const user = useAtomValue(userAtom);
-  const exchangeRate = useAtomValue(exchangeRateAtom);
   const aiEnabled = useAtomValue(isAiProcessingEnabledAtom);
   const db = useDatabase();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,6 +85,10 @@ export function BatchCreateWizard({ vendorKey }: BatchCreateWizardProps) {
   const [rowDropOver, setRowDropOver] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [photoFailures, setPhotoFailures] = useState<{ row: number; name: string; reason: string }[]>([]);
+  // AI runs during the save; what failed is listed beside the DB and photo
+  // failures instead of going to the console only.
+  const [aiFailures, setAiFailures] = useState<{ row: number; label: string; reason: string }[]>([]);
+  const [aiProgress, setAiProgress] = useState<{ done: number; total: number; label: string } | null>(null);
   const photoFilesInputRef = useRef<HTMLInputElement>(null);
   const photoFolderInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,52 +148,31 @@ export function BatchCreateWizard({ vendorKey }: BatchCreateWizardProps) {
     if (textsToTranslate.length === 0) return items;
 
     try {
-      const prompt = `You are a translator for a stone/fountain/garden decor inventory system.
-Translate the following Spanish words/phrases to English. These are product attributes: shapes, types, colors, materials, and descriptions for stone items like fountains, planters, statues, benches, etc.
+      const { prompt, schema } = buildTranslatePrompt(textsToTranslate);
+      const translated = await generateJson<TranslationPair[]>({ job: 'translate', prompt, schema });
 
-RULES:
-- Return ONLY a JSON array of translated strings in the same order as input
-- Keep translations SHORT (1-3 words max for single attributes)
-- Use standard inventory/product terminology in English
-- If a word is already English or is a proper noun, keep it as-is
-- Keep the input's capitalisation; write translated words in Title Case
-
-Input array:
-${JSON.stringify(textsToTranslate)}
-
-Return ONLY the JSON array, no markdown, no explanation.`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: prompt,
+      // Keyed by source text, not by position: a positional answer one entry
+      // short used to shift every later translation onto the wrong attribute.
+      // An entry the model skipped simply keeps the Spanish original.
+      const bySource = new Map<string, string>();
+      (Array.isArray(translated) ? translated : []).forEach(pair => {
+        if (typeof pair?.source === 'string' && typeof pair?.english === 'string' && pair.english.trim()) {
+          bySource.set(pair.source.trim().toUpperCase(), pair.english.trim());
+        }
       });
 
-      const responseText = response.text?.trim() || '';
-      const cleanJson = responseText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-      const translated: unknown = JSON.parse(cleanJson);
+      const translationMap = new Map<string, string>();
+      textsToTranslate.forEach(original => {
+        const out = bySource.get(original.toUpperCase());
+        // Text that came back unchanged apart from case keeps the sheet's spelling.
+        if (out) translationMap.set(original.toUpperCase(), out.toUpperCase() === original.toUpperCase() ? original : out);
+      });
 
-      // Inputs and outputs are matched by position, so a response of a different
-      // length silently shifts every translation after the discrepancy — writing the
-      // wrong shape/colour/material onto real inventory with no error shown. If the
-      // model didn't return exactly what we asked for, keep the Spanish originals.
-      if (!Array.isArray(translated) || translated.length !== textsToTranslate.length) {
-        console.error('[BatchCreate] Translation response shape mismatch', {
-          expected: textsToTranslate.length,
-          received: Array.isArray(translated) ? translated.length : typeof translated
-        });
+      if (translationMap.size === 0) {
+        console.error('[BatchCreate] Translation matched no input', { expected: textsToTranslate.length, received: translated });
         toast.error(tr("Translation returned unexpected data — items loaded untranslated"));
         return items;
       }
-
-      const translationMap = new Map<string, string>();
-      textsToTranslate.forEach((original, i) => {
-        const value = translated[i];
-        if (typeof value === 'string' && value.trim()) {
-          // Text that came back unchanged apart from case keeps the sheet's spelling.
-          const out = value.trim();
-          translationMap.set(original.toUpperCase(), out.toUpperCase() === original.toUpperCase() ? original : out);
-        }
-      });
 
       return items.map(item => ({
         ...item,
@@ -199,7 +184,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
       }));
     } catch (err: any) {
       console.error('Translation error:', err);
-      toast.error(tr("Translation failed — items loaded without translation"));
+      toast.error(`${tr("Translation failed — items loaded without translation")}: ${aiErrorMessage(err)}`);
       return items;
     }
   }, []);
@@ -416,10 +401,12 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     const finalItemId = `${vendorKey}-${String(item.itemNumber || 1).padStart(3, '0')}`;
     return calculateCodesAndPrices(
       { price: item.price, itemId: finalItemId, workbook: 'v826', itemNumber: item.itemNumber || '1' },
-      exchangeRate || DEFAULT_EXCHANGE_RATE,
+      // Book codes always use the book rate (17), never the editable or live
+      // rate: they are printed on the label.
+      DEFAULT_EXCHANGE_RATE,
       'v826'
     );
-  }, [vendorKey, exchangeRate]);
+  }, [vendorKey]);
 
   const suggestions = useMemo(() => {
     const getCascadingVals = (targetField: string) => {
@@ -453,6 +440,18 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     if (!vendorKey) return toast.error(tr("Select a vendor first"));
     if (batchItems.length === 0) return toast.error(tr("No items to save"));
 
+    // Every ticked process runs and is saved on its own; an unticked one is
+    // neither run nor written. This used to collapse to three switches, so
+    // unticking 'AI Title' or 'Hex Map' changed nothing.
+    const processes = new Set<ProcessId>(
+      aiEnabled ? CATALOG_PROCESSES.filter(p => aiSelected[p.id]).map(p => p.id) : []);
+    let anyAiSelected = processes.size > 0;
+    if (anyAiSelected && !hasGeminiKey()) {
+      // Without a key every op would fail one by one after the uploads.
+      if (!window.confirm(tr("No Gemini API key is set, so the AI processes cannot run. Save the rows without AI content?"))) return;
+      anyAiSelected = false;
+    }
+
     setIsSaving(true);
     setSaveProgress(0);
     setSaveResults({ success: 0, errors: 0 });
@@ -461,16 +460,20 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     let successCount = 0;
     let errorCount = 0;
     const failed: { row: number; label: string; reason: string }[] = [];
+    const aiFailed: { row: number; label: string; reason: string }[] = [];
     setFailedItems([]);
+    setAiFailures([]);
     setProcessedItems([]);
+    const rowLabel = (item: BatchCreateItem, i: number) =>
+      [item.itemNumber, item.shape, item.itemType].filter(Boolean).join(' - ') || `Row ${i + 1}`;
 
-    const anyAiSelected = aiEnabled && Object.values(aiSelected).some(Boolean);
-    const cancelTokens = { current: {} };
+    const cancelTokens = { current: {} as Record<string, boolean> };
 
     // Pass 1: Upload media & Prepare AI Ops
     const ops: BatchOp[] = [];
-    const itemDataCache: any[] = [];
-    
+    const opRow = new Map<string, number>();
+    const itemDataCache: { uploadedUrls: string[] }[] = [];
+
     // Every photo of every row uploads through one queue, UPLOAD_CONCURRENCY at a
     // time (it used to be one photo after another). Each keeps its slot, so a
     // row's photos stay in the order they were attached, and a failed photo is
@@ -504,41 +507,67 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     for (let i = 0; i < batchItems.length; i++) {
       const item = batchItems[i];
       const uploadedUrls = urlSlots[i].filter((u): u is string => !!u);
-
-      itemDataCache[i] = { uploadedUrls, aiResults: {} as Record<string, any> };
+      itemDataCache[i] = { uploadedUrls };
 
       if (anyAiSelected && uploadedUrls.length > 0) {
         uploadedUrls.forEach((url, idx) => {
+          const id = crypto.randomUUID();
+          opRow.set(id, i);
           ops.push({
-            id: crypto.randomUUID(),
-            item: item,
+            id,
+            item,
             imageUrl: url,
             imageIndex: idx,
             status: 'idle',
             progress: 0,
             logs: [],
-            skipImageProcessing: !(aiSelected['img_clean'] || aiSelected['image_segmentation']),
-            forceRegenerateDescription: aiSelected['title_desc'] || aiSelected['marketing_desc'] || aiSelected['dominant_colors'] || aiSelected['product_type'],
-            result: itemDataCache[i].aiResults
+            processes,
+            // The Catalog Hub default. Without it the pipeline fell through
+            // to the in-browser imgly cutout, whose output was then dropped.
+            processingMode: 'bgreplace',
+            // Each photo its OWN result: they all used to share one object,
+            // and a sibling finishing after the hero blanked its text.
+            result: {},
           });
         });
       }
     }
 
-    // Pass 2: Run AI across all items
+    // Pass 2: Run AI across all items. The ops above are the pipeline's
+    // state here: updateOp merges into them (object or function form, as the
+    // Catalog Hub's does), and progress, stage and failures surface on the
+    // step-3 screen instead of the console.
+    const opsById = new Map(ops.map(op => [op.id, op]));
     if (anyAiSelected && ops.length > 0) {
+      let opsDone = 0;
+      const reportProgress = (label: string) => {
+        const avg = ops.reduce((n, op) => n + (op.status === 'processing' ? op.progress : op.status === 'idle' ? 0 : 100), 0) / ops.length;
+        setSaveProgress(Math.round(30 + avg * 0.3));
+        setAiProgress({ done: opsDone, total: ops.length, label });
+      };
       const pipelineCtx: PipelineContext = {
         updateOp: (id, updates) => {
-          if (typeof updates === 'function') return;
-          const op = ops.find(o => o.id === id);
-          if (op && updates.result) {
-             Object.assign(op.result, updates.result);
-             setAiResults(prev => ({ ...prev, ...updates.result }));
-          }
+          const op = opsById.get(id);
+          if (!op) return;
+          Object.assign(op, typeof updates === 'function' ? updates(op) : updates);
+          if ((op.imageIndex || 0) === 0 && op.result) setAiResults({ ...op.result });
+          reportProgress(op.stepLabel || '');
         },
-        logOp: (id, text) => console.log(`[AI ${id}]`, text),
-        checkAbort: async (id, promise) => await promise,
-        callGemini,
+        logOp: (id, text) => {
+          const op = opsById.get(id);
+          if (!op) return;
+          op.logs = [...op.logs, text];
+          if (text.includes('[ FAIL ]')) {
+            const i = opRow.get(id) ?? 0;
+            aiFailed.push({
+              row: i + 1,
+              label: `${rowLabel(batchItems[i], i)} · ${tr("photo")} ${(op.imageIndex || 0) + 1}`,
+              reason: text.replace('[ FAIL ]', '').trim(),
+            });
+          }
+          reportProgress(text.replace(/^\[[^\]]*\]\s*/, ''));
+        },
+        checkAbort: async (_id, promise) => await promise,
         user,
         bgQuality: '2K',
         cancelTokens,
@@ -547,27 +576,35 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
       setAiBusy(prev => {
         const next = { ...prev };
-        CATALOG_PROCESSES.forEach(p => { if (aiSelected[p.id]) next[p.id] = true; });
+        CATALOG_PROCESSES.forEach(p => { if (processes.has(p.id)) next[p.id] = true; });
         return next;
       });
 
       try {
         await processQueueWithConcurrency(ops, 2, async (op) => {
-          await processSingleItem(op, pipelineCtx);
+          try {
+            await processSingleItem(op, pipelineCtx);
+          } finally {
+            opsDone++;
+            reportProgress('');
+          }
         });
-      } catch (aiErr) {
-        console.error("AI Batch Processing Error:", aiErr);
       } finally {
         setAiBusy({});
+        setAiProgress(null);
       }
       setSaveProgress(60); // 60% after AI
     }
 
-    // Pass 3: DB Insert
+    // Pass 3: DB Insert. The row's own columns first; then its AI columns
+    // through lib/ai/persist, the writer every save path shares, which needs
+    // the row's id (item_segmentation rows key on it, and every update goes
+    // by id). A failed AI write leaves a saved row without AI content and is
+    // listed as such, rather than losing the row.
     for (let i = 0; i < batchItems.length; i++) {
       const item = batchItems[i];
-      const { uploadedUrls, aiResults } = itemDataCache[i];
-      
+      const { uploadedUrls } = itemDataCache[i];
+
       try {
         // CORRECTED 2026-09-22: item.id is generateUniqueId()/crypto.randomUUID()
         // (a row key for this batch's local state), not the item's index — see
@@ -577,16 +614,12 @@ Return ONLY the JSON array, no markdown, no explanation.`;
         const finalItemId = `${vendorKey}-${String(itemNumber).padStart(3, '0')}`;
         const calculated = calculateCodesAndPrices(
           { price: item.price, itemId: finalItemId, workbook: 'v826', itemNumber: item.itemNumber || String(maxVendorItemNumber + i + 1) },
-          exchangeRate || DEFAULT_EXCHANGE_RATE,
+          DEFAULT_EXCHANGE_RATE,
           'v826'
         );
-
-        // Same image-result mapping as CreateItem.tsx: see that file for why
-        // processed_media_urls is a JSON map and not the bare cleanedUrl.
-        const processedMap: Record<string, string> = {};
-        if (aiResults.cleanedUrl && uploadedUrls[0]) processedMap[getCleanImageUrl(uploadedUrls[0]) || uploadedUrls[0]] = aiResults.cleanedUrl;
-        if (aiResults.dominantColors?.length) processedMap['_generated_color'] = aiResults.dominantColors.join(', ');
-        if (aiResults.generatedType) processedMap['_generated_type'] = aiResults.generatedType;
+        // calculateCodesAndPrices answers '-' when there is no price; stored,
+        // that '-' would stand as the printed barcode for good.
+        const code = (v: unknown) => (v && v !== '-' ? String(v) : null);
 
         const dbRow = {
           item_id: finalItemId,
@@ -594,31 +627,12 @@ Return ONLY the JSON array, no markdown, no explanation.`;
           vendor_id: vendorKey,
           shape: item.shape || null,
           material: item.material || null,
-          // Canonical map (catalogHubProcesses.ts, BatchProcessingWizard
-          // handleSaveDescription): color and description are the vendor's own
-          // fields and no AI process writes them. AI title -> detailed_description,
-          // marketing HTML -> generated_description, AI colours -> generated_color.
+          // Canonical map: color, description and short_description (the
+          // manual Type) are the sheet's own fields. No AI process writes
+          // them; the AI columns come from buildAiPatch below.
           color: item.color || null,
-          generated_color: aiResults.dominantColors?.length ? aiResults.dominantColors.join(', ') : null,
-          // short_description is the manual "Type" field, never AI content —
-          // see catalogHubProcesses.ts.
           short_description: item.itemType || null,
           description: item.description || null,
-          detailed_description: aiResults.description ? formatProductTitle(normalizeBrandTerms(aiResults.description)) : null,
-          generated_description: aiResults.marketingDescription ? normalizeBrandTerms(aiResults.marketingDescription) : null,
-          generated_type: aiResults.generatedType || null,
-          generated_png_url: aiResults.cleanedUrl || null,
-          generated_svg_url: aiResults.svgUrl || null,
-          axo_icon_url: aiResults.axoIconUrl || null,
-          processed_media_urls: Object.keys(processedMap).length ? JSON.stringify(processedMap) : null,
-          spatial_points: aiResults.hexString ? [{
-            type: 'pixel_map',
-            dimensions: `${aiResults.cols || 20}x${aiResults.rows || 20}`,
-            cols: aiResults.cols || 20,
-            rows: aiResults.rows || 20,
-            hex_string: aiResults.hexString,
-            bitmap_url: aiResults.bitmapUrl || null
-          }] : null,
           width_cm: item.widthCm ? Number(item.widthCm) : null,
           length_cm: item.lengthCm ? Number(item.lengthCm) : null,
           height_cm: item.heightCm ? Number(item.heightCm) : null,
@@ -629,8 +643,8 @@ Return ONLY the JSON array, no markdown, no explanation.`;
           workbook: 'v826',
           media_urls: uploadedUrls.join(','),
           timestamp: new Date().toISOString(),
-          book_barcode: calculated.bookBarcode,
-          book_aq_code: calculated.bookAqCode,
+          book_barcode: code(calculated.bookBarcode),
+          book_aq_code: code(calculated.bookAqCode),
           book_landed: isNaN(Number(calculated.bookLanded)) ? null : Number(calculated.bookLanded),
           book_retail: isNaN(Number(calculated.bookRetail)) ? null : Number(calculated.bookRetail),
         };
@@ -648,13 +662,26 @@ Return ONLY the JSON array, no markdown, no explanation.`;
           } catch (err) { console.error(err); }
         }
 
-        successCount++; setProcessedItems(prev => [...prev, dbRow]);
+        let savedRow: any = data;
+        const rowOps = ops.filter(op => opRow.get(op.id) === i);
+        if (data && rowOps.length > 0) {
+          try {
+            // The hero's text only (aiResultFromOps); per-photo image output.
+            const patch = await buildAiPatch(aiResultFromOps(rowOps), data, processes, { user });
+            patch.warnings.forEach(w => aiFailed.push({ row: i + 1, label: rowLabel(item, i), reason: w }));
+            if (!isEmptyPatch(patch)) savedRow = (await saveAiPatch(String(data.id), patch, { user })) || data;
+          } catch (err: any) {
+            aiFailed.push({ row: i + 1, label: rowLabel(item, i), reason: `${tr("Saved without AI content")}: ${err?.message || err}` });
+          }
+        }
+
+        successCount++; setProcessedItems(prev => [...prev, savedRow]);
       } catch (err: any) {
         console.error(`Error saving item ${i + 1}:`, err);
         errorCount++;
         failed.push({
           row: i + 1,
-          label: [item.itemNumber, item.shape, item.itemType].filter(Boolean).join(' - ') || `Row ${i + 1}`,
+          label: rowLabel(item, i),
           reason: err?.message || 'Unknown error'
         });
       }
@@ -665,8 +692,11 @@ Return ONLY the JSON array, no markdown, no explanation.`;
 
     setIsSaving(false);
     setFailedItems(failed);
-    if (errorCount === 0) {
+    setAiFailures(aiFailed);
+    if (errorCount === 0 && aiFailed.length === 0) {
       toast.success(`All ${successCount} items saved successfully!`);
+    } else if (errorCount === 0) {
+      toast(`${successCount} saved; ${aiFailed.length} AI step(s) failed - see the list below`, { icon: '⚠️', duration: 8000 });
     } else {
       toast(`${successCount} saved, ${errorCount} failed - see the list below`, { icon: '⚠️', duration: 8000 });
     }
@@ -682,6 +712,7 @@ Return ONLY the JSON array, no markdown, no explanation.`;
     setPhotoTray([]);
     setPhotoSummary(null);
     setPhotoFailures([]);
+    setAiFailures([]);
   };
 
   // ═══════════════════════════════════════════════════════════════
@@ -755,8 +786,13 @@ Return ONLY the JSON array, no markdown, no explanation.`;
             <span className="text-xs font-black uppercase tracking-widest text-white/60">
               {uploadProgress
                 ? <>{tr("Uploading photos")} {uploadProgress.done} / {uploadProgress.total}...</>
+                : aiProgress
+                ? <>{tr("AI processing")} {aiProgress.done} / {aiProgress.total}...</>
                 : <>{tr("Saving")} {saveResults.success + saveResults.errors} / {batchItems.length}...</>}
             </span>
+            {aiProgress?.label && (
+              <span className="text-[10px] font-bold text-white/40 max-w-md text-center truncate">{aiProgress.label}</span>
+            )}
             <div className="flex gap-4 text-[10px] font-black uppercase tracking-wider">
               <span className="text-emerald-400">{saveResults.success} ✓</span>
               {saveResults.errors > 0 && <span className="text-rose-400">{saveResults.errors} ✗</span>}
@@ -797,6 +833,18 @@ Return ONLY the JSON array, no markdown, no explanation.`;
               </div>
             )}
 
+            {aiFailures.length > 0 && (
+              <div className="w-full max-w-md max-h-48 overflow-y-auto rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 flex flex-col gap-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">{tr("Saved, but these AI steps failed — re-run them from the Catalog Hub")}</p>
+                {aiFailures.map((f, i) => (
+                  <div key={i} className="text-left">
+                    <p className="text-[11px] font-black text-white/70">{tr("Row")} {f.row} • {f.label}</p>
+                    <p className="text-[10px] text-amber-400/80 font-medium break-words">{f.reason}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* AI Generated Content Visualizer */}
             {processedItems.length > 0 && (
               <div className="w-full max-w-4xl mt-6 flex flex-col gap-3">
@@ -829,10 +877,14 @@ Return ONLY the JSON array, no markdown, no explanation.`;
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-xs font-black text-white">{pi.item_id}</span>
-                          <span className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded text-[8px] font-black uppercase tracking-wider">{pi.short_description || 'N/A'}</span>
+                          <span className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded text-[8px] font-black uppercase tracking-wider">{pi.generated_type || pi.short_description || 'N/A'}</span>
                         </div>
-                        <p className="text-[11px] text-white/80 font-medium mb-1 line-clamp-2">{pi.description || tr("No title generated")}</p>
-                        <p className="text-[9px] text-white/50 mb-2 line-clamp-3">{pi.detailed_description || tr("No marketing description")}</p>
+                        {/* Canonical map: detailed_description is the AI title and
+                            generated_description the marketing HTML (shown as
+                            text). These lines used to show the vendor text and
+                            the title under the wrong labels. */}
+                        <p className="text-[11px] text-white/80 font-medium mb-1 line-clamp-2">{pi.detailed_description || tr("No title generated")}</p>
+                        <p className="text-[9px] text-white/50 mb-2 line-clamp-3">{pi.generated_description ? String(pi.generated_description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : tr("No marketing description")}</p>
                         
                         <div className="flex flex-wrap gap-1.5">
                           {pi.generated_color?.split(',').map((c: string) => c.trim()).filter(Boolean).map((c: string, i: number) => (

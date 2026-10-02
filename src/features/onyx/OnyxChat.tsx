@@ -18,6 +18,7 @@ import { Bot, Send, Brain, Key, Eye, EyeOff, AlertCircle, Mic, MicOff, Volume2, 
 import ReactMarkdown from 'react-markdown';
 import { BotOrb } from './BotOrb';
 import { tr } from '../../lib/i18n';
+import { getGeminiKey } from '../../lib/ai/keys';
 
 const VENDOR_COLORS: Record<string, string> = {
     // Codes (from consts.tsx)
@@ -112,14 +113,15 @@ export function useOnyx(props: {
 
     const streamRef = useRef<MediaStream | null>(null);
 
+    // The key comes from lib/ai/keys like every other AI call. The chat's own
+    // key (onyxApiKey, which userApiKey mirrors) is one of the places that
+    // resolver reads, so a key saved here still works, and works in the
+    // Catalog Hub too.
     const getApiKeyInfo = () => {
-        const stored = userApiKey || localStorage.getItem('onyxApiKey');
-        const system = (import.meta as any).env.VITE_GEMINI_API_KEY || '';
-        const key = stored || system;
-        return {
-            key: String(key).trim().replace(/['"]/g, ''),
-            isDefault: !stored && !!system
-        };
+        // A key pasted here (userApiKey) wins; otherwise the shared resolver.
+        const key = String(userApiKey || '').trim().replace(/['"]/g, '') || getGeminiKey();
+        const system = String((import.meta as any).env?.VITE_GEMINI_API_KEY || '').trim().replace(/['"]/g, '');
+        return { key, isDefault: !!key && key === system };
     };
 
     const getBestVoice = (lang: 'en' | 'es') => {
@@ -159,7 +161,8 @@ export function useOnyx(props: {
     };
 
     const callGemini = async (apiKey: string, model: string, contents: any[], tools?: any[]) => {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        // Key in the header, not the URL, where it landed in history and devtools.
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const sys = `You are Onyx Intelligence, a sentient warehouse asset discovery engine. You are communicating with ${userName}. Respond in ${appLanguage === 'es' ? 'SPANISH' : 'ENGLISH'}.
 TRANSLATION RULE: The core database is in English. If responding in Spanish, automatically translate item descriptions, categories, and details from the search results into natural Spanish for the user.
 DOMAIN CONTEXT: Terms like 'Talan' (e.g., Green Talan) and 'Tehuacan' are common COLORS in the inventory database. If a user asks about these terms without specifying "color", treat them as color search parameters in your tool calls.
@@ -175,7 +178,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         if (tools) payload.tools = [{ function_declarations: tools }];
         
         try {
-            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify(payload) });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 throw new Error(errData.error?.message || `HTTP ${res.status}`);
@@ -456,7 +459,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         const { key } = getApiKeyInfo();
         if (!key || key.length < 10) return;
         try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, { headers: { 'x-goog-api-key': key } });
             if (res.ok) {
                 const data = await res.json();
                 setAvailableModels(data.models?.map((m: any) => m.name.replace('models/', '')) || []);

@@ -1,41 +1,24 @@
-import { GoogleGenAI } from '@google/genai';
-
 /**
- * Frontend-safe AI initialization.
- * Prioritizes user-provided keys from localStorage to prevent bundling secrets.
+ * Compatibility shim for the @google/genai SDK instance.
+ *
+ * The key used to be resolved here, by a lookup of its own that disagreed
+ * with geminiClient's. It now comes from lib/ai/keys.ts like every other AI
+ * call, and the instance is the one lib/ai/client.ts keeps. New code should
+ * use generateJson / generateText from lib/ai/client instead of the SDK;
+ * these exports stay until the remaining callers have moved.
  */
-const getApiKey = () => {
-    // 1. Check for user-provided key in storage (set via settings)
-    const stored = typeof window !== 'undefined' ? (localStorage.getItem('ONYX_GEMINI_KEY') || localStorage.getItem('onyxApiKey')) : null;
-    if (stored) return stored.replace(/['"]/g, '').trim();
+import type { GoogleGenAI } from '@google/genai';
+import { getGenAiSdk } from './ai/client';
+import { getGeminiKey } from './ai/keys';
 
-    // 2. Fallback to bundled system key (prefixed with VITE_)
-    // WARNING: This key is visible in the client bundle.
-    const system = (import.meta as any).env.VITE_GEMINI_API_KEY || '';
-    return system.replace(/['"]/g, '').trim();
-};
-
-let _aiInstance: GoogleGenAI | null = null;
-let _lastApiKey: string | null = null;
-
-export const getAiClient = () => {
-    const currentKey = getApiKey();
-    if (!currentKey && typeof window !== 'undefined') {
-        console.warn("💎 Neural Core: Missing API credentials. AI features disabled.");
+export const getAiClient = (): GoogleGenAI => {
+    if (!getGeminiKey() && typeof window !== 'undefined') {
+        console.warn('Gemini: no API key set. AI features are disabled until one is saved.');
     }
-    
-    // Re-initialize if the key has changed
-    if (!_aiInstance || _lastApiKey !== currentKey) {
-        _aiInstance = new GoogleGenAI({ apiKey: currentKey as string });
-        _lastApiKey = currentKey;
-    }
-    return _aiInstance;
+    return getGenAiSdk();
 };
 
 // For backwards compatibility where `ai` is imported directly
 export const ai = new Proxy({} as GoogleGenAI, {
-    get: (target, prop) => {
-        const client = getAiClient();
-        return (client as any)[prop];
-    }
+    get: (_target, prop) => (getAiClient() as any)[prop],
 });
