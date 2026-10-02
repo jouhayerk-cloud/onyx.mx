@@ -1,4 +1,6 @@
-import { ai } from './ai';
+import { getGeminiKey } from './ai/keys';
+import { AI_MODELS } from './ai/models';
+import { AiKeyMissingError } from './ai/errors';
 import { getFFmpegInstance } from './videoCompressor';
 import { fetchFile } from '@ffmpeg/util';
 
@@ -38,11 +40,13 @@ const processOneClip = async (
 
     const prompt = `GENERATE new video of the Item in an empty room. Remove all items in the background and leave ONLY the "${shape} ${description}" (Onyx item) in a completely empty room. Maintain the item's original appearance and scale, but place it in a pristine, empty environment. Ensure the output video resolution is strictly 1080p (1920x1080).`;
 
-    const apiKey = (ai as any).apiKey || '';
+    // lib/ai/keys. This fished the private apiKey field out of the SDK instance.
+    const apiKey = getGeminiKey();
+    if (!apiKey) throw new AiKeyMissingError();
     const url = `https://generativelanguage.googleapis.com/v1beta/interactions`;
 
     const payload = {
-        model: 'models/gemini-omni-flash-preview',
+        model: AI_MODELS.video.model,
         input: [
             { type: 'text', text: prompt },
             { type: 'video', mime_type: clip.type || 'video/mp4', data: base64Data }

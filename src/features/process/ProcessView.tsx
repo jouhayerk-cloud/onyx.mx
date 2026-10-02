@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MaskEditor, toMask } from 'react-canvas-masker';
 import {
     userAtom,
@@ -68,6 +67,11 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { tr } from '../../lib/i18n';
+import { getGeminiKey, setGeminiKey } from '../../lib/ai/keys';
+import { generateJson } from '../../lib/ai/client';
+import { aiErrorMessage } from '../../lib/ai/errors';
+import { buildMaskPrompt, buildEdgeMaskPrompt, type MaskLayer } from '../../lib/ai/prompts';
+import { buildAiPatch, saveAiPatch, isEmptyPatch, type ProcessId } from '../../lib/ai/persist';
 
 /* --- Types --- */
 interface ProcessLayer {
@@ -101,11 +105,8 @@ interface BatchOperation {
     };
 }
 
-const getApiKey = () => {
-    const key = localStorage.getItem('ONYX_GEMINI_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '';
-    const clean = String(key).trim().replace(/['"]/g, '');
-    return (clean === 'null' || clean === 'undefined') ? '' : clean;
-};
+/** The one key resolver (lib/ai/keys); this screen used to keep its own. */
+const getApiKey = getGeminiKey;
 
 /* --- Aesthetic Components --- */
 
@@ -360,10 +361,11 @@ export const ProcessView: React.FC = () => {
             }
             const { error } = await supabase
                 .from('inventory')
+                // `description` is the vendor's text; this used to overwrite it
+                // with "Resetted for re-processing.".
                 .update({ 
                     spatial_masks: null, 
-                    generated_png_url: null, 
-                    description: `Resetted for re-processing.` 
+                    generated_png_url: null
                 })
                 .eq('id', item.id);
             if (error) throw error;
@@ -372,6 +374,39 @@ export const ProcessView: React.FC = () => {
         } catch (err: any) {
             addLog(`Database error on purge: ${err.message}`, 'error');
         }
+    };
+
+    /**
+     * Write one angle's segmentation through lib/ai/persist, the writer every
+     * save path shares. The cutout PNG is uploaded before it is stored --
+     * generated_png_url used to hold a base64 data: URL, replicated into the
+     * RxDB mirror -- and the vendor's `description` is left alone; it used
+     * to be overwritten with a status line on every commit.
+     */
+    const commitAngle = async (rowId: string, angleIdx: number, imageUrl: string, masks: any[], pngData: string | null, svgData: string | null) => {
+        const { data: stored, error } = await supabase.from('inventory').select('*').eq('id', rowId).single();
+        if (error || !stored) throw new Error(error?.message || 'Item not found');
+        const processes = new Set<ProcessId>(['image_segmentation']);
+        // generated_png_url / generated_svg_url are the FIRST photo's cutout
+        // and outline; every angle used to overwrite them with its own. So
+        // only angle 0 hands its PNG and outline to the writer to upload.
+        const hero = angleIdx === 0;
+        const patch = await buildAiPatch({
+            photos: [{ sourceUrl: imageUrl, index: 0, cutoutUrl: (hero && pngData) || undefined, outlineSvg: (hero && svgData) || undefined }],
+            succeeded: processes,
+        }, stored, processes, { user });
+        if (hero && pngData && !patch.columns.generated_png_url) throw new Error(patch.warnings[0] || 'Cutout upload failed');
+
+        // This screen edits vector layers and reads them back from angle_N
+        // (switchAngle), so its angle keeps its own layer list instead of the
+        // writer's cutout entry. The other angles are kept as stored; the old
+        // manual commit replaced the whole column with one angle's layers.
+        let angles: any = stored.spatial_masks || {};
+        if (typeof angles === 'string') { try { angles = JSON.parse(angles); } catch { angles = {}; } }
+        if (Array.isArray(angles)) angles = angles.length ? { angle_0: angles } : {};
+        patch.columns.spatial_masks = { ...angles, [`angle_${angleIdx}`]: masks };
+        patch.warnings.forEach(w => addLog(w, 'warn'));
+        if (!isEmptyPatch(patch)) await saveAiPatch(rowId, patch, { user });
     };
 
     const handleManualCommit = async () => {
@@ -395,13 +430,7 @@ export const ProcessView: React.FC = () => {
             const imgImg = await loadImage(imageUrl);
             const { pngData, svgData } = await generatePngAndSvgFromMasks(imageUrl, { width: imgImg.width, height: imgImg.height }, selectedMasks);
             
-            const { error } = await supabase.from('inventory').update({
-                spatial_masks: selectedMasks,
-                generated_png_url: pngData,
-                description: `Production Commit: ${selectedMasks.length} layers.`
-            }).eq('id', selectedItem.id);
-            
-            if (error) throw error;
+            await commitAngle(selectedItem.id, activeAngleIndex, imageUrl, selectedMasks, pngData, svgData);
             addLog(`Success: Production data synced.`, 'success');
             setInventoryVersion(v => v + 1);
             setEngineStatus('completed');
@@ -437,12 +466,10 @@ export const ProcessView: React.FC = () => {
 
         try {
             updateOp({ status: 'processing', progress: 5, stepLabel: 'Initalizing AI...' });
-            const API_KEY = getApiKey();
-            if (!API_KEY) {
-                addLog("Gemini API Key missing! Set it in browser storage: localStorage.setItem('ONYX_GEMINI_KEY', 'YOUR_KEY')", "error");
+            if (!getApiKey()) {
+                addLog("Gemini API Key missing! Use the key button in the Engine Console to set it.", "error");
                 throw new Error("API Key missing");
             }
-            addLog(`Using Model: Hybrid Trace (v1/v1beta Fallback Engaged)`, 'info');
 
             const imageUrl = item.activeImageUrl || getCleanImageUrl(item.mediaUrls?.split(',')[0]);
             if (!imageUrl) throw new Error("Missing source image");
@@ -453,98 +480,14 @@ export const ProcessView: React.FC = () => {
 
             updateOp({ progress: 30, stepLabel: 'Analyzing...' });
             setEngineStatus('analyzing');
-            let instruction = `Give the segmentation masks for this ${item.shape} Onyx artifact. Instructions: If it is a bowl or basin, strictly extract and separate the 'rim', 'interior' (inside depth), and 'exterior' (outer wall) as separate masks. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "string"}]`;
-            
-            if (forcedPoints.length > 0) {
-                 const pStr = forcedPoints.map(p => `[${Math.round(p.y * 10)}, ${Math.round(p.x * 10)}, ${p.type === 'pos' ? 'POSITIVE' : 'NEGATIVE'}]`).join(', ');
-                 instruction = `REFINEMENT MODE: Use these guidance points: ${pStr}. Extract the mask for the object associated with POSITIVE points and EXCLUDE areas with NEGATIVE points. Output JSON: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "refined"}]`;
-            }
-            
-            // Raw Fetch Diagnostic Conduit (to unmask 400 errors)
-            let resultText = '';
-            let usedModelName = '';
 
-            const callGemini = async (modelId: string, prompt: string, imgData: string, timeoutMs: number = 40000) => {
-                if (isAborted) return null;
-                
-                // Optimized conduit: prioritize known versions, fallback to v1beta for newer models
-                const versions = availableModels.length > 0 ? ['v1beta', 'v1'] : ['v1beta', 'v1']; 
-                
-                for (const version of versions) {
-                    if (isAborted) return null;
-                    const url = `https://generativelanguage.googleapis.com/${version}/models/${modelId}:generateContent?key=${API_KEY}`;
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-                    try {
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            signal: controller.signal,
-                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: imgData } }] }] })
-                        });
-                        clearTimeout(timeoutId);
-                        if (res.ok) return await res.json();
-                        
-                        // Detect and report 404 (Model naming/version mismatch)
-                        if (res.status === 404) continue;
-
-                        // Handle Model Overload (503) or Rate Limits (429) - require backoff
-                        if (res.status === 503 || res.status === 429) {
-                            addLog(`${modelId} busy (${res.status}). Cooling down...`, 'warn');
-                            await new Promise(r => setTimeout(r, 2000));
-                            continue;
-                        }
-                        
-                        const err = await res.json().catch(() => ({}));
-                        addLog(`${modelId} Rejected: ${res.status}`, 'warn');
-                    } catch (e: any) {
-                        clearTimeout(timeoutId);
-                        if (e.name === 'AbortError') {
-                            addLog(`${modelId} timed out (${timeoutMs/1000}s).`, 'warn');
-                        }
-                    }
-                }
-                return null;
-            };
-
-            // Intelligent Fallback: Only try models likely to succeed based on discovery or stability
-            const modelsToTry = [
-                ...availableModels.filter(m => m.includes('flash') || m.includes('pro')).slice(0, 3),
-                "gemini-2.0-flash", 
-                "gemini-1.5-flash",
-                "gemini-1.5-pro"
-            ].filter((v, i, a) => a.indexOf(v) === i); // dedupe
-
-            for (const modelId of modelsToTry) {
-                if (isAborted) break;
-                addLog(`Requesting Trace: ${modelId}...`, 'info');
-                
-                // Faster initial timeout for fallback attempts to avoid long "hang"
-                const data = await callGemini(modelId, instruction, base64, 25000);
-                
-                if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    resultText = data.candidates[0].content.parts[0].text;
-                    usedModelName = modelId;
-                    break;
-                }
-                await new Promise(r => setTimeout(r, 1000));
-            }
-
-            if (!resultText) throw new Error("All AI conduits rejected the payload. Check console for exact reasons.");
-            addLog(`Success via ${usedModelName}. Unpacking layers...`, 'success');
-
-            const rawOutput = resultText;
-            if (!rawOutput) throw new Error("Empty response from Engine");
-            
-            // Handle markdown-wrapped JSON if present
-            let cleanedJson = rawOutput.trim();
-            if (cleanedJson.includes('```')) {
-                const match = cleanedJson.match(/```(?:json)?([\s\S]*?)```/);
-                if (match) cleanedJson = match[1].trim();
-                else cleanedJson = cleanedJson.replace(/```(json)?|```/g, '').trim();
-            }
-            
-            const processed = JSON.parse(cleanedJson);
+            // lib/ai/client, the segmentation job's model (models.ts). This
+            // used to walk discovered models and then the retired 1.5 models
+            // across v1beta and v1, with the key in the URL.
+            const maskPrompt = buildMaskPrompt(item, forcedPoints);
+            addLog(`Requesting trace...`, 'info');
+            const processed = await generateJson<MaskLayer[]>({ job: 'segmentation', prompt: maskPrompt.prompt, schema: maskPrompt.schema, images: [base64] });
+            if (!Array.isArray(processed) || processed.length === 0) throw new Error("The model found no segmentation layers");
             addLog(`Engine found ${processed.length} segmentation layers.`, 'success');
 
             updateOp({ progress: 60, stepLabel: 'Refining Piece Edges (High-Res)...' });
@@ -554,10 +497,14 @@ export const ProcessView: React.FC = () => {
             const originalWidth = img.width;
             const originalHeight = img.height;
             const targetSize = 1024;
+            // resizeImage letterboxes with 10% padding per side, so the photo
+            // fills 80% of the square. Assuming it filled all of it put every
+            // box 25% off (the pipeline fixed the same error).
+            const available = targetSize * 0.8;
             
             let drawW, drawH;
-            if (originalWidth > originalHeight) { drawW = targetSize; drawH = Math.round(originalHeight * (targetSize / originalWidth)); } 
-            else { drawH = targetSize; drawW = Math.round(originalWidth * (targetSize / originalHeight)); }
+            if (originalWidth > originalHeight) { drawW = available; drawH = Math.round(originalHeight * (available / originalWidth)); } 
+            else { drawH = available; drawW = Math.round(originalWidth * (available / originalHeight)); }
             const offsetX = (targetSize - drawW) / 2;
             const offsetY = (targetSize - drawH) / 2;
 
@@ -572,19 +519,13 @@ export const ProcessView: React.FC = () => {
                 const cropUrl = await cropImage(imageUrl, bx_x, bx_y, bx_w, bx_h, 1024);
                 const cropBase64 = cropUrl.split(',')[1];
                 
-                const refInstruction = `Edge Segmenter: Extract a highly precise binary mask (grayscale PNG) for the artifact in this crop. Return JSON: {"mask": "base64_png"}`;
                 let refinedMaskData = '';
-                
-                const refData = await callGemini(usedModelName, refInstruction, cropBase64, 60000);
-                if (refData && refData.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    let refContent = refData.candidates[0].content.parts[0].text.trim();
-                    if (refContent.includes('```')) refContent = refContent.match(/```(?:json)?([\s\S]*?)```/)?.[1] || refContent;
-                    try {
-                        const parsed = JSON.parse(refContent.trim());
-                        refinedMaskData = parsed.mask.startsWith('data:image') ? parsed.mask : `data:image/png;base64,${parsed.mask}`;
-                    } catch (e) {
-                         addLog(`Vectorization truncated for piece ${idx+1}.`, 'warn');
-                    }
+                try {
+                    const edge = buildEdgeMaskPrompt();
+                    const parsed = await generateJson<{ mask?: string }>({ job: 'segmentation', prompt: edge.prompt, schema: edge.schema, images: [cropBase64], timeoutMs: 60000 });
+                    if (parsed?.mask) refinedMaskData = parsed.mask.startsWith('data:image') ? parsed.mask : `data:image/png;base64,${parsed.mask}`;
+                } catch (refErr) {
+                    addLog(`Refinement failed for piece ${idx+1}: ${aiErrorMessage(refErr)}`, 'warn');
                 }
 
                 if (!refinedMaskData || refinedMaskData.length < 1000) {
@@ -632,32 +573,14 @@ export const ProcessView: React.FC = () => {
                 } else {
                     // Detect if this is part of a multi-angle batch
                     const angleMatch = opId.match(/-(\d+)-[A-Z0-9]+$/);
-                    const angleIdx = angleMatch ? parseInt(angleMatch[1], 10) : 0;
+                    const angleIdx = opId === 'single' ? activeAngleIndex : (angleMatch ? parseInt(angleMatch[1], 10) : 0);
                     
-                    // Fetch existing spatial_masks so we don't overwrite other angles
-                    const { data: dbData } = await supabase.from('inventory').select('spatial_masks').eq('id', item.id).single();
-                    let currentMasks = dbData?.spatial_masks || {};
-                    if (Array.isArray(currentMasks)) {
-                        // Inherit old single-array masks to angle 0
-                        currentMasks = { angle_0: currentMasks };
-                    }
-                    
-                    currentMasks[`angle_${angleIdx}`] = masks;
-
-                    const { error } = await supabase
-                        .from('inventory')
-                        .update({
-                            spatial_masks: currentMasks, 
-                            generated_png_url: pngData, // This will be the last processed image
-                            description: `Auto-segmented multi-angle via Gemini: Angle ${angleIdx} committed.`
-                        })
-                        .eq('id', item.id);
-                    
-                    if (error) throw error;
+                    await commitAngle(item.id, angleIdx, imageUrl, masks, pngData, svgData);
                     addLog(`Item ${item.itemId} (Angle ${angleIdx}) persisted to Inventory DB.`, 'success');
                 }
             } catch (dbErr: any) {
-                addLog(`Database Sync Error: ${dbErr.message}`, 'warn');
+                addLog(`Database Sync Error: ${dbErr.message}`, 'error');
+                toast.error(`${tr("Not saved")}: ${dbErr.message}`);
             }
 
             updateOp({ 
@@ -688,9 +611,10 @@ export const ProcessView: React.FC = () => {
 
         } catch (e: any) {
             setEngineStatus('error');
-            updateOp({ status: 'failed', error: e.message, stepLabel: 'Error' });
+            updateOp({ status: 'failed', error: aiErrorMessage(e), stepLabel: 'Error' });
             if (opId === 'single') updateProgress('ENGINE ERROR', false);
-            toast.error(tr("Processing Error"));
+            addLog(`Processing error: ${aiErrorMessage(e)}`, 'error');
+            toast.error(`${tr("Processing Error")}: ${aiErrorMessage(e)}`);
         }
     };
 
@@ -740,33 +664,7 @@ export const ProcessView: React.FC = () => {
         addLog(`Inventory Processing Engine v1.27.1 Initialized`, 'success');
         addLog(`API Key Detect: ${key ? 'ACTIVE' : 'MISSING'}`, key ? 'info' : 'error');
         
-        // Auto-Discovery Call
-        const discoverModels = async () => {
-             const currentKey = getApiKey();
-             if (!currentKey || currentKey.length < 10) return;
-             if (currentKey.startsWith('Alza')) {
-                 addLog(`Security: API Key likely has a typo ('Alza' should be 'AIza'). Check capital 'I'.`, 'error');
-             }
-             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${currentKey}`);
-                if (!res.ok) {
-                    const err = await res.json();
-                    const msg = err.error?.message || 'Check Key Alignment';
-                    addLog(`Library scan: ${res.status} ${msg}`, 'warn');
-                    if (msg.includes('expired')) addLog(`Status: Your key is reported as EXPIRED. Re-generate in AI Studio.`, 'error');
-                    return;
-                }
-                const data = await res.json();
-                const modelNames = data.models?.map((m: any) => m.name.replace('models/', '')) || [];
-                if (modelNames.length) {
-                    setAvailableModels(modelNames);
-                    addLog(`Engine Library Discovered: ${modelNames.slice(0, 4).join(', ')}...`, 'info');
-                }
-             } catch (e) {
-                addLog(`Library scan offline.`, 'warn');
-             }
-        };
-        discoverModels();
+
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 // Handled by global navigation or specific modal logic if needed
@@ -1272,7 +1170,7 @@ export const ProcessView: React.FC = () => {
                                         onClick={() => {
                                             const val = window.prompt("Enter Gemini API Key (Case-Sensitive):", getApiKey());
                                             if (val !== null) {
-                                                localStorage.setItem('ONYX_GEMINI_KEY', val.trim());
+                                                setGeminiKey(val);
                                                 window.location.reload();
                                             }
                                         }}

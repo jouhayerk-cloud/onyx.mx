@@ -1,20 +1,10 @@
 import React from 'react';
-import { useAtomValue } from 'jotai/react';
-import { uploadTabAtom } from '../../lib/atoms';
 import { CreateItem } from './CreateItem';
-import { UploadAIPanel } from './UploadAIPanel';
 
+// The 'ai' tab (UploadAIPanel) is gone: uploadTabAtom is only ever set to
+// 'entry', so the panel could not be opened, yet this import shipped its
+// direct Gemini client (key in the URL) in the UploadView chunk.
 export function UploadView() {
-    const tab = useAtomValue(uploadTabAtom);
-
-    if (tab === 'ai') {
-        return (
-            <div className="flex flex-col h-full overflow-hidden px-6 py-6">
-                <UploadAIPanel />
-            </div>
-        );
-    }
-
     return (
         <div className="create-item-shell flex flex-col w-full">
             <div className="flex-1 flex flex-col w-full px-2 sm:px-6 md:px-12 py-8 animate-in fade-in">

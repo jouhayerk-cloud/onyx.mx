@@ -196,6 +196,7 @@ export async function handleProcessedFileUpload(base64Data: string, fileName: st
     let mimeType = 'image/png';
     if (base64Data.startsWith('data:image/webp')) mimeType = 'image/webp';
     else if (base64Data.startsWith('data:image/jpeg')) mimeType = 'image/jpeg';
+    else if (base64Data.startsWith('data:image/svg+xml')) mimeType = 'image/svg+xml';
     
     // Ensure base64 doesn't have the data URL prefix if it does
     let cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;

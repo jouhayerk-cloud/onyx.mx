@@ -2024,8 +2024,10 @@ export function MainHeader() {
                         if (inv) {
                             try {
                                 const norm = normalizeInventoryData(inv.data);
-                                const calc = calculateCodesAndPrices(norm, liveExchangeRateValue || exchangeRate || DEFAULT_EXCHANGE_RATE, '326');
-                                const tag = calc.bookBarcode || norm.book_barcode || norm.itemId || String(inv.row);
+                                // A stored barcode is what is printed on the item; compute one
+                                // only when none is stored, and always at the book rate.
+                                const calc = calculateCodesAndPrices(norm, DEFAULT_EXCHANGE_RATE, '326');
+                                const tag = norm.book_barcode || calc.bookBarcode || norm.itemId || String(inv.row);
                                 if (tag) barcodes.push(tag);
                             } catch (e) { console.warn('Item barcode calculation failed:', e); }
                         }

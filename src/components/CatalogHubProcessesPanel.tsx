@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Play, RefreshCw, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { CatalogProcess } from '../lib/catalogHubProcesses';
+import { sanitizeHtml } from '../lib/ai/finalize';
 
 interface Props {
     processes: readonly CatalogProcess[];
@@ -19,27 +20,8 @@ interface Props {
     errors?: Record<string, string>;
 }
 
-const sanitizeHtml = (html: string) => {
-    if (!html) return '';
-    // Allow only p, ul, ol, li, strong, em, br, and strip all attributes.
-    // Extremely strict and simple approach:
-    // 1. Remove everything between < > that is not in the allowed list
-    const allowedTags = ['p', '/p', 'ul', '/ul', 'ol', '/ol', 'li', '/li', 'strong', '/strong', 'em', '/em', 'br', 'br/', 'br /'];
-    const sanitized = html.replace(/<([^>]+)>/g, (match, p1) => {
-        const tagName = p1.trim().split(/\s+/)[0].toLowerCase();
-        if (allowedTags.includes(tagName) || allowedTags.includes(tagName.replace('/', ''))) {
-            // Reconstruct tag without any attributes
-            if (p1.trim().endsWith('/')) {
-                return `<${tagName} />`;
-            } else if (p1.trim().startsWith('/')) {
-                return `</${tagName.replace('/', '')}>`;
-            }
-            return `<${tagName}>`;
-        }
-        return '';
-    });
-    return sanitized;
-};
+// The shared sanitiser (lib/ai/finalize), lifted from here so the Catalog
+// Hub's preview of the same column is cleaned the same way.
 
 export const CatalogHubProcessesPanel: React.FC<Props> = ({
     processes,

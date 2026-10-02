@@ -6,12 +6,9 @@ import {
     batchWizardItemsAtom, 
     inventoryAtom, 
     InventoryVersionAtom,
-    userAtom,
-    exchangeRateAtom,
-    liveExchangeRateAtom
+    userAtom
 } from '../../lib/atoms';
 import { SCRIPT_URL , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
-import { ai } from '../../lib/ai';
 import { processVideoWithGemini } from '../../lib/videoAI';
 import { replaceBackgroundWithDarkRoom, uploadCleanedImage, bgCacheKey, type BgQuality } from '../../lib/bgReplace';
 import { supabase } from '../../lib/supabase';
@@ -52,8 +49,11 @@ import { generateAxonometricDataUrl, resolveItemColor } from '../../lib/axonomet
 import { validateCopy, describeIssues } from '../../lib/copyValidation';
 import type { DonorCandidate } from '../../lib/variationMatch';
 import { tr } from '../../lib/i18n';
-import { callGemini, getApiKey } from '../../lib/geminiClient';
-import { processSingleItem, processVariationItem, buildDonorPool, type BatchOp, type ProcessingMode, type PipelineContext } from '../../lib/catalogHubPipeline';
+import { hasGeminiKey, setGeminiKey } from '../../lib/ai/keys';
+import { aiErrorMessage } from '../../lib/ai/errors';
+import { sanitizeHtml } from '../../lib/ai/finalize';
+import { aiResultFromOps, buildAiPatch, saveAiPatch, isEmptyPatch, type AiPatch } from '../../lib/ai/persist';
+import { processSingleItem, processVariationItem, buildDonorPool, type BatchOp, type ProcessingMode, type PipelineContext, type ProcessId } from '../../lib/catalogHubPipeline';
 
 const resolveVendorColor = (inputStr: string | undefined | null) => {
     if (!inputStr) return '#ffffff';
@@ -98,14 +98,28 @@ const logTone = (line: string): string => {
     return '';
 };
 
+/** Ops resolve to their item by the same key the queue was built with. */
+const itemKeyOf = (op: BatchOp) => String(op.item?.id ?? op.item?.row ?? op.id);
+
 /**
- * spatial_masks is jsonb. Handing it a JSON *string* stores a string scalar,
- * which the RxDB mirror (declared as an array/object) then chokes on. Parse
- * before writing so Postgres and the local cache agree.
+ * What an item's ops hold that is worth writing: every process a run
+ * finished, plus the fields edited by hand (editItemText marks those done).
+ * An item loaded from the table and left alone has nothing here, so saving
+ * it writes nothing -- SAVE TO DB used to re-write every completed card,
+ * template HTML and pixel colours included.
  */
-const safeParseMasks = (raw: string): any => {
-    try { return JSON.parse(raw); } catch { return undefined; }
+const processesFromOps = (ops: readonly BatchOp[]): Set<ProcessId> => {
+    const out = new Set<ProcessId>();
+    for (const op of ops) {
+        for (const [id, status] of Object.entries(op.processStatus || {})) {
+            if (status === 'done') out.add(id as ProcessId);
+        }
+    }
+    return out;
 };
+
+/** Saved and saveable look the same to the save paths: 'partial' kept what succeeded. */
+const hasOutput = (op: BatchOp) => op.status === 'completed' || op.status === 'partial';
 
 
 
@@ -116,16 +130,18 @@ export const BatchProcessingWizard: React.FC = () => {
     const [batchItems, setBatchItems] = useAtom(batchWizardItemsAtom);
     const setInventoryVersion = useSetAtom(InventoryVersionAtom);
     const [user] = useAtom(userAtom);
-    const exchangeRate = useAtomValue(exchangeRateAtom);
-    const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
     // Whole catalogue, not just the selection: an item with no photograph looks
     // for a donor across everything that already has generated content.
     const fullInventory = useAtomValue(inventoryAtom);
-    const activeRate = liveExchangeRate || exchangeRate || DEFAULT_EXCHANGE_RATE;
+    // Book codes are printed on labels and cyphered from the book rate, 17.
+    // This used the live market rate once the Finance view had fetched one,
+    // so the tags, XLSX SKUs and PDF retail here drifted from the printed
+    // tags and the table.
+    const activeRate = DEFAULT_EXCHANGE_RATE;
     
     const [queue, setQueue] = useState<BatchOp[]>([]);
     /** Queued items with no photograph that still have no generated content. */
-    const variationPending = queue.filter(op => op.needsVariation && op.status !== 'completed').length;
+    const variationPending = queue.filter(op => op.needsVariation && !hasOutput(op)).length;
     const [isProcessing, setIsProcessing] = useState(false);
     const [isAborted, setIsAborted] = useState(false);
     /** 2K costs ~2.6x 1K per image but source photos are ~4000px, so 1K is a visible downgrade. */
@@ -168,7 +184,7 @@ export const BatchProcessingWizard: React.FC = () => {
 
     const saveApiKey = () => {
         if (apiInputRef.current?.value) {
-            localStorage.setItem('ONYX_GEMINI_KEY', apiInputRef.current.value);
+            setGeminiKey(apiInputRef.current.value);
             setShowApiModal(false);
             handleStartBatch();
         }
@@ -331,7 +347,6 @@ export const BatchProcessingWizard: React.FC = () => {
         updateOp,
         logOp,
         checkAbort,
-        callGemini,
         user,
         bgQuality,
         cancelTokens,
@@ -340,8 +355,14 @@ export const BatchProcessingWizard: React.FC = () => {
     };
 
     const handleStartVariationPass = async () => {
-        const pending = queue.filter(op => op.needsVariation && op.status !== 'completed');
+        const pending = queue.filter(op => op.needsVariation && !hasOutput(op));
         if (pending.length === 0) return;
+        // Without this every no-photo item failed one by one on the same
+        // missing key; START ENGINE already asked first.
+        if (!hasGeminiKey()) {
+            setShowApiModal(true);
+            return;
+        }
 
         const donors = buildDonorPool(fullInventory);
         if (donors.length === 0) {
@@ -370,7 +391,9 @@ export const BatchProcessingWizard: React.FC = () => {
         cancelTokens.current[id] = false;
         setQueue(prev => prev.map(op => 
             op.id === id 
-                ? { ...op, status: 'idle', progress: 0, logs: ['[ WAIT ] Re-queued for processing'], result: { ...op.result, maskUrl: undefined } }
+                // forceRecleanImage, or in STUDIO mode the re-run only logged
+                // "Background already replaced" and the key did nothing.
+                ? { ...op, status: 'idle', progress: 0, forceRecleanImage: true, logs: ['[ WAIT ] Re-queued for processing'], result: { ...op.result, maskUrl: undefined, cutoutUrl: undefined, matteUrl: undefined, outlineSvg: undefined, svgUrl: undefined } }
                 : op
         ));
         setHasUnsavedChanges(true);
@@ -404,356 +427,168 @@ export const BatchProcessingWizard: React.FC = () => {
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (re: any) => {
-                updateOp(op.id, {
-                    result: {
-                        ...(op.result || { description: '' }),
-                        maskUrl: re.target.result
-                    }
-                });
-                setHasUnsavedChanges(true);
+                setManualCutout(op.id, re.target.result);
             };
             reader.readAsDataURL(file);
         };
         input.click();
     };
 
+    /**
+     * A cutout put on a card by hand (upload or 1:1 crop). It is the piece's
+     * image for that angle, so it is saved the way a generated cutout is --
+     * spatial_masks.angle_N, and generated_png_url for the first photo --
+     * through the same writer, which uploads the data: URL first.
+     */
+    const setManualCutout = (id: string, dataUrl: string) => {
+        updateOp(id, prev => ({
+            result: { ...(prev.result || {}), maskUrl: dataUrl, cutoutUrl: dataUrl, matteUrl: undefined, outlineSvg: undefined, svgUrl: undefined },
+            processStatus: { ...(prev.processStatus || {}), image_segmentation: 'done' },
+        }));
+        setHasUnsavedChanges(true);
+    };
+
+    /**
+     * A hand edit of the title or the HTML. It belongs to the item, so every
+     * card of the item takes it: the save keeps the hero's text, and an edit
+     * typed on the second photo's card used to be dropped (or, under the old
+     * last-card-wins save, an untouched card used to overwrite the edit).
+     * Marking the process done is what tells the writer the field is ready.
+     */
+    const editItemText = (op: BatchOp, field: 'description' | 'marketingDescription', value: string) => {
+        const key = itemKeyOf(op);
+        const process: ProcessId = field === 'description' ? 'title_desc' : 'marketing_desc';
+        setQueue(prev => prev.map(q => itemKeyOf(q) !== key ? q : {
+            ...q,
+            result: { ...(q.result || {}), [field]: value },
+            processStatus: { ...(q.processStatus || {}), [process]: 'done' },
+        }));
+        setHasUnsavedChanges(true);
+    };
+
+    /**
+     * Once a patch is written, the cards hold the uploaded URLs instead of the
+     * data: URLs they were generated with, and the segmentation that went to
+     * item_segmentation is dropped from them, so saving the same item again
+     * does not upload the same matte and bitmap twice or add a second row.
+     */
+    const absorbSaved = (ops: readonly BatchOp[], patch: AiPatch) => {
+        const ids = new Set(ops.map(o => o.id));
+        const masks = (patch.columns.spatial_masks || {}) as Record<string, any[]>;
+        const points = patch.columns.spatial_points as any[] | undefined;
+        const bitmapUrl: string | undefined = points?.[0]?.bitmap_url || undefined;
+        setQueue(prev => prev.map(q => {
+            if (!ids.has(q.id) || !q.result) return q;
+            const angle = masks[`angle_${q.imageIndex || 0}`]?.[0];
+            const result = { ...q.result, segmentation: undefined };
+            if (angle?.mask) { result.cutoutUrl = angle.mask; result.maskUrl = angle.mask; }
+            if (angle?.matte) result.matteUrl = angle.matte;
+            if (angle?.svg) result.svgUrl = angle.svg;
+            if (bitmapUrl && result.bitmapUrl?.startsWith('data:')) result.bitmapUrl = bitmapUrl;
+            return { ...q, result };
+        }));
+    };
+
+    /**
+     * Save one item from its cards, through lib/ai/persist: only the
+     * processes that ran (or were edited), the hero card's text, the stored
+     * processed_media_urls and spatial_masks merged rather than rebuilt, and
+     * nothing nobody reviewed. The stored row is re-read first, because the
+     * snapshot the queue was built from is as old as the hub's opening.
+     *
+     * `saved` is false when nothing was written. `failedUploads` lists the
+     * uploads that failed: their columns were left out, so that work is not
+     * in the database and the caller must not report the item as saved.
+     */
+    const saveItemOps = async (ops: readonly BatchOp[]): Promise<{ saved: boolean; failedUploads: string[] }> => {
+        const first = ops[0];
+        const snapshot = first.item?.data || first.item || {};
+        const rowId = String(snapshot.id || first.item?.id || first.item?.row || '');
+        const processes = processesFromOps(ops);
+        if (!rowId || processes.size === 0) return { saved: false, failedUploads: [] };
+
+        const { data: stored } = await supabase.from('inventory').select('*').eq('id', rowId).maybeSingle();
+        const patch = await buildAiPatch(aiResultFromOps(ops), stored || snapshot, processes, { user });
+        const hero = ops.find(o => (o.imageIndex || 0) === 0) || first;
+        patch.warnings.forEach(w => logOp(hero.id, `[ WARN ] ${w}`));
+        if (isEmptyPatch(patch)) return { saved: false, failedUploads: patch.failedUploads };
+
+        await saveAiPatch(rowId, patch, { user });
+        absorbSaved(ops, patch);
+        return { saved: true, failedUploads: patch.failedUploads };
+    };
+
     const handleSaveDescription = async (op: BatchOp) => {
-        if (!op.result?.description && !op.result?.marketingDescription) return;
+        const key = itemKeyOf(op);
+        const ops = queue.filter(q => itemKeyOf(q) === key);
         const toastId = toast.loading(tr("Saving description..."));
         try {
-            const itemId = op.item.data?.id || op.item.id || op.item.row;
-            const updatePayload: any = {};
-            // Normalise on the way into the table, not only on the way out.
-            // formatProductTitle applies Grant's rules (no articles, every word
-            // capitalised, no trailing period) so the stored title is already
-            // correct for both the Shopify sheet and the printed catalogue --
-            // the model does not always honour them. Length is deliberately NOT
-            // enforced here; the export trims on a word boundary instead, so a
-            // good long title is not destroyed in storage.
-            if (op.result.description) {
-                updatePayload.detailed_description = formatProductTitle(normalizeBrandTerms(op.result.description));
+            const { saved, failedUploads } = await saveItemOps(ops);
+            if (saved) setInventoryVersion(Date.now());
+            if (failedUploads.length > 0) {
+                // A failed upload is unsaved work (a hand-made cutout, say),
+                // not "nothing to save": say so and keep the close guard on.
+                toast.error(`${saved ? 'Saved, but not' : 'Not saved'}: ${failedUploads.join('; ')}`, { id: toastId, duration: 10000 });
+                setHasUnsavedChanges(true);
+            } else if (saved) {
+                toast.success(tr("Description saved!"), { id: toastId });
+            } else {
+                toast(tr("Nothing new to save for this item"), { id: toastId });
             }
-            if (op.result.marketingDescription) {
-                updatePayload.generated_description = normalizeBrandTerms(op.result.marketingDescription);
-            }
-            let processedMap: Record<string, string> = {};
-            const itemData = op.item.data || op.item || {};
-            const rawMedia = itemData.processedMediaUrls || itemData.processed_media_urls;
-            if (rawMedia && typeof rawMedia === 'string' && rawMedia.startsWith('{')) {
-                try {
-                    processedMap = JSON.parse(rawMedia);
-                } catch (e) {}
-            }
-            if (op.result.dominantColors && op.result.dominantColors.length > 0) {
-                const genColorStr = op.result.dominantColors.join(', ');
-                updatePayload.generated_color = genColorStr;
-                processedMap['_generated_color'] = genColorStr;
-            }
-            if (op.result.generatedType) {
-                updatePayload.generated_type = op.result.generatedType;
-                processedMap['_generated_type'] = op.result.generatedType;
-            }
-            if (op.result.videoGen) {
-                processedMap['videoGen'] = op.result.videoGen;
-            }
-            if (op.result.cleanedUrl && op.imageUrl) {
-                // Keyed by the CLEANED source url, because that is the form
-                // UnifiedInventoryView looks up (getCleanImageUrl rewrites Drive
-                // links to lh3). All 294 existing entries use this form.
-                processedMap[getCleanImageUrl(op.imageUrl) || op.imageUrl] = op.result.cleanedUrl;
-            }
-            updatePayload.processed_media_urls = JSON.stringify(processedMap);
-            // local_segmentation_masks / cloud_segmentation_masks do not exist in
-            // Postgres. Sending them fails the whole update with 42703, and the old
-            // recovery path retried without generated_color and generated_type -
-            // silently downgrading the save. Write the column that does exist.
-            if (op.result.cloudSegmentationMasks) {
-                // Assign only on a successful parse. Writing the failure value
-                // would blank spatial_masks on a row that already had one.
-                const parsed = safeParseMasks(op.result.cloudSegmentationMasks);
-                if (parsed !== undefined) updatePayload.spatial_masks = parsed;
-            }
-
-            // Segmentation goes to its own table, independently of everything
-            // above. Awaited but never allowed to throw -- saveSegmentation
-            // swallows its own failures -- because the description, pricing and
-            // cleaned-image work in this same payload must not be lost to a
-            // cutout upload timing out.
-            if (op.result.segmentation && itemData?.id) {
-                void saveSegmentation(itemData.id, op.result.segmentation, user);
-            }
-            
-            // Generate and save Classification and Type
-            const catAndType = getProductCategoryAndType({
-                ...itemData,
-                description: op.result.description || itemData.description,
-                type: op.result.generatedType || itemData.type
-            });
-            if (catAndType) {
-                // product_category / product_type are NOT columns on inventory.
-                // Sending them failed the update with 42703; the old recovery
-                // retried without them, which is the only reason these saves ever
-                // worked. Removing that recovery without auditing every column
-                // turned a silent degradation into a total save failure. The map
-                // is where these two actually live, and normalizeInventoryData
-                // already reads them back from it.
-                processedMap['_product_category'] = catAndType.category;
-                processedMap['_product_type'] = catAndType.type;
-            }
-            
-            if (Object.keys(processedMap).length > 0) {
-                updatePayload.processed_media_urls = JSON.stringify(processedMap);
-            }
-            if (op.result.hexString) {
-                updatePayload.spatial_points = [{
-                    type: 'pixel_map',
-                    dimensions: `${op.result.cols || 20}x${op.result.rows || 20}`,
-                    cols: op.result.cols || 20,
-                    rows: op.result.rows || 20,
-                    hex_string: op.result.hexString,
-                    bitmap_url: op.result.bitmapUrl || null
-                }];
-            }
-
-            const { error: sbErr } = await supabase.from('inventory').update(updatePayload).eq('id', itemId);
-            if (sbErr) throw sbErr;
-            toast.success(tr("Description saved!"), { id: toastId });
-            setInventoryVersion(Date.now());
         } catch (e: any) {
-            toast.error('Failed to save description: ' + (e.message || ''), { id: toastId });
+            toast.error('Failed to save description: ' + aiErrorMessage(e), { id: toastId });
         }
     };
 
     const handleExportDatabase = async () => {
-        const completedOps = queue.filter(op => op.status === 'completed');
-        if (completedOps.length === 0) {
+        const opsByItem = new Map<string, BatchOp[]>();
+        queue.forEach(op => {
+            const key = itemKeyOf(op);
+            if (!opsByItem.has(key)) opsByItem.set(key, []);
+            opsByItem.get(key)!.push(op);
+        });
+        const entries = [...opsByItem.values()].filter(ops => ops.some(hasOutput) && processesFromOps(ops).size > 0);
+        if (entries.length === 0) {
             toast.error(tr("No completed items to export."));
             return;
         }
 
-        const toastId = toast.loading(`Saving data for ${completedOps.length} operations...`);
+        const toastId = toast.loading(`Saving data for ${entries.length} items...`);
         setIsSavingDb(true);
         setOverallProgress(0);
-        
-        try {
-            const opsByItem: Record<string, BatchOp[]> = {};
-            completedOps.forEach(op => {
-                const itemId = String(op.item.id || op.item.row);
-                if (!opsByItem[itemId]) opsByItem[itemId] = [];
-                opsByItem[itemId].push(op);
-            });
 
-            const entries = Object.entries(opsByItem);
-            let savedCount = 0;
-
-            for (const [itemId, ops] of entries) {
-                ops.sort((a, b) => (a.imageIndex || 0) - (b.imageIndex || 0));
-                
-                let combinedMaskUrls: string[] = [];
-                let lastDescription = '';
-                let lastMarketingDescription = '';
-                let lastColors: string[] = [];
-                let lastGeneratedType = '';
-                // Every op in this group is an angle of the SAME item, so they
-                // all attach to one item id. Resolved before the loop because
-                // `itemData` below is only read from ops[0] afterwards.
-                const primaryItemId = (ops[0]?.item?.data || ops[0]?.item as any)?.id;
-
-                for (const op of ops) {
-                    if (op.result?.maskUrl && op.result.maskUrl.startsWith('data:')) {
-                        const ext = op.result.maskUrl.startsWith('data:image/webp') ? 'webp' : 'png';
-                        const upRes = await handleProcessedFileUpload(op.result.maskUrl, `mask_${op.id}.${ext}`, user);
-                        if (upRes && upRes.thumbnailUrl) {
-                            op.result.maskUrl = upRes.thumbnailUrl;
-                        }
-                    }
-
-                    if (op.result?.bitmapUrl && op.result.bitmapUrl.startsWith('data:')) {
-                        const upRes = await handleProcessedFileUpload(op.result.bitmapUrl, `bitmap_${op.id}.webp`, user);
-                        if (upRes && upRes.thumbnailUrl) {
-                            op.result.bitmapUrl = upRes.thumbnailUrl;
-                        }
-                    }
-                    
-                    if (op.result?.cloudSegmentationMasks && !op.result.svgUrl) {
-                        try {
-                            const svgData = JSON.parse(op.result.cloudSegmentationMasks)?.svgData;
-                            if (svgData) {
-                                const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
-                                op.result.svgUrl = await uploadCleanedImage(svgDataUrl, `outline_${op.id}.svg`, user);
-                            }
-                        } catch (e) {
-                            console.warn('Could not persist SVG outline:', e);
-                        }
-                    }
-
-                    // Persist this angle's segmentation before the index moves on.
-                    // One row per photographed angle, which is the shape
-                    // `spatial_masks` was being bent into -- except these rows
-                    // carry real contours and a real cutout, and they cannot
-                    // collide with the cleaned-photo columns.
-                    if (op.result?.segmentation && primaryItemId) {
-                        void saveSegmentation(
-                            primaryItemId,
-                            { ...op.result.segmentation, angleIndex: combinedMaskUrls.length },
-                            user,
-                        );
-                    }
-
-                    if (op.result?.maskUrl) {
-                        combinedMaskUrls.push(op.result.maskUrl);
-                    } else {
-                        combinedMaskUrls.push('');
-                    }
-                    
-                    if (op.result?.description) {
-                        lastDescription = op.result.description;
-                    }
-                    if (op.result?.marketingDescription) {
-                        lastMarketingDescription = op.result.marketingDescription;
-                    }
-                    if (op.result?.dominantColors && op.result.dominantColors.length > 0) {
-                        lastColors = op.result.dominantColors;
-                    }
-                    if (op.result?.generatedType) {
-                        lastGeneratedType = op.result.generatedType;
-                    }
+        // One failed item no longer stops the rest: each is its own update,
+        // and the ones that failed are named so they can be saved again.
+        let savedCount = 0;
+        const failures: string[] = [];
+        for (let i = 0; i < entries.length; i++) {
+            const ops = entries[i];
+            try {
+                const { saved, failedUploads } = await saveItemOps(ops);
+                if (saved) savedCount++;
+                if (failedUploads.length > 0) {
+                    const n = normalizeInventoryData(ops[0].item?.data || ops[0].item);
+                    const label = n.book_barcode || n.itemId || itemKeyOf(ops[0]);
+                    failures.push(`${label}: ${failedUploads.join('; ')}`);
                 }
-                
-                let lastCloudMasks = '';
-                let lastSvgUrl = '';
-                ops.forEach(op => {
-                    if (op.result?.cloudSegmentationMasks) lastCloudMasks = op.result.cloudSegmentationMasks;
-                    if (op.result?.svgUrl) lastSvgUrl = op.result.svgUrl;
-                });
-                
-                const primaryOp = ops[0];
-                const itemData = primaryOp.item.data || primaryOp.item;
-                const currentMasks = itemData.spatialMasks || itemData.spatial_masks || {};
-                let updatedMasks: Record<string, any> = {};
-                combinedMaskUrls.forEach((url, idx) => {
-                    if (url) {
-                        updatedMasks[`angle_${idx}`] = [{ mask: url }];
-                    }
-                });
-
-                let processedMap: Record<string, string> = {};
-                let lastHexString = '';
-                let lastBitmapUrl = '';
-                let lastCols = 20;
-                let lastRows = 20;
-                ops.forEach(op => {
-                    // The cleaned photo wins over a cutout for the catalogue slot:
-                    // it is the opaque image the grid renders. Key on the cleaned
-                    // source url, matching all 294 existing entries.
-                    if (op.imageUrl) {
-                        const key = getCleanImageUrl(op.imageUrl) || op.imageUrl;
-                        if (op.result?.cleanedUrl) {
-                            processedMap[key] = op.result.cleanedUrl;
-                        } else if (op.result?.maskUrl) {
-                            processedMap[key] = op.result.maskUrl;
-                        }
-                    }
-                    if (op.result?.videoGen) {
-                        processedMap['videoGen'] = op.result.videoGen;
-                    }
-                    if (op.result?.hexString) {
-                        lastHexString = op.result.hexString;
-                        lastBitmapUrl = op.result.bitmapUrl || '';
-                        if (op.result.cols) lastCols = op.result.cols;
-                        if (op.result.rows) lastRows = op.result.rows;
-                    }
-                });
-
-                if (!lastHexString || lastColors.length === 0) {
-                    const primaryUrl = combinedMaskUrls[0] || itemData.generatedPngUrl || itemData.imageUrl;
-                    const bitmapRes = await generateBitmapAndHexMap(primaryUrl, 20, 20, 80, 149, 61, 199, itemData.material, itemData.shape, itemData.color);
-                    if (!lastHexString) {
-                        lastHexString = bitmapRes.hexString;
-                        lastBitmapUrl = bitmapRes.bitmapDataUrl;
-                        lastCols = bitmapRes.cols;
-                        lastRows = bitmapRes.rows;
-                    }
-                    if (lastColors.length === 0) {
-                        lastColors = bitmapRes.dominantColors;
-                    }
-                }
-
-                if (!lastMarketingDescription) {
-                    lastMarketingDescription = generateFallbackMarketingHtml(itemData);
-                }
-
-                if (lastHexString) {
-                    processedMap['_pixel_map_hex'] = lastHexString;
-                    if (lastBitmapUrl) processedMap['_bitmap_url'] = lastBitmapUrl;
-                }
-
-                if (lastColors.length > 0) {
-                    processedMap['_generated_color'] = lastColors.join(', ');
-                }
-
-                if (lastGeneratedType) {
-                    processedMap['_generated_type'] = lastGeneratedType;
-                }
-
-                const updatePayload: any = { 
-                    detailed_description: lastDescription || itemData.detailedDescription || itemData.detailed_description || null,
-                    generated_description: lastMarketingDescription,
-                    spatial_masks: updatedMasks,
-                    processed_media_urls: JSON.stringify(processedMap),
-                    generated_png_url: combinedMaskUrls[0] || null
-                };
-
-                if (lastColors.length > 0) {
-                    updatePayload.generated_color = lastColors.join(', ');
-                }
-
-                if (lastGeneratedType) {
-                    updatePayload.generated_type = lastGeneratedType;
-                }
-                // Only spatial_masks exists in Postgres; see handleSaveDescription.
-                if (lastCloudMasks) {
-                    const parsedMasks = safeParseMasks(lastCloudMasks);
-                    if (parsedMasks !== undefined) updatePayload.spatial_masks = parsedMasks;
-                }
-                const lastAxoIconUrl = ops.map(o => o.result?.axoIconUrl).filter(Boolean).pop();
-                if (lastAxoIconUrl) {
-                    updatePayload.axo_icon_url = lastAxoIconUrl;
-                }
-
-                if (lastSvgUrl) {
-                    // generated_svg_url was 0/497 because the SVG was rendered on
-                    // every run and then dropped on the floor.
-                    updatePayload.generated_svg_url = lastSvgUrl;
-                }
-
-                if (lastHexString) {
-                    updatePayload.spatial_points = [{
-                        type: 'pixel_map',
-                        dimensions: `${lastCols}x${lastRows}`,
-                        cols: lastCols,
-                        rows: lastRows,
-                        hex_string: lastHexString,
-                        bitmap_url: lastBitmapUrl || null
-                    }];
-                }
-
-                const { error: sbErr } = await supabase.from('inventory').update(updatePayload).eq('id', itemId);
-                if (sbErr) throw sbErr;
-                
-                savedCount++;
-                setOverallProgress((savedCount / entries.length) * 100);
+            } catch (e: any) {
+                const n = normalizeInventoryData(ops[0].item?.data || ops[0].item);
+                const label = n.book_barcode || n.itemId || itemKeyOf(ops[0]);
+                failures.push(`${label}: ${aiErrorMessage(e)}`);
+                const hero = ops.find(o => (o.imageIndex || 0) === 0) || ops[0];
+                logOp(hero.id, `[ FAIL ] Save: ${aiErrorMessage(e)}`);
+                console.error(e);
             }
-            
+            setOverallProgress(((i + 1) / entries.length) * 100);
+        }
+
+        setIsSavingDb(false);
+        if (savedCount > 0) setInventoryVersion(Date.now());
+        if (failures.length === 0) {
             toast.success(tr("Saved successfully to database!"), { id: toastId });
-            setInventoryVersion(Date.now());
             setHasUnsavedChanges(false);
-        } catch (e: any) {
-            toast.error(`Save failed: ${e.message}`, { id: toastId });
-            console.error(e);
-        } finally {
-            setIsSavingDb(false);
-            setOverallProgress(100);
+        } else {
+            toast.error(`Saved ${savedCount}, failed ${failures.length}: ${failures.slice(0, 3).join('; ')}${failures.length > 3 ? '...' : ''}`, { id: toastId, duration: 10000 });
         }
     };
 
@@ -780,7 +615,7 @@ export const BatchProcessingWizard: React.FC = () => {
     };
 
     const buildExportContext = () => {
-        const completedOps = queue.filter(op => op.status === 'completed');
+        const completedOps = queue.filter(hasOutput);
         const exportDataList: any[] = [];
         const catalogResults: CatalogArtifact[] = [];
 
@@ -810,7 +645,8 @@ export const BatchProcessingWizard: React.FC = () => {
                 Object.entries(vendors).map(([code, v]) => [code, v.name])
             );
             
-            const tagId = codes?.bookBarcode || normData.book_barcode || normData.itemId || '';
+            // A stored barcode is printed on a label and is never recomputed.
+            const tagId = normData.book_barcode || codes?.bookBarcode || normData.itemId || '';
             const matchPrefix = tagId.match(/^[A-Za-z]+/);
             const extractedPrefix = matchPrefix ? matchPrefix[0] : '';
             const rawVendorId = String(normData.vendor_id || extractedPrefix || '').toUpperCase();
@@ -818,14 +654,12 @@ export const BatchProcessingWizard: React.FC = () => {
 
             const combinedMaskUrls = ops.map(op => (op.skipImageProcessing ? op.imageUrl : (op.result?.maskUrl || op.imageUrl))).filter(Boolean) as string[];
 
-            let lastDescription = '';
-            let lastMarketingDesc = '';
-            let lastColors: string[] = [];
-            for (const op of ops) { 
-                if (op.result?.description) lastDescription = op.result.description; 
-                if (op.result?.marketingDescription) lastMarketingDesc = op.result.marketingDescription;
-                if (op.result?.dominantColors && op.result.dominantColors.length > 0) lastColors = op.result.dominantColors;
-            }
+            // The hero card's text, as the save and the XLSX use. This took
+            // the last card's, so one session could print a third title.
+            const heroText = aiResultFromOps(ops);
+            const lastDescription = heroText.title || '';
+            const lastMarketingDesc = heroText.html || '';
+            const lastColors: string[] = heroText.colors || [];
 
             const pdfProcessedMap: Record<string, string> = {};
             ops.forEach(op => {
@@ -836,7 +670,7 @@ export const BatchProcessingWizard: React.FC = () => {
 
             const pdfData = { 
                 ...normData, 
-                book_barcode: codes?.bookBarcode || normData.book_barcode || normData.itemId || '',
+                book_barcode: normData.book_barcode || codes?.bookBarcode || normData.itemId || '',
                 book_aq_code: codes?.bookAqCode || normData.book_aq_code || '',
                 book_land_code: codes?.bookLandCode || normData.book_land_code || '',
                 book_acquisition: codes?.bookAcquisition || normData.book_acquisition || '',
@@ -968,7 +802,7 @@ export const BatchProcessingWizard: React.FC = () => {
                 const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
                 const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
 
-                const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(itemData.row) || '';
+                const tagId = norm.book_barcode || calc.bookBarcode || norm.itemId || String(itemData.row) || '';
                 const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
                 
                 const rawVendorId = String(norm.vendorId || norm.vendor_id || '').toUpperCase().trim();
@@ -1197,7 +1031,7 @@ export const BatchProcessingWizard: React.FC = () => {
     };
 
     const handleStartBatch = async () => {
-        if (!getApiKey()) {
+        if (!hasGeminiKey()) {
             setShowApiModal(true);
             return;
         }
@@ -1220,7 +1054,7 @@ export const BatchProcessingWizard: React.FC = () => {
             const needsImage = !!op.imageUrl && !op.skipImageProcessing
                 && (op.forceRecleanImage || !op.result?.cleanedUrl);
             if (imagesOnly && !needsImage) return false;
-            if (op.status === 'completed' && !needsContent && !needsImage) return false;
+            if (hasOutput(op) && !needsContent && !needsImage) return false;
             // Hero-only is a deliberate economy, not the default: at ~2 images an
             // item it halves the bill, but it also means the other photos never
             // get cleaned, which is the bug this flag used to cause silently.
@@ -1350,7 +1184,7 @@ export const BatchProcessingWizard: React.FC = () => {
         toast.success(tr("All items enabled for AI description & color regeneration! Click START ENGINE to begin."));
     };
 
-    const completedOps = queue.filter(op => op.status === 'completed');
+    const completedOps = queue.filter(hasOutput);
     
     // Strict check: PDF and XLSX generation requires EVERY primary item to have the necessary AI generated fields
     const isFullyGenerated = queue.length > 0 && queue.every(op => {
@@ -1361,7 +1195,7 @@ export const BatchProcessingWizard: React.FC = () => {
             op.result?.generatedType;
     });
     
-    const allCompleted = queue.length > 0 && queue.every(op => op.status === 'completed');
+    const allCompleted = queue.length > 0 && queue.every(hasOutput);
     const needsProcessing = queue.some(op => 
         op.status !== 'completed' || 
         ((op.imageIndex || 0) === 0 && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription))
@@ -1673,7 +1507,7 @@ export const BatchProcessingWizard: React.FC = () => {
                                             {(() => {
                                                 const norm = normalizeInventoryData(op.item.data || op.item);
                                                 const calc = calculateCodesAndPrices(norm, activeRate, norm.workbook || op.item.workbook || '326');
-                                                const tagId = calc?.bookBarcode || norm.book_barcode || norm.itemId || `Item ${norm.itemNumber}`;
+                                                const tagId = norm.book_barcode || calc?.bookBarcode || norm.itemId || `Item ${norm.itemNumber}`;
 
                                                 const match = tagId.replace(/\s+/g, '').match(/^([A-Za-z]+\d{2,4})(\d{2}[A-Za-z]*)$/);
                                                 if (match) {
@@ -1774,7 +1608,7 @@ export const BatchProcessingWizard: React.FC = () => {
                                                     <XCircle size={14} className="bp-sig" /> {tr("ABORT")}
                                                 </button>
                                             )}
-                                            {op.status === 'completed' && (
+                                            {hasOutput(op) && (
                                                 <>
                                                     <button
                                                         type="button"
@@ -1914,8 +1748,7 @@ export const BatchProcessingWizard: React.FC = () => {
                                                 id={`bp-desc-${op.id}`}
                                                 value={op.result.description || ''}
                                                 onChange={(e) => {
-                                                    updateOp(op.id, { result: { ...op.result, description: e.target.value } });
-                                                    setHasUnsavedChanges(true);
+                                                    editItemText(op, 'description', e.target.value);
                                                 }}
                                                 className="bp-input"
                                                 placeholder={tr("AI generated title description...")}
@@ -1945,8 +1778,7 @@ export const BatchProcessingWizard: React.FC = () => {
                                                     <textarea
                                                         value={op.result.marketingDescription || ''}
                                                         onChange={(e) => {
-                                                            updateOp(op.id, { result: { ...op.result, marketingDescription: e.target.value } });
-                                                            setHasUnsavedChanges(true);
+                                                            editItemText(op, 'marketingDescription', e.target.value);
                                                         }}
                                                         className="bp-input bp-input--html"
                                                         placeholder={tr("AI generated HTML marketing description...")}
@@ -1960,7 +1792,7 @@ export const BatchProcessingWizard: React.FC = () => {
                                                        the ground's ink. */
                                                     <div
                                                         className="bp-md"
-                                                        dangerouslySetInnerHTML={{ __html: op.result.marketingDescription || '<p>No HTML description generated yet.</p>' }}
+                                                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(op.result.marketingDescription || '') || '<p>No HTML description generated yet.</p>' }}
                                                     />
                                                 )}
                                             </div>
@@ -1982,9 +1814,18 @@ export const BatchProcessingWizard: React.FC = () => {
 
                             {/* Status. An instrument: it reports where the item
                                 is and cannot be pressed. */}
-                            <div className={`bp-status${op.status === 'processing' ? ' bp-status--run' : op.status === 'completed' ? ' bp-status--done' : op.status === 'failed' ? ' bp-status--failed' : ''}`}>
+                            {/* 'partial': part of the run failed (most often the
+                                background replacement) and part was kept. It
+                                used to be a green check. Amber is the meaning
+                                colour the log already uses for WARN. */}
+                            <div
+                                className={`bp-status${op.status === 'processing' ? ' bp-status--run' : op.status === 'completed' ? ' bp-status--done' : op.status === 'failed' ? ' bp-status--failed' : ''}`}
+                                style={op.status === 'partial' ? { color: 'var(--bp-sig-amber)' } : undefined}
+                                title={op.status === 'partial' ? Object.values(op.processErrors || {}).join(' • ') || tr("Finished with failures") : undefined}
+                            >
                                 {op.status === 'processing' && <Loader2 size={24} className="animate-spin" />}
                                 {op.status === 'completed' && <CheckCircle2 size={24} />}
+                                {op.status === 'partial' && <AlertCircle size={24} />}
                                 {op.status === 'failed' && <AlertCircle size={24} />}
                                 {op.status === 'idle' && <span>{tr("WAIT")}</span>}
                             </div>
@@ -2143,13 +1984,7 @@ export const BatchProcessingWizard: React.FC = () => {
                 onClose={() => setCropModalState({ isOpen: false, opId: '', imageSrc: '' })}
                 onCropComplete={(croppedUrl) => {
                     if (!cropModalState.opId) return;
-                    updateOp(cropModalState.opId, {
-                        result: {
-                            ...queue.find(o => o.id === cropModalState.opId)?.result,
-                            maskUrl: croppedUrl
-                        }
-                    });
-                    setHasUnsavedChanges(true);
+                    setManualCutout(cropModalState.opId, croppedUrl);
                     toast.success(tr("1:1 Square crop applied!"));
                 }}
             />
