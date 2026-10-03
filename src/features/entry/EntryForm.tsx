@@ -17,8 +17,8 @@ import { tr, trf } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
 import { buildAttributeSuggestions } from '../../lib/attributeSuggestions';
 import { ENTRY_BOOKS, ENTRY_STATUSES, normalizeWorkbook } from '../../lib/inventoryCreate';
-import { Field, Input, Key, Segmented, Select, cx } from '../../components/ui';
-import { VENDOR_CODES, photoKey, vendorName, type EntryPhoto, type EntryState } from './entryModel';
+import { Field, Input, Key, Segmented, Select, VendorPicker, cx } from '../../components/ui';
+import { VENDOR_CODES, photoKey, type EntryPhoto, type EntryState } from './entryModel';
 import { readPickedFiles } from './entryMedia';
 
 export type EntryLocks = Partial<Record<'vendorId' | 'workbook' | 'itemNumber', string>>;
@@ -83,10 +83,10 @@ export function EntryForm({
     const set = <K extends keyof EntryState>(k: K) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         onChange({ [k]: e.target.value } as Partial<EntryState>);
 
-    const vendorOptions = useMemo(() => {
-        const codes = VENDOR_CODES.includes(value.vendorId) || !value.vendorId ? VENDOR_CODES : [value.vendorId, ...VENDOR_CODES];
-        return codes.map(c => ({ value: c, label: `${c} · ${vendorName(c)}` }));
-    }, [value.vendorId]);
+    // A stored vendor that is no longer in the list stays choosable.
+    const vendorCodes = useMemo(() => (
+        VENDOR_CODES.includes(value.vendorId) || !value.vendorId ? VENDOR_CODES : [value.vendorId, ...VENDOR_CODES]
+    ), [value.vendorId]);
 
     const statusOptions = useMemo(() => {
         const list: string[] = [...ENTRY_STATUSES];
@@ -124,9 +124,11 @@ export function EntryForm({
     return (
         <div className="entry-form">
             <div className="entry-grid">
-                <Field label={tr('Vendor')} className="s2" aside={lockAside(locks.vendorId)} hint={locks.vendorId}>
-                    <Select value={value.vendorId} onChange={set('vendorId')} placeholder={tr('Choose a vendor…')}
-                        options={vendorOptions} disabled={disabled || !!locks.vendorId} />
+                <Field label={tr('Vendor')} className="s6" group>
+                    <VendorPicker codes={vendorCodes} value={value.vendorId}
+                        onChange={(code) => onChange({ vendorId: code })}
+                        book={String(value.workbook || '').replace(/v/gi, '')}
+                        disabled={disabled} lockedReason={locks.vendorId} />
                 </Field>
 
                 <Field label={tr('Book')} className="s2" group={!locks.workbook} aside={lockAside(locks.workbook)}>

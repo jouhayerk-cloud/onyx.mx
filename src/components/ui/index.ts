@@ -35,3 +35,4 @@ export {
 } from './types';
 export { PullToRefresh } from './PullToRefresh';
 export { ViewSkeleton } from './ViewSkeleton';
+export { VendorPicker, type VendorPickerProps } from './VendorPicker';
