@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { batchCreateModeAtom, isUploadWizardOpenAtom, userAtom } from '../../lib/atoms';
 import { tr } from '../../lib/i18n';
-import { Field, Segmented, Select } from '../../components/ui';
+import { Field, Segmented, VendorPicker } from '../../components/ui';
 import { BatchCreateWizard } from './BatchCreateWizard';
 import { EntryScreen } from '../entry/EntryScreen';
-import { VENDOR_CODES, isKnownVendor, vendorName } from '../entry/entryModel';
+import { VENDOR_CODES, isKnownVendor } from '../entry/entryModel';
 
 type Mode = 'single' | 'batch';
 
@@ -44,10 +44,9 @@ export function CreateItem() {
                     ]}
                 />
                 {mode === 'batch' && (
-                    <Field label={tr('Vendor')}>
-                        <Select value={batchVendor} onChange={(e) => setBatchVendor(e.target.value)}
-                            placeholder={tr('Choose a vendor…')} disabled={!!vendorLock}
-                            options={VENDOR_CODES.map(c => ({ value: c, label: `${c} · ${vendorName(c)}` }))} />
+                    <Field label={tr('Vendor')} group>
+                        <VendorPicker codes={VENDOR_CODES} value={batchVendor} onChange={setBatchVendor} book="826"
+                            lockedReason={vendorLock ? tr('Your account enters stock for this vendor only.') : undefined} />
                     </Field>
                 )}
             </div>

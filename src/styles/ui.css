@@ -1625,3 +1625,56 @@ html.style-slab.theme-aqua {
     .ui-root .ui-step,
     .ui-root .ui-pill { border: 1px solid CanvasText; }
 }
+
+
+/* ── Vendor picker ──────────────────────────────────────────────────────────
+   The vendor colour is the identifier on every tag and label, so it is the
+   key's fill. Inside .ui-root the legacy forced button glass does not apply
+   (the :where() guards), so the fill needs no !important. */
+.ui-root .ui-vendors { display: flex; flex-wrap: wrap; gap: 4px; }
+.ui-root .ui-vendor-key {
+    appearance: none;
+    height: 26px;
+    min-width: 40px;
+    padding: 0 7px;
+    margin: 0;
+    border: 1px solid color-mix(in srgb, var(--vendor-color) 72%, #000);
+    border-radius: var(--ui-r-sm, 4px);
+    background-color: var(--vendor-color);
+    color: var(--vendor-ink);
+    font: 800 10.5px/1 var(--ui-font-display);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 1px 0 rgb(0 0 0 / 0.18);
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.ui-root .ui-vendor-key:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 10px -5px rgb(0 0 0 / 0.55); }
+.ui-root .ui-vendor-key:not(:disabled):active { transform: translateY(0); }
+.ui-root .ui-vendor-key[aria-checked="true"],
+.ui-root .ui-vendor-key:focus-visible { outline: 2px solid var(--ui-accent-text); outline-offset: 2px; }
+.ui-root .ui-vendor-key:disabled { opacity: 0.45; cursor: default; }
+.ui-root .ui-vendor-chosen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.ui-root .ui-vendor-big {
+    appearance: none;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid color-mix(in srgb, var(--vendor-color) 72%, #000);
+    border-radius: var(--ui-r-md, 6px);
+    background-color: var(--vendor-color);
+    color: var(--vendor-ink);
+    font: 800 20px/1 var(--ui-font-display);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 2px 0 rgb(0 0 0 / 0.2);
+}
+.ui-root .ui-vendor-big:disabled { cursor: default; }
+.ui-root .ui-vendor-big:focus-visible { outline: 2px solid var(--ui-accent-text); outline-offset: 2px; }
+.ui-root .ui-vendor-big__book { font-size: 14px; opacity: 0.85; }
+.ui-root .ui-vendor-name { color: var(--ui-ink); font: 700 13px/1.2 var(--ui-font-body); }
+.ui-root .ui-vendor-hint { color: var(--ui-faint); font-size: 11.5px; }
+@media (pointer: coarse) { .ui-root .ui-vendor-key { height: 36px; min-width: 44px; } }
+@media (prefers-reduced-motion: reduce) { .ui-root .ui-vendor-key { transition: none; } .ui-root .ui-vendor-key:not(:disabled):hover { transform: none; } }
