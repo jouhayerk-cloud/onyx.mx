@@ -4,6 +4,7 @@
 */
 import { atom } from 'jotai';
 import type { PrimitiveAtom } from 'jotai';
+import type { CatalogProcess } from './catalogHubProcesses';
 /**
  * A nullable primitive atom.
  *
@@ -377,6 +378,10 @@ export interface BatchCreateItem {
   quantity: string;
   description: string;
   mediaFiles: UploadedFile[];
+  /** The spreadsheet row it came from (header = row 1), for naming it in issue lists. */
+  sheetRow?: number;
+  /** Numbered at import (the sheet had no '#'), not typed: Renumber may move it. */
+  autoNumber?: boolean;
 }
 export const batchCreateItemsAtom = atom<BatchCreateItem[]>([]);
 export const batchCreateModeAtom = atom<'single' | 'batch'>('single');
@@ -768,6 +773,22 @@ export const onyxRequestSendAtom = atom(0);
 
 export const isBatchWizardOpenAtom = atom<boolean>(false);
 export const batchWizardItemsAtom = atom<any[]>([]);
+
+/**
+ * A hand-off into the Catalog Hub, set together with batchWizardItemsAtom and
+ * isBatchWizardOpenAtom by a screen that sends the hub items to work on
+ * (Batch Create, after its rows are inserted). The hub reads it once when it
+ * opens: `processes` become its ticked processes, `donor` adds Write From
+ * Similar for the items without a photo, and `autoRun` starts the run as
+ * soon as the items are in the engine, so review and save happen in the hub
+ * with its usual flow. Cleared by the hub; null means open as usual.
+ */
+export interface CatalogHubHandoff {
+  processes: CatalogProcess['id'][];
+  donor: boolean;
+  autoRun: boolean;
+}
+export const batchWizardHandoffAtom = atom(null as CatalogHubHandoff | null);
 
 // PicoBridge & OnyxChan State
 export interface PicoDevice {

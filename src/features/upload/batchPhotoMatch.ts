@@ -107,7 +107,9 @@ export function matchPhotosToRows(
     rows: { id: string; itemNumber: string; mediaFiles: { originalFile?: File }[] }[],
     vendorKey: string,
 ): PhotoMatchResult {
-    const vendor = vendorKey.toUpperCase();
+    // No vendor yet means only bare numbers can match (EM-004.jpg names a
+    // vendor this batch does not have); it used to throw here instead.
+    const vendor = String(vendorKey || '').toUpperCase();
     const rowByNumber = new Map<number, (typeof rows)[number]>();
     rows.forEach(r => {
         const n = Number(r.itemNumber);

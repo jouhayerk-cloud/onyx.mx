@@ -36,6 +36,7 @@ import ExcelJS from 'exceljs';
 import {
     isBatchWizardOpenAtom,
     batchWizardItemsAtom,
+    batchWizardHandoffAtom,
     inventoryAtom,
     InventoryVersionAtom,
     userAtom,
@@ -581,8 +582,11 @@ function HubDialog({ title, children, actions, onCancel }: {
 export const BatchProcessingWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isBatchWizardOpenAtom);
     const batchItems = useAtomValue(batchWizardItemsAtom);
+    const setHandoff = useSetAtom(batchWizardHandoffAtom);
     if (!isOpen) return null;
-    return <CatalogHub items={batchItems} onClose={() => setIsOpen(false)} />;
+    // A hand-off the hub never got to read (closed at once) must not ride
+    // along with the next ordinary opening.
+    return <CatalogHub items={batchItems} onClose={() => { setIsOpen(false); setHandoff(null); }} />;
 };
 
 function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => void }) {
@@ -592,7 +596,19 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
     const fullInventory = useAtomValue(inventoryAtom);
     const setInventoryVersion = useSetAtom(InventoryVersionAtom);
 
-    const [processes, setProcesses] = useState<Set<ProcessId>>(() => new Set(DEFAULT_PROCESSES));
+    // Batch Create's hand-off (lib/atoms batchWizardHandoffAtom), read once:
+    // its processes are ticked from the start, and the run it asks for starts
+    // below once the items are in the engine.
+    const [handoff, setHandoff] = useAtom(batchWizardHandoffAtom);
+    const handoffRef = useRef(handoff);
+
+    const [processes, setProcesses] = useState<Set<ProcessId>>(() => {
+        // A hand-off's own pick, even an empty one (only 'From similar' was
+        // ticked): falling back to the defaults here made the auto-run spend
+        // image and copy calls on every photo row nobody asked for.
+        if (handoffRef.current) return new Set(handoffRef.current.processes.filter(p => p !== 'variation_donor'));
+        return new Set(DEFAULT_PROCESSES);
+    });
     const [mode, setMode] = useState<ProcessingMode>('bgreplace');
     /**
      * Restrict fresh runs to each item's first photo. Off by default: it was
@@ -810,6 +826,26 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         if (!ids.length) return;
         void launch(() => Promise.all([run.start(ids, { processes: ['variation_donor', ...TEXT_PROCESSES] })]), handleWriteFromSimilar, ids);
     };
+
+    // The hand-off's run, once: on the first render that has the items (the
+    // engine syncs them in an effect, so the very first render has none).
+    // The photo items run the ticked processes as Run would; with `donor`,
+    // the ones without a photo get Write From Similar.
+    useEffect(() => {
+        const h = handoffRef.current;
+        if (!h || !all.length) return;
+        handoffRef.current = null;
+        setHandoff(null);
+        if (!h.autoRun) return;
+        const go = () => {
+            const picked = h.processes.filter(p => p !== 'variation_donor');
+            if (picked.length && processes.size && gapGroups.length) handleRun();
+            if (h.donor && donorIds.length) handleWriteFromSimilar();
+        };
+        // One key prompt for both launches, not one each.
+        if (!hasGeminiKey()) needKey(go); else go();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [all.length]);
 
     const handleRetryFailed = () => {
         const ids = all.filter(it => it.status === 'failed' || it.status === 'partial').map(it => it.id);

@@ -96,39 +96,3 @@ export const CATALOG_PROCESSES: readonly CatalogProcess[] = [
         defaultChecked: false
     }
 ];
-
-/**
- * CatalogHubProcessesPanel reads its `results` prop by process id —
- * `results['marketing_desc']`, `results['dominant_colors']`, etc. (see
- * hasResult = !!results[p.id] in the panel). The pipeline's own BatchOp.result
- * shape uses completely different field names — `marketingDescription`,
- * `dominantColors`, `generatedType`, `cleanedUrl`... — and no key in it is
- * ever literally named after a process id. Passing that raw object straight
- * through as `results` (as all three Add Entry call sites did) meant
- * `results[p.id]` was undefined for every row: the checkmarks, the HTML
- * preview, the colour chips and the cleaned-image thumbnail never rendered,
- * independently of whether the underlying save was correct.
- *
- * One adapter, called from every surface that mounts the panel, so the two
- * shapes cannot drift apart three separate ways again.
- */
-export function mapResultsByProcessId(ai: Record<string, any>): Record<string, any> {
-    return {
-        title_desc: ai.description || undefined,
-        marketing_desc: ai.marketingDescription || undefined,
-        dominant_colors: ai.dominantColors,
-        product_type: ai.generatedType || undefined,
-        img_clean: ai.cleanedUrl || undefined,
-        image_segmentation: ai.segmentation || undefined,
-        hex_map: ai.bitmapUrl || undefined,
-        video_proc: ai.videoGen || undefined
-        // variation_donor has no result field of its own in BatchOp — it
-        // fills the same description/marketingDescription/dominantColors/
-        // generatedType fields as the text processes, which the canonical
-        // writer maps to detailed_description / generated_description /
-        // generated_color / generated_type. No distinct signal to check a box
-        // for, so it is left unmapped rather than guessed.
-        // (image_segmentation writes to the item_segmentation TABLE, not to
-        // inventory — its writes[] name that table's columns.)
-    };
-}
