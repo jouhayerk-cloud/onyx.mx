@@ -19,7 +19,6 @@ import {
     TrafficLightStatus,
     logisticsSubTabAtom,
     financeSubTabAtom,
-    uploadTabAtom,
     uploadItemDataAtom,
     shippingCameraViewAtom,
     shippingCratesAtom,
@@ -107,7 +106,7 @@ import {
     inventoryToolsOpenAtom,
     isInventorySmartFiltersOpenAtom
 } from '../../lib/atoms';
-import { batchCreateModeAtom, isAiProcessingEnabledAtom } from '../../lib/atoms';
+import { isAiProcessingEnabledAtom } from '../../lib/atoms';
 import { WORKBOOK_IDS, type WorkbookId } from '../../lib/seasons';
 // Consolidated imports to prevent duplicates
 
@@ -1329,15 +1328,17 @@ const ProcessBar: React.FC = () => {
     );
 };
 
+// The Single / Batch switch is the page's own (CreateItem's Segmented); a
+// second copy here drove the same atom.
 const UploadBar: React.FC = () => {
-    const [itemData, setItemData] = useAtom(uploadItemDataAtom);
-    const [mode, setMode] = useAtom(batchCreateModeAtom);
+    const setItemData = useSetAtom(uploadItemDataAtom);
     const [, setUploadWizardOpen] = useAtom(isUploadWizardOpenAtom);
     const [aiEnabled, setAiEnabled] = useAtom(isAiProcessingEnabledAtom);
-    const activeWb = itemData.workbook || 'v326';
 
-    const openLegacyWizard = () => {
-        setItemData({ itemId: '', quantity: '1', itemNumber: '1', vendorId: '', workbook: 'v326' });
+    // The Add Entry screen as a modal (UploadWizard), on a clean slate. It
+    // takes every book; v326 is only the starting choice.
+    const openEntryModal = () => {
+        setItemData({ vendorId: '', workbook: 'v326' });
         setUploadWizardOpen(true);
     };
 
@@ -1347,25 +1348,10 @@ const UploadBar: React.FC = () => {
             
             <div className="flex items-center gap-1.5 ml-2">
                 <StudioAction 
-                    icon={Layers}
-                    label={tr("SINGLE ITEM")}
-                    active={mode === 'single'}
-                    onClick={() => setMode('single')}
-                />
-                <StudioAction 
-                    icon={Layers}
-                    label={tr("BATCH XLSX")}
-                    active={mode === 'batch'}
-                    onClick={() => setMode('batch')}
-                />
-                
-                <div className="w-px h-4 bg-white/10 mx-2" />
-                
-                <StudioAction 
                     icon={FolderUp}
-                    label={tr("LEGACY 825/326/826")}
+                    label={tr("Add Entry")}
                     active={false}
-                    onClick={openLegacyWizard}
+                    onClick={openEntryModal}
                 />
                 <div className="w-px h-6 bg-white/10 mx-2" />
                 <StudioAction 
@@ -2027,7 +2013,7 @@ export function MainHeader() {
                                 // A stored barcode is what is printed on the item; compute one
                                 // only when none is stored, and always at the book rate.
                                 const calc = calculateCodesAndPrices(norm, DEFAULT_EXCHANGE_RATE, '326');
-                                const tag = norm.book_barcode || calc.bookBarcode || norm.itemId || String(inv.row);
+                                const tag = calc.bookBarcode || norm.itemId || String(inv.row);
                                 if (tag) barcodes.push(tag);
                             } catch (e) { console.warn('Item barcode calculation failed:', e); }
                         }

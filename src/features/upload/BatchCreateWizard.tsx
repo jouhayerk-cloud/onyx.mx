@@ -41,6 +41,7 @@ import {
 import { DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 import { calculateCodesAndPrices } from '../../lib/utils';
 import { tr, trf } from '../../lib/i18n';
+import { el } from '../../lib/i18nEnums';
 import { generateJson } from '../../lib/ai/client';
 import { aiErrorMessage } from '../../lib/ai/errors';
 import { hasGeminiKey } from '../../lib/ai/keys';
@@ -63,6 +64,7 @@ import {
     type ImportRow, type ImportRowState, type ImportState,
 } from './batchImport';
 import './batchCreate.css';
+import { useWorkGuard } from '../../lib/useWorkGuard';
 
 const TRAY_MIME = 'application/x-onyx-photo';
 const BOOK = BATCH_WORKBOOK.slice(1);
@@ -226,6 +228,8 @@ interface BatchCreateWizardProps {
 export function BatchCreateWizard({ vendorKey }: BatchCreateWizardProps) {
     const vendor = String(vendorKey || '').trim().toUpperCase();
     const [batchItems, setBatchItems] = useAtom(batchCreateItemsAtom);
+    // A loaded batch is work a page reload would throw away.
+    useWorkGuard(batchItems.length > 0);
     const [importState, setImportState] = useAtom(batchImportAtom);
     const [sheetMeta, setSheetMeta] = useAtom(sheetMetaAtom);
     const [numberedFor, setNumberedFor] = useAtom(numberedForAtom);
@@ -848,6 +852,7 @@ function ReviewStep(props: {
                                 current={current?.id === i.id}
                                 label={`${tags.get(i.id)?.item_id || i.itemNumber} ${rowName(i)}`}
                                 onOpen={() => setCurrentId(i.id)}
+                                onFocus={() => { if (current?.id !== i.id) setCurrentId(i.id); }}
                                 className={cx(rowOver === i.id && 'bc-row--drop')}
                                 onDragOver={(e) => { e.preventDefault(); if (rowOver !== i.id) setRowOver(i.id); }}
                                 onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setRowOver(null); }}
@@ -1003,7 +1008,7 @@ function RowEditor({ item, vendor, tag, issues, suggestions, index, count, trayP
 
             <p className="bc-codes ui-tnum" aria-label={tr('Book codes at the book rate of 17')}>
                 <span>{tr('AQ')} <b>{hasCodes ? code(codes.bookAqCode) : '—'}</b></span>
-                <span>{tr('LC')} <b>{hasCodes ? code(codes.bookLandCode) : '—'}</b></span>
+                <span>{tr('LD')} <b>{hasCodes ? code(codes.bookLandCode) : '—'}</b></span>
                 <span>{tr('Landed')} <b>{hasCodes ? `$${codes.bookLanded}` : '—'}</b></span>
                 <span>{tr('Retail')} <b>{hasCodes ? `$${codes.bookRetail}` : '—'}</b></span>
             </p>
@@ -1097,7 +1102,7 @@ function ImportStep({ state, left, aiEnabled, onStop, onHandOff, onDone }: {
     const detail = (r: ImportRow) => {
         if (r.state === 'failed' || r.state === 'skipped') return <span className="bc-bad">{r.reason}</span>;
         if (r.photoFailures.length) return <span className="bc-warn" title={r.photoFailures.join('\n')}>{r.photoFailures.join(' · ')}</span>;
-        if (r.row) return <span className="bc-faint">{trf('{n} photos · {status}', { n: r.photoCount, status: String(r.row.status || '') })}</span>;
+        if (r.row) return <span className="bc-faint">{trf('{n} photos · {status}', { n: r.photoCount, status: String(el(String(r.row.status || ''))) })}</span>;
         return <span className="bc-faint">{r.photoCount ? trf('{n} photos', { n: r.photoCount }) : tr('No photo')}</span>;
     };
 

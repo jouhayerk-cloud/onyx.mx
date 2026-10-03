@@ -8,6 +8,8 @@
  * from "out of quota" from "the model answered nonsense" without devtools.
  */
 
+import { tr } from '../i18n';
+
 export type AiErrorCode = 'key_missing' | 'quota' | 'timeout' | 'cancelled' | 'response';
 
 export class AiError extends Error {
@@ -67,7 +69,7 @@ export const isAiError = (err: unknown): err is AiError => err instanceof AiErro
 
 /** A one-line message for any failure, typed or not, fit for a toast or log. */
 export const aiErrorMessage = (err: unknown): string => {
-    if (err instanceof AiError) return err.message;
+    if (err instanceof AiError) return tr(err.message);
     if (err instanceof Error) return err.message || err.name;
     return String(err ?? 'Unknown error');
 };

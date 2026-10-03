@@ -1,9 +1,9 @@
 import React from 'react';
 import { CreateItem } from './CreateItem';
 
-// The 'ai' tab (UploadAIPanel) is gone: uploadTabAtom is only ever set to
-// 'entry', so the panel could not be opened, yet this import shipped its
-// direct Gemini client (key in the URL) in the UploadView chunk.
+// The upload view is Create Item: Single Item (Add Entry) and Batch XLSX.
+// The old 'ai' tab (UploadAIPanel, with its own direct Gemini client) and the
+// tab atom that switched to it are gone.
 export function UploadView() {
     return (
         <div className="create-item-shell flex flex-col w-full">

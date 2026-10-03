@@ -25,6 +25,7 @@ export { ItemList, ItemRow, type ItemListProps, type ItemRowProps } from './Item
 export { FilterTabs, type FilterTabsProps, type FilterTab } from './FilterTabs';
 export { RunBar, type RunBarProps } from './RunBar';
 export { Drawer, type DrawerProps } from './Drawer';
+export { Dialog, type DialogProps } from './Dialog';
 export {
     GeneratedContent,
     type GeneratedContentProps, type GeneratedValue, type GeneratedField,

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { vendors } from '../../lib/consts';
 import { getTextColorForBg } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
@@ -43,9 +43,24 @@ export function VendorPicker({ codes, value, onChange, book, disabled, lockedRea
     const locked = !!lockedReason;
     const showKeys = (open || !value) && !locked;
 
+    // Closing the keys unmounts the focused key; without this focus fell to
+    // <body>, and in the Entry modal the next Tab left the dialog.
+    const bigRef = useRef<HTMLButtonElement>(null);
+    const refocus = useRef(false);
+    const close = () => {
+        refocus.current = !!keysRef.current?.contains(document.activeElement);
+        setOpen(false);
+    };
+    useEffect(() => {
+        if (showKeys || !refocus.current) return;
+        refocus.current = false;
+        const raf = requestAnimationFrame(() => bigRef.current?.focus());
+        return () => cancelAnimationFrame(raf);
+    }, [showKeys]);
+
     const choose = (code: string) => {
         onChange(code);
-        setOpen(false);
+        close();
     };
 
     const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -57,7 +72,7 @@ export function VendorPicker({ codes, value, onChange, book, disabled, lockedRea
         else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (at - 1 + keys.length) % keys.length;
         else if (e.key === 'Home') next = 0;
         else if (e.key === 'End') next = keys.length - 1;
-        else if (e.key === 'Escape' && value) { e.preventDefault(); setOpen(false); return; }
+        else if (e.key === 'Escape' && value) { e.preventDefault(); e.stopPropagation(); close(); return; }
         else return;
         e.preventDefault();
         keys[next]?.focus();
@@ -67,6 +82,7 @@ export function VendorPicker({ codes, value, onChange, book, disabled, lockedRea
         return (
             <div className={cx('ui-vendor-chosen', className)}>
                 <button
+                    ref={bigRef}
                     type="button"
                     className="ui-vendor-big"
                     style={swatch(value)}

@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import App from './features/core/App';
 import toast from 'react-hot-toast';
 import { tr } from './lib/i18n';
+import { hasUnsavedWork } from './lib/workGuard';
 
 if (import.meta.env.PROD) {
   console.log = () => { };
@@ -36,11 +37,26 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   navigator.serviceWorker.ready.then((reg) => setInterval(() => reg.update().catch(() => { }), 60 * 60 * 1000));
 }
 
-// A lazy-loaded screen whose chunk no longer exists (the page predates the last
-// deploy) can't render; reloading fetches the current build.
+// A lazy-loaded chunk that no longer exists (the page predates the last
+// deploy): reloading fetches the current build. But not on our own while a
+// screen holds unsaved work (a run, generated content, a filled-in entry, a
+// loaded batch): the failed import surfaces as that step's error, and the
+// toast offers the reload for when the work is saved.
 window.addEventListener('vite:preloadError', (event) => {
-  event.preventDefault();
-  window.location.reload();
+  if (!hasUnsavedWork()) {
+    event.preventDefault();
+    window.location.reload();
+    return;
+  }
+  toast((t) => (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {tr("A new version of Onyx is out and part of this page could not load. Save your work, then reload.")}
+      <button type="button" onClick={() => { toast.dismiss(t.id); window.location.reload(); }}
+        style={{ fontWeight: 800, textDecoration: 'underline' }}>
+        {tr("Reload")}
+      </button>
+    </span>
+  ), { id: 'stale-chunk', duration: Infinity });
 });
 
 const rootNode = document.getElementById('root');

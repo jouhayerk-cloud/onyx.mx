@@ -11,7 +11,7 @@
  * edit through the engine's save by uuid. Edit Entry also shows what is
  * stored, so a bad AI title can be fixed without a trip to the hub.
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { KeyRound, Play, RotateCcw, Sparkles, Square, X } from 'lucide-react';
 import { tr, trf } from '../../lib/i18n';
 import { getCleanImageUrl } from '../../lib/utils';
@@ -90,6 +90,7 @@ export function GeneratePanel({
     const [angle, setAngle] = useState(0);
     const [view, setView] = useState<MediaView>('photo');
     const [keyDraft, setKeyDraft] = useState('');
+    const headId = useId();
 
     const hasStill = photos.some(p => !p.isVideo);
     const hasVideo = photos.some(p => p.isVideo);
@@ -105,9 +106,9 @@ export function GeneratePanel({
 
     if (!aiEnabled) {
         return (
-            <section className="entry-gen" aria-labelledby="entry-gen-h">
+            <section className="entry-gen" aria-labelledby={headId}>
                 <div className="entry-gen__head">
-                    <h3 id="entry-gen-h" className="entry-h">{tr('Generate')}</h3>
+                    <h3 id={headId} className="entry-h">{tr('Generate')}</h3>
                 </div>
                 <p className="entry-note">{tr('AI processes are switched off for Add Entry (AI PROCESSES in the header). The entry saves without generated content.')}</p>
                 <div><Key size="sm" icon={<Sparkles size={13} />} onClick={onEnableAi}>{tr('Switch AI processes on')}</Key></div>
@@ -165,9 +166,9 @@ export function GeneratePanel({
     const pillState = item ? (item.dirty && item.status !== 'running' ? (item.status === 'queued' ? 'review' : item.status) : item.status) : 'queued';
 
     return (
-        <section className="entry-gen" aria-labelledby="entry-gen-h">
+        <section className="entry-gen" aria-labelledby={headId}>
             <div className="entry-gen__head">
-                <h3 id="entry-gen-h" className="entry-h">{tr('Generate')}</h3>
+                <h3 id={headId} className="entry-h">{tr('Generate')}</h3>
                 {generatedAny && <StatusPill state={pillState} />}
                 <span className="ui-grow" />
                 {running

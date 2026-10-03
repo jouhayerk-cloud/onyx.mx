@@ -1,6 +1,5 @@
 
 
-import { ai } from '@/lib/ai';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -39,7 +38,6 @@ import { MediaOriginBadge, MediaOriginNote, mediaOriginOf, mediaOriginTitle } fr
 
 
 
-type DescriptionType = 'short' | 'normal' | 'detailed';
 
 const DetailRow = ({ label, value }: { label: string; value: any }) => {
   if (!value) return null;
@@ -397,8 +395,7 @@ export function DetailsPanel() {
   const [activeTab, setActiveTab] = useState<'description' | 'poster'>('description');
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState<DescriptionType | 'image' | false>(false);
-  const [generatedDesc, setGeneratedDesc] = useState('');
+  const [isGenerating, setIsGenerating] = useState<'image' | false>(false);
 
   const { imageUrl: currentItemImageUrl, isLoading: isImageLoading } = useItemImage(itemData);
 
@@ -425,61 +422,6 @@ export function DetailsPanel() {
       }
     } else {
       setActiveTab(tab as any);
-    }
-  };
-
-  const handleGenerateDescription = async (type: DescriptionType) => {
-    if (!data || !mainImage) return;
-    setIsGenerating(type);
-    setGeneratedDesc('');
-
-    const itemInfo = `Shape: ${data.shape}, Material: ${data.material}, Dimensions: ${data.widthCm}x${data.lengthCm}x${data.heightCm}cm.`;
-    let prompt: string;
-    switch (type) {
-      case 'short':
-        prompt = `Write a short, one-sentence product description for an item with these details: ${itemInfo}.`;
-        break;
-      case 'normal':
-        prompt = `Write 3 to 5 advertisement-style selling bullet points for an item with these details: ${itemInfo}. Each bullet point must be a short, single phrase. Format as a single string, with each bullet point starting with a '*' and separated by a newline. Do not use HTML tags.`;
-        break;
-      case 'detailed':
-        prompt = `Write a detailed product description for an item with these details: ${itemInfo}. Use simple HTML tags like <p>, <ul>, <li>, and <strong> for formatting.`;
-        break;
-    }
-
-    try {
-      const response = await ai.models.generateContentStream({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-
-      for await (const chunk of response) {
-        setGeneratedDesc(prev => prev + chunk.text);
-      }
-    } catch (error: any) {
-      toast.error(`Description generation failed: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const saveDescription = async (type: 'shortDescription' | 'generatedDescription' | 'detailedDescription') => {
-    if (!itemData || !itemRow) return;
-    setIsSaving(true);
-    try {
-      const payload = { [type]: generatedDesc, updated_at: new Date().toISOString() };
-      
-      const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
-      const { error } = await supabase.from(tableName).update(payload).eq('id', String(itemRow));
-      if (error) throw error;
-
-      setItemData(prev => prev ? { ...prev, ...payload } : null);
-      setGeneratedDesc('');
-      toast.success(tr("Description saved!"));
-    } catch (error: any) {
-      toast.error(`Save failed: ${error.message}`);
-    } finally {
-      setIsSaving(false);
     }
   };
 

@@ -26,9 +26,6 @@ export function resolveUserRole(email: string): UserRole {
   return 'Vendor';
 }
 
-export function generateUniqueId(): string {
-  return Array.from({ length: 8 }, () => Math.random().toString(36).charAt(2)).join('').toUpperCase();
-}
 export function toTitleCase(str: string): string {
   if (!str) return '';
   return str.toString()
@@ -116,7 +113,25 @@ export function formatCurrency(amount: number | string, currency: string = 'MXN'
   }).format(value || 0);
 }
 
-import { uploadMedia } from './storage';
+/**
+ * fetch to the Apps Script proxy with a deadline. The proxy can stall and a
+ * browser fetch never times out on its own, which left a run or a save
+ * waiting forever on one upload. The deadline grows with the payload: a
+ * minute, plus a second per 50 KB, capped at ten minutes.
+ */
+async function fetchScriptWithTimeout(init: RequestInit, payloadChars: number): Promise<Response> {
+  const timeoutMs = Math.min(600_000, 60_000 + Math.ceil(payloadChars / 51_200) * 1000);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(SCRIPT_URL, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (controller.signal.aborted) throw new Error(`Drive upload timed out after ${Math.round(timeoutMs / 1000)}s`);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export async function handleFileUpload(file: File, user: any): Promise<{ fileId: string; thumbnailUrl: string; originalFile: File } | null> {
   if (file.type.startsWith('video/')) {
@@ -152,7 +167,7 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
       try {
         console.log(`[Drive] Uploading ${file.name} (${Math.round(file.size / 1024)}KB) using action: uploadMedia...`);
         const base64Data = (reader.result as string).split(',')[1];
-        const response = await fetch(SCRIPT_URL, {
+        const response = await fetchScriptWithTimeout({
           method: 'POST',
           mode: 'cors',
           cache: 'no-cache',
@@ -163,7 +178,7 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
             base64: base64Data,
             user
           }),
-        });
+        }, base64Data.length);
 
 
         if (!response.ok) throw new Error(`Network response error: ${response.status}`);
@@ -208,7 +223,7 @@ export async function handleProcessedFileUpload(base64Data: string, fileName: st
       cleanBase64 += '=';
     }
     
-    const response = await fetch(SCRIPT_URL, {
+    const response = await fetchScriptWithTimeout({
       method: 'POST',
       mode: 'cors',
       cache: 'no-cache',
@@ -220,7 +235,7 @@ export async function handleProcessedFileUpload(base64Data: string, fileName: st
         folderType: 'processed',
         user
       }),
-    });
+    }, cleanBase64.length);
 
     if (!response.ok) throw new Error(`Network response error: ${response.status}`);
 
@@ -2032,12 +2047,17 @@ export const getItemPaddedVolume = (itemData: any, qty: number = 1) => {
   }
   ctx.filter = 'blur(0.5px)'; // Subtle edge softening
 
+  // The geometry above is in the scaled (<= 1600px) frame, the image is at
+  // its natural size: map the source rectangle back to the image's pixels, or
+  // a large photo is cropped to its top-left corner.
+  const toSrcX = image.width / width;
+  const toSrcY = image.height / height;
   ctx.drawImage(
     image,
-    minX, // source x
-    minY, // source y
-    cropWidth, // source width
-    cropHeight, // source height
+    minX * toSrcX, // source x
+    minY * toSrcY, // source y
+    cropWidth * toSrcX, // source width
+    cropHeight * toSrcY, // source height
     0, // target x
     0, // target y
     cropWidth, // target width
@@ -2075,7 +2095,7 @@ export const getItemPaddedVolume = (itemData: any, qty: number = 1) => {
     imgCanvas.width = width;
     imgCanvas.height = height;
     const imgCtx = imgCanvas.getContext('2d')!;
-    imgCtx.drawImage(image, 0, 0);
+    imgCtx.drawImage(image, 0, 0, width, height);
     finalImageSrc = imgCanvas.toDataURL();
   }
 

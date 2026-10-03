@@ -41,7 +41,7 @@ import {
     labelPrinted, loadInventoryRow, normalizeWorkbook, storedBarcodeOf, updateInventoryItem,
     type InventoryInsert, type InventoryRow,
 } from '../../lib/inventoryCreate';
-import { ItemTag, Key, cx } from '../../components/ui';
+import { Dialog, ItemTag, Key, cx } from '../../components/ui';
 import { LivePreviewCard } from '../../components/inventory/LivePreviewCard';
 import {
     EMPTY_ENTRY, entryFromRow, hasTypedContent, isKnownVendor, mediaValues, photosChanged, photosFromRow,
@@ -51,6 +51,7 @@ import { uploadEntryPhotos } from './entryMedia';
 import { EntryForm, type EntryLocks, type EntryNumberState } from './EntryForm';
 import { ENTRY_PROCESSES, GeneratePanel } from './GeneratePanel';
 import './entry.css';
+import { useWorkGuard } from '../../lib/useWorkGuard';
 
 export interface EntryScreenProps {
     /** 'page': inline in Create Item. 'modal': the full-screen overlay. */
@@ -373,6 +374,7 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
     const mediaDirty = isEdit ? photosChanged(baseline.current.photos, photos) : photos.length > 0;
     const aiDirty = !!runItem?.dirty;
     const dirty = formDirty || mediaDirty || aiDirty;
+    useWorkGuard(dirty || runBusy);
 
     // ── draft (new entries only; typed fields, not photos) ──
     const { restored, ready: draftReady, clear: clearDraft } = useFormDraft<EntryState>(
@@ -726,7 +728,7 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
             </div>
 
             {confirm && (
-                <EntryDialog
+                <Dialog
                     title={confirm.kind === 'close'
                         ? (runBusy || preparing ? tr('Generate is running') : tr('Unsaved changes'))
                         : tr('Restore your unsaved entry?')}
@@ -761,51 +763,8 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
                         : <p>{trf('An entry you did not save was found: {what}. Restore it, or discard it and start clean?', {
                             what: [confirm.draft.vendorId, confirm.draft.shape, confirm.draft.type, confirm.draft.material].filter(Boolean).join(' · ') || tr('typed fields'),
                         })}</p>}
-                </EntryDialog>
+                </Dialog>
             )}
-        </div>
-    );
-}
-
-/** An in-page dialog (never a native confirm()). */
-function EntryDialog({ title, children, actions, onCancel }: {
-    title: string;
-    children: React.ReactNode;
-    actions: React.ReactNode;
-    onCancel: () => void;
-}) {
-    const cardRef = useRef<HTMLDivElement>(null);
-    const titleId = useId();
-    const bodyId = useId();
-
-    useEffect(() => {
-        const opener = document.activeElement as HTMLElement | null;
-        const card = cardRef.current;
-        const first = card?.querySelector<HTMLElement>('[data-autofocus]') || card?.querySelector<HTMLElement>('button');
-        first?.focus();
-        return () => { opener?.focus?.(); };
-    }, []);
-
-    const onKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); onCancel(); return; }
-        if (e.key !== 'Tab' || !cardRef.current) return;
-        const nodes = Array.from(cardRef.current.querySelectorAll<HTMLElement>('button:not(:disabled)'));
-        if (!nodes.length) return;
-        const first = nodes[0];
-        const last = nodes[nodes.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-
-    return (
-        <div className="entry-dialog" onKeyDown={onKeyDown}>
-            <div className="entry-dialog__scrim" aria-hidden="true" onClick={onCancel} />
-            <div ref={cardRef} className="entry-dialog__card" role="alertdialog" aria-modal="true"
-                aria-labelledby={titleId} aria-describedby={bodyId} tabIndex={-1}>
-                <h3 id={titleId} className="entry-dialog__title">{title}</h3>
-                <div id={bodyId} className="entry-dialog__body">{children}</div>
-                <div className="entry-dialog__acts">{actions}</div>
-            </div>
         </div>
     );
 }

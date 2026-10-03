@@ -367,66 +367,11 @@
     font: 700 10.5px/1 var(--ui-font-display);
 }
 
-/* ══ In-page dialog ═══════════════════════════════════════════════════════ */
-.entry .entry-dialog {
-    position: absolute;
-    inset: 0;
-    z-index: 20;
-    display: grid;
-    place-items: center;
-    padding: 16px;
-}
-
-.entry .entry-dialog__scrim {
-    position: absolute;
-    inset: 0;
-    background-color: var(--ui-scrim);
-}
-
-.entry .entry-dialog__card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: min(460px, 100%);
-    max-height: 100%;
-    overflow: auto;
-    padding: 16px;
-    border: 1px solid var(--ui-rim);
-    border-radius: var(--ui-r-lg);
-    background-color: var(--ui-ground);
-    box-shadow: var(--ui-pop-shadow);
-}
-
-/* Inline, the screen is taller than the window: the card sticks near the
-   top of the visible part instead of centring on the whole form. */
-.entry--page .entry-dialog {
-    place-items: start center;
-}
-
-.entry--page .entry-dialog__card {
-    position: sticky;
-    top: 96px;
-}
-
-.entry .entry-dialog__title {
-    font: 800 15px/1.25 var(--ui-font-display);
-}
-
-.entry .entry-dialog__body {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    color: var(--ui-dim);
-    line-height: 1.5;
-}
-
-.entry .entry-dialog__acts {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-}
+/* ══ In-page dialog ═══════════════════════════════════════════════════════
+   Inline, the screen is taller than the window: the card sticks near the top
+   of the visible part instead of centring on the whole form. */
+.entry--page .ui-dialog { place-items: start center; }
+.entry--page .ui-dialog__card { position: sticky; top: 96px; }
 
 /* ══ Narrow screens ═══════════════════════════════════════════════════════ */
 @media (max-width: 1020px) {

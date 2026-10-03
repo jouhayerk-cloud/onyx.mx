@@ -225,7 +225,9 @@ async function matteFromCutout(cutoutUrl: string): Promise<string> {
  * The photo is embedded as a PNG, not WebP: Drive's SVG renderer (the lh3
  * link the app displays) and older viewers do not decode WebP inside SVG.
  * It is capped at 1024px so the file stays around a megabyte; the traced path
- * keeps the full-resolution coordinates through the viewBox.
+ * keeps the full-resolution coordinates through the viewBox. It is embedded
+ * once, as xlink:href, which browsers and older viewers all read (writing it
+ * as href too doubled the file).
  */
 async function cutoutSvgDocument(path: string, width: number, height: number, cutoutDataUrl: string): Promise<string> {
     const d = (path || '').trim();
@@ -240,7 +242,7 @@ async function cutoutSvgDocument(path: string, width: number, height: number, cu
         canvas.height = Math.max(1, Math.round(img.height * scale));
         canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
         const href = canvas.toDataURL('image/png');
-        image = `<image href="${href}" xlink:href="${href}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none"/>`;
+        image = `<image xlink:href="${href}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none"/>`;
     } catch {
         // Without the photo the file is still a usable silhouette + outline.
     }
@@ -560,7 +562,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                         cutoutDataUrl,
                         imageWidth: width,
                         imageHeight: height,
-                        sourceImageUrl: imageUrl,
+                        sourceImageUrl: src,
                         method: 'local',
                     },
                 };
@@ -628,7 +630,10 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                     // clutter do.
                     try {
                         logOp(op.id, '[ WAIT ] Cutting out the piece...');
-                        const c = await localCutout(result.cleanedUrl || imageUrl, 80, 10);
+                        // Through getCleanImageUrl: the upload hands back Drive's
+                        // uc?export=view link, which answers without CORS
+                        // headers, so a crossOrigin load of it fails.
+                        const c = await localCutout(getCleanImageUrl(result.cleanedUrl) || imageUrl, 80, 10);
                         await keepCutout(c, false);
                         mark('image_segmentation', 'done');
                         emit();
@@ -720,7 +725,12 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                             cut = {
                                 ...cut,
                                 cutoutDataUrl: pngData || local.cutoutDataUrl,
-                                outlineSvg: svgData || local.outlineSvg,
+                                // The outline file stays the local cutout's
+                                // document (photo + silhouette + outline), the
+                                // same kind of file every other mode stores;
+                                // the layered overlay lives in
+                                // cloudSegmentationMasks.
+                                outlineSvg: local.outlineSvg || svgData || '',
                                 cloudSegmentationMasks: JSON.stringify({ width: img.width, height: img.height, svgData, layers: masks }),
                             };
                             logOp(op.id, '[  OK  ] [HYBRID 4/4] Hybrid pipeline completed successfully!');
@@ -761,7 +771,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
         const hexWanted = explicit ? wants('hex_map') : true;
         if (!isVideo && (hexWanted || needColorHint)) {
             try {
-                const colorSource = result.cleanedUrl || result.cutoutUrl || op.imageUrl || imageUrl;
+                const colorSource = getCleanImageUrl(result.cleanedUrl) || getCleanImageUrl(result.cutoutUrl) || imageUrl;
                 const bitmapRes = await generateBitmapAndHexMap(colorSource, 20, 20, 80, 149, 61, 199, item.material, item.shape, item.vendorColor);
                 // generateBitmapAndHexMap never throws: on a load failure, a
                 // CORS refusal or its timeout it returns an all-#FFFFFF grid,

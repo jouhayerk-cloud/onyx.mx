@@ -69,10 +69,16 @@ export const EMPTY_ENTRY: EntryState = {
 };
 
 /**
- * Vendors offered for a new entry: every vendor, as the old Add Entry wizard
- * offered them. Narrowing this list is the owner's call, not a UI default.
+ * Codes in `vendors` that are not vendors: the admins (Ramses, Martha, Wayne,
+ * Chad) and the logistics suppliers (Simona, Juan). They stay in `vendors` so
+ * existing items keep their tag colour; they are not offered for new entries.
+ * An item already stored under one of them still shows it when edited
+ * (EntryForm adds the current code to the keys).
  */
-export const VENDOR_CODES: readonly string[] = Object.keys(vendors).sort();
+export const NON_VENDOR_CODES: ReadonlySet<string> = new Set(['R', 'M', 'W', 'C', 'SIMONA', 'JUAN']);
+
+/** Vendors offered for a new entry (owner's list: every vendor except the codes above). */
+export const VENDOR_CODES: readonly string[] = Object.keys(vendors).filter(c => !NON_VENDOR_CODES.has(c)).sort();
 
 export const vendorName = (code: string): string =>
     (vendors as Record<string, { name: string }>)[code]?.name ?? code;

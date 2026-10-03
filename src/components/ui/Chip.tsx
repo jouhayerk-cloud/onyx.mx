@@ -94,13 +94,12 @@ export function ProcessChips({ value, onChange, include, unavailable, disabled =
                         <span className="ui-chips__label" aria-hidden="true">{groupLabel}</span>
                         {ids.map(id => {
                             const reason = unavailable?.[id];
-                            const process = CATALOG_PROCESSES.find(p => p.id === id);
                             return (
                                 <Chip
                                     key={id}
                                     pressed={selected.has(id) && !reason}
                                     disabled={disabled || !!reason}
-                                    title={reason ? tr(reason) : process ? tr(process.label) : undefined}
+                                    title={reason ? tr(reason) : tr(PROCESS_META[id].hint)}
                                     onPressedChange={(on) => toggle(id, on)}
                                 >
                                     {tr(PROCESS_META[id].label)}
