@@ -1,6 +1,7 @@
 import { getGeminiKey } from './ai/keys';
 import { AI_MODELS } from './ai/models';
-import { AiKeyMissingError } from './ai/errors';
+import { AiCancelledError, AiError, AiKeyMissingError, AiTimeoutError } from './ai/errors';
+import { withAiSlot } from './ai/limiter';
 import { getFFmpegInstance } from './videoCompressor';
 import { fetchFile } from '@ffmpeg/util';
 
@@ -23,8 +24,10 @@ const processOneClip = async (
     description: string,
     clipIndex: number,
     totalClips: number,
-    onProgress?: (progress: number, label: string) => void
+    onProgress?: (progress: number, label: string) => void,
+    signal?: AbortSignal
 ): Promise<Blob> => {
+    if (signal?.aborted) throw new AiCancelledError();
     const tag = totalClips > 1 ? ` (Clip ${clipIndex + 1}/${totalClips})` : '';
     onProgress?.(10, `Preparing video${tag} for Gemini...`);
 
@@ -53,18 +56,36 @@ const processOneClip = async (
         ]
     };
 
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Interactions API Error: ${res.status} ${errText}`);
-    }
-
-    const responseData = await res.json();
+    // One video request at a time (the limiter's video class), cancelled by
+    // Stop/Cancel through `signal`, and bounded by the video timeout. The
+    // timeout starts once the slot is held, so waiting in line does not count.
+    const timeoutMs = AI_MODELS.video.timeoutMs;
+    const responseData = await withAiSlot('video', async () => {
+        const ctrl = new AbortController();
+        const onAbort = () => ctrl.abort();
+        signal?.addEventListener('abort', onAbort, { once: true });
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: ctrl.signal,
+            });
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`Interactions API Error: ${res.status} ${errText}`);
+            }
+            return await res.json();
+        } catch (err) {
+            if (signal?.aborted) throw new AiCancelledError();
+            if (ctrl.signal.aborted) throw new AiTimeoutError(timeoutMs);
+            throw err;
+        } finally {
+            clearTimeout(timer);
+            signal?.removeEventListener('abort', onAbort);
+        }
+    }, signal);
     onProgress?.(80, `Processing response${tag}...`);
 
     let videoBase64 = '';
@@ -109,14 +130,16 @@ export const processVideoWithGemini = async (
     file: File,
     shape: string,
     description: string,
-    onProgress?: (progress: number, label: string) => void
+    onProgress?: (progress: number, label: string) => void,
+    signal?: AbortSignal
 ): Promise<Blob[]> => {
     try {
+        if (signal?.aborted) throw new AiCancelledError();
         const duration = await getVideoDuration(file);
 
         // ── Short video: send directly ──────────────────────────
         if (duration <= 10) {
-            const blob = await processOneClip(file, shape, description, 0, 1, onProgress);
+            const blob = await processOneClip(file, shape, description, 0, 1, onProgress, signal);
             return [blob];
         }
 
@@ -132,6 +155,7 @@ export const processVideoWithGemini = async (
         const results: Blob[] = [];
 
         for (let i = 0; i < numChunks; i++) {
+            if (signal?.aborted) throw new AiCancelledError();
             const pctBase = Math.round((i / numChunks) * 90);
             onProgress?.(pctBase + 2, `Splitting clip ${i + 1}/${numChunks}...`);
 
@@ -178,10 +202,13 @@ export const processVideoWithGemini = async (
             try {
                 const genBlob = await processOneClip(
                     clipBlob, shape, description, i, numChunks,
-                    (p, l) => onProgress?.(pctBase + 5 + Math.round(p * 0.5), l)
+                    (p, l) => onProgress?.(pctBase + 5 + Math.round(p * 0.5), l),
+                    signal
                 );
                 results.push(genBlob);
             } catch (err: any) {
+                // Stopped, or no key: the next clip would fail the same way.
+                if (err instanceof AiCancelledError || err instanceof AiKeyMissingError) throw err;
                 console.error(`[VideoAI] Gemini failed for clip ${i}:`, err);
                 // Fallback: keep the original clip
                 results.push(clipBlob);
@@ -199,6 +226,9 @@ export const processVideoWithGemini = async (
         return results;
 
     } catch (e: any) {
+        // Typed failures (cancelled, no key, timeout) keep their class, so the
+        // engine can tell a Stop from a failure.
+        if (e instanceof AiError) throw e;
         console.error('Gemini Video Gen Error:', e);
         throw new Error(e.message || 'Failed to generate video with Gemini Omni Flash');
     }

@@ -336,7 +336,11 @@ export async function buildAiPatch(
     if (want('image_segmentation')) {
         const masks = parseMasks(existingRow?.spatial_masks ?? (existingRow as any)?.spatialMasks);
         let masksChanged = false;
-        const heroIndex = Math.min(...result.photos.map(p => p.index));
+        // The hero is the first still (index 0), as the run engine and the
+        // readers define it. Never "the lowest index present": a hand cutout
+        // on photo 2 of an item with no op for photo 1 would then overwrite
+        // the hero's generated_png_url with photo 2's cutout.
+        const heroIndex = 0;
 
         for (const photo of result.photos) {
             const tag = `${rowId}_a${photo.index}`;
@@ -346,14 +350,24 @@ export async function buildAiPatch(
                 || (photo.outlineSvg ? await ensureUploaded(svgDataUrl(photo.outlineSvg), `outline_${tag}.svg`, `Outline ${photo.index + 1}`) : null);
 
             if (cutout || matte || svg) {
+                // A photo re-saved with the same cutout (a second save after
+                // an edit, once the first save's URLs were absorbed) no longer
+                // carries its segmentation, so the stored entry's layers and
+                // dimensions are kept rather than dropped.
+                const prevList = masks[`angle_${photo.index}`];
+                const prev = Array.isArray(prevList) && prevList[0] && typeof prevList[0] === 'object' ? prevList[0] as Record<string, any> : undefined;
+                const same = !!prev && prev.mask === (cutout || matte);
+                const layers = photo.layers?.length ? photo.layers : same && Array.isArray(prev!.layers) && prev!.layers.length ? prev!.layers : undefined;
+                const dims = photo.width && photo.height ? { width: photo.width, height: photo.height }
+                    : same && prev!.width && prev!.height ? { width: prev!.width, height: prev!.height } : undefined;
                 // `mask` stays the cutout image, which is what every existing
                 // angle entry holds and what the readers draw.
                 masks[`angle_${photo.index}`] = [{
                     mask: cutout || matte,
                     ...(matte ? { matte } : {}),
                     ...(svg ? { svg } : {}),
-                    ...(photo.layers?.length ? { layers: photo.layers } : {}),
-                    ...(photo.width && photo.height ? { width: photo.width, height: photo.height } : {}),
+                    ...(layers ? { layers } : {}),
+                    ...(dims || {}),
                 }];
                 masksChanged = true;
             }

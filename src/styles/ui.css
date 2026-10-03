@@ -1,0 +1,1627 @@
+/* ==========================================================================
+   UI KIT — one set of parts for Add Entry, Batch Create and the Catalog Hub
+   --------------------------------------------------------------------------
+   The three AI screens each drew their own keys, chips, wells and status
+   badges (bp-*, cat-*, proc-* and a pile of utilities), so the same control
+   looked and behaved three ways and every theme fix had to land three times.
+   This sheet is the shared kit the redesign builds on: the React parts live
+   in src/components/ui/, and every class here starts with .ui-.
+
+   TWO LAYERS
+
+   1. Tokens (--ui-*), declared on <html> once per style x theme. They are
+      derived from the tokens the app already has — --slab-* and the
+      slab-glass levels under SLAB, the tokens.css palette (--c1..--c6,
+      --text-color, --main-color, --secondary-color) under ROCK — so a theme
+      edit reaches the kit with no second palette. Declared on <html>, not on
+      a wrapper, because the hub and its lightbox are portalled (#batchproc,
+      document.body) and must inherit them wherever they mount.
+
+   2. Components (.ui-*), scoped under .ui-root. Each control walks the same
+      states once: rest, hover, active, on/pressed, disabled, focus-visible.
+
+   WHY .ui-root IS EXEMPT FROM THE LEGACY RULES
+
+   slab.css, slab-glass.css and index.css style bare elements — every button
+   gets a bevel and a forced glass fill, every input a pill or a pressed
+   well, every bg-white/* utility a flat slab — mostly with !important. A kit
+   that fought those with more !important would start a war nobody wins.
+   Instead those rules carry a zero-specificity guard,
+   :not(:where(.ui-root, .ui-root *)), so they stop at the kit's edge and
+   change nothing anywhere else. A new legacy rule that styles a bare element
+   needs the same guard.
+
+   COLOUR RULES
+
+   · Status colours (ok, warn, bad, run) are data, not chrome: same hue on
+     both grounds, lightness moved so each clears 4.5:1 as small text on its
+     own ground AND on its own 12% pill tint. Measured on the tint: Talan
+     5.3-8.3:1, Aqua 5.8-7.3:1, SLAB and ROCK alike. Faint ink clears 5.2:1
+     on the ground in all four.
+   · Aqua's accent (#00bcd4) is 1.9:1 on the light slab and cannot carry
+     small text or a focus ring. --ui-accent is fill and border only;
+     --ui-accent-text is the accent pulled toward the ink until it reads
+     (5.9:1), and is what text, focus and the selected-tab rule use.
+   · Vendor colours and generated swatches are printed standards and are
+     painted exactly as given.
+
+   Only backdrop-filter, never the -webkit- prefix: Lightning CSS drops the
+   unprefixed declaration when both are present.
+   ========================================================================== */
+
+/* ── Tokens · ROCK (and the fallback for any unknown style) ───────────────
+   Dark ground. ROCK is layered glass, so surfaces are translucent over a
+   blur and depth is a glow, not a bevel. */
+html {
+    --ui-ground:      var(--app-bg-solid, #0a0a0f);
+    --ui-surface:     color-mix(in srgb, var(--app-bg-solid, #0a0a0f) 72%, transparent);
+    --ui-bar:         color-mix(in srgb, var(--app-bg-solid, #0a0a0f) 60%, transparent);
+    --ui-raise:       color-mix(in srgb, var(--text-color, #f0f0f0) 7%, transparent);
+    --ui-hover:       color-mix(in srgb, var(--text-color, #f0f0f0) 12%, transparent);
+    --ui-on:          color-mix(in srgb, var(--main-color, #7fbbff) 20%, transparent);
+    --ui-well:        color-mix(in srgb, #000 34%, transparent);
+    --ui-row-hover:   color-mix(in srgb, var(--text-color, #f0f0f0) 5%, transparent);
+
+    --ui-ink:         var(--text-color, #f0f0f0);
+    --ui-dim:         color-mix(in srgb, var(--text-color, #f0f0f0) 34%, var(--secondary-text-color, #a0a0a0));
+    --ui-faint:       var(--secondary-text-color, #a0a0a0);
+    --ui-edge:        color-mix(in srgb, var(--text-color, #f0f0f0) 11%, transparent);
+    --ui-edge-hi:     color-mix(in srgb, var(--text-color, #f0f0f0) 26%, transparent);
+    --ui-rim:         color-mix(in srgb, var(--text-color, #f0f0f0) 16%, transparent);
+
+    --ui-accent:      var(--main-color, #7fbbff);
+    --ui-accent-text: var(--main-color, #7fbbff);
+    /* Text on a solid accent fill. Near-black clears 7:1 on both accents;
+       white clears neither. */
+    --ui-accent-ink:  #0b0908;
+    --ui-gold:        var(--secondary-color, #c9a227);
+    --ui-focus:       var(--ui-accent-text);
+
+    --ui-ok:          #6fcf97;
+    --ui-warn:        #f2b84b;
+    --ui-bad:         #f07178;
+    --ui-run:         #7cc4f8;
+    --ui-bad-ink:     #0b0908;
+
+    --ui-lift:        0 1px 2px rgb(0 0 0 / 0.28);
+    --ui-raised:      0 6px 18px -6px color-mix(in srgb, var(--main-color, #7fbbff) 40%, transparent);
+    --ui-pressed:     inset 0 1px 3px rgb(0 0 0 / 0.40);
+    --ui-pressed-deep: inset 0 2px 5px rgb(0 0 0 / 0.50);
+    --ui-sheen:       none;
+    --ui-sheen-on:    none;
+    --ui-pop-shadow:  0 24px 60px -24px rgb(0 0 0 / 0.65);
+
+    --ui-blur:        blur(24px) saturate(1.5);
+    --ui-blur-bar:    blur(36px) saturate(1.7);
+    --ui-scrim:       rgb(0 0 0 / 0.62);
+
+    /* The transparency grid behind a cut-out PNG. Fixed light greys in every
+       theme: it is a convention (the one every image editor uses), and a
+       checker in the theme's colours would tint the cut-out's edges. */
+    --ui-checker-a:   #ffffff;
+    --ui-checker-b:   #d9d9d9;
+
+    --ui-r-sm:        6px;
+    --ui-r-md:        8px;
+    --ui-r-lg:        12px;
+    --ui-r-pill:      999px;
+    --ui-ease:        0.16s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --ui-font-body:    var(--font-body, system-ui, sans-serif);
+    --ui-font-display: var(--font-display, system-ui, sans-serif);
+    --ui-font-mono:    var(--font-mono, ui-monospace, monospace);
+}
+
+/* ROCK · Talan: the warm dark stone from tokens.css. */
+html.theme-talan {
+    --ui-ground:      var(--c1);
+    --ui-surface:     color-mix(in srgb, var(--c2) 74%, transparent);
+    --ui-bar:         color-mix(in srgb, var(--c3) 62%, transparent);
+    --ui-well:        color-mix(in srgb, var(--c1) 70%, transparent);
+    --ui-ink:         var(--text-color);
+    --ui-dim:         color-mix(in srgb, var(--text-color) 34%, var(--secondary-text-color));
+    --ui-faint:       var(--secondary-text-color);
+}
+
+/* ROCK · Aqua: light ground. Ink instead of chalk, and the light-ground
+   status set, darkened until it reads on the pale stone. */
+html.theme-aqua {
+    --ui-ground:      var(--c1);
+    --ui-surface:     color-mix(in srgb, var(--c6) 70%, transparent);
+    --ui-bar:         color-mix(in srgb, var(--c1) 62%, transparent);
+    --ui-raise:       color-mix(in srgb, var(--c6) 55%, transparent);
+    --ui-hover:       color-mix(in srgb, var(--c4) 70%, transparent);
+    --ui-well:        color-mix(in srgb, var(--c3) 80%, transparent);
+    --ui-row-hover:   color-mix(in srgb, var(--text-color) 4%, transparent);
+    --ui-ink:         var(--text-color);
+    --ui-dim:         var(--secondary-text-color);
+    --ui-faint:       color-mix(in srgb, var(--secondary-text-color) 88%, var(--c1));
+    --ui-edge:        color-mix(in srgb, var(--text-color) 13%, transparent);
+    --ui-edge-hi:     color-mix(in srgb, var(--text-color) 34%, transparent);
+    --ui-rim:         color-mix(in srgb, var(--c6) 80%, transparent);
+    --ui-accent-text: color-mix(in srgb, var(--main-color) 45%, var(--text-color));
+    --ui-gold:        color-mix(in srgb, var(--secondary-color) 55%, var(--text-color));
+
+    --ui-ok:          #17583a;
+    --ui-warn:        #6b4000;
+    --ui-bad:         #8f1a23;
+    --ui-run:         #024c74;
+    --ui-bad-ink:     #ffffff;
+
+    --ui-lift:        0 1px 2px rgb(20 40 38 / 0.14);
+    --ui-raised:      0 6px 16px -8px rgb(20 40 38 / 0.35);
+    --ui-pressed:     inset 0 1px 3px rgb(20 40 38 / 0.22);
+    --ui-pressed-deep: inset 0 2px 5px rgb(20 40 38 / 0.30);
+    --ui-pop-shadow:  0 24px 60px -28px rgb(40 60 58 / 0.45);
+}
+
+/* ── Tokens · SLAB ────────────────────────────────────────────────────────
+   Surfaces read the slab-glass levels (with the opaque slab as fallback, so
+   reverting slab-glass.css leaves the kit solid rather than unpainted), and
+   the state walk reads the slab elevation scale, so a kit key and a legacy
+   key press the same way. */
+html.style-slab {
+    --ui-ground:      var(--slab);
+    --ui-surface:     var(--slab-glass, var(--slab));
+    --ui-bar:         var(--slab-glass-hi, var(--slab));
+    --ui-raise:       var(--slab-glass-lo, var(--slab));
+    --ui-hover:       var(--slab-glass-hover, var(--slab-tint-hover));
+    --ui-on:          var(--slab-glass-on, var(--slab-tint-on));
+    --ui-well:        var(--slab-glass-well, var(--slab));
+    --ui-row-hover:   var(--slab-glass-row-hover, var(--slab-tint-hover));
+
+    --ui-ink:         var(--slab-ink);
+    --ui-dim:         var(--slab-dim);
+    --ui-faint:       color-mix(in srgb, var(--slab-ink) 58%, var(--slab));
+    --ui-edge:        var(--slab-edge);
+    --ui-edge-hi:     color-mix(in srgb, var(--slab-ink) 32%, transparent);
+    --ui-rim:         var(--slab-glass-rim, var(--slab-edge));
+
+    --ui-accent:      var(--main-color);
+    --ui-accent-text: var(--main-color);
+
+    --ui-lift:        var(--slab-lift);
+    --ui-raised:      var(--slab-raised);
+    --ui-pressed:     var(--slab-pressed);
+    --ui-pressed-deep: var(--slab-pressed-deep);
+    --ui-sheen:       var(--slab-sheen);
+    --ui-sheen-on:    var(--slab-sheen-on);
+    --ui-pop-shadow:  var(--slab-float);
+
+    --ui-blur:        blur(30px) saturate(1.8);
+    --ui-blur-bar:    blur(42px) saturate(1.9);
+
+    --ui-r-sm:        var(--slab-r-sm);
+    --ui-r-md:        var(--slab-r-md);
+    --ui-r-lg:        var(--slab-r-lg);
+    --ui-ease:        var(--slab-ease);
+}
+
+html.style-slab.theme-talan {
+    --ui-faint:       color-mix(in srgb, var(--slab-ink) 55%, var(--slab));
+    --ui-edge-hi:     color-mix(in srgb, var(--slab-ink) 30%, transparent);
+    --ui-gold:        var(--secondary-color);
+}
+
+/* SLAB · Aqua sits on a darker mid-tone than ROCK's cream, so the faint ink
+   and the status set need the extra weight measured in the header. */
+html.style-slab.theme-aqua {
+    --ui-faint:       color-mix(in srgb, var(--slab-ink) 66%, var(--slab));
+    --ui-edge-hi:     color-mix(in srgb, var(--slab-ink) 40%, transparent);
+    --ui-accent-text: color-mix(in srgb, var(--main-color) 45%, var(--slab-ink));
+    --ui-gold:        color-mix(in srgb, var(--secondary-color) 55%, var(--slab-ink));
+}
+
+/* Glass is hard to read for whoever asked for less of it: every kit surface
+   goes solid and nothing blurs. The slab-glass levels already fall back to
+   the opaque slab under the same query; ROCK needs it said here. */
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    /* :not(.style-slab) matches the theme blocks' specificity and wins on
+       order, without reaching into SLAB, whose levels already went solid. */
+    html:not(.style-slab) {
+        --ui-surface: var(--ui-ground);
+        --ui-bar:     var(--ui-ground);
+    }
+    html.theme-talan:not(.style-slab) { --ui-well: var(--c2); }
+    html.theme-aqua:not(.style-slab)  { --ui-well: var(--c3); --ui-raise: var(--c6); }
+    html,
+    html.style-slab {
+        --ui-blur:     none;
+        --ui-blur-bar: none;
+    }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+    /* No blur (older Firefox): translucency alone is a washed-out panel. */
+    html:not(.style-slab) {
+        --ui-surface: var(--ui-ground);
+        --ui-bar:     var(--ui-ground);
+    }
+}
+
+/* ══ Root ═════════════════════════════════════════════════════════════════ */
+.ui-root {
+    color: var(--ui-ink);
+    font: 400 13px/1.4 var(--ui-font-body);
+    /* ROCK puts a soft shadow under all body text (--text-shadow); at 10-11px
+       in dense rows it smears the letterforms. */
+    text-shadow: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+.ui-root *,
+.ui-root *::before,
+.ui-root *::after {
+    box-sizing: border-box;
+}
+
+.ui-root :where(h1, h2, h3, h4, p) {
+    margin: 0;
+}
+
+.ui-root .ui-tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
+
+.ui-root .ui-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* One focus ring for every part: a solid outline, never a shadow change. */
+.ui-root :where(.ui-key, .ui-chip, .ui-seg__opt, .ui-ftab, .ui-vtab, .ui-row, .ui-thumb--button, .ui-color__x, .ui-lightbox__stage, .ui-viewer__stage--button, .ui-row__check):focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: 2px;
+}
+
+/* Rows sit in a scroll container that would clip an outside ring. */
+.ui-root .ui-row:focus-visible {
+    outline-offset: -2px;
+    border-radius: 0;
+}
+
+/* The segmented track clips its options (overflow: hidden), so their ring
+   is drawn inside the option instead of being cut away. */
+.ui-root .ui-seg__opt:focus-visible {
+    outline-offset: -2px;
+}
+
+.ui-root :where(.ui-input):focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: 1px;
+}
+
+/* ── Surfaces ─────────────────────────────────────────────────────────────
+   For screens built on the kit: a panel and a bar. Both glass, the bar with
+   the wider blur because it sits over scrolling rows. */
+.ui-root .ui-panel {
+    background-color: var(--ui-surface);
+    backdrop-filter: var(--ui-blur);
+    border: 1px solid var(--ui-rim);
+    border-radius: var(--ui-r-lg);
+}
+
+.ui-root .ui-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 10px 12px;
+    background-color: var(--ui-bar);
+    backdrop-filter: var(--ui-blur-bar);
+    border-bottom: 1px solid var(--ui-edge);
+}
+
+.ui-root .ui-grow { flex: 1 1 auto; }
+
+/* ══ Key ══════════════════════════════════════════════════════════════════
+   rest → lift, hover → raised, active → pressed, pressed/ON → pressed +
+   accent, disabled → flat. The hairline border stays in every state so the
+   key keeps an edge without its shadow; the label is what identifies a key
+   (the hairline is under 3:1), so an unlabelled control needs a stronger
+   edge of its own, as the row's tick box has. */
+.ui-root .ui-key {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 28px;
+    min-width: 0;
+    padding: 0 11px;
+    margin: 0;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-sm);
+    background-color: var(--ui-raise);
+    background-image: var(--ui-sheen);
+    box-shadow: var(--ui-lift);
+    color: var(--ui-ink);
+    font: 700 11px/1 var(--ui-font-display);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--ui-ease), border-color var(--ui-ease),
+                box-shadow var(--ui-ease), color var(--ui-ease), transform var(--ui-ease);
+}
+
+.ui-root .ui-key svg { flex: none; }
+
+.ui-root .ui-key--sm { height: 24px; padding: 0 8px; font-size: 10px; gap: 5px; }
+.ui-root .ui-key--lg { height: 34px; padding: 0 14px; font-size: 12px; }
+.ui-root .ui-key--icon { padding: 0; width: 28px; }
+.ui-root .ui-key--icon.ui-key--sm { width: 24px; }
+.ui-root .ui-key--icon.ui-key--lg { width: 34px; }
+
+.ui-root .ui-key:not(:disabled, [aria-disabled="true"]):hover {
+    background-color: var(--ui-hover);
+    border-color: var(--ui-accent);
+    box-shadow: var(--ui-raised);
+}
+
+.ui-root .ui-key:not(:disabled, [aria-disabled="true"]):active {
+    box-shadow: var(--ui-pressed);
+    transform: translateY(1px);
+}
+
+.ui-root .ui-key[aria-pressed="true"] {
+    background-color: var(--ui-on);
+    background-image: var(--ui-sheen-on);
+    border-color: var(--ui-accent);
+    box-shadow: var(--ui-pressed);
+}
+
+.ui-root .ui-key[aria-pressed="true"]:not(:disabled):hover {
+    box-shadow: var(--ui-pressed-deep);
+}
+
+/* GO: the one primary action on a surface. Solid accent, dark ink. */
+.ui-root .ui-key--go {
+    background-color: var(--ui-accent);
+    background-image: none;
+    border-color: transparent;
+    color: var(--ui-accent-ink);
+}
+
+.ui-root .ui-key--go:not(:disabled, [aria-disabled="true"]):hover {
+    background-color: color-mix(in srgb, var(--ui-accent) 86%, var(--ui-ink));
+    border-color: transparent;
+}
+
+/* STOP: outlined in the bad colour, so it reads as "halt" without shouting. */
+.ui-root .ui-key--stop {
+    color: var(--ui-bad);
+    border-color: color-mix(in srgb, var(--ui-bad) 55%, transparent);
+}
+
+.ui-root .ui-key--stop:not(:disabled, [aria-disabled="true"]):hover {
+    background-color: color-mix(in srgb, var(--ui-bad) 12%, transparent);
+    border-color: var(--ui-bad);
+}
+
+/* DANGER: destructive and final (delete, discard). Solid bad fill. */
+.ui-root .ui-key--danger {
+    background-color: var(--ui-bad);
+    background-image: none;
+    border-color: transparent;
+    color: var(--ui-bad-ink);
+}
+
+.ui-root .ui-key--danger:not(:disabled, [aria-disabled="true"]):hover {
+    background-color: color-mix(in srgb, var(--ui-bad) 84%, var(--ui-ink));
+    border-color: transparent;
+}
+
+/* QUIET: secondary actions inside a busy bar. No fill, no lift at rest. */
+.ui-root .ui-key--quiet {
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+}
+
+.ui-root .ui-key:disabled,
+.ui-root .ui-key[aria-disabled="true"] {
+    box-shadow: none;
+    background-image: none;
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* BUSY keeps its colour (it is still the thing that is happening) but stops
+   taking clicks; the spinner replaces the icon. */
+.ui-root .ui-key[aria-busy="true"] {
+    cursor: progress;
+    opacity: 1;
+}
+
+.ui-root .ui-spin {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: ui-spin 0.8s linear infinite;
+}
+
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* ══ Chips ════════════════════════════════════════════════════════════════
+   Toggles. Flat at rest (they sit in dense rows, and slab rule 2 keeps
+   relief off data), pressed and lit when ON. The dot carries the state for
+   anyone who cannot see the tint. */
+.ui-root .ui-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.ui-root .ui-chips__set {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+}
+
+.ui-root .ui-chips__label {
+    color: var(--ui-faint);
+    font: 700 10px/1 var(--ui-font-display);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-right: 2px;
+}
+
+.ui-root .ui-chip {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 9px;
+    margin: 0;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-pill);
+    background-color: transparent;
+    color: var(--ui-dim);
+    font: 700 10.5px/1 var(--ui-font-display);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--ui-ease), border-color var(--ui-ease),
+                box-shadow var(--ui-ease), color var(--ui-ease);
+}
+
+.ui-root .ui-chip:not(:disabled):hover {
+    background-color: var(--ui-hover);
+    border-color: var(--ui-accent);
+    color: var(--ui-ink);
+}
+
+.ui-root .ui-chip:not(:disabled):active {
+    box-shadow: var(--ui-pressed);
+}
+
+.ui-root .ui-chip[aria-pressed="true"] {
+    background-color: color-mix(in srgb, var(--ui-accent) 20%, transparent);
+    border-color: var(--ui-accent);
+    color: var(--ui-ink);
+    box-shadow: var(--ui-pressed);
+}
+
+.ui-root .ui-chip[aria-pressed="true"]::before {
+    content: "";
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ui-accent-text);
+}
+
+.ui-root .ui-chip:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ══ Segmented ════════════════════════════════════════════════════════════ */
+.ui-root .ui-seg {
+    display: inline-flex;
+    height: 28px;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-sm);
+    background-color: var(--ui-well);
+    overflow: hidden;
+}
+
+.ui-root .ui-seg--sm { height: 24px; }
+
+.ui-root .ui-seg__opt {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ui-dim);
+    font: 700 10.5px/1 var(--ui-font-display);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--ui-ease), color var(--ui-ease), box-shadow var(--ui-ease);
+}
+
+.ui-root .ui-seg__opt + .ui-seg__opt { border-left: 1px solid var(--ui-edge); }
+
+.ui-root .ui-seg__opt:not(:disabled):hover {
+    background-color: var(--ui-hover);
+    color: var(--ui-ink);
+}
+
+.ui-root .ui-seg__opt[aria-checked="true"] {
+    background-color: var(--ui-raise);
+    color: var(--ui-ink);
+    box-shadow: inset 0 -2px 0 var(--ui-accent-text);
+}
+
+.ui-root .ui-seg__opt:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ══ Field ════════════════════════════════════════════════════════════════
+   Inputs are wells: pressed into the surface, never raised. */
+.ui-root .ui-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.ui-root .ui-field__label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--ui-faint);
+    font: 700 9.5px/1.2 var(--ui-font-display);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.ui-root .ui-field__aside {
+    letter-spacing: 0.04em;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-root .ui-field__aside--ok { color: var(--ui-ok); }
+.ui-root .ui-field__aside--warn { color: var(--ui-warn); }
+.ui-root .ui-field__aside--bad { color: var(--ui-bad); }
+
+.ui-root .ui-field__hint {
+    color: var(--ui-faint);
+    font-size: 11px;
+}
+
+.ui-root .ui-field__error {
+    color: var(--ui-bad);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.ui-root .ui-input {
+    appearance: none;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 30px;
+    margin: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-sm);
+    background-color: var(--ui-well);
+    box-shadow: var(--ui-pressed);
+    color: var(--ui-ink);
+    font: 700 12.5px/1.35 var(--ui-font-body);
+    transition: border-color var(--ui-ease), background-color var(--ui-ease);
+}
+
+.ui-root .ui-input::placeholder {
+    color: var(--ui-faint);
+    opacity: 1;
+    font-weight: 400;
+}
+
+.ui-root .ui-input:not(:disabled):hover { border-color: var(--ui-edge-hi); }
+.ui-root .ui-input:focus { border-color: var(--ui-accent); }
+.ui-root .ui-input[aria-invalid="true"] { border-color: var(--ui-bad); }
+.ui-root .ui-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.ui-root .ui-input[readonly] { box-shadow: none; }
+
+.ui-root textarea.ui-input {
+    resize: vertical;
+    min-height: 64px;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+.ui-root .ui-input--mono {
+    font: 400 12px/1.5 var(--ui-font-mono);
+}
+
+/* The native arrow is gone with appearance:none; draw one in the ink. */
+.ui-root select.ui-input {
+    padding-right: 26px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ui-dim) 50%),
+                      linear-gradient(135deg, var(--ui-dim) 50%, transparent 50%);
+    background-position: right 12px top 50%, right 8px top 50%;
+    background-size: 4px 4px, 4px 4px;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+.ui-root select.ui-input option {
+    background-color: var(--ui-ground);
+    color: var(--ui-ink);
+}
+
+/* ══ Item tag ═════════════════════════════════════════════════════════════
+   Vendor + book on the vendor's own colour (a printed standard, painted as
+   given), then the item number and the landed code. */
+.ui-root .ui-tag {
+    display: inline-flex;
+    align-items: stretch;
+    max-width: 100%;
+    border-radius: var(--ui-r-sm);
+    overflow: hidden;
+    font: 800 11px/1 var(--ui-font-display);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-root .ui-tag > span { padding: 4px 5px; }
+
+.ui-root .ui-tag__v {
+    background-color: var(--ui-tag-bg, #555);
+    color: var(--ui-tag-ink, #fff);
+}
+
+.ui-root .ui-tag__n {
+    background-color: var(--ui-raise);
+    color: var(--ui-ink);
+    border: 1px solid var(--ui-edge);
+    border-left: 0;
+    border-radius: 0 var(--ui-r-sm) var(--ui-r-sm) 0;
+}
+
+.ui-root .ui-tag__c { color: var(--ui-gold); margin-left: 3px; }
+.ui-root .ui-tag__c--none { color: var(--ui-faint); letter-spacing: 0.08em; }
+
+.ui-root .ui-tag--lg { font-size: 13px; }
+.ui-root .ui-tag--lg > span { padding: 5px 7px; }
+
+/* ══ Status pill ══════════════════════════════════════════════════════════ */
+.ui-root .ui-pill {
+    --ui-pill-c: var(--ui-faint);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 7px;
+    border: 1px solid transparent;
+    border-radius: var(--ui-r-sm);
+    background-color: color-mix(in srgb, var(--ui-pill-c) 12%, transparent);
+    color: var(--ui-pill-c);
+    font: 800 9.5px/1 var(--ui-font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.ui-root .ui-pill[data-state="running"] { --ui-pill-c: var(--ui-run); }
+.ui-root .ui-pill[data-state="done"],
+.ui-root .ui-pill[data-state="saved"] { --ui-pill-c: var(--ui-ok); }
+.ui-root .ui-pill[data-state="partial"],
+.ui-root .ui-pill[data-state="review"] { --ui-pill-c: var(--ui-warn); }
+.ui-root .ui-pill[data-state="failed"] { --ui-pill-c: var(--ui-bad); }
+.ui-root .ui-pill[data-state="queued"],
+.ui-root .ui-pill[data-state="skipped"] {
+    background-color: transparent;
+    border: 1px dashed var(--ui-edge-hi);
+}
+
+.ui-root .ui-pill[data-state="running"]::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: ui-pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes ui-pulse-dot { 50% { opacity: 0.25; } }
+
+/* ══ Steps strip ══════════════════════════════════════════════════════════
+   One square per process. The fill carries the state; the letter says which
+   process; the tooltip and the hidden text say both in words. */
+.ui-root .ui-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ui-root .ui-step {
+    display: grid;
+    place-items: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 3px;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-sm);
+    color: var(--ui-ink);
+    font: 800 8.5px/1 var(--ui-font-display);
+    letter-spacing: 0.02em;
+    cursor: default;
+}
+
+.ui-root .ui-steps--lg .ui-step { min-width: 24px; height: 24px; font-size: 10px; }
+
+.ui-root .ui-step[data-state="done"] {
+    background-color: color-mix(in srgb, var(--ui-ok) 28%, transparent);
+    border-color: color-mix(in srgb, var(--ui-ok) 65%, transparent);
+}
+
+.ui-root .ui-step[data-state="partial"] {
+    background-color: color-mix(in srgb, var(--ui-warn) 26%, transparent);
+    border-color: color-mix(in srgb, var(--ui-warn) 65%, transparent);
+}
+
+.ui-root .ui-step[data-state="failed"] {
+    background-color: color-mix(in srgb, var(--ui-bad) 26%, transparent);
+    border-color: var(--ui-bad);
+}
+
+/* Not by hue alone (red-green colour blindness): partial is hatched, as in
+   the run bar, and failed has a double-weight edge. */
+.ui-root .ui-step[data-state="partial"] {
+    background-image: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--ui-warn) 45%, transparent) 3px 5px);
+}
+
+.ui-root .ui-step[data-state="failed"] {
+    box-shadow: inset 0 0 0 1px var(--ui-bad);
+}
+
+.ui-root .ui-step[data-state="running"] {
+    border-color: var(--ui-run);
+    color: var(--ui-run);
+    animation: ui-pulse 1.2s ease-in-out infinite;
+}
+
+.ui-root .ui-step[data-state="queued"] { color: var(--ui-faint); }
+
+/* Skipped: not ticked, so not run and not written. Dashed and faint, so it
+   never reads as a failure. */
+.ui-root .ui-step[data-state="skipped"] {
+    color: var(--ui-faint);
+    border-style: dashed;
+    border-color: var(--ui-edge);
+}
+
+@keyframes ui-pulse { 50% { background-color: color-mix(in srgb, var(--ui-run) 25%, transparent); } }
+
+/* ══ Thumbs ═══════════════════════════════════════════════════════════════
+   Small media squares. A PNG sits on the transparency grid and a mask on
+   black — the same grounds the viewer uses — so what was generated is
+   visible at row size, not only in the drawer. */
+.ui-root .ui-thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    min-width: 0;
+}
+
+.ui-root .ui-thumb {
+    position: relative;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-sm);
+    overflow: hidden;
+    background-color: var(--ui-well);
+}
+
+.ui-root .ui-thumb--lg { width: 44px; height: 44px; }
+.ui-root .ui-thumb--xl { width: 58px; height: 58px; }
+
+.ui-root .ui-thumb > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ui-root .ui-thumb--png > img,
+.ui-root .ui-thumb--cutout > img,
+.ui-root .ui-thumb--mask > img,
+.ui-root .ui-thumb--svg > img,
+.ui-root .ui-thumb--axo > img { object-fit: contain; }
+
+.ui-root .ui-thumb--button { cursor: pointer; }
+.ui-root .ui-thumb--button:hover { border-color: var(--ui-accent); }
+
+/* A ring drawn with box-shadow, not outline, so a focused current thumb
+   still shows the focus ring on top of it. --ui-accent-text: the bare Aqua
+   cyan is under 3:1 on the light grounds. */
+.ui-root .ui-thumb[aria-pressed="true"],
+.ui-root .ui-thumb[aria-current="true"] {
+    box-shadow: 0 0 0 1px var(--ui-ground), 0 0 0 3px var(--ui-accent-text);
+}
+
+.ui-root .ui-thumb__badge {
+    position: absolute;
+    right: 1px;
+    bottom: 1px;
+    padding: 2px 3px;
+    border-radius: 3px;
+    background: rgb(0 0 0 / 0.68);
+    color: #fff;
+    font: 800 7.5px/1 var(--ui-font-display);
+    letter-spacing: 0.04em;
+    pointer-events: none;
+}
+
+/* The two grounds, shared by thumbs, the viewer and the lightbox. Compound
+   selectors, so they outrank each frame's own well colour wherever the
+   frame's rule sits in this file. */
+.ui-root :is(.ui-thumb, .ui-viewer__stage, .ui-lightbox__stage).ui-checker {
+    background-color: var(--ui-checker-a);
+    background-image:
+        linear-gradient(45deg, var(--ui-checker-b) 25%, transparent 25%, transparent 75%, var(--ui-checker-b) 75%),
+        linear-gradient(45deg, var(--ui-checker-b) 25%, transparent 25%, transparent 75%, var(--ui-checker-b) 75%);
+    background-size: var(--ui-checker-size, 8px) var(--ui-checker-size, 8px);
+    background-position: 0 0, calc(var(--ui-checker-size, 8px) / 2) calc(var(--ui-checker-size, 8px) / 2);
+}
+
+.ui-root :is(.ui-thumb, .ui-viewer__stage, .ui-lightbox__stage).ui-black { background-color: #000; }
+
+/* ══ Media viewer ═════════════════════════════════════════════════════════ */
+.ui-root .ui-viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ui-root .ui-vtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.ui-root .ui-vtab {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 8px;
+    margin: 0;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-sm);
+    background: transparent;
+    color: var(--ui-dim);
+    font: 800 9.5px/1 var(--ui-font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color var(--ui-ease), border-color var(--ui-ease), color var(--ui-ease);
+}
+
+.ui-root .ui-vtab:not(:disabled):hover {
+    background-color: var(--ui-hover);
+    color: var(--ui-ink);
+}
+
+.ui-root .ui-vtab[aria-selected="true"] {
+    background-color: var(--ui-raise);
+    border-color: var(--ui-accent-text);
+    color: var(--ui-ink);
+    box-shadow: var(--ui-pressed);
+}
+
+.ui-root .ui-vtab:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.ui-root .ui-vtab__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ui-ok);
+}
+
+.ui-root .ui-viewer__stage {
+    --ui-checker-size: 16px;
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: var(--ui-viewer-aspect, 4 / 3);
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-md);
+    overflow: hidden;
+    background-color: var(--ui-well);
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+}
+
+.ui-root .ui-viewer__stage--button { cursor: zoom-in; }
+
+.ui-root .ui-viewer__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.ui-root .ui-viewer__meta,
+.ui-root .ui-lightbox__meta {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    max-width: calc(100% - 16px);
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: rgb(0 0 0 / 0.66);
+    color: #fff;
+    font: 500 10px/1.2 var(--ui-font-mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.ui-root .ui-viewer__empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 12px;
+    color: var(--ui-faint);
+    font: 700 11px/1.3 var(--ui-font-display);
+    letter-spacing: 0.06em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.ui-root .ui-viewer__zoomhint {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: rgb(0 0 0 / 0.55);
+    color: #fff;
+    opacity: 0;
+    transition: opacity var(--ui-ease);
+    pointer-events: none;
+}
+
+.ui-root .ui-viewer__stage--button:hover .ui-viewer__zoomhint,
+.ui-root .ui-viewer__stage--button:focus-visible .ui-viewer__zoomhint { opacity: 1; }
+
+.ui-root .ui-angles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+/* ══ Lightbox ═════════════════════════════════════════════════════════════
+   Portalled to <body>, so it carries .ui-root itself. Above #batchproc
+   (z-index 1000). */
+.ui-root.ui-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    /* Below the notch on a phone, like every other full-screen layer. */
+    padding-top: var(--sa-top, 0px);
+    background-color: var(--ui-scrim);
+    backdrop-filter: blur(10px) saturate(0.9);
+}
+
+/* Opaque, not glass: it sits on the dark scrim, where a translucent bar
+   would put Aqua's dark ink on near-black. */
+.ui-root .ui-lightbox__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    background-color: var(--ui-ground);
+    border-bottom: 1px solid var(--ui-edge);
+}
+
+.ui-root .ui-lightbox__title {
+    margin-right: auto;
+    font: 800 12px/1.2 var(--ui-font-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ui-root .ui-lightbox__zoom {
+    min-width: 48px;
+    text-align: center;
+    color: var(--ui-dim);
+    font: 700 11px/1 var(--ui-font-mono);
+}
+
+.ui-root .ui-lightbox__stage {
+    --ui-checker-size: 24px;
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 12px;
+    border-radius: var(--ui-r-md);
+    overflow: auto;
+    overscroll-behavior: contain;
+    /* Flex + auto margins, not grid centring: a centred grid item that
+       outgrows the stage spills past its top-left edge, where no scrollbar
+       can reach it. */
+    display: flex;
+}
+
+.ui-root .ui-lightbox__img {
+    display: block;
+    flex: none;
+    margin: auto;
+    max-width: none;
+}
+
+.ui-root .ui-lightbox__meta {
+    left: 20px;
+    bottom: 20px;
+}
+
+.ui-root .ui-lightbox__img--fit {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* ══ Item list and rows ═══════════════════════════════════════════════════
+   The density.css idea: the track template lives in ONE custom property on
+   the list, and the header and every row read it, so columns line up from
+   row to row instead of each cell sizing to its own content. */
+.ui-root .ui-list {
+    --ui-row-cols: 22px 108px 112px minmax(140px, 1fr) 130px 86px;
+    position: relative;
+    min-width: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.ui-root .ui-thead,
+.ui-root .ui-row {
+    display: grid;
+    grid-template-columns: var(--ui-row-cols);
+    gap: 10px;
+    align-items: center;
+    padding: 0 12px;
+}
+
+.ui-root .ui-thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    height: 28px;
+    background-color: var(--ui-bar);
+    backdrop-filter: var(--ui-blur-bar);
+    border-bottom: 1px solid var(--ui-edge);
+    color: var(--ui-faint);
+    font: 700 9.5px/1 var(--ui-font-display);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.ui-root .ui-row {
+    min-height: 50px;
+    padding-block: 6px;
+    border-bottom: 1px solid var(--ui-edge);
+    cursor: pointer;
+    transition: background-color var(--ui-ease), box-shadow var(--ui-ease);
+}
+
+.ui-root .ui-row:hover { background-color: var(--ui-row-hover); }
+
+.ui-root .ui-row[aria-current="true"] {
+    background-color: color-mix(in srgb, var(--ui-accent) 12%, transparent);
+    box-shadow: inset 3px 0 0 var(--ui-accent-text);
+}
+
+.ui-root .ui-row[aria-disabled="true"] {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.ui-root .ui-row > * { min-width: 0; }
+
+.ui-root .ui-row__check {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin: -4px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.ui-root .ui-row__box {
+    display: grid;
+    place-items: center;
+    width: 14px;
+    height: 14px;
+    /* Unlabelled, so its edge alone must reach 3:1 (--ui-edge-hi does not). */
+    border: 1.5px solid color-mix(in srgb, var(--ui-ink) 55%, transparent);
+    border-radius: 3px;
+    color: var(--ui-accent-ink);
+    transition: background-color var(--ui-ease), border-color var(--ui-ease);
+}
+
+.ui-root .ui-row[data-ticked="true"] .ui-row__box {
+    background-color: var(--ui-accent);
+    border-color: var(--ui-accent);
+}
+
+.ui-root .ui-row__main {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.ui-root .ui-row__title {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-weight: 700;
+}
+
+.ui-root .ui-row__sub {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--ui-faint);
+    font-size: 11px;
+}
+
+.ui-root .ui-list__empty {
+    padding: 28px 12px;
+    color: var(--ui-faint);
+    text-align: center;
+}
+
+/* ══ Filter tabs ══════════════════════════════════════════════════════════ */
+.ui-root .ui-ftabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 14px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ui-edge);
+}
+
+.ui-root .ui-ftabs__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+}
+
+.ui-root .ui-ftabs__end {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ui-root .ui-ftab {
+    appearance: none;
+    margin: 0;
+    padding: 6px 0;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: none;
+    color: var(--ui-dim);
+    font: 700 11px/1 var(--ui-font-display);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--ui-ease), border-color var(--ui-ease);
+}
+
+.ui-root .ui-ftab:hover { color: var(--ui-ink); border-bottom-color: var(--ui-edge-hi); }
+
+.ui-root .ui-ftab[aria-selected="true"] {
+    color: var(--ui-ink);
+    border-bottom-color: var(--ui-accent-text);
+}
+
+.ui-root .ui-ftab__n {
+    margin-left: 4px;
+    color: var(--ui-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-root .ui-ftab__n--muted { color: var(--ui-faint); }
+
+/* ══ Run bar ══════════════════════════════════════════════════════════════ */
+.ui-root .ui-runbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--ui-edge);
+    background-color: var(--ui-bar);
+    backdrop-filter: var(--ui-blur-bar);
+}
+
+.ui-root .ui-runbar__track {
+    flex: 1 1 260px;
+    display: flex;
+    height: 8px;
+    min-width: 120px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-pill);
+    overflow: hidden;
+    background-color: var(--ui-well);
+}
+
+.ui-root .ui-runbar__seg {
+    display: block;
+    height: 100%;
+    background-color: var(--ui-seg-c, var(--ui-faint));
+    transition: width 0.3s ease;
+}
+
+.ui-root .ui-runbar__note {
+    color: var(--ui-dim);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-root .ui-runbar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.ui-root .ui-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--ui-dim);
+    font: 700 10.5px/1.2 var(--ui-font-display);
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-root .ui-legend > li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ui-root .ui-legend > li::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--ui-seg-c, var(--ui-faint));
+}
+
+/* The colour each run state draws with, shared by the track and legend. */
+.ui-root [data-run="saved"],
+.ui-root [data-run="done"]    { --ui-seg-c: var(--ui-ok); }
+.ui-root [data-run="review"],
+.ui-root [data-run="partial"] { --ui-seg-c: var(--ui-warn); }
+.ui-root [data-run="running"] { --ui-seg-c: var(--ui-run); }
+.ui-root [data-run="failed"]  { --ui-seg-c: var(--ui-bad); }
+.ui-root [data-run="skipped"] { --ui-seg-c: var(--ui-edge-hi); }
+.ui-root [data-run="queued"]  { --ui-seg-c: transparent; }
+.ui-root .ui-legend > li[data-run="queued"]::before { border: 1px dashed var(--ui-edge-hi); }
+
+/* Partial is the warn colour hatched, so it is not mistaken for review. */
+.ui-root .ui-runbar__seg[data-run="partial"] {
+    background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgb(0 0 0 / 0.25) 3px 5px);
+}
+
+/* ══ Drawer ═══════════════════════════════════════════════════════════════
+   The review panel. Inline it is a column beside the list; as an overlay
+   (narrow screens) it slides over the list from the right. */
+.ui-root .ui-drawer,
+.ui-root.ui-drawer {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    background-color: var(--ui-surface);
+    backdrop-filter: var(--ui-blur);
+}
+
+.ui-root .ui-drawer--inline {
+    border-left: 1px solid var(--ui-edge);
+}
+
+.ui-root .ui-drawer__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--ui-edge);
+}
+
+.ui-root .ui-drawer__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin-right: auto;
+    font: 800 12px/1.2 var(--ui-font-display);
+    letter-spacing: 0.04em;
+}
+
+.ui-root .ui-drawer__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+}
+
+.ui-root .ui-drawer__foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--ui-edge);
+}
+
+.ui-root.ui-drawer-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background-color: var(--ui-scrim);
+}
+
+.ui-root.ui-drawer--overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1051;
+    width: min(420px, 100vw);
+    padding-top: var(--sa-top, 0px);
+    background-color: var(--ui-ground);
+    border-left: 1px solid var(--ui-rim);
+    box-shadow: var(--ui-pop-shadow);
+    animation: ui-drawer-in 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes ui-drawer-in { from { transform: translateX(24px); opacity: 0; } }
+
+/* A log line under the review panel: monospace, one fact per line. */
+.ui-root .ui-log {
+    margin: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-sm);
+    background-color: var(--ui-well);
+    color: var(--ui-dim);
+    font: 400 10.5px/1.5 var(--ui-font-mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.ui-root .ui-log__ok { color: var(--ui-ok); }
+.ui-root .ui-log__warn { color: var(--ui-warn); }
+.ui-root .ui-log__bad { color: var(--ui-bad); }
+
+/* ══ Generated content ════════════════════════════════════════════════════ */
+.ui-root .ui-gen {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.ui-root .ui-colors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+}
+
+.ui-root .ui-color {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 4px 0 4px;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-pill);
+    color: var(--ui-ink);
+    font: 700 10.5px/1 var(--ui-font-display);
+    white-space: nowrap;
+}
+
+.ui-root .ui-color > span:last-child:not(.ui-color__x) { padding-right: 4px; }
+
+.ui-root .ui-color__sw {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgb(0 0 0 / 0.25);
+}
+
+.ui-root .ui-color__x {
+    appearance: none;
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ui-dim);
+    cursor: pointer;
+}
+
+.ui-root .ui-color__x:hover {
+    background-color: color-mix(in srgb, var(--ui-bad) 16%, transparent);
+    color: var(--ui-bad);
+}
+
+.ui-root .ui-colors__add {
+    width: auto;
+    min-height: 24px;
+    height: 24px;
+    padding-block: 0;
+    border-radius: var(--ui-r-pill);
+    font: 700 10.5px/1 var(--ui-font-display);
+    box-shadow: none;
+}
+
+.ui-root .ui-desc {
+    max-height: 180px;
+    overflow: auto;
+    padding: 8px 10px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-sm);
+    background-color: var(--ui-well);
+    color: var(--ui-dim);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.ui-root .ui-desc :where(p, ul, ol) { margin: 0 0 0.6em; }
+.ui-root .ui-desc :where(p, ul, ol):last-child { margin-bottom: 0; }
+.ui-root .ui-desc :where(ul, ol) { padding-left: 1.2em; }
+.ui-root .ui-desc ul { list-style: disc; }
+.ui-root .ui-desc ol { list-style: decimal; }
+.ui-root .ui-desc strong { color: var(--ui-ink); }
+.ui-root .ui-desc__empty { color: var(--ui-faint); font-style: italic; }
+
+/* ══ Narrow screens ═══════════════════════════════════════════════════════
+   Rows fold to two lines: check · identity · state on top, media and title
+   below. The steps column drops; the drawer still shows them. */
+@media (max-width: 640px) {
+    .ui-root .ui-thead { display: none; }
+    .ui-root .ui-list--fold .ui-row {
+        grid-template-columns: 22px minmax(0, 1fr) auto;
+        grid-template-areas: "c i s" "c m m" "c t t";
+        padding-block: 8px;
+    }
+    .ui-root .ui-list--fold .ui-row > :nth-child(1) { grid-area: c; }
+    .ui-root .ui-list--fold .ui-row > :nth-child(2) { grid-area: i; }
+    .ui-root .ui-list--fold .ui-row > :nth-child(3) { grid-area: m; }
+    .ui-root .ui-list--fold .ui-row > :nth-child(4) { grid-area: t; }
+    .ui-root .ui-list--fold .ui-row > :nth-child(5) { display: none; }
+    .ui-root .ui-list--fold .ui-row > :nth-child(6) { grid-area: s; }
+    .ui-root .ui-ftabs__end { margin-left: 0; width: 100%; }
+    .ui-root .ui-runbar__actions { margin-left: 0; }
+}
+
+/* Touch: the dense 24-28px keys are fine for a mouse and too small for a
+   thumb. Coarse pointers get 40px targets without changing the layout's
+   rhythm on desktop. */
+@media (pointer: coarse) {
+    .ui-root .ui-key { height: 40px; }
+    .ui-root .ui-key--icon { width: 40px; }
+    .ui-root .ui-chip,
+    .ui-root .ui-vtab,
+    .ui-root .ui-seg { height: 36px; }
+    .ui-root .ui-thumb--button { min-width: 40px; min-height: 40px; }
+}
+
+/* ══ Motion ═══════════════════════════════════════════════════════════════
+   Every state is colour and depth, never only movement, so nothing is lost
+   when it is switched off. The running pulse becomes a solid run outline. */
+@media (prefers-reduced-motion: reduce) {
+    .ui-root *,
+    .ui-root *::before,
+    .ui-root *::after,
+    .ui-root.ui-drawer--overlay {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+    .ui-root .ui-spin {
+        border-right-color: currentColor;
+        border-style: dotted;
+    }
+    .ui-root .ui-step[data-state="running"] {
+        background-color: color-mix(in srgb, var(--ui-run) 18%, transparent);
+    }
+    .ui-root .ui-key:not(:disabled, [aria-disabled="true"]):active { transform: none; }
+}
+
+/* Forced colours: the system palette replaces ours, so states that were
+   carried by fill alone get a border or an outline the system can paint. */
+@media (forced-colors: active) {
+    .ui-root .ui-chip[aria-pressed="true"],
+    .ui-root .ui-seg__opt[aria-checked="true"],
+    .ui-root .ui-vtab[aria-selected="true"],
+    .ui-root .ui-ftab[aria-selected="true"],
+    .ui-root .ui-row[aria-current="true"] {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+    .ui-root .ui-step,
+    .ui-root .ui-pill { border: 1px solid CanvasText; }
+}
