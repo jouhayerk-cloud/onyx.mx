@@ -24,7 +24,7 @@
  * written through saveAiPatch), and the Matrixify XLSX and catalogue PDF
  * exports. Book codes are the 17 book rate; a stored barcode always wins.
  */
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { createPortal } from 'react-dom';
 import {
@@ -69,6 +69,7 @@ import {
     Key, Chip, ProcessChips, Segmented, Field, Input, Select, ItemTag, resolveItemTag, StatusPill, StepsStrip,
     Thumb, MediaViewer, ItemList, ItemRow, FilterTabs, RunBar, Drawer, GeneratedContent, PROCESS_META, cx, itemStateLabel,
     type MediaAngle, type MediaView, type GeneratedValue,
+    Dialog,
 } from '../../components/ui';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -244,7 +245,7 @@ const canAccept = (it: RunItem) =>
 function nameOf(it: RunItem): string {
     const i = it.item;
     const head = [i.shape, i.type].filter(Boolean).join(' ') || i.vendorText || it.label;
-    return [head, i.vendorColor, i.quantity > 1 ? `qty ${i.quantity}` : ''].filter(Boolean).join(' · ');
+    return [head, i.vendorColor, i.quantity > 1 ? `${tr('qty')} ${i.quantity}` : ''].filter(Boolean).join(' · ');
 }
 
 function sizeOf(it: RunItem): string {
@@ -524,54 +525,6 @@ async function buildXlsx(entries: readonly ExportEntry[]): Promise<Blob> {
 
     const buffer = await workbook.xlsx.writeBuffer();
     return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// In-page dialog (never a native confirm())
-// ─────────────────────────────────────────────────────────────────────────────
-
-function HubDialog({ title, children, actions, onCancel }: {
-    title: string;
-    children: React.ReactNode;
-    actions: React.ReactNode;
-    onCancel: () => void;
-}) {
-    const cardRef = useRef<HTMLDivElement>(null);
-    const titleId = useId();
-    const bodyId = useId();
-
-    // Focus goes in, and back to whatever opened the dialog when it closes.
-    useEffect(() => {
-        const opener = document.activeElement as HTMLElement | null;
-        const card = cardRef.current;
-        const first = card?.querySelector<HTMLElement>('[data-autofocus]') || card?.querySelector<HTMLElement>('input, button');
-        first?.focus();
-        return () => { opener?.focus?.(); };
-    }, []);
-
-    const onKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Escape') { e.stopPropagation(); onCancel(); return; }
-        if (e.key !== 'Tab' || !cardRef.current) return;
-        const nodes = Array.from(cardRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]'));
-        if (!nodes.length) return;
-        const first = nodes[0];
-        const last = nodes[nodes.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-
-    return (
-        <div className="hub-dialog" onKeyDown={onKeyDown}>
-            <div className="hub-dialog__scrim" aria-hidden="true" onClick={onCancel} />
-            {/* tabIndex -1: a click on the text keeps focus inside, so Esc and
-                the Tab trap keep working. */}
-            <div ref={cardRef} className="hub-dialog__card" role="alertdialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId} tabIndex={-1}>
-                <h3 id={titleId} className="hub-dialog__title">{title}</h3>
-                <div id={bodyId} className="hub-dialog__body">{children}</div>
-                <div className="hub-dialog__acts">{actions}</div>
-            </div>
-        </div>
-    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1255,7 +1208,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
     const confirmDialog = confirm && (() => {
         if (confirm.kind === 'close') {
             return (
-                <HubDialog title={run.isRunning ? tr('A run is in progress') : tr('Unsaved results')} onCancel={() => setConfirm(null)}
+                <Dialog title={run.isRunning ? tr('A run is in progress') : tr('Unsaved results')} onCancel={() => setConfirm(null)}
                     actions={<>
                         <Key data-autofocus onClick={() => setConfirm(null)}>{tr('Keep reviewing')}</Key>
                         {!run.isRunning && reviewedIds.length > 0 && (
@@ -1273,12 +1226,12 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                     {!run.isRunning && reviewedIds.length > 0 && unsaved > reviewedIds.length && (
                         <p>{trf('Only the {r} accepted items are saved; the other {n} have not been reviewed and are discarded.', { r: reviewedIds.length, n: unsaved - reviewedIds.length })}</p>
                     )}
-                </HubDialog>
+                </Dialog>
             );
         }
         if (confirm.kind === 'clear') {
             return (
-                <HubDialog title={trf('Clear the AI data of {n} items?', { n: confirm.ids.length })} onCancel={() => setConfirm(null)}
+                <Dialog title={trf('Clear the AI data of {n} items?', { n: confirm.ids.length })} onCancel={() => setConfirm(null)}
                     actions={<>
                         <Key data-autofocus disabled={busyConfirm} onClick={() => setConfirm(null)}>{tr('Cancel')}</Key>
                         <Key variant="danger" icon={<Eraser size={14} />} busy={busyConfirm} onClick={() => void doClear(confirm.ids)}>
@@ -1286,12 +1239,12 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                         </Key>
                     </>}>
                     <p>{tr('This empties, in the database: the AI title, the HTML description, the AI colours and type, the hex map, the masks and cutouts, the clean PNG and SVG, the cleaned photos and the axo icon. The vendor’s description, Type and colour are not touched. It cannot be undone.')}</p>
-                </HubDialog>
+                </Dialog>
             );
         }
         const photos = confirm.ids.reduce((n, id) => n + (run.get(id)?.media.filter(m => !m.isVideo).length || 0), 0);
         return (
-            <HubDialog title={tr('Re-clean every photo?')} onCancel={() => setConfirm(null)}
+            <Dialog title={tr('Re-clean every photo?')} onCancel={() => setConfirm(null)}
                 actions={<>
                     <Key data-autofocus onClick={() => setConfirm(null)}>{tr('Cancel')}</Key>
                     <Key variant="go" icon={<Wand2 size={14} />} onClick={() => doReclean(confirm.ids)}>
@@ -1301,7 +1254,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                 <p>{trf('A new background clean on all {photos} photos of {items} items with the {engine} engine, including photos that already have one. Hero-only is switched off.', {
                     photos, items: confirm.ids.length, engine: tr(MODE_OPTIONS.find(o => o.value === mode)?.label || mode),
                 })}</p>
-            </HubDialog>
+            </Dialog>
         );
     })();
 
@@ -1488,7 +1441,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                 {confirmDialog}
 
                 {showKey && (
-                    <HubDialog title={tr('Gemini API key')} onCancel={() => { setShowKey(false); pendingRef.current = null; run.clearRunError(); }}
+                    <Dialog title={tr('Gemini API key')} onCancel={() => { setShowKey(false); pendingRef.current = null; run.clearRunError(); }}
                         actions={<>
                             <Key onClick={() => { setShowKey(false); pendingRef.current = null; run.clearRunError(); }}>{tr('Cancel')}</Key>
                             <Key variant="go" disabled={!keyDraft.trim()} onClick={saveKey}>
@@ -1503,7 +1456,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                                 onChange={(e) => setKeyDraft(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveKey(); } }} />
                         </Field>
-                    </HubDialog>
+                    </Dialog>
                 )}
 
                 <input ref={uploadRef} type="file" accept="image/png,image/jpeg" hidden onChange={onUploadPicked} />

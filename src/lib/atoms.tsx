@@ -338,14 +338,6 @@ export const catalogMarketViewModeAtom = atomWithStorage<'catalog' | 'market'>('
 export const isShippingOpenAtom = atom(false);
 export const marketActiveTabAtom = atom<'description' | 'images'>('images');
 
-export const uploadTabAtom = atom<'entry' | 'ai'>('entry');
-export const uploadSelectedMediaTypeAtom = atom<string | null, [string | null], void>(
-  null,
-  (get, set, update: string | null) => {
-    set(uploadSelectedMediaTypeAtom, update);
-  }
-);
-export const uploadMediaFilesAtom = atom<UploadedFile[]>([]);
 export const uploadItemDataAtom = atom<Partial<InventoryItemData> & {
   quantity?: string;
   color?: string;

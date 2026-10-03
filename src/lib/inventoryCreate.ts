@@ -443,6 +443,13 @@ export function buildInventoryRow(form: InventoryForm, opts: BuildRowOptions): I
         const patch: InventoryUpdate = { updated_at: now };
         for (const [k, v] of Object.entries(columns) as [keyof InventoryUpdate, unknown][]) {
             if (k === 'updated_at') continue;
+            // The form fills a stored-empty book / status / quantity with its
+            // defaults (entryFromRow); those are not edits, so a note fix on a
+            // legacy row does not move it into a book or set its status. The
+            // book is locked on an edit, so an empty one stays empty.
+            if (k === 'workbook' && !normalizeWorkbook(existing.workbook)) continue;
+            if (k === 'status' && v === DEFAULT_ENTRY_STATUS && (existing.status === null || existing.status === undefined || existing.status === '')) continue;
+            if (k === 'quantity' && (existing.quantity === null || existing.quantity === undefined) && v === 1) continue;
             if (k === 'workbook' ? normalizeWorkbook(existing.workbook) !== v : !same(v, existing[k as string])) {
                 (patch as Record<string, unknown>)[k] = v;
             }

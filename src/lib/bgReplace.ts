@@ -286,9 +286,11 @@ export async function replaceBackgroundWithDarkRoom(
         { text: prompt },
     ];
     const timeoutMs = AI_MODELS.bgReplace.timeoutMs;
-    const deadline = Date.now() + timeoutMs;
 
     return withAiSlot('image', async () => {
+        // The deadline starts once the slot is held, so waiting in line does
+        // not use up the request's budget (as in videoAI).
+        const deadline = Date.now() + timeoutMs;
         let lastError: Error | null = null;
         let quotaRetried = false;
 

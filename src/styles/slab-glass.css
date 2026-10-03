@@ -589,20 +589,6 @@ html.style-slab .app-topbar:has(> .ql-lens) {
     background-color: var(--slab-glass-lens) !important;
 }
 
-/* ── Edit / Add Entry wizard ──────────────────────────────────────────────
-   Its panel (`relative … bg-black/10 backdrop-blur-3xl`) IS the dialog and
-   fills the display (see .entry-wizard in index.css); its first child is the
-   scrim. Stated by structure so the dialog gets dialog glass rather than the
-   base coat's thin chrome tint. (0,3,1) and (0,4,1): above the base coat. */
-html.style-slab .entry-wizard > .relative {
-    background-color: var(--slab-glass-modal) !important;
-    backdrop-filter: blur(48px) saturate(1.5) !important;
-    border: 1px solid var(--slab-glass-rim) !important;
-}
-html.style-slab .entry-wizard > .absolute.inset-0 {
-    background-color: rgba(0, 0, 0, 0.6) !important;
-}
-
 /* ── Modals are read ON, not through ──────────────────────────────────────
    A dialog is the one surface where translucency actively harms: it exists to
    take the page out of play, and the list behind it competes with its own
@@ -707,10 +693,7 @@ html.style-slab .app-topbar .logo-panel.tool-btn {
    module sheets are imported before this file, so equal specificity wins. */
 
 /* Wells: chips, fields, tracks and readouts. */
-html.style-slab .entry-wizard [class*="bg-white/"]:not([class~="bg-white/0"]):not(button),
 html.style-slab .custom-scrollbar[class*="slide-in-from-top"] {
-    /* .entry-wizard: index.css remaps the wizard's bg-white/* utilities to
-       var(--glass-bg) at (0,3,0) !important — the opaque slab under SLAB. */
     background-color: var(--slab-glass-well) !important;
     backdrop-filter: blur(22px) saturate(1.4) !important;
 }
@@ -720,8 +703,6 @@ html.style-slab .payment-row:hover {
 }
 
 /* Panels and cards that sit on the page. */
-html.style-slab .create-item,
-html.style-slab .create-item .bg-white,
 html.style-slab .modal-content,
 html.style-slab .stat-card,
 html.style-slab .project-box,
@@ -791,8 +772,7 @@ html.style-slab .relative.max-w-4xl[class*="bg-(--sidebar-bg)/90"] {
 /* Scrims built as a child of an absolute (not fixed) host — the Finance
    payment wizards. Same role as the fixed-host rule above: the blurred
    child IS the dialog's surface. */
-html.style-slab .absolute.inset-0[class*="z-[1000]"] > .absolute.inset-0[class*="backdrop-blur"],
-html.style-slab .create-item form > .absolute.inset-0 {
+html.style-slab .absolute.inset-0[class*="z-[1000]"] > .absolute.inset-0[class*="backdrop-blur"] {
     background-color: var(--slab-glass-sheet) !important;
     backdrop-filter: blur(60px) saturate(1.3) !important;
 }
@@ -802,7 +782,6 @@ html.style-slab .create-item form > .absolute.inset-0 {
    tooltip fill and text colour inline and theme-blind (#fff or #050505);
    !important is what outranks an inline style. */
 html.style-slab .toast-liquid-glass,
-html.style-slab .entry-wizard .absolute.top-full[class*="bg-black/"],
 html.style-slab .group > .absolute.bottom-full.pointer-events-none[class*="bg-(--sidebar-bg)"],
 html.style-slab button.group > .absolute.pointer-events-none[class*="bg-black/"],
 html.style-slab .echarts-for-react > div:is([style*="z-index: 9999999"], [style*="z-index:9999999"]) {

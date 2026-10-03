@@ -42,6 +42,8 @@ export interface ProcessMeta {
     short: string;
     /** Chip and tooltip label (English source string). */
     label: string;
+    /** One line for the chip's tooltip (English source string). */
+    hint: string;
     group: ProcessGroup;
 }
 
@@ -53,15 +55,15 @@ export interface ProcessMeta {
  * they are not separate processes.
  */
 export const PROCESS_META: Record<ProcessId, ProcessMeta> = {
-    title_desc:         { short: 'T',  label: 'Title',       group: 'text' },
-    marketing_desc:     { short: 'D',  label: 'Description', group: 'text' },
-    dominant_colors:    { short: 'C',  label: 'Colours',     group: 'text' },
-    product_type:       { short: 'Ty', label: 'Type',        group: 'text' },
-    variation_donor:    { short: 'Dn', label: 'From similar', group: 'text' },
-    img_clean:          { short: 'P',  label: 'Clean PNG',   group: 'image' },
-    image_segmentation: { short: 'M',  label: 'Mask',        group: 'image' },
-    hex_map:            { short: 'H',  label: 'Hex map',     group: 'image' },
-    video_proc:         { short: 'V',  label: 'Video',       group: 'image' },
+    title_desc:         { short: 'T',  label: 'Title', hint: 'Write the item title from the photo',       group: 'text' },
+    marketing_desc:     { short: 'D',  label: 'Description', hint: 'Write the marketing description (HTML)', group: 'text' },
+    dominant_colors:    { short: 'C',  label: 'Colours', hint: 'Find the dominant colours',     group: 'text' },
+    product_type:       { short: 'Ty', label: 'Type', hint: 'Classify the product type',        group: 'text' },
+    variation_donor:    { short: 'Dn', label: 'From similar', hint: 'Write the text by varying the most similar item', group: 'text' },
+    img_clean:          { short: 'P',  label: 'Clean PNG', hint: 'Clean the photo and replace the background',   group: 'image' },
+    image_segmentation: { short: 'M',  label: 'Mask', hint: 'Cut the piece out and trace its outline (mask and SVG)',        group: 'image' },
+    hex_map:            { short: 'H',  label: 'Hex map', hint: 'Sample the 20x20 colour map',     group: 'image' },
+    video_proc:         { short: 'V',  label: 'Video', hint: 'Analyse the video',       group: 'image' },
 };
 
 export const PROCESS_GROUP_LABEL: Record<ProcessGroup, string> = {

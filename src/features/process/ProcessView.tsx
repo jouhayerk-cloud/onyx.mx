@@ -675,7 +675,9 @@ export const ProcessView: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (selectedItemData && selectedItemData.itemId !== selectedItem?.itemId) {
+        // By row id: VENDOR-NNN repeats across workbooks.
+        const pickedId = selectedItemData ? ((selectedItemData as any).id || (selectedItemData as any).row) : undefined;
+        if (selectedItemData && (pickedId !== selectedItem?.id || selectedItemData.itemId !== selectedItem?.itemId)) {
             handleSelectItem({ ...selectedItemData, id: (selectedItemData as any).id || (selectedItemData as any).row });
         }
     }, [selectedItemData]);

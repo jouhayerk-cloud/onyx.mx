@@ -10,7 +10,8 @@ import {
 } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { BoundingBox2DType } from '../../lib/Types';
-import { getCleanImageUrl, loadImage, resizeImage } from '../../lib/utils';
+import { getCleanImageUrl, loadImage, normalizeInventoryData, resizeImage } from '../../lib/utils';
+import { mediaOf, rowOf } from '../../lib/ai/run';
 import { useTranslation, useNotify } from '../../lib/hooks';
 import { tr } from '../../lib/i18n';
 import { MediaOriginNote } from './ItemMediaPanel';
@@ -198,7 +199,12 @@ export function BatchActionsModal() {
                     throw new Error('Production rows have no AI columns');
                 }
                 const rowId = String(item.row);
-                const imageUrl = getCleanImageUrl(item.imageUrl || '');
+                // The row's own first photo, as the run engine reads it. Not
+                // item.imageUrl: the catalogue card shows generated_png_url
+                // there first, and running on that would cut out the cutout
+                // and save it over the hero's.
+                const firstStill = mediaOf(normalizeInventoryData(rowOf(item))).find(m => !m.isVideo)?.url;
+                const imageUrl = getCleanImageUrl(firstStill || '');
                 if (!imageUrl) throw new Error('Could not load item image.');
 
                 let boxes: BoundingBox2DType[] | null = null;

@@ -32,6 +32,8 @@
  * plumbing and save calls on top.
  */
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useWorkGuard } from '../useWorkGuard';
+import { tr, trf } from '../i18n';
 import {
     processSingleItem,
     processVariationItem,
@@ -510,6 +512,56 @@ export function buildRunItem(source: any): RunItem {
     return summarizeItem(base);
 }
 
+/** The image outputs of an op, which belong to its photo and to nothing else. */
+const PHOTO_RESULT_KEYS = [
+    'cleanedUrl', 'cleanedKey', 'cutoutUrl', 'maskUrl', 'matteUrl', 'outlineSvg', 'svgUrl',
+    'localSegmentationMasks', 'cloudSegmentationMasks', 'segmentation', 'videoGen', 'processedMap',
+] as const;
+const PHOTO_PROCESSES: readonly ProcessId[] = [...IMAGE_PROCESSES, 'video_proc'];
+
+/**
+ * Re-pair settled photo ops with the photos after the list changed (a photo
+ * removed, reordered or added since the run). Ops follow their photo by URL,
+ * not by position, so outputs never land under another photo, angle_N follows
+ * the photo and the hero cutout is the current first photo's.
+ *
+ * An op whose photo is gone loses its image outputs. If it also carried the
+ * item's text (it was the hero), it is kept off the photo list (index -1,
+ * no image url) so that text is not lost; otherwise it is dropped.
+ */
+function reconcileOps(ops: RunOp[], before: readonly RunMedia[], after: readonly RunMedia[]): RunOp[] {
+    const sig = (m: readonly RunMedia[]) => m.map(x => x.url).join('\n');
+    if (!ops.length || sig(before) === sig(after)) return ops;
+    const byUrl = new Map<string, RunMedia>();
+    for (const m of after) {
+        byUrl.set(m.url, m);
+        const clean = getCleanImageUrl(m.url);
+        if (clean && !byUrl.has(clean)) byUrl.set(clean, m);
+    }
+    const out: RunOp[] = [];
+    for (const o of ops) {
+        if (o.kind === 'donor' || o.state !== 'settled') { out.push(o); continue; }
+        const url = o.op.imageUrl || '';
+        const m = url ? (byUrl.get(url) || byUrl.get(getCleanImageUrl(url) || '')) : undefined;
+        if (m) {
+            out.push(m.index === o.index ? o : { ...o, index: m.index, op: { ...o.op, imageIndex: m.index, imageUrl: m.url } });
+            continue;
+        }
+        const planned = o.planned.filter(p => !PHOTO_PROCESSES.includes(p));
+        if (!planned.length) continue;
+        const result = { ...(o.op.result || {}) } as Record<string, unknown>;
+        PHOTO_RESULT_KEYS.forEach(k => { delete result[k]; });
+        const status = { ...o.status };
+        const errors = { ...o.errors };
+        PHOTO_PROCESSES.forEach(p => { delete status[p]; delete errors[p]; });
+        out.push({
+            ...o, index: -1, planned, current: o.current.filter(p => planned.includes(p)), status, errors,
+            op: { ...o.op, imageIndex: -1, imageUrl: '', result: result as BatchOp['result'] },
+        });
+    }
+    return out;
+}
+
 /** Re-read a row (after a sync or a save) without losing the run's ops. */
 function refreshRow(prev: RunItem, row: any, fromSync: boolean): RunItem {
     const fresh = buildRunItem(row);
@@ -522,6 +574,7 @@ function refreshRow(prev: RunItem, row: any, fromSync: boolean): RunItem {
         label: fresh.label,
         media: fresh.media,
         stored: fresh.stored,
+        ops: reconcileOps(prev.ops, prev.media, fresh.media),
     });
 }
 
@@ -689,18 +742,56 @@ export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: Read
     const keyOf = (kind: 'photo' | 'donor', index: number) => `${kind}:${index}`;
     // What a launch of `only` asks of each photo of this item.
     const wanted = new Map<string, PlannedOp>();
-    if (only) for (const p of planOps(item, only, { heroOnly: opts.heroOnly })) wanted.set(keyOf(p.kind, p.index), p);
+    const want = (list: PlannedOp[]) => {
+        for (const p of list) {
+            const key = keyOf(p.kind, p.index);
+            const had = wanted.get(key);
+            wanted.set(key, had ? { ...had, processes: Array.from(new Set([...had.processes, ...p.processes])) } : p);
+        }
+    };
+    if (only) want(planOps(item, only, { heroOnly: opts.heroOnly }));
+
+    // Where a process can still run. The hero processes run on the first
+    // still only (or on the donor op of a photo-less item): a photo added
+    // after a donor pass replaces that pass, and an op whose photo moved off
+    // the first place (or was removed) no longer writes the item's text.
+    const hasStills = item.media.some(m => !m.isVideo);
+    const fits = (o: RunOp, p: ProcessId) => o.kind === 'donor' ? !hasStills : (o.index === 0 || !HERO_PROCESSES.includes(p));
+    const asked = (o: RunOp) => only
+        ? o.planned.filter(p => only.has(p))
+        : o.planned.filter(p => o.status[p] === 'failed' || o.status[p] === 'queued' || !o.status[p] || (o.status[p] === 'skipped' && !!o.errors[p]));
+    const moved = new Set<ProcessId>();
+    for (const o of item.ops) {
+        // A donor op on an item that now has photos is replaced whole: its
+        // text was written from another item, the photo's is the real one.
+        const misfit = o.kind === 'donor' && hasStills ? o.planned : asked(o).filter(p => !fits(o, p));
+        for (const p of misfit) {
+            if (p === 'variation_donor') TEXT_PROCESSES.forEach(t => moved.add(t));
+            else moved.add(p);
+        }
+    }
+    if (moved.size) want(planOps(item, moved, { heroOnly: true }));
 
     const specs: LaunchSpec[] = [];
     const rerunAll = new Set<ProcessId>();
     const matched = new Set<string>();
-    const ops = item.ops.map(o => {
+    const kept = item.ops.filter(o => !(o.kind === 'donor' && hasStills));
+    const ops = kept.flatMap((o0): RunOp[] => {
+        // Processes moved to the hero leave this op, so its old outcome no
+        // longer counts towards the item's status.
+        const gone = asked(o0).filter(p => !fits(o0, p));
+        let o = o0;
+        if (gone.length) {
+            const status = { ...o.status };
+            const errors = { ...o.errors };
+            gone.forEach(p => { delete status[p]; delete errors[p]; });
+            o = { ...o, planned: o.planned.filter(p => !gone.includes(p)), current: o.current.filter(p => !gone.includes(p)), status, errors };
+            if (!o.planned.length && o.index < 0) return [];
+        }
         const key = keyOf(o.kind, o.index);
         matched.add(key);
-        const rerun = only
-            ? Array.from(new Set([...o.planned.filter(p => only.has(p)), ...(wanted.get(key)?.processes || [])]))
-            : o.planned.filter(p => o.status[p] === 'failed' || o.status[p] === 'queued' || !o.status[p] || (o.status[p] === 'skipped' && !!o.errors[p]));
-        if (!rerun.length) return o;
+        const rerun = Array.from(new Set([...asked(o).filter(p => fits(o, p)), ...(wanted.get(key)?.processes || [])]));
+        if (!rerun.length) return [o];
         const id = opIdFor(item.id, o.kind, o.index, opts.seq);
         const media = item.media.find(m => m.index === o.index);
         const op = makeBatchOp(item, id, { kind: o.kind, index: o.index, imageUrl: o.kind === 'donor' ? '' : (media?.url || o.op.imageUrl || '') }, rerun, opts.processingMode, {
@@ -714,7 +805,7 @@ export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: Read
             ...o, id, state: 'queued', planned: Array.from(new Set([...o.planned, ...rerun])), current: rerun, op, status, errors,
             lastFail: undefined, error: undefined, interrupted: undefined, startedAt: undefined, settledAt: undefined,
         };
-        return next;
+        return [next];
     });
     // Photos the earlier run never touched (hero-only, or a process it did not have).
     for (const [key, p] of wanted) {
@@ -785,13 +876,33 @@ export function finalItemStatus(statuses: readonly RunProcessStatus[], interrupt
     return 'review';
 }
 
-const svgDataUrl = (svg: string) => {
+/**
+ * Small string-keyed memo. summarizeItem runs on every reducer action (each
+ * progress tick, log line and keystroke); an outline SVG embeds its cutout
+ * and runs to megabytes, so re-encoding it every time stalled the page.
+ */
+function memoByString<T>(fn: (s: string) => T, size = 48): (s: string) => T {
+    const cache = new Map<string, T>();
+    return (s: string) => {
+        if (cache.has(s)) return cache.get(s)!;
+        const v = fn(s);
+        if (cache.size >= size) cache.delete(cache.keys().next().value as string);
+        cache.set(s, v);
+        return v;
+    };
+}
+
+const svgDataUrl = memoByString((svg: string) => {
     try {
         return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
     } catch {
         return undefined;
     }
-};
+});
+
+const layerCountOf = memoByString((json: string): number | undefined => {
+    try { return JSON.parse(json)?.layers?.length; } catch { return undefined; }
+});
 
 const sameText = (a: RunText, b: RunText) => {
     const norm = (t: RunText) => JSON.stringify([t.title ?? null, t.html ?? null, t.colors ?? null, t.genType ?? null]);
@@ -804,7 +915,7 @@ const stripTag = (line: string) => line.replace(/^\s*\[[^\]]*\]\s*/, '').trim();
 export function summarizeItem(item: RunItem): RunItem {
     const running = item.ops.some(o => o.state === 'queued' || o.state === 'running');
     const multi = item.ops.filter(o => o.kind === 'photo').length > 1;
-    const photoTag = (o: RunOp) => (multi && o.kind === 'photo' ? `Photo ${o.index + 1}: ` : '');
+    const photoTag = (o: RunOp) => (multi && o.kind === 'photo' ? `${trf('Photo {n}', { n: o.index + 1 })}: ` : '');
 
     // ── per process ──
     const processStatus: RunItem['processStatus'] = {};
@@ -832,12 +943,20 @@ export function summarizeItem(item: RunItem): RunItem {
     let stage: string | undefined;
     if (running) {
         const live = item.ops.find(o => o.state === 'running');
-        if (live) stage = `${photoTag(live)}${live.op.stepLabel || (live.lastWait ? stripTag(live.lastWait) : 'Working...')}`;
-        else stage = 'Waiting for a slot';
+        if (live) stage = `${photoTag(live)}${tr(live.op.stepLabel || (live.lastWait ? stripTag(live.lastWait) : 'Working...'))}`;
+        else stage = tr('Waiting for a slot');
     }
 
     // ── text: the hero's (the donor op is the hero of a photo-less item) ──
-    const hero = item.ops.find(o => o.index === 0 && (o.kind === 'donor' || !item.media.find(m => m.index === 0)?.isVideo));
+    // The op that writes the text: the first still's when the item has
+    // photos (a donor pass from before a photo was added counts only until
+    // the photo's own text exists), else the donor op.
+    const hasStills = item.media.some(m => !m.isVideo);
+    const textOps = item.ops.filter(o => o.planned.some(p => HERO_PROCESSES.includes(p) || p === 'variation_donor'));
+    const hero = (hasStills ? textOps.find(o => o.kind === 'photo' && o.index === 0) || textOps.find(o => o.kind === 'photo') : undefined)
+        || textOps.find(o => o.kind === 'donor')
+        || textOps[0]
+        || item.ops.find(o => o.index === 0 && (o.kind === 'donor' || !item.media.find(m => m.index === 0)?.isVideo));
     const h = hero?.op.result || {};
     // Planned AND done: the donor path marks all four text processes done
     // whichever were ticked, and an unticked one is not shown as generated.
@@ -867,10 +986,7 @@ export function summarizeItem(item: RunItem): RunItem {
             const list = o.planned.map(p => opProcessStatus(o, p)).filter((s): s is RunProcessStatus => !!s);
             status = combineProcessStatus(list, o.state === 'queued' || o.state === 'running');
         }
-        let layerCount: number | undefined;
-        if (r.cloudSegmentationMasks) {
-            try { layerCount = JSON.parse(r.cloudSegmentationMasks)?.layers?.length; } catch { layerCount = undefined; }
-        }
+        const layerCount = r.cloudSegmentationMasks ? layerCountOf(r.cloudSegmentationMasks) : undefined;
         const matteUrl = r.matteUrl;
         const cutoutUrl = r.cutoutUrl || r.maskUrl;
         return {
@@ -1484,6 +1600,14 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
     useEffect(() => {
         store.dispatch({ type: 'sync', rows: options.items || [] });
     }, [store, options.items]);
+
+    // A run in flight or generated work not yet saved: tell the work guard,
+    // so a stale-chunk reload (main.tsx) asks instead of reloading.
+    const holdsWork = useMemo(
+        () => state.saving || Object.values(state.items).some(i => i.dirty || isBusy(i)),
+        [state.items, state.saving],
+    );
+    useWorkGuard(holdsWork);
 
     const settleIdle = useCallback(() => {
         if (activeRef.current.size || pendingRef.current.length) return;
