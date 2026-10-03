@@ -1,1214 +1,1178 @@
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
-import { batchCreateItemsAtom, inventoryAtom, userAtom, isAiProcessingEnabledAtom, BatchCreateItem } from '../../lib/atoms';
-import { supabase } from '../../lib/supabase';
-import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
+/**
+ * Batch Create: a vendor's xlsx in, inventory rows out, then the Catalog Hub
+ * for the AI. Three steps on the UI kit, data-dense like the hub:
+ *
+ *   1. The sheet (batchSheet.ts): COLUMN_MAP, the sheet named after the
+ *      vendor, '#' item numbers, at most 100 rows, text kept as typed, the
+ *      Spanish attributes translated through lib/ai (buildTranslatePrompt).
+ *   2. The review: one ItemRow per row with its tag, photos and every check,
+ *      an editor beside the list, the photo-folder drop (batchPhotoMatch.ts)
+ *      with the unmatched tray, and the AI processes to run after the import.
+ *   3. The import (batchImport.ts): photos uploaded four at a time, rows
+ *      inserted through lib/inventoryCreate, one result per row. The created
+ *      rows then go to the Catalog Hub with the picked processes, where AI
+ *      runs and is reviewed and saved with the hub's own flow; or Done.
+ *
+ * It used to run the AI itself, before the first insert, through a stub of
+ * the pipeline context: no processingMode (so the in-browser cutout ran and
+ * its output was thrown away), no setQueue (every hero op threw after its
+ * results merged), all of a row's photos racing on one result object, a
+ * timeout nobody enforced, failures in the console, and a progress bar parked
+ * at 30% under 'Saving 0 / N'. Its results cards showed the vendor's note as
+ * the title and the AI title as the marketing copy. Rows were numbered from a
+ * max read by a stale closure (every vendor at 001 again), never checked for
+ * duplicates, and stayed in batchCreateItemsAtom after saving, so coming back
+ * to the view offered to insert them again. The panel of per-process Play and
+ * Reload buttons (CatalogHubProcessesPanel) only ever toasted an error and is
+ * gone with it.
+ */
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { atom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import toast from 'react-hot-toast';
+import {
+    AlertTriangle, Bot, ChevronLeft, ChevronRight, FileSpreadsheet, FolderOpen, Hash, ImagePlus, Images,
+    Languages, Play, RefreshCw, Square, Star, Trash2, X,
+} from 'lucide-react';
+import {
+    batchCreateItemsAtom, batchWizardHandoffAtom, batchWizardItemsAtom, inventoryAtom, InventoryVersionAtom,
+    isAiProcessingEnabledAtom, isBatchWizardOpenAtom, isDummyModeAtom, userAtom, type BatchCreateItem,
+} from '../../lib/atoms';
+import { DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
+import { calculateCodesAndPrices } from '../../lib/utils';
+import { tr, trf } from '../../lib/i18n';
 import { generateJson } from '../../lib/ai/client';
 import { aiErrorMessage } from '../../lib/ai/errors';
-import { buildTranslatePrompt, type TranslationPair } from '../../lib/ai/prompts';
-import { calculateCodesAndPrices, handleFileUpload, getTextColorForBg, generateUniqueId } from '../../lib/utils';
 import { hasGeminiKey } from '../../lib/ai/keys';
-import { aiResultFromOps, buildAiPatch, saveAiPatch, isEmptyPatch } from '../../lib/ai/persist';
-import { useDatabase } from '../../lib/hooks';
-import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
-import { Trash2, Save, X, Plus, Image as ImageIcon, FileSpreadsheet, ChevronLeft, Check, AlertTriangle, Languages, Loader2, FolderOpen, Images } from 'lucide-react';
-import { tr } from '../../lib/i18n';
-import { processSingleItem, type BatchOp, type PipelineContext, type ProcessId } from '../../lib/catalogHubPipeline';
-import { CatalogHubProcessesPanel } from '../../components/CatalogHubProcessesPanel';
-import { CATALOG_PROCESSES, mapResultsByProcessId } from '../../lib/catalogHubProcesses';
+import { buildTranslatePrompt, type TranslationPair } from '../../lib/ai/prompts';
+import { CATALOG_PROCESSES } from '../../lib/catalogHubProcesses';
+import { buildAttributeSuggestions } from '../../lib/attributeSuggestions';
+import { formatItemId, getTakenItemNumbers } from '../../lib/inventoryCreate';
 import { processQueueWithConcurrency } from '../../lib/queueProcessor';
+import {
+    Chip, Drawer, Field, Input, ItemList, ItemRow, ItemTag, Key, ProcessChips, RunBar, StatusPill, Thumb, cx,
+    type ItemState, type ProcessId,
+} from '../../components/ui';
 import { collectDroppedFiles, collectInputFiles, isImageFile, makePhotoPreview, matchPhotosToRows, type PhotoCandidate } from './batchPhotoMatch';
+import {
+    MAX_ITEMS, NUMERIC_FIELDS, SheetError, TEXT_FIELDS, assignNumbers, cleanNumberCell, itemNumberOf,
+    numberConflicts, parseSheet, renumberConflicts, type InvalidCell, type NumericField, type SheetErrorCode,
+} from './batchSheet';
+import {
+    BATCH_WORKBOOK, batchImportAtom, isImportRunning, requestImportStop, rowName, runBatchImport, tagRowOf,
+    type ImportRow, type ImportRowState, type ImportState,
+} from './batchImport';
+import './batchCreate.css';
 
-
-const lbl = "text-[9px] font-black text-white/50 uppercase tracking-[0.1em] mb-0.5 flex items-center gap-1";
-const inp = "h-8 w-full px-2 bg-black/20 backdrop-blur-3xl border border-white/10 rounded text-[11px] font-bold text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-cyan-400/50 transition-all";
-
-// Spanish → English column header mapping
-const COLUMN_MAP: Record<string, string> = {
-  'cantidad': 'quantity', 'qty': 'quantity', 'q': 'quantity',
-  'forma': 'shape', 'shape': 'shape',
-  'tipo': 'itemType', 'type': 'itemType',
-  'color': 'color',
-  'material': 'material',
-  'ancho': 'widthCm', 'width': 'widthCm', 'w cm': 'widthCm',
-  'alto': 'heightCm', 'height': 'heightCm', 'h cm': 'heightCm',
-  'fondo': 'lengthCm', 'depth': 'lengthCm', 'd cm': 'lengthCm', 'd cm ': 'lengthCm',
-  'precio': 'price', 'price': 'price', 'per piece mxn$': 'price', 'per piece mxn': 'price',
-  'total': '_total', 'total pesos': '_total',
-  'description': 'description', 'description color - object type': 'description', 'descripcion': 'description',
-  '#': 'itemNumber',
-  'date': '_date', 'fecha': '_date',
-  'tag-id': '_tagId', 'tag id': '_tagId',
-  'kg': 'weightKg', 'peso': 'weightKg',
-  'aqc': '_aqc', 'lc': '_lc',
-};
-
-const MAX_ITEMS = 100;
-// Photos upload to Drive through the Apps Script endpoint; four at a time is
-// well inside its concurrent-execution limit and several times faster than one.
-const UPLOAD_CONCURRENCY = 4;
 const TRAY_MIME = 'application/x-onyx-photo';
+const BOOK = BATCH_WORKBOOK.slice(1);
 
-// A small preview for the row thumbnails; the full file is uploaded at save.
-const previewFor = async (file: File) => {
-  try { return await makePhotoPreview(file); }
-  catch { return URL.createObjectURL(file); }
+/**
+ * The processes offered for after the import: the hub's, without video (a
+ * batch carries photos only) and with Write From Similar for the rows that
+ * have no photo.
+ */
+const OFFERED: readonly ProcessId[] = CATALOG_PROCESSES.map(p => p.id).filter(id => id !== 'video_proc');
+const DEFAULT_PROCESSES: readonly ProcessId[] = CATALOG_PROCESSES
+    .filter(p => p.defaultChecked && p.id !== 'video_proc')
+    .map(p => p.id);
+const IMAGE_PROCESSES: readonly ProcessId[] = ['img_clean', 'image_segmentation', 'hex_map', 'dominant_colors'];
+
+/** The vendor the batch's made-up numbers were counted for; a different vendor renumbers them. */
+const numberedForAtom = atom('');
+
+/** What the import read from the sheet, shown as issues in the review. */
+interface SheetMeta {
+    fileName: string;
+    sheetName: string;
+    vendorSheet: boolean;
+    skippedForLimit: number;
+    skippedBlank: number;
+    unmapped: string[];
+    invalidCells: InvalidCell[];
+    translation: 'done' | 'off' | 'no_key' | 'failed';
+    translationError?: string;
+}
+const sheetMetaAtom = atom(null as SheetMeta | null);
+
+const FIELD_LABEL: Record<NumericField | 'itemNumber', string> = {
+    itemNumber: '#',
+    quantity: 'Qty',
+    widthCm: 'W cm',
+    heightCm: 'H cm',
+    lengthCm: 'D cm',
+    weightKg: 'Kg',
+    price: 'Price MXN',
 };
+
+const SHEET_ERROR: Record<SheetErrorCode, string> = {
+    unreadable: 'Could not read the file. It may be open in another program, or not be an xlsx.',
+    no_rows: 'No data rows found in the spreadsheet.',
+    no_headers: 'Could not recognise any column headers. Expected: cantidad, forma, tipo, color, material, ancho, alto, fondo, precio.',
+    no_valid_rows: 'No row has a price, shape, type or description.',
+};
+
+// A small preview for the thumbnails; the full file is uploaded at import.
+const previewFor = async (file: File) => {
+    try { return await makePhotoPreview(file); }
+    catch { return URL.createObjectURL(file); }
+};
+
+const money = (v: string | number) => {
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) && n > 0 ? `$${Math.round(n).toLocaleString('en-US')}` : '';
+};
+
+function useNarrow(query = '(max-width: 1020px)'): boolean {
+    const get = () => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches;
+    const [narrow, setNarrow] = useState(get);
+    useEffect(() => {
+        const mq = window.matchMedia?.(query);
+        if (!mq) return;
+        const on = () => setNarrow(mq.matches);
+        on();
+        mq.addEventListener('change', on);
+        return () => mq.removeEventListener('change', on);
+    }, [query]);
+    return narrow;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Translation (step 1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Spanish attributes to English, keyed by source text. Rows keep the original when the model skips one. */
+async function translateItems(items: BatchCreateItem[]): Promise<{ items: BatchCreateItem[]; error?: string }> {
+    const texts: string[] = [];
+    const seen = new Set<string>();
+    items.forEach(item => TEXT_FIELDS.forEach(field => {
+        const val = String(item[field] ?? '').trim();
+        if (val && !seen.has(val.toUpperCase())) { seen.add(val.toUpperCase()); texts.push(val); }
+    }));
+    if (!texts.length) return { items };
+
+    try {
+        const { prompt, schema } = buildTranslatePrompt(texts);
+        const translated = await generateJson<TranslationPair[]>({ job: 'translate', prompt, schema });
+        // Keyed by source text, not by position: a positional answer one entry
+        // short used to shift every later translation onto the wrong attribute.
+        const bySource = new Map<string, string>();
+        (Array.isArray(translated) ? translated : []).forEach(pair => {
+            if (typeof pair?.source === 'string' && typeof pair?.english === 'string' && pair.english.trim()) {
+                bySource.set(pair.source.trim().toUpperCase(), pair.english.trim());
+            }
+        });
+        const map = new Map<string, string>();
+        texts.forEach(original => {
+            const out = bySource.get(original.toUpperCase());
+            // Text that came back unchanged apart from case keeps the sheet's spelling.
+            if (out) map.set(original.toUpperCase(), out.toUpperCase() === original.toUpperCase() ? original : out);
+        });
+        if (!map.size) return { items, error: tr('The translation matched none of the values') };
+        const t = (v: string) => map.get(v.trim().toUpperCase()) || v;
+        return {
+            items: items.map(item => ({
+                ...item,
+                // Type, colour and the note stay as the vendor wrote them.
+                shape: t(item.shape), material: t(item.material),
+            })),
+        };
+    } catch (err) {
+        console.error('[BatchCreate] Translation failed', err);
+        return { items, error: aiErrorMessage(err) };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Row checks (step 2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RowIssue {
+    level: 'error' | 'warn';
+    kind: 'number' | 'cell' | 'price' | 'photo';
+    /** A word for the Check column. */
+    short: string;
+    text: string;
+}
+
+function rowIssues(item: BatchCreateItem, conflict: 'invalid' | 'taken' | 'repeated' | undefined, vendor: string): RowIssue[] {
+    const out: RowIssue[] = [];
+    const n = itemNumberOf(item);
+    if (conflict === 'invalid') {
+        out.push({ level: 'error', kind: 'number', short: tr('Number'), text: String(item.itemNumber).trim() ? trf('"{n}" is not an item number', { n: item.itemNumber }) : tr('No item number yet') });
+    } else if (conflict === 'taken' && n !== null) {
+        out.push({ level: 'error', kind: 'number', short: tr('Taken'), text: trf('{id} is already taken in book {book}', { id: formatItemId(vendor || '?', n), book: BOOK }) });
+    } else if (conflict === 'repeated' && n !== null) {
+        out.push({ level: 'error', kind: 'number', short: tr('Repeated'), text: trf('#{n} is on another row of this batch too', { n }) });
+    }
+    for (const f of NUMERIC_FIELDS) {
+        if (!cleanNumberCell(item[f]).ok) {
+            out.push({ level: 'error', kind: 'cell', short: tr('Not a number'), text: trf('{field}: "{value}" is not a number', { field: tr(FIELD_LABEL[f]), value: item[f] }) });
+        }
+    }
+    if (!cleanNumberCell(item.price).value) out.push({ level: 'warn', kind: 'price', short: tr('No price'), text: tr('No price: the row gets no book codes until one is entered') });
+    if (!item.mediaFiles.length) out.push({ level: 'warn', kind: 'photo', short: tr('No photo'), text: tr('No photo: image processes skip it; Write From Similar can write its copy') });
+    return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface BatchCreateWizardProps {
-  vendorKey: string;
+    vendorKey: string;
 }
 
 export function BatchCreateWizard({ vendorKey }: BatchCreateWizardProps) {
-  const allItems = useAtomValue(inventoryAtom);
-  const [batchItems, setBatchItems] = useAtom(batchCreateItemsAtom);
-  const user = useAtomValue(userAtom);
-  const aiEnabled = useAtomValue(isAiProcessingEnabledAtom);
-  const db = useDatabase();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    const vendor = String(vendorKey || '').trim().toUpperCase();
+    const [batchItems, setBatchItems] = useAtom(batchCreateItemsAtom);
+    const [importState, setImportState] = useAtom(batchImportAtom);
+    const [sheetMeta, setSheetMeta] = useAtom(sheetMetaAtom);
+    const [numberedFor, setNumberedFor] = useAtom(numberedForAtom);
+    const [aiEnabled, setAiEnabled] = useAtom(isAiProcessingEnabledAtom);
+    const isDummyMode = useAtomValue(isDummyModeAtom);
+    const user = useAtomValue(userAtom);
+    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+    const setHubItems = useSetAtom(batchWizardItemsAtom);
+    const setHubOpen = useSetAtom(isBatchWizardOpenAtom);
+    const setHandoff = useSetAtom(batchWizardHandoffAtom);
 
-  const [step, setStep] = useState<1 | 2 | 3>(batchItems.length > 0 ? 2 : 1);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveProgress, setSaveProgress] = useState(0);
-  const [saveResults, setSaveResults] = useState<{ success: number; errors: number }>({ success: 0, errors: 0 });
-  const [failedItems, setFailedItems] = useState<{ row: number; label: string; reason: string }[]>([]);
-  const [processedItems, setProcessedItems] = useState<any[]>([]);
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState(false);
+    const [fileStep, setFileStep] = useState(false);
+    const [processes, setProcesses] = useState<Set<ProcessId>>(() => new Set(DEFAULT_PROCESSES));
 
-  // Photo auto-attach (step 2) and upload progress (step 3)
-  const [photoTray, setPhotoTray] = useState<{ id: string; file: File; preview: string; reason: string }[]>([]);
-  const [photoSummary, setPhotoSummary] = useState<{ files: number; rows: number; unmatched: number; ignored: number; duplicates: number } | null>(null);
-  const [isMatchingPhotos, setIsMatchingPhotos] = useState(false);
-  const [photoDropOver, setPhotoDropOver] = useState(false);
-  const [rowDropOver, setRowDropOver] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
-  const [photoFailures, setPhotoFailures] = useState<{ row: number; name: string; reason: string }[]>([]);
-  // AI runs during the save; what failed is listed beside the DB and photo
-  // failures instead of going to the console only.
-  const [aiFailures, setAiFailures] = useState<{ row: number; label: string; reason: string }[]>([]);
-  const [aiProgress, setAiProgress] = useState<{ done: number; total: number; label: string } | null>(null);
-  const photoFilesInputRef = useRef<HTMLInputElement>(null);
-  const photoFolderInputRef = useRef<HTMLInputElement>(null);
+    // The vendor's numbers in the book, for numbering and the duplicate check.
+    const [taken, setTaken] = useState<Set<number> | null>(null);
+    const [takenError, setTakenError] = useState<string | null>(null);
+    const [checking, setChecking] = useState(false);
+    const takenSeq = useRef(0);
 
-  const [aiSelected, setAiSelected] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {};
-    CATALOG_PROCESSES.forEach(p => init[p.id] = p.defaultChecked);
-    return init;
-  });
-  const [aiBusy, setAiBusy] = useState<Record<string, boolean>>({});
-  const [aiResults, setAiResults] = useState<Record<string, any>>({});
-  
-  const handleAiToggle = (id: string) => setAiSelected(prev => ({ ...prev, [id]: !prev[id] }));
-  const handleAiRun = (id: string) => {
-    toast.error("Manual pre-run requires the image to be saved first. Please use SAVE BATCH to run processes.");
-  };
-
-    const [editingItem, setEditingItem] = useState<string | null>(null);
-  const [isTranslating, setIsTranslating] = useState(false);
-  
-  // Track DB max index to prevent collisions
-  const [maxVendorItemNumber, setMaxVendorItemNumber] = useState<number>(0);
-  
-  useEffect(() => {
-    if (!vendorKey) return;
-    let maxNum = 0;
-    allItems.forEach((item) => {
-        const data = (item.data || item) as any;
-        const vId = data.vendorId || data.vendor_id || (data.itemId || data.item_id || '').split('-')[0];
-        if (vId === vendorKey && (data.workbook || "v826") === "v826") {
-            const numStr = String(data.itemNumber || data.item_number || '');
-            if (numStr) {
-                const num = parseInt(numStr, 10);
-                if (!isNaN(num) && num > maxNum) maxNum = num;
-            }
-        }
-    });
-    setMaxVendorItemNumber(maxNum);
-  }, [vendorKey, allItems]);
-
-  const vendorData = vendorKey ? vendors[vendorKey as keyof typeof vendors] : null;
-
-  // ─── Auto-translate Spanish→English using Gemini ─────────────────
-  const translateItems = useCallback(async (items: BatchCreateItem[]): Promise<BatchCreateItem[]> => {
-    const textsToTranslate: string[] = [];
-    const textSet = new Set<string>();
-
-    items.forEach(item => {
-      ['shape', 'itemType', 'color', 'material', 'description'].forEach(field => {
-        const val = (item as any)[field]?.trim();
-        if (val && !textSet.has(val.toUpperCase())) {
-          textSet.add(val.toUpperCase());
-          textsToTranslate.push(val);
-        }
-      });
-    });
-
-    if (textsToTranslate.length === 0) return items;
-
-    try {
-      const { prompt, schema } = buildTranslatePrompt(textsToTranslate);
-      const translated = await generateJson<TranslationPair[]>({ job: 'translate', prompt, schema });
-
-      // Keyed by source text, not by position: a positional answer one entry
-      // short used to shift every later translation onto the wrong attribute.
-      // An entry the model skipped simply keeps the Spanish original.
-      const bySource = new Map<string, string>();
-      (Array.isArray(translated) ? translated : []).forEach(pair => {
-        if (typeof pair?.source === 'string' && typeof pair?.english === 'string' && pair.english.trim()) {
-          bySource.set(pair.source.trim().toUpperCase(), pair.english.trim());
-        }
-      });
-
-      const translationMap = new Map<string, string>();
-      textsToTranslate.forEach(original => {
-        const out = bySource.get(original.toUpperCase());
-        // Text that came back unchanged apart from case keeps the sheet's spelling.
-        if (out) translationMap.set(original.toUpperCase(), out.toUpperCase() === original.toUpperCase() ? original : out);
-      });
-
-      if (translationMap.size === 0) {
-        console.error('[BatchCreate] Translation matched no input', { expected: textsToTranslate.length, received: translated });
-        toast.error(tr("Translation returned unexpected data — items loaded untranslated"));
-        return items;
-      }
-
-      return items.map(item => ({
-        ...item,
-        shape: translationMap.get(item.shape.toUpperCase()) || item.shape,
-        itemType: translationMap.get(item.itemType.toUpperCase()) || item.itemType,
-        color: translationMap.get(item.color.toUpperCase()) || item.color,
-        material: translationMap.get(item.material.toUpperCase()) || item.material,
-        description: translationMap.get(item.description.toUpperCase()) || item.description,
-      }));
-    } catch (err: any) {
-      console.error('Translation error:', err);
-      toast.error(`${tr("Translation failed — items loaded without translation")}: ${aiErrorMessage(err)}`);
-      return items;
-    }
-  }, []);
-
-  // ─── Parse XLSX file ─────────────────────────────────────────────
-  const parseXlsx = useCallback((file: File) => {
-    setParseError(null);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-
-        let sheetName = workbook.SheetNames[0];
-        if (vendorKey && workbook.SheetNames.includes(vendorKey)) {
-          sheetName = vendorKey;
-        }
-        const sheet = workbook.Sheets[sheetName];
-        const rawRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
-        if (rawRows.length < 2) {
-          setParseError('No data rows found in the spreadsheet.');
-          return;
-        }
-
-        const headers = rawRows[0].map((h: any) => String(h).trim().toLowerCase());
-        const fieldMap: Record<number, string> = {};
-        headers.forEach((h: string, i: number) => {
-          const mapped = COLUMN_MAP[h];
-          if (mapped) fieldMap[i] = mapped;
-        });
-
-        if (Object.keys(fieldMap).length === 0) {
-          setParseError('Could not recognize any column headers. Expected: cantidad, forma, tipo, color, material, ancho, alto, fondo, precio');
-          return;
-        }
-
-        const items: BatchCreateItem[] = [];
-        let skippedForLimit = 0;
-        for (let r = 1; r < rawRows.length; r++) {
-          const row = rawRows[r];
-          if (!row || row.every((c: any) => c === '' || c === null || c === undefined)) continue;
-
-          const mapped: Record<string, string> = {};
-          Object.entries(fieldMap).forEach(([colIdx, field]) => {
-            if (!field.startsWith('_')) {
-              mapped[field] = String(row[Number(colIdx)] ?? '').trim();
-            }
-          });
-
-          if (!mapped.price && !mapped.shape && !mapped.itemType && !mapped.description) continue;
-
-          // Count what the cap excludes instead of stopping silently — the old loop
-          // dropped every row past MAX_ITEMS and still reported success.
-          if (items.length >= MAX_ITEMS) { skippedForLimit++; continue; }
-
-          items.push({
-            id: generateUniqueId(),
-            itemNumber: mapped.itemNumber || String(maxVendorItemNumber + items.length + 1),
-            // Text is kept exactly as typed in the sheet. It used to be upper-cased,
-            // which stored LARGE / BLUE ARGENTINA beside the Title Case the other
-            // screens and the existing rows use.
-            shape: mapped.shape || '',
-            itemType: mapped.itemType || '',
-            color: mapped.color || '',
-            material: mapped.material || '',
-            widthCm: mapped.widthCm || '',
-            heightCm: mapped.heightCm || '',
-            lengthCm: mapped.lengthCm || '',
-            weightKg: mapped.weightKg || '',
-            price: mapped.price || '',
-            quantity: mapped.quantity || '1',
-            description: mapped.description || '',
-            mediaFiles: [],
-          });
-        }
-
-        if (items.length === 0) {
-          setParseError('No valid data rows found after parsing.');
-          return;
-        }
-
-        // Auto-translate Spanish → English via Gemini
-        setIsTranslating(true);
-        toast.loading(tr("Translating items ES → EN..."), { id: 'translate' });
-        const translatedItems = await translateItems(items);
-        toast.dismiss('translate');
-        setIsTranslating(false);
-
-        setBatchItems(translatedItems);
-        setStep(2);
-        toast.success(`Loaded ${translatedItems.length} item${translatedItems.length > 1 ? 's' : ''} from spreadsheet`);
-
-        if (skippedForLimit > 0) {
-          toast(
-            `${skippedForLimit} more row${skippedForLimit > 1 ? 's were' : ' was'} not imported — the limit is ${MAX_ITEMS} per batch. Split the sheet to load the rest.`,
-            { icon: '⚠️', duration: 8000 }
-          );
-        }
-      } catch (err: any) {
-        setParseError(err.message || 'Failed to parse XLSX file');
-        setIsTranslating(false);
-      }
-    };
-    reader.onerror = () => {
-      setParseError('Could not read the file. It may be open in another program.');
-      setIsTranslating(false);
-    };
-    reader.readAsArrayBuffer(file);
-  }, [vendorKey, setBatchItems, translateItems]);
-
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
-      parseXlsx(file);
-    } else {
-      toast.error(tr("Please drop an .xlsx file"));
-    }
-  }, [parseXlsx]);
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) parseXlsx(file);
-    e.target.value = '';
-  }, [parseXlsx]);
-
-  const updateItem = useCallback((id: string, field: string, value: string) => {
-    setBatchItems(prev => prev.map(item =>
-      item.id === id ? { ...item, [field]: value } : item
-    ));
-  }, [setBatchItems]);
-
-  const removeItem = useCallback((id: string) => {
-    setBatchItems(prev => prev.filter(item => item.id !== id));
-  }, [setBatchItems]);
-
-  const addImageToItem = useCallback(async (id: string, files: FileList | File[]) => {
-    const uploaded = [];
-    for (const file of Array.from(files)) {
-      if (!isImageFile(file)) continue;
-      uploaded.push({ type: 'image' as const, localUrl: await previewFor(file), originalFile: file, name: file.name, tag: 'Item' as const });
-    }
-    setBatchItems(prev => prev.map(item =>
-      item.id === id ? { ...item, mediaFiles: [...item.mediaFiles, ...uploaded] } : item
-    ));
-  }, [setBatchItems]);
-
-  // Drop a folder (or many photos) once: each file goes to the row whose item
-  // number is in its name (EM-004.jpg, EM-004-2.jpg). See batchPhotoMatch.ts.
-  const attachPhotos = useCallback(async (candidates: PhotoCandidate[]) => {
-    if (!candidates.length) return;
-    setIsMatchingPhotos(true);
-    try {
-      const match = matchPhotosToRows(candidates, batchItems, vendorKey);
-      const files = [...Array.from(match.assigned.values()).flat(), ...match.unmatched.map(u => u.file)];
-      const previews = new Map<File, string>();
-      await processQueueWithConcurrency(files, 4, async (file) => { previews.set(file, await previewFor(file)); });
-
-      setBatchItems(prev => prev.map(item => {
-        const add = match.assigned.get(item.id);
-        if (!add) return item;
-        return { ...item, mediaFiles: [...item.mediaFiles, ...add.map(file => ({ type: 'image' as const, localUrl: previews.get(file), originalFile: file, name: file.name, tag: 'Item' as const }))] };
-      }));
-      setPhotoTray(prev => [...prev, ...match.unmatched.map(u => ({ id: generateUniqueId(), file: u.file, preview: previews.get(u.file) || '', reason: u.reason }))]);
-
-      const attached = Array.from(match.assigned.values()).reduce((n, f) => n + f.length, 0);
-      setPhotoSummary({ files: attached, rows: match.assigned.size, unmatched: match.unmatched.length, ignored: match.ignored, duplicates: match.duplicates });
-      if (attached) toast.success(`${attached} photo${attached !== 1 ? 's' : ''} attached to ${match.assigned.size} row${match.assigned.size !== 1 ? 's' : ''}`);
-      else toast.error(tr("No photo names matched an item number in this batch"));
-    } catch (err: any) {
-      console.error('[BatchCreate] Photo matching failed', err);
-      toast.error(tr("Could not read those photos"));
-    } finally {
-      setIsMatchingPhotos(false);
-    }
-  }, [batchItems, vendorKey, setBatchItems]);
-
-  const handlePhotoDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    setPhotoDropOver(false);
-    if (e.dataTransfer.types.includes(TRAY_MIME)) return;
-    await attachPhotos(await collectDroppedFiles(e.dataTransfer));
-  }, [attachPhotos]);
-
-  const moveTrayPhotoToRow = useCallback((trayId: string, rowId: string) => {
-    const t = photoTray.find(p => p.id === trayId);
-    if (!t) return;
-    setBatchItems(prev => prev.map(item => item.id === rowId
-      ? { ...item, mediaFiles: [...item.mediaFiles, { type: 'image' as const, localUrl: t.preview, originalFile: t.file, name: t.file.name, tag: 'Item' as const }] }
-      : item));
-    setPhotoTray(prev => prev.filter(p => p.id !== trayId));
-  }, [photoTray, setBatchItems]);
-
-  // A row accepts a photo dragged from the unmatched tray, or files from the desktop.
-  const handleRowDrop = useCallback((e: React.DragEvent, rowId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setRowDropOver(null);
-    const trayId = e.dataTransfer.getData(TRAY_MIME);
-    if (trayId) return moveTrayPhotoToRow(trayId, rowId);
-    if (e.dataTransfer.files.length) addImageToItem(rowId, e.dataTransfer.files);
-  }, [moveTrayPhotoToRow, addImageToItem]);
-
-  const removeImageFromItem = useCallback((id: string, imgIdx: number) => {
-    setBatchItems(prev => prev.map(item =>
-      item.id === id ? { ...item, mediaFiles: item.mediaFiles.filter((_, i) => i !== imgIdx) } : item
-    ));
-  }, [setBatchItems]);
-
-  const getItemCodes = useCallback((item: BatchCreateItem) => {
-    // item.id is this batch's random row key; the saved item_id uses the number.
-    const finalItemId = `${vendorKey}-${String(item.itemNumber || 1).padStart(3, '0')}`;
-    return calculateCodesAndPrices(
-      { price: item.price, itemId: finalItemId, workbook: 'v826', itemNumber: item.itemNumber || '1' },
-      // Book codes always use the book rate (17), never the editable or live
-      // rate: they are printed on the label.
-      DEFAULT_EXCHANGE_RATE,
-      'v826'
-    );
-  }, [vendorKey]);
-
-  const suggestions = useMemo(() => {
-    const getCascadingVals = (targetField: string) => {
-      // Grouped case-insensitively, but each chip shows the spelling used most
-      // often, so picking one doesn't write an upper-cased variant.
-      const counts: Record<string, number> = {};
-      const spellings: Record<string, Record<string, number>> = {};
-      allItems.forEach(i => {
-        const d = i.data || i;
-        const raw = String(d[targetField] || '').trim();
-        const key = raw.toUpperCase();
-        if (key && key !== '-' && key !== 'NULL' && key.length > 1) {
-          counts[key] = (counts[key] || 0) + 1;
-          (spellings[key] ||= {})[raw] = (spellings[key][raw] || 0) + 1;
-        }
-      });
-      return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6)
-        .map(([key]) => Object.entries(spellings[key]).sort((a, b) => b[1] - a[1])[0][0]);
-    };
-    return {
-      shape: getCascadingVals('shape'),
-      itemType: getCascadingVals('short_description'),
-      color: getCascadingVals('color'),
-      material: getCascadingVals('material'),
-    };
-  }, [allItems]);
-
-  // ─── Batch save ──────────────────────────────────────────────────
-
-  const handleBatchSave = async () => {
-    if (!vendorKey) return toast.error(tr("Select a vendor first"));
-    if (batchItems.length === 0) return toast.error(tr("No items to save"));
-
-    // Every ticked process runs and is saved on its own; an unticked one is
-    // neither run nor written. This used to collapse to three switches, so
-    // unticking 'AI Title' or 'Hex Map' changed nothing.
-    const processes = new Set<ProcessId>(
-      aiEnabled ? CATALOG_PROCESSES.filter(p => aiSelected[p.id]).map(p => p.id) : []);
-    let anyAiSelected = processes.size > 0;
-    if (anyAiSelected && !hasGeminiKey()) {
-      // Without a key every op would fail one by one after the uploads.
-      if (!window.confirm(tr("No Gemini API key is set, so the AI processes cannot run. Save the rows without AI content?"))) return;
-      anyAiSelected = false;
-    }
-
-    setIsSaving(true);
-    setSaveProgress(0);
-    setSaveResults({ success: 0, errors: 0 });
-    setStep(3);
-
-    let successCount = 0;
-    let errorCount = 0;
-    const failed: { row: number; label: string; reason: string }[] = [];
-    const aiFailed: { row: number; label: string; reason: string }[] = [];
-    setFailedItems([]);
-    setAiFailures([]);
-    setProcessedItems([]);
-    const rowLabel = (item: BatchCreateItem, i: number) =>
-      [item.itemNumber, item.shape, item.itemType].filter(Boolean).join(' - ') || `Row ${i + 1}`;
-
-    const cancelTokens = { current: {} as Record<string, boolean> };
-
-    // Pass 1: Upload media & Prepare AI Ops
-    const ops: BatchOp[] = [];
-    const opRow = new Map<string, number>();
-    const itemDataCache: { uploadedUrls: string[] }[] = [];
-
-    // Every photo of every row uploads through one queue, UPLOAD_CONCURRENCY at a
-    // time (it used to be one photo after another). Each keeps its slot, so a
-    // row's photos stay in the order they were attached, and a failed photo is
-    // retried once, then reported; its row still saves with the other photos.
-    const uploads = batchItems.flatMap((item, i) =>
-      item.mediaFiles.map((media, m) => ({ i, m, file: media.originalFile })).filter(u => u.file));
-    const urlSlots: (string | null)[][] = batchItems.map(item => item.mediaFiles.map(() => null));
-    const uploadFailures: { row: number; name: string; reason: string }[] = [];
-    let uploadsDone = 0;
-    setPhotoFailures([]);
-    setUploadProgress(uploads.length ? { done: 0, total: uploads.length } : null);
-    await processQueueWithConcurrency(uploads, UPLOAD_CONCURRENCY, async ({ i, m, file }) => {
-      let reason = '';
-      for (let attempt = 0; attempt < 2; attempt++) {
+    const loadTaken = useCallback(async (): Promise<Set<number> | null> => {
+        if (!vendor) { setTaken(null); return null; }
+        const seq = ++takenSeq.current;
+        setChecking(true);
         try {
-          const result = await handleFileUpload(file!, user);
-          if (result) { urlSlots[i][m] = result.thumbnailUrl; reason = ''; break; }
-          reason = 'Upload returned no file';
+            const t = await getTakenItemNumbers(vendor, BATCH_WORKBOOK);
+            if (seq !== takenSeq.current) return t;
+            setTaken(t);
+            setTakenError(null);
+            // Numbers the import made up for another vendor (or could not make
+            // up, the book being unreadable then) are made up again for this one.
+            setBatchItems(prev => {
+                const recount = numberedFor && numberedFor !== vendor;
+                const cleared = recount ? prev.map(i => (i.autoNumber ? { ...i, itemNumber: '' } : i)) : prev;
+                return cleared.some(i => !String(i.itemNumber ?? '').trim()) ? assignNumbers(cleared, t) : prev;
+            });
+            setNumberedFor(vendor);
+            return t;
         } catch (err: any) {
-          reason = err?.message || 'Upload failed';
+            if (seq === takenSeq.current) {
+                setTaken(null);
+                setTakenError(err?.message || String(err));
+            }
+            return null;
+        } finally {
+            if (seq === takenSeq.current) setChecking(false);
         }
-      }
-      if (reason) uploadFailures.push({ row: i + 1, name: file!.name, reason });
-      uploadsDone++;
-      setUploadProgress({ done: uploadsDone, total: uploads.length });
-      setSaveProgress(Math.round((uploadsDone / uploads.length) * 30)); // 30% for media
-    });
-    setUploadProgress(null);
-    setPhotoFailures(uploadFailures);
+    }, [vendor, numberedFor, setBatchItems, setNumberedFor]);
 
-    for (let i = 0; i < batchItems.length; i++) {
-      const item = batchItems[i];
-      const uploadedUrls = urlSlots[i].filter((u): u is string => !!u);
-      itemDataCache[i] = { uploadedUrls };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { void loadTaken(); }, [vendor]);
 
-      if (anyAiSelected && uploadedUrls.length > 0) {
-        uploadedUrls.forEach((url, idx) => {
-          const id = crypto.randomUUID();
-          opRow.set(id, i);
-          ops.push({
-            id,
-            item,
-            imageUrl: url,
-            imageIndex: idx,
-            status: 'idle',
-            progress: 0,
-            logs: [],
-            processes,
-            // The Catalog Hub default. Without it the pipeline fell through
-            // to the in-browser imgly cutout, whose output was then dropped.
-            processingMode: 'bgreplace',
-            // Each photo its OWN result: they all used to share one object,
-            // and a sibling finishing after the hero blanked its text.
-            result: {},
-          });
-        });
-      }
-    }
+    const step: 1 | 2 | 3 = importState ? 3 : batchItems.length && !fileStep ? 2 : 1;
 
-    // Pass 2: Run AI across all items. The ops above are the pipeline's
-    // state here: updateOp merges into them (object or function form, as the
-    // Catalog Hub's does), and progress, stage and failures surface on the
-    // step-3 screen instead of the console.
-    const opsById = new Map(ops.map(op => [op.id, op]));
-    if (anyAiSelected && ops.length > 0) {
-      let opsDone = 0;
-      const reportProgress = (label: string) => {
-        const avg = ops.reduce((n, op) => n + (op.status === 'processing' ? op.progress : op.status === 'idle' ? 0 : 100), 0) / ops.length;
-        setSaveProgress(Math.round(30 + avg * 0.3));
-        setAiProgress({ done: opsDone, total: ops.length, label });
-      };
-      const pipelineCtx: PipelineContext = {
-        updateOp: (id, updates) => {
-          const op = opsById.get(id);
-          if (!op) return;
-          Object.assign(op, typeof updates === 'function' ? updates(op) : updates);
-          if ((op.imageIndex || 0) === 0 && op.result) setAiResults({ ...op.result });
-          reportProgress(op.stepLabel || '');
-        },
-        logOp: (id, text) => {
-          const op = opsById.get(id);
-          if (!op) return;
-          op.logs = [...op.logs, text];
-          if (text.includes('[ FAIL ]')) {
-            const i = opRow.get(id) ?? 0;
-            aiFailed.push({
-              row: i + 1,
-              label: `${rowLabel(batchItems[i], i)} · ${tr("photo")} ${(op.imageIndex || 0) + 1}`,
-              reason: text.replace('[ FAIL ]', '').trim(),
-            });
-          }
-          reportProgress(text.replace(/^\[[^\]]*\]\s*/, ''));
-        },
-        checkAbort: async (_id, promise) => await promise,
-        user,
-        bgQuality: '2K',
-        cancelTokens,
-        setHasUnsavedChanges: () => {}
-      };
-
-      setAiBusy(prev => {
-        const next = { ...prev };
-        CATALOG_PROCESSES.forEach(p => { if (processes.has(p.id)) next[p.id] = true; });
-        return next;
-      });
-
-      try {
-        await processQueueWithConcurrency(ops, 2, async (op) => {
-          try {
-            await processSingleItem(op, pipelineCtx);
-          } finally {
-            opsDone++;
-            reportProgress('');
-          }
-        });
-      } finally {
-        setAiBusy({});
-        setAiProgress(null);
-      }
-      setSaveProgress(60); // 60% after AI
-    }
-
-    // Pass 3: DB Insert. The row's own columns first; then its AI columns
-    // through lib/ai/persist, the writer every save path shares, which needs
-    // the row's id (item_segmentation rows key on it, and every update goes
-    // by id). A failed AI write leaves a saved row without AI content and is
-    // listed as such, rather than losing the row.
-    for (let i = 0; i < batchItems.length; i++) {
-      const item = batchItems[i];
-      const { uploadedUrls } = itemDataCache[i];
-
-      try {
-        // CORRECTED 2026-09-22: item.id is generateUniqueId()/crypto.randomUUID()
-        // (a row key for this batch's local state), not the item's index — see
-        // catalogHubProcesses.ts and the CreateItem.tsx fix for the same bug and
-        // the EM8261ONAF item that exposed it.
-        const itemNumber = Number(item.itemNumber) || (maxVendorItemNumber + i + 1);
-        const finalItemId = `${vendorKey}-${String(itemNumber).padStart(3, '0')}`;
-        const calculated = calculateCodesAndPrices(
-          { price: item.price, itemId: finalItemId, workbook: 'v826', itemNumber: item.itemNumber || String(maxVendorItemNumber + i + 1) },
-          DEFAULT_EXCHANGE_RATE,
-          'v826'
-        );
-        // calculateCodesAndPrices answers '-' when there is no price; stored,
-        // that '-' would stand as the printed barcode for good.
-        const code = (v: unknown) => (v && v !== '-' ? String(v) : null);
-
-        const dbRow = {
-          item_id: finalItemId,
-          item_number: itemNumber,
-          vendor_id: vendorKey,
-          shape: item.shape || null,
-          material: item.material || null,
-          // Canonical map: color, description and short_description (the
-          // manual Type) are the sheet's own fields. No AI process writes
-          // them; the AI columns come from buildAiPatch below.
-          color: item.color || null,
-          short_description: item.itemType || null,
-          description: item.description || null,
-          width_cm: item.widthCm ? Number(item.widthCm) : null,
-          length_cm: item.lengthCm ? Number(item.lengthCm) : null,
-          height_cm: item.heightCm ? Number(item.heightCm) : null,
-          weight_kg: item.weightKg ? Number(item.weightKg) : null,
-          price_mxn: item.price ? Number(item.price) : null,
-          quantity: item.quantity ? Number(item.quantity) : 1,
-          status: 'Acquisition',
-          workbook: 'v826',
-          media_urls: uploadedUrls.join(','),
-          timestamp: new Date().toISOString(),
-          book_barcode: code(calculated.bookBarcode),
-          book_aq_code: code(calculated.bookAqCode),
-          book_landed: isNaN(Number(calculated.bookLanded)) ? null : Number(calculated.bookLanded),
-          book_retail: isNaN(Number(calculated.bookRetail)) ? null : Number(calculated.bookRetail),
-        };
-
-        const { data, error } = await supabase.from('inventory').insert(dbRow).select().single();
-        if (error) throw error;
-
-        if (db && data) {
-          try {
-            await db.inventory.upsert({
-              ...data,
-              id: String(data.id),
-              workbook: data.workbook != null ? String(data.workbook) : null,
-            });
-          } catch (err) { console.error(err); }
-        }
-
-        let savedRow: any = data;
-        const rowOps = ops.filter(op => opRow.get(op.id) === i);
-        if (data && rowOps.length > 0) {
-          try {
-            // The hero's text only (aiResultFromOps); per-photo image output.
-            const patch = await buildAiPatch(aiResultFromOps(rowOps), data, processes, { user });
-            patch.warnings.forEach(w => aiFailed.push({ row: i + 1, label: rowLabel(item, i), reason: w }));
-            if (!isEmptyPatch(patch)) savedRow = (await saveAiPatch(String(data.id), patch, { user })) || data;
-          } catch (err: any) {
-            aiFailed.push({ row: i + 1, label: rowLabel(item, i), reason: `${tr("Saved without AI content")}: ${err?.message || err}` });
-          }
-        }
-
-        successCount++; setProcessedItems(prev => [...prev, savedRow]);
-      } catch (err: any) {
-        console.error(`Error saving item ${i + 1}:`, err);
-        errorCount++;
-        failed.push({
-          row: i + 1,
-          label: rowLabel(item, i),
-          reason: err?.message || 'Unknown error'
-        });
-      }
-
-      setSaveProgress(Math.round(60 + (((i + 1) / batchItems.length) * 40)));
-      setSaveResults({ success: successCount, errors: errorCount });
-    }
-
-    setIsSaving(false);
-    setFailedItems(failed);
-    setAiFailures(aiFailed);
-    if (errorCount === 0 && aiFailed.length === 0) {
-      toast.success(`All ${successCount} items saved successfully!`);
-    } else if (errorCount === 0) {
-      toast(`${successCount} saved; ${aiFailed.length} AI step(s) failed - see the list below`, { icon: '⚠️', duration: 8000 });
-    } else {
-      toast(`${successCount} saved, ${errorCount} failed - see the list below`, { icon: '⚠️', duration: 8000 });
-    }
-  };
-
-  const handleReset = () => {
-    setBatchItems([]);
-    setStep(1);
-    setSaveProgress(0);
-    setSaveResults({ success: 0, errors: 0 });
-    setFailedItems([]);
-    setProcessedItems([]);
-    setPhotoTray([]);
-    setPhotoSummary(null);
-    setPhotoFailures([]);
-    setAiFailures([]);
-  };
-
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 1: Upload XLSX
-  // ═══════════════════════════════════════════════════════════════
-  if (step === 1) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-6 py-12 animate-in fade-in duration-300">
-        <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls" onChange={handleFileSelect} />
-
-        <div
-          className={`w-full max-w-lg border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all ${
-            dragOver ? 'border-cyan-400 bg-cyan-500/20 scale-[1.02]' : 'border-white/15 hover:border-white/30 hover:bg-black/20 backdrop-blur-3xl'
-          }`}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleFileDrop}
-          onClick={() => !isTranslating && fileInputRef.current?.click()}
-        >
-          {isTranslating ? (
-            <>
-              <Loader2 size={48} className="text-cyan-400 animate-spin" strokeWidth={1.5} />
-              <div className="text-center">
-                <p className="text-sm font-black text-cyan-400 uppercase tracking-wider">{tr("Translating...")}</p>
-                <p className="text-xs text-white/40 mt-1">{tr("Converting Spanish → English via Gemini")}</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <FileSpreadsheet size={48} className="text-white/20" strokeWidth={1.5} />
-              <div className="text-center">
-                <p className="text-sm font-black text-white/70 uppercase tracking-wider">{tr("Drop XLSX file here")}</p>
-                <p className="text-xs text-white/40 mt-1">or click to browse</p>
-              </div>
-              <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-white/5 rounded-lg">
-                <Languages size={12} className="text-white/30" />
-                <span className="text-[9px] font-bold text-white/40 uppercase tracking-wider">{tr("Auto-translates ES → EN")}</span>
-              </div>
-            </>
-          )}
-        </div>
-
-        {parseError && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-rose-500/20 border border-rose-500/20 rounded-lg max-w-lg">
-            <AlertTriangle size={14} className="text-rose-400 shrink-0" />
-            <span className="text-xs text-rose-400 font-bold">{parseError}</span>
-          </div>
-        )}
-
-        <p className="text-[10px] text-white/30 uppercase tracking-wider max-w-lg text-center">
-          {tr("Columns: cantidad · forma · tipo · color · material · ancho · alto · fondo · precio")}
-        </p>
-        <p className="text-[10px] text-white/30 tracking-wider max-w-lg text-center">
-          {tr("Optional: # (item number) · descripcion · kg. Name photos by item number (EM-004.jpg, EM-004-2.jpg) and drop the folder on the next step.")}
-        </p>
-      </div>
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 3: Save Progress / Results
-  // ═══════════════════════════════════════════════════════════════
-  if (step === 3) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-6 py-16 animate-in fade-in duration-300">
-        {isSaving ? (
-          <>
-            <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${saveProgress}%` }} />
-            </div>
-            <span className="text-xs font-black uppercase tracking-widest text-white/60">
-              {uploadProgress
-                ? <>{tr("Uploading photos")} {uploadProgress.done} / {uploadProgress.total}...</>
-                : aiProgress
-                ? <>{tr("AI processing")} {aiProgress.done} / {aiProgress.total}...</>
-                : <>{tr("Saving")} {saveResults.success + saveResults.errors} / {batchItems.length}...</>}
-            </span>
-            {aiProgress?.label && (
-              <span className="text-[10px] font-bold text-white/40 max-w-md text-center truncate">{aiProgress.label}</span>
-            )}
-            <div className="flex gap-4 text-[10px] font-black uppercase tracking-wider">
-              <span className="text-emerald-400">{saveResults.success} ✓</span>
-              {saveResults.errors > 0 && <span className="text-rose-400">{saveResults.errors} ✗</span>}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center">
-              <Check size={32} className="text-emerald-400" strokeWidth={3} />
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-black text-white/80">{saveResults.success} {tr("Items Saved")}</p>
-              {saveResults.errors > 0 && <p className="text-sm text-rose-400 font-bold mt-1">{saveResults.errors} failed</p>}
-            </div>
-
-            {/* Saved items stay committed, so name the rows that didn't make it. */}
-            {failedItems.length > 0 && (
-              <div className="w-full max-w-md max-h-48 overflow-y-auto rounded-lg border border-rose-500/20 bg-red-50/50 p-3 flex flex-col gap-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-400">{tr("Not saved — re-enter these")}</p>
-                {failedItems.map(f => (
-                  <div key={f.row} className="text-left">
-                    <p className="text-[11px] font-black text-white/70">{tr("Row")} {f.row} • {f.label}</p>
-                    <p className="text-[10px] text-rose-400/80 font-medium break-words">{f.reason}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {photoFailures.length > 0 && (
-              <div className="w-full max-w-md max-h-48 overflow-y-auto rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 flex flex-col gap-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">{tr("Saved without these photos — add them in Edit Entry")}</p>
-                {photoFailures.map((f, i) => (
-                  <div key={i} className="text-left">
-                    <p className="text-[11px] font-black text-white/70">{tr("Row")} {f.row} • {f.name}</p>
-                    <p className="text-[10px] text-amber-400/80 font-medium break-words">{f.reason}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {aiFailures.length > 0 && (
-              <div className="w-full max-w-md max-h-48 overflow-y-auto rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 flex flex-col gap-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">{tr("Saved, but these AI steps failed — re-run them from the Catalog Hub")}</p>
-                {aiFailures.map((f, i) => (
-                  <div key={i} className="text-left">
-                    <p className="text-[11px] font-black text-white/70">{tr("Row")} {f.row} • {f.label}</p>
-                    <p className="text-[10px] text-amber-400/80 font-medium break-words">{f.reason}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* AI Generated Content Visualizer */}
-            {processedItems.length > 0 && (
-              <div className="w-full max-w-4xl mt-6 flex flex-col gap-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400">{tr("Generated Content")}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
-                  {processedItems.map((pi, idx) => (
-                    <div key={idx} className="bg-white/5 border border-white/10 rounded-xl p-3 flex gap-4 items-start">
-                      {/* Image / Vectors */}
-                      <div className="shrink-0 flex flex-col gap-2 w-24">
-                        {pi.generated_png_url || pi.generated_svg_url ? (
-                          <>
-                            {pi.generated_png_url && <img src={pi.generated_png_url} className="w-24 h-24 object-contain bg-black/40 rounded-lg border border-white/10" />}
-                            {pi.generated_svg_url && <img src={pi.generated_svg_url} className="w-24 h-24 object-contain bg-black/40 rounded-lg border border-white/10" />}
-                          </>
-                        ) : (
-                          <div className="w-24 h-24 bg-white/5 rounded-lg border border-white/10 flex items-center justify-center">
-                            <ImageIcon size={20} className="text-white/20" />
-                          </div>
-                        )}
-                        {pi.spatial_points?.[0]?.hex_string && (
-                          <div className="flex flex-wrap gap-0.5 w-24 h-24 bg-black/40 rounded-lg p-1 border border-white/10 overflow-hidden">
-                            {pi.spatial_points[0].hex_string.split(',').slice(0, 100).map((hex: string, i: number) => (
-                              <div key={i} className="w-2 h-2 rounded-[1px]" style={{ backgroundColor: hex }} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Text / Data */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-black text-white">{pi.item_id}</span>
-                          <span className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded text-[8px] font-black uppercase tracking-wider">{pi.generated_type || pi.short_description || 'N/A'}</span>
-                        </div>
-                        {/* Canonical map: detailed_description is the AI title and
-                            generated_description the marketing HTML (shown as
-                            text). These lines used to show the vendor text and
-                            the title under the wrong labels. */}
-                        <p className="text-[11px] text-white/80 font-medium mb-1 line-clamp-2">{pi.detailed_description || tr("No title generated")}</p>
-                        <p className="text-[9px] text-white/50 mb-2 line-clamp-3">{pi.generated_description ? String(pi.generated_description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : tr("No marketing description")}</p>
-                        
-                        <div className="flex flex-wrap gap-1.5">
-                          {pi.generated_color?.split(',').map((c: string) => c.trim()).filter(Boolean).map((c: string, i: number) => (
-                            <span key={i} className="px-1.5 py-0.5 bg-white/10 text-white/70 rounded-[4px] text-[8px] font-bold uppercase tracking-wider">{c}</span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button type="button" onClick={handleReset}
-              className="px-6 py-2 mt-4 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-black uppercase tracking-wider transition-all">
-              {tr("New Batch")}
-            </button>
-          </>
-        )}
-      </div>
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 2: Review & Edit Items
-  // ═══════════════════════════════════════════════════════════════
-  return (
-    <div className="flex flex-col gap-3 animate-in fade-in duration-300">
-      {/* Header bar */}
-      <div className="flex items-center justify-between gap-4">
-        <button type="button" onClick={() => setStep(1)}
-          className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-white/40 hover:text-white/70 transition-colors">
-          <ChevronLeft size={14} /> {tr("Back")}
-        </button>
-        <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
-          {batchItems.length} item{batchItems.length !== 1 ? 's' : ''} loaded
-        </span>
-        <button type="button" onClick={handleBatchSave} disabled={batchItems.length === 0}
-          className="flex items-center gap-2 px-6 py-3 bg-cyan-400 text-black rounded-xl text-[12px] font-black uppercase tracking-wider hover:bg-cyan-500 transition-all shadow-lg hover:scale-105 active:scale-95 disabled:opacity-50 disabled:grayscale">
-          <Save size={16} strokeWidth={3} /> {tr("Save All")}
-        </button>
-      </div>
-
-      {/* Photos: drop a folder once; files named by item number go to their row */}
-      <div
-        onDragOver={(e) => { if (!e.dataTransfer.types.includes(TRAY_MIME)) { e.preventDefault(); setPhotoDropOver(true); } }}
-        onDragLeave={() => setPhotoDropOver(false)}
-        onDrop={handlePhotoDrop}
-        className={`rounded-xl border border-dashed p-3 flex flex-col gap-2 transition-all ${photoDropOver ? 'border-cyan-400 bg-cyan-500/10' : 'border-white/15 bg-black/20 backdrop-blur-3xl'}`}>
-        <div className="flex items-center gap-3 flex-wrap">
-          {isMatchingPhotos ? <Loader2 size={16} className="text-cyan-400 animate-spin shrink-0" /> : <Images size={16} className="text-white/40 shrink-0" />}
-          <div className="flex-1 min-w-[12rem]">
-            <p className="text-[11px] font-black text-white/70">{isMatchingPhotos ? tr("Matching photos...") : tr("Drop a photo folder here")}</p>
-            <p className="text-[9px] font-bold text-white/40">{tr("Each photo goes to the row whose item number is in its name: EM-004.jpg, EM-004-2.jpg, 004b.jpg. Item subfolders (EM-004/) work too.")}</p>
-          </div>
-          <input type="file" ref={photoFilesInputRef} className="hidden" multiple accept="image/*"
-            onChange={(e) => { if (e.target.files) attachPhotos(collectInputFiles(e.target.files)); e.target.value = ''; }} />
-          {/* webkitdirectory isn't in React's input props, so it is set on the element. */}
-          <input type="file" className="hidden" multiple
-            ref={(el) => { photoFolderInputRef.current = el; el?.setAttribute('webkitdirectory', ''); }}
-            onChange={(e) => { if (e.target.files) attachPhotos(collectInputFiles(e.target.files)); e.target.value = ''; }} />
-          <button type="button" disabled={isMatchingPhotos} onClick={() => photoFolderInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-white/15 text-[10px] font-black uppercase tracking-wider text-white/60 hover:border-cyan-400 hover:text-cyan-400 transition-all disabled:opacity-50">
-            <FolderOpen size={12} /> {tr("Choose folder")}
-          </button>
-          <button type="button" disabled={isMatchingPhotos} onClick={() => photoFilesInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-white/15 text-[10px] font-black uppercase tracking-wider text-white/60 hover:border-cyan-400 hover:text-cyan-400 transition-all disabled:opacity-50">
-            <ImageIcon size={12} /> {tr("Choose photos")}
-          </button>
-        </div>
-
-        {photoSummary && (
-          <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-[9px] font-black uppercase tracking-wider">
-            <span className="text-emerald-400">{photoSummary.files} {tr("attached to")} {photoSummary.rows} {tr("rows")}</span>
-            {photoSummary.unmatched > 0 && <span className="text-amber-400">{photoSummary.unmatched} {tr("unmatched")}</span>}
-            {photoSummary.duplicates > 0 && <span className="text-white/40">{photoSummary.duplicates} {tr("already attached")}</span>}
-            {photoSummary.ignored > 0 && <span className="text-white/40">{photoSummary.ignored} {tr("in other subfolders, ignored")}</span>}
-            {batchItems.filter(i => i.mediaFiles.length === 0).length > 0 && (
-              <span className="text-white/50 normal-case tracking-normal font-bold">
-                {tr("No photo:")} {batchItems.filter(i => i.mediaFiles.length === 0).map(i => `#${i.itemNumber}`).join(', ')}
-              </span>
-            )}
-          </div>
-        )}
-
-        {photoTray.length > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <p className="text-[9px] font-black uppercase tracking-wider text-amber-400">{tr("Unmatched — drag onto a row")}</p>
-              <button type="button" onClick={() => setPhotoTray([])}
-                className="text-[9px] font-black uppercase tracking-wider text-white/40 hover:text-white/70">{tr("Clear")}</button>
-            </div>
-            <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
-              {photoTray.map(t => (
-                <div key={t.id} draggable title={`${t.file.name} — ${t.reason}`}
-                  onDragStart={(e) => { e.dataTransfer.setData(TRAY_MIME, t.id); e.dataTransfer.effectAllowed = 'move'; }}
-                  className="shrink-0 w-20 cursor-grab active:cursor-grabbing">
-                  {t.preview
-                    ? <img src={t.preview} alt={t.file.name} className="w-20 h-16 object-cover rounded border border-amber-400/30" />
-                    : <div className="w-20 h-16 rounded border border-amber-400/30 flex items-center justify-center"><ImageIcon size={14} className="text-white/30" /></div>}
-                  <p className="text-[8px] font-bold text-white/50 truncate mt-0.5">{t.file.name}</p>
-                  <p className="text-[8px] text-amber-400/70 truncate">{t.reason}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Items list */}
-      <div className="flex flex-col gap-2 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
-        {batchItems.map((item, idx) => {
-          const codes = getItemCodes(item);
-          const isEditing = editingItem === item.id;
-          const itemImgInputRef = React.createRef<HTMLInputElement>();
-
-          return (
-            <div key={item.id}
-              onDragOver={(e) => { e.preventDefault(); if (rowDropOver !== item.id) setRowDropOver(item.id); }}
-              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setRowDropOver(null); }}
-              onDrop={(e) => handleRowDrop(e, item.id)}
-              className={`bg-black/20 backdrop-blur-3xl rounded-xl border p-3 shadow-sm hover:shadow-md transition-shadow ${rowDropOver === item.id ? 'border-cyan-400 ring-1 ring-cyan-400/50' : 'border-white/10'}`}>
-              {/* Row 1: Tag preview + core info + actions */}
-              <div className="flex items-start gap-3">
-                {/* Item number */}
-                <div className="w-6 h-6 rounded bg-white/5 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-black text-white/40">{idx + 1}</span>
-                </div>
-
-                {/* Tag ID preview */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <span className="vendor-tag px-2 py-0.5 rounded text-[10px] font-black"
-                    style={{ ['--vendor-color' as string]: vendorData?.color || '#ccc', backgroundColor: vendorData?.color || '#ccc', color: getTextColorForBg(vendorData?.color || '#ccc') } as React.CSSProperties}>
-                    {vendorKey} 826
-                  </span>
-                  <span className="text-xs font-black text-white">{item.itemNumber}</span>
-                  <span className="text-xs font-black text-white">{codes.bookLandCode || tr("XXXX")}</span>
-                </div>
-
-                {/* Description summary */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-white/70 truncate">
-                    {[item.color, item.material, item.shape, item.itemType].filter(Boolean).join(' · ') || item.description || '—'}
-                  </p>
-                  <div className="flex items-center gap-3 mt-0.5 text-[9px] font-bold text-white/40">
-                    {item.widthCm && <span>{item.widthCm}W</span>}
-                    {item.heightCm && <span>{item.heightCm}H</span>}
-                    {item.lengthCm && <span>{item.lengthCm}D</span>}
-                    {item.weightKg && <span>{item.weightKg}kg</span>}
-                    <span className="text-cyan-400">Q{item.quantity || '1'}</span>
-                  </div>
-                </div>
-
-                {/* Price + Codes */}
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-black text-white">${item.price || '0'}<span className="text-[8px] text-white/40 ml-0.5">MXN</span></p>
-                  <div className="flex items-center gap-1.5 justify-end text-[8px] font-bold text-white/30">
-                    <span>{tr("AQ:")}{codes.bookAqCode}</span>
-                    <span>{tr("LC:")}{codes.bookLandCode}</span>
-                    <span className="text-emerald-400">${codes.bookRetail}</span>
-                  </div>
-                </div>
-
-                {/* Image slot */}
-                <div className="shrink-0 flex items-center gap-1">
-                  <input type="file" ref={itemImgInputRef} className="hidden" multiple accept="image/*"
-                    onChange={(e) => { if (e.target.files) addImageToItem(item.id, e.target.files); e.target.value = ''; }} />
-                  {item.mediaFiles.length > 0 && (
-                    <div className="flex gap-0.5">
-                      {item.mediaFiles.slice(0, 2).map((f, mi) => (
-                        <div key={mi} className="relative w-8 h-8 rounded overflow-hidden group">
-                          {f.localUrl
-                            ? <img src={f.localUrl} alt={f.name || ''} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full bg-white/5 flex items-center justify-center"><ImageIcon size={10} className="text-white/30" /></div>}
-                          <button type="button" onClick={() => removeImageFromItem(item.id, mi)}
-                            className="absolute inset-0 bg-red-500/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <X size={10} className="text-white" strokeWidth={3} />
-                          </button>
-                        </div>
-                      ))}
-                      {item.mediaFiles.length > 2 && (
-                        <span className="text-[8px] font-black text-white/30 self-center">+{item.mediaFiles.length - 2}</span>
-                      )}
-                    </div>
-                  )}
-                  <button type="button" onClick={() => itemImgInputRef.current?.click()}
-                    className="w-8 h-8 border border-dashed border-white/15 rounded flex items-center justify-center hover:border-cyan-400 hover:bg-cyan-500/20 transition-all text-white/20">
-                    <ImageIcon size={12} />
-                  </button>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <button type="button" onClick={() => setEditingItem(isEditing ? null : item.id)}
-                    className={`w-6 h-6 rounded flex items-center justify-center transition-all text-[10px] font-black ${
-                      isEditing ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/30 hover:text-white/60 hover:bg-white/5'
-                    }`}>
-                    ✎
-                  </button>
-                  <button type="button" onClick={() => removeItem(item.id)}
-                    className="w-6 h-6 rounded flex items-center justify-center text-white/20 hover:text-rose-400 hover:bg-red-500/20 transition-all">
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Expandable edit row */}
-              {isEditing && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t border-white/10 animate-in slide-in-from-top-2 duration-200">
-                  <div>
-                    <label className={lbl}>{tr("SHAPE")}</label>
-                    <input type="text" value={item.shape} onChange={e => updateItem(item.id, 'shape', e.target.value)} className={inp} />
-                    {suggestions.shape.length > 0 && (
-                      <div className="flex flex-wrap gap-0.5 mt-0.5">
-                        {suggestions.shape.slice(0, 4).map(s => (
-                          <button key={s} type="button" onMouseDown={e => { e.preventDefault(); updateItem(item.id, 'shape', s); }}
-                            className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-600 rounded text-[8px] font-black uppercase hover:bg-cyan-100 transition-colors">{s}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("TYPE")}</label>
-                    <input type="text" value={item.itemType} onChange={e => updateItem(item.id, 'itemType', e.target.value)} className={inp} />
-                    {suggestions.itemType.length > 0 && (
-                      <div className="flex flex-wrap gap-0.5 mt-0.5">
-                        {suggestions.itemType.slice(0, 4).map(s => (
-                          <button key={s} type="button" onMouseDown={e => { e.preventDefault(); updateItem(item.id, 'itemType', s); }}
-                            className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-600 rounded text-[8px] font-black uppercase hover:bg-cyan-100 transition-colors">{s}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("COLOR")}</label>
-                    <input type="text" value={item.color} onChange={e => updateItem(item.id, 'color', e.target.value)} className={inp} />
-                    {suggestions.color.length > 0 && (
-                      <div className="flex flex-wrap gap-0.5 mt-0.5">
-                        {suggestions.color.slice(0, 4).map(s => (
-                          <button key={s} type="button" onMouseDown={e => { e.preventDefault(); updateItem(item.id, 'color', s); }}
-                            className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-600 rounded text-[8px] font-black uppercase hover:bg-cyan-100 transition-colors">{s}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("MATERIAL")}</label>
-                    <input type="text" value={item.material} onChange={e => updateItem(item.id, 'material', e.target.value)} className={inp} />
-                    {suggestions.material.length > 0 && (
-                      <div className="flex flex-wrap gap-0.5 mt-0.5">
-                        {suggestions.material.slice(0, 4).map(s => (
-                          <button key={s} type="button" onMouseDown={e => { e.preventDefault(); updateItem(item.id, 'material', s); }}
-                            className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-600 rounded text-[8px] font-black uppercase hover:bg-cyan-100 transition-colors">{s}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("WIDTH CM")}</label>
-                    <input type="number" min="0" value={item.widthCm} onChange={e => updateItem(item.id, 'widthCm', e.target.value)} className={inp + ' text-center'} />
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("HEIGHT CM")}</label>
-                    <input type="number" min="0" value={item.heightCm} onChange={e => updateItem(item.id, 'heightCm', e.target.value)} className={inp + ' text-center'} />
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("DEPTH CM")}</label>
-                    <input type="number" min="0" value={item.lengthCm} onChange={e => updateItem(item.id, 'lengthCm', e.target.value)} className={inp + ' text-center'} />
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("WEIGHT KG")}</label>
-                    <input type="number" min="0" value={item.weightKg} onChange={e => updateItem(item.id, 'weightKg', e.target.value)} className={inp + ' text-center'} />
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("QTY")}</label>
-                    <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} className={inp + ' text-center'} />
-                  </div>
-                  <div>
-                    <label className={lbl}>{tr("PRICE MXN")}</label>
-                    <input type="number" min="0" value={item.price} onChange={e => updateItem(item.id, 'price', e.target.value)} className={inp + ' text-center font-black'} />
-                  </div>
-                  <div className="col-span-2">
-                    <label className={lbl}>{tr("DESCRIPTION")}</label>
-                    <input type="text" value={item.description} onChange={e => updateItem(item.id, 'description', e.target.value)} className={inp} />
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {aiEnabled && batchItems.length > 0 && (
-          <div className="mb-4 border border-white/10 rounded-xl bg-black/20 backdrop-blur-3xl p-4">
-            <CatalogHubProcessesPanel
-              processes={CATALOG_PROCESSES}
-              selected={aiSelected}
-              onToggle={handleAiToggle}
-              onRun={handleAiRun}
-              onReload={handleAiRun}
-              results={mapResultsByProcessId(aiResults)}
-              busy={aiBusy}
-              hasPhoto={batchItems.some(i => i.mediaFiles.some(m => m.type === 'image'))}
-              hasVideo={batchItems.some(i => i.mediaFiles.some(m => m.type === 'video'))}
+    if (step === 3 && importState) {
+        return (
+            <ImportStep
+                state={importState}
+                left={batchItems.length}
+                aiEnabled={aiEnabled}
+                onStop={requestImportStop}
+                onHandOff={(autoRun) => {
+                    const rows = importState.rows.map(r => r.row).filter(Boolean);
+                    if (!rows.length) return;
+                    setHubItems(rows);
+                    setHandoff({
+                        processes: importState.processes.filter(p => p !== 'variation_donor') as ProcessId[],
+                        donor: importState.donor,
+                        autoRun,
+                    });
+                    setHubOpen(true);
+                }}
+                onDone={() => { setImportState(null); setFileStep(false); void loadTaken(); }}
             />
-          </div>
-      )}
+        );
+    }
 
-      {/* Bottom summary bar */}
-      <div className="flex items-center justify-between px-3 py-2 bg-black/20 backdrop-blur-3xl rounded-lg border border-white/10 mt-1">
-        <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-wider text-white/40">
-          <span>{tr("Items:")} {batchItems.length}</span>
-          <span>{tr("Qty:")} {batchItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0)}</span>
-          <span>{tr("MXN: $")}{batchItems.reduce((acc, i) => acc + ((Number(i.price) || 0) * (Number(i.quantity) || 1)), 0).toLocaleString()}</span>
-          <span>{tr("Images:")} {batchItems.reduce((n, i) => n + i.mediaFiles.length, 0)} · {batchItems.filter(i => i.mediaFiles.length > 0).length}/{batchItems.length} {tr("rows")}</span>
-        </div>
-      </div>
-    </div>
-  );
+    if (step === 1) {
+        return (
+            <FileStep
+                vendor={vendor}
+                pending={batchItems.length}
+                onBack={batchItems.length ? () => setFileStep(false) : undefined}
+                onLoaded={async (items, meta) => {
+                    const t = await loadTakenFresh(vendor);
+                    setTaken(t.taken);
+                    setTakenError(t.error);
+                    setBatchItems(t.taken ? assignNumbers(items, t.taken) : items);
+                    setNumberedFor(t.taken ? vendor : '');
+                    setSheetMeta(meta);
+                    setFileStep(false);
+                }}
+            />
+        );
+    }
+
+    return (
+        <ReviewStep
+            vendor={vendor}
+            items={batchItems}
+            setItems={setBatchItems}
+            meta={sheetMeta}
+            taken={taken}
+            takenError={takenError}
+            checking={checking}
+            onRecheck={loadTaken}
+            processes={processes}
+            setProcesses={setProcesses}
+            aiEnabled={aiEnabled}
+            onEnableAi={() => setAiEnabled(true)}
+            onLoadAnother={() => setFileStep(true)}
+            onCreate={async () => {
+                if (!vendor) { toast.error(tr('Choose a vendor first')); return; }
+                if (isImportRunning()) return;
+                if (isDummyMode) { toast(tr('Demo mode: nothing was saved.')); return; }
+                const t = await loadTaken();
+                if (!t) { toast.error(tr('Could not read the book’s numbers, so nothing was created. Check the connection and try again.')); return; }
+                const items = batchItems;
+                const conflicts = numberConflicts(items, t);
+                if (conflicts.size) { toast.error(trf('{n} rows have a number that cannot be used. Renumber or fix them first.', { n: conflicts.size })); return; }
+                if (items.some(i => NUMERIC_FIELDS.some(f => !cleanNumberCell(i[f]).ok))) { toast.error(tr('Some cells are not numbers. Fix them first.')); return; }
+                const picked = aiEnabled ? OFFERED.filter(p => processes.has(p)) : [];
+                void runBatchImport({
+                    items,
+                    vendor,
+                    user,
+                    processes: picked,
+                    donor: picked.includes('variation_donor'),
+                    setState: setImportState,
+                    removeCreated: ids => setBatchItems(prev => prev.filter(i => !ids.includes(i.id))),
+                    onCreated: () => setInventoryVersion(Date.now()),
+                });
+            }}
+        />
+    );
 }
 
+/** The book's numbers, or the error, without touching state (step 1 sets both at once). */
+async function loadTakenFresh(vendor: string): Promise<{ taken: Set<number> | null; error: string | null }> {
+    try {
+        return { taken: await getTakenItemNumbers(vendor, BATCH_WORKBOOK), error: null };
+    } catch (err: any) {
+        return { taken: null, error: err?.message || String(err) };
+    }
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 1 · the sheet
+// ─────────────────────────────────────────────────────────────────────────────
 
+function FileStep({ vendor, pending, onBack, onLoaded }: {
+    vendor: string;
+    pending: number;
+    onBack?: () => void;
+    onLoaded: (items: BatchCreateItem[], meta: SheetMeta) => Promise<void>;
+}) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [over, setOver] = useState(false);
+    const [stage, setStage] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [translate, setTranslate] = useState(true);
+    const keySet = hasGeminiKey();
 
+    const load = async (file: File | undefined) => {
+        if (!file || stage) return;
+        if (!vendor) { toast.error(tr('Choose a vendor first')); return; }
+        if (!/\.xlsx?$/i.test(file.name)) { toast.error(tr('Please drop an .xlsx file')); return; }
+        setError(null);
+        setStage(tr('Reading the sheet…'));
+        try {
+            const parsed = parseSheet(await file.arrayBuffer(), vendor);
+            let items = parsed.items;
+            let translation: SheetMeta['translation'] = 'off';
+            let translationError: string | undefined;
+            if (translate && keySet) {
+                setStage(tr('Translating Spanish → English via Gemini…'));
+                const t = await translateItems(items);
+                items = t.items;
+                translation = t.error ? 'failed' : 'done';
+                translationError = t.error;
+                if (t.error) toast.error(`${tr('Translation failed: items loaded without translation')}: ${t.error}`);
+            } else if (translate) {
+                translation = 'no_key';
+            }
+            setStage(tr('Numbering…'));
+            await onLoaded(items, {
+                fileName: file.name,
+                sheetName: parsed.sheetName,
+                vendorSheet: parsed.vendorSheet,
+                skippedForLimit: parsed.skippedForLimit,
+                skippedBlank: parsed.skippedBlank,
+                unmapped: parsed.unmapped,
+                invalidCells: parsed.invalidCells,
+                translation,
+                translationError,
+            });
+            toast.success(trf('Loaded {n} rows from {file}', { n: items.length, file: file.name }));
+            if (parsed.skippedForLimit > 0) {
+                toast(trf('{n} more rows were not imported: the limit is {max} per batch. Split the sheet to load the rest.', { n: parsed.skippedForLimit, max: MAX_ITEMS }), { icon: '⚠️', duration: 8000 });
+            }
+        } catch (err: any) {
+            setError(err instanceof SheetError ? tr(SHEET_ERROR[err.code]) : (err?.message || tr('Failed to read the spreadsheet')));
+        } finally {
+            setStage(null);
+        }
+    };
 
+    const disabled = !vendor || !!stage;
+    return (
+        <div className="ui-root bc bc--file">
+            <input ref={inputRef} type="file" hidden accept=".xlsx,.xls"
+                onChange={(e) => { void load(e.target.files?.[0]); e.target.value = ''; }} />
+            <button type="button" className={cx('bc-drop', over && 'bc-drop--over')} disabled={disabled}
+                aria-describedby="bc-drop-hint"
+                onClick={() => inputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); if (!disabled) setOver(true); }}
+                onDragLeave={() => setOver(false)}
+                onDrop={(e) => { e.preventDefault(); setOver(false); if (!disabled) void load(e.dataTransfer.files[0]); }}>
+                {stage
+                    ? <span className="ui-spin bc-drop__spin" aria-hidden="true" />
+                    : <FileSpreadsheet size={40} strokeWidth={1.4} aria-hidden="true" />}
+                <span className="bc-drop__title">
+                    {stage || (vendor ? trf('Drop {vendor}’s XLSX here', { vendor }) : tr('Choose a vendor first'))}
+                </span>
+                <span className="bc-drop__sub">
+                    {stage ? '' : vendor
+                        ? trf('or click to choose. The sheet named {vendor} is read, else the first one. Book {book}.', { vendor, book: BOOK })
+                        : tr('Its sheet and its numbers in the book are what the import uses.')}
+                </span>
+            </button>
 
+            <div className="bc-file__opts">
+                <Chip pressed={translate && keySet} disabled={!keySet || !!stage} onPressedChange={setTranslate}
+                    icon={<Languages size={12} />}
+                    title={keySet ? tr('Translate shape and material from Spanish. Type, colour and the note are kept as the vendor wrote them.') : tr('No Gemini key on this device: the sheet is loaded as written')}>
+                    {tr('Translate ES → EN')}
+                </Chip>
+                {onBack && (
+                    <Key size="sm" variant="quiet" icon={<ChevronLeft size={13} />} onClick={onBack}>
+                        {trf('Back to the review ({n} rows)', { n: pending })}
+                    </Key>
+                )}
+            </div>
 
+            {error && <p className="bc-alert" role="alert"><AlertTriangle size={14} aria-hidden="true" /> {error}</p>}
+
+            <p id="bc-drop-hint" className="bc-hint">
+                {tr('Columns: cantidad · forma · tipo · color · material · ancho · alto · fondo · precio. Optional: # (item number) · descripcion · kg.')}
+                {' '}{trf('Up to {max} rows per batch. Name photos by item number (EM-004.jpg, EM-004-2.jpg) and drop the folder on the next step.', { max: MAX_ITEMS })}
+            </p>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 2 · the review
+// ─────────────────────────────────────────────────────────────────────────────
+
+type SuggestField = 'shape' | 'itemType' | 'color' | 'material';
+
+interface TrayPhoto { id: string; file: File; preview: string; reason: string }
+
+const ROW_COLUMNS = '118px 108px minmax(0, 1fr) 128px 104px 96px';
+
+function ReviewStep(props: {
+    vendor: string;
+    items: BatchCreateItem[];
+    setItems: (u: BatchCreateItem[] | ((prev: BatchCreateItem[]) => BatchCreateItem[])) => void;
+    meta: SheetMeta | null;
+    taken: Set<number> | null;
+    takenError: string | null;
+    checking: boolean;
+    onRecheck: () => Promise<Set<number> | null>;
+    processes: Set<ProcessId>;
+    setProcesses: (next: Set<ProcessId>) => void;
+    aiEnabled: boolean;
+    onEnableAi: () => void;
+    onLoadAnother: () => void;
+    onCreate: () => Promise<void>;
+}) {
+    const { vendor, items, setItems, meta, taken, takenError, checking, processes, aiEnabled } = props;
+    const inventory = useAtomValue(inventoryAtom);
+    const narrow = useNarrow();
+
+    const [currentId, setCurrentId] = useState<string | null>(null);
+    const [tray, setTray] = useState<TrayPhoto[]>([]);
+    const [trayPick, setTrayPick] = useState<string | null>(null);
+    const [photoSummary, setPhotoSummary] = useState<{ files: number; rows: number; unmatched: number; ignored: number; duplicates: number } | null>(null);
+    const [matching, setMatching] = useState(false);
+    const [dropOver, setDropOver] = useState(false);
+    const [rowOver, setRowOver] = useState<string | null>(null);
+    const [creating, setCreating] = useState(false);
+    const filesInput = useRef<HTMLInputElement>(null);
+    const folderInput = useRef<HTMLInputElement>(null);
+    // One picker for every row's "add photos", aimed at a row before it opens
+    // (a ref per row was a fresh createRef on every render).
+    const rowInput = useRef<HTMLInputElement>(null);
+    const rowInputTarget = useRef<string | null>(null);
+
+    // ── checks ──
+    const conflicts = useMemo(() => numberConflicts(items, taken), [items, taken]);
+    const issues = useMemo(() => {
+        const m = new Map<string, RowIssue[]>();
+        items.forEach(i => m.set(i.id, rowIssues(i, conflicts.get(i.id), vendor)));
+        return m;
+    }, [items, conflicts, vendor]);
+    const errorRows = items.filter(i => issues.get(i.id)?.some(x => x.level === 'error')).length;
+    const badCells = items.reduce((n, i) => n + NUMERIC_FIELDS.filter(f => !cleanNumberCell(i[f]).ok).length, 0);
+    const tags = useMemo(() => {
+        const m = new Map<string, Record<string, unknown>>();
+        items.forEach(i => m.set(i.id, tagRowOf(i, vendor)));
+        return m;
+    }, [items, vendor]);
+
+    const blocked = !vendor ? tr('Choose a vendor first')
+        : !taken ? (takenError ? tr('The book’s numbers could not be read') : tr('Reading the book’s numbers…'))
+            : conflicts.size ? trf('{n} rows have a number that cannot be used', { n: conflicts.size })
+                : badCells ? trf('{n} cells are not numbers', { n: badCells })
+                    : '';
+
+    const current = (currentId && items.find(i => i.id === currentId)) || (narrow ? undefined : items[0]);
+
+    // ── edits ──
+    const updateItem = useCallback((id: string, patch: Partial<BatchCreateItem>) => {
+        setItems(prev => prev.map(i => (i.id === id ? { ...i, ...patch } : i)));
+    }, [setItems]);
+
+    const removeItem = (id: string) => {
+        const at = items.findIndex(i => i.id === id);
+        const gone = items[at];
+        if (!gone) return;
+        setItems(prev => prev.filter(i => i.id !== id));
+        if (currentId === id) setCurrentId(items[at + 1]?.id ?? items[at - 1]?.id ?? null);
+        toast((t) => (
+            <span className="bc-toast">
+                {trf('Row {n} removed', { n: gone.sheetRow ?? at + 1 })}
+                <button type="button" onClick={() => {
+                    setItems(prev => (prev.some(i => i.id === gone.id) ? prev : [...prev.slice(0, at), gone, ...prev.slice(at)]));
+                    toast.dismiss(t.id);
+                }}>{tr('Undo')}</button>
+            </span>
+        ), { duration: 6000 });
+    };
+
+    const addFiles = useCallback(async (id: string, files: FileList | File[]) => {
+        const picked = Array.from(files).filter(isImageFile);
+        if (!picked.length) return;
+        const media = await Promise.all(picked.map(async file => ({ type: 'image' as const, localUrl: await previewFor(file), originalFile: file, name: file.name, tag: 'Item' as const })));
+        setItems(prev => prev.map(i => (i.id === id ? { ...i, mediaFiles: [...i.mediaFiles, ...media] } : i)));
+    }, [setItems]);
+
+    const moveTrayToRow = useCallback((trayId: string, rowId: string) => {
+        const t = tray.find(p => p.id === trayId);
+        if (!t) return;
+        setItems(prev => prev.map(i => (i.id === rowId
+            ? { ...i, mediaFiles: [...i.mediaFiles, { type: 'image' as const, localUrl: t.preview, originalFile: t.file, name: t.file.name, tag: 'Item' as const }] }
+            : i)));
+        setTray(prev => prev.filter(p => p.id !== trayId));
+        if (trayPick === trayId) setTrayPick(null);
+    }, [tray, trayPick, setItems]);
+
+    // Drop a folder (or many photos) once: each file goes to the row whose item
+    // number is in its name (EM-004.jpg, EM-004-2.jpg). See batchPhotoMatch.ts.
+    const attachPhotos = useCallback(async (candidates: PhotoCandidate[]) => {
+        if (!candidates.length) return;
+        setMatching(true);
+        try {
+            const match = matchPhotosToRows(candidates, items, vendor);
+            const files = [...Array.from(match.assigned.values()).flat(), ...match.unmatched.map(u => u.file)];
+            const previews = new Map<File, string>();
+            await processQueueWithConcurrency(files, 4, async (file) => { previews.set(file, await previewFor(file)); });
+            setItems(prev => prev.map(i => {
+                const add = match.assigned.get(i.id);
+                if (!add) return i;
+                return { ...i, mediaFiles: [...i.mediaFiles, ...add.map(file => ({ type: 'image' as const, localUrl: previews.get(file), originalFile: file, name: file.name, tag: 'Item' as const }))] };
+            }));
+            setTray(prev => [...prev, ...match.unmatched.map(u => ({ id: crypto.randomUUID(), file: u.file, preview: previews.get(u.file) || '', reason: u.reason }))]);
+            const attached = Array.from(match.assigned.values()).reduce((n, f) => n + f.length, 0);
+            setPhotoSummary({ files: attached, rows: match.assigned.size, unmatched: match.unmatched.length, ignored: match.ignored, duplicates: match.duplicates });
+            if (attached) toast.success(trf('{n} photos attached to {rows} rows', { n: attached, rows: match.assigned.size }));
+            else toast.error(tr('No photo names matched an item number in this batch'));
+        } catch (err: any) {
+            console.error('[BatchCreate] Photo matching failed', err);
+            toast.error(`${tr('Could not read those photos')}: ${err?.message || err}`);
+        } finally {
+            setMatching(false);
+        }
+    }, [items, vendor, setItems]);
+
+    // ── suggestions: the manual columns only (attributeSuggestions falls back
+    // to generated_type for Type, the AI's Shopify category) ──
+    const manualRows = useMemo(() => (inventory || []).map((r: any) => {
+        const d = r?.data && typeof r.data === 'object' ? r.data : (r || {});
+        return { shape: d.shape, material: d.material, color: d.color, short_description: d.short_description ?? d.shortDescription };
+    }), [inventory]);
+    const suggestions = useMemo((): Record<SuggestField, string[]> => {
+        const s = buildAttributeSuggestions(manualRows, current
+            ? { shape: current.shape, material: current.material, color: current.color, type: current.itemType }
+            : {});
+        const cap = (l?: string[]) => (l || []).slice(0, 40);
+        return { shape: cap(s.shape), itemType: cap(s.type), color: cap(s.color), material: cap(s.material) };
+    }, [manualRows, current?.shape, current?.material, current?.color, current?.itemType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── process chips ──
+    const anyPhoto = items.some(i => i.mediaFiles.length > 0);
+    const anyPhotoless = items.some(i => i.mediaFiles.length === 0);
+    const unavailable: Partial<Record<ProcessId, string>> = {};
+    if (!anyPhoto) IMAGE_PROCESSES.forEach(p => { unavailable[p] = 'Needs a photo'; });
+    if (!anyPhotoless) unavailable.variation_donor = 'Every row has a photo';
+
+    const totals = useMemo(() => ({
+        qty: items.reduce((n, i) => n + (Number(cleanNumberCell(i.quantity).value) || 1), 0),
+        mxn: items.reduce((n, i) => n + (Number(cleanNumberCell(i.price).value) || 0) * (Number(cleanNumberCell(i.quantity).value) || 1), 0),
+        photos: items.reduce((n, i) => n + i.mediaFiles.length, 0),
+        withPhotos: items.filter(i => i.mediaFiles.length > 0).length,
+    }), [items]);
+
+    const create = async () => {
+        setCreating(true);
+        try { await props.onCreate(); } finally { setCreating(false); }
+    };
+
+    const renumber = () => {
+        if (!taken) return;
+        setItems(prev => renumberConflicts(prev, taken));
+        toast.success(trf('{n} rows renumbered from the next free number', { n: conflicts.size }));
+    };
+
+    const rowCheck = (i: BatchCreateItem) => {
+        const list = issues.get(i.id) || [];
+        const err = list.find(x => x.level === 'error');
+        const warn = list.find(x => x.level === 'warn');
+        const title = list.map(x => x.text).join('\n') || tr('Ready to create');
+        if (err) return <span title={title}><StatusPill state="failed" label={err.short} /></span>;
+        if (warn) return <span title={title}><StatusPill state="partial" label={warn.short} /></span>;
+        return <span title={title}><StatusPill state="done" label={tr('Ready')} /></span>;
+    };
+
+    const rowPhotos = (i: BatchCreateItem) => {
+        if (!i.mediaFiles.length) return <span className="bc-faint">{tr('No photo')}</span>;
+        const shown = i.mediaFiles.slice(0, 3);
+        return (
+            <span className="ui-thumbs">
+                {shown.map((m, k) => m.localUrl
+                    ? <Thumb key={k} src={m.localUrl} alt={m.name || `${tr('Photo')} ${k + 1}`}
+                        badge={k === 2 && i.mediaFiles.length > 3 ? `+${i.mediaFiles.length - 3}` : undefined} />
+                    : <span key={k} className="ui-thumb bc-thumb--empty" title={m.name} />)}
+            </span>
+        );
+    };
+
+    const sizeOf = (i: BatchCreateItem) => {
+        const dims = [i.widthCm, i.heightCm, i.lengthCm].map(v => cleanNumberCell(v)).filter(c => c.ok && c.value).map(c => c.value);
+        const kg = cleanNumberCell(i.weightKg);
+        return [dims.length ? `${dims.join('×')} cm` : '', kg.ok && kg.value ? `${kg.value} kg` : '', `${tr('Q')}${cleanNumberCell(i.quantity).value || 1}`].filter(Boolean).join(' · ');
+    };
+
+    const editor = current ? (
+        // Not keyed by row: RowEditor holds no per-row state, and remounting it
+        // on Previous / Next / Remove dropped keyboard focus to <body> (and,
+        // in the overlay drawer, out of its Esc and Tab handling).
+        <RowEditor
+            item={current}
+            vendor={vendor}
+            tag={tags.get(current.id) || {}}
+            issues={issues.get(current.id) || []}
+            suggestions={suggestions}
+            index={items.indexOf(current)}
+            count={items.length}
+            trayPick={tray.find(t => t.id === trayPick) || null}
+            onChange={(patch) => updateItem(current.id, patch)}
+            onAddPhotos={() => { rowInputTarget.current = current.id; rowInput.current?.click(); }}
+            onAttachPicked={() => trayPick && moveTrayToRow(trayPick, current.id)}
+            onRemove={() => removeItem(current.id)}
+            onStep={(d) => { const next = items[items.indexOf(current) + d]; if (next) setCurrentId(next.id); }}
+        />
+    ) : null;
+
+    const conflictsByKind = Array.from(conflicts.values()).reduce((m, k) => { m[k] = (m[k] || 0) + 1; return m; }, {} as Record<string, number>);
+
+    return (
+        <div className="ui-root bc">
+            <input ref={rowInput} type="file" hidden multiple accept="image/*"
+                onChange={(e) => { const id = rowInputTarget.current; if (id && e.target.files) void addFiles(id, e.target.files); e.target.value = ''; }} />
+
+            {/* ── bar: what is loaded, and the one action ── */}
+            <header className="ui-bar bc-bar">
+                <Key size="sm" variant="quiet" icon={<FileSpreadsheet size={13} />} onClick={props.onLoadAnother}
+                    title={tr('Read another sheet; it replaces these rows')}>
+                    {tr('Another sheet')}
+                </Key>
+                <div className="bc-bar__title">
+                    <h2>{vendor ? trf('{vendor} · book {book}', { vendor, book: BOOK }) : trf('No vendor · book {book}', { book: BOOK })}</h2>
+                    <small className="ui-tnum">
+                        {[trf('{n} rows', { n: items.length }), meta ? `${meta.fileName} · ${tr('sheet')} ${meta.sheetName}` : ''].filter(Boolean).join(' · ')}
+                    </small>
+                </div>
+                <span className="ui-grow" />
+                <Key variant="go" icon={<Play size={13} />} busy={creating || checking} disabled={!!blocked || !items.length}
+                    title={blocked || tr('Upload the photos and create the rows in the inventory')}
+                    onClick={create}>
+                    {trf('Create {n} items', { n: items.length })}
+                </Key>
+            </header>
+
+            {/* ── after the import ── */}
+            <div className="bc-ai">
+                <span className="bc-ai__label"><Bot size={13} aria-hidden="true" /> {tr('AI after import')}</span>
+                {aiEnabled ? (
+                    <>
+                        <ProcessChips value={processes} onChange={props.setProcesses} include={OFFERED} unavailable={unavailable}
+                            label={tr('Processes to run in the Catalog Hub after the import')} />
+                        <span className="bc-ai__note">{tr('Runs in the Catalog Hub, where you review and save it.')}</span>
+                    </>
+                ) : (
+                    <>
+                        <span className="bc-ai__note">{tr('AI processes are off, so the rows are created without AI.')}</span>
+                        <Key size="sm" onClick={props.onEnableAi}>{tr('Turn AI on')}</Key>
+                    </>
+                )}
+            </div>
+
+            {/* ── what needs attention ── */}
+            <ul className="bc-issues" aria-label={tr('Checks')}>
+                {!vendor && <li data-level="error">{tr('Choose a vendor above: the numbers and the photo names are checked against it.')}</li>}
+                {vendor && takenError && (
+                    <li data-level="error">
+                        {trf('Could not read {vendor}’s numbers in book {book}: {error}', { vendor, book: BOOK, error: takenError })}
+                        <Key size="sm" variant="quiet" icon={<RefreshCw size={12} />} busy={checking} onClick={() => { void props.onRecheck(); }}>{tr('Retry')}</Key>
+                    </li>
+                )}
+                {conflicts.size > 0 && taken && (
+                    <li data-level="error">
+                        {[
+                            conflictsByKind.taken ? trf('{n} numbers already taken in book {book}', { n: conflictsByKind.taken, book: BOOK }) : '',
+                            conflictsByKind.repeated ? trf('{n} repeated in this batch', { n: conflictsByKind.repeated }) : '',
+                            conflictsByKind.invalid ? trf('{n} not item numbers', { n: conflictsByKind.invalid }) : '',
+                        ].filter(Boolean).join(' · ')}
+                        <Key size="sm" variant="quiet" icon={<Hash size={12} />} onClick={renumber}
+                            title={tr('Give those rows the next free numbers; the other rows keep theirs')}>
+                            {trf('Renumber {n}', { n: conflicts.size })}
+                        </Key>
+                    </li>
+                )}
+                {badCells > 0 && <li data-level="error">{trf('{n} cells are not numbers. Open the row to fix them.', { n: badCells })}</li>}
+                {meta && !meta.vendorSheet && vendor && <li data-level="warn">{trf('No sheet is named {vendor}; read “{sheet}”.', { vendor, sheet: meta.sheetName })}</li>}
+                {meta && meta.skippedForLimit > 0 && <li data-level="warn">{trf('{n} more rows were not imported: the limit is {max} per batch. Split the sheet to load the rest.', { n: meta.skippedForLimit, max: MAX_ITEMS })}</li>}
+                {meta && meta.skippedBlank > 0 && <li data-level="info">{trf('{n} rows had no price, shape, type or description and were skipped.', { n: meta.skippedBlank })}</li>}
+                {meta && meta.unmapped.length > 0 && <li data-level="info">{trf('Columns not read: {cols}', { cols: meta.unmapped.join(', ') })}</li>}
+                {meta?.translation === 'failed' && <li data-level="warn">{trf('Not translated: {error}', { error: meta.translationError || '' })}</li>}
+                {meta?.translation === 'no_key' && <li data-level="info">{tr('Not translated: no Gemini key on this device.')}</li>}
+            </ul>
+
+            <div className={cx('bc-body', narrow && 'bc-body--narrow')}>
+                <div className="bc-main">
+                    {/* ── photos: drop a folder once; files named by item number go to their row ── */}
+                    <div className={cx('bc-photos', dropOver && 'bc-photos--over')}
+                        onDragOver={(e) => { if (!e.dataTransfer.types.includes(TRAY_MIME)) { e.preventDefault(); setDropOver(true); } }}
+                        onDragLeave={() => setDropOver(false)}
+                        onDrop={async (e) => {
+                            e.preventDefault();
+                            setDropOver(false);
+                            if (e.dataTransfer.types.includes(TRAY_MIME)) return;
+                            await attachPhotos(await collectDroppedFiles(e.dataTransfer));
+                        }}>
+                        <div className="bc-photos__head">
+                            {matching ? <span className="ui-spin" aria-hidden="true" /> : <Images size={16} aria-hidden="true" />}
+                            <div className="bc-photos__text">
+                                <strong>{matching ? tr('Matching photos…') : tr('Drop a photo folder here')}</strong>
+                                <span>{tr('Each photo goes to the row whose item number is in its name: EM-004.jpg, EM-004-2.jpg, 004b.jpg. Item subfolders (EM-004/) work too.')}</span>
+                            </div>
+                            <input ref={filesInput} type="file" hidden multiple accept="image/*"
+                                onChange={(e) => { if (e.target.files) void attachPhotos(collectInputFiles(e.target.files)); e.target.value = ''; }} />
+                            {/* webkitdirectory isn't in React's input props, so it is set on the element. */}
+                            <input type="file" hidden multiple
+                                ref={(el) => { folderInput.current = el; el?.setAttribute('webkitdirectory', ''); }}
+                                onChange={(e) => { if (e.target.files) void attachPhotos(collectInputFiles(e.target.files)); e.target.value = ''; }} />
+                            <Key size="sm" icon={<FolderOpen size={12} />} disabled={matching} onClick={() => folderInput.current?.click()}>{tr('Choose folder')}</Key>
+                            <Key size="sm" icon={<ImagePlus size={12} />} disabled={matching} onClick={() => filesInput.current?.click()}>{tr('Choose photos')}</Key>
+                        </div>
+
+                        {photoSummary && (
+                            <p className="bc-photos__sum ui-tnum">
+                                <span data-tone="ok">{trf('{n} attached to {rows} rows', { n: photoSummary.files, rows: photoSummary.rows })}</span>
+                                {photoSummary.unmatched > 0 && <span data-tone="warn">{trf('{n} unmatched', { n: photoSummary.unmatched })}</span>}
+                                {photoSummary.duplicates > 0 && <span>{trf('{n} already attached', { n: photoSummary.duplicates })}</span>}
+                                {photoSummary.ignored > 0 && <span>{trf('{n} in other subfolders, ignored', { n: photoSummary.ignored })}</span>}
+                            </p>
+                        )}
+
+                        {tray.length > 0 && (
+                            <div className="bc-tray">
+                                <div className="bc-tray__head">
+                                    <span>{tr('Unmatched: drag one onto a row, or pick it and use “Attach picked photo” in the row')}</span>
+                                    <Key size="sm" variant="quiet" onClick={() => { setTray([]); setTrayPick(null); }}>{tr('Clear')}</Key>
+                                </div>
+                                <div className="bc-tray__list">
+                                    {tray.map(t => (
+                                        <button key={t.id} type="button" draggable
+                                            className="bc-tray__item" aria-pressed={trayPick === t.id}
+                                            title={`${t.file.name}: ${t.reason}`}
+                                            onClick={() => setTrayPick(p => (p === t.id ? null : t.id))}
+                                            onDragStart={(e) => { e.dataTransfer.setData(TRAY_MIME, t.id); e.dataTransfer.effectAllowed = 'move'; }}>
+                                            {t.preview ? <img src={t.preview} alt="" draggable={false} /> : <span className="bc-tray__ph" />}
+                                            <span className="bc-tray__name">{t.file.name}</span>
+                                            <span className="bc-tray__why">{t.reason}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── rows ── */}
+                    <ItemList label={tr('Rows to create')} columns={ROW_COLUMNS} className="bc-list bc-list--review"
+                        header={[tr('Item'), tr('Photos'), tr('Description'), tr('Size'), tr('MXN'), tr('Check')]}
+                        empty={tr('No rows left in this batch.')}>
+                        {items.map(i => (
+                            <ItemRow key={i.id}
+                                current={current?.id === i.id}
+                                label={`${tags.get(i.id)?.item_id || i.itemNumber} ${rowName(i)}`}
+                                onOpen={() => setCurrentId(i.id)}
+                                className={cx(rowOver === i.id && 'bc-row--drop')}
+                                onDragOver={(e) => { e.preventDefault(); if (rowOver !== i.id) setRowOver(i.id); }}
+                                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setRowOver(null); }}
+                                onDrop={(e) => {
+                                    // A tray photo, or files from the desktop.
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setRowOver(null);
+                                    const trayId = e.dataTransfer.getData(TRAY_MIME);
+                                    if (trayId) moveTrayToRow(trayId, i.id);
+                                    else if (e.dataTransfer.files.length) void addFiles(i.id, e.dataTransfer.files);
+                                }}>
+                                <ItemTag item={tags.get(i.id)} workbook={BOOK} />
+                                {rowPhotos(i)}
+                                <span className="ui-row__main">
+                                    <span className="ui-row__title">{rowName(i) || <em className="bc-faint">{tr('No description')}</em>}</span>
+                                    <span className="ui-row__sub">
+                                        {[i.sheetRow ? trf('Sheet row {n}', { n: i.sheetRow }) : '', i.autoNumber ? tr('numbered here') : '', i.description && i.description !== rowName(i) ? i.description : ''].filter(Boolean).join(' · ')}
+                                    </span>
+                                </span>
+                                <span className="bc-cell ui-tnum">{sizeOf(i)}</span>
+                                <span className="bc-cell bc-cell--num ui-tnum">{money(cleanNumberCell(i.price).value) || '—'}</span>
+                                {rowCheck(i)}
+                            </ItemRow>
+                        ))}
+                    </ItemList>
+
+                    <p className="bc-summary ui-tnum">
+                        <span>{trf('{n} rows', { n: items.length })}</span>
+                        <span>{trf('Qty {n}', { n: totals.qty })}</span>
+                        <span>{trf('MXN {total}', { total: money(totals.mxn) || '$0' })}</span>
+                        <span>{trf('{n} photos on {rows}/{all} rows', { n: totals.photos, rows: totals.withPhotos, all: items.length })}</span>
+                        {errorRows > 0 && <span data-tone="bad">{trf('{n} rows to fix', { n: errorRows })}</span>}
+                    </p>
+                </div>
+
+                {narrow
+                    ? <Drawer variant="overlay" open={!!currentId && !!current} onClose={() => setCurrentId(null)}
+                        title={current ? <ItemTag item={tags.get(current.id)} workbook={BOOK} /> : ''} label={tr('Edit row')}>
+                        {editor}
+                    </Drawer>
+                    : current && (
+                        <Drawer title={<ItemTag item={tags.get(current.id)} workbook={BOOK} />} label={tr('Edit row')} className="bc-drawer">
+                            {editor}
+                        </Drawer>
+                    )}
+            </div>
+        </div>
+    );
+}
+
+/** A stable key per photo object, so reordering keeps each photo's DOM (and focus). */
+const shotKeys = new WeakMap<object, string>();
+let shotSeq = 0;
+const shotKey = (m: object): string => {
+    let k = shotKeys.get(m);
+    if (!k) { k = `shot-${(shotSeq++).toString(36)}`; shotKeys.set(m, k); }
+    return k;
+};
+
+function RowEditor({ item, vendor, tag, issues, suggestions, index, count, trayPick, onChange, onAddPhotos, onAttachPicked, onRemove, onStep }: {
+    item: BatchCreateItem;
+    vendor: string;
+    tag: Record<string, unknown>;
+    issues: RowIssue[];
+    suggestions: Record<SuggestField, string[]>;
+    index: number;
+    count: number;
+    trayPick: TrayPhoto | null;
+    onChange: (patch: Partial<BatchCreateItem>) => void;
+    onAddPhotos: () => void;
+    onAttachPicked: () => void;
+    onRemove: () => void;
+    onStep: (delta: -1 | 1) => void;
+}) {
+    const uid = React.useId();
+    const listId = (f: SuggestField) => `${uid}-${f}`;
+    const set = (k: keyof BatchCreateItem) => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ [k]: e.target.value } as Partial<BatchCreateItem>);
+    const numError = (f: NumericField) => (cleanNumberCell(item[f]).ok ? undefined : tr('Not a number'));
+    const numberIssue = issues.find(x => x.kind === 'number');
+    // The 17 book rate, as every book code; the codes are printed on the label.
+    const codes = calculateCodesAndPrices(tag, DEFAULT_EXCHANGE_RATE, BATCH_WORKBOOK);
+    const hasCodes = Number(tag.price_mxn) > 0;
+    const code = (v?: string) => (v && v !== '-' && !v.includes('—') ? v : '—');
+
+    const text = (k: SuggestField, label: string) => (
+        <Field label={tr(label)}>
+            <Input value={item[k]} onChange={set(k)} list={listId(k)} autoComplete="off" />
+            <datalist id={listId(k)}>{suggestions[k].map(s => <option key={s} value={s} />)}</datalist>
+        </Field>
+    );
+    const num = (k: NumericField, label: string) => (
+        <Field label={tr(label)} error={numError(k)}>
+            <Input value={item[k]} onChange={set(k)} inputMode="decimal" className="ui-tnum" />
+        </Field>
+    );
+
+    const editorRef = React.useRef<HTMLDivElement>(null);
+    /**
+     * After a key that disappears or goes disabled (Previous on the first
+     * row, the star on the new first photo, a removed photo's keys), put
+     * focus on `selector` so it does not fall to <body>.
+     */
+    const keepFocus = (selector: string) => requestAnimationFrame(() => {
+        const a = document.activeElement as HTMLButtonElement | null;
+        if (a && a !== document.body && a.isConnected && !a.disabled) return;
+        const root = editorRef.current;
+        const target = root?.querySelector<HTMLElement>(selector)
+            || root?.closest<HTMLElement>('[role="dialog"]');
+        target?.focus();
+    });
+
+    const movePhoto = (from: number, to: number) => {
+        const next = item.mediaFiles.slice();
+        const [m] = next.splice(from, 1);
+        next.splice(to, 0, m);
+        onChange({ mediaFiles: next });
+        keepFocus(`[data-shot="${shotKey(m)}"] [data-act="remove"]`);
+    };
+
+    const removePhoto = (k: number) => {
+        const after = item.mediaFiles[k + 1] ?? item.mediaFiles[k - 1];
+        onChange({ mediaFiles: item.mediaFiles.filter((_, j) => j !== k) });
+        keepFocus(after ? `[data-shot="${shotKey(after)}"] [data-act="remove"]` : '[data-act="add-photos"]');
+    };
+
+    return (
+        <div className="bc-editor" ref={editorRef}>
+            <p className="bc-editor__where ui-tnum">
+                {[item.sheetRow ? trf('Sheet row {n}', { n: item.sheetRow }) : '', trf('{i} of {n}', { i: index + 1, n: count }), vendor ? '' : tr('no vendor')].filter(Boolean).join(' · ')}
+            </p>
+
+            <div className="bc-fields">
+                <Field label={tr('Item #')} error={numberIssue?.text}
+                    hint={!numberIssue && item.autoNumber ? tr('Numbered here: the sheet had no #') : undefined}>
+                    <Input value={item.itemNumber} inputMode="numeric" className="ui-tnum"
+                        onChange={(e) => onChange({ itemNumber: e.target.value.trim(), autoNumber: false })} />
+                </Field>
+                {num('quantity', 'Qty')}
+                {text('shape', 'Shape')}
+                {text('itemType', 'Type')}
+                {text('color', 'Vendor colour')}
+                {text('material', 'Material')}
+                {num('widthCm', 'W cm')}
+                {num('heightCm', 'H cm')}
+                {num('lengthCm', 'D cm')}
+                {num('weightKg', 'Kg')}
+                {num('price', 'Price MXN')}
+                <Field label={tr('Vendor note')} className="bc-fields__wide">
+                    <Input value={item.description} onChange={set('description')} />
+                </Field>
+            </div>
+
+            <p className="bc-codes ui-tnum" aria-label={tr('Book codes at the book rate of 17')}>
+                <span>{tr('AQ')} <b>{hasCodes ? code(codes.bookAqCode) : '—'}</b></span>
+                <span>{tr('LC')} <b>{hasCodes ? code(codes.bookLandCode) : '—'}</b></span>
+                <span>{tr('Landed')} <b>{hasCodes ? `$${codes.bookLanded}` : '—'}</b></span>
+                <span>{tr('Retail')} <b>{hasCodes ? `$${codes.bookRetail}` : '—'}</b></span>
+            </p>
+
+            <Field group label={tr('Photos')} aside={item.mediaFiles.length ? trf('{n} · the first is the hero', { n: item.mediaFiles.length }) : undefined}>
+                <div className="bc-shots">
+                    {item.mediaFiles.map((m, k) => (
+                        <div key={shotKey(m)} data-shot={shotKey(m)} className="bc-shot">
+                            {m.localUrl ? <Thumb src={m.localUrl} size="xl" alt={m.name || `${tr('Photo')} ${k + 1}`} /> : <span className="ui-thumb ui-thumb--xl bc-thumb--empty" />}
+                            <span className="bc-shot__acts">
+                                {k > 0 && <Key iconOnly size="sm" variant="quiet" icon={<Star size={12} />} label={tr('Make it the first photo')} onClick={() => movePhoto(k, 0)} />}
+                                <Key iconOnly size="sm" variant="quiet" icon={<X size={12} />} label={trf('Remove {name}', { name: m.name || `${tr('Photo')} ${k + 1}` })}
+                                    data-act="remove" onClick={() => removePhoto(k)} />
+                            </span>
+                        </div>
+                    ))}
+                    {!item.mediaFiles.length && <span className="bc-faint">{tr('No photo yet. Drop files on the row, or add them here.')}</span>}
+                </div>
+                <div className="bc-shots__keys">
+                    <Key size="sm" icon={<ImagePlus size={12} />} data-act="add-photos" onClick={onAddPhotos}>{tr('Add photos')}</Key>
+                    {trayPick && <Key size="sm" icon={<Images size={12} />} onClick={onAttachPicked} title={trayPick.file.name}>{tr('Attach picked photo')}</Key>}
+                </div>
+            </Field>
+
+            {issues.length > 0 && (
+                <ul className="bc-issues bc-issues--row" aria-label={tr('Checks for this row')}>
+                    {issues.map((x, k) => <li key={k} data-level={x.level}>{x.text}</li>)}
+                </ul>
+            )}
+
+            <div className="bc-editor__foot">
+                <Key size="sm" variant="quiet" icon={<ChevronLeft size={13} />} disabled={index <= 0} data-nav="prev"
+                    onClick={() => { onStep(-1); keepFocus('[data-nav="next"]'); }}>{tr('Previous')}</Key>
+                <Key size="sm" variant="quiet" icon={<ChevronRight size={13} />} disabled={index >= count - 1} data-nav="next"
+                    onClick={() => { onStep(1); keepFocus('[data-nav="prev"]'); }}>{tr('Next')}</Key>
+                <span className="ui-grow" />
+                <Key size="sm" variant="danger" icon={<Trash2 size={12} />} onClick={() => { onRemove(); keepFocus('[data-nav]:not(:disabled)'); }}>{tr('Remove row')}</Key>
+            </div>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 3 · the import
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STATE_VIEW: Record<ImportRowState, { state: ItemState; label: string }> = {
+    queued: { state: 'queued', label: 'Waiting' },
+    uploading: { state: 'running', label: 'Uploading' },
+    creating: { state: 'running', label: 'Creating' },
+    created: { state: 'saved', label: 'Created' },
+    partial: { state: 'partial', label: 'Photos missing' },
+    failed: { state: 'failed', label: 'Not created' },
+    skipped: { state: 'skipped', label: 'Not created' },
+};
+
+const RESULT_COLUMNS = '118px 52px minmax(0, 1fr) 96px 112px minmax(0, 1.2fr)';
+
+function ImportStep({ state, left, aiEnabled, onStop, onHandOff, onDone }: {
+    state: ImportState;
+    /** Rows still in the batch (the ones that were not created). */
+    left: number;
+    aiEnabled: boolean;
+    onStop: () => void;
+    onHandOff: (autoRun: boolean) => void;
+    onDone: () => void;
+}) {
+    const rows = state.rows;
+    const count = (s: ImportRowState[]) => rows.filter(r => s.includes(r.state)).length;
+    const created = count(['created', 'partial']);
+    const failed = count(['failed']);
+    const skipped = count(['skipped']);
+    const counts: Partial<Record<ItemState, number>> = {
+        queued: count(['queued']),
+        running: count(['uploading', 'creating']),
+        saved: count(['created']),
+        partial: count(['partial']),
+        failed,
+        skipped,
+    };
+    const willRun = aiEnabled && (state.processes.length > 0) && created > 0;
+    const photoProblems = rows.filter(r => r.photoFailures.length);
+    const stoppedNote = state.phase === 'stopped' ? tr('Stopped. Rows already created stay created.') : '';
+
+    const note = state.running
+        ? state.phase === 'upload'
+            ? trf('Uploading photos {done} / {total}', state.upload)
+            : trf('Creating rows {done} / {total}', { done: created + failed, total: rows.length })
+        : stoppedNote || trf('{created} created · {failed} not created', { created, failed: failed + skipped });
+
+    const detail = (r: ImportRow) => {
+        if (r.state === 'failed' || r.state === 'skipped') return <span className="bc-bad">{r.reason}</span>;
+        if (r.photoFailures.length) return <span className="bc-warn" title={r.photoFailures.join('\n')}>{r.photoFailures.join(' · ')}</span>;
+        if (r.row) return <span className="bc-faint">{trf('{n} photos · {status}', { n: r.photoCount, status: String(r.row.status || '') })}</span>;
+        return <span className="bc-faint">{r.photoCount ? trf('{n} photos', { n: r.photoCount }) : tr('No photo')}</span>;
+    };
+
+    return (
+        <div className="ui-root bc">
+            <header className="ui-bar bc-bar">
+                <div className="bc-bar__title">
+                    <h2>{state.running ? tr('Creating items…') : state.phase === 'stopped' ? tr('Import stopped') : tr('Import finished')}</h2>
+                    <small className="ui-tnum">{trf('{vendor} · book {book} · {n} rows', { vendor: state.vendor, book: BOOK, n: rows.length })}</small>
+                </div>
+                <span className="ui-grow" />
+                {state.running ? (
+                    <Key variant="stop" icon={<Square size={12} />} onClick={onStop}
+                        title={tr('Stop after the current row; created rows stay')}>{tr('Stop')}</Key>
+                ) : (
+                    <>
+                        {left > 0 && <Key variant="quiet" icon={<ChevronLeft size={13} />} onClick={onDone}>{trf('Back to the {n} not created', { n: left })}</Key>}
+                        {created > 0 && (
+                            <Key variant={willRun ? 'quiet' : 'default'} onClick={() => onHandOff(false)}
+                                title={tr('Open the created items in the Catalog Hub without starting a run')}>
+                                {tr('Open in Catalog Hub')}
+                            </Key>
+                        )}
+                        {willRun && (
+                            <Key variant="go" icon={<Bot size={13} />} onClick={() => onHandOff(true)}
+                                title={tr('Run the picked processes in the Catalog Hub, then review and save them there')}>
+                                {trf('Run AI on {n} in Catalog Hub', { n: created })}
+                            </Key>
+                        )}
+                        <Key variant={willRun ? 'default' : 'go'} onClick={onDone}>{left > 0 ? tr('Done') : tr('Done · new batch')}</Key>
+                    </>
+                )}
+            </header>
+
+            <div className="bc-runbar">
+                <RunBar counts={counts} total={rows.length} note={note} />
+            </div>
+
+            {state.error && <p className="bc-alert" role="alert"><AlertTriangle size={14} aria-hidden="true" /> {state.error}</p>}
+            {!state.running && failed + skipped > 0 && (
+                <p className="bc-alert bc-alert--warn" role="status">
+                    {trf('{n} rows were not created. They stay in the batch with their reason: fix them and create them again.', { n: failed + skipped })}
+                </p>
+            )}
+            {!state.running && photoProblems.length > 0 && (
+                <p className="bc-alert bc-alert--warn" role="status">
+                    {trf('{n} rows were created without some photos (listed below). Add them in Edit Entry.', { n: photoProblems.length })}
+                </p>
+            )}
+            {!state.running && created > 0 && !willRun && (
+                <p className="bc-alert bc-alert--info" role="status">
+                    {aiEnabled ? tr('No AI process was picked. Open the items in the Catalog Hub to run some later.') : tr('AI processes are off; the items were created without AI content.')}
+                </p>
+            )}
+
+            <ItemList label={tr('Import results')} columns={RESULT_COLUMNS} className="bc-list bc-list--results"
+                header={[tr('Item'), tr('Photo'), tr('Description'), tr('MXN'), tr('State'), tr('Detail')]}>
+                {rows.map(r => {
+                    const view = STATE_VIEW[r.state];
+                    const tag = r.row ?? r.tag;
+                    return (
+                        <ItemRow key={r.key} label={`${r.itemId} ${r.name}`} className="bc-row--static">
+                            <ItemTag item={tag} workbook={BOOK} />
+                            {r.preview ? <Thumb src={r.preview} alt={r.name} /> : <span className="bc-faint">—</span>}
+                            <span className="ui-row__main">
+                                <span className="ui-row__title">{r.name || <em className="bc-faint">{tr('No description')}</em>}</span>
+                                <span className="ui-row__sub">{[r.itemId, r.sheetRow ? trf('Sheet row {n}', { n: r.sheetRow }) : ''].filter(Boolean).join(' · ')}</span>
+                            </span>
+                            <span className="bc-cell bc-cell--num ui-tnum">{money(r.price) || '—'}</span>
+                            <span title={r.reason || undefined}><StatusPill state={view.state} label={tr(view.label)} /></span>
+                            <span className="bc-cell bc-detail">{detail(r)}</span>
+                        </ItemRow>
+                    );
+                })}
+            </ItemList>
+        </div>
+    );
+}
