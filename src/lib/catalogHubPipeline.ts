@@ -216,13 +216,43 @@ async function matteFromCutout(cutoutUrl: string): Promise<string> {
     return canvas.toDataURL('image/png');
 }
 
-/** A standalone SVG document for an outline, whatever form it arrived in. */
-function toSvgDocument(svg: string, width: number, height: number): string {
-    const s = (svg || '').trim();
-    if (!s) return '';
-    if (s.startsWith('<svg')) return s;
-    const body = s.startsWith('<') ? s : `<path d="${s}" fill="none" stroke="#ffffff" stroke-width="2" />`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}</svg>`;
+/**
+ * The SVG file people open for a cutout: the cut-out photo itself, its
+ * silhouette and an outline that reads on any ground. It used to be the bare
+ * traced path in 2px white, which opened as an empty file on a light
+ * background (and Drive's preview drew nothing but a faint line).
+ *
+ * The photo is embedded as a PNG, not WebP: Drive's SVG renderer (the lh3
+ * link the app displays) and older viewers do not decode WebP inside SVG.
+ * It is capped at 1024px so the file stays around a megabyte; the traced path
+ * keeps the full-resolution coordinates through the viewBox.
+ */
+async function cutoutSvgDocument(path: string, width: number, height: number, cutoutDataUrl: string): Promise<string> {
+    const d = (path || '').trim();
+    if (!d) return '';
+    if (d.startsWith('<svg')) return d;
+    let image = '';
+    try {
+        const img = await loadImage(cutoutDataUrl);
+        const scale = Math.min(1, 1024 / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const href = canvas.toDataURL('image/png');
+        image = `<image href="${href}" xlink:href="${href}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none"/>`;
+    } catch {
+        // Without the photo the file is still a usable silhouette + outline.
+    }
+    // Stroke scaled to the frame, drawn twice (light halo under a dark line)
+    // so the outline shows on both light and dark backgrounds.
+    const sw = Math.max(2, Math.round(Math.max(width, height) / 500));
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
+        + `<path d="${d}" fill="#7a8a8c" fill-opacity="0.22" fill-rule="nonzero"/>`
+        + image
+        + `<path d="${d}" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="${sw * 2}" stroke-linejoin="round" stroke-linecap="round"/>`
+        + `<path d="${d}" fill="none" stroke="#0b6f7c" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`
+        + `</svg>`;
 }
 
 /**
@@ -516,7 +546,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                 const svgPath = createCurvePath(simplified);
                 return {
                     cutoutDataUrl,
-                    outlineSvg: toSvgDocument(svgPath, width, height),
+                    outlineSvg: await cutoutSvgDocument(svgPath, width, height, cutoutDataUrl),
                     localSegmentationMasks: JSON.stringify({
                         width, height, path: svgPath, pointCount: simplified.length,
                         points: simplified.map(p => [Math.round((p.y / height) * 1000), Math.round((p.x / width) * 1000)]),

@@ -1,5 +1,6 @@
 import React from 'react';
 import { cx } from './types';
+import { getCleanImageUrl } from '../../lib/utils';
 
 /** `cutout`: the transparent PNG of the piece alone, when it is not the clean PNG itself (bgreplace + mask). */
 export type ThumbKind = 'photo' | 'png' | 'cutout' | 'mask' | 'svg' | 'axo';
@@ -28,10 +29,17 @@ const GROUND: Partial<Record<ThumbKind, string>> = {
     mask: 'ui-black',
 };
 
-/** SVG markup is shown through an <img> data URL, where its scripts cannot run. */
+/**
+ * SVG markup is shown through an <img> data URL, where its scripts cannot run.
+ * A Drive-hosted SVG is shown through its lh3 image link: Drive serves the
+ * file itself as a download (application/octet-stream), which an <img> will
+ * not draw, while lh3 returns it rendered as an image.
+ */
 export function svgSrc(svg: string): string {
     const t = svg.trim();
-    return t.startsWith('<') ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(t)}` : t;
+    if (t.startsWith('<')) return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(t)}`;
+    if (/drive\.google\.com/i.test(t)) return getCleanImageUrl(t) || t;
+    return t;
 }
 
 /**
