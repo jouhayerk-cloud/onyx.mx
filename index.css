@@ -37,6 +37,11 @@
    SLAB's opaque-surface premise for the chrome, so it has to outrank both
    slab.css and anything a module restated from it. One line to revert. */
 @import "./src/styles/slab-glass.css";
+/* After slab-glass.css: the shared UI kit (Catalog Hub, Add Entry, Batch
+   Create). Its --ui-* tokens read the slab and glass levels declared above,
+   and the legacy element rules in this file, slab.css and slab-glass.css
+   stop at .ui-root through :where() guards, so it needs no !important. */
+@import "./src/styles/ui.css";
 
 html, body, #root {
   height: 100%;
@@ -958,10 +963,14 @@ html.theme-aqua .entry-wizard > .absolute.inset-0 {
 
 
 
+/* The :not(:where(.ui-root ...)) guard on this and the element rules below
+   is zero-specificity: the UI kit (src/styles/ui.css) draws its own
+   controls, and these rules stop at its edge instead of being outranked
+   with !important. */
 /* Update inputs and general buttons */
-input,
-select,
-textarea,
+input:not(:where(.ui-root, .ui-root *)),
+select:not(:where(.ui-root, .ui-root *)),
+textarea:not(:where(.ui-root, .ui-root *)),
 .button {
   background: var(--input-color) !important;
   color: var(--text-color-primary) !important;
@@ -971,9 +980,9 @@ textarea,
   backdrop-filter: blur(5px);
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+input:focus:not(:where(.ui-root, .ui-root *)),
+select:focus:not(:where(.ui-root, .ui-root *)),
+textarea:focus:not(:where(.ui-root, .ui-root *)) {
   border-color: var(--main-color) !important;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--main-color) 50%, transparent);
   outline: none;
@@ -992,18 +1001,18 @@ textarea:focus {
 }
 
 
-input[type="text"],
-input[type="email"],
-input[type="number"],
-input[type="date"],
-input[type="password"],
-textarea,
-select {
+input[type="text"]:not(:where(.ui-root, .ui-root *)),
+input[type="email"]:not(:where(.ui-root, .ui-root *)),
+input[type="number"]:not(:where(.ui-root, .ui-root *)),
+input[type="date"]:not(:where(.ui-root, .ui-root *)),
+input[type="password"]:not(:where(.ui-root, .ui-root *)),
+textarea:not(:where(.ui-root, .ui-root *)),
+select:not(:where(.ui-root, .ui-root *)) {
   padding: 8px 12px;
   border-radius: var(--box-radius) !important;
 }
 
-textarea {
+textarea:not(:where(.ui-root, .ui-root *)) {
   min-height: 40px;
 }
 
@@ -1014,7 +1023,7 @@ input[type="range"] {
   border: none !important;
 }
 
-button,
+button:not(:where(.ui-root, .ui-root *)),
 .button {
   padding: 8px 16px;
   min-height: 40px;
@@ -3448,9 +3457,9 @@ html.theme-tekis .wizardstate-indicator {
   }
 
   /* Better mobile touch targets for all buttons */
-  button,
+  button:not(:where(.ui-root, .ui-root *)),
   .button,
-  [role="button"] {
+  [role="button"]:not(:where(.ui-root, .ui-root *)) {
     min-height: 44px;
   }
 

@@ -30,6 +30,11 @@
 
    NOTE: every selector here is scoped to html.style-slab so ROCK — which
    depends on box-shadow meaning "glow", not "bevel" — is never touched by it.
+
+   The rules that style BARE elements (button, input, [role="button"], the
+   bg-white/* flatteners...) end in :not(:where(.ui-root, .ui-root *)). The
+   UI kit (ui.css) walks the same states with its own tokens; the guard adds
+   no specificity, so everything outside .ui-root resolves exactly as before.
    ========================================================================== */
 
 html.style-slab {
@@ -178,7 +183,7 @@ html.style-slab [class*="bg-gradient"] {
    Translucency and blur are what ROCK is; a single opaque material is what
    SLAB is. Everything resolves to the one surface colour. */
 
-html.style-slab [class*="backdrop-blur"],
+html.style-slab [class*="backdrop-blur"]:not(:where(.ui-root, .ui-root *)),
 html.style-slab .glass-panel,
 html.style-slab .glass-sm,
 html.style-slab .glass-md,
@@ -191,14 +196,14 @@ html.style-slab .glass-panel::before {
     display: none !important;
 }
 
-html.style-slab [class*="bg-white/"],
-html.style-slab [class*="bg-black/"],
-html.style-slab [class*="backdrop-blur"] {
+html.style-slab [class*="bg-white/"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab [class*="bg-black/"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab [class*="backdrop-blur"]:not(:where(.ui-root, .ui-root *)) {
     background-color: var(--slab) !important;
 }
 
-html.style-slab [class*="border-white/"],
-html.style-slab [class*="border-black/"] {
+html.style-slab [class*="border-white/"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab [class*="border-black/"]:not(:where(.ui-root, .ui-root *)) {
     border-color: var(--slab-edge) !important;
 }
 
@@ -343,9 +348,9 @@ html.style-slab .sidebar-submenu-item.active {
    Hover feedback was therefore invisible everywhere in this style. Every rule
    below that repaints on hover must stay more specific than that flattener. */
 
-html.style-slab button,
-html.style-slab [role="button"],
-html.style-slab summary {
+html.style-slab button:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab summary:not(:where(.ui-root, .ui-root *)) {
     box-shadow: var(--slab-lift);
     border: 1px solid var(--slab-edge);
     border-radius: var(--slab-r-sm);
@@ -354,9 +359,9 @@ html.style-slab summary {
 }
 
 /* HOVER — the control rises toward the pointer. */
-html.style-slab button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover,
-html.style-slab [role="button"]:not([aria-pressed="true"]):hover,
-html.style-slab summary:hover {
+html.style-slab button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"]:not([aria-pressed="true"]):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab summary:hover:not(:where(.ui-root, .ui-root *)) {
     box-shadow: var(--slab-raised);
     background-color: var(--slab-tint-hover) !important;
     border-color: color-mix(in srgb, var(--slab-sh) 60%, transparent);
@@ -364,9 +369,9 @@ html.style-slab summary:hover {
 
 /* ACTIVE — it goes in under the pointer. !important so the press always wins
    over hover regardless of which rule the cascade reached last. */
-html.style-slab button:not(:disabled):active,
-html.style-slab [role="button"]:active,
-html.style-slab summary:active {
+html.style-slab button:not(:disabled):active:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"]:active:not(:where(.ui-root, .ui-root *)),
+html.style-slab summary:active:not(:where(.ui-root, .ui-root *)) {
     box-shadow: var(--slab-pressed) !important;
     background-color: var(--slab) !important;
 }
@@ -375,10 +380,10 @@ html.style-slab summary:active {
    element at the same time, which reads as receding rather than being pushed
    in — two metaphors for one event. Hover scaling is left alone; it is
    additive rather than contradictory. */
-html.style-slab button:active,
-html.style-slab [role="button"]:active,
-html.style-slab button:active > *,
-html.style-slab [role="button"]:active > * {
+html.style-slab button:active:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"]:active:not(:where(.ui-root, .ui-root *)),
+html.style-slab button:active > *:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"]:active > *:not(:where(.ui-root, .ui-root *)) {
     transform: none !important;
 }
 
@@ -390,14 +395,14 @@ html.style-slab [role="button"]:active > * {
    The specificity here (0,2,2) deliberately beats the .text-white remap
    above (0,2,1), so the accent reaches the label; both carry !important and
    the more specific rule wins. Icons keep their per-module inline colour. */
-html.style-slab button[aria-pressed="true"],
-html.style-slab button[data-active="true"],
-html.style-slab [role="button"][aria-pressed="true"],
+html.style-slab button[aria-pressed="true"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[data-active="true"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"][aria-pressed="true"]:not(:where(.ui-root, .ui-root *)),
 /* The dark-slab .text-white restore at the bottom of this file is (0,3,1) and
    would otherwise repaint an ON control back to --slab-ink. This theme-scoped
    duplicate is (0,3,2) so the accent survives on Talan too. */
-html.style-slab.theme-talan button[aria-pressed="true"],
-html.style-slab.theme-talan button[data-active="true"] {
+html.style-slab.theme-talan button[aria-pressed="true"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab.theme-talan button[data-active="true"]:not(:where(.ui-root, .ui-root *)) {
     box-shadow: var(--slab-pressed) !important;
     background-color: var(--slab-tint-on) !important;
     border-color: var(--slab-edge-on) !important;
@@ -407,24 +412,24 @@ html.style-slab.theme-talan button[data-active="true"] {
 
 /* ON + hover seats deeper instead of rising — an engaged toggle must never
    animate the same direction as an idle one, or the two states blur. */
-html.style-slab button[aria-pressed="true"]:not(:disabled):hover,
-html.style-slab button[data-active="true"]:not(:disabled):hover,
-html.style-slab.theme-talan button[aria-pressed="true"]:hover {
+html.style-slab button[aria-pressed="true"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[data-active="true"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab.theme-talan button[aria-pressed="true"]:hover:not(:where(.ui-root, .ui-root *)) {
     box-shadow: var(--slab-pressed-deep) !important;
     background-color: var(--slab-tint-on-hi) !important;
 }
 
 /* The label is a bare <span> with no colour class, so it inherits the accent.
    Anything inside that does carry one is pulled along explicitly. */
-html.style-slab button[aria-pressed="true"] span,
-html.style-slab button[data-active="true"] span {
+html.style-slab button[aria-pressed="true"] span:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[data-active="true"] span:not(:where(.ui-root, .ui-root *)) {
     color: inherit !important;
 }
 
 /* DISABLED — flat. No depth means nothing to press, which is the whole point
    of the scale: the affordance is removed, not merely dimmed. */
-html.style-slab button:disabled,
-html.style-slab [role="button"][aria-disabled="true"] {
+html.style-slab button:disabled:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"][aria-disabled="true"]:not(:where(.ui-root, .ui-root *)) {
     box-shadow: var(--slab-flat) !important;
     background-color: var(--slab) !important;
     border-color: color-mix(in srgb, var(--slab-edge) 50%, transparent) !important;
@@ -434,13 +439,13 @@ html.style-slab [role="button"][aria-disabled="true"] {
 
 /* Focus is an outline, always. Never a shadow — a pressed shadow is invisible
    to exactly the people who depend on focus being visible. */
-html.style-slab button:focus-visible,
-html.style-slab a:focus-visible,
-html.style-slab input:focus-visible,
-html.style-slab select:focus-visible,
-html.style-slab textarea:focus-visible,
-html.style-slab summary:focus-visible,
-html.style-slab [role="button"]:focus-visible {
+html.style-slab button:focus-visible:not(:where(.ui-root, .ui-root *)),
+html.style-slab a:focus-visible:not(:where(.ui-root, .ui-root *)),
+html.style-slab input:focus-visible:not(:where(.ui-root, .ui-root *)),
+html.style-slab select:focus-visible:not(:where(.ui-root, .ui-root *)),
+html.style-slab textarea:focus-visible:not(:where(.ui-root, .ui-root *)),
+html.style-slab summary:focus-visible:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"]:focus-visible:not(:where(.ui-root, .ui-root *)) {
     outline: 2px solid var(--main-color);
     outline-offset: 3px;
 }
@@ -448,26 +453,26 @@ html.style-slab [role="button"]:focus-visible {
 /* Buttons that are already a solid meaning-colour keep that fill and get the
    lift only — they are signal, not chrome. Hover deepens the colour rather
    than tinting it toward the slab, which would wash the signal out. */
-html.style-slab button[class*="bg-blue-"],
-html.style-slab button[class*="bg-green-"],
-html.style-slab button[class*="bg-red-"],
-html.style-slab button[class*="bg-rose-"],
-html.style-slab button[class*="bg-purple-"],
-html.style-slab button[class*="bg-orange-"],
-html.style-slab button[class*="bg-amber-"],
-html.style-slab button[class*="bg-emerald-"] {
+html.style-slab button[class*="bg-blue-"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-green-"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-red-"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-rose-"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-purple-"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-orange-"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-amber-"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-emerald-"]:not(:where(.ui-root, .ui-root *)) {
     background-color: revert-layer !important;
     border-color: rgba(0, 0, 0, 0.18);
 }
 
-html.style-slab button[class*="bg-blue-"]:not(:disabled):hover,
-html.style-slab button[class*="bg-green-"]:not(:disabled):hover,
-html.style-slab button[class*="bg-red-"]:not(:disabled):hover,
-html.style-slab button[class*="bg-rose-"]:not(:disabled):hover,
-html.style-slab button[class*="bg-purple-"]:not(:disabled):hover,
-html.style-slab button[class*="bg-orange-"]:not(:disabled):hover,
-html.style-slab button[class*="bg-amber-"]:not(:disabled):hover,
-html.style-slab button[class*="bg-emerald-"]:not(:disabled):hover {
+html.style-slab button[class*="bg-blue-"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-green-"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-red-"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-rose-"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-purple-"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-orange-"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-amber-"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[class*="bg-emerald-"]:not(:disabled):hover:not(:where(.ui-root, .ui-root *)) {
     background-color: revert-layer !important;
     box-shadow: var(--slab-raised);
     filter: brightness(1.08);
@@ -642,9 +647,9 @@ html.style-slab .glass-tile:hover {
 }
 
 /* Inputs are always pressed — a well cut into the slab. */
-html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-html.style-slab textarea,
-html.style-slab select {
+html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:where(.ui-root, .ui-root *)),
+html.style-slab textarea:not(:where(.ui-root, .ui-root *)),
+html.style-slab select:not(:where(.ui-root, .ui-root *)) {
     background-color: var(--slab) !important;
     color: var(--slab-ink) !important;
     border: 1px solid var(--slab-edge) !important;
@@ -652,8 +657,8 @@ html.style-slab select {
     box-shadow: var(--slab-pressed);
 }
 
-html.style-slab input::placeholder,
-html.style-slab textarea::placeholder {
+html.style-slab input:not(:where(.ui-root, .ui-root *))::placeholder,
+html.style-slab textarea:not(:where(.ui-root, .ui-root *))::placeholder {
     color: var(--slab-dim) !important;
     opacity: 1;
 }
@@ -723,8 +728,8 @@ html.style-slab.theme-talan {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html.style-slab button,
-    html.style-slab [role="button"] {
+    html.style-slab button:not(:where(.ui-root, .ui-root *)),
+    html.style-slab [role="button"]:not(:where(.ui-root, .ui-root *)) {
         transition: none;
     }
 }
@@ -866,16 +871,16 @@ html.style-slab .main-header {
 /* Pressed surfaces take the inverse sheen so the light still reads as one
    source: the near edge is shaded and the far edge catches it. */
 html.style-slab .stats-readout,
-html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-html.style-slab textarea,
-html.style-slab select {
+html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:where(.ui-root, .ui-root *)),
+html.style-slab textarea:not(:where(.ui-root, .ui-root *)),
+html.style-slab select:not(:where(.ui-root, .ui-root *)) {
     background-image: var(--slab-sheen-in) !important;
 }
 
 /* ON surfaces carry the theme accent as a gradient rather than a flat tint,
    which is what makes an engaged toggle read as lit from within. */
-html.style-slab button[aria-pressed="true"],
-html.style-slab button[data-active="true"],
+html.style-slab button[aria-pressed="true"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[data-active="true"]:not(:where(.ui-root, .ui-root *)),
 html.style-slab .sidebar-list-item.active {
     background-image: var(--slab-sheen-on) !important;
 }
@@ -1036,7 +1041,7 @@ html.style-slab button[class*="bg-white "]:not([class*="bg-white/"]) {
 
 /* Bottom action bar and filter pills: same walk as everything else. */
 html.style-slab .filter-pill[aria-pressed="true"],
-html.style-slab [role="tab"][aria-selected="true"] {
+html.style-slab [role="tab"][aria-selected="true"]:not(:where(.ui-root, .ui-root *)) {
     box-shadow: var(--slab-pressed) !important;
     background-image: var(--slab-sheen-on) !important;
     color: var(--main-color) !important;

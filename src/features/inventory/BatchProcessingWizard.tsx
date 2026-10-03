@@ -1,1993 +1,1491 @@
-import React, { useState, useEffect, useRef } from 'react';
+/**
+ * The Catalog Hub: one row per ITEM, a review drawer beside the list, and a
+ * run bar under it, on the UI kit (components/ui) and the run engine
+ * (lib/ai/run).
+ *
+ * It used to be one full-width card per PHOTO, about two on screen, each with
+ * its own status, so a three-photo item was three cards that disagreed, a
+ * failed mask still read DONE, and the masks and clean PNGs a run produced
+ * were mostly invisible. Now:
+ *
+ *   · Each row carries the item's tag, its photos plus the generated PNG and
+ *     mask, the generated title, one square per process and one state.
+ *   · The drawer shows every output of every photo (Photo / Clean PNG /
+ *     Cutout / Mask / SVG / Axo, with a lightbox), the generated copy as an
+ *     editable form, and the item's log.
+ *   · The engine runs the ticked processes, one op per photo, and saves only
+ *     what was ticked and worked plus what a person typed, through
+ *     lib/ai/persist. Accept marks an item reviewed; Save reviewed writes them.
+ *
+ * Kept from the old hub, moved into this layout: the API key dialog, Write
+ * From Similar for items with no photograph, the 1:1 crop and the cutout
+ * upload, a background clean for one item, hero-only runs, re-clean all,
+ * clearing the AI columns (now confirmed here, not in a native confirm(), and
+ * written through saveAiPatch), and the Matrixify XLSX and catalogue PDF
+ * exports. Book codes are the 17 book rate; a stored barcode always wins.
+ */
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { createPortal } from 'react-dom';
-import { 
-    isBatchWizardOpenAtom, 
-    batchWizardItemsAtom, 
-    inventoryAtom, 
-    InventoryVersionAtom,
-    userAtom
-} from '../../lib/atoms';
-import { SCRIPT_URL , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
-import { processVideoWithGemini } from '../../lib/videoAI';
-import { replaceBackgroundWithDarkRoom, uploadCleanedImage, bgCacheKey, type BgQuality } from '../../lib/bgReplace';
-import { supabase } from '../../lib/supabase';
-
-import { 
-    getCleanImageUrl, 
-    resizeImage, 
-    handleProcessedFileUpload, 
-    loadImage, 
-    cropImage, 
-    findContour, 
-    simplifyContour, 
-    createCurvePath, 
-    generatePngAndSvgFromMasks, 
-    preprocessForMasking, 
-    applyAlphaMask,
-    collectAllImages, 
-    calculateCodesAndPrices, 
-    normalizeInventoryData, 
-    getProductCategoryAndType,
-    SHOPIFY_PRODUCT_TYPES,
-    normalizeBrandTerms,
-    formatProductTitle
-} from '../../lib/utils';
-import { normalizeContour, saveSegmentation, type SegmentationResult } from '../../lib/segmentationStore';
-import { X, Play, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings2, UploadCloud, Cloud, Cpu, ZoomIn, ZoomOut, Save, RefreshCw, Bot, XCircle, Trash2, Layers, Video, Maximize2, Image as ImageIcon, Wand2 } from 'lucide-react';
+import {
+    Bot, Check, Copy, Crop, Eraser, FileSpreadsheet, FileText, ImageUp, KeyRound, Play, RefreshCw,
+    RotateCcw, Save, Search, Sparkles, Square, Upload, Wand2, X, XCircle,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import { removeBackground } from '@imgly/background-removal';
 import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
+import {
+    isBatchWizardOpenAtom,
+    batchWizardItemsAtom,
+    inventoryAtom,
+    InventoryVersionAtom,
+    userAtom,
+} from '../../lib/atoms';
+import { DEFAULT_EXCHANGE_RATE, vendors } from '../../lib/consts';
+import {
+    getCleanImageUrl,
+    collectAllImages,
+    calculateCodesAndPrices,
+    normalizeInventoryData,
+    getProductCategoryAndType,
+    formatProductTitle,
+} from '../../lib/utils';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
-import { extractDominantColorsFromImage, getStoneStyleColors, generateFallbackMarketingHtml, generateBitmapAndHexMap, reconstructRgbPixelMap } from '../../lib/colorExtractor';
+import { getStoneStyleColors, generateFallbackMarketingHtml } from '../../lib/colorExtractor';
 import { SquareCropModal } from '../../components/SquareCropModal';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
-import { vendors } from '../../lib/consts';
-import { findDonor, isUsableDonor, TIER_LABEL } from '../../lib/variationMatch';
-import { generateAxonometricDataUrl, resolveItemColor } from '../../lib/axonometric';
-import { validateCopy, describeIssues } from '../../lib/copyValidation';
-import type { DonorCandidate } from '../../lib/variationMatch';
-import { tr } from '../../lib/i18n';
+import { validateCopy } from '../../lib/copyValidation';
+import { CATALOG_PROCESSES } from '../../lib/catalogHubProcesses';
+import { tr, trf } from '../../lib/i18n';
 import { hasGeminiKey, setGeminiKey } from '../../lib/ai/keys';
 import { aiErrorMessage } from '../../lib/ai/errors';
-import { sanitizeHtml } from '../../lib/ai/finalize';
-import { aiResultFromOps, buildAiPatch, saveAiPatch, isEmptyPatch, type AiPatch } from '../../lib/ai/persist';
-import { processSingleItem, processVariationItem, buildDonorPool, type BatchOp, type ProcessingMode, type PipelineContext, type ProcessId } from '../../lib/catalogHubPipeline';
+import { saveAiPatch, type AiPatch, type InventoryUpdate } from '../../lib/ai/persist';
+import type { ProcessingMode } from '../../lib/catalogHubPipeline';
+import {
+    useAiRun, rowOf, TEXT_PROCESSES,
+    type RunItem, type RunPhoto, type RunItemStatus, type RunProcessStatus, type ProcessId, type SaveOutcome,
+} from '../../lib/ai/run';
+import {
+    Key, Chip, ProcessChips, Segmented, Field, Input, Select, ItemTag, resolveItemTag, StatusPill, StepsStrip,
+    Thumb, MediaViewer, ItemList, ItemRow, FilterTabs, RunBar, Drawer, GeneratedContent, PROCESS_META, cx, itemStateLabel,
+    type MediaAngle, type MediaView, type GeneratedValue,
+} from '../../components/ui';
 
-const resolveVendorColor = (inputStr: string | undefined | null) => {
-    if (!inputStr) return '#ffffff';
-    const upper = inputStr.toUpperCase();
-    const vKeys = Object.keys(vendors).sort((a,b) => b.length - a.length);
-    // Try matching by exact name first
-    const nameMatch = vKeys.find(k => (vendors as any)[k].name.toUpperCase() === upper);
-    if (nameMatch) return (vendors as any)[nameMatch].color;
-    // Then try matching by prefix (for Tag IDs)
-    const prefixMatch = vKeys.find(k => upper.startsWith(k));
-    if (prefixMatch) return (vendors as any)[prefixMatch].color;
-    return '#ffffff';
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * `bgreplace` is the default: it repaints the background instead of cutting the
- * subject out, which is the only one of the four that cannot punch holes in a
- * translucent or dark-veined stone piece. The other three remain reachable from
- * the mode chip for the minority of items that genuinely need transparency.
- */
-const MODE_CYCLE: ProcessingMode[] = ['bgreplace', 'local', 'cloud', 'hybrid'];
+/** Ticked when the hub opens: every process that defaults on, except the donor pass, which has its own key. */
+const DEFAULT_PROCESSES: readonly ProcessId[] = CATALOG_PROCESSES
+    .filter(p => p.defaultChecked && p.id !== 'variation_donor')
+    .map(p => p.id);
 
-/** The mode chip's label. The chip is always pressed — one of the four is
- *  always engaged — so the mode is told by word, icon and tint together, never
- *  by the colour of the label alone. `data-mode` on the button picks the tint
- *  and the icon colour in batchproc.css. */
-const MODE_LABEL: Record<ProcessingMode, string> = {
-    bgreplace: 'STUDIO',
-    hybrid: 'HYBRID',
-    cloud: 'CLOUD',
-    local: 'LOCAL',
-};
-
-/** Which meaning colour a log line carries. The prefixes are written by logOp
- *  and are the only thing that distinguishes a finished step from a failed one,
- *  so they stay coloured — the line is data, not chrome. */
-const logTone = (line: string): string => {
-    if (line.includes('[ FAIL ]')) return 'is-fail';
-    if (line.includes('[  OK  ]')) return 'is-ok';
-    if (line.includes('[ WARN ]')) return 'is-warn';
-    if (line.includes('[ SKIP ]')) return 'is-skip';
-    return '';
-};
-
-/** Ops resolve to their item by the same key the queue was built with. */
-const itemKeyOf = (op: BatchOp) => String(op.item?.id ?? op.item?.row ?? op.id);
+/** Text first, then image, in catalogue order within each: the order the process chips show. */
+const PROCESS_ORDER: readonly ProcessId[] = [
+    ...CATALOG_PROCESSES.filter(p => PROCESS_META[p.id].group === 'text'),
+    ...CATALOG_PROCESSES.filter(p => PROCESS_META[p.id].group === 'image'),
+].map(p => p.id);
 
 /**
- * What an item's ops hold that is worth writing: every process a run
- * finished, plus the fields edited by hand (editItemText marks those done).
- * An item loaded from the table and left alone has nothing here, so saving
- * it writes nothing -- SAVE TO DB used to re-write every completed card,
- * template HTML and pixel colours included.
+ * The cleaning engine. Cloud is bgreplace, the default: it repaints the
+ * background instead of cutting the piece out, the only one that cannot punch
+ * holes in a translucent or dark-veined stone. The other three cut the piece
+ * out; they stay for the items that genuinely need transparency.
  */
-const processesFromOps = (ops: readonly BatchOp[]): Set<ProcessId> => {
-    const out = new Set<ProcessId>();
-    for (const op of ops) {
-        for (const [id, status] of Object.entries(op.processStatus || {})) {
-            if (status === 'done') out.add(id as ProcessId);
+const MODE_OPTIONS: readonly { value: ProcessingMode; label: string; title: string }[] = [
+    { value: 'bgreplace', label: 'Cloud', title: 'Gemini repaints the background as a dark studio (the default)' },
+    { value: 'local', label: 'Local', title: 'Cut the piece out on this device; no Gemini call for the image' },
+    { value: 'cloud', label: 'AI mask', title: 'Gemini traces the piece and its layers, then the cut-out is made from that' },
+    { value: 'hybrid', label: 'Hybrid', title: 'Local cut-out, refined by Gemini' },
+];
+
+/** The columns "Clear AI data" empties: the AI half of the canonical map, never the vendor's fields. */
+const CLEAR_COLUMNS: InventoryUpdate = {
+    detailed_description: null,
+    generated_description: null,
+    generated_color: null,
+    generated_type: null,
+    spatial_points: null,
+    spatial_masks: null,
+    generated_png_url: null,
+    generated_svg_url: null,
+    processed_media_urls: null,
+    axo_icon_url: null,
+};
+
+// The title and the steps give way first, so the State column never ends up
+// past the list's right edge (the inline drawer takes 400px from 1021px up).
+const ROW_COLUMNS = '22px 112px 112px minmax(0, 1fr) minmax(96px, 160px) 86px';
+
+type FilterId = 'all' | 'review' | 'running' | 'failed' | 'saved';
+
+/** What the row and the run bar show: the engine's state, with "nothing left to do" shown as saved. */
+type DisplayState = RunItemStatus;
+
+type Confirm =
+    | { kind: 'close' }
+    | { kind: 'clear'; ids: string[] }
+    | { kind: 'reclean'; ids: string[] };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reading an item
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A URL an <img> can show: Drive links go through getCleanImageUrl, data: URLs and markup pass. */
+const disp = (u?: string | null): string | undefined => {
+    if (!u) return undefined;
+    if (u.startsWith('data:') || u.trim().startsWith('<')) return u;
+    return getCleanImageUrl(u) || u;
+};
+
+const stillsOf = (it: RunItem): RunPhoto[] => it.photos.filter(p => !p.isVideo);
+
+/** What one photo has to show, this run's output first, then what is stored. */
+function outputsOf(p: RunPhoto) {
+    const png = disp(p.cleanedUrl ?? p.stored.cleanedUrl);
+    const cutout = disp(p.cutoutUrl ?? p.stored.cutoutUrl);
+    const mask = disp(p.matteUrl ?? p.stored.matteUrl) ?? cutout;
+    const svg = p.svgUrl ?? p.stored.svgUrl;
+    // In bgreplace mode the clean PNG is the repainted photo and the cut-out
+    // is a second image; in the cut-out modes they are the same file.
+    return { photo: disp(p.sourceUrl) || '', png, cutout: cutout && cutout !== png ? cutout : undefined, mask, svg, opaque: !!png && png !== cutout };
+}
+
+const parseMap = (raw: unknown): Record<string, string> => {
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, string>;
+    if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+        try { return JSON.parse(raw); } catch { return {}; }
+    }
+    return {};
+};
+
+/** Generated video clips: this run's, else the stored videoGen entries of processed_media_urls. */
+function clipsOf(it: RunItem): string[] {
+    const fromMap = (m: Record<string, string> | undefined): string[] => {
+        if (!m) return [];
+        const n = parseInt(m.videoGenCount || '0', 10);
+        if (n > 0) return Array.from({ length: n }, (_, i) => m[`videoGen_${i}`]).filter(Boolean);
+        return m.videoGen ? [m.videoGen] : [];
+    };
+    for (const o of it.ops) {
+        const r = o.op.result;
+        const clips = fromMap(r?.processedMap);
+        if (clips.length) return clips;
+        if (r?.videoGen) return [r.videoGen];
+    }
+    const raw = rowOf(it.row);
+    return fromMap(parseMap(raw.processed_media_urls ?? raw.processedMediaUrls));
+}
+
+/** The text shown and edited: generated or edited this session, else what is stored. */
+function shownText(it: RunItem): GeneratedValue {
+    const ex = it.item.existing;
+    return {
+        title: it.text.title ?? ex.title ?? '',
+        html: it.text.html ?? ex.html ?? '',
+        colors: it.text.colors ?? ex.colors ?? [],
+        genType: it.text.genType ?? ex.genType ?? '',
+    };
+}
+
+/** Does the process apply to this item at all? */
+function applies(it: RunItem, p: ProcessId): boolean {
+    const stills = it.media.some(m => !m.isVideo);
+    if (p === 'video_proc') return it.media.some(m => m.isVideo);
+    if (p === 'variation_donor') return !stills;
+    if (p === 'img_clean' || p === 'image_segmentation' || p === 'hex_map') return stills;
+    return true;
+}
+
+/** What the database already holds for a process, for an item this session has not run it on. */
+function storedState(it: RunItem, p: ProcessId, heroOnly: boolean): RunProcessStatus {
+    if (!applies(it, p)) return 'skipped';
+    const ex = it.item.existing;
+    const stills = stillsOf(it);
+    const scope = heroOnly ? stills.slice(0, 1) : stills;
+    const share = (have: (x: RunPhoto) => boolean): RunProcessStatus => {
+        const n = scope.filter(have).length;
+        return n === 0 ? 'queued' : n === scope.length ? 'done' : 'partial';
+    };
+    switch (p) {
+        case 'title_desc': return ex.title ? 'done' : 'queued';
+        case 'marketing_desc': return ex.html ? 'done' : 'queued';
+        case 'dominant_colors': return ex.colors.length ? 'done' : 'queued';
+        case 'product_type': return ex.genType ? 'done' : 'queued';
+        case 'variation_donor': return ex.title ? 'done' : 'queued';
+        case 'hex_map': return it.stored.hexMap ? 'done' : 'queued';
+        case 'img_clean': return share(x => !!x.stored.cleanedUrl);
+        case 'image_segmentation': return share(x => !!x.stored.cutoutUrl);
+        case 'video_proc': return clipsOf(it).length ? 'done' : 'queued';
+        default: return 'queued';
+    }
+}
+
+/**
+ * The ticked processes this item still lacks. An item with no photograph is
+ * left to Write From Similar: copy invented without a photo is a deliberate
+ * step, as it was in the old hub, not a side effect of Run.
+ */
+function missingOf(it: RunItem, selection: ReadonlySet<ProcessId>, heroOnly: boolean): ProcessId[] {
+    const photoless = !it.media.some(m => !m.isVideo);
+    return PROCESS_ORDER.filter(p => {
+        if (!selection.has(p) || !applies(it, p)) return false;
+        if (photoless && p !== 'video_proc') return false;
+        return storedState(it, p, heroOnly) !== 'done';
+    });
+}
+
+const isBusy = (it: RunItem) => it.status === 'running' || it.saving;
+
+const canAccept = (it: RunItem) =>
+    !isBusy(it) && (it.status === 'review' || it.status === 'partial' || (it.dirty && it.status !== 'done'));
+
+/** Shape and Type, then the vendor colour and quantity: "Large Bowl · Blue Argentina". */
+function nameOf(it: RunItem): string {
+    const i = it.item;
+    const head = [i.shape, i.type].filter(Boolean).join(' ') || i.vendorText || it.label;
+    return [head, i.vendorColor, i.quantity > 1 ? `qty ${i.quantity}` : ''].filter(Boolean).join(' · ');
+}
+
+function sizeOf(it: RunItem): string {
+    const i = it.item;
+    const dims = [i.widthCm, i.heightCm, i.lengthCm].filter(v => v > 0).map(v => Math.round(v * 10) / 10);
+    return [
+        dims.length ? `${dims.join('×')} cm` : '',
+        i.priceMxn > 0 ? `$${Math.round(i.priceMxn).toLocaleString('en-US')}` : '',
+    ].filter(Boolean).join(' · ');
+}
+
+const LOG_TONE = (line: string) =>
+    /\[ FAIL \]/.test(line) ? 'ui-log__bad'
+        : /\[ WARN \]|\[ STOP \]/.test(line) ? 'ui-log__warn'
+            : /\[  OK  \]/.test(line) ? 'ui-log__ok'
+                : undefined;
+
+function etaLabel(ms: number | null): string | undefined {
+    if (ms === null) return undefined;
+    const min = Math.round(ms / 60000);
+    return min < 1 ? tr('under a minute left') : trf('about {n} min left', { n: min });
+}
+
+function useNarrow(query = '(max-width: 1020px)'): boolean {
+    const get = () => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches;
+    const [narrow, setNarrow] = useState(get);
+    useEffect(() => {
+        const mq = window.matchMedia?.(query);
+        if (!mq) return;
+        const on = () => setNarrow(mq.matches);
+        on();
+        mq.addEventListener('change', on);
+        return () => mq.removeEventListener('change', on);
+    }, [query]);
+    return narrow;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Exports (what is SAVED: the run must be saved first, as before)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const getProductCategory = (shape: string, shortDesc: string) => {
+    const combined = `${shape} ${shortDesc}`.toLowerCase();
+    if (combined.includes('wine rack')) return 'Furniture > Cabinets & Storage > Wine Racks';
+    if (combined.includes('pendant')) return 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures';
+    if (combined.includes('tower lamp') || combined.includes('floor lamp') || combined.includes('pillar')) return 'Home & Garden > Lighting > Lamps > Floor Lamps';
+    if (combined.includes('table lamp') || combined.includes('desk lamp') || combined.includes('lamp')) return 'Home & Garden > Lighting > Lamps > Desk Lamps';
+    if (combined.includes('coaster')) return 'Home & Garden > Kitchen & Dining > Barware > Coasters';
+    if (combined.includes('bathtub') || combined.includes('tub')) return 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs';
+    if (combined.includes('sink') || combined.includes('vessel')) return 'Hardware > Plumbing > Plumbing Fixtures > Sinks';
+    if (combined.includes('sculpture') || combined.includes('statue') || combined.includes('carving') || combined.includes('figure')) return 'Home & Garden > Decor > Artwork > Sculptures & Statues';
+    if (combined.includes('bowl')) return 'Home & Garden > Decor > Decorative Bowls';
+    if (combined.includes('plate')) return 'Home & Garden > Decor > Decorative Plates';
+    if (combined.includes('tray')) return 'Home & Garden > Decor > Decorative Trays';
+    if (combined.includes('fountain') || combined.includes('waterfall')) return 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains';
+    if (combined.includes('garden sculpture') || combined.includes('lawn ornament')) return 'Home & Garden > Decor > Lawn Ornaments & Garden Sculptures > Garden Sculptures';
+    if (combined.includes('mirror')) return 'Home & Garden > Decor > Mirrors';
+    if (combined.includes('shot glass') || combined.includes('tequila glass')) return 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses';
+    if (combined.includes('wall light') || combined.includes('sconce')) return 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures';
+    if (combined.includes('board game') || combined.includes('chess') || combined.includes('checkers') || combined.includes('tic tac toe')) return 'Toys & Games > Games > Board Games';
+    return 'Home & Garden > Decor';
+};
+
+interface ExportEntry {
+    it: RunItem;
+    itemData: any;
+    category: string;
+    vendorName: string;
+    tagId: string;
+    allMasks: string[];
+    text: GeneratedValue;
+    overrideNormData?: any;
+}
+
+/**
+ * One XLSX entry (or several, for a set photographed piece by piece) and one
+ * PDF artifact per item, from the stored row: the exports are gated on
+ * nothing being unsaved, so the row is the reviewed truth. Per photo the
+ * image is the clean photo, else the cut-out, else the original.
+ */
+function buildExportContext(items: readonly RunItem[]) {
+    const exportDataList: ExportEntry[] = [];
+    const catalogResults: CatalogArtifact[] = [];
+
+    for (const it of items) {
+        const itemData = rowOf(it.row);
+        const shape = itemData.shape || 'object';
+        const shortDesc = itemData.shortDescription || itemData.short_description || itemData.type || '';
+        const category = getProductCategory(shape, shortDesc);
+
+        const normData = normalizeInventoryData(itemData);
+        const bookPrefix = normData.workbook || itemData.workbook || '326';
+        // The 17 book rate, never the live market rate: these are the codes on the label.
+        const codes = calculateCodesAndPrices(itemData, DEFAULT_EXCHANGE_RATE, bookPrefix);
+
+        // A stored barcode is printed on a label and is never recomputed.
+        const tag = resolveItemTag(itemData);
+        const tagId = tag.barcode || normData.itemId || '';
+        const vendorName = (vendors as Record<string, { name: string }>)[tag.vendor]?.name || tag.vendor || 'Art of Decor';
+
+        const stills = stillsOf(it);
+        const combinedMaskUrls = stills.map(p => p.stored.cleanedUrl || p.stored.cutoutUrl || p.sourceUrl).filter(Boolean) as string[];
+        const text: GeneratedValue = {
+            title: it.item.existing.title,
+            html: it.item.existing.html,
+            colors: it.item.existing.colors,
+            genType: it.item.existing.genType,
+        };
+
+        const pdfProcessedMap: Record<string, string> = {};
+        stills.forEach(p => {
+            const out = p.stored.cleanedUrl || p.stored.cutoutUrl;
+            if (out) pdfProcessedMap[p.sourceUrl] = out;
+        });
+
+        const pdfData = {
+            ...normData,
+            book_barcode: tagId,
+            book_aq_code: codes?.bookAqCode || normData.book_aq_code || '',
+            book_land_code: codes?.bookLandCode || normData.book_land_code || '',
+            book_acquisition: codes?.bookAcquisition || normData.book_acquisition || '',
+            book_landed: codes?.bookLanded || normData.book_landed || '',
+            book_retail: codes?.bookRetail || normData.book_retail || '',
+            description: text.title || normData.description,
+            detailed_description: text.title || normData.detailed_description,
+            marketing_description: text.html || generateFallbackMarketingHtml(normData),
+            dominant_colors: text.colors.length > 0 ? text.colors.join(', ') : (normData.color || ''),
+            processed_media_urls: JSON.stringify(pdfProcessedMap),
+            category,
+        };
+
+        const numImages = combinedMaskUrls.length;
+        const quantity = Number(normData.quantity) || 1;
+        const isCylinderPendant = (normData.type || '').toUpperCase().includes('CYLINDER PENDANT');
+        const isQtyMatchesImages = quantity === numImages && numImages > 1;
+        const isCylinderBoxSet = isCylinderPendant && quantity > numImages && numImages > 1;
+        const priceCodes = { ...codes, primaryPriceLabel: 'USD RETAIL', primaryPriceValue: `$${codes.bookRetail} USD` };
+
+        if (isQtyMatchesImages || isCylinderBoxSet) {
+            let qtyPerRow = 1;
+            if (isCylinderBoxSet) {
+                const w = Math.round(parseFloat(normData.widthCm) || 0);
+                if (w === 12 || w === 10) qtyPerRow = 9;
+                else if (w === 8) qtyPerRow = 12;
+                else qtyPerRow = Math.round(quantity / numImages);
+            }
+            combinedMaskUrls.forEach((url, index) => {
+                const partSuffix = `(${index + 1} of ${numImages})`;
+                exportDataList.push({ it, itemData, category, vendorName, tagId, text, allMasks: [url], overrideNormData: { ...normData, quantity: qtyPerRow, partSuffix } });
+                catalogResults.push({
+                    data: { ...pdfData, quantity: qtyPerRow, partSuffix },
+                    codes: priceCodes,
+                    images: [getCleanImageUrl(url)!],
+                    exportType: 'catalog',
+                });
+            });
+        } else {
+            exportDataList.push({ it, itemData, category, vendorName, tagId, text, allMasks: combinedMaskUrls });
+            catalogResults.push({
+                data: pdfData,
+                codes: priceCodes,
+                images: combinedMaskUrls.length > 0 ? combinedMaskUrls.map(u => getCleanImageUrl(u)!) : collectAllImages(normData),
+                exportType: quantity === 1 && numImages > 1 ? 'catalog-grid' as any : 'catalog',
+            });
         }
     }
-    return out;
-};
+    return { exportDataList, catalogResults };
+}
 
-/** Saved and saveable look the same to the save paths: 'partial' kept what succeeded. */
-const hasOutput = (op: BatchOp) => op.status === 'completed' || op.status === 'partial';
+const XLSX_HEADERS = [
+    'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Type', 'Option1 Name', 'Option1 Value', 'Variant Position', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
+    'Variant Price', 'Variant Grams', 'Image Src', 'Image Command', 'Image Position', 'Variant Image',
+    'Metafield: custom.product_weight [single_line_text_field]',
+    'Variant Metafield: Vendor_SKU', 'Variant Weight Unit',
+    'Variant Metafield: reg.variant_depth', 'Variant Metafield: reg.variant_width',
+    'Variant Metafield: reg.variant_height', 'Variant Metafield: reg.variant_measurements',
+    'Metafield: Measurements', 'Metafield: shopify.material [list.metaobject_reference]',
+    'Metafield: custom.variety [list.single_line_text_field]', 'Product Category',
+    'Tags', 'Metafield: shopify.color-pattern [list.metaobject_reference]',
+    'Metafield: custom.polish_type [list.single_line_text_field]',
+    'Metafield: custom.cut_type [list.single_line_text_field]',
+    'Metafield: shopify.age-group [list.metaobject_reference]',
+    'Metafield: shopify.target-gender [list.metaobject_reference]',
+    'Variant Metafield: mm-google-shopping.custom_label_1',
+    'Metafield: reg.designer', 'Status', 'Published', 'Published Scope',
+    'Variant Taxable', 'Variant Inventory Tracker', 'Variant Inventory Policy',
+    'Variant Fulfillment Service', 'Variant Requires Shipping',
+    'Included / Art Of Decor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights',
+];
 
+/** The Matrixify sheet: one row per image of each entry. Exported documents stay English. */
+async function buildXlsx(entries: readonly ExportEntry[]): Promise<Blob> {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Onyx Dashboard';
+    const sheet = workbook.addWorksheet('Shopify Export');
+    sheet.addRow(sanitizeExcelRow(XLSX_HEADERS));
+    sheet.getRow(1).font = { bold: true };
 
+    for (const { itemData, category, vendorName, tagId, text, allMasks, overrideNormData } of entries) {
+        const norm = overrideNormData || normalizeInventoryData(itemData);
+        const bookPrefix = norm.workbook || itemData.workbook || '326';
+        const calc = calculateCodesAndPrices(norm, DEFAULT_EXCHANGE_RATE, bookPrefix);
 
+        const shape = norm.shape || '';
+        const shortDesc = norm.shortDescription || norm.type || '';
+        const color = norm.color || '';
+        const material = norm.material || '';
+        const fallbackTitle = `${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const title = formatProductTitle(text.title || fallbackTitle) + (norm.partSuffix ? ` ${norm.partSuffix}` : '');
+        const bodyHtml = text.html || norm.generatedDescription || generateFallbackMarketingHtml(norm);
 
+        let colorsStr = '';
+        if (text.colors.length > 0) colorsStr = text.colors.join(', ');
+        else if (norm.color && norm.color.includes(',')) colorsStr = norm.color;
+        else colorsStr = getStoneStyleColors(material, `${shape} ${shortDesc}`, color).join(', ');
 
+        const testStr = `${shape} ${shortDesc} ${category} ${title} ${material}`;
+        const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
+        const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
+
+        const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
+        const rawVendorId = String(norm.vendorId || norm.vendor_id || '').toUpperCase().trim();
+        const vendorPrefix = rawVendorId.split('-')[0] || rawVendorId.substring(0, 2);
+
+        // Strictly the allowed Shopify choices.
+        let polishType = 'Matte';
+        if (vendorPrefix === 'JM') polishType = 'Fully Polished';
+        else if (['TE', 'EM', 'ML'].includes(vendorPrefix)) polishType = 'Partially Polished';
+
+        const parseNum = (val: any) => { const n = parseFloat(val); return isNaN(n) ? 0 : n; };
+        const cmToIn = (cm: any) => (parseNum(cm) / 2.54).toFixed(2);
+        const costMxn = parseFloat(norm.price || norm.acquisition_price_mxn || '0') || 0;
+        const cost = calc.bookLanded || '';
+        const price = calc.bookRetail && calc.bookRetail !== '-' ? parseFloat(calc.bookRetail) || 0 : ((costMxn / DEFAULT_EXCHANGE_RATE) * 1.4 * 12) || 0;
+        const weightKg = parseNum(norm.weightKg);
+        const weightGrams = Math.round(weightKg * 1000);
+        const weightLbs = (weightKg * 2.20462).toFixed(2);
+        const depthIn = cmToIn(norm.lengthCm);
+        const widthIn = cmToIn(norm.widthCm);
+        const heightIn = cmToIn(norm.heightCm);
+        const measurementsStr = `D${depthIn}xW${widthIn}xH${heightIn}`;
+        const formattedMaterial = material ? material.charAt(0).toUpperCase() + material.slice(1) : 'Onyx';
+
+        let itemImages: string[] = allMasks.map(m => getCleanImageUrl(m) || '').filter(Boolean);
+        if (itemImages.length === 0) {
+            const primary = getCleanImageUrl(norm.generatedPngUrl) || getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]);
+            itemImages = primary ? [primary] : [''];
+        }
+        // Drive links need an extension for Matrixify to fetch them as images.
+        itemImages = itemImages.map(img => {
+            let clean = getCleanImageUrl(img) || img;
+            if (clean && clean.includes('google') && !clean.toLowerCase().endsWith('.png') && !clean.toLowerCase().endsWith('.jpg')) {
+                clean = clean.includes('?') ? `${clean}&ext=.png` : `${clean}?.png`;
+            }
+            return clean;
+        });
+
+        const combinedVendorSku = `${tagId}-${vendorSku}${costMxn}`;
+        const tagsArray = [
+            tagId, color, formattedMaterial, shape, shortDesc,
+            norm.heightCm ? `${norm.heightCm} cm` : '',
+            norm.widthCm ? `${norm.widthCm} cm` : '',
+        ].filter(Boolean).join(', ');
+        const catAndType = getProductCategoryAndType(norm);
+        const handle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || tagId.toLowerCase();
+
+        itemImages.forEach((imgUrl, imgIdx) => {
+            sheet.addRow(sanitizeExcelRow([
+                handle, title, bodyHtml, vendorName, catAndType.type, 'Title', 'Default Title', 1, tagId, tagId, cost, price, weightGrams,
+                imgUrl, 'MERGE', imgIdx + 1, imgIdx === 0 ? imgUrl : '', weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn,
+                measurementsStr, '', formattedMaterial, 'Mexican Onyx', catAndType.category, tagsArray, colorsStr, polishType, '',
+                'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'FALSE', 'global', 'true', 'shopify', 'deny',
+                'manual', 'true', 'TRUE', fountainsVal, pendantsVal,
+            ]));
+        });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// In-page dialog (never a native confirm())
+// ─────────────────────────────────────────────────────────────────────────────
+
+function HubDialog({ title, children, actions, onCancel }: {
+    title: string;
+    children: React.ReactNode;
+    actions: React.ReactNode;
+    onCancel: () => void;
+}) {
+    const cardRef = useRef<HTMLDivElement>(null);
+    const titleId = useId();
+    const bodyId = useId();
+
+    // Focus goes in, and back to whatever opened the dialog when it closes.
+    useEffect(() => {
+        const opener = document.activeElement as HTMLElement | null;
+        const card = cardRef.current;
+        const first = card?.querySelector<HTMLElement>('[data-autofocus]') || card?.querySelector<HTMLElement>('input, button');
+        first?.focus();
+        return () => { opener?.focus?.(); };
+    }, []);
+
+    const onKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Escape') { e.stopPropagation(); onCancel(); return; }
+        if (e.key !== 'Tab' || !cardRef.current) return;
+        const nodes = Array.from(cardRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]'));
+        if (!nodes.length) return;
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+
+    return (
+        <div className="hub-dialog" onKeyDown={onKeyDown}>
+            <div className="hub-dialog__scrim" aria-hidden="true" onClick={onCancel} />
+            {/* tabIndex -1: a click on the text keeps focus inside, so Esc and
+                the Tab trap keep working. */}
+            <div ref={cardRef} className="hub-dialog__card" role="alertdialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId} tabIndex={-1}>
+                <h3 id={titleId} className="hub-dialog__title">{title}</h3>
+                <div id={bodyId} className="hub-dialog__body">{children}</div>
+                <div className="hub-dialog__acts">{actions}</div>
+            </div>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Mounted only while open, so closing drops the run (and the engine stops whatever is in flight). */
 export const BatchProcessingWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isBatchWizardOpenAtom);
-    const [batchItems, setBatchItems] = useAtom(batchWizardItemsAtom);
-    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
-    const [user] = useAtom(userAtom);
-    // Whole catalogue, not just the selection: an item with no photograph looks
-    // for a donor across everything that already has generated content.
+    const batchItems = useAtomValue(batchWizardItemsAtom);
+    if (!isOpen) return null;
+    return <CatalogHub items={batchItems} onClose={() => setIsOpen(false)} />;
+};
+
+function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => void }) {
+    const user = useAtomValue(userAtom);
+    // Whole catalogue, not just the selection: an item with no photograph
+    // borrows copy from the closest item that already has some.
     const fullInventory = useAtomValue(inventoryAtom);
-    // Book codes are printed on labels and cyphered from the book rate, 17.
-    // This used the live market rate once the Finance view had fetched one,
-    // so the tags, XLSX SKUs and PDF retail here drifted from the printed
-    // tags and the table.
-    const activeRate = DEFAULT_EXCHANGE_RATE;
-    
-    const [queue, setQueue] = useState<BatchOp[]>([]);
-    /** Queued items with no photograph that still have no generated content. */
-    const variationPending = queue.filter(op => op.needsVariation && !hasOutput(op)).length;
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [isAborted, setIsAborted] = useState(false);
-    /** 2K costs ~2.6x 1K per image but source photos are ~4000px, so 1K is a visible downgrade. */
-    const [bgQuality, setBgQuality] = useState<BgQuality>('2K');
+    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+
+    const [processes, setProcesses] = useState<Set<ProcessId>>(() => new Set(DEFAULT_PROCESSES));
+    const [mode, setMode] = useState<ProcessingMode>('bgreplace');
     /**
-     * Restrict a run to each item's first image.
-     *
-     * This defaulted to true and had no control anywhere in the UI, which is
-     * why multi-image items only ever came back with one cleaned photo — the
-     * queue built an op per image correctly, and then the run silently dropped
-     * every op with imageIndex > 0. Now off by default, because "clean this
-     * item's photos" should mean all of them, and exposed as a toggle so the
-     * cheaper hero-only run is still available deliberately.
+     * Restrict fresh runs to each item's first photo. Off by default: it was
+     * once hard-wired on with no control, which is why multi-photo items only
+     * ever came back with one cleaned photo. Still offered, because at about
+     * two photos an item it halves the image bill.
      */
     const [heroOnly, setHeroOnly] = useState(false);
-    /** Run the image stage only — no descriptions, colours or type. */
-    const [imagesOnly, setImagesOnly] = useState(false);
-    /**
-     * Abort has to be a ref: handleStartBatch's loop closes over the render it
-     * started in, so reading the isAborted STATE there is always false and the
-     * stop button never stops anything.
-     */
-    const abortRef = useRef(false);
-    const cancelTokens = useRef<Record<string, boolean>>({});
-    const [overallProgress, setOverallProgress] = useState(0);
-    const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-    const [zoomLevel, setZoomLevel] = useState(1);
-    const [showApiModal, setShowApiModal] = useState(false);
-    const apiInputRef = useRef<HTMLInputElement>(null);
 
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const run = useAiRun({
+        items,
+        processes,
+        processingMode: mode,
+        bgQuality: '2K',
+        user,
+        donorInventory: fullInventory,
+        heroOnly,
+    });
+
+    const [filter, setFilter] = useState<FilterId>('all');
+    const [query, setQuery] = useState('');
+    const [currentId, setCurrentId] = useState<string | null>(null);
+    const [ticked, setTicked] = useState<Set<string>>(() => new Set());
+    const [overlayOpen, setOverlayOpen] = useState(false);
+    const [angle, setAngle] = useState(0);
+    const [view, setView] = useState<MediaView>('photo');
+    const [confirm, setConfirm] = useState<Confirm | null>(null);
+    const [busyConfirm, setBusyConfirm] = useState(false);
+    const [showKey, setShowKey] = useState(false);
+    const [keyDraft, setKeyDraft] = useState('');
+    const pendingRef = useRef<(() => void) | null>(null);
+    const [crop, setCrop] = useState<{ itemId: string; index: number; src: string } | null>(null);
+    const uploadRef = useRef<HTMLInputElement>(null);
+    const uploadTarget = useRef<{ itemId: string; index: number } | null>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+    const focusRowRef = useRef(false);
+
+    const [pdfBrand, setPdfBrand] = useState<'ArtOfDecor' | 'RareEarth'>('ArtOfDecor');
     const [xlsxUrl, setXlsxUrl] = useState<string | null>(null);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-    const [isGeneratingXlsx, setIsGeneratingXlsx] = useState(false);
-    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-    const [isSavingDb, setIsSavingDb] = useState(false);
-    const [pdfBrand, setPdfBrand] = useState<'ArtOfDecor' | 'RareEarth'>('ArtOfDecor');
-    const [editHtmlId, setEditHtmlId] = useState<string | null>(null);
-    const [cropModalState, setCropModalState] = useState<{ isOpen: boolean; opId: string; imageSrc: string }>({ isOpen: false, opId: '', imageSrc: '' });
+    const [makingXlsx, setMakingXlsx] = useState(false);
+    const [makingPdf, setMakingPdf] = useState(false);
 
-    const saveApiKey = () => {
-        if (apiInputRef.current?.value) {
-            setGeminiKey(apiInputRef.current.value);
-            setShowApiModal(false);
-            handleStartBatch();
+    const narrow = useNarrow();
+
+    // Object URLs are released when the hub closes.
+    const urlsRef = useRef<string[]>([]);
+    useEffect(() => () => { urlsRef.current.forEach(u => URL.revokeObjectURL(u)); }, []);
+
+    // ── derived ──
+    const all = run.items;
+
+    const displayOf = useCallback((it: RunItem): DisplayState => {
+        if (it.status !== 'queued' || it.dirty) return it.status;
+        // A never-run (or stopped) item that already has everything ticked is
+        // done as far as this run is concerned. One with no photograph counts
+        // once it has copy (Write From Similar is what fills it).
+        const hasStills = it.media.some(m => !m.isVideo);
+        const complete = missingOf(it, processes, heroOnly).length === 0 && (hasStills || !!it.item.existing.title);
+        return complete ? 'saved' : 'queued';
+    }, [processes, heroOnly]);
+
+    const states = useMemo(() => {
+        const m = new Map<string, DisplayState>();
+        for (const it of all) m.set(it.id, displayOf(it));
+        return m;
+    }, [all, displayOf]);
+
+    const counts = useMemo(() => {
+        const c: Partial<Record<RunItemStatus, number>> = {};
+        for (const s of states.values()) c[s] = (c[s] || 0) + 1;
+        return c;
+    }, [states]);
+
+    const searchText = useMemo(() => {
+        const m = new Map<string, string>();
+        for (const it of all) {
+            const t = resolveItemTag(rowOf(it.row));
+            m.set(it.id, [it.label, t.barcode, `${t.head}${t.number}`, nameOf(it), it.item.material, shownText(it).title].join(' ').toLowerCase());
         }
-    };
+        return m;
+    }, [all]);
+
+    const visible = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        return all.filter(it => {
+            const s = states.get(it.id)!;
+            if (filter === 'review' && s !== 'review' && s !== 'partial') return false;
+            if (filter === 'running' && s !== 'running') return false;
+            if (filter === 'failed' && s !== 'failed') return false;
+            if (filter === 'saved' && s !== 'saved') return false;
+            return !q || (searchText.get(it.id) || '').includes(q);
+        });
+    }, [all, states, filter, query, searchText]);
+
+    // The drawer follows the current item; on a wide screen there is always one.
+    const current = (currentId && all.find(i => i.id === currentId)) || (narrow ? undefined : visible[0] || all[0]);
+    useEffect(() => { setAngle(0); setView('photo'); }, [current?.id]);
+
+    // Keyboard selection moves focus with it.
+    useEffect(() => {
+        if (!focusRowRef.current || !current) return;
+        focusRowRef.current = false;
+        const el = listRef.current?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(current.id)}"]`);
+        el?.focus();
+        el?.scrollIntoView({ block: 'nearest' });
+    }, [current?.id]);
+
+    const tickedIds = useMemo(() => all.filter(it => ticked.has(it.id)).map(it => it.id), [all, ticked]);
+
+    /** Default run: every queued item that still lacks a ticked process (grouped by what it lacks). */
+    const gapGroups = useMemo(() => {
+        const groups = new Map<string, { ids: string[]; processes: ProcessId[] }>();
+        for (const it of all) {
+            if (states.get(it.id) !== 'queued' || isBusy(it)) continue;
+            const miss = missingOf(it, processes, heroOnly);
+            if (!miss.length) continue;
+            const key = miss.join(',');
+            if (!groups.has(key)) groups.set(key, { ids: [], processes: miss });
+            groups.get(key)!.ids.push(it.id);
+        }
+        return [...groups.values()];
+    }, [all, states, processes, heroOnly]);
+
+    const runTargets = tickedIds.length
+        ? tickedIds.filter(id => { const it = run.get(id); return it && !isBusy(it); })
+        : gapGroups.flatMap(g => g.ids);
+
+    const donorIds = useMemo(() => all
+        .filter(it => !it.media.some(m => !m.isVideo) && !it.item.existing.title && !isBusy(it))
+        .map(it => it.id), [all]);
+
+    const reviewedIds = all.filter(it => it.status === 'done' && it.dirty).map(it => it.id);
+    const failedCount = all.filter(it => it.status === 'failed' || it.status === 'partial').length;
+    const unsaved = run.counts.unsaved;
+
+    // The old gate, except that an item with no photograph is not asked for
+    // a hex map it can never have (it blocked every export it was part of).
+    const incomplete = all.filter(it => {
+        const ex = it.item.existing;
+        const needsHex = it.media.some(m => !m.isVideo);
+        return !(ex.title && ex.colors.length && ex.genType && (!needsHex || it.stored.hexMap));
+    }).length;
+    const exportBlock = run.isRunning ? tr('Wait for the run to finish.')
+        : unsaved > 0 ? tr('Save first: the exports read what is saved.')
+            : incomplete > 0 ? trf('{n} items still miss a title, colours, hex map or type.', { n: incomplete })
+                : all.length === 0 ? tr('Nothing to export.') : '';
+
+    // ── key ──
+    const needKey = useCallback((then: () => void) => {
+        pendingRef.current = then;
+        setOverlayOpen(false);
+        setKeyDraft('');
+        setShowKey(true);
+    }, []);
 
     useEffect(() => {
-        if (isOpen && batchItems.length > 0) {
-            const newQueue: BatchOp[] = [];
-            batchItems.forEach(item => {
-                const norm = normalizeInventoryData(item.data || item);
-                const images = collectAllImages(norm);
-                const processedMediaStr = String(norm.processed_media_urls || '').trim();
-                let processedMap: Record<string, string> = {};
-                if (processedMediaStr) {
-                    if (processedMediaStr.startsWith('{')) {
-                        try {
-                            processedMap = JSON.parse(processedMediaStr);
-                        } catch(e) {}
-                    } else {
-                        const arr = processedMediaStr.split(',').map(s => s.trim());
-                        images.forEach((img, idx) => {
-                            processedMap[img] = arr[idx] || (idx === 0 ? arr[0] : undefined);
-                        });
-                    }
-                }
-                
-                const savedMarketingDesc = norm.marketingDescription || norm.marketing_description || norm.generatedDescription || norm.generated_description || item.generatedDescription || item.generated_description || undefined;
-                const recon = reconstructRgbPixelMap(norm.spatialPoints || norm.spatial_points || item.spatial_points);
-                const savedHexString = recon ? recon.hexString : (item.hexString || item.hex_string || undefined);
-                const savedBitmapUrl = recon ? recon.bitmapUrl : undefined;
-                const savedCols = recon ? recon.cols : undefined;
-                const savedRows = recon ? recon.rows : undefined;
-                const savedDominantColors = norm.generatedColor || norm.dominantColors || norm.dominant_colors || item.dominantColors || item.dominant_colors || undefined;
-                const savedGeneratedType = norm.generatedType || norm.generated_type || item.generatedType || item.generated_type || (item.processed_media_urls && typeof item.processed_media_urls === 'string' && item.processed_media_urls.startsWith('{') ? (() => { try { return JSON.parse(item.processed_media_urls)['_generated_type']; } catch(e) { return undefined; } })() : undefined);
-                
-                const detailedDesc = norm.detailedDescription || norm.detailed_description || item.detailedDescription || item.detailed_description;
-
-                const baseResultObj = (detailedDesc || savedMarketingDesc || savedHexString || savedGeneratedType) ? {
-                    description: detailedDesc || norm.description || '',
-                    marketingDescription: savedMarketingDesc,
-                    hexString: savedHexString,
-                    bitmapUrl: savedBitmapUrl,
-                    cols: savedCols,
-                    rows: savedRows,
-                    dominantColors: Array.isArray(savedDominantColors) ? savedDominantColors : (typeof savedDominantColors === 'string' && savedDominantColors ? savedDominantColors.split(',').map((s: string) => s.trim()) : undefined),
-                    generatedType: savedGeneratedType
-                } : undefined;
-
-                if (images.length === 0) {
-                    const hasData = !!baseResultObj;
-                    newQueue.push({
-                        id: String(item.id || item.row),
-                        item,
-                        imageIndex: 0,
-                        imageUrl: '',
-                        status: hasData ? 'completed' : 'idle',
-                        progress: hasData ? 100 : 0,
-                        logs: hasData ? ['[  OK  ] Loaded saved DB content'] : ['[ WAIT ] Ready for AI processing'],
-                        processingMode: 'bgreplace',
-                        skipImageProcessing: true,
-                        needsVariation: !hasData,
-                        result: baseResultObj
-                    });
-                } else {
-                    images.forEach((imgUrl, idx) => {
-                        const maskUrl = processedMap[imgUrl] || undefined;
-                        const hasData = !!(baseResultObj || maskUrl);
-                        newQueue.push({
-                            id: `${item.id || item.row}_img${idx}`,
-                            item,
-                            imageIndex: idx,
-                            imageUrl: imgUrl,
-                            status: hasData ? 'completed' : 'idle',
-                            progress: hasData ? 100 : 0,
-                            logs: hasData ? ['[  OK  ] Loaded saved DB content'] : ['[ WAIT ] Ready for AI processing'],
-                            processingMode: 'bgreplace',
-                            skipImageProcessing: false,
-                            result: (baseResultObj || maskUrl) ? {
-                                ...(baseResultObj || { description: norm.description || '' }),
-                                maskUrl: maskUrl
-                            } : undefined
-                        });
-                    });
-                }
-            });
-            setQueue(newQueue);
-        } else if (!isOpen) {
-            setQueue([]);
-            setIsProcessing(false);
-            setIsAborted(false);
-            setOverallProgress(0);
-            setHasUnsavedChanges(false);
-            if (xlsxUrl) URL.revokeObjectURL(xlsxUrl);
-            if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-            setXlsxUrl(null);
-            setPdfUrl(null);
-            setIsGeneratingXlsx(false);
-            setIsGeneratingPdf(false);
+        if (run.runError?.code === 'key_missing' && !showKey) {
+            setOverlayOpen(false);
+            setShowKey(true);
         }
-    }, [isOpen, batchItems]);
+    }, [run.runError, showKey]);
 
-    const updateOp = (id: string, updates: Partial<BatchOp> | ((prev: BatchOp) => Partial<BatchOp>)) => {
-        setQueue(prev => prev.map(op => op.id === id ? { ...op, ...(typeof updates === 'function' ? updates(op) : updates) } : op));
+    const saveKey = () => {
+        const key = keyDraft.trim();
+        if (!key) return;
+        setGeminiKey(key);
+        run.clearRunError();
+        setShowKey(false);
+        const then = pendingRef.current;
+        pendingRef.current = null;
+        then?.();
     };
 
-    const logOp = (id: string, text: string) => {
-        updateOp(id, prev => ({ logs: [...prev.logs, text] }));
-    };
-
-
-    const checkAbort = async <T,>(id: string, promise: Promise<T>, timeoutMs?: number): Promise<T> => {
-        let interval: NodeJS.Timeout;
-        let timeout: NodeJS.Timeout;
-        const abortPromise = new Promise<T>((_, reject) => {
-            interval = setInterval(() => {
-                if (cancelTokens.current[id]) {
-                    clearInterval(interval);
-                    if (timeout) clearTimeout(timeout);
-                    reject(new Error("Cancelled by user"));
-                }
-            }, 500);
-            if (timeoutMs) {
-                timeout = setTimeout(() => {
-                    clearInterval(interval);
-                    reject(new Error("Timeout processing image"));
-                }, timeoutMs);
-            }
+    // ── run ──
+    const report = (ids: readonly string[]) => {
+        let review = 0, failed = 0, partial = 0;
+        ids.forEach(id => {
+            const s = run.get(id)?.status;
+            if (s === 'review') review++;
+            else if (s === 'partial') partial++;
+            else if (s === 'failed') failed++;
         });
-        try {
-            return await Promise.race([promise, abortPromise]);
-        } finally {
-            if (interval!) clearInterval(interval);
-            if (timeout!) clearTimeout(timeout);
-        }
+        if (!review && !partial && !failed) return;
+        const msg = trf('Run finished: {review} to review, {partial} partial, {failed} failed', { review, partial, failed });
+        if (failed || partial) toast(msg, { duration: 6000 }); else toast.success(msg);
     };
 
-    /**
-     * The donor pool: every catalogue item that already has generated content to
-     * lend. Built once per run rather than per item -- at 497 rows against 87
-     * orphans the naive version re-normalizes 43,000 objects.
-     */
-    /**
-     * Write content for an item that has no photograph, by varying the closest
-     * item that does.
-     *
-     * Deliberately not a fresh invention. The model is handed a sibling's
-     * finished copy and asked to write the same piece of catalogue for THIS
-     * item's dimensions and colour, so the voice and structure stay consistent
-     * with everything already approved, and only what genuinely differs changes.
-     *
-     * It never writes an image field. The photograph is still owed.
-     */
-    /**
-     * Run the variation pass over every queued item that has no photograph.
-     * Serial on purpose: these are text-only calls against the same quota as the
-     * image run, and there is nothing to gain from racing them.
-     */
-
-    const pipelineCtx: PipelineContext = {
-        updateOp,
-        logOp,
-        checkAbort,
-        user,
-        bgQuality,
-        cancelTokens,
-        setHasUnsavedChanges,
-        setQueue
-    };
-
-    const handleStartVariationPass = async () => {
-        const pending = queue.filter(op => op.needsVariation && !hasOutput(op));
-        if (pending.length === 0) return;
-        // Without this every no-photo item failed one by one on the same
-        // missing key; START ENGINE already asked first.
-        if (!hasGeminiKey()) {
-            setShowApiModal(true);
+    /** Launch, and if the key is missing, ask for it and launch again once it is saved. */
+    const launch = async (go: () => Promise<{ started: number; error?: { code: string } }[]>, retryAfterKey: () => void, ids: readonly string[]) => {
+        const results = await go();
+        if (results.some(r => r.error?.code === 'key_missing')) {
+            needKey(retryAfterKey);
             return;
         }
+        if (results.some(r => r.started > 0)) report(ids);
+    };
 
-        const donors = buildDonorPool(fullInventory);
-        if (donors.length === 0) {
-            toast.error(tr('No items with generated content to vary from'));
+    const handleRun = () => {
+        if (!processes.size) { toast.error(tr('Tick at least one process.')); return; }
+        if (tickedIds.length) {
+            // Ticked rows: run every ticked process on them, regenerating what is there.
+            const ids = runTargets;
+            if (!ids.length) { toast(tr('The ticked items are busy.')); return; }
+            void launch(() => Promise.all([run.start(ids)]), handleRun, ids);
             return;
         }
-
-        setIsProcessing(true);
-        abortRef.current = false;
-        setOverallProgress(0);
-        toast.loading(tr('Writing from similar items...'), { id: 'variation' });
-
-        let done = 0;
-        for (const op of pending) {
-            if (abortRef.current) break;
-            await processVariationItem(op, donors, pipelineCtx);
-            done += 1;
-            setOverallProgress(Math.round((done / pending.length) * 100));
-        }
-
-        setIsProcessing(false);
-        toast.success(tr('Variation pass complete'), { id: 'variation' });
+        if (!gapGroups.length) { toast(tr('Nothing is missing for the ticked processes. Tick rows to run them again.')); return; }
+        const groups = gapGroups;
+        void launch(() => Promise.all(groups.map(g => run.start(g.ids, { processes: g.processes }))), handleRun, groups.flatMap(g => g.ids));
     };
 
-    const handleRegenerate = (id: string) => {
-        cancelTokens.current[id] = false;
-        setQueue(prev => prev.map(op => 
-            op.id === id 
-                // forceRecleanImage, or in STUDIO mode the re-run only logged
-                // "Background already replaced" and the key did nothing.
-                ? { ...op, status: 'idle', progress: 0, forceRecleanImage: true, logs: ['[ WAIT ] Re-queued for processing'], result: { ...op.result, maskUrl: undefined, cutoutUrl: undefined, matteUrl: undefined, outlineSvg: undefined, svgUrl: undefined } }
-                : op
-        ));
-        setHasUnsavedChanges(true);
+    const handleWriteFromSimilar = () => {
+        const ids = donorIds;
+        if (!ids.length) return;
+        void launch(() => Promise.all([run.start(ids, { processes: ['variation_donor', ...TEXT_PROCESSES] })]), handleWriteFromSimilar, ids);
     };
 
-    const handleRegenerateAI = (id: string) => {
-        cancelTokens.current[id] = false;
-        setQueue(prev => prev.map(op => 
-            op.id === id 
-                ? { ...op, status: 'idle', progress: 0, forceRegenerateDescription: true, logs: ['[ WAIT ] Re-queued for AI regeneration'] }
-                : op
-        ));
-        setHasUnsavedChanges(true);
+    const handleRetryFailed = () => {
+        const ids = all.filter(it => it.status === 'failed' || it.status === 'partial').map(it => it.id);
+        void launch(() => Promise.all([run.retry('failed')]), handleRetryFailed, ids);
     };
 
-    const handleAbort = (id: string) => {
-        cancelTokens.current[id] = true;
-        setQueue(prev => prev.map(op => 
-            op.id === id 
-                ? { ...op, status: 'failed', logs: [...op.logs, '[ FAIL ] Cancelled by user'] }
-                : op
-        ));
+    const retryOne = (id: string, only?: ProcessId[]) => {
+        const go = () => { void launch(() => Promise.all([run.retry([id], only ? { processes: only } : undefined)]), go, [id]); };
+        go();
     };
 
-    const handleUploadMask = (op: BatchOp) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/png,image/jpeg';
-        input.onchange = async (e: any) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (re: any) => {
-                setManualCutout(op.id, re.target.result);
-            };
-            reader.readAsDataURL(file);
-        };
-        input.click();
+    // ── review ──
+    const nextToReview = (fromId: string): string | null => {
+        const i = visible.findIndex(it => it.id === fromId);
+        const after = [...visible.slice(i + 1), ...visible.slice(0, Math.max(0, i))];
+        return after.find(it => it.status === 'review' || it.status === 'partial')?.id ?? null;
     };
 
-    /**
-     * A cutout put on a card by hand (upload or 1:1 crop). It is the piece's
-     * image for that angle, so it is saved the way a generated cutout is --
-     * spatial_masks.angle_N, and generated_png_url for the first photo --
-     * through the same writer, which uploads the data: URL first.
-     */
-    const setManualCutout = (id: string, dataUrl: string) => {
-        updateOp(id, prev => ({
-            result: { ...(prev.result || {}), maskUrl: dataUrl, cutoutUrl: dataUrl, matteUrl: undefined, outlineSvg: undefined, svgUrl: undefined },
-            processStatus: { ...(prev.processStatus || {}), image_segmentation: 'done' },
-        }));
-        setHasUnsavedChanges(true);
-    };
-
-    /**
-     * A hand edit of the title or the HTML. It belongs to the item, so every
-     * card of the item takes it: the save keeps the hero's text, and an edit
-     * typed on the second photo's card used to be dropped (or, under the old
-     * last-card-wins save, an untouched card used to overwrite the edit).
-     * Marking the process done is what tells the writer the field is ready.
-     */
-    const editItemText = (op: BatchOp, field: 'description' | 'marketingDescription', value: string) => {
-        const key = itemKeyOf(op);
-        const process: ProcessId = field === 'description' ? 'title_desc' : 'marketing_desc';
-        setQueue(prev => prev.map(q => itemKeyOf(q) !== key ? q : {
-            ...q,
-            result: { ...(q.result || {}), [field]: value },
-            processStatus: { ...(q.processStatus || {}), [process]: 'done' },
-        }));
-        setHasUnsavedChanges(true);
-    };
-
-    /**
-     * Once a patch is written, the cards hold the uploaded URLs instead of the
-     * data: URLs they were generated with, and the segmentation that went to
-     * item_segmentation is dropped from them, so saving the same item again
-     * does not upload the same matte and bitmap twice or add a second row.
-     */
-    const absorbSaved = (ops: readonly BatchOp[], patch: AiPatch) => {
-        const ids = new Set(ops.map(o => o.id));
-        const masks = (patch.columns.spatial_masks || {}) as Record<string, any[]>;
-        const points = patch.columns.spatial_points as any[] | undefined;
-        const bitmapUrl: string | undefined = points?.[0]?.bitmap_url || undefined;
-        setQueue(prev => prev.map(q => {
-            if (!ids.has(q.id) || !q.result) return q;
-            const angle = masks[`angle_${q.imageIndex || 0}`]?.[0];
-            const result = { ...q.result, segmentation: undefined };
-            if (angle?.mask) { result.cutoutUrl = angle.mask; result.maskUrl = angle.mask; }
-            if (angle?.matte) result.matteUrl = angle.matte;
-            if (angle?.svg) result.svgUrl = angle.svg;
-            if (bitmapUrl && result.bitmapUrl?.startsWith('data:')) result.bitmapUrl = bitmapUrl;
-            return { ...q, result };
-        }));
-    };
-
-    /**
-     * Save one item from its cards, through lib/ai/persist: only the
-     * processes that ran (or were edited), the hero card's text, the stored
-     * processed_media_urls and spatial_masks merged rather than rebuilt, and
-     * nothing nobody reviewed. The stored row is re-read first, because the
-     * snapshot the queue was built from is as old as the hub's opening.
-     *
-     * `saved` is false when nothing was written. `failedUploads` lists the
-     * uploads that failed: their columns were left out, so that work is not
-     * in the database and the caller must not report the item as saved.
-     */
-    const saveItemOps = async (ops: readonly BatchOp[]): Promise<{ saved: boolean; failedUploads: string[] }> => {
-        const first = ops[0];
-        const snapshot = first.item?.data || first.item || {};
-        const rowId = String(snapshot.id || first.item?.id || first.item?.row || '');
-        const processes = processesFromOps(ops);
-        if (!rowId || processes.size === 0) return { saved: false, failedUploads: [] };
-
-        const { data: stored } = await supabase.from('inventory').select('*').eq('id', rowId).maybeSingle();
-        const patch = await buildAiPatch(aiResultFromOps(ops), stored || snapshot, processes, { user });
-        const hero = ops.find(o => (o.imageIndex || 0) === 0) || first;
-        patch.warnings.forEach(w => logOp(hero.id, `[ WARN ] ${w}`));
-        if (isEmptyPatch(patch)) return { saved: false, failedUploads: patch.failedUploads };
-
-        await saveAiPatch(rowId, patch, { user });
-        absorbSaved(ops, patch);
-        return { saved: true, failedUploads: patch.failedUploads };
-    };
-
-    const handleSaveDescription = async (op: BatchOp) => {
-        const key = itemKeyOf(op);
-        const ops = queue.filter(q => itemKeyOf(q) === key);
-        const toastId = toast.loading(tr("Saving description..."));
-        try {
-            const { saved, failedUploads } = await saveItemOps(ops);
-            if (saved) setInventoryVersion(Date.now());
-            if (failedUploads.length > 0) {
-                // A failed upload is unsaved work (a hand-made cutout, say),
-                // not "nothing to save": say so and keep the close guard on.
-                toast.error(`${saved ? 'Saved, but not' : 'Not saved'}: ${failedUploads.join('; ')}`, { id: toastId, duration: 10000 });
-                setHasUnsavedChanges(true);
-            } else if (saved) {
-                toast.success(tr("Description saved!"), { id: toastId });
-            } else {
-                toast(tr("Nothing new to save for this item"), { id: toastId });
-            }
-        } catch (e: any) {
-            toast.error('Failed to save description: ' + aiErrorMessage(e), { id: toastId });
+    const acceptAndAdvance = (id: string, viaKeyboard = false) => {
+        run.accept(id);
+        const next = nextToReview(id);
+        if (next) {
+            focusRowRef.current = viaKeyboard;
+            setCurrentId(next);
         }
     };
 
-    const handleExportDatabase = async () => {
-        const opsByItem = new Map<string, BatchOp[]>();
-        queue.forEach(op => {
-            const key = itemKeyOf(op);
-            if (!opsByItem.has(key)) opsByItem.set(key, []);
-            opsByItem.get(key)!.push(op);
-        });
-        const entries = [...opsByItem.values()].filter(ops => ops.some(hasOutput) && processesFromOps(ops).size > 0);
-        if (entries.length === 0) {
-            toast.error(tr("No completed items to export."));
-            return;
-        }
+    const onGeneratedChange = (it: RunItem, next: GeneratedValue) => {
+        const was = shownText(it);
+        const patch: Parameters<typeof run.edit>[1] = {};
+        if (next.title !== was.title) patch.title = next.title;
+        if (next.html !== was.html) patch.html = next.html;
+        if (next.genType !== was.genType) patch.genType = next.genType;
+        if (next.colors.join('|') !== was.colors.join('|')) patch.colors = next.colors;
+        if (Object.keys(patch).length) run.edit(it.id, patch);
+    };
 
-        const toastId = toast.loading(`Saving data for ${entries.length} items...`);
-        setIsSavingDb(true);
-        setOverallProgress(0);
-
-        // One failed item no longer stops the rest: each is its own update,
-        // and the ones that failed are named so they can be saved again.
-        let savedCount = 0;
-        const failures: string[] = [];
-        for (let i = 0; i < entries.length; i++) {
-            const ops = entries[i];
-            try {
-                const { saved, failedUploads } = await saveItemOps(ops);
-                if (saved) savedCount++;
-                if (failedUploads.length > 0) {
-                    const n = normalizeInventoryData(ops[0].item?.data || ops[0].item);
-                    const label = n.book_barcode || n.itemId || itemKeyOf(ops[0]);
-                    failures.push(`${label}: ${failedUploads.join('; ')}`);
-                }
-            } catch (e: any) {
-                const n = normalizeInventoryData(ops[0].item?.data || ops[0].item);
-                const label = n.book_barcode || n.itemId || itemKeyOf(ops[0]);
-                failures.push(`${label}: ${aiErrorMessage(e)}`);
-                const hero = ops.find(o => (o.imageIndex || 0) === 0) || ops[0];
-                logOp(hero.id, `[ FAIL ] Save: ${aiErrorMessage(e)}`);
-                console.error(e);
-            }
-            setOverallProgress(((i + 1) / entries.length) * 100);
-        }
-
-        setIsSavingDb(false);
-        if (savedCount > 0) setInventoryVersion(Date.now());
-        if (failures.length === 0) {
-            toast.success(tr("Saved successfully to database!"), { id: toastId });
-            setHasUnsavedChanges(false);
+    const summarizeSave = (outcomes: SaveOutcome[]) => {
+        const saved = outcomes.filter(o => o.outcome === 'saved').length;
+        const bad = outcomes.filter(o => o.outcome === 'failed' || o.outcome === 'incomplete');
+        if (outcomes.some(o => o.outcome === 'saved' || o.outcome === 'incomplete')) setInventoryVersion(Date.now());
+        if (bad.length) {
+            const detail = bad.slice(0, 3).map(o => `${o.label}: ${o.error || o.warnings.join('; ') || tr('uploads failed')}`).join(' · ');
+            toast.error(trf('Saved {saved}, not saved {failed}: {detail}', { saved, failed: bad.length, detail }), { duration: 10000 });
+        } else if (saved) {
+            toast.success(trf('Saved {n} items', { n: saved }));
         } else {
-            toast.error(`Saved ${savedCount}, failed ${failures.length}: ${failures.slice(0, 3).join('; ')}${failures.length > 3 ? '...' : ''}`, { id: toastId, duration: 10000 });
+            toast(tr('Nothing new to save'));
         }
+        return bad.length === 0;
     };
 
-    const getProductCategory = (shape: string, shortDesc: string) => {
-        const combined = `${shape} ${shortDesc}`.toLowerCase();
-        if (combined.includes('wine rack')) return 'Furniture > Cabinets & Storage > Wine Racks';
-        if (combined.includes('pendant')) return 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures';
-        if (combined.includes('tower lamp') || combined.includes('floor lamp') || combined.includes('pillar')) return 'Home & Garden > Lighting > Lamps > Floor Lamps';
-        if (combined.includes('table lamp') || combined.includes('desk lamp') || combined.includes('lamp')) return 'Home & Garden > Lighting > Lamps > Desk Lamps';
-        if (combined.includes('coaster')) return 'Home & Garden > Kitchen & Dining > Barware > Coasters';
-        if (combined.includes('bathtub') || combined.includes('tub')) return 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs';
-        if (combined.includes('sink') || combined.includes('vessel')) return 'Hardware > Plumbing > Plumbing Fixtures > Sinks';
-        if (combined.includes('sculpture') || combined.includes('statue') || combined.includes('carving') || combined.includes('figure')) return 'Home & Garden > Decor > Artwork > Sculptures & Statues';
-        if (combined.includes('bowl')) return 'Home & Garden > Decor > Decorative Bowls';
-        if (combined.includes('plate')) return 'Home & Garden > Decor > Decorative Plates';
-        if (combined.includes('tray')) return 'Home & Garden > Decor > Decorative Trays';
-        if (combined.includes('fountain') || combined.includes('waterfall')) return 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains';
-        if (combined.includes('garden sculpture') || combined.includes('lawn ornament')) return 'Home & Garden > Decor > Lawn Ornaments & Garden Sculptures > Garden Sculptures';
-        if (combined.includes('mirror')) return 'Home & Garden > Decor > Mirrors';
-        if (combined.includes('shot glass') || combined.includes('tequila glass')) return 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses';
-        if (combined.includes('wall light') || combined.includes('sconce')) return 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures';
-        if (combined.includes('board game') || combined.includes('chess') || combined.includes('checkers') || combined.includes('tic tac toe')) return 'Toys & Games > Games > Board Games';
-        return 'Home & Garden > Decor';
+    const handleSaveReviewed = async () => {
+        summarizeSave(await run.save('reviewed'));
     };
 
-    const buildExportContext = () => {
-        const completedOps = queue.filter(hasOutput);
-        const exportDataList: any[] = [];
-        const catalogResults: CatalogArtifact[] = [];
+    // ── manual cutouts ──
+    const openUpload = (itemId: string, index: number) => {
+        uploadTarget.current = { itemId, index };
+        uploadRef.current?.click();
+    };
 
-        const opsByItem: Record<string, BatchOp[]> = {};
-        completedOps.forEach(op => {
-            const itemId = String(op.item.id || op.item.row);
-            if (!opsByItem[itemId]) opsByItem[itemId] = [];
-            opsByItem[itemId].push(op);
-        });
+    const onUploadPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        const target = uploadTarget.current;
+        e.target.value = '';
+        if (!file || !target) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                run.setCutout(target.itemId, target.index, reader.result);
+                toast.success(tr('Cutout replaced. Save to keep it.'));
+            }
+        };
+        reader.readAsDataURL(file);
+    };
 
-        for (const [itemId, ops] of Object.entries(opsByItem)) {
-            ops.sort((a, b) => (a.imageIndex || 0) - (b.imageIndex || 0));
-            const primaryOp = ops[0];
-            const itemData = primaryOp.item.data || primaryOp.item;
-            
-            const shape = itemData.shape || 'object';
-            const shortDesc = itemData.shortDescription || itemData.type || '';
-            const category = getProductCategory(shape, shortDesc);
-            
-            const normData = normalizeInventoryData(itemData);
-            const bookPrefix = normData.workbook || itemData.workbook || '326';
-            const codes = calculateCodesAndPrices(itemData, activeRate, bookPrefix);
-            
-            // Second copy of the same drifted mapping; both now read `vendors`
-            // from lib/consts so they cannot disagree with each other again.
-            const vendorMapping: Record<string, string> = Object.fromEntries(
-                Object.entries(vendors).map(([code, v]) => [code, v.name])
-            );
-            
-            // A stored barcode is printed on a label and is never recomputed.
-            const tagId = normData.book_barcode || codes?.bookBarcode || normData.itemId || '';
-            const matchPrefix = tagId.match(/^[A-Za-z]+/);
-            const extractedPrefix = matchPrefix ? matchPrefix[0] : '';
-            const rawVendorId = String(normData.vendor_id || extractedPrefix || '').toUpperCase();
-            const vendorName = vendorMapping[rawVendorId] || rawVendorId || 'Art of Decor';
-
-            const combinedMaskUrls = ops.map(op => (op.skipImageProcessing ? op.imageUrl : (op.result?.maskUrl || op.imageUrl))).filter(Boolean) as string[];
-
-            // The hero card's text, as the save and the XLSX use. This took
-            // the last card's, so one session could print a third title.
-            const heroText = aiResultFromOps(ops);
-            const lastDescription = heroText.title || '';
-            const lastMarketingDesc = heroText.html || '';
-            const lastColors: string[] = heroText.colors || [];
-
-            const pdfProcessedMap: Record<string, string> = {};
-            ops.forEach(op => {
-                if (!op.skipImageProcessing && op.result?.maskUrl && op.imageUrl) {
-                    pdfProcessedMap[op.imageUrl] = op.result.maskUrl;
-                }
-            });
-
-            const pdfData = { 
-                ...normData, 
-                book_barcode: normData.book_barcode || codes?.bookBarcode || normData.itemId || '',
-                book_aq_code: codes?.bookAqCode || normData.book_aq_code || '',
-                book_land_code: codes?.bookLandCode || normData.book_land_code || '',
-                book_acquisition: codes?.bookAcquisition || normData.book_acquisition || '',
-                book_landed: codes?.bookLanded || normData.book_landed || '',
-                book_retail: codes?.bookRetail || normData.book_retail || '',
-                description: lastDescription || normData.description,
-                detailed_description: lastDescription || normData.detailed_description, 
-                marketing_description: lastMarketingDesc || normData.generatedDescription || normData.generated_description || generateFallbackMarketingHtml(normData),
-                dominant_colors: (lastColors.length > 0 ? lastColors.join(', ') : (normData.color || '')),
-                processed_media_urls: JSON.stringify(pdfProcessedMap),
-                category: category
-            };
-            
-            const numImages = combinedMaskUrls.length;
-            const quantity = Number(normData.quantity) || 1;
-            const isCylinderPendant = (normData.type || '').toUpperCase().includes('CYLINDER PENDANT');
-
-            const isQtyMatchesImages = quantity === numImages && numImages > 1;
-            const isCylinderBoxSet = isCylinderPendant && quantity > numImages && numImages > 1;
-
-            if (isQtyMatchesImages || isCylinderBoxSet) {
-                let qtyPerRow = 1;
-                if (isCylinderBoxSet) {
-                    const w = Math.round(parseFloat(normData.widthCm) || 0);
-                    if (w === 12 || w === 10) qtyPerRow = 9;
-                    else if (w === 8) qtyPerRow = 12;
-                    else qtyPerRow = Math.round(quantity / numImages);
-                }
-                
-                ops.forEach((op, index) => {
-                    const singleMask = combinedMaskUrls[index] ? [combinedMaskUrls[index]] : [];
-                    const partSuffix = `(${index + 1} of ${numImages})`;
-                    const modifiedNormData = { ...normData, quantity: qtyPerRow, partSuffix };
-                    
-                    exportDataList.push({ op, category, vendorName, allMasks: singleMask, overrideNormData: modifiedNormData });
-                    
-                    const singlePdfData = { ...pdfData, quantity: qtyPerRow, partSuffix };
-                    
-                    catalogResults.push({
-                        data: singlePdfData,
-                        codes: {
-                            ...codes,
-                            primaryPriceLabel: 'USD RETAIL',
-                            primaryPriceValue: `$${codes.bookRetail} USD`
-                        },
-                        images: singleMask.length > 0 ? singleMask.map(u => getCleanImageUrl(u)!) : [],
-                        exportType: 'catalog'
-                    });
-                });
-            } else {
-                exportDataList.push({ op: primaryOp, category, vendorName, allMasks: combinedMaskUrls });
-                
-                const isSingleItemMultiImage = quantity === 1 && numImages > 1;
-                
-                catalogResults.push({
-                    data: pdfData,
-                    codes: {
-                        ...codes,
-                        primaryPriceLabel: 'USD RETAIL',
-                        primaryPriceValue: `$${codes.bookRetail} USD`
-                    },
-                    images: combinedMaskUrls.length > 0 ? combinedMaskUrls.map(u => getCleanImageUrl(u)!) : collectAllImages(normData),
-                    exportType: isSingleItemMultiImage ? 'catalog-grid' as any : 'catalog'
-                });
+    // ── confirmed actions ──
+    const doClear = async (ids: string[]) => {
+        setBusyConfirm(true);
+        const patch: AiPatch = { columns: CLEAR_COLUMNS, segmentations: [], warnings: [], failedUploads: [] };
+        let cleared = 0;
+        const failures: string[] = [];
+        for (const id of ids) {
+            const it = run.get(id);
+            if (!it || isBusy(it)) continue;
+            if (!it.rowId) { failures.push(`${it.label}: ${tr('no database id')}`); continue; }
+            try {
+                // The one writer, so the RxDB mirror is updated with the table.
+                const saved = await saveAiPatch(it.rowId, patch, { user });
+                run.reset(id, saved || undefined);
+                cleared++;
+            } catch (err) {
+                failures.push(`${it.label}: ${aiErrorMessage(err)}`);
             }
         }
-        return { exportDataList, catalogResults };
+        setBusyConfirm(false);
+        setConfirm(null);
+        if (cleared) setInventoryVersion(Date.now());
+        if (failures.length) toast.error(trf('Cleared {n}, failed {f}: {detail}', { n: cleared, f: failures.length, detail: failures.slice(0, 3).join(' · ') }), { duration: 10000 });
+        else toast.success(trf('Cleared the AI data of {n} items', { n: cleared }));
     };
 
-    const handleGenerateXLSX = async () => {
-        if (!allCompleted || hasUnsavedChanges) { toast.error(tr("Please export to database first.")); return; }
-        setIsGeneratingXlsx(true);
-        const toastId = toast.loading(tr("Generating Shopify XLSX..."));
+    const doReclean = (ids: string[]) => {
+        setConfirm(null);
+        // Every photo, so hero-only goes off: asking to re-clean everything and
+        // then skipping the second photo of every item is the old bug.
+        setHeroOnly(false);
+        const dirty = ids.filter(id => run.get(id)?.dirty);
+        const fresh = ids.filter(id => !run.get(id)?.dirty);
+        const go = () => {
+            void launch(() => Promise.all([
+                // Unsaved results are kept: a retry re-runs only the clean.
+                dirty.length ? run.retry(dirty, { processes: ['img_clean'], heroOnly: false }) : Promise.resolve({ started: 0 }),
+                fresh.length ? run.start(fresh, { processes: ['img_clean'], heroOnly: false }) : Promise.resolve({ started: 0 }),
+            ]), go, ids);
+        };
+        go();
+    };
+
+    /**
+     * Saves the ACCEPTED items only, the same gate as "Save N reviewed":
+     * closing must not be a way to store AI copy and images nobody looked at.
+     * The dialog says how many unreviewed items closing then discards.
+     */
+    const doCloseSaving = async () => {
+        setBusyConfirm(true);
+        const ok = summarizeSave(await run.save('reviewed'));
+        setBusyConfirm(false);
+        if (ok) onClose(); else setConfirm(null);
+    };
+
+    const handleClose = () => {
+        if (run.isRunning || unsaved > 0) setConfirm({ kind: 'close' });
+        else onClose();
+    };
+
+    // ── exports ──
+    const handleXlsx = async () => {
+        if (exportBlock) { toast.error(exportBlock); return; }
+        setMakingXlsx(true);
+        const toastId = toast.loading(tr('Generating Shopify XLSX...'));
         try {
-            const { exportDataList } = buildExportContext();
-            const workbook = new ExcelJS.Workbook();
-            workbook.creator = 'Onyx Dashboard';
-            const sheet = workbook.addWorksheet('Shopify Export');
-            
-            const headers = [
-                'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Type', 'Option1 Name', 'Option1 Value', 'Variant Position', 'Variant SKU', 'Variant Barcode', 'Variant Cost',
-                'Variant Price', 'Variant Grams', 'Image Src', 'Image Command', 'Image Position', 'Variant Image', 
-                'Metafield: custom.product_weight [single_line_text_field]', 
-                'Variant Metafield: Vendor_SKU', 'Variant Weight Unit', 
-                'Variant Metafield: reg.variant_depth', 'Variant Metafield: reg.variant_width', 
-                'Variant Metafield: reg.variant_height', 'Variant Metafield: reg.variant_measurements', 
-                'Metafield: Measurements', 'Metafield: shopify.material [list.metaobject_reference]', 
-                'Metafield: custom.variety [list.single_line_text_field]', 'Product Category', 
-                'Tags', 'Metafield: shopify.color-pattern [list.metaobject_reference]', 
-                'Metafield: custom.polish_type [list.single_line_text_field]', 
-                'Metafield: custom.cut_type [list.single_line_text_field]', 
-                'Metafield: shopify.age-group [list.metaobject_reference]', 
-                'Metafield: shopify.target-gender [list.metaobject_reference]', 
-                'Variant Metafield: mm-google-shopping.custom_label_1', 
-                'Metafield: reg.designer', 'Status', 'Published', 'Published Scope', 
-                'Variant Taxable', 'Variant Inventory Tracker', 'Variant Inventory Policy', 
-                'Variant Fulfillment Service', 'Variant Requires Shipping',
-                'Included / Art Of Decor', 'Included / Trade Partners - Fountains', 'Included / Trade Partners - Pendant Lights'
-            ];
-            sheet.addRow(sanitizeExcelRow(headers));
-            sheet.getRow(1).font = { bold: true };
-
-            exportDataList.forEach(({ op, category, vendorName, allMasks, overrideNormData }) => {
-                const itemData = op.item.data || op.item;
-                const norm = overrideNormData || normalizeInventoryData(itemData);
-                const bookPrefix = norm.workbook || itemData.workbook || '326';
-                const calc = calculateCodesAndPrices(norm, activeRate, bookPrefix);
-                
-                const shape = norm.shape || '';
-                const shortDesc = norm.shortDescription || norm.type || '';
-                const color = norm.color || '';
-                const material = norm.material || '';
-                const fallbackTitle = `${shape} ${shortDesc} ${color} ${material}`.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                const title = formatProductTitle(op.result?.description || fallbackTitle) + (norm.partSuffix ? ` ${norm.partSuffix}` : '');
-
-                const bodyHtml = op.result?.marketingDescription || norm.generatedDescription || generateFallbackMarketingHtml(norm);
-
-                let colorsStr = '';
-                if (op.result?.dominantColors && op.result.dominantColors.length > 0) {
-                    colorsStr = op.result.dominantColors.join(', ');
-                } else if (norm.color && norm.color.includes(',')) {
-                    colorsStr = norm.color;
-                } else {
-                    colorsStr = getStoneStyleColors(material, `${shape} ${shortDesc}`, color).join(', ');
-                }
-
-                const testStr = `${shape} ${shortDesc} ${category} ${title} ${material}`;
-                const artOfDecorVal = 'TRUE';
-                const fountainsVal = /fountain|fuente|cascada/i.test(testStr) ? 'TRUE' : 'FALSE';
-                const pendantsVal = /pendant|colgante|lámpara colgante|hanging/i.test(testStr) ? 'TRUE' : 'FALSE';
-
-                const tagId = norm.book_barcode || calc.bookBarcode || norm.itemId || String(itemData.row) || '';
-                const vendorSku = calc.bookAqCode || tagId.replace(/^[A-Za-z]{2}[-]?\d{3}[-]?/, '') || tagId;
-                
-                const rawVendorId = String(norm.vendorId || norm.vendor_id || '').toUpperCase().trim();
-                const vendorPrefix = rawVendorId.split('-')[0] || rawVendorId.substring(0, 2);
-
-                // Strictly map polishType to allowed Shopify choices:
-                // ["Fully Polished", "Raw/Unpolished", "Partially Polished", "Single-Side Polish", "Double-Side Polish", "Tumbled", "Matte"]
-                let polishType = 'Matte';
-                if (vendorPrefix === 'JM') {
-                    polishType = 'Fully Polished';
-                } else if (['TE', 'EM', 'ML'].includes(vendorPrefix)) {
-                    polishType = 'Partially Polished';
-                }
-
-                const parseNum = (val: any) => { const num = parseFloat(val); return isNaN(num) ? 0 : num; };
-                const cmToIn = (cm: any) => (parseNum(cm) / 2.54).toFixed(2);
-                const kgToLbs = (kg: any) => (parseNum(kg) * 2.20462).toFixed(2);
-                
-                const costMxn = parseFloat(norm.price || norm.acquisition_price_mxn || '0') || 0;
-                const cost = calc.bookLanded || '';
-                const price = calc.bookRetail && calc.bookRetail !== '-' ? parseFloat(calc.bookRetail) || 0 : ((costMxn / activeRate) * 1.4 * 12) || 0;
-
-                const weightKg = parseNum(norm.weightKg);
-                const weightGrams = Math.round(weightKg * 1000);
-                const weightLbs = kgToLbs(weightKg);
-                
-                const depthIn = cmToIn(norm.lengthCm);
-                const widthIn = cmToIn(norm.widthCm);
-                const heightIn = cmToIn(norm.heightCm);
-                const measurementsStr = `D${depthIn}xW${widthIn}xH${heightIn}`;
-                const variety = 'Mexican Onyx';
-                const formattedMaterial = material ? material.charAt(0).toUpperCase() + material.slice(1) : 'Onyx';
-
-                // Collect all images for the item
-                let itemImages: string[] = [];
-                if (op.skipImageProcessing) {
-                    const raw = op.imageUrl || norm.imageUrl || norm.mediaUrls;
-                    if (raw) {
-                        itemImages = typeof raw === 'string' ? raw.split(',').map(s => s.trim()).filter(Boolean) : [raw];
-                    }
-                } else if (allMasks && allMasks.length > 0) {
-                    itemImages = allMasks.map(m => getCleanImageUrl(m) || '').filter(Boolean);
-                } else {
-                    const primary = getCleanImageUrl(norm.generatedPngUrl) || getCleanImageUrl(norm.imageUrl || norm.mediaUrls?.split(',')[0]);
-                    if (primary) itemImages.push(primary);
-                }
-
-                if (itemImages.length === 0) {
-                    itemImages = [''];
-                }
-
-                // Clean Drive / image URLs
-                itemImages = itemImages.map(img => {
-                    let clean = getCleanImageUrl(img) || img;
-                    if (clean && clean.includes('google') && !clean.toLowerCase().endsWith('.png') && !clean.toLowerCase().endsWith('.jpg')) {
-                        clean = clean.includes('?') ? `${clean}&ext=.png` : `${clean}?.png`;
-                    }
-                    return clean;
-                });
-
-                const combinedVendorSku = `${tagId}-${vendorSku}${costMxn}`;
-
-                const tagsArray = [
-                    tagId,
-                    color,
-                    formattedMaterial,
-                    shape,
-                    shortDesc,
-                    norm.heightCm ? `${norm.heightCm} cm` : '',
-                    norm.widthCm ? `${norm.widthCm} cm` : ''
-                ].filter(Boolean).join(', ');
-
-                const catAndType = getProductCategoryAndType(norm);
-                const finalCategory = catAndType.category;
-                const finalType = catAndType.type;
-                const handle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || tagId.toLowerCase();
-
-                // Export ONE row per image (Matrixify multi-image format)
-                itemImages.forEach((imgUrl, imgIdx) => {
-                    const imagePosition = imgIdx + 1;
-                    const imageCommand = 'MERGE';
-                    const variantImage = imgIdx === 0 ? imgUrl : '';
-
-                    sheet.addRow(sanitizeExcelRow([
-                        handle, title, bodyHtml, vendorName, finalType, 'Title', 'Default Title', 1, tagId, tagId, cost, price, weightGrams, imgUrl, imageCommand, imagePosition, variantImage, weightLbs, combinedVendorSku, '', depthIn, widthIn, heightIn, measurementsStr, '', formattedMaterial, variety, finalCategory, tagsArray, colorsStr, polishType, '', 'Adults', 'Unisex', 'Rare Earth Gallery', 'Rare Earth Gallery', 'active', 'FALSE', 'global', 'true', 'shopify', 'deny', 'manual', 'true', artOfDecorVal, fountainsVal, pendantsVal
-                    ]));
-                });
-            });
-
-            const buffer = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            setXlsxUrl(URL.createObjectURL(blob));
-            toast.success(tr("XLSX generated! Click Download XLSX to save."), { id: toastId });
+            const { exportDataList } = buildExportContext(all);
+            const url = URL.createObjectURL(await buildXlsx(exportDataList));
+            urlsRef.current.push(url);
+            setXlsxUrl(url);
+            toast.success(tr('XLSX generated! Click Download XLSX to save.'), { id: toastId });
         } catch (e: any) {
-            toast.error(`XLSX Generation failed: ${e.message}`, { id: toastId });
+            toast.error(`${tr('XLSX generation failed')}: ${e?.message || e}`, { id: toastId });
             console.error(e);
-        } finally { setIsGeneratingXlsx(false); }
+        } finally { setMakingXlsx(false); }
     };
 
-    const handleGeneratePDF = async () => {
-        if (!allCompleted || hasUnsavedChanges) { toast.error(tr("Please export to database first.")); return; }
-        setIsGeneratingPdf(true);
-        const toastId = toast.loading(tr("Generating Catalog PDF..."));
+    const handlePdf = async () => {
+        if (exportBlock) { toast.error(exportBlock); return; }
+        setMakingPdf(true);
+        const toastId = toast.loading(tr('Generating Catalog PDF...'));
         try {
-            const { catalogResults } = buildExportContext();
+            const { catalogResults } = buildExportContext(all);
             const dateStr = new Date().toISOString().split('T')[0];
             const blob = await exportCatalogPdf(catalogResults, {
                 title: `AI Generated Catalog ${dateStr}`,
                 method: 'grid',
                 logo: pdfBrand,
-                exportType: 'catalog'
+                exportType: 'catalog',
             }, () => {}, 'blob');
-
             if (blob instanceof Blob) {
-                setPdfUrl(URL.createObjectURL(blob));
-                toast.success(tr("PDF generated! Click Download PDF to save."), { id: toastId });
+                const url = URL.createObjectURL(blob);
+                urlsRef.current.push(url);
+                setPdfUrl(url);
+                toast.success(tr('PDF generated! Click Download PDF to save.'), { id: toastId });
             }
         } catch (e: any) {
-            toast.error(`PDF Generation failed: ${e.message}`, { id: toastId });
+            toast.error(`${tr('PDF generation failed')}: ${e?.message || e}`, { id: toastId });
             console.error(e);
-        } finally { setIsGeneratingPdf(false); }
+        } finally { setMakingPdf(false); }
     };
 
-    const handleClearGen = async () => {
-        if (!confirm(`Are you sure you want to clear AI generation data for ${queue.length} selected items?`)) return;
-        
-        const toastId = toast.loading(`Clearing AI data for ${queue.length} items...`);
-        try {
-            const ids = queue.map(op => op.item.id);
-            if (ids.length === 0) return;
-            
-            const { error } = await supabase.from('inventory').update({
-                detailed_description: null,
-                spatial_masks: null,
-                processed_media_urls: null,
-                generated_png_url: null
-            }).in('id', ids);
-            
-            if (error) throw error;
-            
-            // Also clear the queue state so UI updates
-            setQueue(prev => prev.map(op => ({
-                ...op,
-                result: undefined,
-                status: 'idle' as const
-            })));
-            setHasUnsavedChanges(true); // Treat this as a change that needs to be noticed
-            
-            toast.success(`Cleared AI data for ${ids.length} items!`, { id: toastId });
-        } catch (e: any) {
-            toast.error(`Clear failed: ${e.message}`, { id: toastId });
-            console.error(e);
-        }
-    };
+    // An export made before more work was saved is stale.
+    useEffect(() => { setXlsxUrl(null); setPdfUrl(null); }, [run.state.items]);
 
-    const handleOptimizeLegacyPNGs = async () => {
-        const toastId = toast.loading(tr("Finding masks to optimize..."));
-        try {
-            const { data, error } = await supabase.from('inventory').select('*').not('processed_media_urls', 'is', null);
-            if (error) throw error;
-            if (!data || data.length === 0) {
-                toast.success(tr("No masks found!"), { id: toastId });
-                return;
-            }
+    // ── header facts ──
+    const facts = useMemo(() => {
+        const vendorsSeen = Array.from(new Set(all.map(it => (it.item.vendorId || it.item.itemId).split('-')[0]).filter(Boolean)));
+        const books = Array.from(new Set(all.map(it => it.item.workbook).filter(Boolean)));
+        return [
+            trf('{n} items', { n: all.length }),
+            vendorsSeen.slice(0, 3).join(' · ') + (vendorsSeen.length > 3 ? ' …' : ''),
+            books.slice(0, 2).map(b => `v${String(b).replace(/^v/i, '')}`).join(' · ') + (books.length > 2 ? ' …' : ''),
+        ].filter(Boolean).join(' · ');
+    }, [all]);
 
-            toast.loading(`Scanning ${data.length} items. Starting conversion...`, { id: toastId });
-            let optimizedCount = 0;
-
-            for (const item of data) {
-                try {
-                    let processedMap: Record<string, string> = {};
-                    if (item.processed_media_urls) {
-                        if (item.processed_media_urls.startsWith('{')) {
-                            processedMap = JSON.parse(item.processed_media_urls);
-                        }
-                    }
-
-                    // Skip if already optimized
-                    if (processedMap['_optimized'] === 'true') continue;
-
-                    let updated = false;
-                    for (const [imgUrl, maskUrl] of Object.entries(processedMap)) {
-                        if (imgUrl === '_optimized') continue;
-                        if (maskUrl) {
-                            toast.loading(`Optimizing mask ${optimizedCount + 1}...`, { id: toastId });
-                            const img = await loadImage(maskUrl);
-                            const canvas = document.createElement('canvas');
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            const ctx = canvas.getContext('2d')!;
-                            ctx.drawImage(img, 0, 0);
-                            const webpData = canvas.toDataURL('image/webp', 0.85);
-                            
-                            const upRes = await handleProcessedFileUpload(webpData, `mask_opt_${item.id}.webp`, user);
-                            if (upRes && upRes.thumbnailUrl) {
-                                processedMap[imgUrl] = upRes.thumbnailUrl;
-                                updated = true;
-                            }
-                        }
-                    }
-
-                    if (updated) {
-                        processedMap['_optimized'] = 'true';
-                        const maskUrls = Object.values(processedMap).filter(url => url !== 'true' && url);
-                        await supabase.from('inventory').update({
-                            processed_media_urls: JSON.stringify(processedMap),
-                            generated_png_url: maskUrls.length > 0 ? maskUrls[0] : null
-                        }).eq('id', item.id);
-                        optimizedCount++;
-                    }
-                } catch (err) {
-                    console.error(`Failed to optimize item ${item.id}`, err);
-                }
-            }
-            
-            if (optimizedCount > 0) {
-                toast.success(`Optimized ${optimizedCount} masks successfully!`, { id: toastId });
-                setInventoryVersion(Date.now());
-            } else {
-                toast.success(tr("All masks are already optimized!"), { id: toastId });
-            }
-        } catch (e: any) {
-            toast.error(`Optimization failed: ${e.message}`, { id: toastId });
-            console.error(e);
-        }
-    };
-
-    const handleStartBatch = async () => {
-        if (!hasGeminiKey()) {
-            setShowApiModal(true);
-            return;
-        }
-
-        setIsProcessing(true);
-        setIsAborted(false);
-        abortRef.current = false;
-        setOverallProgress(0);
-
-        const pending = queue.filter(op => {
-            // No photograph: nothing in this run can act on it. processSingleItem
-            // throws "No image found for item" on the first line that touches the
-            // URL, so leaving these in meant 87 guaranteed failures in the log.
-            // They belong to the variation pass instead.
-            if (op.needsVariation) return false;
-            // Missing text is a reason to include an op in any run now, since
-            // an images-only run backfills gaps too.
-            const needsContent = (op.imageIndex || 0) === 0
-                && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription);
-            const needsImage = !!op.imageUrl && !op.skipImageProcessing
-                && (op.forceRecleanImage || !op.result?.cleanedUrl);
-            if (imagesOnly && !needsImage) return false;
-            if (hasOutput(op) && !needsContent && !needsImage) return false;
-            // Hero-only is a deliberate economy, not the default: at ~2 images an
-            // item it halves the bill, but it also means the other photos never
-            // get cleaned, which is the bug this flag used to cause silently.
-            if (heroOnly && (op.imageIndex || 0) > 0 && !needsContent) return false;
-            return true;
-        });
-
-        let completed = 0;
-        const total = pending.length || 1;
-
-        // Three at a time. Serial with a blanket sleep(1000) meant a 240-image run
-        // spent hours waiting on a rate limit that was never actually being hit.
-        const CONCURRENCY = 3;
-        const cursor = { i: 0 };
-        const worker = async () => {
-            while (!abortRef.current) {
-                const index = cursor.i++;
-                if (index >= pending.length) return;
-                try {
-                    await processSingleItem(pending[index], pipelineCtx);
-                } catch (err) {
-                    console.error("Failed processing item:", pending[index].id, err);
-                }
-                completed++;
-                setOverallProgress((completed / total) * 100);
-            }
-        };
-        await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
-
-        setIsProcessing(false);
-        setInventoryVersion(v => v + 1);
-        if (!abortRef.current) {
-            toast.success(tr("AI Batch Processing Complete!"));
-        }
-    };
-
-    const handleClose = () => {
-        if (isProcessing) {
-            const ok = window.confirm(tr("Processing is active. Are you sure you want to abort and close?"));
-            if (!ok) return;
-            abortRef.current = true;
-            setIsAborted(true);
-        }
-        setIsOpen(false);
-    };
-
-    const toggleProcessingMode = (id: string) => {
-        setHasUnsavedChanges(true);
-        setQueue(prev => prev.map(op => {
-            if (op.id === id) {
-                const current = MODE_CYCLE.indexOf(op.processingMode || 'bgreplace');
-                const nextMode = MODE_CYCLE[(current + 1) % MODE_CYCLE.length];
-                return { ...op, processingMode: nextMode };
-            }
-            return op;
+    // ── row ──
+    const stepsFor = (it: RunItem) => {
+        // The ticked processes plus whatever the item last ran with; the donor
+        // pass only when it was part of that run.
+        const ids = PROCESS_ORDER.filter(p => (p === 'variation_donor' ? false : processes.has(p)) || it.selected.includes(p));
+        return ids.map(p => ({
+            id: p,
+            state: it.processStatus[p] ?? storedState(it, p, heroOnly),
+            detail: it.processErrors[p] || (it.processStatus[p] ? undefined : storedState(it, p, heroOnly) === 'done' ? tr('stored') : undefined),
         }));
     };
 
-    const toggleImageProcessing = (id: string) => {
-        setHasUnsavedChanges(true);
-        setQueue(prev => prev.map(op => {
-            if (op.id === id) {
-                return { ...op, skipImageProcessing: !op.skipImageProcessing };
-            }
-            return op;
-        }));
-    };
+    const pillLabel = (s: DisplayState) => (s === 'done' ? tr('Accepted') : undefined);
 
-    const allSkippingImage = queue.length > 0 && queue.every(op => op.skipImageProcessing);
-
-    const toggleAllImageProcessing = () => {
-        setHasUnsavedChanges(true);
-        const nextState = !allSkippingImage;
-        setQueue(prev => prev.map(op => ({
-            ...op,
-            skipImageProcessing: nextState
-        })));
-        toast.success(nextState ? "Image Processing OFF for all items (Using original images)" : "Image Processing ON for all items (Masks enabled)");
-    };
-
-    /**
-     * Force a fresh background replacement on every image in the queue.
-     *
-     * Deliberately does NOT filter to imageIndex 0 the way the descriptions
-     * handler does: a description belongs to the item, so regenerating it once
-     * is right, but a cleaned photo belongs to the image, and there is one per
-     * photo. Hero-only is turned off here for the same reason — asking to
-     * re-clean everything and then silently skipping the second photo of every
-     * item is the behaviour this whole change exists to remove.
-     */
-    const handleRecleanAllImages = () => {
-        const targets = queue.filter(op => op.imageUrl && !op.skipImageProcessing);
-        if (targets.length === 0) {
-            toast.error(tr("No images in the queue to re-clean."));
-            return;
+    const rowThumbs = (it: RunItem) => {
+        const stills = stillsOf(it);
+        if (!stills.length) {
+            const axo = disp(it.axoIconUrl ?? it.stored.axoIconUrl);
+            return axo ? <Thumb src={axo} kind="axo" badge="AXO" alt={tr('Axo icon')} /> : <span className="hub-nophoto">{tr('No photo')}</span>;
         }
-        const items = new Set(targets.map(op => String(op.item?.id ?? op.item?.row ?? op.id))).size;
-        if (!confirm(`Force a new background replacement on all ${targets.length} images across ${items} items? This regenerates every one, including images that already have a cleaned version.`)) return;
-        setHeroOnly(false);
-        setHasUnsavedChanges(true);
-        setQueue(prev => prev.map(op => {
-            if (!op.imageUrl || op.skipImageProcessing) return op;
-            return {
-                ...op,
-                forceRecleanImage: true,
-                status: 'idle',
-                progress: 0,
-                logs: [...op.logs, '[ WAIT ] Re-queued for forced background replacement']
-            };
-        }));
-        toast.success(tr("All images queued for re-cleaning. Click START ENGINE to begin."));
+        const hero = outputsOf(stills[0]);
+        const cells: React.ReactNode[] = [<Thumb key="p0" src={hero.photo} alt={tr('Photo 1')} />];
+        const png = hero.cutout || hero.png;
+        if (png) cells.push(<Thumb key="png" src={png} kind={hero.cutout ? 'cutout' : 'png'} badge="PNG" title={tr('Clean PNG')} alt={tr('Clean PNG')} />);
+        if (hero.mask) cells.push(<Thumb key="mask" src={hero.mask} kind="mask" badge="MASK" title={tr('Mask')} alt={tr('Mask')} />);
+        for (let i = 1; i < stills.length && cells.length < 3; i++) {
+            const more = stills.length - i - 1;
+            cells.push(<Thumb key={`p${i}`} src={outputsOf(stills[i]).photo} alt={`${tr('Photo')} ${i + 1}`} badge={cells.length === 2 && more > 0 ? `+${more}` : undefined} />);
+        }
+        return cells;
     };
 
-    const handleRegenerateAllDescriptions = () => {
-        if (!confirm(`Are you sure you want to force regenerate AI descriptions and colors for ALL (${queue.length}) active items in the queue?`)) return;
-        setHasUnsavedChanges(true);
-        setQueue(prev => prev.map(op => {
-            if ((op.imageIndex || 0) !== 0) return op;
-            return {
-                ...op,
-                forceRegenerateDescription: true,
-                status: 'idle',
-                progress: 0,
-                logs: [...op.logs, '[ WAIT ] Re-queued for forced AI description & color generation']
-            };
-        }));
-        toast.success(tr("All items enabled for AI description & color regeneration! Click START ENGINE to begin."));
-    };
+    // ── drawer ──
+    const drawerBody = (it: RunItem) => {
+        const stills = stillsOf(it);
+        const outs = stills.map(outputsOf);
+        const axo = disp(it.axoIconUrl ?? it.stored.axoIconUrl) || null;
+        const angles: MediaAngle[] = stills.length
+            ? stills.map((p, i) => ({
+                photo: outs[i].photo,
+                png: outs[i].png || null,
+                cutout: outs[i].cutout || null,
+                mask: outs[i].mask || null,
+                svg: outs[i].svg || null,
+                meta: {
+                    png: { opaque: outs[i].opaque, source: p.cleanedUrl ? tr('this run') : outs[i].png ? tr('stored') : undefined },
+                    cutout: { width: p.width, height: p.height },
+                    mask: { width: p.width, height: p.height, note: p.layerCount ? trf('{n} layers', { n: p.layerCount }) : undefined },
+                },
+            }))
+            : [{ photo: '' }];
+        const views: MediaView[] = ['photo', 'png', ...(outs.some(o => o.cutout) ? ['cutout' as const] : []), 'mask', 'svg', 'axo'];
+        const photoIndex = Math.min(angle, Math.max(0, stills.length - 1));
+        const shownPhoto = stills[photoIndex];
+        const text = shownText(it);
+        const issues = text.title || text.html
+            ? validateCopy(text.title, text.html, {
+                color: it.item.vendorColor, material: it.item.material,
+                widthCm: it.item.widthCm, heightCm: it.item.heightCm, lengthCm: it.item.lengthCm,
+                quantity: it.item.quantity || 1,
+            })
+            : [];
+        const hex = it.hexMap ?? it.stored.hexMap;
+        const clips = clipsOf(it);
+        const busy = isBusy(it);
+        const logs = it.logs.slice(-40);
 
-    const completedOps = queue.filter(hasOutput);
-    
-    // Strict check: PDF and XLSX generation requires EVERY primary item to have the necessary AI generated fields
-    const isFullyGenerated = queue.length > 0 && queue.every(op => {
-        if ((op.imageIndex || 0) !== 0) return true;
-        return op.result?.description &&
-            op.result?.dominantColors && op.result.dominantColors.length > 0 &&
-            op.result?.hexString &&
-            op.result?.generatedType;
-    });
-    
-    const allCompleted = queue.length > 0 && queue.every(hasOutput);
-    const needsProcessing = queue.some(op => 
-        op.status !== 'completed' || 
-        ((op.imageIndex || 0) === 0 && (!op.result?.marketingDescription || !op.result?.dominantColors?.length || op.forceRegenerateDescription))
-    );
-
-    if (!isOpen) return null;
-
-    return createPortal(
-        <div id="batchproc" className="animate-in fade-in duration-500">
-            <div className="bp-shell">
-
-                {/* Fullscreen Image Gallery Mode.
-                    The scrim is deliberately NOT a bg-black/* utility: SLAB
-                    flattens every one of those to the page colour, which on the
-                    light slab turned the lightbox into a white sheet with a
-                    white-on-white photograph in it. A scrim over a photograph
-                    stays dark on both grounds — the image is what is lit. */}
-                {fullscreenImage && (
-                    <div
-                        className="bp-lightbox animate-in fade-in"
-                        onClick={() => { setFullscreenImage(null); setZoomLevel(1); }}
-                    >
-                        <div className="bp-lightbox-bar">
-                            <button type="button" aria-label={tr("Zoom in")} onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.min(z + 0.5, 4)); }} className="bp-lightbox-key">
-                                <ZoomIn size={22} />
-                            </button>
-                            <button type="button" aria-label={tr("Zoom out")} onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.max(z - 0.5, 1)); }} className="bp-lightbox-key">
-                                <ZoomOut size={22} />
-                            </button>
-                            <button type="button" aria-label={tr("Close")} onClick={(e) => { e.stopPropagation(); setFullscreenImage(null); setZoomLevel(1); }} className="bp-lightbox-key">
-                                <X size={22} />
-                            </button>
-                        </div>
-                        <div
-                            className="bp-lightbox-stage scrollbar-none"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <img
-                                src={fullscreenImage}
-                                style={{ transform: `scale(${zoomLevel})` }}
-                                className="bp-lightbox-img"
-                                onClick={(e) => { e.stopPropagation(); setZoomLevel(z => z === 1 ? 2 : 1); }}
-                            />
-                        </div>
+        return (
+            <>
+                <MediaViewer
+                    key={it.id}
+                    angles={angles}
+                    shared={{ axo }}
+                    views={views}
+                    angle={photoIndex}
+                    onAngleChange={setAngle}
+                    view={view}
+                    onViewChange={setView}
+                    alt={`${it.label} ${nameOf(it)}`}
+                />
+                {shownPhoto && (
+                    <div className="hub-acts">
+                        <Key size="sm" variant="quiet" icon={<Crop size={13} />} disabled={busy}
+                            title={tr('1:1 square crop of this photo; the result becomes its cutout')}
+                            onClick={() => {
+                                const o = outs[photoIndex];
+                                setOverlayOpen(false);
+                                setCrop({ itemId: it.id, index: shownPhoto.index, src: o.cutout || o.png || o.photo });
+                            }}>
+                            {tr('Crop 1:1')}
+                        </Key>
+                        <Key size="sm" variant="quiet" icon={<Upload size={13} />} disabled={busy}
+                            title={tr('Replace this photo’s cutout with a PNG or JPEG from disk')}
+                            onClick={() => openUpload(it.id, shownPhoto.index)}>
+                            {tr('Upload cutout')}
+                        </Key>
                     </div>
                 )}
 
-                {/* Header.
-                    Chrome: raised once, for the whole bar. Every key in the
-                    tool rail is a `.bp-key` — the depth walk, the hairline and
-                    the focus ring are written once in batchproc.css instead of
-                    once per button in utilities SLAB then flattens. */}
-                <div className="bp-head">
-                    <div className="bp-brand">
-                        <div className="bp-mark">
-                            <Bot size={24} />
+                <GeneratedContent
+                    value={text}
+                    onChange={busy ? undefined : (next) => onGeneratedChange(it, next)}
+                    issues={issues}
+                />
+
+                {hex && (
+                    <Field group label={tr('Hex map')} aside={`${hex.cols}×${hex.rows}`}>
+                        <div className="hub-hex">
+                            {hex.bitmapUrl && <img src={disp(hex.bitmapUrl)} alt={tr('Hex colour map')} />}
+                            <Key size="sm" variant="quiet" icon={<Copy size={12} />}
+                                onClick={() => { void navigator.clipboard.writeText(hex.hexString); toast.success(tr('Hexadecimal pixel map copied to clipboard!')); }}>
+                                {tr('Copy map')}
+                            </Key>
                         </div>
+                    </Field>
+                )}
+
+                {clips.length > 0 && (
+                    <Field group label={tr('AI generated video')} aside={clips.length > 1 ? trf('{n} clips', { n: clips.length }) : undefined}>
+                        <div className="hub-clips">
+                            {clips.map((url, i) => (
+                                <video key={url} src={url} controls muted loop playsInline preload="metadata" aria-label={`${tr('Clip')} ${i + 1}`} />
+                            ))}
+                        </div>
+                    </Field>
+                )}
+
+                {it.stage && <p className="hub-stage ui-tnum">{it.stage} · {Math.round(it.progress)}%</p>}
+
+                <Field group label={tr('Log')}>
+                    {logs.length
+                        ? <ul className="ui-log hub-log" role="log" aria-live="polite">
+                            {logs.map((line, i) => {
+                                const tone = LOG_TONE(line);
+                                return <li key={i}>{tone ? <span className={tone}>{line}</span> : line}</li>;
+                            })}
+                        </ul>
+                        : <p className="ui-log">{tr('Not run in this session yet.')}</p>}
+                </Field>
+            </>
+        );
+    };
+
+    const drawerFooter = (it: RunItem) => {
+        const busy = isBusy(it);
+        const s = it.status;
+        return (
+            <>
+                {it.status === 'running'
+                    ? <Key size="sm" variant="stop" icon={<XCircle size={13} />} onClick={() => run.cancel(it.id)}>{tr('Cancel')}</Key>
+                    : <Key size="sm" variant="go" icon={<Check size={13} />} disabled={!canAccept(it)}
+                        title={tr('Mark reviewed (Enter in the list)')}
+                        onClick={() => acceptAndAdvance(it.id)}>{tr('Accept')}</Key>}
+                <Key size="sm" icon={<RefreshCw size={13} />} disabled={busy}
+                    title={tr('Write the title again; your edit to it is dropped')}
+                    onClick={() => { run.edit(it.id, { title: null }); retryOne(it.id, ['title_desc']); }}>
+                    {tr('Title')}
+                </Key>
+                <Key size="sm" icon={<Wand2 size={13} />} disabled={busy || !it.media.some(m => !m.isVideo)}
+                    title={tr('Clean this item’s photos again with the selected engine')}
+                    onClick={() => retryOne(it.id, ['img_clean'])}>
+                    {tr('Clean image')}
+                </Key>
+                {(s === 'failed' || s === 'partial') && (
+                    <Key size="sm" icon={<RotateCcw size={13} />} disabled={busy} onClick={() => retryOne(it.id)}>{tr('Retry')}</Key>
+                )}
+                <Key size="sm" variant="quiet" icon={<Save size={13} />} disabled={busy || !it.dirty}
+                    title={tr('Save this item now')}
+                    onClick={async () => { summarizeSave(await run.save([it.id])); }}>
+                    {tr('Save')}
+                </Key>
+                {(s === 'review' || s === 'partial' || s === 'done' || s === 'failed') && (
+                    <Key size="sm" variant="quiet" icon={<X size={13} />} disabled={busy}
+                        title={tr('Discard what this session generated and typed for this item')}
+                        onClick={() => run.reject(it.id)}>
+                        {tr('Discard')}
+                    </Key>
+                )}
+            </>
+        );
+    };
+
+    const drawer = current && (
+        <Drawer
+            variant={narrow ? 'overlay' : 'inline'}
+            open={narrow ? overlayOpen : true}
+            onClose={narrow ? () => setOverlayOpen(false) : undefined}
+            label={`${tr('Item review')}: ${current.label}`}
+            title={
+                <>
+                    <ItemTag item={rowOf(current.row)} size="lg" />
+                    <StatusPill state={states.get(current.id) || current.status} label={pillLabel(states.get(current.id) || current.status)} />
+                </>
+            }
+            footer={drawerFooter(current)}
+            className="hub-drawer"
+        >
+            <p className="hub-name">{nameOf(current)}{sizeOf(current) ? ` · ${sizeOf(current)}` : ''}</p>
+            {drawerBody(current)}
+        </Drawer>
+    );
+
+    const filterTabs = [
+        { id: 'all' as const, label: tr('All'), count: all.length },
+        { id: 'review' as const, label: tr('Needs review'), count: (counts.review || 0) + (counts.partial || 0) },
+        { id: 'running' as const, label: tr('Running'), count: counts.running || 0 },
+        { id: 'failed' as const, label: tr('Failed'), count: counts.failed || 0 },
+        { id: 'saved' as const, label: tr('Saved'), count: counts.saved || 0 },
+    ];
+
+    const allShownTicked = visible.length > 0 && visible.every(it => ticked.has(it.id));
+    const actTargets = tickedIds.length ? tickedIds : all.map(it => it.id);
+
+    const confirmDialog = confirm && (() => {
+        if (confirm.kind === 'close') {
+            return (
+                <HubDialog title={run.isRunning ? tr('A run is in progress') : tr('Unsaved results')} onCancel={() => setConfirm(null)}
+                    actions={<>
+                        <Key data-autofocus onClick={() => setConfirm(null)}>{tr('Keep reviewing')}</Key>
+                        {!run.isRunning && reviewedIds.length > 0 && (
+                            <Key variant="go" icon={<Save size={14} />} busy={busyConfirm} onClick={doCloseSaving}>
+                                {trf('Save {n} reviewed and close', { n: reviewedIds.length })}
+                            </Key>
+                        )}
+                        <Key variant="danger" disabled={busyConfirm} onClick={onClose}>
+                            {run.isRunning ? tr('Stop and close') : tr('Discard and close')}
+                        </Key>
+                    </>}>
+                    <p>{run.isRunning
+                        ? tr('Closing stops the run; requests in flight are cancelled.')
+                        : trf('{n} items have results or edits that are not saved. Closing discards them.', { n: unsaved })}</p>
+                    {!run.isRunning && reviewedIds.length > 0 && unsaved > reviewedIds.length && (
+                        <p>{trf('Only the {r} accepted items are saved; the other {n} have not been reviewed and are discarded.', { r: reviewedIds.length, n: unsaved - reviewedIds.length })}</p>
+                    )}
+                </HubDialog>
+            );
+        }
+        if (confirm.kind === 'clear') {
+            return (
+                <HubDialog title={trf('Clear the AI data of {n} items?', { n: confirm.ids.length })} onCancel={() => setConfirm(null)}
+                    actions={<>
+                        <Key data-autofocus disabled={busyConfirm} onClick={() => setConfirm(null)}>{tr('Cancel')}</Key>
+                        <Key variant="danger" icon={<Eraser size={14} />} busy={busyConfirm} onClick={() => void doClear(confirm.ids)}>
+                            {trf('Clear {n} items', { n: confirm.ids.length })}
+                        </Key>
+                    </>}>
+                    <p>{tr('This empties, in the database: the AI title, the HTML description, the AI colours and type, the hex map, the masks and cutouts, the clean PNG and SVG, the cleaned photos and the axo icon. The vendor’s description, Type and colour are not touched. It cannot be undone.')}</p>
+                </HubDialog>
+            );
+        }
+        const photos = confirm.ids.reduce((n, id) => n + (run.get(id)?.media.filter(m => !m.isVideo).length || 0), 0);
+        return (
+            <HubDialog title={tr('Re-clean every photo?')} onCancel={() => setConfirm(null)}
+                actions={<>
+                    <Key data-autofocus onClick={() => setConfirm(null)}>{tr('Cancel')}</Key>
+                    <Key variant="go" icon={<Wand2 size={14} />} onClick={() => doReclean(confirm.ids)}>
+                        {trf('Re-clean {n} photos', { n: photos })}
+                    </Key>
+                </>}>
+                <p>{trf('A new background clean on all {photos} photos of {items} items with the {engine} engine, including photos that already have one. Hero-only is switched off.', {
+                    photos, items: confirm.ids.length, engine: tr(MODE_OPTIONS.find(o => o.value === mode)?.label || mode),
+                })}</p>
+            </HubDialog>
+        );
+    })();
+
+    return createPortal(
+        <div id="batchproc">
+            <div className="ui-root hub">
+                {/* ── Top bar: what runs and how ── */}
+                <header className="ui-bar hub-bar">
+                    <div className="hub-brand">
+                        <span className="hub-logo" aria-hidden="true"><Bot size={15} /></span>
                         <div>
-                            <h2 className="bp-title">{tr("Onyx.mx - Catalog Hub")}</h2>
-                            <p className="bp-sub">{tr("Batch segmentation & description logic")}</p>
+                            <h2 className="hub-brand__name">{tr('Catalog Hub')}</h2>
+                            <small className="hub-brand__facts ui-tnum">{facts}</small>
                         </div>
                     </div>
-                    <div className="bp-tools">
-                        {/* A two-state control: engaged seats pressed and
-                            tinted, and the amber rides on the icon, never on
-                            the 10px label. */}
-                        <button
-                            type="button"
-                            onClick={toggleAllImageProcessing}
-                            aria-pressed={!allSkippingImage}
-                            data-sig={allSkippingImage ? 'amber' : 'accent'}
-                            className="bp-key"
-                            title={tr("Toggle Image Processing (Masks & Transparency) ON/OFF for ALL items")}
-                        >
-                            <UploadCloud size={16} className="bp-sig" />
-                            <span>{allSkippingImage ? tr("IMG PROCESSING: OFF (ORIGINALS)") : tr("IMG PROCESSING: ON (MASKS)")}</span>
-                        </button>
-
-                        {/* Force a fresh clean on every image. Sits beside
-                            REGENERATE DESCRIPTIONS because it is the same kind of
-                            control — force the work again — for the other half of
-                            the pipeline. */}
-                        <button
-                            type="button"
-                            onClick={handleRecleanAllImages}
-                            data-sig="sky"
-                            className="bp-key"
-                            title={tr("Re-clean ALL images (force a new background replacement on every image of every item, not just the first)")}
-                        >
-                            <ImageIcon size={16} className="bp-sig" />
-                            <span>{tr("RE-CLEAN IMAGES")}</span>
-                        </button>
-
-                        {/* Scope, not force -- and scope only over which ITEMS
-                            run: on, the queue is limited to items whose images
-                            need cleaning. Those items still have any missing
-                            description, colour or type filled in; what is
-                            already there is never regenerated either way. */}
-                        <button
-                            type="button"
-                            onClick={() => setImagesOnly(v => !v)}
-                            aria-pressed={imagesOnly}
-                            data-sig={imagesOnly ? 'sky' : 'dim'}
-                            className="bp-key"
-                            title={tr("Limits the run to items whose images need cleaning. Those items still get any missing description, colour or type filled in — anything that already has a value is left alone.")}
-                        >
-                            <Wand2 size={16} className="bp-sig" />
-                            <span>{imagesOnly ? tr("CLEAN IMAGES + FILL GAPS") : tr("IMAGES + DESCRIPTIONS")}</span>
-                        </button>
-
-                        {/* Which images a run covers. This was hardcoded to
-                            hero-only with no control, which is why multi-image
-                            items only ever came back with one cleaned photo. */}
-                        <button
-                            type="button"
-                            onClick={() => setHeroOnly(v => !v)}
-                            aria-pressed={!heroOnly}
-                            data-sig={heroOnly ? 'amber' : 'accent'}
-                            className="bp-key"
-                            title={tr("All images per item, or only the first. Hero-only is cheaper — roughly half the images — but leaves the rest uncleaned.")}
-                        >
-                            <Layers size={16} className="bp-sig" />
-                            <span>{heroOnly ? tr("HERO IMAGE ONLY") : tr("ALL IMAGES")}</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={handleRegenerateAllDescriptions}
-                            data-sig="emerald"
-                            className="bp-key"
-                            title={tr("Regenerate ALL Descriptions (Force AI body descriptions and color info for all active items)")}
-                        >
-                            <Sparkles size={16} className="bp-sig" />
-                            <span>{tr("REGENERATE DESCRIPTIONS")}</span>
-                        </button>
-
-                        <button type="button" onClick={handleClearGen} title={tr("Clear AI Generated Data")} aria-label={tr("Clear AI Generated Data")} data-sig="rose" className="bp-key bp-key--icon">
-                            <Trash2 size={20} className="bp-sig" />
-                        </button>
-                        <button type="button" onClick={handleOptimizeLegacyPNGs} title={tr("Optimize Legacy PNG Masks to WebP")} aria-label={tr("Optimize Legacy PNG Masks to WebP")} data-sig="amber" className="bp-key bp-key--icon">
-                            <Sparkles size={20} className="bp-sig" />
-                        </button>
-                        <button type="button" onClick={() => setShowApiModal(true)} title={tr("API Settings")} aria-label={tr("API Settings")} className="bp-key bp-key--icon">
-                            <Settings2 size={20} />
-                        </button>
-                        <button type="button" onClick={handleClose} title={tr("Close")} aria-label={tr("Close")} className="bp-key bp-key--icon">
-                            <X size={20} />
-                        </button>
+                    <ProcessChips value={processes} onChange={setProcesses} disabled={run.isRunning} />
+                    {/* One group, so when the bar wraps the run controls move
+                        down together instead of leaving Run alone on a line. */}
+                    <div className="hub-bar__end">
+                        <Segmented<ProcessingMode>
+                            label={tr('Cleaning engine')}
+                            size="sm"
+                            value={mode}
+                            onChange={setMode}
+                            options={MODE_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
+                        />
+                        <Chip pressed={heroOnly} onPressedChange={setHeroOnly}
+                            title={tr('All photos per item, or only the first. Hero-only is cheaper (roughly half the images) but leaves the rest uncleaned.')}>
+                            {tr('Hero photo only')}
+                        </Chip>
+                        <Key variant="stop" icon={<Square size={12} />} disabled={!run.isRunning} onClick={run.stop}>{tr('Stop')}</Key>
+                        <Key variant="go" icon={<Play size={13} />} busy={run.isRunning && runTargets.length === 0} disabled={runTargets.length === 0}
+                            title={tickedIds.length
+                                ? tr('Run every ticked process on the ticked items, replacing what they have')
+                                : tr('Run the ticked processes that are still missing; tick rows to run them again')}
+                            onClick={handleRun}>
+                            {trf('Run {n}', { n: runTargets.length })}
+                        </Key>
+                        <Key iconOnly variant="quiet" icon={<KeyRound size={15} />} label={tr('Gemini API key')}
+                            onClick={() => { pendingRef.current = null; setKeyDraft(''); setShowKey(true); }} />
+                        <Key iconOnly variant="quiet" className="hub-close" icon={<X size={16} />} label={tr('Close')} onClick={handleClose} />
                     </div>
-                </div>
+                </header>
 
-                {/* Queue List */}
-                <div className="bp-queue">
-                    {queue.map((op) => (
-                        <div key={op.id} className="bp-op">
-                            {/* Progress wash. DATA: it is this item's own
-                                progress painted across its card, so it keeps
-                                the accent on both grounds. */}
-                            <div className="bp-op-prog" style={{ width: `${op.progress}%` }} />
-
-                            {/* Missing Data Indicator */}
-                            {(op.imageIndex || 0) === 0 && (!op.result?.description || !op.result?.dominantColors?.length || !op.result?.hexString || !op.result?.generatedType) && (
-                                <div
-                                    className="bp-op-flag"
-                                    title={tr("Incomplete Data: Missing Description, Colors, Hex Map, or Type")}
-                                />
+                {/* ── Filters, search and the batch tools ── */}
+                <FilterTabs<FilterId>
+                    label={tr('Filter items')}
+                    tabs={filterTabs}
+                    value={filter}
+                    onChange={setFilter}
+                    controls="hub-list"
+                    end={
+                        <div className="hub-tools">
+                            <Key size="sm" variant="quiet" icon={<Check size={12} />}
+                                onClick={() => setTicked(allShownTicked ? new Set() : new Set(visible.map(it => it.id)))}>
+                                {allShownTicked ? tr('Untick all') : tickedIds.length ? trf('{n} ticked', { n: tickedIds.length }) : tr('Tick shown')}
+                            </Key>
+                            {donorIds.length > 0 && (
+                                <Key size="sm" icon={<Sparkles size={12} />} disabled={run.isRunning}
+                                    title={tr('These items have no photograph. Their description, colours and type are written by varying the most similar item that does; no image is generated.')}
+                                    onClick={handleWriteFromSimilar}>
+                                    {trf('Write from similar ({n})', { n: donorIds.length })}
+                                </Key>
                             )}
-
-                            {/* Images Side-by-Side Container */}
-                            <div className="bp-shots">
-                                {/* Source Image */}
-                                <div
-                                    className="bp-well"
-                                    role="button"
-                                    tabIndex={0}
-                                    title={tr("View source image")}
-                                    onClick={() => {
-                                        const img = op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data && op.item.data.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : null);
-                                        if (img) setFullscreenImage(getCleanImageUrl(img)!);
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key !== 'Enter' && e.key !== ' ') return;
-                                        e.preventDefault();
-                                        const img = op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data && op.item.data.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : null);
-                                        if (img) setFullscreenImage(getCleanImageUrl(img)!);
-                                    }}
-                                >
-                                    {(() => {
-                                        const thumbUrl = getCleanImageUrl(op.imageUrl || op.item.generatedPngUrl || op.item.imageUrl || (op.item.data?.mediaUrls ? op.item.data.mediaUrls.split(',')[0] : ''));
-                                        if (!thumbUrl) return (
-                                            <div className="bp-well-empty">
-                                                <UploadCloud size={24} />
-                                                <span>{tr("No Image")}</span>
-                                            </div>
-                                        );
-
-                                        const isThumbVideo = /\.(mov|mp4|webm|m4v)(\?|$)/i.test(thumbUrl);
-
-                                        return (
-                                            <>
-                                                {isThumbVideo ? (
-                                                    <video src={thumbUrl} className="bp-well-img" muted playsInline loop autoPlay />
-                                                ) : (
-                                                    <img src={thumbUrl} className="bp-well-img" alt="" />
-                                                )}
-                                                <div className="bp-well-veil">
-                                                    <ZoomIn size={24} />
-                                                </div>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-
-                                {/* Background-replaced result.
-                                  *
-                                  * Studio mode ('bgreplace') short-circuits the
-                                  * mask path entirely and sets localMaskUrl to
-                                  * null, so its output never had a preview here
-                                  * -- the panel below only renders maskUrl, and
-                                  * the thumbnail to the left resolves from
-                                  * op.imageUrl, which is the SOURCE photo. The
-                                  * cleaned image was being produced, uploaded and
-                                  * saved without ever being shown, which is what
-                                  * made the batch look like it was not picking up
-                                  * regenerated images.
-                                  */}
-                                {op.result?.cleanedUrl && (
-                                    <div
-                                        className="bp-well"
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => setFullscreenImage(getCleanImageUrl(op.result!.cleanedUrl!) || op.result!.cleanedUrl!)}
-                                        onKeyDown={(e) => {
-                                            if (e.key !== 'Enter' && e.key !== ' ') return;
-                                            e.preventDefault();
-                                            setFullscreenImage(getCleanImageUrl(op.result!.cleanedUrl!) || op.result!.cleanedUrl!);
-                                        }}
-                                        title={tr("Cleaned image")}
-                                    >
-                                        {/* Through getCleanImageUrl, not raw: cleanedUrl is a Drive
-                                          * URL now, and Drive's own uc?export=view form does not
-                                          * render reliably in an img tag. The rewrite turns it into
-                                          * the lh3 form that does. */}
-                                        <img src={getCleanImageUrl(op.result.cleanedUrl) || op.result.cleanedUrl} className="bp-well-img" alt="" />
-                                        <div className="bp-well-cap">{tr("Cleaned")}</div>
-                                        <div className="bp-well-veil">
-                                            <ZoomIn size={20} />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Generated Mask Image. The well shows
-                                    transparency, so its ground is a checker
-                                    drawn from the ground ink rather than a
-                                    base64 sheet that only reads on one. */}
-                                {op.result?.maskUrl && (
-                                    <div
-                                        className="bp-well bp-well--checker"
-                                        role="button"
-                                        tabIndex={0}
-                                        title={tr("Generated mask")}
-                                        onClick={() => setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!)}
-                                        onKeyDown={(e) => {
-                                            if (e.key !== 'Enter' && e.key !== ' ') return;
-                                            e.preventDefault();
-                                            setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!);
-                                        }}
-                                    >
-                                        <img src={getCleanImageUrl(op.result.maskUrl)!} className="bp-well-img bp-well-img--fit" alt="" />
-                                        <div className="bp-well-veil">
-                                            <button type="button" onClick={(e) => { e.stopPropagation(); handleUploadMask(op); }} className="bp-well-act">
-                                                <UploadCloud size={16} />
-                                                <span>{tr("Upload")}</span>
-                                            </button>
-                                            <button type="button" onClick={(e) => { e.stopPropagation(); setFullscreenImage(getCleanImageUrl(op.result!.maskUrl!)!); }} className="bp-well-act">
-                                                <ZoomIn size={16} />
-                                                <span>{tr("View")}</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="bp-body">
-                                {/* Stage rail. Data: four stages, each either
-                                    reached or not, and the difference between
-                                    the two is the only thing the rail says. */}
-                                <div className="bp-stages">
-                                    <span className={`bp-stage${op.progress >= 5 ? ' is-on' : ''}`}>
-                                        <span className="bp-stage-dot" /> {tr("IMG")}
-                                    </span>
-                                    <span className="bp-stage-rule" />
-                                    <span className={`bp-stage${op.progress >= 15 ? ' is-on' : ''}`}>
-                                        <span className="bp-stage-dot" /> {tr("MASK")}
-                                    </span>
-                                    <span className="bp-stage-rule" />
-                                    <span className={`bp-stage${op.progress >= 70 ? ' is-on' : ''}`}>
-                                        <span className="bp-stage-dot" /> AI
-                                    </span>
-                                    <span className="bp-stage-rule" />
-                                    <span className={`bp-stage bp-stage--done${op.status === 'completed' ? ' is-on' : ''}`}>
-                                        <span className="bp-stage-dot" /> {tr("DONE")}
-                                    </span>
-                                </div>
-
-                                <div className="bp-op-head">
-                                    <div className="bp-op-id">
-                                        <h4 className="bp-op-title">
-                                            {(() => {
-                                                const norm = normalizeInventoryData(op.item.data || op.item);
-                                                const calc = calculateCodesAndPrices(norm, activeRate, norm.workbook || op.item.workbook || '326');
-                                                const tagId = norm.book_barcode || calc?.bookBarcode || norm.itemId || `Item ${norm.itemNumber}`;
-
-                                                const match = tagId.replace(/\s+/g, '').match(/^([A-Za-z]+\d{2,4})(\d{2}[A-Za-z]*)$/);
-                                                if (match) {
-                                                    const [_, section1, section2] = match;
-                                                    return (
-                                                        <>
-                                                            {/* The vendor half of the tag carries the
-                                                                vendor's printed colour: that is a
-                                                                physical standard and is left exactly
-                                                                as it is. The second half has no vendor
-                                                                meaning, so it takes the ground's ink. */}
-                                                            <span style={{ color: resolveVendorColor(section1) }}>{section1}</span>
-                                                            <span className="bp-tag-tail">{section2}</span>
-                                                        </>
-                                                    );
-                                                }
-                                                return <span style={{ color: resolveVendorColor(tagId) }}>{tagId}</span>;
-                                            })()}
-                                        </h4>
-                                        {/* Item Details */}
-                                        <div className="bp-meta">
-                                            <span className="bp-meta-v">{(op.item.data || op.item).shape || 'N/A'}</span>
-                                            <span className="bp-meta-sep">•</span>
-                                            <span className="bp-meta-v">{(op.item.data || op.item).color || 'N/A'}</span>
-                                            <span className="bp-meta-sep">•</span>
-                                            <span className="bp-meta-v">{(op.item.data || op.item).material || 'N/A'}</span>
-                                            {((op.item.data || op.item).dimensions) && (
-                                                <>
-                                                    <span className="bp-meta-sep">•</span>
-                                                    <span className="bp-chip">{(op.item.data || op.item).dimensions}</span>
-                                                </>
-                                            )}
-                                            {((op.item.data || op.item).vendor || (op.item.data || op.item).supplier) && (
-                                                <>
-                                                    <span className="bp-meta-sep">•</span>
-                                                    <span className="bp-chip" style={{ color: resolveVendorColor((op.item.data || op.item).vendor || (op.item.data || op.item).supplier) }}>
-                                                        {(op.item.data || op.item).vendor || (op.item.data || op.item).supplier}
-                                                    </span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Actions & instruments */}
-                                    <div className="bp-op-side">
-                                        <div className="bp-ops">
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleImageProcessing(op.id)}
-                                                disabled={op.status !== 'idle'}
-                                                aria-pressed={!op.skipImageProcessing}
-                                                data-sig={!op.skipImageProcessing ? 'rose' : 'dim'}
-                                                className="bp-op-key"
-                                                title={tr("Toggle Image Processing")}
-                                            >
-                                                <UploadCloud size={14} className="bp-sig" /> {tr("IMG")}
-                                            </button>
-
-                                            {/* The processing mode. Four states,
-                                                one key, and exactly one of them
-                                                is always engaged — so the key is
-                                                ALWAYS pressed, never lifted, and
-                                                the tint moves with the mode.
-                                                CLOUD and LOCAL used to share a
-                                                fill and be told apart by the
-                                                colour of their label alone; they
-                                                are now distinguished by tint, by
-                                                icon and by the word, with the
-                                                hue carried on the icon where it
-                                                does not have to be read at 9px. */}
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleProcessingMode(op.id)}
-                                                disabled={op.status !== 'idle' || op.skipImageProcessing}
-                                                data-mode={op.processingMode || 'bgreplace'}
-                                                aria-label={`${tr("Processing mode")}: ${tr(MODE_LABEL[op.processingMode || 'bgreplace'])}`}
-                                                className="bp-mode"
-                                                title={tr("Toggle Studio / Local / Cloud / Hybrid Processing")}
-                                            >
-                                                {op.processingMode === 'hybrid'
-                                                    ? <Layers size={14} className="bp-sig" />
-                                                    : op.processingMode === 'cloud'
-                                                    ? <Cloud size={14} className="bp-sig" />
-                                                    : op.processingMode === 'local'
-                                                    ? <Cpu size={14} className="bp-sig" />
-                                                    : <Sparkles size={14} className="bp-sig" />}
-                                                {tr(MODE_LABEL[op.processingMode || 'bgreplace'])}
-                                            </button>
-
-                                            {op.status === 'processing' && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleAbort(op.id)}
-                                                    data-sig="rose"
-                                                    className="bp-op-key"
-                                                    title={tr("Abort Processing")}
-                                                >
-                                                    <XCircle size={14} className="bp-sig" /> {tr("ABORT")}
-                                                </button>
-                                            )}
-                                            {hasOutput(op) && (
-                                                <>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRegenerate(op.id)}
-                                                        data-sig="amber"
-                                                        className="bp-op-key"
-                                                        title={tr("Re-Generate Mask")}
-                                                    >
-                                                        <RefreshCw size={14} className="bp-sig" /> {tr("RE-GENERATE")}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRegenerateAI(op.id)}
-                                                        data-sig="blue"
-                                                        className="bp-op-key"
-                                                        title={tr("Re-Generate AI Info")}
-                                                    >
-                                                        <RefreshCw size={14} className="bp-sig" /> {tr("RE-GEN INFO")}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const rawUrl = op.result?.maskUrl || op.item?.generatedPngUrl || op.imageUrl || op.item?.imageUrl || '';
-                                                            const cleanUrl = getCleanImageUrl(rawUrl) || rawUrl;
-                                                            setCropModalState({ isOpen: true, opId: op.id, imageSrc: cleanUrl });
-                                                        }}
-                                                        data-sig="purple"
-                                                        className="bp-op-key"
-                                                        title={tr("1:1 Square Crop Tool")}
-                                                    >
-                                                        <Maximize2 size={14} className="bp-sig" /> {tr("1:1 CROP")}
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        {/* HEX Map. A readout with one key in
-                                            it, so the panel itself is pressed. */}
-                                        {op.result?.bitmapUrl && (
-                                            <div className="bp-panel animate-in fade-in" data-sig="amber">
-                                                <span className="bp-panel-cap">
-                                                    <Sparkles size={12} className="bp-sig" /> {op.result.cols || 20}x{op.result.rows || 20}
-                                                </span>
-                                                <img src={op.result.bitmapUrl} className="bp-bitmap" alt="" />
-                                                <button type="button" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(op.result?.hexString || ''); toast.success(tr("Hexadecimal pixel map copied to clipboard!")); }} className="bp-op-key">
-                                                    {tr("Copy Map")}
-                                                </button>
-                                            </div>
-                                        )}
-                                        {(() => {
-                                            const pMap = op.result?.processedMap;
-                                            const clipCount = parseInt(pMap?.videoGenCount || '0', 10);
-                                            const clipUrls: string[] = [];
-                                            if (clipCount > 0 && pMap) {
-                                                for (let ci = 0; ci < clipCount; ci++) {
-                                                    if (pMap[`videoGen_${ci}`]) clipUrls.push(pMap[`videoGen_${ci}`]);
-                                                }
-                                            } else if (pMap?.videoGen || op.result?.videoGen) {
-                                                clipUrls.push(pMap?.videoGen || op.result?.videoGen);
-                                            }
-                                            if (clipUrls.length === 0) return null;
-                                            return (
-                                                <div className="bp-panel bp-panel--col animate-in fade-in" data-sig="purple">
-                                                    <span className="bp-panel-cap">
-                                                        <Video size={12} className="bp-sig" /> {tr("AI Generated Video")}{clipUrls.length > 1 ? ` — ${clipUrls.length} ${tr("Clips")}` : ''}
-                                                    </span>
-                                                    <div className={`bp-clips${clipUrls.length > 1 ? ' bp-clips--many' : ''}`}>
-                                                        {clipUrls.map((url, ci) => (
-                                                            <div key={ci} className="bp-clip-wrap">
-                                                                {clipUrls.length > 1 && (
-                                                                    <span className="bp-clip-n">{tr("Clip")} {ci + 1}</span>
-                                                                )}
-                                                                <video
-                                                                    src={url}
-                                                                    controls
-                                                                    autoPlay={ci === 0}
-                                                                    loop
-                                                                    muted
-                                                                    className="bp-clip"
-                                                                />
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
-                                    </div>
-                                </div>
-
-                                {/* Step Label & Progress text */}
-                                {op.status === 'processing' && (
-                                    <div className="bp-step">
-                                        <span><Loader2 size={12} className="animate-spin" /> {op.stepLabel || tr("Processing...")}</span>
-                                        <span className="bp-step-pct">{Math.round(op.progress)}%</span>
-                                    </div>
-                                )}
-
-                                {/* Streaming logs. A READOUT: pressed, mono,
-                                    tabular, and it takes no hover and no press.
-                                    OK / FAIL / WARN / SKIP keep their meaning
-                                    colour, because which of the four a line is
-                                    is the whole point of the line. */}
-                                {op.logs.length > 0 && (
-                                    <div className="bp-log" role="status" aria-live="polite">
-                                        {op.logs.slice(-3).map((line, li) => (
-                                            <span key={`${op.id}-log-${li}`} className={`bp-log-line ${logTone(line)}`}>{line}</span>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Generated content */}
-                                {op.result && (
-                                    <div className="bp-gen animate-in slide-in-from-top-2">
-                                        <div className="bp-gen-row">
-                                            {op.result.generatedType && (
-                                                <div className="bp-pair">
-                                                    <span className="bp-label">{tr("AI:")}</span>
-                                                    <span className="bp-badge">{op.result.generatedType}</span>
-                                                </div>
-                                            )}
-
-                                            {op.result.dominantColors && op.result.dominantColors.length > 0 && (
-                                                <div className="bp-pair">
-                                                    <span className="bp-label">{tr("Colors:")}</span>
-                                                    <div className="bp-chips">
-                                                        {op.result.dominantColors.map((c, i) => (
-                                                            <span key={i} className="bp-swatch">{c}</span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="bp-gen-block">
-                                            <label className="bp-label" htmlFor={`bp-desc-${op.id}`}>{tr("Title Description")}</label>
-                                            <textarea
-                                                id={`bp-desc-${op.id}`}
-                                                value={op.result.description || ''}
-                                                onChange={(e) => {
-                                                    editItemText(op, 'description', e.target.value);
-                                                }}
-                                                className="bp-input"
-                                                placeholder={tr("AI generated title description...")}
-                                            />
-                                        </div>
-
-                                        {op.result.marketingDescription !== undefined && (
-                                            <div className="bp-gen-block">
-                                                <div className="bp-gen-head">
-                                                    <span className="bp-label bp-label--sig">
-                                                        <Sparkles size={12} className="bp-sig" /> {tr("Marketing Description (Embedded HTML Review)")}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setEditHtmlId(editHtmlId === op.id ? null : op.id);
-                                                        }}
-                                                        aria-pressed={editHtmlId === op.id}
-                                                        data-sig="amber"
-                                                        className="bp-op-key"
-                                                    >
-                                                        {editHtmlId === op.id ? tr("View Styled Preview") : tr("Edit Source HTML")}
-                                                    </button>
-                                                </div>
-                                                {editHtmlId === op.id ? (
-                                                    <textarea
-                                                        value={op.result.marketingDescription || ''}
-                                                        onChange={(e) => {
-                                                            editItemText(op, 'marketingDescription', e.target.value);
-                                                        }}
-                                                        className="bp-input bp-input--html"
-                                                        placeholder={tr("AI generated HTML marketing description...")}
-                                                    />
-                                                ) : (
-                                                    /* The rendered copy. This used to carry a
-                                                       per-item <style> tag hardcoding
-                                                       rgba(255,255,255,.92) — one per queue entry,
-                                                       and white-on-white on the light slab. It is
-                                                       one rule in batchproc.css now, and it takes
-                                                       the ground's ink. */
-                                                    <div
-                                                        className="bp-md"
-                                                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(op.result.marketingDescription || '') || '<p>No HTML description generated yet.</p>' }}
-                                                    />
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <div className="bp-gen-foot">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); handleSaveDescription(op); }}
-                                                className="bp-key bp-key--go bp-key--sm"
-                                            >
-                                                <Save size={14} />
-                                                {tr("Save Description & Colors")}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Status. An instrument: it reports where the item
-                                is and cannot be pressed. */}
-                            {/* 'partial': part of the run failed (most often the
-                                background replacement) and part was kept. It
-                                used to be a green check. Amber is the meaning
-                                colour the log already uses for WARN. */}
-                            <div
-                                className={`bp-status${op.status === 'processing' ? ' bp-status--run' : op.status === 'completed' ? ' bp-status--done' : op.status === 'failed' ? ' bp-status--failed' : ''}`}
-                                style={op.status === 'partial' ? { color: 'var(--bp-sig-amber)' } : undefined}
-                                title={op.status === 'partial' ? Object.values(op.processErrors || {}).join(' • ') || tr("Finished with failures") : undefined}
-                            >
-                                {op.status === 'processing' && <Loader2 size={24} className="animate-spin" />}
-                                {op.status === 'completed' && <CheckCircle2 size={24} />}
-                                {op.status === 'partial' && <AlertCircle size={24} />}
-                                {op.status === 'failed' && <AlertCircle size={24} />}
-                                {op.status === 'idle' && <span>{tr("WAIT")}</span>}
-                            </div>
+                            <Key size="sm" variant="quiet" icon={<ImageUp size={12} />} disabled={run.isRunning}
+                                onClick={() => {
+                                    const ids = actTargets.filter(id => run.get(id)?.media.some(m => !m.isVideo));
+                                    if (!ids.length) { toast.error(tr('No photos to re-clean.')); return; }
+                                    setConfirm({ kind: 'reclean', ids });
+                                }}>
+                                {tickedIds.length ? tr('Re-clean ticked') : tr('Re-clean all')}
+                            </Key>
+                            <Key size="sm" variant="quiet" icon={<Eraser size={12} />} disabled={run.isRunning}
+                                onClick={() => setConfirm({ kind: 'clear', ids: actTargets })}>
+                                {tickedIds.length ? tr('Clear AI data (ticked)') : tr('Clear AI data')}
+                            </Key>
+                            <label className="hub-search">
+                                <Search size={13} aria-hidden="true" />
+                                <Input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+                                    placeholder={tr('Search EM-021, mirror…')} aria-label={tr('Search items')} />
+                            </label>
                         </div>
-                    ))}
+                    }
+                />
+
+                {/* ── Rows and the review drawer ── */}
+                <div className={cx('hub-body', narrow && 'hub-body--narrow')}>
+                    <div className="hub-listwrap" ref={listRef}>
+                        <ItemList
+                            id="hub-list"
+                            label={tr('Items')}
+                            columns={ROW_COLUMNS}
+                            multiselectable
+                            fold
+                            header={['', tr('Item'), tr('Photos · output'), tr('Generated title'), tr('Steps'), tr('State')]}
+                            empty={all.length ? tr('No item matches this filter.') : tr('No items selected.')}
+                            className="hub-list"
+                        >
+                            {visible.map(it => {
+                                const s = states.get(it.id)!;
+                                const text = shownText(it);
+                                return (
+                                    <ItemRow
+                                        key={it.id}
+                                        data-item-id={it.id}
+                                        current={current?.id === it.id}
+                                        selected={ticked.has(it.id)}
+                                        label={`${it.label} ${nameOf(it)}, ${pillLabel(s) ?? itemStateLabel(s)}${text.title ? `, ${text.title}` : ''}`}
+                                        onToggle={(next) => setTicked(prev => {
+                                            const n = new Set(prev);
+                                            if (next) n.add(it.id); else n.delete(it.id);
+                                            return n;
+                                        })}
+                                        onFocus={() => { if (currentId !== it.id) setCurrentId(it.id); }}
+                                        onOpen={() => { setCurrentId(it.id); if (narrow) setOverlayOpen(true); }}
+                                        onKeyDown={(e) => {
+                                            // Wide: the drawer beside the list already shows the
+                                            // item, so Enter accepts it. Narrow: the drawer is an
+                                            // overlay, and Enter must open it -- accepting
+                                            // something the person never saw would skip review.
+                                            if (!narrow && e.key === 'Enter' && e.target === e.currentTarget && canAccept(it)) {
+                                                e.preventDefault();
+                                                acceptAndAdvance(it.id, true);
+                                            }
+                                        }}
+                                    >
+                                        <div className="ui-row__main">
+                                            <ItemTag item={rowOf(it.row)} />
+                                            <span className="ui-row__sub">{nameOf(it)}</span>
+                                        </div>
+                                        <div className="ui-thumbs">{rowThumbs(it)}</div>
+                                        <div className="ui-row__main">
+                                            <span className={cx('ui-row__title', !text.title && 'hub-untitled')}>{text.title || tr('No title yet')}</span>
+                                            <span className="ui-row__sub ui-tnum">{sizeOf(it)}</span>
+                                        </div>
+                                        <StepsStrip steps={stepsFor(it)} />
+                                        <StatusPill state={s} label={pillLabel(s)} />
+                                    </ItemRow>
+                                );
+                            })}
+                        </ItemList>
+                    </div>
+                    {drawer}
                 </div>
 
-                {/* Global Progress. The track is a well; the fill is data and
-                    keeps the accent. */}
-                <div className="bp-total">
-                    <div className="bp-total-head">
-                        <span>{isSavingDb ? tr("Saving to DB...") : tr("Total Progress")}</span>
-                        <span className="bp-total-pct">{Math.round(overallProgress)}%</span>
-                    </div>
-                    <div
-                        className="bp-track"
-                        role="progressbar"
-                        aria-valuenow={Math.round(overallProgress)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                    >
-                        <div className="bp-fill" style={{ width: `${overallProgress}%` }} />
-                    </div>
-                </div>
+                {/* ── Run bar: progress, retry, save, exports ── */}
+                <RunBar
+                    counts={counts}
+                    total={all.length}
+                    note={run.isRunning ? [etaLabel(run.etaMs), `${run.progress}%`].filter(Boolean).join(' · ') : undefined}
+                    actions={<>
+                        <Key size="sm" variant="quiet" icon={<RotateCcw size={12} />} disabled={!failedCount || run.isRunning}
+                            onClick={handleRetryFailed}>
+                            {trf('Retry {n} failed', { n: failedCount })}
+                        </Key>
+                        <Key size="sm" variant="go" icon={<Save size={12} />} busy={run.isSaving} disabled={!reviewedIds.length}
+                            title={tr('Write every accepted item: only what was ticked and worked, plus your edits')}
+                            onClick={handleSaveReviewed}>
+                            {trf('Save {n} reviewed', { n: reviewedIds.length })}
+                        </Key>
+                        <span className="hub-sep" aria-hidden="true" />
+                        <Select className="hub-brand-select" aria-label={tr('PDF brand')} value={pdfBrand}
+                            onChange={(e) => { setPdfBrand(e.target.value as 'ArtOfDecor' | 'RareEarth'); setPdfUrl(null); }}
+                            options={[{ value: 'ArtOfDecor', label: tr('Art of Decor') }, { value: 'RareEarth', label: tr('Rare Earth Gallery') }]} />
+                        {xlsxUrl
+                            ? <a className="ui-key ui-key--sm" href={xlsxUrl} download={`Shopify_Export_AI_${new Date().toISOString().split('T')[0]}.xlsx`}>
+                                <FileSpreadsheet size={12} aria-hidden="true" />{tr('Download XLSX')}
+                            </a>
+                            : <Key size="sm" icon={<FileSpreadsheet size={12} />} busy={makingXlsx} disabled={!!exportBlock}
+                                title={exportBlock || tr('Matrixify sheet of the saved items')} onClick={handleXlsx}>
+                                {tr('Generate XLSX')}
+                            </Key>}
+                        {pdfUrl
+                            ? <a className="ui-key ui-key--sm" href={pdfUrl} download={`Catalog_AI_${new Date().toISOString().split('T')[0]}.pdf`}>
+                                <FileText size={12} aria-hidden="true" />{tr('Download PDF')}
+                            </a>
+                            : <Key size="sm" icon={<FileText size={12} />} busy={makingPdf} disabled={!!exportBlock}
+                                title={exportBlock || tr('Catalogue PDF of the saved items')} onClick={handlePdf}>
+                                {tr('Generate PDF')}
+                            </Key>}
+                    </>}
+                />
 
-                {/* Footer Controls */}
-                <div className="bp-foot">
-                    <div className="bp-field">
-                        <label className="bp-label" htmlFor="bp-pdf-brand">{tr("PDF BRAND")}</label>
-                        <select
-                            id="bp-pdf-brand"
-                            value={pdfBrand}
-                            onChange={(e) => setPdfBrand(e.target.value as any)}
-                            className="bp-select"
-                        >
-                            <option value="ArtOfDecor">{tr("ART OF DECOR")}</option>
-                            <option value="RareEarth">{tr("RARE EARTH GALLERY")}</option>
-                        </select>
-                    </div>
+                {confirmDialog}
 
-                    <button
-                        type="button"
-                        onClick={handleExportDatabase}
-                        disabled={completedOps.length === 0 || !hasUnsavedChanges}
-                        data-sig={(!hasUnsavedChanges && completedOps.length > 0) ? 'emerald' : 'blue'}
-                        className="bp-key bp-key--solid"
-                    >
-                        {(!hasUnsavedChanges && completedOps.length > 0) ? <CheckCircle2 size={18} /> : <Save size={18} />}
-                        {(!hasUnsavedChanges && completedOps.length > 0) ? tr("SAVED TO DB") : tr("SAVE TO DB")}
-                    </button>
+                {showKey && (
+                    <HubDialog title={tr('Gemini API key')} onCancel={() => { setShowKey(false); pendingRef.current = null; run.clearRunError(); }}
+                        actions={<>
+                            <Key onClick={() => { setShowKey(false); pendingRef.current = null; run.clearRunError(); }}>{tr('Cancel')}</Key>
+                            <Key variant="go" disabled={!keyDraft.trim()} onClick={saveKey}>
+                                {pendingRef.current ? tr('Save & Start') : tr('Save')}
+                            </Key>
+                        </>}>
+                        <p>{hasGeminiKey()
+                            ? tr('A key is stored on this device. Enter a new one to replace it.')
+                            : tr('Please enter your Gemini API Key. It will be stored securely in your local device storage.')}</p>
+                        <Field label={tr('API key')}>
+                            <Input type="password" mono autoComplete="off" value={keyDraft} placeholder={tr('AIzaSy...')}
+                                onChange={(e) => setKeyDraft(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveKey(); } }} />
+                        </Field>
+                    </HubDialog>
+                )}
 
-                    {!xlsxUrl ? (
-                        <button
-                            type="button"
-                            onClick={handleGenerateXLSX}
-                            disabled={!isFullyGenerated || hasUnsavedChanges || isGeneratingXlsx}
-                            data-sig="emerald"
-                            className="bp-key bp-key--solid"
-                        >
-                            {isGeneratingXlsx ? <Loader2 size={18} className="animate-spin" /> : <Settings2 size={18} />}
-                            {tr("Generate XLSX")}
-                        </button>
-                    ) : (
-                        <a
-                            href={xlsxUrl}
-                            download={`Shopify_Export_AI_${new Date().toISOString().split('T')[0]}.xlsx`}
-                            data-sig="emerald"
-                            className="bp-key bp-key--solid"
-                        >
-                            <Save size={18} />
-                            {tr("Download XLSX")}
-                        </a>
-                    )}
-
-                    {!pdfUrl ? (
-                        <button
-                            type="button"
-                            onClick={handleGeneratePDF}
-                            disabled={!isFullyGenerated || hasUnsavedChanges || isGeneratingPdf}
-                            data-sig="rose"
-                            className="bp-key bp-key--solid"
-                        >
-                            {isGeneratingPdf ? <Loader2 size={18} className="animate-spin" /> : <Settings2 size={18} />}
-                            {tr("Generate PDF")}
-                        </button>
-                    ) : (
-                        <a
-                            href={pdfUrl}
-                            download={`Catalog_AI_${new Date().toISOString().split('T')[0]}.pdf`}
-                            data-sig="rose"
-                            className="bp-key bp-key--solid"
-                        >
-                            <Save size={18} />
-                            {tr("Download PDF")}
-                        </a>
-                    )}
-
-                    {/* Items with no photograph cannot be image-processed, so
-                        they are dropped from the engine run and offered here
-                        instead: their copy is written by varying the closest
-                        item that does have content. */}
-                    {variationPending > 0 && (
-                        <button
-                            type="button"
-                            onClick={handleStartVariationPass}
-                            disabled={isProcessing}
-                            title={tr("These items have no photograph. Their description, colours and type will be written by varying the most similar item that does — no image is generated.")}
-                            data-sig="violet"
-                            className="bp-key bp-key--solid"
-                        >
-                            <Sparkles size={18} />
-                            {tr("Write From Similar")} ({variationPending})
-                        </button>
-                    )}
-
-                    <button
-                        type="button"
-                        onClick={handleStartBatch}
-                        disabled={!needsProcessing || isProcessing}
-                        className="bp-key bp-key--go"
-                    >
-                        {isProcessing ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-                        {isProcessing ? tr("Processing...") : tr("Start Engine")}
-                    </button>
-                </div>
-
+                <input ref={uploadRef} type="file" accept="image/png,image/jpeg" hidden onChange={onUploadPicked} />
             </div>
 
-            {/* API Key Modal. A panel that is not itself a hover target, so it
-                is `raised`, not `float`. */}
-            {showApiModal && (
-                <div className="bp-modal animate-in fade-in">
-                    <div className="bp-card">
-                        <div>
-                            <h3>{tr("API Key Required")}</h3>
-                            <p>{tr("Please enter your Gemini API Key. It will be stored securely in your local device storage.")}</p>
-                        </div>
-                        <input
-                            ref={apiInputRef}
-                            type="password"
-                            placeholder={tr("AIzaSy...")}
-                            aria-label={tr("API Key Required")}
-                            className="bp-input bp-input--line"
-                        />
-                        <div className="bp-card-row">
-                            <button type="button" onClick={() => setShowApiModal(false)} className="bp-key">{tr("Cancel")}</button>
-                            <button type="button" onClick={saveApiKey} className="bp-key bp-key--go bp-key--sm">{tr("Save & Start")}</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* 1:1 Square Crop Tool Modal */}
+            {/* Outside .ui-root on purpose: the crop tool is a legacy component
+                and keeps the legacy element styling the kit is exempt from. */}
             <SquareCropModal
-                isOpen={cropModalState.isOpen}
-                imageSrc={cropModalState.imageSrc}
-                onClose={() => setCropModalState({ isOpen: false, opId: '', imageSrc: '' })}
+                isOpen={!!crop}
+                imageSrc={crop?.src || ''}
+                onClose={() => setCrop(null)}
                 onCropComplete={(croppedUrl) => {
-                    if (!cropModalState.opId) return;
-                    setManualCutout(cropModalState.opId, croppedUrl);
-                    toast.success(tr("1:1 Square crop applied!"));
+                    if (!crop) return;
+                    run.setCutout(crop.itemId, crop.index, croppedUrl);
+                    toast.success(tr('1:1 Square crop applied!'));
                 }}
             />
-        </div>
-    , document.body);
-};
+        </div>,
+        document.body,
+    );
+}

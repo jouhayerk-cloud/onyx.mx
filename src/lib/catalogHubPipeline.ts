@@ -325,7 +325,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
             } else {
                 try {
                     logOp(op.id, '[ WAIT ] Fetching video file for AI...');
-                    const videoRes = await fetch(imageUrl);
+                    const videoRes = await fetch(imageUrl, { signal: cancel.signal });
                     const videoBlob = await videoRes.blob();
 
                     logOp(op.id, '[ WAIT ] Generating clean video clips with Gemini...');
@@ -336,12 +336,14 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                         (p, label) => {
                             updateOp(op.id, { progress: Math.min(90, 10 + p) });
                             logOp(op.id, `[ WAIT ] ${label}`);
-                        }
+                        },
+                        cancel.signal
                     );
 
                     const processedMap: Record<string, string> = {};
                     const uploadedUrls: string[] = [];
                     for (let ci = 0; ci < generatedClips.length; ci++) {
+                        if (cancelTokens.current[op.id]) throw new AiCancelledError();
                         logOp(op.id, `[ WAIT ] Uploading generated clip ${ci + 1}/${generatedClips.length} to Supabase...`);
                         const clipFileName = `gen_${Date.now()}_${op.id}_clip${ci}.mp4`;
                         const { error } = await supabase.storage.from('inventory-media').upload(

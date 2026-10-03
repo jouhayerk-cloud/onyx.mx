@@ -40,6 +40,10 @@
 
    Unlayered and imported last, so these outrank slab.css at equal
    specificity without needing !important on every line.
+
+   The element-wide rules (the base coat, button glass, input wells, dialog
+   sheets) stop at .ui-root with a zero-specificity :where() guard: the UI
+   kit reads these same glass levels through its --ui-* tokens (ui.css).
    ========================================================================== */
 
 html.style-slab {
@@ -172,7 +176,7 @@ html.style-slab body::after {
 
    Not caught: form controls and the data wells, meaning colour, and a fill
    that is transparent ON PURPOSE (bg-white/0 hover overlays, handled below). */
-html.style-slab :is([class*="bg-white/"], [class*="bg-black/"], [class*="backdrop-blur"]):not(:where(input, textarea, select, .payment-row, .stats-readout, .vendor-tag, .inv-badge, [class~="bg-white/0"], [class~="bg-black/0"])) {
+html.style-slab :is([class*="bg-white/"], [class*="bg-black/"], [class*="backdrop-blur"]):not(:where(input, textarea, select, .payment-row, .stats-readout, .vendor-tag, .inv-badge, [class~="bg-white/0"], [class~="bg-black/0"])):not(:where(.ui-root, .ui-root *)) {
     background-color: var(--slab-glass) !important;
     backdrop-filter: blur(22px) saturate(1.6) !important;
 }
@@ -183,7 +187,7 @@ html.style-slab :is([class*="bg-white/"], [class*="bg-black/"], [class*="backdro
    as glass. Either way an absolutely-positioned sheet sat ABOVE the control's
    static label text: the Active Vendor chip in Edit Entry rendered as a blank
    blue block with no "EM" on it. Transparent at rest, a faint lift on hover. */
-html.style-slab :is([class~="bg-white/0"], [class~="bg-black/0"]) {
+html.style-slab :is([class~="bg-white/0"], [class~="bg-black/0"]):not(:where(.ui-root, .ui-root *)) {
     background-color: transparent !important;
     backdrop-filter: none !important;
 }
@@ -200,8 +204,6 @@ html.style-slab .glass-tile,
 html.style-slab .inv-sheet,
 html.style-slab .inv-card,
 html.style-slab #trucking .trk-bar-inner,
-html.style-slab #batchproc .bp-panel,
-html.style-slab #batchproc .bp-card,
 html.style-slab #process .proc-panel,
 html.style-slab #threed .threed-card,
 html.style-slab #catalog .cat-modal {
@@ -220,8 +222,6 @@ html.style-slab .main-header,
 html.style-slab .app-topbar,
 html.style-slab .sidebar,
 html.style-slab #trucking .trk-hub > *,
-html.style-slab #batchproc .bp-head,
-html.style-slab #batchproc .bp-foot,
 html.style-slab #process .proc-hud {
     background-color: var(--slab-glass-hi) !important;
     backdrop-filter: blur(42px) saturate(1.9) !important;
@@ -234,26 +234,26 @@ html.style-slab .app-topbar {
 
 /* Controls. A key is glass too, but keeps its full bevel — the walk from
    lift to raised to pressed is unchanged, only the fill moved. */
-html.style-slab button,
-html.style-slab [role="button"],
-html.style-slab summary {
+html.style-slab button:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab summary:not(:where(.ui-root, .ui-root *)) {
     background-color: var(--slab-glass-lo) !important;
     backdrop-filter: blur(14px) saturate(1.5) !important;
 }
 
 /* Hover and press restate their own fills, so they need the glass treatment
    restated too or a hovered key turns opaque mid-interaction. */
-html.style-slab button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover,
-html.style-slab [role="button"]:not([aria-pressed="true"]):hover,
-html.style-slab summary:hover {
+html.style-slab button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"]:not([aria-pressed="true"]):hover:not(:where(.ui-root, .ui-root *)),
+html.style-slab summary:hover:not(:where(.ui-root, .ui-root *)) {
     background-color: var(--slab-glass-hover) !important;
 }
 
-html.style-slab button[aria-pressed="true"],
-html.style-slab button[data-active="true"],
-html.style-slab [role="button"][aria-pressed="true"],
-html.style-slab.theme-talan button[aria-pressed="true"],
-html.style-slab.theme-talan button[data-active="true"] {
+html.style-slab button[aria-pressed="true"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab button[data-active="true"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="button"][aria-pressed="true"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab.theme-talan button[aria-pressed="true"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab.theme-talan button[data-active="true"]:not(:where(.ui-root, .ui-root *)) {
     background-color: var(--slab-glass-on) !important;
 }
 
@@ -263,13 +263,12 @@ html.style-slab.theme-talan button[data-active="true"] {
 
 /* Pressed wells: inputs, readouts, the payment table, the panel drawer. A
    moving backdrop under an inset shadow reads as a smudge, not a recess. */
-html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-html.style-slab textarea,
-html.style-slab select,
+html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:where(.ui-root, .ui-root *)),
+html.style-slab textarea:not(:where(.ui-root, .ui-root *)),
+html.style-slab select:not(:where(.ui-root, .ui-root *)),
 html.style-slab .stats-readout,
 html.style-slab .payment-row,
 html.style-slab .inv-readout,
-html.style-slab #batchproc .bp-log,
 html.style-slab #process .proc-log,
 html.style-slab #process .proc-terminal {
     background-color: var(--slab) !important;
@@ -423,7 +422,6 @@ html.style-slab #threed .threed-ar-dock,
 html.style-slab #threed .threed-tabs,
 html.style-slab #process .proc-anglebar,
 html.style-slab #process .proc-segbar,
-html.style-slab #batchproc .bp-lightbox-bar,
 html.style-slab #catalog .cat-selbar,
 html.style-slab #catalog .cat-modal-foot,
 html.style-slab #trucking .trk-hub,
@@ -433,10 +431,6 @@ html.style-slab .crate-badge {
 }
 
 /* Panel-frame bars: heads and feet that belong to a card, not to the page. */
-html.style-slab #batchproc .bp-head,
-html.style-slab #batchproc .bp-foot,
-html.style-slab #batchproc .bp-gen-head,
-html.style-slab #batchproc .bp-gen-foot,
 html.style-slab #threed .threed-catalog-head,
 html.style-slab #threed .threed-detail-head,
 html.style-slab #threed .threed-ar-head,
@@ -526,16 +520,15 @@ html.style-slab .app-topbar [class*="bg-black/"] {
    tints that exemption made them the only solid objects on the screen, so
    they keep their bevel but take a light fill instead of the full slab. */
 html.style-slab .stats-readout,
-html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-html.style-slab textarea,
-html.style-slab select,
+html.style-slab input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:where(.ui-root, .ui-root *)),
+html.style-slab textarea:not(:where(.ui-root, .ui-root *)),
+html.style-slab select:not(:where(.ui-root, .ui-root *)),
 html.style-slab .inv-readout,
 /* The payment table, logs and terminals were the last opaque wells (2026-09-30
    audit): every surface is glass now. They take the densest glass, not the
    base coat, because they are read line by line. */
 html.style-slab .payment-row,
 html.style-slab .crate-badge__icon,
-html.style-slab #batchproc .bp-log,
 html.style-slab #process .proc-log,
 html.style-slab #process .proc-terminal {
     background-color: var(--slab-glass-well) !important;
@@ -618,14 +611,13 @@ html.style-slab .entry-wizard > .absolute.inset-0 {
 
    They keep a hint of the material — enough to belong to the same system —
    and lean on a heavy blur plus a darker scrim to separate from the page. */
-html.style-slab [role="dialog"],
-html.style-slab [role="alertdialog"],
+html.style-slab [role="dialog"]:not(:where(.ui-root, .ui-root *)),
+html.style-slab [role="alertdialog"]:not(:where(.ui-root, .ui-root *)),
 html.style-slab .studio-settings,
 html.style-slab .studio-settings-portal,
 html.style-slab .modal-panel,
 html.style-slab .inv-sheet,
 html.style-slab #catalog .cat-modal,
-html.style-slab #batchproc .bp-card,
 html.style-slab .fixed.inset-0 > .glass-panel,
 html.style-slab .fixed.inset-0 > .glass-lg,
 html.style-slab .fixed.inset-0 > .glass-md {
@@ -716,14 +708,7 @@ html.style-slab .app-topbar .logo-panel.tool-btn {
 
 /* Wells: chips, fields, tracks and readouts. */
 html.style-slab .entry-wizard [class*="bg-white/"]:not([class~="bg-white/0"]):not(button),
-html.style-slab .custom-scrollbar[class*="slide-in-from-top"],
-html.style-slab #batchproc .bp-status,
-html.style-slab #batchproc .bp-field,
-html.style-slab #batchproc .bp-md,
-html.style-slab #batchproc .bp-mark,
-html.style-slab #batchproc .bp-track,
-html.style-slab #batchproc .bp-chip,
-html.style-slab #batchproc .bp-swatch {
+html.style-slab .custom-scrollbar[class*="slide-in-from-top"] {
     /* .entry-wizard: index.css remaps the wizard's bg-white/* utilities to
        var(--glass-bg) at (0,3,0) !important — the opaque slab under SLAB. */
     background-color: var(--slab-glass-well) !important;
@@ -737,7 +722,6 @@ html.style-slab .payment-row:hover {
 /* Panels and cards that sit on the page. */
 html.style-slab .create-item,
 html.style-slab .create-item .bg-white,
-html.style-slab #batchproc .bp-op,
 html.style-slab .modal-content,
 html.style-slab .stat-card,
 html.style-slab .project-box,
@@ -767,7 +751,6 @@ html.style-slab .group.relative.flex-col.p-3[class*="bg-(--text-color)/5"] {
 }
 
 /* Bars that float over scrolling content. */
-html.style-slab #batchproc .bp-total,
 html.style-slab .dashboard-tabs,
 html.style-slab .shipping-sidebar-footer,
 html.style-slab .fixed[class*="z-[9999]"] .absolute.left-12.right-12.z-50 {
