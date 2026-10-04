@@ -83,7 +83,7 @@ const NFCWizard          = React.lazy(() => import('../logistics/LabelWizard').t
 const PackWizard         = React.lazy(() => import('../logistics/PackWizard').then(m => ({ default: m.PackWizard })));
 const CratePackingManager = React.lazy(() => import('../logistics/CratePackingManager').then(m => ({ default: m.CratePackingManager })));
 const ItemsPayWizard     = React.lazy(() => import('../finance/ItemsPayWizard').then(m => ({ default: m.ItemsPayWizard })));
-const PicoBridgeView       = React.lazy(() => import('../pico/PicoBridgeView').then(m => ({ default: m.PicoBridgeView })));
+const DevicesView        = React.lazy(() => import('../pico/devices/DevicesView').then(m => ({ default: m.DevicesView })));
 // ──────────────────────────────────────────────────────────────────────────────
 
 /** Module-level constant — avoids re-creating this object on every NavItemWithSubmenu render */
@@ -351,8 +351,8 @@ export function MainAppView() {
                 return <ViewerView onOpenArtifact={(id) => { setUniversalView('tag'); setTagId(id); }} />;
             case 'onyx': return <OnyxOrbView />;
             case 'onyx-reg': return <RegStorePreview />;
-            case 'pico-bridge': return <PicoBridgeView />;
-            case 'devices': return <PicoBridgeView />;
+            case 'pico-bridge': return <DevicesView />;
+            case 'devices': return <DevicesView />;
 
             default:
                 return <InventoryView />;
