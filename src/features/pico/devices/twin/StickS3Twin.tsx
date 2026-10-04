@@ -130,12 +130,14 @@ export const StickS3Twin: React.FC<StickS3TwinProps> = ({ device, points, extra,
         </Metric>
 
         <Metric label={tr('Battery (PMIC)')}>
-          {device.battery_pct !== null ? (
+          {device.battery_pct !== null || extra?.vbat_mv !== undefined || extra?.charge_ma !== undefined ? (
             <div className="flex flex-col gap-1.5">
-              <span className="inline-flex items-center gap-1.5 text-emerald-400">
-                {device.charging ? <BatteryCharging size={14} /> : <Battery size={14} />}
-                {device.battery_pct}%{device.charging ? ` ${tr('charging')}` : ''}
-              </span>
+              {device.battery_pct !== null && (
+                <span className="inline-flex items-center gap-1.5 text-emerald-400">
+                  {device.charging ? <BatteryCharging size={14} /> : <Battery size={14} />}
+                  {device.battery_pct}%{device.charging ? ` ${tr('charging')}` : ''}
+                </span>
+              )}
               {(extra?.vbat_mv !== undefined || extra?.charge_ma !== undefined) && (
                 <span className="text-[10px] text-neutral-500 font-sans">
                   {extra?.vbat_mv !== undefined ? `${extra.vbat_mv}mV` : ''}
@@ -196,8 +198,8 @@ export const StickS3Twin: React.FC<StickS3TwinProps> = ({ device, points, extra,
         </Metric>
 
         <Metric label={tr('Offline Queue')}>
-          {((extra as any)?.offline_queue) !== undefined ? (
-            <span>{(extra as any).offline_queue} {tr('items')}</span>
+          {extra?.offline_queue_len !== undefined ? (
+            <span>{extra.offline_queue_len} {tr('items')}</span>
           ) : (
             <span className="text-neutral-600">{tr('Not reported')}</span>
           )}
