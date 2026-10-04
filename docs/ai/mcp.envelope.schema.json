@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:onyxchan:contract:v1:mcp.envelope",
+  "title": "mcp envelope",
+  "description": "Text frame on wss /v1/session after hello: xiaozhi-style envelope {type:'mcp', payload} where payload is one JSON-RPC 2.0 message. Gateway -> device: tools/list, tools/call (queued commands use the command id as the JSON-RPC id and the command name/args as params.name/params.arguments). Device -> gateway: the JSON-RPC responses (a tools/call response for a command is that command's ack). Binary frames (audio, JPEG) are outside this schema; see docs/PROTOCOL.md.",
+  "type": "object",
+  "required": ["type", "payload"],
+  "properties": {
+    "type": { "const": "mcp" },
+    "payload": { "$ref": "#/$defs/jsonrpc_message" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "jsonrpc_id": { "type": ["string", "integer"] },
+    "jsonrpc_message": {
+      "oneOf": [
+        { "$ref": "#/$defs/request" },
+        { "$ref": "#/$defs/notification" },
+        { "$ref": "#/$defs/response" }
+      ]
+    },
+    "request": {
+      "type": "object",
+      "required": ["jsonrpc", "id", "method"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "$ref": "#/$defs/jsonrpc_id" },
+        "method": { "type": "string", "minLength": 1 },
+        "params": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "notification": {
+      "type": "object",
+      "required": ["jsonrpc", "method"],
+      "not": { "required": ["id"] },
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "method": { "type": "string", "minLength": 1 },
+        "params": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "required": ["jsonrpc", "id"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "type": ["string", "integer", "null"] },
+        "result": {},
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "integer" },
+            "message": { "type": "string" },
+            "data": { "$ref": "urn:onyxchan:contract:v1:error" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "oneOf": [
+        { "required": ["result"], "not": { "required": ["error"] } },
+        { "required": ["error"], "not": { "required": ["result"] } }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

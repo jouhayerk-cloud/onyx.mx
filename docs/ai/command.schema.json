@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:onyxchan:contract:v1:command",
+  "title": "command",
+  "description": "A queued device command (a row of onyxchan_commands as delivered to a device). Delivered in the commands array of the /v1/checkin response, or inside an open session as a JSON-RPC tools/call (name = command name, arguments = args) in the mcp envelope. id is the idempotency key: devices dedupe by id. Lease = 2 x checkin_interval_s + 15 s (60 s minimum) for a command delivered by check-in, 60 s for a command sent into an open session; then re-queue; 3 attempts then failed; expires_at defaults to at least 3 x the device's checkin_interval_s (it must be longer than the maximum lease of 2 x checkin_interval_s + 15 s). A device that receives an id it already executed re-acks it (duplicate: true) and does not run it again.",
+  "type": "object",
+  "required": ["id", "name", "args", "status", "expires_at", "attempts"],
+  "properties": {
+    "id": { "$ref": "urn:onyxchan:contract:v1:common#/$defs/uuid" },
+    "name": { "$ref": "#/$defs/command_name" },
+    "args": { "type": "object" },
+    "status": { "$ref": "#/$defs/command_status" },
+    "created_at": { "$ref": "urn:onyxchan:contract:v1:common#/$defs/timestamp" },
+    "expires_at": { "$ref": "urn:onyxchan:contract:v1:common#/$defs/timestamp" },
+    "claimed_at": { "$ref": "urn:onyxchan:contract:v1:common#/$defs/timestamp" },
+    "attempts": {
+      "description": "Delivery attempts so far (incremented on each claim). At 3 failed leases the command becomes failed.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    { "if": { "properties": { "name": { "const": "face" } } }, "then": { "properties": { "args": { "$ref": "#/$defs/args_face" } } } },
+    { "if": { "properties": { "name": { "const": "move" } } }, "then": { "properties": { "args": { "$ref": "#/$defs/args_move" } } } },
+    { "if": { "properties": { "name": { "const": "speak" } } }, "then": { "properties": { "args": { "$ref": "#/$defs/args_speak" } } } },
+    { "if": { "properties": { "name": { "const": "item-card" } } }, "then": { "properties": { "args": { "$ref": "#/$defs/args_item_card" } } } },
+    { "if": { "properties": { "name": { "const": "vendor-display" } } }, "then": { "properties": { "args": { "$ref": "#/$defs/args_vendor_display" } } } },
+    { "if": { "properties": { "name": { "const": "payment-card" } } }, "then": { "properties": { "args": { "$ref": "#/$defs/args_payment_card" } } } },
+    { "if": { "properties": { "name": { "const": "gif" } } }, "then": { "properties": { "args": { "$ref": "#/$defs/args_gif" } } } },
+    { "if": { "properties": { "name": { "const": "play_tone" } } }, "then": { "properties": { "args": { "$ref": "#/$defs/args_play_tone" } } } }
+  ],
+  "$defs": {
+    "command_status": {
+      "description": "queued -> claimed (lease: 2 x checkin_interval_s + 15 s, 60 s minimum, by check-in; 60 s in a session) -> acked | (lease lapses -> queued, attempts+1) | failed (3 attempts or ack ok=false) | expired (expires_at passed before ack).",
+      "enum": ["queued", "claimed", "acked", "failed", "expired"]
+    },
+    "command_name": {
+      "description": "Device command vocabulary from PLAN v2.1 Phase 1.1 (+ play_tone for the Phase 5 success / wrong-item tones). 'inventory-display' is the legacy name of item-card: the gateway/onyx-mcp normalises it to item-card, devices never receive it.",
+      "enum": ["face", "move", "speak", "item-card", "vendor-display", "payment-card", "gif", "play_tone"]
+    },
+    "args_face": {
+      "description": "Avatar expression. Values from set_expression in onyxchanTools.ts, minus 'vendor-display' (a command only; Chief decision 6).",
+      "type": "object",
+      "required": ["expression"],
+      "properties": {
+        "expression": {
+          "enum": ["calm", "happy", "thinking", "sleepy", "shy", "smug", "pouty", "alert", "error", "speaking", "listening"]
+        },
+        "duration_ms": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "args_move": {
+      "description": "Head pan/tilt, ranges from move_head in onyxchanTools.ts.",
+      "type": "object",
+      "required": ["pan", "tilt"],
+      "properties": {
+        "pan": { "type": "number", "minimum": -90, "maximum": 90 },
+        "tilt": { "type": "number", "minimum": 0, "maximum": 90 }
+      },
+      "additionalProperties": false
+    },
+    "args_speak": {
+      "description": "Text to speak, synthesised by the gateway (Gemini voice); needs an open session. Sent to a sleeping device it is queued and runs on wake only if not expired, otherwise the caller gets expired. Spanish and English only.",
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "language": { "$ref": "urn:onyxchan:contract:v1:common#/$defs/language" }
+      },
+      "additionalProperties": false
+    },
+    "args_item_card": {
+      "description": "Item card. Fields from display_inventory_card in onyxchanTools.ts. price is the retail price in USD (book_retail) and is present only when the target device's role allows it (staff-device); onyx-mcp strips it for voice devices. price_mxn and every other cost column are never allowed.",
+      "type": "object",
+      "required": ["item_id", "title"],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "title": { "type": "string", "maxLength": 120 },
+        "vendor": { "type": "string", "maxLength": 60 },
+        "stock": { "type": "number" },
+        "status": { "type": "string", "maxLength": 40 },
+        "price": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "args_vendor_display": {
+      "description": "Vendor card. Fields from display_vendor_card in onyxchanTools.ts.",
+      "type": "object",
+      "required": ["vendor", "title", "details"],
+      "properties": {
+        "vendor": { "type": "string", "maxLength": 60 },
+        "title": { "type": "string", "maxLength": 120 },
+        "details": { "type": "array", "items": { "type": "string", "maxLength": 256 }, "maxItems": 4 },
+        "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "icon": { "enum": ["box", "tag", "dollar", "truck", "package"] }
+      },
+      "additionalProperties": false
+    },
+    "args_payment_card": {
+      "description": "Payment card: shown on screen for staff, never spoken, never passed to the voice model. Only a staff JWT with a finance role may enqueue it (Ramses to confirm: visitors may see the StackChan screen). Field set is an open question (no tool defines it yet).",
+      "type": "object"
+    },
+    "args_gif": {
+      "description": "Accepted in the vocabulary so it is never silently dropped. v1 devices answer with an ack ok=false, error.code=unsupported (PLAN Phase 3.5). Field set is an open question.",
+      "type": "object"
+    },
+    "args_play_tone": {
+      "description": "Feedback tone (Phase 5.4 success / wrong-item tones). Tone vocabulary is an open question.",
+      "type": "object",
+      "required": ["tone"],
+      "properties": {
+        "tone": { "type": "string", "minLength": 1, "maxLength": 32 }
+      },
+      "additionalProperties": false
+    }
+  }
+}
