@@ -39,8 +39,10 @@ const STYLES = `
   .onyx-face-dot-1 { animation-delay: 0s; }
   .onyx-face-dot-2 { animation-delay: 0.2s; }
   .onyx-face-dot-3 { animation-delay: 0.4s; }
+  @keyframes onyx-fade { from { opacity: 0; } to { opacity: 1; } }
+  .onyx-face-expr { animation: onyx-fade 120ms linear; }
   @media (prefers-reduced-motion: reduce) {
-    .onyx-face-eyes, .onyx-face-mouth, .onyx-face-mouth-speak, .onyx-face-dot {
+    .onyx-face-expr, .onyx-face-eyes, .onyx-face-mouth, .onyx-face-mouth-speak, .onyx-face-dot {
       animation: none !important;
       transition: none !important;
     }
@@ -66,6 +68,17 @@ export interface OnyxFaceProps {
   title?: string;
 }
 
+// The stylesheet is added to <head> once for all faces on the page (not one <style> per face).
+function useOnyxFaceStyles() {
+  React.useEffect(() => {
+    if (typeof document === 'undefined' || document.getElementById('onyx-face-styles')) return;
+    const el = document.createElement('style');
+    el.id = 'onyx-face-styles';
+    el.textContent = STYLES;
+    document.head.appendChild(el);
+  }, []);
+}
+
 export const OnyxFace = memo(function OnyxFace({
   expression,
   speakingLevel = 0,
@@ -84,7 +97,7 @@ export const OnyxFace = memo(function OnyxFace({
   const speakScale = speakingLevel > 0 ? 0.2 + speakingLevel * 1.5 : 1;
   const isSpeaking = expression === 'speaking' && speakingLevel > 0;
   
-  const expressionKeys = Object.keys(EXPRESSIONS) as FaceExpression[];
+  useOnyxFaceStyles();
   
   return (
     <div 
@@ -93,13 +106,13 @@ export const OnyxFace = memo(function OnyxFace({
       aria-label={ariaLabel}
       role="img"
     >
-      <style>{STYLES}</style>
       <svg 
         viewBox="0 0 320 240" 
         className="w-full h-full"
+        aria-hidden="true"
         style={{ '--onyx-speak': speakScale } as React.CSSProperties}
       >
-        {expressionKeys.map(key => {
+        {[expression].map(key => {   // only the active expression is in the DOM: hidden ones would still run their blink animations
           const spec = EXPRESSIONS[key];
           const isActive = key === expression;
           return (
@@ -109,11 +122,8 @@ export const OnyxFace = memo(function OnyxFace({
               strokeWidth="8" 
               strokeLinecap="round" 
               strokeLinejoin="round"
-              style={{
-                opacity: isActive ? 1 : 0,
-                transition: 'opacity 120ms linear',
-                pointerEvents: isActive ? 'auto' : 'none'
-              }}
+              className="onyx-face-expr"
+              style={{ pointerEvents: isActive ? 'auto' : 'none' }}
             >
               <g className="onyx-face-eyes" style={{ transform: 'translate(calc(var(--onyx-gx, 0) * 14px), calc(var(--onyx-gy, 0) * 9px))' }}>
                 {renderShape(spec.left, 'l')}

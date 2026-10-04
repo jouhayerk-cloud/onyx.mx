@@ -19,10 +19,12 @@ const PHASE_TO_FACE: Record<AgentPhase, FaceExpression> = {
   error: 'error',
 };
 
+const mirrorClock: { current: number } = { current: 0 };
+
 export function useRobotMirror(opts: UseRobotMirrorOpts): void {
   const { enabled, phase, control, online } = opts;
   const lastFaceSent = useRef<FaceExpression | null>(null);
-  const lastSendTime = useRef<number>(0);
+  const lastSendTime = mirrorClock;   // module level: remounting the hook must not reset the 1.5 s limit
   const pendingFace = useRef<FaceExpression | null>(null);
   const timerRef = useRef<number | null>(null);
   const sleepyTimerRef = useRef<number | null>(null);

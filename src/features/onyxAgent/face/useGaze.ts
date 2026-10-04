@@ -28,6 +28,12 @@ function loop() {
   
   let needsNextFrame = false;
 
+  // read every rect first, then write: interleaving reads with style writes forces a synchronous reflow per face
+  const rects = new Map<object, DOMRect>();
+  if (!isHidden && !isReducedMotion) {
+    for (const target of registry) rects.set(target, target.el.getBoundingClientRect());
+  }
+
   for (const target of registry) {
     const { el } = target;
     
@@ -35,7 +41,7 @@ function loop() {
       target.tx = 0;
       target.ty = 0;
     } else {
-      const rect = el.getBoundingClientRect();
+      const rect = rects.get(target) as DOMRect;
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
       
