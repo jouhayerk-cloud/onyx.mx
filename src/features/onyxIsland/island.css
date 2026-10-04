@@ -1,0 +1,78 @@
+.onyx-island-band {
+  position: relative;
+  height: var(--island-band-h, 64px);
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  overflow: visible;
+  z-index: 45;
+  pointer-events: none;
+}
+
+.onyx-island-band > * {
+  pointer-events: auto;
+}
+
+.onyx-island {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  color: #fff;
+  will-change: auto;
+}
+
+.onyx-island-surface {
+  background: color-mix(in srgb, #0b0b0f 94%, var(--main-color, #00aeef) 6%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  border-radius: var(--island-r, 28px);
+  overflow: hidden;
+  max-width: calc(100vw - 24px);
+}
+
+.onyx-island--rest .onyx-island-surface {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.onyx-island--peek {}
+.onyx-island--expanded {}
+.onyx-island--center {}
+
+@keyframes onyx-pulse {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+
+.onyx-island-unread {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--main-color, #00aeef);
+  animation: onyx-pulse 2s infinite ease-in-out;
+}
+
+.onyx-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onyx-island-unread {
+    animation: none;
+  }
+}
