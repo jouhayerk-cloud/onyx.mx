@@ -52,9 +52,9 @@ export const IslandLaunchers: React.FC<IslandLaunchersProps> = ({ tools, onRun }
             }}
             onKeyDown={(e) => handleKeyDown(e, i)}
             tabIndex={i === 0 ? 0 : -1}
-            className="relative flex items-center justify-center w-9 h-9 rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed isl-hw10 transition-colors"
+            className="relative flex items-center justify-center w-11 h-11 rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed isl-hw10 transition-colors"
           >
-            <Icon size={18} />
+            <Icon size={22} />
             {tool.badge != null && (
               <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full border border-[var(--glass-tint,rgba(10,12,20,0.4))] shadow-sm" />
             )}
