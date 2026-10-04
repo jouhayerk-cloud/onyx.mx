@@ -122,7 +122,7 @@ export const OnyxFace = memo(function OnyxFace({
               <g className={`onyx-face-mouth ${key === 'speaking' && isSpeaking ? 'onyx-face-mouth-speak' : ''}`} style={{ transform: 'translate(calc(var(--onyx-gx, 0) * 6px), calc(var(--onyx-gy, 0) * 4px))' }}>
                 {renderShape(spec.mouth, 'm')}
               </g>
-              {spec.extras && <g>{spec.extras.map((extra, i) => renderShape(extra, \`ex-\${i}\`))}</g>}
+              {spec.extras && <g>{spec.extras.map((extra, i) => renderShape(extra, 'ex-' + i))}</g>}
             </g>
           );
         })}
