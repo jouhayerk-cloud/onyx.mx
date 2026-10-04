@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { AgentPhase } from '../agentState';
-import { useDeviceControl } from '../../pico/useDeviceControl';
-import { FaceExpression } from '../face/expressions';
+import { AgentPhase } from './agentState';
+import { useDeviceControl } from '../pico/useDeviceControl';
+import { FaceExpression } from './face/expressions';
 
 export interface UseRobotMirrorOpts {
   enabled: boolean;
