@@ -1,5 +1,6 @@
 
-import React, { Suspense, useEffect, useState, useCallback } from 'react';
+import React, { Suspense, useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import './topbarOverlay.css';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
     activeViewAtom,
@@ -46,6 +47,7 @@ import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import userIcons from '../../components/userIcons';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { UniversalToolsBar } from './UniversalToolsBar';
+import { ArchivedToolsBar } from '../archived/ArchivedChrome';
 import { InventorySelectionDock } from './InventorySelectionDock';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { ViewSkeleton } from '../../components/ui/ViewSkeleton';
@@ -185,6 +187,18 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = React.memo(({ view
 
 export function MainAppView() {
     const t = useTranslation();
+    // Publish the top bar's height so the page can flow under it (topbarOverlay.css).
+    const appContentRef = useRef<HTMLDivElement | null>(null);
+    useLayoutEffect(() => {
+        const host = appContentRef.current;
+        const bar = host?.querySelector<HTMLElement>(':scope > .app-topbar');
+        if (!host || !bar) return;
+        const apply = () => host.style.setProperty('--app-topbar-h', `${bar.offsetHeight}px`);
+        apply();
+        const ro = new ResizeObserver(apply);
+        ro.observe(bar);
+        return () => ro.disconnect();
+    }, []);
     const [user] = useAtom(userAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setUniversalView = useSetAtom(universalViewAtom);
@@ -561,6 +575,7 @@ export function MainAppView() {
                     </div>
                 </div>
                 <div 
+                    ref={appContentRef}
                     className="app-content flex-1 min-h-0 overflow-y-auto scroll-smooth p-0 m-0 relative"
                     onScroll={(e) => {
                         const scrollTop = (e.currentTarget as HTMLDivElement).scrollTop;
@@ -579,6 +594,7 @@ export function MainAppView() {
                     <LiquidBar className="app-topbar sticky top-0 z-[500] w-full flex flex-col bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl">
                         <MainHeader />
                         <UniversalToolsBar />
+                        {activeView === 'workbook' && <ArchivedToolsBar />}
                     </LiquidBar>
 
                     <main className="flex-1 flex flex-col min-h-0 p-0 m-0">

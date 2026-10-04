@@ -152,6 +152,7 @@ import {
 import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 import { tr } from '../../lib/i18n';
 import { IslandBand } from '../onyxIsland/IslandBand';
+import { ArchivedBar, ArchivedReadout } from '../archived/ArchivedChrome';
 
 declare const __APP_VERSION__: string;
 
@@ -4294,6 +4295,7 @@ export function MainHeader() {
 
     const [showExport, setShowExport] = useState(false);
     const isInventory = activeView === 'inventory';
+    const isArchived = activeView === 'workbook' && (user?.role === 'Developer' || user?.role === 'Admin');
     const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
 
     return (
@@ -4310,7 +4312,9 @@ export function MainHeader() {
             <IslandBand
                 readout={activeView === 'inventory'
                     ? { left: <InfoNotch part="stats" />, right: <InfoNotch part="user" /> }
-                    : null}
+                    : isArchived
+                        ? { left: <ArchivedReadout part="stats" />, right: <ArchivedReadout part="scope" /> }
+                        : null}
             />
 
             <div className={`main-header h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
@@ -4365,6 +4369,7 @@ export function MainHeader() {
                         {activeView === 'process' && <ProcessBar />}
                         {activeView === 'control' && <ControlBar />}
                         {activeView === 'onyx' && <OnyxBar />}
+                        {isArchived && <ArchivedBar />}
                         {activeView === 'overview' && (
                             <div className="flex items-center gap-1 sm:gap-4">
                                 <ModuleBadge icon="layout-dashboard" label="" color="var(--main-color)" />
