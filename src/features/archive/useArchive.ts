@@ -61,13 +61,20 @@ export function useArchive() {
         }
         
         // Load vendors for this book
-        const { data: vendorData, error: vendorErr } = await db
-          .from('archive_items')
-          .select('vendor')
-          .eq('book_id', bookData.id);
-          
-        if (vendorErr) throw vendorErr;
-        
+        // PostgREST returns at most 1000 rows per request: page through them so no vendor or count is lost
+        const vendorData: Array<{ vendor: string }> = [];
+        for (let from = 0; ; from += 1000) {
+          const { data: chunk, error: vendorErr } = await db
+            .from('archive_items')
+            .select('vendor')
+            .eq('book_id', bookData.id)
+            .order('src_row', { ascending: true })
+            .range(from, from + 999);
+          if (vendorErr) throw vendorErr;
+          vendorData.push(...(chunk || []));
+          if (!chunk || chunk.length < 1000) break;
+        }
+
         if (mounted) {
           const vCounts: Record<string, number> = {};
           vendorData.forEach((v: any) => {
@@ -114,7 +121,7 @@ export function useArchive() {
           .eq('vendor', selectedVendor);
           
         if (search) {
-          query = query.textSearch('search', search, { config: 'simple' });
+          query = query.textSearch('search', search, { config: 'simple', type: 'websearch' }); // websearch: spaces and quotes must not raise a tsquery syntax error
         }
         
         // order to make pagination deterministic
@@ -152,7 +159,7 @@ export function useArchive() {
           setFinance({});
         }
         
-        setStatus('ready');
+        if (mounted) setStatus('ready');
       } catch (err: any) {
         if (mounted) {
           setError(err.message);

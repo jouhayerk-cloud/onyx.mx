@@ -17,6 +17,9 @@ const formatValue = (val: any) => {
   if (isDateStr(val)) {
     return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
   }
+  // anything React cannot render as a child (nested object, array, boolean) is shown as text instead of crashing the ledger
+  if (typeof val === 'object') return JSON.stringify(val);
+  if (typeof val === 'boolean') return String(val);
   return val;
 };
 
