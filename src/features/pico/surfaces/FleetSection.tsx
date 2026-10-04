@@ -14,7 +14,7 @@ const SubHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">{children}</h3>
 );
 
-export const FleetSection: React.FC<{ fleet: Fleet }> = ({ fleet }) => {
+export const FleetSection: React.FC<{ fleet: Fleet; onSelect?: (deviceId: string) => void }> = ({ fleet, onSelect }) => {
   const now = useNow();
   const { devices, telemetryFor, runs, commands, source, error } = fleet;
   const packing = runs.map(packingStateOf).find((p) => p !== null) ?? null;
@@ -39,7 +39,7 @@ export const FleetSection: React.FC<{ fleet: Fleet }> = ({ fleet }) => {
         </p>
       )}
 
-      <FleetCards devices={devices} telemetryFor={telemetryFor} now={now} />
+      <FleetCards devices={devices} telemetryFor={telemetryFor} now={now} onSelect={onSelect} />
 
       {(source !== 'none' || runs.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">

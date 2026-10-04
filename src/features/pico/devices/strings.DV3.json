@@ -1,0 +1,17 @@
+[
+  ["Not reported", "No reportado"],
+  ["No telemetry yet", "Aún sin telemetría"],
+  ["Battery", "Batería"],
+  ["Signal (RSSI)", "Señal (RSSI)"],
+  ["Free Heap", "Memoria Libre"],
+  ["Temperature", "Temperatura"],
+  ["Check-in Gap", "Intervalo de conexión"],
+  ["Alerts", "Alertas"],
+  ["Low Battery", "Batería baja"],
+  ["Weak Signal", "Señal débil"],
+  ["High Temperature", "Temperatura alta"],
+  ["Stale/Dropout", "Desconexión"],
+  ["Latest: {0}", "Último: {0}"],
+  ["Min: {0}", "Mín: {0}"],
+  ["Max: {0}", "Máx: {0}"]
+]
