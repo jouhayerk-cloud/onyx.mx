@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { getTextColorForBg } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
+import { ArchivePanel } from '../archive/ArchivePanel';
 
 const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = ({ label, active, color }) => (
     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all duration-300 ${active
@@ -849,7 +850,7 @@ export const WorkbookView: React.FC = () => {
                 ) : (
                     <div className="h-full relative z-10 animate-in fade-in zoom-in-95 duration-500">
                         {activeTab === 'inventory' && <InventoryPanel docs={docs326} exchangeRate={exchangeRate} onRefresh={refresh} />}
-                        {activeTab === 'archive' && <InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
+                        {activeTab === 'archive' && <ArchivePanel fallback={<InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />} />}
                         {activeTab === 'finance' && <FinancePanel docs={financeData} onRefresh={refresh} />}
                         {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
                         {activeTab === 'logistics' && <LogisticsPanel docs={data.log} onRefresh={refresh} />}

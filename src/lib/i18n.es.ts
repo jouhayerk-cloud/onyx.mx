@@ -2984,4 +2984,19 @@ export const esCatalog: Record<string, string> = {
   'N of M counter': 'Contador N de M',
   'Wrong-item alert': 'Alerta de artículo incorrecto',
   'Result written back': 'Resultado escrito de vuelta',
+  
+  // Archive
+  'ARCHIVE BOOK': 'LIBRO DE ARCHIVO',
+  'Season': 'Temporada',
+  'Source File': 'Archivo Origen',
+  'Imported': 'Importado',
+  'SHA256': 'SHA256',
+  'Archive Empty': 'Archivo Vacío',
+  'Archive Unavailable': 'Archivo No Disponible',
+  'No records found in the archive.': 'No se encontraron registros en el archivo.',
+  'Archive service is currently unavailable or you do not have permission.': 'El servicio de archivo no está disponible o no tienes permiso.',
+  'Wt.': 'Peso',
+  'Total Pesos': 'Total Pesos',
+  'Page': 'Página',
+  'Export CSV': 'Exportar CSV',
 };
