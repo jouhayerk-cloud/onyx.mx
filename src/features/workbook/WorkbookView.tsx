@@ -21,7 +21,7 @@ const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = 
 
 const fmtMXN = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
 const fmtUSD = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
-const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
+const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: boolean; onRefresh: () => void }> = ({ docs, exchangeRate, isArchive, onRefresh }) => {
     const user = useAtomValue(userAtom);
     const viewMode = useAtomValue(workbookViewModeAtom);
@@ -274,7 +274,7 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
             </div>
         </div>
     );
-};
+};
 const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     const user = useAtomValue(userAtom);
     const filtered = useMemo(() => {
@@ -315,7 +315,7 @@ const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
             </div>
         </div>
     );
-};
+};
 const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     const user = useAtomValue(userAtom);
     const filtered = useMemo(() => {
@@ -345,7 +345,7 @@ const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
             </div>
         </div>
     );
-};
+};
 const DatabasePanel: React.FC = () => {
     const db = useDatabase();
     const financeData = useAtomValue(financeDataAtom);
@@ -558,7 +558,7 @@ const DatabasePanel: React.FC = () => {
             )}
         </div>
     );
-};
+};
 const SUBCATEGORIES = ['All', 'Acquisition', 'Monthly Expense', 'Supplies', 'Labor', 'Crate/Pallet', 'Operating'] as const;
 
 const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
@@ -664,7 +664,7 @@ const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
             )}
         </div>
     );
-};
+};
 const LOGISTICS_STATUSES = ['All', 'Warehouse', 'In Transit', 'Delivered'] as const;
 
 const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
@@ -723,7 +723,7 @@ const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs
             </div>
         </div>
     );
-};
+};
 
 export const WorkbookView: React.FC = () => {
     const user = useAtomValue(userAtom);
@@ -772,7 +772,7 @@ export const WorkbookView: React.FC = () => {
             subs.forEach(s => s.unsubscribe());
             [invTimer, prodTimer, logTimer, timeoutTimer].forEach(clearTimeout);
         };
-    }, [db, ver]);
+    }, [db, ver]);
     const docs = useMemo(() => {
         if (user?.role === 'Vendor') {
             return data.inv.filter(d => d.item_id === user.id);
@@ -782,10 +782,10 @@ export const WorkbookView: React.FC = () => {
 
     const docs326 = useMemo(() => docs.filter(d => d.workbook === '326' || !d.workbook), [docs]);
     // DetailsPanel archives items as 'v825', the book itself uses '825': accept both so archived items are not hidden
-    const docs825 = useMemo(() => docs.filter(d => d.workbook === '825' || d.workbook === 'v825'), [docs]);
+    const docs825 = useMemo(() => docs.filter(d => d.workbook === '825' || d.workbook === 'v825'), [docs]);
     const visibleTabs = useMemo(() => {
         return WORKBOOK_TABS.filter(t => t.roles.includes(user?.role || 'Vendor'));
-    }, [user?.role]);
+    }, [user?.role]);
     useEffect(() => {
         if (visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) {
             setActiveTab(visibleTabs[0].id as any);
@@ -838,10 +838,29 @@ export const WorkbookView: React.FC = () => {
                 </div>
             </div>
 
+            {/* Tab strip: the visible tabs were computed but never rendered, so ARCHIVE 825 could not be opened */}
+            <div role="tablist" aria-label={tr("Workbook sections")} className="flex items-center gap-1 px-6 py-2 border-b border-white/[0.05] shrink-0 overflow-x-auto">
+                {visibleTabs.map(t => {
+                    const active = activeTab === t.id;
+                    return (
+                        <button
+                            key={t.id}
+                            role="tab"
+                            aria-selected={active}
+                            onClick={() => setActiveTab(t.id as any)}
+                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? 'text-black border-transparent' : 'bg-white/5 text-white/40 border-white/5 hover:text-white/70'}`}
+                            style={active ? { backgroundColor: t.color } : {}}
+                        >
+                            {tr(t.label)}
+                        </button>
+                    );
+                })}
+            </div>
+
             <div className="flex-1 overflow-hidden relative">
                 <div className="absolute inset-0 pointer-events-none opacity-20 bg-gradient-to-tr from-transparent via-[var(--main-color)]/5 to-transparent shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]" />
 
-                {!isSyncing && isEmpty ? (
+                {!isSyncing && isEmpty && activeTab !== 'archive' && activeTab !== 'database' ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20 gap-4">
                         <svg className="w-12 h-12 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
                         <div className="text-sm font-black tracking-widest uppercase opacity-40">{tr("No records found. Sync failed or DB empty.")}</div>
@@ -854,7 +873,7 @@ export const WorkbookView: React.FC = () => {
                         {activeTab === 'finance' && <FinancePanel docs={financeData} onRefresh={refresh} />}
                         {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
                         {activeTab === 'logistics' && <LogisticsPanel docs={data.log} onRefresh={refresh} />}
-                        {activeTab === 'logistics' && <LogisticsPanel docs={data.log} onRefresh={refresh} />}
+                        {activeTab === 'database' && <DatabasePanel />}
                     </div>
                 )}
             </div>
