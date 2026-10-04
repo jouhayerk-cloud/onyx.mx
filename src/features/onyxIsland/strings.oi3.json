@@ -1,0 +1,15 @@
+{
+  "Dismiss": "Descartar",
+  "Nothing new": "Nada nuevo",
+  "Notifications": "Notificaciones",
+  "Assistant": "Asistente",
+  "All": "Todo",
+  "Alerts": "Alertas",
+  "Agent": "Agente",
+  "Clear all": "Borrar todo",
+  "Today": "Hoy",
+  "Earlier": "Anteriormente",
+  "Just now": "Ahora mismo",
+  "{m}m ago": "Hace {m}m",
+  "{h}h ago": "Hace {h}h"
+}
