@@ -20,7 +20,7 @@ import {
 } from '../../lib/atoms';
 import { vendors, SCRIPT_URL } from '../../lib/consts';
 import { exportToXLSX } from '../../lib/xlsxUtils';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { tr } from '../../lib/i18n';
 
 const getTextColorForBg = (hexColor: string | undefined): string => {

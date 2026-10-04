@@ -28,7 +28,7 @@ import {
 import { exportCatalogPdf } from '../../lib/pdfExport';
 import { ExportWizard } from '../../components/ExportWizard';
 import { useTranslation } from '../../lib/hooks';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
 import { ShoppingBagDrawer } from './ShoppingBagDrawer';
 import { atom } from 'jotai';

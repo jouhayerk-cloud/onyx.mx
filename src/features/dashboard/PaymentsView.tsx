@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, CreditCard } from 'lucide-react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { PaymentDestination, ExpenseStatus, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
 import { paymentsVersionAtom, userAtom, inventoryAtom, financeDataAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom, paymentCategoryFilterAtom, paymentFilterBarModeAtom } from '../../lib/atoms';

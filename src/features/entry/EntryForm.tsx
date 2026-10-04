@@ -11,7 +11,7 @@
  */
 import React, { useId, useMemo, useRef, useState } from 'react';
 import { Link2, Lock, Star, Upload, X } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { tr, trf } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';

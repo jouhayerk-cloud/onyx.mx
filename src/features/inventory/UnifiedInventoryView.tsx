@@ -60,7 +60,7 @@ import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';

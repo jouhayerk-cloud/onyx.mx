@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { PaymentDestination } from '../../lib/Types';
-import { default as toast } from 'react-hot-toast';
+import { default as toast } from '../onyxIsland/notify/toast';
 import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { EChart } from '../../components/EChart';

@@ -3,7 +3,7 @@
 import { StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './features/core/App';
-import toast from 'react-hot-toast';
+import toast from './features/onyxIsland/notify/toast';
 import { tr } from './lib/i18n';
 import { hasUnsavedWork } from './lib/workGuard';
 

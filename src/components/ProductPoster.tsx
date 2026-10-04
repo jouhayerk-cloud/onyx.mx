@@ -1,7 +1,7 @@
 
 
 import React, {useRef} from 'react';
-import toast from 'react-hot-toast';
+import toast from '../features/onyxIsland/notify/toast';
 import {InventoryItemData} from '../lib/Types';
 
 interface ProductPosterProps {

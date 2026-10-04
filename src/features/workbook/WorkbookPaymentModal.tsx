@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { useSetAtom } from 'jotai/react';
 import { PaymentDestination, ExpenseStatus } from '../../lib/Types';
 import { SCRIPT_URL } from '../../lib/consts';

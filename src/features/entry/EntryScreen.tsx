@@ -25,7 +25,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { Save } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import {
     inventoryAtom, InventoryVersionAtom, isAiProcessingEnabledAtom, isDummyModeAtom, userAtom,
 } from '../../lib/atoms';

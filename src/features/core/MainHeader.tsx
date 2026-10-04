@@ -127,7 +127,7 @@ import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXC
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { saveAs } from 'file-saver';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import userIcons from '../../components/userIcons';
 import { supabase } from '../../lib/supabase';
 
@@ -151,7 +151,7 @@ import {
 
 import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 import { tr } from '../../lib/i18n';
-import { OnyxAgentSlot } from '../onyxAgent/OnyxAgentSlot';
+import { IslandBand } from '../onyxIsland/IslandBand';
 
 declare const __APP_VERSION__: string;
 
@@ -4337,6 +4337,8 @@ export function MainHeader() {
                 so anything absolute inside it slides away with the content and
                 is clipped by overflow-y-hidden. */}
             <div className="w-full shrink-0 relative">
+            {/* Onyx Island: the face (free floating, centred), the toasts and the notification center, one element */}
+            <IslandBand />
 
             {/* Collapsed: a tab on the top edge, and the readout deployed over
                 the bar when it is pulled down. It overlays rather than pushing
@@ -4470,7 +4472,6 @@ export function MainHeader() {
                     <div className="flex items-end gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
-                        <OnyxAgentSlot />
                         {sentTruckId && (
                             <button 
                                 onClick={() => setView('trucking')}

@@ -17,7 +17,7 @@ import {
     Box, 
     ArrowRight 
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { tr } from '../../lib/i18n';
 
 export const ShoppingBagDrawer = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {

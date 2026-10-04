@@ -29,7 +29,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { atom } from 'jotai';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import {
     AlertTriangle, Bot, ChevronLeft, ChevronRight, FileSpreadsheet, FolderOpen, Hash, ImagePlus, Images,
     Languages, Play, RefreshCw, Square, Star, Trash2, X,

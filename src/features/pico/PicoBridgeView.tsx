@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAtom, useSetAtom } from 'jotai';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { picoDevicesAtom, activePicoSessionAtom, picoRssiThresholdAtom, PicoDevice, PicoScanEvent, PicoSession } from '../../lib/picoAtoms';
 import { PicoRoleHardwareCard } from './components/PicoRoleHardwareCard';
 import { PicoDeviceRegistry } from './components/PicoDeviceRegistry';

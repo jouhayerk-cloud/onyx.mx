@@ -439,9 +439,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'workbook' ? 'active' : ''}`} onClick={() => { setActiveView('workbook'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Layers size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">{tr("Workbook")}</span>
+                                    <span className="sidebar-list-item-text">{tr("Archived")}</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">{tr("Workbook")}</span>
+                                <span className="sidebar-compact-tooltip">{tr("Archived")}</span>
                             </li>
                         )}
 

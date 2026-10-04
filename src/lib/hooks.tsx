@@ -39,7 +39,7 @@ import { translations } from './translations';
 import { InventoryItemData } from './Types';
 import { SCRIPT_URL } from './consts';
 import { fetchImageBatch, imageCache, resizeImage, extractFileId, generateVideoThumbnail } from './utils';
-import toast from 'react-hot-toast';
+import toast from '../features/onyxIsland/notify/toast';
 
 export function useTranslation() {
   const lang = useAtomValue(languageAtom);
@@ -58,7 +58,7 @@ export const useNotify = () => {
       type: type as any,
       timestamp: Date.now()
     });
-    return toast(message, options);
+    return toast(message, { ...options, id });
   };
 
   notify.success = (message: string, options?: any) => {
@@ -69,7 +69,7 @@ export const useNotify = () => {
       type: 'success',
       timestamp: Date.now()
     });
-    return toast.success(message, options);
+    return toast.success(message, { ...options, id });
   };
 
   notify.error = (message: string, options?: any) => {
@@ -80,7 +80,7 @@ export const useNotify = () => {
       type: 'error',
       timestamp: Date.now()
     });
-    return toast.error(message, options);
+    return toast.error(message, { ...options, id });
   };
 
   notify.loading = (message: string, options?: any) => {
@@ -91,7 +91,7 @@ export const useNotify = () => {
       type: 'loading',
       timestamp: Date.now()
     });
-    return toast.loading(message, options);
+    return toast.loading(message, { ...options, id });
   };
 
   notify.dismiss = (id?: string) => toast.dismiss(id);

@@ -16,7 +16,7 @@ import { ExportWizard } from '../../components/ExportWizard';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import gsap from 'gsap';
 import { jsPDF } from 'jspdf';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { tr } from '../../lib/i18n';
 
 declare global { interface Window { jspdf?: any; } }

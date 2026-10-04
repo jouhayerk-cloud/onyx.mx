@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { logisticsSubTabAtom, userAtom, isDummyModeAtom, logisticsDocsAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';

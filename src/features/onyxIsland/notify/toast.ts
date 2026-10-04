@@ -41,6 +41,7 @@ const toast = Object.assign(
   }
 );
 
+export { toast };   // react-hot-toast also had a named export
 export default toast;
 
 export function notifyAgent(message: string, opts?: { title?: string; actions?: NotifyAction[] }) {

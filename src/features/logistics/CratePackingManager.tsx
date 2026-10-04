@@ -12,7 +12,7 @@ import {
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import {
     Package, ChevronRight, Check, Loader2, X, CheckCircle2,
     PackagePlus, ListFilter, Inbox, Video, Maximize2, Minus, Plus, Trash2,

@@ -8,7 +8,7 @@ import {
     isCratePackingManagerOpenAtom,
     packingManagerTargetCrateIdAtom, CrateStatus, toCrateStatus } from '../../lib/atoms';
 import { X, ChevronRight, Search, Info, Loader2, PackagePlus, ArrowLeft, Layers, Weight, Maximize2, Zap, LayoutGrid, Rotate3d } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
 import { normalizeInventoryData, getCleanImageUrl, calculateCodesAndPrices, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
 import { vendors } from '../../lib/consts';

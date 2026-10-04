@@ -18,7 +18,7 @@ import {
 import { 
     Printer, Nfc, Package, DollarSign, Tag, Copy, X, FileSpreadsheet, Sparkles
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { calculateCodesAndPrices } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 

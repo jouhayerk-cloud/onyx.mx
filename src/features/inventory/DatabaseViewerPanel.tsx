@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { tr } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
 

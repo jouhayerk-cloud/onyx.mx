@@ -4,7 +4,7 @@ import { useAtom, useAtomValue } from 'jotai/react';
 import { inventoryAtom, storeInventoryAtom, exchangeRateAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { Search, Save, X, Edit2, AlertCircle, Loader2, Shield, Hash, Layers, DollarSign, Trash2, Box, Scale, Ruler, FileText, Tag, Palette, Barcode } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from '../onyxIsland/notify/toast';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
