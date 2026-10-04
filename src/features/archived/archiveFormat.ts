@@ -3,7 +3,7 @@ import type { ArchiveItem } from '../archive/types';
 
 export function parseDescription(description: string | null): { color: string | null; shape: string | null; title: string } {
     if (!description) return { color: null, shape: null, title: '' };
-    const str = description.trim();
+    const str = String(description).trim();
     const dashIndex = str.indexOf('-');
     if (dashIndex === -1) {
         return { color: null, shape: null, title: str };
