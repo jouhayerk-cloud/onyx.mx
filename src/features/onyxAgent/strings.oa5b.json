@@ -1,0 +1,18 @@
+[
+    ["Close", "Cerrar"],
+    ["Select robot", "Seleccionar robot"],
+    ["None", "Ninguno"],
+    ["Mirror to robot", "Reflejar en robot"],
+    ["How can I help you today?", "¿Cómo puedo ayudarte hoy?"],
+    ["Summarise today's inventory", "Resumir el inventario de hoy"],
+    ["Open the finance view", "Abrir la vista de finanzas"],
+    ["Say hello on the robot", "Saludar en el robot"],
+    ["Decline", "Rechazar"],
+    ["Approve", "Aprobar"],
+    ["What I did", "Lo que hice"],
+    ["Reset conversation", "Reiniciar conversación"],
+    ["Stop", "Detener"],
+    ["Send message", "Enviar mensaje"],
+    ["Type a message...", "Escribe un mensaje..."],
+    ["Onyx Assistant", "Asistente Onyx"]
+]
