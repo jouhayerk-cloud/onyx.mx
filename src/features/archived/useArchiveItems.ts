@@ -94,21 +94,21 @@ export function useArchiveItems(
 
         let finData: Record<string, number> = {};
         if (finance && itemsAgg.length > 0) {
-           const allIds = itemsAgg.map((i: any) => i.id);
-           for (let i = 0; i < allIds.length; i += 1000) {
-             const chunkIds = allIds.slice(i, i + 1000);
-             const { data, error: finErr } = await db
-               .from('archive_finance')
-               .select('item_id, total_usd')
-               .in('item_id', chunkIds);
-               
-             if (finErr) throw finErr;
-             if (data) {
-               data.forEach((r: any) => {
-                 finData[r.item_id] = r.total_usd;
-               });
-             }
-           }
+          // The ids go in the URL (.in), so keep every request small: 740 ids at once is a ~27 KB URL and the API answers 400.
+          // The finance total is only a KPI: if it fails the items must still load.
+          try {
+            const allIds = itemsAgg.map((i: any) => i.id);
+            const chunks: string[][] = [];
+            for (let i = 0; i < allIds.length; i += 80) chunks.push(allIds.slice(i, i + 80));
+            const results = await Promise.all(chunks.map(chunk =>
+              db.from('archive_finance').select('item_id, total_usd').in('item_id', chunk)));
+            for (const { data, error: finErr } of results) {
+              if (finErr) throw finErr;
+              (data || []).forEach((r: any) => { finData[r.item_id] = Number(r.total_usd) || 0; });
+            }
+          } catch {
+            finData = {};
+          }
         }
 
         if (mounted) {
