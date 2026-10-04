@@ -1,0 +1,12 @@
+[
+  ["Devices", "Dispositivos"],
+  ["Online", "En línea"],
+  ["Stale", "Atrasado"],
+  ["Offline", "Desconectado"],
+  ["Fleet", "Flota"],
+  ["Scans", "Escaneos"],
+  ["Workflows", "Flujos"],
+  ["Control", "Control"],
+  ["Admin", "Admin"],
+  ["Simulated data", "Datos simulados"]
+]
