@@ -1,0 +1,21 @@
+[
+  ["Overview", "Resumen"],
+  ["Telemetry", "Telemetría"],
+  ["Commands", "Comandos"],
+  ["Runs", "Ejecuciones"],
+  ["Info", "Información"],
+  ["Close", "Cerrar"],
+  ["Device Info", "Información del dispositivo"],
+  ["Not reported", "No reportado"],
+  ["ID", "ID"],
+  ["Role", "Rol"],
+  ["Last check-in", "Último reporte"],
+  ["Interval", "Intervalo"],
+  ["Session open until", "Sesión abierta hasta"],
+  ["Unknown device model", "Modelo de dispositivo desconocido"],
+  ["Loading...", "Cargando..."],
+  ["No telemetry yet", "Aún sin telemetría"],
+  ["1h", "1h"],
+  ["24h", "24h"],
+  ["7d", "7d"]
+]
