@@ -9,6 +9,7 @@ import { PicoBridgeView } from '../PicoBridgeView';
 const ScansTab = React.lazy(() => import('./ScansTab'));
 const WorkflowsTab = React.lazy(() => import('./WorkflowsTab'));
 const AdminTab = React.lazy(() => import('./AdminTab'));
+const DeviceDetailDrawer = React.lazy(() => import('./detail/DeviceDetailDrawer').then(m => ({ default: m.DeviceDetailDrawer })));
 
 const TABS = ['Fleet', 'Scans', 'Workflows', 'Control', 'Admin'] as const;
 type TabType = typeof TABS[number];
@@ -17,6 +18,7 @@ export const DevicesView: React.FC = () => {
   const fleet = useDeviceFleet();
   const now = useNow();
   const [activeTab, setActiveTab] = useState<TabType>('Fleet');
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -88,13 +90,25 @@ export const DevicesView: React.FC = () => {
 
       <div className="flex-1">
         <Suspense fallback={<ViewSkeleton />}>
-          {activeTab === 'Fleet' && <FleetSection fleet={fleet} />}
+          {activeTab === 'Fleet' && <FleetSection fleet={fleet} onSelect={setSelectedDeviceId} />}
           {activeTab === 'Scans' && <ScansTab devices={fleet.devices} />}
           {activeTab === 'Workflows' && <WorkflowsTab runs={fleet.runs} devices={fleet.devices} />}
           {activeTab === 'Control' && <PicoBridgeView hideHeader={true} hideFleet={true} />}
           {activeTab === 'Admin' && <AdminTab devices={fleet.devices} />}
         </Suspense>
       </div>
+      {selectedDeviceId && (
+        <Suspense fallback={null}>
+          <DeviceDetailDrawer
+            deviceId={selectedDeviceId}
+            onClose={() => setSelectedDeviceId(null)}
+            devices={fleet.devices}
+            telemetryFor={fleet.telemetryFor}
+            runs={fleet.runs}
+            commands={fleet.commands}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

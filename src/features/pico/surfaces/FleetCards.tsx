@@ -13,6 +13,7 @@ const CHIP: Record<Connectivity, string> = {
 const CHIP_LABEL: Record<Connectivity, string> = { online: 'Online', stale: 'Stale', offline: 'Offline' };
 
 interface FleetCardsProps {
+  onSelect?: (deviceId: string) => void;
   devices: DeviceState[];
   telemetryFor: (deviceId: string) => TelemetryPoint[];
   now: number;
@@ -25,7 +26,7 @@ const Metric: React.FC<{ label: string; children: React.ReactNode }> = ({ label,
   </div>
 );
 
-export const FleetCards: React.FC<FleetCardsProps> = ({ devices, telemetryFor, now }) => {
+export const FleetCards: React.FC<FleetCardsProps> = ({ devices, telemetryFor, now, onSelect }) => {
   if (devices.length === 0) {
     return (
       <div className="py-8 text-center">
@@ -40,7 +41,8 @@ export const FleetCards: React.FC<FleetCardsProps> = ({ devices, telemetryFor, n
         const conn = connectivity(d, now);
         const sessionOpen = !!d.session_open_until && Date.parse(d.session_open_until) > now;
         return (
-          <div key={d.device_id} className="rounded-xl bg-black/40 border border-white/5 p-4 space-y-3">
+          <div key={d.device_id} className={`rounded-xl bg-black/40 border border-white/5 p-4 space-y-3${onSelect ? ' cursor-pointer hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2' : ''}`}
+            {...(onSelect ? { role: 'button', tabIndex: 0, 'aria-label': `${tr('Open device')} ${d.device_id}`, onClick: () => onSelect(d.device_id), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(d.device_id); } } } : {})}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
