@@ -780,7 +780,8 @@ export const WorkbookView: React.FC = () => {
     }, [data.inv, user]);
 
     const docs326 = useMemo(() => docs.filter(d => d.workbook === '326' || !d.workbook), [docs]);
-    const docs825 = useMemo(() => docs.filter(d => d.workbook === '825'), [docs]);
+    // DetailsPanel archives items as 'v825', the book itself uses '825': accept both so archived items are not hidden
+    const docs825 = useMemo(() => docs.filter(d => d.workbook === '825' || d.workbook === 'v825'), [docs]);
     const visibleTabs = useMemo(() => {
         return WORKBOOK_TABS.filter(t => t.roles.includes(user?.role || 'Vendor'));
     }, [user?.role]);

@@ -63,6 +63,7 @@ const LogisticsView      = React.lazy(() => import('../logistics/LogisticsView')
 const FinanceView        = React.lazy(() => import('../finance/FinanceView').then(m => ({ default: m.FinanceView })));
 const AdminDashboard     = React.lazy(() => import('../dashboard/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const ClientOverview     = React.lazy(() => import('../dashboard/ClientOverview').then(m => ({ default: m.ClientOverview })));
+const WorkbookView       = React.lazy(() => import('../workbook/WorkbookView').then(m => ({ default: m.WorkbookView })));
 const StoreView          = React.lazy(() => import('../store/StoreView').then(m => ({ default: m.StoreView })));
 const RegStorePreview    = React.lazy(() => import('../store/RegStorePreview').then(m => ({ default: m.RegStorePreview })));
 const PackingModule      = React.lazy(() => import('../logistics/PackingModule').then(m => ({ default: m.PackingModule })));
@@ -332,6 +333,8 @@ export function MainAppView() {
             case 'dashboard': return (user?.role === 'Developer' || user?.role === 'Admin') ? <AdminDashboard /> : <InventoryView />;
             // Overview summarises finances and inventory: Admin and Developer only (never vendors or client roles).
             case 'overview': return (user?.role === 'Developer' || user?.role === 'Admin') ? <ClientOverview /> : <InventoryView />;
+            // Workbook holds the 326 book and the ARCHIVE 825 tab (finance, production, logistics tabs inside): Admin and Developer only.
+            case 'workbook': return (user?.role === 'Developer' || user?.role === 'Admin') ? <WorkbookView /> : <InventoryView />;
             case 'upload': return <UploadView />;
             case 'welcome': return <WelcomeView />;
             case 'inventory': return <InventoryView />;
@@ -429,6 +432,16 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">{tr("Dashboard")}</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">{tr("Dashboard")}</span>
+                            </li>
+                        )}
+                        {/* ── WORKBOOK (326 book, ARCHIVE 825, finance, production, logistics tabs): Admin and Developer only ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                            <li className={`sidebar-list-item ${activeView === 'workbook' ? 'active' : ''}`} onClick={() => { setActiveView('workbook'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Layers size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">{tr("Workbook")}</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">{tr("Workbook")}</span>
                             </li>
                         )}
                         {/* ── OVERVIEW (finances + inventory summary): Admin and Developer only ── */}
