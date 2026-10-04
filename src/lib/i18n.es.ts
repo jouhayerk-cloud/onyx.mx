@@ -271,6 +271,7 @@ export const esCatalog: Record<string, string> = {
   'Analytics': 'Analítica',
   'Finances': 'Finanzas',
   'Overview': 'Resumen',
+  'Dashboard': 'Panel',
   'Trucking': 'Transporte',
   'Viewer': 'Visor',
   'Labs': 'Labs',

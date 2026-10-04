@@ -329,7 +329,7 @@ export function MainAppView() {
         // show the ViewSkeleton while the JS is loading.
         switch (activeView as string) {
             case 'control': return <ControlView />;
-            case 'dashboard': return <AdminDashboard />;
+            case 'dashboard': return (user?.role === 'Developer' || user?.role === 'Admin') ? <AdminDashboard /> : <InventoryView />;
             // Overview summarises finances and inventory: Admin and Developer only (never vendors or client roles).
             case 'overview': return (user?.role === 'Developer' || user?.role === 'Admin') ? <ClientOverview /> : <InventoryView />;
             case 'upload': return <UploadView />;
@@ -421,6 +421,16 @@ export function MainAppView() {
                             />
                         )}
 
+                        {/* ── DASHBOARD (acquisition, expense and inventory graphs): Admin and Developer only ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                            <li className={`sidebar-list-item ${activeView === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveView('dashboard'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <LayoutDashboard size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">{tr("Dashboard")}</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">{tr("Dashboard")}</span>
+                            </li>
+                        )}
                         {/* ── OVERVIEW (finances + inventory summary): Admin and Developer only ── */}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
                             <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
