@@ -88,3 +88,18 @@ Chief per wave: typecheck, build, bundle check, merge to local `main`, Spanish s
 3. Several StackChans online: which one mirrors? **The one selected in the panel, default the first online.**
 4. Keep the sidebar "Onyx" entry? **Yes, it opens the same panel full-height.**
 5. Robot control needs the migrations and the gateway live (approved today; the gateway deploy still needs the GCP details). Until then the mock fleet drives the virtual twin.
+
+## 10. Onyx Island (v2, 2026-10-04): face + toasts + notification center as ONE continuous surface
+Ramses: the face must sit in the CENTER of the main top bar, free floating (no container), the bar may grow and the other elements may move. Toasts are redesigned Dynamic Island style, merged with the face, interactive, with a notification center. Reference (read-only, not installed): `git/ref-expo-dynamic-notifications` (React Native; its choreography is ported, its code is not used: enter = drop 0 ms, tint 110 ms, expand 340 ms, reveal 560 ms; exit = collapse 100 ms, drop 280 ms; auto-dismiss 3.6 s; swipe up -18 px or -420 px/s dismisses; one notification at a time with a single queued slot; goo effect between the island and the drop).
+
+**One element, four states** (the same DOM node morphs; the face never teleports):
+1. `rest`: only the face, free floating (no box), 56 px wide, eyes follow the pointer; a soft ring when something is unread.
+2. `peek` (a toast): the island grows from the face into a 380 px pill; the face moves to the left edge; icon, title, message, optional action; auto-dismiss 3.6 s, paused on hover or focus; swipe up or Esc dismisses; `loading` stays until updated by id.
+3. `expanded`: click the toast: a card (max 440 px) with detail and up to two actions.
+4. `center`: click the face at rest: notification center (tabs Notifications | Assistant). Assistant = the existing agent panel embedded.
+Face expression follows the toast kind: success=happy, error=error, warning=alert, loading=thinking, info=calm, agent=speaking.
+
+**Layout**: a 64 px `IslandBand` is added on top of the existing tool bar (so the 4,600-line header is not restructured); the island is centered in it, positioned against the non-scrolling wrapper like the inventory notch tab. Left and right of the band stay free for later (notification count, module title).
+**Performance**: SVG face + CSS only; springs are CSS `linear()` easings generated once; the goo SVG filter exists only during the 400 ms enter/exit; no backdrop-filter; one timer owner (the store).
+**API**: `src/features/onyxIsland/notify/` store + a drop-in `toast` object with the react-hot-toast surface the app really uses (success, error, loading, dismiss, plain call, message as a function renderer, `id` to update in place); the 51 files importing `react-hot-toast` are re-pointed by script; `Toaster` is removed from `App.tsx`; `useNotify` and the multi-window `sharedToastAtom` keep working.
+**Waves**: V1 (parallel) OI1 store + compat toast, OI2 island container and motion, OI3 toast content + notification center + assistant tab, OI4 band + live region; Chief integrates (re-point imports, mount the band, remove Toaster, typecheck, build) and runs reviews RI1 (security/perf) and RI2 (a11y/motion).
