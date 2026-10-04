@@ -48,6 +48,7 @@ import userIcons from '../../components/userIcons';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { UniversalToolsBar } from './UniversalToolsBar';
 import { ArchivedToolsBar } from '../archived/ArchivedChrome';
+import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { InventorySelectionDock } from './InventorySelectionDock';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { ViewSkeleton } from '../../components/ui/ViewSkeleton';
@@ -187,6 +188,7 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = React.memo(({ view
 
 export function MainAppView() {
     const t = useTranslation();
+    const islandOn = useAtomValue(islandCommandsEnabledAtom);
     // Publish the top bar's height so the page can flow under it (topbarOverlay.css).
     const appContentRef = useRef<HTMLDivElement | null>(null);
     useLayoutEffect(() => {
@@ -594,7 +596,7 @@ export function MainAppView() {
                     <LiquidBar className="app-topbar sticky top-0 z-[500] w-full flex flex-col bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl">
                         <MainHeader />
                         <UniversalToolsBar />
-                        {activeView === 'workbook' && <ArchivedToolsBar />}
+                        {activeView === 'workbook' && !islandOn && <ArchivedToolsBar />}
                     </LiquidBar>
 
                     <main className="flex-1 flex flex-col min-h-0 p-0 m-0">

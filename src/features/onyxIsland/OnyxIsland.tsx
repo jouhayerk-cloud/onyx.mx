@@ -1,24 +1,29 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState, useMemo } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { m, LazyMotion, domMax, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Search, X, ChevronLeft } from 'lucide-react';
 import { OnyxFace } from '../onyxAgent/face/OnyxFace';
 import { useGaze } from '../onyxAgent/face/useGaze';
 import { onyxAgentPhaseAtom } from '../onyxAgent/agentState';
 import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToastTimer } from './notify/store';
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
-import { islandModeAtom, expressionForKind, type IslandReadout } from './islandState';
+import { islandModeAtom, islandPaneAtom, expressionForKind, type IslandReadout } from './islandState';
 import { SPRING, SPRING_SLOW, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
+import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
+import type { ToolDescriptor } from '../../lib/toolRegistry';
+import { IslandLaunchers } from './IslandLaunchers';
+import { IslandToolsGrid } from './IslandToolsGrid';
+import toast from './notify/toast';
 
 const NotificationCenter = lazy(() => import('./NotificationCenter').then(m => ({ default: m.NotificationCenter })));
 
-// A failed lazy chunk (offline, stale deploy) must not unmount the whole app: show a short message instead.
 class ChunkBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
     return this.state.failed
-      ? <div className="p-4 text-[13px] text-white/60">{tr('Could not load the notification center. Check your connection and try again.')}</div>
+      ? <div className="p-4 text-[13px] text-white/60">{tr('Could not load the module. Check your connection and try again.')}</div>
       : this.props.children;
   }
 }
@@ -60,49 +65,88 @@ function useMediaQuery(query: string): boolean {
 
 export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ readout = null }) => {
   const [mode, setMode] = useAtom(islandModeAtom);
+  const [pane, setPane] = useAtom(islandPaneAtom);
   const { current, unread } = useIslandNotifications();
   const phase = useAtomValue(onyxAgentPhaseAtom);
+  const allTools = useAtomValue(allToolsAtom);
+  const pinnedOverrides = useAtomValue(pinnedToolsAtom);
+  const commandsEnabled = useAtomValue(islandCommandsEnabledAtom);
   
   const isReduced = useReducedMotion();
   const transition = isReduced ? { duration: 0 } : SPRING;
   const transitionSlow = isReduced ? { duration: 0 } : SPRING_SLOW;
 
   const islandRef = useRef<HTMLDivElement>(null);
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const filterInputRef = useRef<HTMLInputElement>(null);
   const faceBtnRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  const [filterText, setFilterText] = useState('');
 
   useGaze(islandRef);
   const isIdle = useIdleTimer(10 * 60 * 1000);
-  // The page figures dock beside the face when there is room; on a narrow bar they move into the notification center.
-  const wide = useMediaQuery('(min-width: 900px)');
-  const docked = !!readout && wide && mode === 'rest';
 
-  // Mode follows the current toast. A toast that arrives while the center is open waits (the center lists it); when the center closes it shows.
+  const xl = useMediaQuery('(min-width: 1280px)');
+  const lg = useMediaQuery('(min-width: 1024px)');
+  const md = useMediaQuery('(min-width: 768px)');
+  const maxLaunchers = xl ? 6 : lg ? 4 : md ? 2 : 0;
+  
+  const pinnedTools = useMemo(() => {
+    if (!commandsEnabled) return [];
+    return allTools.filter(t => isToolPinned(t, pinnedOverrides)).slice(0, maxLaunchers);
+  }, [allTools, pinnedOverrides, maxLaunchers, commandsEnabled]);
+
+  const leftLaunchers = pinnedTools.slice(0, Math.ceil(pinnedTools.length / 2));
+  const rightLaunchers = pinnedTools.slice(Math.ceil(pinnedTools.length / 2));
+
+  const hasLaunchers = leftLaunchers.length > 0 || rightLaunchers.length > 0;
+  const docked = (!!readout || hasLaunchers) && mode === 'rest';
+
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (current) {
       if (collapseTimer.current) { clearTimeout(collapseTimer.current); collapseTimer.current = null; }
-      // a toast that is only a custom renderer (no message text) needs the card, not the one-line pill
-      if (mode === 'rest') setMode(current.render && !current.message ? 'expanded' : 'peek');
-    } else if ((mode === 'peek' || mode === 'expanded') && !collapseTimer.current) {
+      if (mode === 'rest') setMode(current.render && !current.message ? 'card' : 'peek');
+    } else if ((mode === 'peek' || mode === 'card') && !collapseTimer.current) {
       collapseTimer.current = setTimeout(() => { collapseTimer.current = null; setMode('rest'); }, EXIT_COLLAPSE_DELAY_MS);
     }
   }, [current, mode, setMode]);
+
   useEffect(() => () => {
     if (collapseTimer.current) clearTimeout(collapseTimer.current);
-    resumeToastTimer();   // never leave the store timer paused when the island unmounts while hovered
+    resumeToastTimer();
   }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || mode === 'rest') return;
-      setMode('rest');
-      if (mode !== 'center' && current) dismissNotification();   // Escape in the center must not also kill a toast
+      const isCmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k';
+      if (isCmdK) {
+        const isInput = document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || (document.activeElement as HTMLElement)?.isContentEditable;
+        if (isInput && mode !== 'surface') return;
+        
+        e.preventDefault();
+        if (mode === 'surface') {
+          setMode('rest');
+        } else {
+          setMode('surface');
+          setPane('tools');
+        }
+        return;
+      }
+
+      if (e.key === 'Escape' && mode !== 'rest') {
+        if (mode === 'surface' && pane !== 'tools') {
+          setPane('tools');
+          return;
+        }
+        setMode('rest');
+        if (mode !== 'surface' && current) dismissNotification();
+      }
     };
     const onPointerDown = (e: PointerEvent) => {
-      if (mode === 'rest' || mode === 'peek') return;   // clicking elsewhere does not dismiss a toast
+      if (mode === 'rest' || mode === 'peek') return;
       if (islandRef.current && !islandRef.current.contains(e.target as Node)) {
-        setMode(mode === 'expanded' && current ? 'peek' : 'rest');
+        setMode(mode === 'card' && current ? 'peek' : 'rest');
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -111,16 +155,24 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [mode, current, setMode]);
+  }, [mode, current, setMode, pane, setPane]);
 
   const prevModeRef = useRef(mode);
   useEffect(() => {
-    if (mode === 'center' && prevModeRef.current !== 'center') {
-      closeBtnRef.current?.focus();
-    } else if (mode === 'rest' && prevModeRef.current === 'center') {
-      // give focus back only if the user has not already moved on to something else (a sidebar link, a field)
+    if (mode === 'surface' && prevModeRef.current !== 'surface') {
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      setFilterText('');
+      // focus input next frame
+      requestAnimationFrame(() => filterInputRef.current?.focus());
+    } else if (mode === 'rest' && prevModeRef.current === 'surface') {
       const ae = document.activeElement;
-      if (!ae || ae === document.body || islandRef.current?.contains(ae)) faceBtnRef.current?.focus();
+      if (!ae || ae === document.body || islandRef.current?.contains(ae)) {
+        if (previousFocusRef.current && document.contains(previousFocusRef.current)) {
+          previousFocusRef.current.focus();
+        } else {
+          faceBtnRef.current?.focus();
+        }
+      }
     }
     prevModeRef.current = mode;
   }, [mode]);
@@ -133,26 +185,54 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
   const handleFaceClick = () => {
     if (mode === 'rest') {
-      setMode('center');
+      setMode('surface');
+      setPane('tools');
     }
   };
 
   const handleToastClick = () => {
-    if (mode === 'peek') setMode('expanded');
-    else if (mode === 'expanded') setMode('peek');
+    if (mode === 'peek') setMode('card');
+    else if (mode === 'card') setMode('peek');
   };
 
   const handleDragEnd = (e: any, info: any) => {
-    if ((info.offset.y <= SWIPE_DISTANCE && info.velocity.y <= 0) || info.velocity.y <= SWIPE_VELOCITY) {   // upward intent only
+    if (mode === 'surface' && !md) {
+      if (info.offset.y >= SWIPE_DISTANCE && info.velocity.y >= 0) {
+        setMode('rest');
+      }
+      return;
+    }
+    if ((info.offset.y <= SWIPE_DISTANCE && info.velocity.y <= 0) || info.velocity.y <= SWIPE_VELOCITY) {
       dismissNotification();
+    }
+  };
+
+  const runTool = (tool: ToolDescriptor) => {
+    if (tool.kind === 'widget') {
+      setMode('surface');
+      setPane('tools');
+      setTimeout(() => {
+        const tile = document.getElementById(`tile-${tool.id}`);
+        if (tile) {
+          tile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const focusable = tile.querySelector('button, input, select, textarea, [tabindex]') as HTMLElement;
+          if (focusable) focusable.focus();
+        }
+      }, 150);
+      return;
+    }
+    try {
+      tool.run?.();
+    } catch (err: any) {
+      toast.error(err?.message || tr('Failed to execute tool'));
     }
   };
 
   const size = mode === 'rest' ? 56 : 44;
   
-  let radius = '32px';
-  if (mode === 'expanded' || mode === 'center') radius = '28px';
-  else if (mode === 'rest') radius = '28px';
+  let radius = '28px';
+  if (mode === 'rest' && !docked) radius = '50%';
+  else if (mode === 'surface' && !md) radius = '28px 28px 0 0';
 
   const [goo, setGoo] = useState(false);
   const prevModeForGoo = useRef(mode);
@@ -171,25 +251,45 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     dragConstraints: { top: -24, bottom: 0 },
     dragElastic: 0.2,
     onDragEnd: handleDragEnd
+  } : mode === 'surface' && !md && !isReduced ? {
+    drag: 'y' as const,
+    dragConstraints: { top: 0, bottom: 0 },
+    dragElastic: 0.2,
+    onDragEnd: handleDragEnd
   } : {};
 
-  const ariaProps: React.AriaAttributes & { role?: string } = mode === 'center' 
-    ? { role: 'dialog', 'aria-modal': false, 'aria-label': tr('Notification center') }
+  const ariaProps: React.AriaAttributes & { role?: string } = mode === 'surface' 
+    ? { role: 'dialog', 'aria-modal': false, 'aria-label': tr('Onyx command surface expanded') }
     : { role: 'group', 'aria-label': tr('Onyx assistant and notifications') };
 
   let rootStyle: React.CSSProperties = {};
   if (mode === 'rest') {
-    rootStyle = docked ? { width: 'min(560px, calc(100vw - 24px))', height: 56 } : { width: 56, height: 56 };
+    rootStyle = docked ? { width: 'min(760px, calc(100vw - 24px))', height: 56 } : { width: 56, height: 56 };
   } else if (mode === 'peek') {
     rootStyle = { width: 'min(380px, calc(100vw - 24px))', height: 64 };
-  } else if (mode === 'expanded') {
+  } else if (mode === 'card') {
     rootStyle = { width: 'min(440px, calc(100vw - 24px))', maxHeight: 280 };
-  } else if (mode === 'center') {
-    rootStyle = { width: 'min(460px, calc(100vw - 24px))', height: 'min(560px, calc(100vh - 96px))' };
+  } else if (mode === 'surface') {
+    if (!md) {
+      // Bottom sheet
+      rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxHeight: '80vh' };
+    } else {
+      const w = xl ? 720 : lg ? 600 : 480;
+      rootStyle = { width: `min(${w}px, calc(100vw - 24px))`, maxHeight: 'min(560px, calc(100vh - 96px))' };
+    }
   }
+
+  // Accessibility announcement for surface
+  useEffect(() => {
+    if (mode === 'surface') {
+      const el = document.getElementById('onyx-island-announcer');
+      if (el) el.textContent = tr('Onyx command surface expanded');
+    }
+  }, [mode]);
 
   return (
     <LazyMotion features={domMax} strict>
+      <div id="onyx-island-announcer" aria-live="polite" className="onyx-sr-only" />
       <m.div
         ref={islandRef}
         layout
@@ -216,10 +316,15 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
           </div>
         )}
 
-        <div className="onyx-island-surface w-full h-full flex flex-col" style={{ '--island-r': radius } as React.CSSProperties}>
+        <div className="onyx-island-surface w-full h-full flex flex-col" style={{ '--island-r': radius, maxHeight: (mode === 'surface' || mode === 'card') ? rootStyle.maxHeight : undefined } as React.CSSProperties}>
           {mode === 'rest' && (
             <div className={docked ? 'onyx-island-dock' : 'w-full h-full'}>
-              {docked && <div className="onyx-island-dock-side onyx-island-dock-side--left">{readout!.left}</div>}
+              {docked && (
+                <div className="onyx-island-dock-side onyx-island-dock-side--left">
+                  {readout?.left}
+                  <IslandLaunchers tools={leftLaunchers} onRun={runTool} />
+                </div>
+              )}
               <button
                 ref={faceBtnRef}
                 type="button"
@@ -233,11 +338,16 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                 </m.div>
                 {unread > 0 && <span className="onyx-island-unread" />}
               </button>
-              {docked && <div className="onyx-island-dock-side onyx-island-dock-side--right">{readout!.right}</div>}
+              {docked && (
+                <div className="onyx-island-dock-side onyx-island-dock-side--right">
+                  <IslandLaunchers tools={rightLaunchers} onRun={runTool} />
+                  {readout?.right}
+                </div>
+              )}
             </div>
           )}
 
-          {(mode === 'peek' || mode === 'expanded') && (
+          {(mode === 'peek' || mode === 'card') && (
             <div className="flex items-start w-full h-full p-2 cursor-pointer" onClick={handleToastClick}>
               <m.div layoutId="onyx-island-face" className="shrink-0 flex items-center justify-center h-12 w-12">
                 <OnyxFace expression={faceExpr} bare size={size} tone="mono" />
@@ -253,7 +363,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                   >
                     <IslandToastContent 
                       notification={current} 
-                      expanded={mode === 'expanded'} 
+                      expanded={mode === 'card'} 
                       onToggleExpand={handleToastClick}
                       onDismiss={() => dismissNotification()}
                     />
@@ -263,32 +373,68 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
             </div>
           )}
 
-          {mode === 'center' && (
+          {mode === 'surface' && (
             <div className="flex flex-col w-full h-full">
-              <div className="flex items-center justify-between p-2 shrink-0 border-b border-white/10">
-                <m.div layoutId="onyx-island-face" className="shrink-0 flex items-center justify-center h-12 w-12">
-                  <OnyxFace expression={faceExpr} bare size={size} tone="mono" />
-                </m.div>
+              {/* Surface Header */}
+              <div className="flex items-center gap-2 p-2 shrink-0 border-b border-white/10">
+                {pane === 'tools' ? (
+                  <m.div layoutId="onyx-island-face" className="shrink-0 flex items-center justify-center h-12 w-12">
+                    <OnyxFace expression={faceExpr} bare size={size} tone="mono" />
+                  </m.div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPane('tools')}
+                    aria-label={tr('Back')}
+                    className="w-12 h-12 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
+                
+                {pane === 'tools' && (
+                  <div className="flex-1 flex items-center relative">
+                    <Search size={18} className="absolute left-3 text-white/40 pointer-events-none" />
+                    <input
+                      ref={filterInputRef}
+                      type="text"
+                      placeholder={tr('Search tools...')}
+                      value={filterText}
+                      onChange={e => setFilterText(e.target.value)}
+                      className="w-full isl-b20 text-[14px] text-white placeholder-white/40 rounded-full py-2.5 pl-10 pr-4 outline-none border border-white/10 focus:border-white/20 transition-colors"
+                    />
+                  </div>
+                )}
+                {pane !== 'tools' && (
+                  <div className="flex-1 text-[15px] font-semibold">
+                    {pane === 'chat' ? tr('Assistant') : tr('Notifications')}
+                  </div>
+                )}
+
                 <button
-                  ref={closeBtnRef}
                   type="button"
                   aria-label={tr('Close')}
-                  className="p-2 rounded-full hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white"
                   onClick={() => setMode('rest')}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  <X size={20} />
                 </button>
               </div>
-              {readout && (
-                <div className="onyx-island-readout-row flex items-center justify-between gap-2 px-2 py-1 shrink-0 border-b border-white/10">
-                  {readout.left}
-                  {readout.right}
-                </div>
-              )}
-              <div className="flex-1 min-h-0 overflow-y-auto">
+
+              {/* Surface Body */}
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                 <ChunkBoundary>
-                  <Suspense fallback={<div />}>
-                    <NotificationCenter onClose={() => setMode('rest')} />
+                  <Suspense fallback={<div className="h-20" />}>
+                    {pane === 'tools' && (
+                      <IslandToolsGrid 
+                        tools={commandsEnabled ? allTools : []} 
+                        filter={filterText} 
+                        onRun={runTool} 
+                        onOpenPane={setPane}
+                      />
+                    )}
+                    {pane === 'notifications' && <NotificationCenter tab="notifications" hideTabs onClose={() => setMode('rest')} />}
+                    {pane === 'chat' && <NotificationCenter tab="assistant" hideTabs onClose={() => setMode('rest')} />}
                   </Suspense>
                 </ChunkBoundary>
               </div>

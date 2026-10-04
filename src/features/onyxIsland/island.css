@@ -114,8 +114,8 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 }
 
 .onyx-island--peek {}
-.onyx-island--expanded {}
-.onyx-island--center {}
+.onyx-island--card {}
+.onyx-island--surface {}
 
 @keyframes onyx-pulse {
   0% { transform: scale(0.95); opacity: 0.5; }
@@ -151,3 +151,14 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
     animation: none;
   }
 }
+
+/* Fills without the bg-white/* and bg-black/* utilities: slab.css flattens those to an opaque colour. */
+.isl-w5 { background-color: rgba(255, 255, 255, 0.05); }
+.isl-w10 { background-color: rgba(255, 255, 255, 0.10); }
+.isl-w15 { background-color: rgba(255, 255, 255, 0.15); }
+.isl-w20 { background-color: rgba(255, 255, 255, 0.20); }
+.isl-w50 { background-color: rgba(255, 255, 255, 0.50); }
+.isl-hw5:hover { background-color: rgba(255, 255, 255, 0.05); }
+.isl-hw10:hover { background-color: rgba(255, 255, 255, 0.10); }
+.isl-hw20:hover { background-color: rgba(255, 255, 255, 0.20); }
+.isl-b20 { background-color: rgba(0, 0, 0, 0.20); }

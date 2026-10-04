@@ -153,6 +153,9 @@ import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 import { tr } from '../../lib/i18n';
 import { IslandBand } from '../onyxIsland/IslandBand';
 import { ArchivedBar, ArchivedReadout } from '../archived/ArchivedChrome';
+import { ArchivedToolsRegistrar } from '../archived/archivedTools';
+import { InventoryToolsRegistrar } from './inventoryTools';
+import { islandCommandsEnabledAtom, useRegisterTools } from '../../lib/toolRegistry';
 
 declare const __APP_VERSION__: string;
 
@@ -4296,7 +4299,15 @@ export function MainHeader() {
     const [showExport, setShowExport] = useState(false);
     const isInventory = activeView === 'inventory';
     const isArchived = activeView === 'workbook' && (user?.role === 'Developer' || user?.role === 'Admin');
+    const islandOn = useAtomValue(islandCommandsEnabledAtom);   // the island owns the tools of every migrated module
     const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
+
+    // Global tools: the Export disclosure of the right-hand cluster, now in the island's EXPORT group.
+    useRegisterTools('global', [
+        { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
+        { id: 'global.export.seasons', moduleId: 'global', label: tr('Seasons'), icon: Layers, kind: 'widget', group: tr('Export'), order: 20, render: () => <SeasonToggles /> },
+        { id: 'global.export.sheets', moduleId: 'global', label: tr('Sheets'), icon: FileSpreadsheet, kind: 'widget', group: tr('Export'), order: 30, render: () => <SheetsUploadButton /> },
+    ], islandOn);
 
     return (
         <>
@@ -4309,6 +4320,8 @@ export function MainHeader() {
                 is clipped by overflow-y-hidden. */}
             <div className="w-full shrink-0 relative">
             {/* Onyx Island: the face (free floating, centred), the toasts and the notification center, one element */}
+            {activeView === 'inventory' && <InventoryToolsRegistrar widgets={{ DeployableSearch, InventoryAddButton }} />}
+            {isArchived && <ArchivedToolsRegistrar />}
             <IslandBand
                 readout={activeView === 'inventory'
                     ? { left: <InfoNotch part="stats" />, right: <InfoNotch part="user" /> }
@@ -4360,7 +4373,7 @@ export function MainHeader() {
                         different baseline from the right-hand one and opened a band
                         of dead space under both. */}
                     <div className="flex items-end gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
-                        {activeView === 'inventory' && <InventoryBar />}
+                        {activeView === 'inventory' && !islandOn && <InventoryBar />}
                         {activeView === 'store' && <StoreBar />}
                         {activeView === 'finance' && <FinanceBar />}
                         {(activeView === 'logistics' || activeView === 'warehouse' || activeView === 'trucking') && <LogisticsBar />}
@@ -4496,7 +4509,7 @@ export function MainHeader() {
                         </button>
                         */}
                         
-                        {showExport && (
+                        {!islandOn && showExport && (
                             <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <SeasonToggles />
                                 <SheetsUploadButton />
@@ -4517,11 +4530,13 @@ export function MainHeader() {
                         {/* Add stays outside the disclosure on purpose: creating an
                             item is the most frequent action here and must never sit
                             one click behind a toggle. */}
-                        {activeView === 'inventory' && <InventoryAddButton />}
+                        {!islandOn && activeView === 'inventory' && <InventoryAddButton />}
 
                         {/* EXPORT — the mirror of TOOLS at the other edge. */}
-                        <ToolButton icon={FolderUp} label={tr("Export")} active={showExport}
-                            title={tr("Export tools")} onClick={() => setShowExport(!showExport)} />
+                        {!islandOn && (
+                            <ToolButton icon={FolderUp} label={tr("Export")} active={showExport}
+                                title={tr("Export tools")} onClick={() => setShowExport(!showExport)} />
+                        )}
                     </div>
 
 

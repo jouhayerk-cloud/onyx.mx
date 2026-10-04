@@ -55,7 +55,7 @@ const NotificationItem: React.FC<{ notification: IslandNotification; now: number
     return (
         <div 
             role="listitem"
-            className="flex gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer select-none group"
+            className="flex gap-3 p-3 rounded-xl isl-hw5 transition-colors cursor-pointer select-none group"
             onClick={() => setExpanded(!expanded)}
         >
             <div className="shrink-0 mt-0.5 relative">
@@ -84,7 +84,7 @@ const NotificationItem: React.FC<{ notification: IslandNotification; now: number
                             <button
                                 key={i}
                                 onClick={(e) => { e.stopPropagation(); act.onClick(); }}
-                                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-md text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                                className="px-3 py-1.5 isl-w10 isl-hw20 text-white rounded-md text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                             >
                                 {act.label}
                             </button>
@@ -94,7 +94,7 @@ const NotificationItem: React.FC<{ notification: IslandNotification; now: number
             </div>
             {count > 1 && (
                 <div className="shrink-0">
-                    <span className="text-[11px] font-medium px-1.5 py-0.5 bg-white/10 text-white/90 rounded-full">
+                    <span className="text-[11px] font-medium px-1.5 py-0.5 isl-w10 text-white/90 rounded-full">
                         &times;{count}
                     </span>
                 </div>
@@ -103,11 +103,15 @@ const NotificationItem: React.FC<{ notification: IslandNotification; now: number
     );
 };
 
-export const NotificationCenter: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('notifications');
+export const NotificationCenter: React.FC<{ onClose: () => void; tab?: 'notifications' | 'assistant'; hideTabs?: boolean }> = ({ onClose, tab, hideTabs }) => {
+    const [activeTab, setActiveTab] = useState<Tab>(tab || 'notifications');
     const [filter, setFilter] = useState<Filter>('all');
     const { history } = useIslandNotifications();
     const [now, setNow] = useState(Date.now());
+
+    useEffect(() => {
+        if (tab) setActiveTab(tab);
+    }, [tab]);
 
     useEffect(() => {
         const interval = setInterval(() => setNow(Date.now()), 30000);
@@ -143,31 +147,33 @@ export const NotificationCenter: React.FC<{ onClose: () => void }> = ({ onClose 
     return (
         <div className="flex flex-col h-full overflow-hidden text-white">
             {/* Tabs */}
-            <div className="flex p-3 pb-0 shrink-0">
-                <div 
-                    role="tablist" 
-                    className="flex bg-black/20 p-1 rounded-lg w-full gap-1 border border-white/5"
-                >
-                    <button
-                        role="tab"
-                        aria-selected={activeTab === 'notifications'}
-                        onClick={() => setActiveTab('notifications')}
-                        onKeyDown={(e) => handleTabKeyDown(e, 'assistant')}
-                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${activeTab === 'notifications' ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+            {!hideTabs && (
+                <div className="flex p-3 pb-0 shrink-0">
+                    <div 
+                        role="tablist" 
+                        className="flex isl-b20 p-1 rounded-lg w-full gap-1 border border-white/5"
                     >
-                        {tr('Notifications')}
-                    </button>
-                    <button
-                        role="tab"
-                        aria-selected={activeTab === 'assistant'}
-                        onClick={() => setActiveTab('assistant')}
-                        onKeyDown={(e) => handleTabKeyDown(e, 'notifications')}
-                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${activeTab === 'assistant' ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
-                    >
-                        {tr('Assistant')}
-                    </button>
+                        <button
+                            role="tab"
+                            aria-selected={activeTab === 'notifications'}
+                            onClick={() => setActiveTab('notifications')}
+                            onKeyDown={(e) => handleTabKeyDown(e, 'assistant')}
+                            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${activeTab === 'notifications' ? 'isl-w15 text-white shadow-sm' : 'text-white/60 hover:text-white isl-hw5'}`}
+                        >
+                            {tr('Notifications')}
+                        </button>
+                        <button
+                            role="tab"
+                            aria-selected={activeTab === 'assistant'}
+                            onClick={() => setActiveTab('assistant')}
+                            onKeyDown={(e) => handleTabKeyDown(e, 'notifications')}
+                            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${activeTab === 'assistant' ? 'isl-w15 text-white shadow-sm' : 'text-white/60 hover:text-white isl-hw5'}`}
+                        >
+                            {tr('Assistant')}
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="flex-1 overflow-hidden relative mt-2">
                 {/* Notifications View */}
@@ -182,7 +188,7 @@ export const NotificationCenter: React.FC<{ onClose: () => void }> = ({ onClose 
                                     role="tab"
                                     aria-selected={filter === f}
                                     onClick={() => setFilter(f)}
-                                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white border ${filter === f ? 'bg-white/10 text-white border-white/20' : 'bg-transparent text-white/50 border-transparent hover:bg-white/5'}`}
+                                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white border ${filter === f ? 'isl-w10 text-white border-white/20' : 'bg-transparent text-white/50 border-transparent isl-hw5'}`}
                                 >
                                     {f === 'all' ? tr('All') : f === 'alerts' ? tr('Alerts') : tr('Agent')}
                                 </button>
@@ -190,7 +196,7 @@ export const NotificationCenter: React.FC<{ onClose: () => void }> = ({ onClose 
                         </div>
                         <button
                             onClick={clearHistory}
-                            className="text-[11px] font-semibold text-white/50 hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white px-2 py-1 rounded hover:bg-white/5"
+                            className="text-[11px] font-semibold text-white/50 hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white px-2 py-1 rounded isl-hw5"
                         >
                             {tr('Clear all')}
                         </button>
