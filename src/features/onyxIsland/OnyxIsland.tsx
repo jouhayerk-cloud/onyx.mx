@@ -7,7 +7,7 @@ import { onyxAgentPhaseAtom } from '../onyxAgent/agentState';
 import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToastTimer } from './notify/store';
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
-import { islandModeAtom, expressionForKind } from './islandState';
+import { islandModeAtom, expressionForKind, type IslandReadout } from './islandState';
 import { SPRING, SPRING_SLOW, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
 
 const NotificationCenter = lazy(() => import('./NotificationCenter').then(m => ({ default: m.NotificationCenter })));
@@ -46,7 +46,19 @@ function useIdleTimer(timeoutMs: number): boolean {
   return idle;
 }
 
-export const OnyxIsland: React.FC = () => {
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setMatches(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, [query]);
+  return matches;
+}
+
+export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ readout = null }) => {
   const [mode, setMode] = useAtom(islandModeAtom);
   const { current, unread } = useIslandNotifications();
   const phase = useAtomValue(onyxAgentPhaseAtom);
@@ -61,6 +73,9 @@ export const OnyxIsland: React.FC = () => {
 
   useGaze(islandRef);
   const isIdle = useIdleTimer(10 * 60 * 1000);
+  // The page figures dock beside the face when there is room; on a narrow bar they move into the notification center.
+  const wide = useMediaQuery('(min-width: 900px)');
+  const docked = !!readout && wide && mode === 'rest';
 
   // Mode follows the current toast. A toast that arrives while the center is open waits (the center lists it); when the center closes it shows.
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -164,7 +179,7 @@ export const OnyxIsland: React.FC = () => {
 
   let rootStyle: React.CSSProperties = {};
   if (mode === 'rest') {
-    rootStyle = { width: 56, height: 56 };
+    rootStyle = docked ? { width: 'min(560px, calc(100vw - 24px))', height: 56 } : { width: 56, height: 56 };
   } else if (mode === 'peek') {
     rootStyle = { width: 'min(380px, calc(100vw - 24px))', height: 64 };
   } else if (mode === 'expanded') {
@@ -178,7 +193,7 @@ export const OnyxIsland: React.FC = () => {
       <m.div
         ref={islandRef}
         layout
-        className={`onyx-island onyx-island--${mode}`}
+        className={`onyx-island onyx-island--${mode}${docked ? ' onyx-island--docked' : ''}`}
         style={rootStyle}
         transition={transition}
         {...ariaProps}
@@ -203,19 +218,23 @@ export const OnyxIsland: React.FC = () => {
 
         <div className="onyx-island-surface w-full h-full flex flex-col" style={{ '--island-r': radius } as React.CSSProperties}>
           {mode === 'rest' && (
-            <button
-              ref={faceBtnRef}
-              type="button"
-              className="relative w-full h-full flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-[var(--island-r)]"
-              aria-label={tr('Open notifications and assistant')}
-              aria-expanded="false"
-              onClick={handleFaceClick}
-            >
-              <m.div layoutId="onyx-island-face">
-                <OnyxFace expression={faceExpr} bare size={size} tone="mono" />
-              </m.div>
-              {unread > 0 && <span className="onyx-island-unread" />}
-            </button>
+            <div className={docked ? 'onyx-island-dock' : 'w-full h-full'}>
+              {docked && <div className="onyx-island-dock-side onyx-island-dock-side--left">{readout!.left}</div>}
+              <button
+                ref={faceBtnRef}
+                type="button"
+                className={`relative flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-full ${docked ? 'w-14 h-14 shrink-0' : 'w-full h-full'}`}
+                aria-label={tr('Open notifications and assistant')}
+                aria-expanded="false"
+                onClick={handleFaceClick}
+              >
+                <m.div layoutId="onyx-island-face">
+                  <OnyxFace expression={faceExpr} bare size={size} tone="mono" />
+                </m.div>
+                {unread > 0 && <span className="onyx-island-unread" />}
+              </button>
+              {docked && <div className="onyx-island-dock-side onyx-island-dock-side--right">{readout!.right}</div>}
+            </div>
           )}
 
           {(mode === 'peek' || mode === 'expanded') && (
@@ -260,6 +279,12 @@ export const OnyxIsland: React.FC = () => {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
+              {readout && (
+                <div className="onyx-island-readout-row flex items-center justify-between gap-2 px-2 py-1 shrink-0 border-b border-white/10">
+                  {readout.left}
+                  {readout.right}
+                </div>
+              )}
               <div className="flex-1 min-h-0 overflow-y-auto">
                 <ChunkBoundary>
                   <Suspense fallback={<div />}>

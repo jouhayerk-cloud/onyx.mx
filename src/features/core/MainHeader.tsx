@@ -142,7 +142,7 @@ import {
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, Archive,
     PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup, CloudUpload,
-    Wrench, ClipboardClock, LayoutTemplate, Tag, ChevronDown, Pointer, QrCode, Table
+    Wrench, ClipboardClock, LayoutTemplate, Tag, Pointer, QrCode, Table
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -582,7 +582,7 @@ const ShippingStats: React.FC = () => {
  * in beside it and still opens Settings; it stops the notch from being a bare
  * strip of digits and gives the right half of it a purpose.
  */
-const InfoNotch: React.FC = () => {
+const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'both' }) => {
     const typesCount = useAtomValue(filteredInventoryCountAtom);
     const totalQty = useAtomValue(filteredInventoryTotalQtyAtom);
     const totalValue = useAtomValue(filteredInventoryTotalValueAtom);
@@ -627,36 +627,46 @@ const InfoNotch: React.FC = () => {
         ? user.name.split(' ')[0]
         : user?.email?.split('@')[0] || 'User';
 
+    const statsBtn = (
+        <button
+            onClick={handleSyncCalculatedFields}
+            disabled={isSyncingCalc}
+            title={tr("Sync calculated fields to the database")}
+            className={`info-notch-stats grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-3.5 gap-y-1 px-3.5 py-1.5 ${isSyncingCalc ? 'animate-pulse' : ''}`}
+        >
+            <span className={lbl}>{tr("Types")}</span>
+            <span className={`${val} text-(--text-color)`}>{typesCount.toLocaleString()}</span>
+
+            <span className={lbl}>{tr("Qty")}</span>
+            <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
+
+            <span className={lbl}>{showFinancials ? tr("Total MXN") : tr("Total")}</span>
+            <span className={`${val} text-(--main-color)`}>
+                {showFinancials ? `$${totalValue.toLocaleString()}` : '\u2022\u2022\u2022'}
+            </span>
+        </button>
+    );
+
+    const userBtn = (
+        <button
+            onClick={() => openSettingsPortal(true)}
+            title={tr("Settings")}
+            className="info-notch-user grid grid-rows-2 auto-cols-max items-center gap-y-1 px-3.5 py-1.5 text-left"
+        >
+            <span className={`${lbl} text-(--main-color)`}>{tr("Welcome")}</span>
+            <span className="text-[12px] font-black leading-none tracking-tight capitalize text-(--text-color)">
+                {displayName}
+            </span>
+        </button>
+    );
+
+    // Alone, each half is the content of one side of the Onyx Island pill (the island owns the glass).
+    if (part === 'stats') return statsBtn;
+    if (part === 'user') return userBtn;
     return (
         <div className="info-notch flex items-stretch gap-0 shrink-0 [text-shadow:none] [&_*]:[text-shadow:none]">
-            <button
-                onClick={handleSyncCalculatedFields}
-                disabled={isSyncingCalc}
-                title={tr("Sync calculated fields to the database")}
-                className={`info-notch-stats grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-3.5 gap-y-1 px-3.5 py-1.5 ${isSyncingCalc ? 'animate-pulse' : ''}`}
-            >
-                <span className={lbl}>{tr("Types")}</span>
-                <span className={`${val} text-(--text-color)`}>{typesCount.toLocaleString()}</span>
-
-                <span className={lbl}>{tr("Qty")}</span>
-                <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
-
-                <span className={lbl}>{showFinancials ? tr("Total MXN") : tr("Total")}</span>
-                <span className={`${val} text-(--main-color)`}>
-                    {showFinancials ? `$${totalValue.toLocaleString()}` : '\u2022\u2022\u2022'}
-                </span>
-            </button>
-
-            <button
-                onClick={() => openSettingsPortal(true)}
-                title={tr("Settings")}
-                className="info-notch-user grid grid-rows-2 auto-cols-max items-center gap-y-1 px-3.5 py-1.5 text-left"
-            >
-                <span className={`${lbl} text-(--main-color)`}>{tr("Welcome")}</span>
-                <span className="text-[12px] font-black leading-none tracking-tight capitalize text-(--text-color)">
-                    {displayName}
-                </span>
-            </button>
+            {statsBtn}
+            {userBtn}
         </div>
     );
 };
@@ -4286,47 +4296,6 @@ export function MainHeader() {
     const isInventory = activeView === 'inventory';
     const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
 
-    /* Does the readout fit on the same line as the keys?
-     *
-     * Measured from the two CLUSTERS and the container, never from the notch
-     * itself. Measuring the notch would oscillate: it is wide, so its presence
-     * can be what causes the overflow, and hiding it then restores the room
-     * that brings it back. Asking instead whether the gap the clusters leave
-     * behind is wide enough makes the answer independent of the outcome.
-     *
-     * A hard breakpoint would have been simpler but wrong — the left cluster
-     * grows and shrinks as tool bars deploy, so the same viewport fits the
-     * readout at one moment and not the next. */
-    const headerRef = React.useRef<HTMLDivElement | null>(null);
-    const leftRef   = React.useRef<HTMLDivElement | null>(null);
-    const rightRef  = React.useRef<HTMLDivElement | null>(null);
-    const [notchFits, setNotchFits] = useState(true);
-    const [notchOpen, setNotchOpen] = useState(false);
-
-    React.useLayoutEffect(() => {
-        const measure = () => {
-            const host = headerRef.current;
-            if (!host) return;
-            const room = host.clientWidth
-                - (leftRef.current?.offsetWidth ?? 0)
-                - (rightRef.current?.offsetWidth ?? 0);
-            // The readout's own natural width, plus breathing room on each side.
-            // 40px of hysteresis so a cluster animating by a pixel cannot flip
-            // the layout back and forth.
-            setNotchFits(prev => (prev ? room >= 340 : room >= 380));
-        };
-        measure();
-        const ro = new ResizeObserver(measure);
-        if (headerRef.current) ro.observe(headerRef.current);
-        if (leftRef.current)   ro.observe(leftRef.current);
-        if (rightRef.current)  ro.observe(rightRef.current);
-        window.addEventListener('resize', measure);
-        return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
-    }, [activeView]);
-
-    // Nothing to reopen once it is back in the row.
-    React.useEffect(() => { if (notchFits) setNotchOpen(false); }, [notchFits]);
-
     return (
         <>
             {/* Double height, two-line tool grid. overflow-y-hidden is required, not
@@ -4338,32 +4307,13 @@ export function MainHeader() {
                 is clipped by overflow-y-hidden. */}
             <div className="w-full shrink-0 relative">
             {/* Onyx Island: the face (free floating, centred), the toasts and the notification center, one element */}
-            <IslandBand />
+            <IslandBand
+                readout={activeView === 'inventory'
+                    ? { left: <InfoNotch part="stats" />, right: <InfoNotch part="user" /> }
+                    : null}
+            />
 
-            {/* Collapsed: a tab on the top edge, and the readout deployed over
-                the bar when it is pulled down. It overlays rather than pushing
-                the bar down because on a phone the row it would add is the
-                whole reason it had to collapse. */}
-            {activeView === 'inventory' && !notchFits && (
-                <>
-                    <button
-                        onClick={() => setNotchOpen(o => !o)}
-                        aria-expanded={notchOpen}
-                        aria-label={notchOpen ? 'Hide inventory totals' : 'Show inventory totals'}
-                        title={notchOpen ? 'Hide totals' : 'Show totals'}
-                        className="info-notch-tab absolute left-1/2 -translate-x-1/2 top-0 z-40 flex items-center justify-center h-4 w-14 rounded-b-lg"
-                    >
-                        <ChevronDown size={13} strokeWidth={3} className={notchOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
-                    </button>
-                    {notchOpen && (
-                        <div className="absolute left-1/2 -translate-x-1/2 top-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                            <InfoNotch />
-                        </div>
-                    )}
-                </>
-            )}
-
-            <div ref={headerRef} className={`main-header h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
+            <div className={`main-header h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -4394,7 +4344,7 @@ export function MainHeader() {
                     (Workbook, Export, user) stayed pinned and could never be reached
                     by scrolling. The .main-header above is the single scroller now,
                     so every control in the bar scrolls as one row. */}
-                <div ref={leftRef} className="flex items-center justify-start shrink-0">
+                <div className="flex items-center justify-start shrink-0">
                     {/* Two rows, flowing in columns, growing right — the only layout that
                         gives exactly two lines AND unbounded horizontal growth. The
                         [&>*] variants push the same grid one level down onto each Bar's
@@ -4452,23 +4402,9 @@ export function MainHeader() {
                     </div>
                 </div>
 
-                {/* The readout, on the same line as the keys. mx-auto is what
-                    centres it in the gap the two clusters leave; it is dropped
-                    entirely rather than hidden when that gap is too narrow, so
-                    it never contributes width to a bar that is already
-                    overflowing. */}
-                {/* items-start, alone in a bar of items-end. The readout is a
-                    two-row block that hangs from the top edge — bottom-aligning it
-                    would drop its second row below the label baseline and make it
-                    the tallest thing in the row. Its collapsed form deploys
-                    downward from the same edge, so both states share one anchor. */}
-                {activeView === 'inventory' && notchFits && (
-                    <div className="flex items-start self-start shrink-0 mx-auto px-4">
-                        <InfoNotch />
-                    </div>
-                )}
-
-                <div ref={rightRef} className={`flex items-end justify-end shrink-0 pl-2 sm:pl-4 ${activeView === 'inventory' && notchFits ? '' : 'ml-auto'}`}>
+                {/* The inventory readout no longer lives in this row: it sits in the
+                    Onyx Island pill above, beside the face (see IslandBand). */}
+                <div className="flex items-end justify-end shrink-0 pl-2 sm:pl-4 ml-auto">
                     <div className="flex items-end gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
