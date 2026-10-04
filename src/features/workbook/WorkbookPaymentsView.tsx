@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { PaymentDestination, ExpenseStatus, Expense } from '../../lib/Types';
 import { SCRIPT_URL, vendors, appUsers } from '../../lib/consts';
 import { paymentsVersionAtom, userAtom, paymentDestinationFilterAtom } from '../../lib/atoms';

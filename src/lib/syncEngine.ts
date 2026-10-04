@@ -18,7 +18,7 @@ import {
 } from './atoms';
 import { getDatabase } from './database';
 import { supabase } from './supabase';
-import toast from 'react-hot-toast';
+import toast from '../features/onyxIsland/notify/toast';
 import { tr } from './i18n';
 
 const LAST_SYNC_KEY = 'onyx_last_synced_at';

@@ -3133,4 +3133,5 @@ export const esCatalog: Record<string, string> = {
   '{m}m ago': 'Hace {m}m',
   '{h}h ago': 'Hace {h}h',
   'New notification': 'Nueva notificación',
+
 };

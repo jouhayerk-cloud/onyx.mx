@@ -19,7 +19,7 @@ import {
 import { getStatusClass, normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { createPortal } from 'react-dom';

@@ -23,7 +23,7 @@ import {
     logisticsSubTabAtom,
     financeDataAtom
 } from '../../lib/atoms';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, getCrateDisplayName } from '../../lib/utils';
 import ExcelJS from 'exceljs';

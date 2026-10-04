@@ -8,7 +8,7 @@ import {
     Plus, Minus, Check, Sparkles, ArrowLeft, Grid, Box, Ruler, Scale, 
     Truck, Info, ShieldCheck, Tag, ExternalLink 
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { tr } from '../../lib/i18n';
 
 export const RegStorePreview: React.FC = () => {

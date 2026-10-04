@@ -2,7 +2,7 @@
 
 import { useAtom, useAtomValue } from 'jotai/react';
 import React from 'react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { catalogMarketViewModeAtom, marketActiveTabAtom, SelectedItemDataAtom, isInventoryPanelOpenAtom } from '../../lib/atoms';
 import { DetailsPanel } from './DetailsPanel';
 import { SceneComposerView } from '../market/SceneComposerView';

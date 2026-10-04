@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { UserRegistrySkeleton } from './UserRegistrySkeleton';
 import { tr } from '../../lib/i18n';
 import { 

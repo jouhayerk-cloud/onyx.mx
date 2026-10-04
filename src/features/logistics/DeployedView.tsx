@@ -15,7 +15,7 @@ import {
     MiniIsoView, CmGrid, TRUCK_L_CM, TRUCK_W_CM, BASE_SCALE 
 } from './LogisticsComponents';
 import { universalViewAtom } from '../../lib/atoms';
-import { toast } from 'react-hot-toast';
+import { toast } from '../onyxIsland/notify/toast';
 import { gsap } from 'gsap';
 import { CrateEditPanel, CrateRecord } from './CratesInventoryView';
 import { logisticsDocsAtom, inventoryAtom, liveExchangeRateAtom } from '../../lib/atoms';

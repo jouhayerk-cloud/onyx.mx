@@ -31,7 +31,7 @@ import {
     Bot, Check, Copy, Crop, Eraser, FileSpreadsheet, FileText, ImageUp, KeyRound, Play, RefreshCw,
     RotateCcw, Save, Search, Sparkles, Square, Upload, Wand2, X, XCircle,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import ExcelJS from 'exceljs';
 import {
     isBatchWizardOpenAtom,

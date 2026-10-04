@@ -3,7 +3,7 @@ import { useAtomValue } from 'jotai';
 import { 
     X, Package, Download, FileText, FileSpreadsheet, Globe, Plus, Trash2 
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import ExcelJS from 'exceljs';
 
 import { exchangeRateAtom } from '../../lib/atoms';

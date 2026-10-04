@@ -79,7 +79,7 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 // Lazy load logistics cards to prevent bundling 400KB+ of trucking/inventory modules into main
 const CompactDockCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.CompactDockCard })));
 const DeployedTrailerCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.DeployedTrailerCard })));
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
 import { normalizeInventoryData } from '../../lib/utils';
 import { tr } from '../../lib/i18n';

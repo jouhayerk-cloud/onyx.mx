@@ -13,7 +13,7 @@ import {
     Download, Share2, ExternalLink, Filter, Search,
     LayoutGrid, List, Database, Weight, Globe
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from '../onyxIsland/notify/toast';
 import { tr } from '../../lib/i18n';
 
 const SentTruckViewer: React.FC = () => {

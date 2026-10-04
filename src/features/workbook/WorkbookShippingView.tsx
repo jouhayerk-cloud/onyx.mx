@@ -20,7 +20,7 @@ import {
 } from '../../lib/atoms';
 import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { WorkbookShippingControl } from './WorkbookShippingControl';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { gsap } from 'gsap';
 import { Crate } from '../../lib/Types';
 

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Database } from '../../lib/database.types';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { Box, Plus, Search, Package, ArrowLeft, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield, Check, FolderUp } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase, useNotify } from '../../lib/hooks';
 import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom, isWarehouseSelectionModeAtom, warehouseSelectedIdsAtom, showWarehouseExportWizardAtom, CrateStatus} from '../../lib/atoms';

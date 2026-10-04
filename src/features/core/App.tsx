@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Toaster } from 'react-hot-toast';
 import { themeAtom, appStyleAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom } from '../../lib/atoms';
 import { resolveUserRole } from '../../lib/utils';
 import type { UserRole } from '../../lib/atoms';
@@ -15,7 +14,7 @@ import { useSyncEngine } from '../../lib/syncEngine';
 import { setI18nLang, tr } from '../../lib/i18n';
 import { SyncProgressBar } from '../../components/SyncProgressBar';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 
 // Lazy-load deep-link views — only needed for URL-based tag/truck entry flows
 const TagView         = React.lazy(() => import('../logistics/TagView').then(m => ({ default: m.TagView })));
@@ -339,25 +338,6 @@ export default function App() {
           ) : user ? <MainAppView /> : <Login />}
         </>
       )}
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 5000,
-          className: 'toast-liquid-glass',
-          style: {
-            maxWidth: '500px',
-          },
-          success: {
-            icon: <CheckCircle className="text-emerald-400 shrink-0" size={24} strokeWidth={2.5} />
-          },
-          error: {
-            icon: <AlertCircle className="text-rose-400 shrink-0" size={24} strokeWidth={2.5} />
-          },
-          loading: {
-            icon: <Loader2 className="text-blue-400 animate-spin shrink-0" size={24} strokeWidth={2.5} />
-          }
-        }}
-      />
     </React.Fragment>
   );
 }

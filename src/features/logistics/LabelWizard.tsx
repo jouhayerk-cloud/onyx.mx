@@ -22,7 +22,7 @@ import {
     Smartphone, Cpu, Waves, QrCode, Tag, DollarSign, Barcode,
     Maximize2, Search, ZapOff, History, Eye, ShieldCheck
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { RareEarthLogoBase64 } from './RareEarthLogoBase64';
 import { ART_OF_DECOR_LOGO } from '../../lib/artOfDecorLogo';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, collectAllImages, collectExportImages, toTitleCase } from '../../lib/utils';

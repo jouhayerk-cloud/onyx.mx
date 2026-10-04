@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
 import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom, financeTotalsAtom, visibleWorkbooksAtom } from '../../lib/atoms';

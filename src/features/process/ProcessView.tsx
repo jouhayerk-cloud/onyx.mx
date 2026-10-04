@@ -65,7 +65,7 @@ import {
     FolderKanban,
     Bug
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import { tr } from '../../lib/i18n';
 import { getGeminiKey, setGeminiKey } from '../../lib/ai/keys';
 import { generateJson } from '../../lib/ai/client';

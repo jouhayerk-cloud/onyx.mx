@@ -2,7 +2,7 @@
 
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
+import toast from '../onyxIsland/notify/toast';
 import {
   ImageSrcAtom,
   InventoryVersionAtom,
