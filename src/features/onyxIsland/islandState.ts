@@ -1,8 +1,12 @@
+import type React from 'react';
 import { atom } from 'jotai';
 import { NotifyKind } from './notify/types';
 import { OnyxChanFace } from '../pico/useDeviceControl';
 
 export type IslandMode = 'rest' | 'peek' | 'expanded' | 'center';
+
+/** Page-specific figures docked into the island pill, one half on each side of the face. */
+export interface IslandReadout { left: React.ReactNode; right: React.ReactNode }
 
 export const islandModeAtom = atom<IslandMode>('rest');
 
