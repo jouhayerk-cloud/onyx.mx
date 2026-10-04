@@ -16,7 +16,9 @@ export function useDeviceChannel(
 ) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
   const eventsKey = events.join('|');
   const isPrivate = options?.private === true;
 
@@ -37,7 +39,14 @@ export function useDeviceChannel(
   const send = useCallback(async (event: string, payload: Record<string, any>) => {
     const channel = channelRef.current;
     if (!channel) throw new Error('Device channel is not ready.');
-    const result = await channel.send({ type: 'broadcast', event, payload });
+    if (channel.state !== 'joined') throw new Error('Device channel is not joined.');
+    
+    const sendPromise = channel.send({ type: 'broadcast', event, payload });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Device channel send timed out.')), 10000)
+    );
+    
+    const result = await Promise.race([sendPromise, timeoutPromise]);
     if (result !== 'ok') throw new Error(`Device channel send failed: ${result}`);
   }, []);
 

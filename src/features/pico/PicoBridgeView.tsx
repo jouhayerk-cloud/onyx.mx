@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAtom, useSetAtom } from 'jotai';
+import toast from 'react-hot-toast';
 import { picoDevicesAtom, activePicoSessionAtom, picoRssiThresholdAtom, PicoDevice, PicoScanEvent, PicoSession } from '../../lib/picoAtoms';
 import { PicoRoleHardwareCard } from './components/PicoRoleHardwareCard';
 import { PicoDeviceRegistry } from './components/PicoDeviceRegistry';
@@ -126,7 +127,7 @@ export function PicoBridgeView() {
   const handlePanTiltChange = (newPan: number, newTilt: number) => {
     setPanAngle(newPan);
     setTiltAngle(newTilt);
-    move(newPan, newTilt);
+    move(newPan, newTilt).catch((err: any) => toast.error(tr("Error:") + " " + err.message));
   };
 
   const handleRegisterDevice = (newDev: Omit<PicoDevice, 'id' | 'last_seen_at' | 'is_active'>) => {
@@ -189,7 +190,7 @@ export function PicoBridgeView() {
     if (!text.trim()) return;
 
     setSimTts(text.trim());
-    say(text.trim(), ttsLanguage);
+    say(text.trim(), ttsLanguage).catch((err: any) => toast.error(tr("Error:") + " " + err.message));
     handleSimExpressionChange('Happy');
     setTtsInput('');
 
@@ -687,7 +688,7 @@ export function PicoBridgeView() {
                 onExpressionChange={(expr) => setSimExpression(expr as StackChanExpression)}
                 onTtsSend={(text) => {
                   setSimTts(text);
-                  say(text, ttsLanguage);
+                  say(text, ttsLanguage).catch((err: any) => toast.error(tr("Error:") + " " + err.message));
                   setSimExpression('Happy');
                   setTimeout(() => setSimExpression('Neutral'), 3000);
                 }}
