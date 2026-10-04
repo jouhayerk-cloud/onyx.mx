@@ -18,7 +18,11 @@ export class OnyxMcpError extends Error {
   }
 }
 
-export async function callOnyxMcp<T = unknown>(tool: string, args: Record<string, unknown> = {}): Promise<T> {
+export async function callOnyxMcp<T = unknown>(
+  tool: string,
+  args: Record<string, unknown> = {},
+  parse?: (body: unknown) => T
+): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) {
@@ -39,7 +43,7 @@ export async function callOnyxMcp<T = unknown>(tool: string, args: Record<string
     throw new OnyxMcpError('network_error', err instanceof Error ? err.message : 'Network error', 0);
   }
 
-  let body: any = null;
+  let body: unknown = null;
   try {
     body = await response.json();
   } catch {
@@ -47,11 +51,21 @@ export async function callOnyxMcp<T = unknown>(tool: string, args: Record<string
   }
 
   if (!response.ok) {
+    const errBody = body as any;
     throw new OnyxMcpError(
-      body?.error?.code ?? body?.code ?? 'http_error',
-      body?.error?.message ?? (typeof body?.error === 'string' ? body.error : body?.message) ?? response.statusText,
+      errBody?.error?.code ?? errBody?.code ?? 'http_error',
+      errBody?.error?.message ?? (typeof errBody?.error === 'string' ? errBody.error : errBody?.message) ?? response.statusText,
       response.status,
     );
   }
+
+  if (parse) {
+    return parse(body);
+  }
+
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw new OnyxMcpError('bad_response', 'Expected a plain object response', response.status);
+  }
+
   return body as T;
 }

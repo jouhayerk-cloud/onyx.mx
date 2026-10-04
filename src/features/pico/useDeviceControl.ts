@@ -16,6 +16,7 @@
 import { useCallback, useMemo } from 'react';
 import { useDeviceChannel } from './hooks/useDeviceChannel';
 import { useStackChanSocket, StackChanSocketState } from './useStackChanSocket';
+import { onyxChanMcp } from './mcp/onyxChanMcpClient';
 
 // ── Vendor Color Map (mirrors Onyx.mx styling system) ──────────────────────
 export const VENDOR_COLORS: Record<string, string> = {
@@ -170,10 +171,39 @@ export function useDeviceControl(
 
     // ── Channel 3: Supabase Realtime (WAN Cloud) ───────────────────────
     try {
-      await sendRealtime('DEVICE_COMMAND', command as Record<string, any>);
-      console.log(`[Supabase RT] Sent to ${deviceId}:`, command);
+      if (command.action === 'face') {
+        await onyxChanMcp.setExpression({
+          device_id: deviceId,
+          expression: command.expression,
+          duration: command.duration,
+        });
+      } else if (command.action === 'tts') {
+        await onyxChanMcp.speak({
+          device_id: deviceId,
+          text: command.text,
+          language: command.language,
+        });
+      } else if (command.action === 'move') {
+        await onyxChanMcp.moveHead({
+          device_id: deviceId,
+          pan: command.pan,
+          tilt: command.tilt,
+        });
+      } else if (command.action === 'vendor-display') {
+        await onyxChanMcp.displayVendorCard({
+          device_id: deviceId,
+          vendor: command.vendor,
+          title: command.title,
+          details: command.details,
+          color: command.color,
+          icon: command.icon,
+        });
+      } else {
+        throw new Error('unsupported over WAN');
+      }
+      console.log(`[MCP WAN] Sent to ${deviceId}:`, command);
     } catch (err) {
-      console.warn('[Supabase RT] Broadcast failed:', err);
+      console.warn('[MCP WAN] Command failed:', err);
     }
   }, [deviceId, localIp, directSocket, sendBleCommand, playLocalSpeech, sendRealtime]);
 
