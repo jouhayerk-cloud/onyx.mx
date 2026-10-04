@@ -178,6 +178,16 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         if (tools) payload.tools = [{ function_declarations: tools }];
         
         try {
+            if (import.meta.env.VITE_ONYX_AI_MODE === 'edge') {
+                const { supabase } = await import('../../lib/supabase');
+                const res = await supabase.functions.invoke('onyx-ai', {
+                    body: { messages: payload, model }
+                });
+                if (res.error) {
+                    throw new Error(res.error.message || `Edge Function Error`);
+                }
+                return res.data;
+            }
             const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify(payload) });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
