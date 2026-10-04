@@ -12,15 +12,17 @@ export function useDeviceChannel(
   topic: string | null | undefined,
   events: string[] = [],
   onEvent?: (event: string, payload: any) => void,
+  options?: { private?: boolean },
 ) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
   const eventsKey = events.join('|');
+  const isPrivate = options?.private === true;
 
   useEffect(() => {
     if (!topic) return;
-    const channel = supabase.channel(topic);
+    const channel = supabase.channel(topic, isPrivate ? { config: { private: true } } : undefined);
     for (const event of eventsKey ? eventsKey.split('|') : []) {
       channel.on('broadcast', { event }, (msg) => onEventRef.current?.(event, msg.payload));
     }
@@ -30,7 +32,7 @@ export function useDeviceChannel(
       channelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [topic, eventsKey]);
+  }, [topic, eventsKey, isPrivate]);
 
   const send = useCallback(async (event: string, payload: Record<string, any>) => {
     const channel = channelRef.current;

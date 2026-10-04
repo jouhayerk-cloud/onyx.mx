@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAtom, useSetAtom } from 'jotai';
-import { picoDevicesAtom, activePicoSessionAtom, picoRssiThresholdAtom, PicoDevice, PicoScanEvent } from '../../lib/picoAtoms';
+import { picoDevicesAtom, activePicoSessionAtom, picoRssiThresholdAtom, PicoDevice, PicoScanEvent, PicoSession } from '../../lib/picoAtoms';
 import { PicoRoleHardwareCard } from './components/PicoRoleHardwareCard';
 import { PicoDeviceRegistry } from './components/PicoDeviceRegistry';
 import { StackChanSimulator, StackChanExpression, SimulatorTheme } from './components/StackChanSimulator';
@@ -12,6 +12,9 @@ import { PicoBleModal } from './components/PicoBleModal';
 import { PicoVendorCardModal } from './components/PicoVendorCardModal';
 import { PicoInventoryCardModal } from './components/PicoInventoryCardModal';
 import { PicoSimulatorModal } from './components/PicoSimulatorModal';
+import { FleetSection } from './surfaces/FleetSection';
+import { useDeviceFleet } from './surfaces/useDeviceFleet';
+import { connectivity } from './surfaces/types';
 import {
   Terminal, Plus, Zap, Sliders, Radio, Shield, RefreshCw, Unplug, AlertCircle, Bot, Maximize2,
   Minimize2, Bluetooth, Compass, Volume2, Sparkles, MessageSquare, Send, RotateCw, Eye, EyeOff,
@@ -64,6 +67,25 @@ export function PicoBridgeView() {
   const [scanLogs, setScanLogs] = useState<(PicoScanEvent & { actionTaken?: string })[]>([]);
 
   const activeDevicesList = devices;
+
+  // Real telemetry for the Fleet section; the cards below only get a session when it exists.
+  const fleet = useDeviceFleet();
+  const sessionFor = (device: PicoDevice): PicoSession | null => {
+    if (fleet.source === 'none') return null;
+    const s = fleet.devices.find(f => f.device_id === device.device_mac || f.device_id === device.id);
+    if (!s) return null;
+    return {
+      session_id: s.device_id,
+      device_id: device.id,
+      user_id: device.owner_user_id,
+      active_workflow: 'idle',
+      workflow_metadata: {},
+      status: connectivity(s, Date.now()) === 'offline' ? 'disconnected' : s.last_error ? 'error' : 'connected',
+      battery: s.battery_pct ?? undefined,
+      rssi: s.rssi ?? undefined,
+      connected_at: s.last_checkin_at ?? '',
+    };
+  };
   const primaryStackChan = activeDevicesList.find(d => d.hardware_model.includes('StackChan')) || activeDevicesList[0];
 
   // Web Bluetooth Device Hook
@@ -296,6 +318,9 @@ export function PicoBridgeView() {
           </button>
         </div>
       </div>
+
+      {/* Fleet: real device telemetry, agent runs, commands and packing */}
+      <FleetSection fleet={fleet} />
 
       {/* Dual-Channel Status Monitor Banner */}
       <PicoDualChannelMonitor
@@ -656,7 +681,7 @@ export function PicoBridgeView() {
               <PicoRoleHardwareCard
                 key={device.id}
                 device={device}
-                session={null} // no real telemetry source wired yet
+                session={sessionFor(device)}
                 onDisconnect={handleDisconnect}
                 currentExpression={simExpression}
                 onExpressionChange={(expr) => setSimExpression(expr as StackChanExpression)}
