@@ -1,0 +1,7 @@
+{
+  "Neural link credentials missing.": "Faltan credenciales del enlace neuronal.",
+  "Neural Link Denied. Verify API credentials in settings.": "Enlace neuronal denegado. Verifique las credenciales de API en configuración.",
+  "Neural core unreachable.": "Núcleo neuronal inaccesible.",
+  "Neural Link Denied. Verify API credentials.": "Enlace neuronal denegado. Verifique las credenciales de la API.",
+  "{name} requires confirmation": "{name} requiere confirmación"
+}
