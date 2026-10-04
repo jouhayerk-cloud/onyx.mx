@@ -55,8 +55,8 @@ export function useArchiveBalances() {
           }
 
           const sortedRows = [...balancesData].sort((a, b) => {
-            const aRow = a.payload?._src_row ?? 0;
-            const bRow = b.payload?._src_row ?? 0;
+            const aRow = a.payload?._src_row ?? Number.MAX_SAFE_INTEGER;   // rows without a source row go last
+            const bRow = b.payload?._src_row ?? Number.MAX_SAFE_INTEGER;
             return aRow - bRow;
           });
 

@@ -12,6 +12,12 @@ const fmtMXN = (v: number | null) => v == null ? '—' : new Intl.NumberFormat('
 const fmtUSD = (v: number | null) => v == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 
+// CSV cell: double the quotes, and defuse spreadsheet formulas (a leading = + - @ tab or CR makes Excel run the cell)
+const csvCell = (v: unknown): string => {
+  const t = String(v ?? '').replace(/"/g, '""');
+  return '"' + (/^[=+\-@\t\r]/.test(t) ? "'" + t : t) + '"';
+};
+
 export const ArchivePanel: React.FC<{ fallback: React.ReactNode }> = ({ fallback }) => {
   const { 
     status, book, vendors: bookVendors, selectedVendor, setVendor,
@@ -38,7 +44,7 @@ export const ArchivePanel: React.FC<{ fallback: React.ReactNode }> = ({ fallback
   const pageUsd = useMemo(() => items.reduce((s, i) => {
     const fin = finance[i.id];
     if (!fin) return s;
-    const usd = fin.total_usd != null ? fin.total_usd : (fin.total_pesos != null ? fin.total_pesos / exchangeRate : 0);
+    const usd = fin.total_usd != null ? fin.total_usd : (fin.total_pesos != null && exchangeRate > 0 ? fin.total_pesos / exchangeRate : 0);
     return s + usd;
   }, 0), [items, finance, exchangeRate]);
 
@@ -95,7 +101,7 @@ export const ArchivePanel: React.FC<{ fallback: React.ReactNode }> = ({ fallback
         }
       }
       
-      csv += row.map(v => `"${v}"`).join(',') + '\n';
+      csv += row.map(csvCell).join(',') + '\n';
     });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -116,11 +122,11 @@ export const ArchivePanel: React.FC<{ fallback: React.ReactNode }> = ({ fallback
       {/* Top Segmented Control */}
       <div className="flex justify-center p-3 border-b border-white/5 bg-black/20 shrink-0">
         <div className="flex p-1 bg-black/40 rounded-xl border border-white/5">
-          <button onClick={() => setTab('Items')} className={`px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${tab === 'Items' ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/60'}`}>
+          <button onClick={() => setTab('Items')} className={`focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${tab === 'Items' ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/60'}`}>
             {tr('Items')}
           </button>
           {isFinanceRole && (
-            <button onClick={() => setTab('Ledger')} className={`px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${tab === 'Ledger' ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/60'}`}>
+            <button onClick={() => setTab('Ledger')} className={`focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${tab === 'Ledger' ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/60'}`}>
               {tr('Ledger')}
             </button>
           )}
@@ -218,7 +224,7 @@ export const ArchivePanel: React.FC<{ fallback: React.ReactNode }> = ({ fallback
             <div className="ml-auto flex gap-4 items-center">
               {status === 'loading' && <span className="text-[10px] font-mono text-white/40 uppercase animate-pulse">{tr("Loading...")}</span>}
               
-              <button onClick={handleExportCSV} className="px-3 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase text-white/60 hover:text-white hover:bg-white/5 transition-all">
+              <button onClick={handleExportCSV} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2px-3 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase text-white/60 hover:text-white hover:bg-white/5 transition-all">
                 {tr("Export CSV")}
               </button>
               
