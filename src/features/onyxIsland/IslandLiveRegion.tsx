@@ -28,11 +28,13 @@ export const IslandLiveRegion: React.FC = () => {
     
     if (!text) return;
 
-    if (current.kind === 'error') {
-      setAssertiveText(text);
-    } else {
-      setPoliteText(text);
-    }
+    // clear first so an identical message announced twice in a row still changes the DOM text
+    setAssertiveText('');
+    setPoliteText('');
+    window.setTimeout(() => {
+      if (current.kind === 'error') setAssertiveText(text);
+      else setPoliteText(text);
+    }, 60);
     
     if (clearTimerRef.current) {
       window.clearTimeout(clearTimerRef.current);

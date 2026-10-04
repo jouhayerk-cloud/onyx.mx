@@ -12,6 +12,17 @@ import { SPRING, SPRING_SLOW, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWI
 
 const NotificationCenter = lazy(() => import('./NotificationCenter').then(m => ({ default: m.NotificationCenter })));
 
+// A failed lazy chunk (offline, stale deploy) must not unmount the whole app: show a short message instead.
+class ChunkBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed
+      ? <div className="p-4 text-[13px] text-white/60">{tr('Could not load the notification center. Check your connection and try again.')}</div>
+      : this.props.children;
+  }
+}
+
 function useIdleTimer(timeoutMs: number): boolean {
   const [idle, setIdle] = useState(false);
   useEffect(() => {
@@ -51,31 +62,32 @@ export const OnyxIsland: React.FC = () => {
   useGaze(islandRef);
   const isIdle = useIdleTimer(10 * 60 * 1000);
 
-  const prevCurrentRef = useRef(current);
+  // Mode follows the current toast. A toast that arrives while the center is open waits (the center lists it); when the center closes it shows.
+  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    const prevCurrent = prevCurrentRef.current;
-    if (!prevCurrent && current && mode === 'rest') {
-      setMode('peek');
-    } else if (prevCurrent && !current && (mode === 'peek' || mode === 'expanded')) {
-      const t = setTimeout(() => {
-        setMode('rest');
-      }, EXIT_COLLAPSE_DELAY_MS);
-      return () => clearTimeout(t);
+    if (current) {
+      if (collapseTimer.current) { clearTimeout(collapseTimer.current); collapseTimer.current = null; }
+      // a toast that is only a custom renderer (no message text) needs the card, not the one-line pill
+      if (mode === 'rest') setMode(current.render && !current.message ? 'expanded' : 'peek');
+    } else if ((mode === 'peek' || mode === 'expanded') && !collapseTimer.current) {
+      collapseTimer.current = setTimeout(() => { collapseTimer.current = null; setMode('rest'); }, EXIT_COLLAPSE_DELAY_MS);
     }
-    prevCurrentRef.current = current;
   }, [current, mode, setMode]);
+  useEffect(() => () => {
+    if (collapseTimer.current) clearTimeout(collapseTimer.current);
+    resumeToastTimer();   // never leave the store timer paused when the island unmounts while hovered
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && mode !== 'rest') {
-        setMode('rest');
-        if (current) dismissNotification();
-      }
+      if (e.key !== 'Escape' || mode === 'rest') return;
+      setMode('rest');
+      if (mode !== 'center' && current) dismissNotification();   // Escape in the center must not also kill a toast
     };
     const onPointerDown = (e: PointerEvent) => {
-      if (mode !== 'rest' && islandRef.current && !islandRef.current.contains(e.target as Node)) {
-        setMode('rest');
-        if (current) dismissNotification();
+      if (mode === 'rest' || mode === 'peek') return;   // clicking elsewhere does not dismiss a toast
+      if (islandRef.current && !islandRef.current.contains(e.target as Node)) {
+        setMode(mode === 'expanded' && current ? 'peek' : 'rest');
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -91,7 +103,9 @@ export const OnyxIsland: React.FC = () => {
     if (mode === 'center' && prevModeRef.current !== 'center') {
       closeBtnRef.current?.focus();
     } else if (mode === 'rest' && prevModeRef.current === 'center') {
-      faceBtnRef.current?.focus();
+      // give focus back only if the user has not already moved on to something else (a sidebar link, a field)
+      const ae = document.activeElement;
+      if (!ae || ae === document.body || islandRef.current?.contains(ae)) faceBtnRef.current?.focus();
     }
     prevModeRef.current = mode;
   }, [mode]);
@@ -114,7 +128,7 @@ export const OnyxIsland: React.FC = () => {
   };
 
   const handleDragEnd = (e: any, info: any) => {
-    if (info.offset.y <= SWIPE_DISTANCE || info.velocity.y <= SWIPE_VELOCITY) {
+    if ((info.offset.y <= SWIPE_DISTANCE && info.velocity.y <= 0) || info.velocity.y <= SWIPE_VELOCITY) {   // upward intent only
       dismissNotification();
     }
   };
@@ -247,9 +261,11 @@ export const OnyxIsland: React.FC = () => {
                 </button>
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto">
-                <Suspense fallback={<div />}>
-                  <NotificationCenter onClose={() => setMode('rest')} />
-                </Suspense>
+                <ChunkBoundary>
+                  <Suspense fallback={<div />}>
+                    <NotificationCenter onClose={() => setMode('rest')} />
+                  </Suspense>
+                </ChunkBoundary>
               </div>
             </div>
           )}

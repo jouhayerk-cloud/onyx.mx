@@ -5,6 +5,13 @@ import {
 import { tr } from '../../lib/i18n';
 import type { IslandNotification } from './notify/types';
 
+// A custom toast renderer is app code: if it throws while rendering, show nothing instead of taking the island (and the page) down.
+class RenderBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+    state = { failed: false };
+    static getDerivedStateFromError() { return { failed: true }; }
+    render() { return this.state.failed ? null : this.props.children; }
+}
+
 interface IslandToastContentProps {
     notification: IslandNotification;
     expanded: boolean;
@@ -84,7 +91,7 @@ export const IslandToastContent: React.FC<IslandToastContentProps> = ({
                     </div>
                     {expanded && render && (
                         <div className="mt-2 min-w-0 cursor-default" onClick={e => e.stopPropagation()}>
-                            {render({ id, dismiss: onDismiss })}
+                            <RenderBoundary>{render({ id, dismiss: onDismiss })}</RenderBoundary>
                         </div>
                     )}
                     {expanded && actions && actions.length > 0 && (

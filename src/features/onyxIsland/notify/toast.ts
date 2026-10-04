@@ -21,10 +21,15 @@ function createToast(kind: NotifyKind, message: ToastMessage, opts?: ToastOption
 
   if (typeof message === 'function') {
     input.render = (ctx: RenderContext) => {
-      return message({ id: ctx.id, visible: true });
+      try {
+        return message({ id: ctx.id, visible: true });
+      } catch {
+        return null;   // a throwing renderer must never break the island
+      }
     };
     input.message = '';
   } else {
+    input.render = undefined;   // explicit: updating a custom toast with a plain string must drop the old renderer
     input.message = message;
   }
 
