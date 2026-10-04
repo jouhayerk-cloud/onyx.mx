@@ -1,0 +1,17 @@
+{
+  "Archived": "Archivado",
+  "Season": "Temporada",
+  "Source File": "Archivo de Origen",
+  "Imported": "Importado",
+  "Vendors": "Proveedores",
+  "Total Quantity": "Cantidad Total",
+  "Total Weight (KG)": "Peso Total (KG)",
+  "Page Total (USD)": "Total de Página (USD)",
+  "All Vendors": "Todos los Proveedores",
+  "Access Restricted": "Acceso Restringido",
+  "Retry": "Reintentar",
+  "Load more": "Cargar más",
+  "Error loading archive": "Error al cargar el archivo",
+  "No items found": "No se encontraron artículos",
+  "Items in {scope}": "Artículos en {scope}"
+}
