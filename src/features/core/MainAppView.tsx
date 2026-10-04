@@ -71,7 +71,7 @@ const DeployedView       = React.lazy(() => import('../logistics/DeployedView').
 const ProcessView        = React.lazy(() => import('../process/ProcessView').then(m => ({ default: m.ProcessView })));
 const ThreeDAppView      = React.lazy(() => import('../threed/ThreeDView').then(m => ({ default: m.ThreeDAppView })));
 const ViewerView         = React.lazy(() => import('../viewer/ViewerView').then(m => ({ default: m.ViewerView })));
-const OnyxOrbView        = React.lazy(() => import('../onyx/OnyxOrbView').then(m => ({ default: m.OnyxOrbView })));
+const OnyxAgentPage      = React.lazy(() => import('../onyxAgent/OnyxAgentPage').then(m => ({ default: m.OnyxAgentPage })));   // replaces the three.js OnyxOrbView
 const StudioSettingsPortal = React.lazy(() => import('./StudioSettingsPortal').then(m => ({ default: m.StudioSettingsPortal })));
 const InventoryArtifact  = React.lazy(() => import('../inventory/InventoryArtifact').then(m => ({ default: m.InventoryArtifact })));
 const PaymentsArtifact   = React.lazy(() => import('../finance/PaymentsArtifact').then(m => ({ default: m.PaymentsArtifact })));
@@ -349,7 +349,7 @@ export function MainAppView() {
             case 'threed': return <ThreeDAppView />;
             case 'viewer':
                 return <ViewerView onOpenArtifact={(id) => { setUniversalView('tag'); setTagId(id); }} />;
-            case 'onyx': return <OnyxOrbView />;
+            case 'onyx': return <OnyxAgentPage />;
             case 'onyx-reg': return <RegStorePreview />;
             case 'pico-bridge': return <DevicesView />;
             case 'devices': return <DevicesView />;

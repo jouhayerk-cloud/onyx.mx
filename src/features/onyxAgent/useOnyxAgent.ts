@@ -41,6 +41,7 @@ export function useOnyxAgent(options: OnyxAgentOptions = {}) {
     
     const abortControllerRef = useRef<AbortController | null>(null);
     const confirmResolverRef = useRef<((approved: boolean) => void) | null>(null);
+    const pendingIdRef = useRef<string | null>(null);   // read by confirm() so a memoised caller never sees a stale pendingConfirm
     
     const setPhase = useCallback((p: AgentPhase) => {
         setLocalPhase(p);
@@ -49,11 +50,18 @@ export function useOnyxAgent(options: OnyxAgentOptions = {}) {
 
     useEffect(() => {
         return () => {
+            // unmount (navigation, StrictMode double mount): stop the run and never leave the global phase stuck on acting/speaking
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
+                abortControllerRef.current = null;
             }
+            if (confirmResolverRef.current) {
+                confirmResolverRef.current(false);
+                confirmResolverRef.current = null;
+            }
+            setGlobalPhase('idle');
         };
-    }, []);
+    }, [setGlobalPhase]);
 
     const { allDefinitions, allHandlers, allRisks } = useMemo(() => {
         const defs = [...onyxToolDefinitions];
@@ -138,12 +146,13 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     }, [stop]);
 
     const confirm = useCallback((id: string, approved: boolean) => {
-        if (pendingConfirm?.id === id && confirmResolverRef.current) {
+        if (pendingIdRef.current === id && confirmResolverRef.current) {
             confirmResolverRef.current(approved);
             confirmResolverRef.current = null;
+            pendingIdRef.current = null;
             setPendingConfirm(null);
         }
-    }, [pendingConfirm]);
+    }, []);
 
     const send = useCallback(async (text: string) => {
         const finalInput = text.trim();
@@ -153,6 +162,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             console.warn("Onyx is currently processing another query.");
             return;
         }
+        // a second send before React re-renders (double click) would still see phase 'idle': the abort controller marks a run in flight
+        if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) return;
 
         const apiKey = getGeminiKey();
         if (!apiKey) {
@@ -247,6 +258,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
                 const resps = [];
                 for (const c of calls) {
+                    if (signal.aborted) break;   // Stop pressed: do not run the remaining queued tool calls
                     setPhase('acting');
                     const isWrite = allRisks[c.functionCall.name] === 'write';
                     let result;
@@ -261,7 +273,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                                 summary: trf('{name} requires confirmation', { name: c.functionCall.name })
                             });
                             confirmResolverRef.current = resolve;
+                            pendingIdRef.current = pendingId;
                         });
+                        if (signal.aborted) break;
                         
                         if (!approved) {
                             result = { ok: false, error: 'declined by user' };
@@ -279,10 +293,15 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                         const handler = allHandlers[c.functionCall.name];
                         if (!handler) throw new Error(`Tool ${c.functionCall.name} not found`);
                         
-                        result = await Promise.race([
-                            handler(c.functionCall.args),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
-                        ]);
+                        let timer: ReturnType<typeof setTimeout> | undefined;
+                        try {
+                            result = await Promise.race([
+                                handler(c.functionCall.args),
+                                new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), 15000); })
+                            ]);
+                        } finally {
+                            if (timer) clearTimeout(timer);   // do not leave a 15 s timer behind every tool call
+                        }
                         
                         const risk = allRisks[c.functionCall.name] || 'read';
                         const kind = (risk === 'navigate' || risk === 'robot' || risk === 'write') ? risk : 'tool';
@@ -326,6 +345,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             setError(safeError);
             setPhase('error');
             setTimeout(() => { setPhase('idle'); setError(null); }, 4000);
+        } finally {
+            if (abortControllerRef.current === abortController) abortControllerRef.current = null;
         }
     }, [phase, messages, allDefinitions, allHandlers, allRisks, systemPrompt, setPhase, setActivity]);
 

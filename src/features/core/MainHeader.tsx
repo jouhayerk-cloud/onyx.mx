@@ -151,6 +151,7 @@ import {
 
 import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 import { tr } from '../../lib/i18n';
+import { OnyxAgentSlot } from '../onyxAgent/OnyxAgentSlot';
 
 declare const __APP_VERSION__: string;
 
@@ -4469,6 +4470,7 @@ export function MainHeader() {
                     <div className="flex items-end gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
                     <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
+                        <OnyxAgentSlot />
                         {sentTruckId && (
                             <button 
                                 onClick={() => setView('trucking')}

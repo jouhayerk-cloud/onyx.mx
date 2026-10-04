@@ -1,5 +1,5 @@
 import { useDeviceControl } from '../../pico/useDeviceControl';
-import { FaceExpression } from '../face/expressions';
+import { FaceExpression, EXPRESSIONS } from '../face/expressions';
 
 export type AppRole = 'Developer' | 'Admin' | 'Vendor' | 'Client';
 
@@ -88,10 +88,12 @@ export const robotToolRisk: Record<string, 'read' | 'navigate' | 'robot' | 'writ
 const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
 const sanitizeString = (str: string) => str.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
 
-export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (args: Record<string, unknown>) => Promise<unknown>> {
-  const lastCommandTime: Record<string, number> = {};
+// One limit for ALL robot tools together (a model can call five different tools in one turn); module level so remounting cannot reset it.
+let lastRobotCommandAt = 0;
 
-  const checkAccess = (toolName: string) => {
+export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (args: Record<string, unknown>) => Promise<unknown>> {
+
+  const checkAccess = (_toolName: string) => {
     if (ctx.role !== 'Developer' && ctx.role !== 'Admin') {
       return { ok: false, error: 'not allowed' };
     }
@@ -99,10 +101,10 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
       return { ok: false, error: 'no robot online' };
     }
     const now = Date.now();
-    if (now - (lastCommandTime[toolName] || 0) < 1000) {
-      return { ok: false, error: 'rate limited' };
+    if (now - lastRobotCommandAt < 1000) {
+      return { ok: false, error: 'rate limited, wait one second and try again' };
     }
-    lastCommandTime[toolName] = now;
+    lastRobotCommandAt = now;
     return null;
   };
 
@@ -125,6 +127,9 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
       if (accessErr) return accessErr;
       
       const expression = sanitizeString(String(args.expression ?? '')) as FaceExpression;
+      if (!Object.prototype.hasOwnProperty.call(EXPRESSIONS, expression)) {
+        return { ok: false, error: 'unknown expression' };
+      }
       let duration: number | undefined = undefined;
       if (typeof args.duration === 'number') {
         duration = clamp(args.duration, 1, 60);
@@ -147,8 +152,8 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
       const accessErr = checkAccess('robot_show_vendor_card');
       if (accessErr) return accessErr;
       
-      const vendor = sanitizeString(String(args.vendor ?? ''));
-      const title = sanitizeString(String(args.title ?? ''));
+      const vendor = sanitizeString(String(args.vendor ?? '')).slice(0, 40);
+      const title = sanitizeString(String(args.title ?? '')).slice(0, 60);
       let details: string[] = [];
       if (Array.isArray(args.details)) {
         details = args.details.map(d => sanitizeString(String(d)).slice(0, 60)).slice(0, 4);
@@ -161,11 +166,11 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
       const accessErr = checkAccess('robot_show_item_card');
       if (accessErr) return accessErr;
       
-      const item_id = sanitizeString(String(args.item_id ?? ''));
-      const title = sanitizeString(String(args.title ?? ''));
-      const price = typeof args.price === 'number' ? args.price : undefined;
-      const stock = typeof args.stock === 'number' ? args.stock : undefined;
-      const vendor = typeof args.vendor === 'string' ? sanitizeString(args.vendor) : undefined;
+      const item_id = sanitizeString(String(args.item_id ?? '')).slice(0, 64);
+      const title = sanitizeString(String(args.title ?? '')).slice(0, 60);
+      const price = typeof args.price === 'number' && Number.isFinite(args.price) ? args.price : undefined;
+      const stock = typeof args.stock === 'number' && Number.isFinite(args.stock) ? args.stock : undefined;
+      const vendor = typeof args.vendor === 'string' ? sanitizeString(args.vendor).slice(0, 40) : undefined;
       
       ctx.control.showInventoryCard(item_id, title, price, stock, vendor);
       return { ok: true, queued: true, device_id: ctx.deviceId };
