@@ -27,13 +27,21 @@ export function formatWeight(kg: number | null): string {
     return `${kg} kg`;
 }
 
+export function formatNumber(value: number | null, maxDecimals: number = 2): string {
+    if (value == null || isNaN(value)) return '—';
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxDecimals
+    }).format(value);
+}
+
 export function formatMoney(value: number | null, currency: 'MXN' | 'USD'): string {
-    if (value == null) return '—';
+    if (value == null || isNaN(value)) return '—';
     const formatter = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency,
         minimumFractionDigits: 0,
-        maximumFractionDigits: 0
+        maximumFractionDigits: 2
     });
     return formatter.format(value);
 }
