@@ -100,7 +100,7 @@ export const IslandToastContent: React.FC<IslandToastContentProps> = ({
                                 <button
                                     key={i}
                                     onClick={e => handleActionClick(e, act.onClick)}
-                                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-md text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                                    className="px-3 py-1.5 isl-w10 isl-hw20 text-white rounded-md text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                                 >
                                     {act.label}
                                 </button>
@@ -111,7 +111,7 @@ export const IslandToastContent: React.FC<IslandToastContentProps> = ({
 
                 <div className="flex items-center gap-2 shrink-0">
                     {count > 1 && (
-                        <span className="text-[11px] font-medium px-1.5 py-0.5 bg-white/10 text-white/90 rounded-full">
+                        <span className="text-[11px] font-medium px-1.5 py-0.5 isl-w10 text-white/90 rounded-full">
                             &times;{count}
                         </span>
                     )}
@@ -121,16 +121,16 @@ export const IslandToastContent: React.FC<IslandToastContentProps> = ({
                             onDismiss();
                         }}
                         aria-label={tr('Dismiss')}
-                        className="p-1 -mr-1 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                        className="p-1 -mr-1 rounded-full text-white/50 hover:text-white isl-hw10 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                     >
                         <X size={16} />
                     </button>
                 </div>
             </div>
             {typeof duration === 'number' && duration > 0 && (
-                <div className="absolute bottom-0 left-3 right-3 h-[2px] bg-white/20 origin-left rounded-full overflow-hidden pointer-events-none">
+                <div className="absolute bottom-0 left-3 right-3 h-[2px] isl-w20 origin-left rounded-full overflow-hidden pointer-events-none">
                     <div 
-                        className="h-full bg-white/50 origin-left onyx-toast-timer-bar"
+                        className="h-full isl-w50 origin-left onyx-toast-timer-bar"
                         style={{ 
                             animationName: 'onyx-toast-timer',
                             animationDuration: `${duration}ms`,
