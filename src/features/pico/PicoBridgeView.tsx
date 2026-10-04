@@ -656,22 +656,7 @@ export function PicoBridgeView() {
               <PicoRoleHardwareCard
                 key={device.id}
                 device={device}
-                session={
-                  device.id === activeDevicesList[0]?.id 
-                    ? {
-                        session_id: 'sess-active',
-                        device_id: device.id,
-                        user_id: device.owner_user_id,
-                        active_workflow: 'idle',
-                        workflow_metadata: {},
-                        status: device.is_active ? 'connected' : 'disconnected',
-                        battery: 88,
-                        rssi: -48,
-                        activeAccessory: device.accessories[0],
-                        connected_at: new Date().toISOString(),
-                      }
-                    : null
-                }
+                session={null} // no real telemetry source wired yet
                 onDisconnect={handleDisconnect}
                 currentExpression={simExpression}
                 onExpressionChange={(expr) => setSimExpression(expr as StackChanExpression)}

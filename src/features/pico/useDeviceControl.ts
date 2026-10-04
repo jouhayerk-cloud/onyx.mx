@@ -14,7 +14,7 @@
  * - Pan & Tilt 2-Axis Servo movement (-90°..+90° yaw, 0°..90° pitch)
  */
 import { useCallback, useMemo } from 'react';
-import { supabase } from '../../lib/supabase';
+import { useDeviceChannel } from './hooks/useDeviceChannel';
 import { useStackChanSocket, StackChanSocketState } from './useStackChanSocket';
 
 // ── Vendor Color Map (mirrors Onyx.mx styling system) ──────────────────────
@@ -126,6 +126,8 @@ export function useDeviceControl(
     } catch {}
   }, []);
 
+  const { send: sendRealtime } = useDeviceChannel(deviceId ? `device_control:${deviceId}` : null);
+
   const sendCommand = useCallback(async (command: DeviceCommand) => {
     // Resolve vendor color if it's a vendor-display command
     if (command.action === 'vendor-display' && !command.color) {
@@ -168,20 +170,12 @@ export function useDeviceControl(
 
     // ── Channel 3: Supabase Realtime (WAN Cloud) ───────────────────────
     try {
-      const channelName = `device_control:${deviceId}`;
-      const channel = supabase.channel(channelName);
-
-      await channel.send({
-        type: 'broadcast',
-        event: 'DEVICE_COMMAND',
-        payload: command,
-      });
-
+      await sendRealtime('DEVICE_COMMAND', command as Record<string, any>);
       console.log(`[Supabase RT] Sent to ${deviceId}:`, command);
     } catch (err) {
       console.warn('[Supabase RT] Broadcast failed:', err);
     }
-  }, [deviceId, localIp, directSocket, sendBleCommand, playLocalSpeech]);
+  }, [deviceId, localIp, directSocket, sendBleCommand, playLocalSpeech, sendRealtime]);
 
   // ── Convenience Methods ────────────────────────────────────────────────
   const say = useCallback((text: string, language: 'es' | 'en' | 'ja' = 'es') => {
