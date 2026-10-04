@@ -38,7 +38,7 @@ const PRESET_PHRASES = [
   { label: '⚡ System Ready', text: 'OnyxChan robotics edge terminal online', lang: 'en' as const },
 ];
 
-export function PicoBridgeView() {
+export function PicoBridgeView({ hideHeader = false, hideFleet = false }: { hideHeader?: boolean, hideFleet?: boolean } = {}) {
   const [devices, setDevices] = useAtom(picoDevicesAtom);
   const [activeSession, setActiveSession] = useAtom(activePicoSessionAtom);
   const [rssiThreshold, setRssiThreshold] = useAtom(picoRssiThresholdAtom);
@@ -236,6 +236,7 @@ export function PicoBridgeView() {
       <PicoRealtimeController onLogScan={handleLogScan} />
 
       {/* Floating HUD Header */}
+      {!hideHeader && (
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 flex items-center justify-center">
@@ -319,9 +320,10 @@ export function PicoBridgeView() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Fleet: real device telemetry, agent runs, commands and packing */}
-      <FleetSection fleet={fleet} />
+      {!hideFleet && <FleetSection fleet={fleet} />}
 
       {/* Dual-Channel Status Monitor Banner */}
       <PicoDualChannelMonitor
