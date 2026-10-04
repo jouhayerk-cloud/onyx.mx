@@ -25,6 +25,10 @@
   color: #fff;
   will-change: auto;
 }
+.onyx-island.ui-root {
+  color: #fff;
+  text-shadow: none;
+}
 /* the square root box must not block clicks around the rounded surface */
 .onyx-island-layer .onyx-island { pointer-events: none; }
 .onyx-island-layer .onyx-island-surface { pointer-events: auto; }

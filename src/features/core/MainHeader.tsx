@@ -4300,10 +4300,21 @@ export function MainHeader() {
     const isInventory = activeView === 'inventory';
     const isArchived = activeView === 'workbook' && (user?.role === 'Developer' || user?.role === 'Admin');
     const islandOn = useAtomValue(islandCommandsEnabledAtom);   // the island owns the tools of every migrated module
+    // Modules whose tools all live in the island: their header row is empty, so it is removed (the island replaces the top bar).
+    const migratedView = islandOn && (activeView === 'inventory' || isArchived);
     const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
 
-    // Global tools: the Export disclosure of the right-hand cluster, now in the island's EXPORT group.
+    // Global tools: what the right-hand cluster of this bar used to hold, now in the island (every view).
+    const MenuLogoIcon: React.FC<any> = () => <OnyxMiniLogo className="w-6 h-6" />;
     useRegisterTools('global', [
+        ...(sidebarState === 'hidden' ? [{ id: 'global.sidebar', moduleId: 'global', label: tr('Menu'), title: tr('Onyx.mx Menu'), icon: MenuLogoIcon, kind: 'action' as const, group: tr('Navigate'), order: 0, pinned: true, run: () => setSidebarState(window.innerWidth <= 768 ? 'compact' : 'expanded') }] : []),
+        ...(sentTruckId ? [{ id: 'global.crate', moduleId: 'global', label: tr('Crate'), title: tr('Active Crate Deployment'), icon: Truck, kind: 'action' as const, group: tr('Navigate'), order: 5, pinned: true, badge: '•', run: () => setView('trucking') }] : []),
+        ...(artifactConfig.itemIds.length > 0 ? [{ id: 'global.manifest', moduleId: 'global', label: tr('Manifest'), title: tr('Toggle Neural Manifest'), icon: Package, kind: 'toggle' as const, group: tr('Navigate'), order: 6, pinned: true, pressed: artifactConfig.isOpen, run: () => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen })) }] : []),
+        ...(selectedIds.length > 0 ? [{ id: 'global.shopify', moduleId: 'global', label: tr('Shopify'), title: tr('Download Shopify XLSX'), icon: ShoppingBag, kind: 'action' as const, group: tr('Export'), order: 5, disabled: isShopifyExporting, run: handleShopifyExportXLSX }] : []),
+        ...(activeView === 'onyx' ? [
+            { id: 'onyx.language', moduleId: 'onyx', label: appLanguage.toUpperCase(), title: tr('Toggle Neural Language'), icon: Languages, kind: 'action' as const, group: tr('Onyx'), order: 10, run: () => setAppLanguage(prev => prev === 'en' ? 'es' : 'en') },
+            { id: 'onyx.reset', moduleId: 'onyx', label: tr('Reset credentials'), title: tr('Reset Neural Credentials'), icon: RefreshCw, kind: 'action' as const, group: tr('Onyx'), order: 20, run: () => { if (confirm(tr('Reset Neural Link credentials to system default?'))) { localStorage.removeItem('onyxApiKey'); setOnyxApiKey(''); } } },
+        ] : []),
         { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
         { id: 'global.export.seasons', moduleId: 'global', label: tr('Seasons'), icon: Layers, kind: 'widget', group: tr('Export'), order: 20, render: () => <SeasonToggles /> },
         { id: 'global.export.sheets', moduleId: 'global', label: tr('Sheets'), icon: FileSpreadsheet, kind: 'widget', group: tr('Export'), order: 30, render: () => <SheetsUploadButton /> },
@@ -4330,7 +4341,7 @@ export function MainHeader() {
                         : null}
             />
 
-            <div className={`main-header h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
+            <div className={`main-header ${migratedView ? 'hidden' : ''} h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -4382,7 +4393,7 @@ export function MainHeader() {
                         {activeView === 'process' && <ProcessBar />}
                         {activeView === 'control' && <ControlBar />}
                         {activeView === 'onyx' && <OnyxBar />}
-                        {isArchived && <ArchivedBar />}
+                        {isArchived && !islandOn && <ArchivedBar />}
                         {activeView === 'overview' && (
                             <div className="flex items-center gap-1 sm:gap-4">
                                 <ModuleBadge icon="layout-dashboard" label="" color="var(--main-color)" />
@@ -4425,7 +4436,7 @@ export function MainHeader() {
                 <div className="flex items-end justify-end shrink-0 pl-2 sm:pl-4 ml-auto">
                     <div className="flex items-end gap-1 sm:gap-6">
                     {/* Onyx Neural Controls */}
-                    <div className="flex items-center gap-2 mr-6 border-r border-white/5 pr-6">
+                    <div className={`flex items-center gap-2 mr-6 border-r border-white/5 pr-6 ${islandOn ? 'hidden' : ''}`}>
                         {sentTruckId && (
                             <button 
                                 onClick={() => setView('trucking')}
@@ -4475,7 +4486,7 @@ export function MainHeader() {
                     </div>
 
                     {/* Full Color XLSX Download Button */}
-                    <div className="flex items-center gap-1.5">
+                    <div className={`flex items-center gap-1.5 ${islandOn ? 'hidden' : ''}`}>
                         {/* Redundant V2 Button Hidden
                             <ToolButton icon={DatabaseBackup} label="Workbook" disabled={isExporting}
                                 title="Download Workbook V2 (Rare Earth Format)" onClick={handleMasterExportXLSX_V2} />

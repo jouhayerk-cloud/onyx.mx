@@ -116,8 +116,8 @@ export const IslandToolsGrid: React.FC<IslandToolsGridProps> = ({ tools, filter,
                   tabIndex={gIdx === 0 && tIdx === 0 ? 0 : -1}
                   className="flex items-center gap-3 p-2 min-h-[44px] rounded-xl cursor-pointer isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent text-left"
                 >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full isl-w10 shrink-0 relative">
-                    <Icon size={18} />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full isl-w10 shrink-0 relative">
+                    <Icon size={22} />
                     {tool.badge != null && (
                       <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full border border-[var(--glass-tint,rgba(10,12,20,0.4))] shadow-sm" />
                     )}

@@ -272,10 +272,10 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   } else if (mode === 'surface') {
     if (!md) {
       // Bottom sheet
-      rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxHeight: '80vh' };
+      rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxHeight: '80vh', ...(pane !== 'tools' ? { height: '70vh' } : {}) };
     } else {
       const w = xl ? 720 : lg ? 600 : 480;
-      rootStyle = { width: `min(${w}px, calc(100vw - 24px))`, maxHeight: 'min(560px, calc(100vh - 96px))' };
+      rootStyle = { width: `min(${w}px, calc(100vw - 24px))`, maxHeight: 'min(560px, calc(100vh - 96px))', ...(pane !== 'tools' ? { height: 'min(560px, calc(100vh - 96px))' } : {}) };
     }
   }
 
@@ -293,7 +293,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
       <m.div
         ref={islandRef}
         layout
-        className={`onyx-island onyx-island--${mode}${docked ? ' onyx-island--docked' : ''}`}
+        className={`onyx-island ui-root onyx-island--${mode}${docked ? ' onyx-island--docked' : ''}`}
         style={rootStyle}
         transition={transition}
         {...ariaProps}
