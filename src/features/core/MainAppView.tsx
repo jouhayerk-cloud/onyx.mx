@@ -330,6 +330,8 @@ export function MainAppView() {
         switch (activeView as string) {
             case 'control': return <ControlView />;
             case 'dashboard': return <AdminDashboard />;
+            // Overview summarises finances and inventory: Admin and Developer only (never vendors or client roles).
+            case 'overview': return (user?.role === 'Developer' || user?.role === 'Admin') ? <ClientOverview /> : <InventoryView />;
             case 'upload': return <UploadView />;
             case 'welcome': return <WelcomeView />;
             case 'inventory': return <InventoryView />;
@@ -419,6 +421,16 @@ export function MainAppView() {
                             />
                         )}
 
+                        {/* ── OVERVIEW (finances + inventory summary): Admin and Developer only ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                            <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <BarChart3 size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">{tr("Overview")}</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">{tr("Overview")}</span>
+                            </li>
+                        )}
                         {/* ── FINANCES ── */}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting') && (
                             <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
