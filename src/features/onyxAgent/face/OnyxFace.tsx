@@ -64,6 +64,7 @@ export interface OnyxFaceProps {
   speakingLevel?: number;
   size?: number;
   tone?: 'amber' | 'emerald' | 'mono';
+  bare?: boolean;
   className?: string;
   title?: string;
 }
@@ -84,6 +85,7 @@ export const OnyxFace = memo(function OnyxFace({
   speakingLevel = 0,
   size = 40,
   tone = 'amber',
+  bare = false,
   className = '',
   title,
 }: OnyxFaceProps) {
@@ -91,9 +93,21 @@ export const OnyxFace = memo(function OnyxFace({
   const ariaLabel = title || trf('Onyx assistant face: {expression}', { expression });
 
   let bgClass = 'bg-amber-500 text-black';
-  if (tone === 'emerald') bgClass = 'bg-emerald-950 text-emerald-500';
-  if (tone === 'mono') bgClass = 'bg-zinc-900 text-white';
+  let bareStyle: React.CSSProperties = {};
+  
+  if (bare) {
+    if (tone === 'emerald') bgClass = 'text-emerald-500 bg-transparent';
+    else if (tone === 'mono') {
+      bgClass = 'text-[var(--main-color,#fff)] bg-transparent';
+      bareStyle = { filter: 'drop-shadow(0 0 6px color-mix(in srgb, var(--main-color, #fff) 55%, transparent))' };
+    }
+    else bgClass = 'text-amber-500 bg-transparent';
+  } else {
+    if (tone === 'emerald') bgClass = 'bg-emerald-950 text-emerald-500';
+    else if (tone === 'mono') bgClass = 'bg-zinc-900 text-white';
+  }
 
+  const roundedClass = bare ? '' : 'rounded-xl overflow-hidden';
   const speakScale = speakingLevel > 0 ? 0.2 + speakingLevel * 1.5 : 1;
   const isSpeaking = expression === 'speaking' && speakingLevel > 0;
   
@@ -101,8 +115,8 @@ export const OnyxFace = memo(function OnyxFace({
   
   return (
     <div 
-      className={`relative inline-flex items-center justify-center rounded-xl overflow-hidden ${bgClass} ${className}`}
-      style={{ width: size, height }}
+      className={`relative inline-flex items-center justify-center ${roundedClass} ${bgClass} ${className}`}
+      style={{ width: size, height, ...bareStyle }}
       aria-label={ariaLabel}
       role="img"
     >
