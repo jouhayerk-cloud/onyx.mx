@@ -1,0 +1,11 @@
+/* The top bar is an overlay: the page flows UNDER it and scrolls behind the glass, in every view.
+   --app-topbar-h is the bar's measured height (MainAppView). The sticky bar gives its height back with a
+   negative bottom margin, so <main> starts at the very top of the scroller; main then pays the height as padding,
+   so at scroll 0 nothing is hidden and the layout is unchanged. Views that have their own sticky rows offset them
+   with top: var(--app-topbar-h). */
+.app-content > .app-topbar {
+  margin-bottom: calc(-1 * var(--app-topbar-h, 0px));
+}
+.app-content > main {
+  padding-top: var(--app-topbar-h, 0px);
+}

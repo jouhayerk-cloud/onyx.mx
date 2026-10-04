@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
-import { atomWithStorage } from 'jotai/utils';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { userAtom, workbookDensityAtom } from '../../lib/atoms';
 import { tr } from '../../lib/i18n';
 import { vendors } from '../../lib/consts';
-import { ArchivedHeader } from './ArchivedHeader';
-import { ArchivedFilterBar } from './ArchivedFilterBar';
 import { ArchiveItemCard } from './ArchiveItemCard';
 import { ArchiveItemTable } from './ArchiveItemTable';
 import { ArchiveItemDrawer } from './ArchiveItemDrawer';
 import { ArchivedLedger } from './ArchivedLedger';
 import { useArchiveItems } from './useArchiveItems';
-import type { ArchiveSort } from './useArchiveItems';
+import {
+  archivedMetaAtom, archivedSearchAtom, archivedSortAtom, archivedTabAtom, archivedVendorAtom, archivedViewModeAtom,
+} from './archivedState';
 import { InventorySkeletonGrid, InventorySkeletonList } from '../inventory/InventorySkeleton';
-
-export const archivedViewModeAtom = atomWithStorage<'gallery' | 'table'>('archivedViewMode', 'gallery');
 
 const Gate: React.FC = () => (
   <div className="flex h-full items-center justify-center p-8 bg-black/40">
@@ -25,14 +22,16 @@ const Gate: React.FC = () => (
 );
 
 const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole }) => {
-  const [vendor, setVendor] = useState<string | 'ALL'>('ALL');
-  const [searchInput, setSearchInput] = useState('');
+  // Search, sort, vendor, section and view mode are set from the main top bar (ArchivedToolsBar); this page only lists.
+  const vendor = useAtomValue(archivedVendorAtom);
+  const searchInput = useAtomValue(archivedSearchAtom);
+  const sort = useAtomValue(archivedSortAtom);
+  const viewMode = useAtomValue(archivedViewModeAtom);
+  const tab = useAtomValue(archivedTabAtom);
+  const setMeta = useSetAtom(archivedMetaAtom);
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<ArchiveSort>('tag');
-  const [viewMode, setViewMode] = useAtom(archivedViewModeAtom);
   const rawDensity = useAtomValue(workbookDensityAtom);
   const density = rawDensity === 'compact' ? 'compact' : 'standard';
-  const [tab, setTab] = useState<'Items' | 'Ledger'>('Items');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,6 +56,23 @@ const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole
   const scopeLabel = vendor === 'ALL' 
     ? tr('All Vendors') 
     : (vendors[vendor as keyof typeof vendors]?.name || vendor);
+
+  // Publish what the top bar shows (module badge, vendor rail, the figures in the island); clear it when the page closes.
+  useEffect(() => {
+    setMeta({
+      season: book?.season ?? '—',
+      sourceFile: book?.source_file ?? '—',
+      importedAt: book?.imported_at ?? '',
+      vendors: archiveVendors,
+      scopeLabel,
+      items: scopeTotals?.items ?? 0,
+      quantity: scopeTotals?.quantity ?? 0,
+      weightKg: scopeTotals?.weightKg ?? 0,
+      usd: scopeTotals?.usd ?? null,
+      status,
+    });
+  }, [book, archiveVendors, scopeLabel, scopeTotals, status, setMeta]);
+  useEffect(() => () => setMeta(null), [setMeta]);
 
   const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -107,40 +123,12 @@ const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole
   }, [selectedId]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-black/40">
-      <ArchivedHeader
-        season={book?.season ?? '—'}
-        sourceFile={book?.source_file ?? '—'}
-        importedAt={book?.imported_at ?? ''}
-        vendorCount={archiveVendors.length}
-        totalQuantity={scopeTotals?.quantity ?? 0}
-        totalWeight={scopeTotals?.weightKg ?? 0}
-        totalUsd={scopeTotals?.usd ?? null}
-        scopeLabel={scopeLabel}
-        itemsInScope={scopeTotals?.items ?? 0}
-      />
-      
-      <ArchivedFilterBar
-        vendors={archiveVendors}
-        selectedVendor={vendor}
-        onSelectVendor={setVendor}
-        search={searchInput}
-        onSearchChange={setSearchInput}
-        sort={sort}
-        onSortChange={(s) => setSort(s as ArchiveSort)}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        activeTab={tab}
-        onTabChange={setTab}
-        showLedgerTab={isFinanceRole}
-        showFinance={isFinanceRole}
-      />
-
-      <div className="flex-1 overflow-auto custom-scrollbar relative">
+    <div className="flex flex-col min-h-full">
+      <div className="flex-1 relative">
         {tab === 'Ledger' && isFinanceRole ? (
           <ArchivedLedger />
         ) : (
-          <div className="p-3 min-h-full flex flex-col">
+          <div className="px-4 pb-6 pt-3 min-h-full flex flex-col">
             {status === 'error' && (
               <div className="flex flex-col items-center justify-center flex-1 space-y-4 py-12">
                 <div className="text-red-400 font-bold">{error || tr('Error loading archive')}</div>
