@@ -1,0 +1,307 @@
+{
+  "contract": "onyxchan-protocol",
+  "version": "1.1.0-draft",
+  "description": "Tool-by-role table (PLAN v2.1, Security model 1; B2, B3, B4). Enforced server-side by onyx-mcp on every call, including tool results (field redaction), never only by a prompt. Deny by default twice: a tool not listed under a role's allowed_tools is refused with error code forbidden, and a result field not listed in the role's field allowlist (redaction.field_allowlists) is stripped at the query, before any Markdown rendering. Redaction never depends on the costSensitive flag of a tool definition (Chief decision 8). Tool names come from git/app/supabase/functions/_shared/onyxchanTools.ts (ONYXCHAN_TOOLS) and onyxDataTools.ts (ONYX_DATA_TOOLS).",
+  "sources": {
+    "robot_and_app_tools": "git/app/supabase/functions/_shared/onyxchanTools.ts",
+    "data_tools": "git/app/supabase/functions/_shared/onyxDataTools.ts"
+  },
+  "redaction": {
+    "mode": "allowlist",
+    "default": "deny",
+    "description": "Primary redaction mechanism (Chief decision 8). For voice and staff-device, onyx-mcp builds the query column list from the allowlist and drops every other key from tool results, structuredContent and rendered display text, at any depth. The costSensitive flag in onyxDataTools.ts is ignored: it is never the reason a field is shown or hidden. field_sets and denied_field_patterns below are explicit denials and defence in depth on top of the allowlist: an allowlisted field that matches a denied set for the role is still stripped (price_mxn, book_acquisition, book_landed, book_aq_code, book_land_code and payment_fields for both device roles).",
+    "costSensitive_flag_ignored": true,
+    "audit_pending": "Only the field names already present in this contract are listed. The complete per-tool column lists come from the inventory / logistics column audit (open question 22); until then a tool returns only the fields listed for it here, never more.",
+    "field_allowlists": {
+      "voice": {
+        "default_fields": ["item_id", "title", "vendor", "stock", "status"],
+        "tools": {
+          "inventory_get_by_barcode": {
+            "note": "Listed explicitly: not costSensitive in onyxDataTools.ts, so the flag alone would let cost and price through.",
+            "fields": ["item_id", "title", "vendor", "stock", "status"]
+          },
+          "display_item_card": {
+            "note": "Listed explicitly: the tool renders book_retail (USD) in its Markdown; it is stripped before rendering for this role.",
+            "fields": ["item_id", "title", "vendor", "stock", "status"]
+          },
+          "resolve_tag": { "fields": ["item_id", "title", "vendor", "stock", "status"] }
+        }
+      },
+      "staff-device": {
+        "default_fields": ["item_id", "title", "vendor", "stock", "status", "book_retail"],
+        "price_field": "book_retail",
+        "price_currency": "USD",
+        "tools": {
+          "inventory_get_by_barcode": {
+            "note": "Listed explicitly (see voice).",
+            "fields": ["item_id", "title", "vendor", "stock", "status", "book_retail"]
+          },
+          "display_item_card": {
+            "note": "Listed explicitly: renders the USD retail price only; price_mxn and all cost columns stay stripped.",
+            "fields": ["item_id", "title", "vendor", "stock", "status", "book_retail"]
+          },
+          "resolve_tag": { "fields": ["item_id", "title", "vendor", "stock", "status", "book_retail"] },
+          "logistics_list_containers": {
+            "note": "Packing check crate list. Cost fields denied; column list pending the logistics audit.",
+            "fields": [],
+            "fields_pending_audit": true
+          },
+          "logistics_container_contents": {
+            "note": "Packing check crate contents. Cost fields denied; column list pending the logistics audit.",
+            "fields": ["item_id"],
+            "fields_pending_audit": true
+          }
+        }
+      }
+    }
+  },
+  "field_sets": {
+    "cost_columns": {
+      "description": "COST_COLUMNS in onyxDataTools.ts. Never returned to voice, staff-device or agent (without a named cost scope).",
+      "fields": ["price_mxn", "book_acquisition", "book_landed", "book_aq_code", "book_land_code"]
+    },
+    "price_fields": {
+      "description": "Sale-price fields that are not in COST_COLUMNS. book_retail is the USD retail price (inventory_get_pricing / display_item_card descriptions); price is the item-card argument and carries book_retail. staff-device sees book_retail (USD) only. Complete list pending the inventory column audit (open question).",
+      "fields": ["book_retail", "price"]
+    },
+    "payment_fields": {
+      "description": "Payment data. Known names only; the real column list is pending the finance-table audit (open question). Matched also by denied_field_patterns.",
+      "fields": []
+    },
+    "denied_field_patterns": {
+      "description": "Case-insensitive regexes applied to every key, at any depth, of a tool result (and of structuredContent and rendered text inputs) as defence in depth on top of the field allowlist (redaction) and the explicit lists. Never a substitute for the allowlist.",
+      "cost": "(acquisition|landed|_aq_code|_land_code|cost)",
+      "payment": "(payment|disburse|commission|bank|paid)",
+      "mxn": "(mxn|exchange_rate)",
+      "price": "(price|retail)"
+    }
+  },
+  "roles": {
+    "voice": {
+      "who": "OnyxChan (StackChan CoreS3) through the gateway, authenticated by the device's own ocd_ token forwarded by the gateway.",
+      "auth": "device_token",
+      "allowed_tools": [
+        "resolve_tag",
+        "inventory_search",
+        "inventory_get_item",
+        "inventory_get_by_barcode",
+        "inventory_list_by_crate",
+        "inventory_list_by_vendor",
+        "inventory_count_by_status",
+        "inventory_count_by_vendor",
+        "inventory_get_media",
+        "inventory_get_segmentation",
+        "display_item_card",
+        "display_inventory_dashboard",
+        "query_inventory",
+        "query_inventory_item",
+        "count_vendor_items"
+      ],
+      "self_only_tools": {
+        "description": "Robot tools the voice role may call only on its own device: device_id is forced to the token's device; any other device_id is refused with forbidden (no cross-device commands).",
+        "tools": ["set_expression", "move_head", "speak", "display_vendor_card", "display_inventory_card"]
+      },
+      "denied_tools": [
+        "inventory_get_pricing",
+        "query_payment_status",
+        "finance_list_transactions",
+        "finance_get_transaction",
+        "finance_vendor_summary",
+        "finance_monthly_summary",
+        "finance_linked_items",
+        "display_vendor_report",
+        "display_financial_report",
+        "system_get_exchange_rate",
+        "system_list_users",
+        "system_get_settings",
+        "system_list_devices",
+        "system_get_print_jobs",
+        "logistics_get_container",
+        "logistics_get_shipment",
+        "logistics_list_shipments",
+        "logistics_truck_summary",
+        "display_crate_manifest",
+        "get_robot_status",
+        "ping_robot",
+        "app_change_view",
+        "app_search_inventory",
+        "app_open_inventory_artifact",
+        "app_open_add_item"
+      ],
+      "redacted_field_sets": ["cost_columns", "price_fields", "payment_fields"],
+      "redacted_patterns": ["cost", "payment", "mxn", "price"],
+      "rules": [
+        "No payment, cost, price or MXN field in any result (B4). Fields are stripped by onyx-mcp, not by the prompt.",
+        "Command args sent to a voice device follow the same rule (item-card has no price).",
+        "Result fields come from redaction.field_allowlists.voice; anything not listed is stripped.",
+        "speak is synthesised by the gateway and needs an open session; languages are es and en only.",
+        "payment-card can be enqueued for a voice device only by a staff JWT with a finance role (never by a device token, or by a PAT without the payment scope); it is shown on screen only, its content is never passed to the voice model and never spoken. Ramses to confirm: visitors may see the screen."
+      ]
+    },
+    "staff-device": {
+      "who": "M5StickS3 staff device over stateless HTTPS (/v1/call, /v1/event, /v1/checkin), authenticated by its own ocd_ token.",
+      "auth": "device_token",
+      "inherits": "voice",
+      "allowed_tools": [
+        "resolve_tag",
+        "inventory_search",
+        "inventory_get_item",
+        "inventory_get_by_barcode",
+        "inventory_list_by_crate",
+        "inventory_list_by_vendor",
+        "inventory_count_by_status",
+        "inventory_count_by_vendor",
+        "inventory_get_media",
+        "inventory_get_segmentation",
+        "display_item_card",
+        "display_inventory_dashboard",
+        "query_inventory",
+        "query_inventory_item",
+        "count_vendor_items",
+        "logistics_list_containers",
+        "logistics_container_contents"
+      ],
+      "self_only_tools": {
+        "description": "None in v1: the StickS3 has no avatar or servos. Its own write is the packing_result event over /v1/event (record_device_event), not a tool.",
+        "tools": []
+      },
+      "own_writes": ["event:packing_result", "event:scan", "event:button", "event:telemetry", "event:ack"],
+      "denied_tools": [
+        "inventory_get_pricing",
+        "query_payment_status",
+        "finance_list_transactions",
+        "finance_get_transaction",
+        "finance_vendor_summary",
+        "finance_monthly_summary",
+        "finance_linked_items",
+        "display_vendor_report",
+        "display_financial_report",
+        "system_get_exchange_rate",
+        "system_list_users",
+        "system_get_settings",
+        "system_list_devices",
+        "system_get_print_jobs",
+        "set_expression",
+        "move_head",
+        "speak",
+        "display_vendor_card",
+        "display_inventory_card",
+        "get_robot_status",
+        "ping_robot",
+        "app_change_view",
+        "app_search_inventory",
+        "app_open_inventory_artifact",
+        "app_open_add_item"
+      ],
+      "allowed_fields": ["book_retail"],
+      "redacted_field_sets": ["cost_columns", "payment_fields"],
+      "redacted_patterns": ["cost", "payment", "mxn"],
+      "rules": [
+        "The voice set plus book_retail (USD) plus read-only crate list and crate contents (logistics_list_containers, logistics_container_contents); still no payment or cost fields.",
+        "price_mxn is in COST_COLUMNS and stays denied, as does every other cost column: the only price this role sees is book_retail in USD (Chief decision 2).",
+        "Result fields come from redaction.field_allowlists.staff-device; anything not listed is stripped.",
+        "Price is shown on the device screen only; never spoken.",
+        "Acks may go in /v1/checkin or as an event of type ack over /v1/event."
+      ]
+    },
+    "staff": {
+      "who": "Signed-in Onyx app user (Supabase staff JWT). App roles: Developer, Admin, ClientBoss, ClientAccounting, ClientViewer, Vendor, Client.",
+      "auth": "staff_jwt",
+      "data_tools": "Each ONYX_DATA_TOOLS tool is allowed when the user's app role is in that tool's requiredRoles; costSensitive results are redacted of cost_columns unless the role is in FINANCE_ROLES; vendorScoped results are scoped to the caller's vendor_id for Vendor users.",
+      "finance_roles": ["Developer", "Admin", "ClientBoss", "ClientAccounting"],
+      "payment_and_cost_tools": {
+        "description": "Need a staff JWT whose app role is in FINANCE_ROLES.",
+        "tools": [
+          "inventory_get_pricing",
+          "query_payment_status",
+          "finance_list_transactions",
+          "finance_get_transaction",
+          "finance_vendor_summary",
+          "finance_monthly_summary",
+          "finance_linked_items",
+          "display_vendor_report",
+          "display_financial_report"
+        ]
+      },
+      "device_command_tools": {
+        "description": "Robot/app tools targeting a device_id. Allowed only for devices assigned to the user in onyxchan_device_assignments; Only Admin commands all devices (B3, Chief decision 23). speak needs the target to hold a session: otherwise it is queued and runs on wake only if not expired, else the caller gets expired. payment-card is enqueued only from a staff JWT whose app role is in finance_roles. Writes a row to onyxchan_commands and returns a command id; the ack arrives asynchronously.",
+        "tools": [
+          "set_expression",
+          "move_head",
+          "speak",
+          "display_vendor_card",
+          "display_inventory_card",
+          "get_robot_status",
+          "ping_robot",
+          "app_change_view",
+          "app_search_inventory",
+          "app_open_inventory_artifact",
+          "app_open_add_item"
+        ],
+        "command_all_devices_roles": ["Admin"]
+      },
+      "other_tools": ["resolve_tag", "query_inventory", "query_inventory_item", "count_vendor_items"],
+      "redacted_field_sets_unless_finance_role": ["cost_columns", "payment_fields"]
+    },
+    "agent": {
+      "who": "Claude / Gemini agents with a personal access token (agent_tokens: prefix, hash, scopes, expires_at, revoked_at, last_used_at).",
+      "auth": "personal_access_token",
+      "cap": "Effective permissions = intersection of (the issuing user's staff permissions) AND (the issuing user's device assignments) AND (the token's scopes). Never more than the issuer.",
+      "default_scope": "read-only",
+      "scopes": {
+        "names_final": false,
+        "description": "Scope names are an open question; the plan fixes only the semantics below.",
+        "read": "Default. Read tools of the issuer's set, with cost_columns and payment_fields redacted.",
+        "device-command": "Only when granted explicitly. Unlocks device_command_tools on the issuer's assigned devices.",
+        "payment": "Named scope required before any payment tool is reachable.",
+        "cost": "Named scope required before cost tools or cost_columns are reachable."
+      },
+      "denied_without_named_scope": [
+        "inventory_get_pricing",
+        "query_payment_status",
+        "finance_list_transactions",
+        "finance_get_transaction",
+        "finance_vendor_summary",
+        "finance_monthly_summary",
+        "finance_linked_items",
+        "display_vendor_report",
+        "display_financial_report",
+        "set_expression",
+        "move_head",
+        "speak",
+        "display_vendor_card",
+        "display_inventory_card",
+        "get_robot_status",
+        "ping_robot",
+        "app_change_view",
+        "app_search_inventory",
+        "app_open_inventory_artifact",
+        "app_open_add_item"
+      ],
+      "redacted_field_sets_without_named_scope": ["cost_columns", "payment_fields"]
+    },
+    "gateway": {
+      "who": "The Cloud Run gateway, authenticated to one edge function by GATEWAY_EDGE_SECRET (Secret Manager).",
+      "auth": "gateway_edge_secret",
+      "secrets": {
+        "GATEWAY_EDGE_SECRET": "gateway to edge function; Secret Manager.",
+        "NOTIFY_SECRET": "pg_net trigger to POST /v1/notify, header X-Notify-Secret; Supabase Vault. Never the same value as GATEWAY_EDGE_SECRET; neither grants a tool."
+      },
+      "allowed_tools": [],
+      "allowed_rpcs": {
+        "description": "Called only through the edge function, server-side, each with the device's own token (or a per-session token minted by verify_device_token: HMAC-signed, valid 10 minutes, bound to device_id). The RPCs derive device_id from that token, never from a parameter. EXECUTE is revoked from anon and authenticated.",
+        "rpcs": [
+          "verify_device_token",
+          "claim_commands",
+          "ack_command",
+          "record_device_heartbeat",
+          "record_device_event"
+        ]
+      },
+      "rules": [
+        "GATEWAY_EDGE_SECRET alone grants no tool and no device data: every tool call is evaluated under the forwarded device token's role (voice or staff-device).",
+        "The gateway never holds the Supabase service-role key and cannot call staff tools."
+      ]
+    }
+  }
+}
