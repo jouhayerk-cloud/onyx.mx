@@ -1,11 +1,12 @@
 import { atom } from 'jotai';
+import { nullableAtom } from '../../lib/atoms';
 
 export type AgentPhase = 'idle' | 'listening' | 'thinking' | 'acting' | 'speaking' | 'error';
 
 export const onyxAgentOpenAtom = atom<boolean>(false);
 export const onyxAgentPhaseAtom = atom<AgentPhase>('idle');
 export const onyxMirrorRobotAtom = atom<boolean>(false);
-export const onyxRobotDeviceIdAtom = atom<string | null>(null);
+export const onyxRobotDeviceIdAtom = nullableAtom<string>();   // see nullableAtom in lib/atoms: plain atom(null) types as read-only here
 
 export type AgentActivityKind = 'tool' | 'navigate' | 'robot' | 'error';
 
