@@ -63,7 +63,7 @@ const LogisticsView      = React.lazy(() => import('../logistics/LogisticsView')
 const FinanceView        = React.lazy(() => import('../finance/FinanceView').then(m => ({ default: m.FinanceView })));
 const AdminDashboard     = React.lazy(() => import('../dashboard/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const ClientOverview     = React.lazy(() => import('../dashboard/ClientOverview').then(m => ({ default: m.ClientOverview })));
-const WorkbookView       = React.lazy(() => import('../workbook/WorkbookView').then(m => ({ default: m.WorkbookView })));
+const ArchivedView       = React.lazy(() => import('../archived/ArchivedView').then(m => ({ default: m.ArchivedView })));   // replaces WorkbookView (Archived module: ARCHIVE 825 only)
 const StoreView          = React.lazy(() => import('../store/StoreView').then(m => ({ default: m.StoreView })));
 const RegStorePreview    = React.lazy(() => import('../store/RegStorePreview').then(m => ({ default: m.RegStorePreview })));
 const PackingModule      = React.lazy(() => import('../logistics/PackingModule').then(m => ({ default: m.PackingModule })));
@@ -334,7 +334,7 @@ export function MainAppView() {
             // Overview summarises finances and inventory: Admin and Developer only (never vendors or client roles).
             case 'overview': return (user?.role === 'Developer' || user?.role === 'Admin') ? <AdminDashboard /> : <InventoryView />;
             // Workbook holds the 326 book and the ARCHIVE 825 tab (finance, production, logistics tabs inside): Admin and Developer only.
-            case 'workbook': return (user?.role === 'Developer' || user?.role === 'Admin') ? <WorkbookView /> : <InventoryView />;
+            case 'workbook': return (user?.role === 'Developer' || user?.role === 'Admin') ? <ArchivedView /> : <InventoryView />;
             case 'upload': return <UploadView />;
             case 'welcome': return <WelcomeView />;
             case 'inventory': return <InventoryView />;

@@ -117,3 +117,17 @@ const LedgerContent: React.FC = () => {
     </div>
   );
 };
+
+/** The Ledger view for Developer and Admin only (archive_balances is also protected by row level security). */
+export const ArchivedLedger: React.FC = () => {
+  const user = useAtomValue(userAtom);
+  const isFinanceRole = user?.role === 'Developer' || user?.role === 'Admin';
+  if (!isFinanceRole) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="text-sm font-black tracking-widest uppercase text-white/40">{tr('Access Restricted')}</div>
+      </div>
+    );
+  }
+  return <LedgerContent />;
+};

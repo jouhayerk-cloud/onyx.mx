@@ -128,6 +128,7 @@ const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole
         activeTab={tab}
         onTabChange={setTab}
         showLedgerTab={isFinanceRole}
+        showFinance={isFinanceRole}
       />
 
       <div className="flex-1 overflow-auto custom-scrollbar relative">
