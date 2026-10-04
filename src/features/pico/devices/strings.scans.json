@@ -1,0 +1,22 @@
+[
+  ["No telemetry yet", "Aún no hay telemetría"],
+  ["Unknown item", "Artículo desconocido"],
+  ["Wrong item", "Artículo equivocado"],
+  ["Scans", "Escaneos"],
+  ["All Devices", "Todos los dispositivos"],
+  ["Location:", "Ubicación:"],
+  ["Status:", "Estado:"],
+  ["Vendor:", "Proveedor:"],
+  ["Type:", "Tipo:"],
+  ["Time:", "Hora:"],
+  ["Device:", "Dispositivo:"],
+  ["Tag:", "Etiqueta:"],
+  ["N/A", "N/A"],
+  ["Just now", "Justo ahora"],
+  ["seconds ago", "hace unos segundos"],
+  ["minutes ago", "hace unos minutos"],
+  ["hours ago", "hace unas horas"],
+  ["days ago", "hace unos días"],
+  ["Loading...", "Cargando..."],
+  ["Unavailable", "No disponible"]
+]
