@@ -3133,5 +3133,5 @@ export const esCatalog: Record<string, string> = {
   '{m}m ago': 'Hace {m}m',
   '{h}h ago': 'Hace {h}h',
   'New notification': 'Nueva notificación',
-
+  'Could not load the notification center. Check your connection and try again.': 'No se pudo cargar el centro de notificaciones. Revisa tu conexión e inténtalo de nuevo.',
 };

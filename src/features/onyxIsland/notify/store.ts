@@ -93,19 +93,26 @@ function schedulePersist() {
     persistTimer = null;
     lastPersistTime = Date.now();
     try {
-      const toSave = history.map(({ render, actions, ...rest }) => rest);
+      const toSave = history.map(({ render, actions, ...rest }) => ({ ...rest, message: rest.message.slice(0, 500) }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     } catch (e) {}
   }, delay);
 }
 
+let paused = false;   // true while the pointer or focus is on the island: a (re)started toast must not run its timer
+
 function advanceQueue() {
+  if (timerId) {
+    clearTimeout(timerId);
+    timerId = null;
+  }
   if (queuedToast) {
     currentToast = queuedToast;
     queuedToast = null;
     startToastTimer(currentToast);
   } else {
     currentToast = null;
+    paused = false;
   }
   updateSnapshot();
 }
@@ -118,7 +125,7 @@ function startToastTimer(toast: IslandNotification) {
   currentToastStartedAt = Date.now();
   currentToastRemainingDuration = toast.duration;
 
-  if (toast.duration !== null) {
+  if (toast.duration !== null && !paused) {
     timerId = setTimeout(() => {
       advanceQueue();
     }, toast.duration);
@@ -126,6 +133,7 @@ function startToastTimer(toast: IslandNotification) {
 }
 
 export function pauseToastTimer() {
+  paused = true;
   if (timerId && currentToastRemainingDuration !== null && currentToastStartedAt !== null) {
     clearTimeout(timerId);
     timerId = null;
@@ -135,6 +143,7 @@ export function pauseToastTimer() {
 }
 
 export function resumeToastTimer() {
+  paused = false;
   if (!timerId && currentToastRemainingDuration !== null && currentToast) {
     currentToastStartedAt = Date.now();
     timerId = setTimeout(() => {
@@ -160,7 +169,7 @@ export function pushNotification(input: NotifyInput): string {
         message,
         duration,
         title: input.title !== undefined ? input.title : existing.title,
-        render: input.render !== undefined ? input.render : existing.render,
+        render: 'render' in input ? input.render : existing.render,   // toast.ts sets render explicitly (undefined for plain strings)
         actions: input.actions !== undefined ? input.actions : existing.actions,
         source: input.source !== undefined ? input.source : existing.source,
         updatedAt: now,
@@ -201,7 +210,7 @@ export function pushNotification(input: NotifyInput): string {
 
   if (!input.id) {
     const recentDuplicateIdx = history.findIndex(
-      (n) => n.kind === kind && n.message === message && now - n.createdAt < 2000
+      (n) => !input.render && !n.render && n.kind === kind && n.message === message && now - n.createdAt < 2000
     );
 
     if (recentDuplicateIdx !== -1) {
@@ -287,6 +296,11 @@ export function dismissNotification(id?: string) {
   let changed = false;
 
   if (id === undefined) {
+    if (queuedToast) {
+      markAsReadInHistory(queuedToast.id);
+      queuedToast = null;
+      changed = true;
+    }
     if (currentToast) {
       markAsReadInHistory(currentToast.id);
       changed = true;

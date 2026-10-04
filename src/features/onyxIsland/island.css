@@ -13,15 +13,20 @@
   pointer-events: auto;
 }
 
+/* Centred with auto margins, NOT translateX(-50%): framer-motion owns the transform of this element during layout animations and would drop the CSS translate (the island jumped off-centre). Width is always set inline per mode. */
 .onyx-island {
   position: absolute;
   top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
   z-index: 60;
   color: #fff;
   will-change: auto;
 }
+/* the square root box must not block clicks around the rounded surface */
+.onyx-island-band .onyx-island { pointer-events: none; }
+.onyx-island-band .onyx-island-surface { pointer-events: auto; }
 
 .onyx-island-surface {
   background: color-mix(in srgb, #0b0b0f 94%, var(--main-color, #00aeef) 6%);
