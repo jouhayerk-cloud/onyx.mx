@@ -1,0 +1,13 @@
+[
+  ["Items", "Artículos"],
+  ["Ledger", "Libro Mayor"],
+  ["Vendor Items", "Artículos del Proveedor"],
+  ["Total Quantity", "Cantidad Total"],
+  ["Total Weight (KG)", "Peso Total (KG)"],
+  ["Page Total", "Total de Página"],
+  ["AQ Round", "AQ Redondo"],
+  ["LND Round", "LND Redondo"],
+  ["Desc Price", "Precio Desc"],
+  ["Loading Ledger...", "Cargando Libro Mayor..."],
+  ["Qty / Wt", "Cant / Peso"]
+]

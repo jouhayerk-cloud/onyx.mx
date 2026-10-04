@@ -41,4 +41,7 @@ export interface ArchiveFinance {
   aqc: number | null;
   lc: number | null;
   sqm_price: number | null;
+  aq_round: number | null;
+  lnd_round: number | null;
+  desc_price: number | null;
 }

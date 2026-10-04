@@ -24,6 +24,7 @@ export function useArchive() {
   
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [finance, setFinance] = useState<Record<string, ArchiveFinance>>({});
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [hasMore, setHasMore] = useState<boolean>(false);
 
   const pageSize = 200;
@@ -68,8 +69,17 @@ export function useArchive() {
         if (vendorErr) throw vendorErr;
         
         if (mounted) {
+          const vCounts: Record<string, number> = {};
+          vendorData.forEach((v: any) => {
+            const vendor = v.vendor;
+            if (vendor) {
+              vCounts[vendor] = (vCounts[vendor] || 0) + 1;
+            }
+          });
+          setCounts(vCounts);
+          
           // unique vendors
-          const uniqueVendors = [...new Set(vendorData.map((v: any) => v.vendor))].sort() as string[];
+          const uniqueVendors = Object.keys(vCounts).sort();
           setVendors(uniqueVendors);
           if (uniqueVendors.length > 0 && !selectedVendor) {
             setSelectedVendor(uniqueVendors[0]);
@@ -192,6 +202,7 @@ export function useArchive() {
     prevPage,
     items,
     finance,
+    counts,
     isFinanceRole
   };
 }
