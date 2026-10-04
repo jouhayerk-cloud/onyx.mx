@@ -19,6 +19,7 @@ export interface DeviceState {
   session_open_until: string | null;
   active_workflow: string | null;
   last_error: string | null;
+  extra?: Record<string, unknown> | null;
 }
 
 export interface TelemetryPoint {

@@ -49,6 +49,7 @@ function toDeviceState(r: any): DeviceState {
     session_open_until: str(r.session_open_until),
     active_workflow: str(r.active_workflow),
     last_error: str(r.last_error),
+    extra: typeof r.extra === 'object' ? r.extra : null,
   };
 }
 
