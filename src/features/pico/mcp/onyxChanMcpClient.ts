@@ -2,7 +2,7 @@
  * onyxChanMcpClient.ts
  * 
  * TypeScript client SDK for invoking OnyxChan Model Context Protocol (MCP) tools.
- * Can invoke tools via Supabase Edge Function HTTP or directly through Supabase Realtime.
+ * Invokes tools via the Supabase Edge Function over HTTP.
  */
 import { supabase } from '../../../lib/supabase';
 import { OnyxChanFace } from '../useDeviceControl';
@@ -57,82 +57,28 @@ export class OnyxChanMcpClient {
     this.functionUrl = customUrl || `${import.meta.env.VITE_SUPABASE_URL || ''}/functions/v1/onyxchan-mcp`;
   }
 
-  /** Execute an MCP tool via the Supabase Edge Function */
+  /** Execute an MCP tool via the Supabase Edge Function; failures throw so the UI can show them */
   async callTool<T = any>(toolName: string, args: Record<string, any>): Promise<T> {
-    try {
-      const response = await fetch(`${this.functionUrl}/rpc`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`,
-        },
-        body: JSON.stringify({ tool: toolName, args }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`MCP tool execution error: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (err) {
-      console.warn(`[MCP Fallback] Invoking via direct Realtime broadcast:`, toolName, args);
-      // Fallback: Dispatch directly via Supabase Realtime broadcast
-      return this.dispatchRealtimeFallback(toolName, args);
-    }
-  }
-
-  /** Direct Realtime dispatch fallback */
-  private async dispatchRealtimeFallback(toolName: string, args: Record<string, any>): Promise<any> {
-    const deviceId = args.device_id || 'global-broadcast';
-    const channel = supabase.channel(`device_control:${deviceId}`);
-
-    let payload: Record<string, any> = {};
-    switch (toolName) {
-      case 'move_head':
-        payload = { action: 'move', pan: args.pan, tilt: args.tilt };
-        break;
-      case 'set_expression':
-        payload = { action: 'face', expression: args.expression, duration: args.duration };
-        break;
-      case 'speak':
-        payload = { action: 'tts', text: args.text, language: args.language || 'es' };
-        break;
-      case 'display_vendor_card':
-        payload = {
-          action: 'vendor-display',
-          vendor: args.vendor,
-          title: args.title,
-          details: args.details,
-          color: args.color,
-          icon: args.icon,
-        };
-        break;
-      case 'display_inventory_card':
-        payload = {
-          action: 'inventory-display',
-          item_id: args.item_id,
-          title: args.title,
-          price: args.price,
-          stock: args.stock,
-          vendor: args.vendor,
-        };
-        break;
-      case 'ping_robot':
-        payload = { action: 'ping', timestamp: Date.now() };
-        break;
-      default:
-        payload = { action: toolName, ...args };
-        break;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      throw new Error('Sign in required to call OnyxChan MCP tools.');
     }
 
-    await channel.send({
-      type: 'broadcast',
-      event: 'DEVICE_COMMAND',
-      payload,
+    const response = await fetch(`${this.functionUrl}/rpc`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ tool: toolName, args }),
     });
 
-    return { status: 'broadcast_sent', payload };
+    if (!response.ok) {
+      throw new Error(`MCP tool execution error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   // ── Convenience Tool Invocations ──────────────────────────────────────────

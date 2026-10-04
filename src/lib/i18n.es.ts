@@ -2362,6 +2362,7 @@ export const esCatalog: Record<string, string> = {
   'Link Hardware Terminal': 'Vincular Terminal de Hardware',
   'Manual Link': 'Vínculo Manual',
   'Pair via Web Bluetooth': 'Emparejar por Web Bluetooth',
+  'No telemetry yet': 'Aún sin telemetría',
   'Pairing...': 'Emparejando...',
   'Paired & Connected!': '¡Emparejado y conectado!',
   'Disconnect': 'Desconectar',

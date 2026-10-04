@@ -122,14 +122,14 @@ export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
             <BatteryCharging size={10} className="text-emerald-400" />
             {tr("Battery")}
           </div>
-          <div className="text-xs font-mono font-bold text-emerald-400">{session?.battery ?? 88}%</div>
+          <div className="text-xs font-mono font-bold text-emerald-400">{session?.battery !== undefined ? `${session.battery}%` : tr("No telemetry yet")}</div>
         </div>
         <div>
           <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
             <Wifi size={10} className="text-cyan-400" />
             {tr("Signal (RSSI)")}
           </div>
-          <div className="text-xs font-mono font-bold text-cyan-400">{session?.rssi ?? -48} {tr("dBm")}</div>
+          <div className="text-xs font-mono font-bold text-cyan-400">{session?.rssi !== undefined ? `${session.rssi} ${tr("dBm")}` : tr("No telemetry yet")}</div>
         </div>
         <div>
           <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
