@@ -111,6 +111,32 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: { code: 500, message: "Server configuration error" } }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
+  // Build the upstream payload on the server: a signed-in caller must not choose arbitrary Gemini fields or an unbounded output size.
+  // Only these top-level fields are forwarded, and generationConfig is rebuilt from a whitelist with clamped numbers.
+  const src: Record<string, any> = Array.isArray(messages) ? { contents: messages } : messages;
+  const MAX_OUTPUT_TOKENS = 8192;
+  const clamp = (v: unknown, lo: number, hi: number): number | undefined =>
+    typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : undefined;
+  const payload: Record<string, unknown> = { contents: src.contents };
+  for (const k of ["systemInstruction", "system_instruction", "tools", "toolConfig", "tool_config"]) {
+    if (src[k] !== undefined) payload[k] = src[k];
+  }
+  const gcIn = (src.generationConfig ?? src.generation_config ?? {}) as Record<string, any>;
+  const gc: Record<string, unknown> = {
+    maxOutputTokens: clamp(gcIn.maxOutputTokens, 1, MAX_OUTPUT_TOKENS) ?? MAX_OUTPUT_TOKENS,
+  };
+  const temperature = clamp(gcIn.temperature, 0, 2);
+  if (temperature !== undefined) gc.temperature = temperature;
+  const topP = clamp(gcIn.topP, 0, 1);
+  if (topP !== undefined) gc.topP = topP;
+  const topK = clamp(gcIn.topK, 1, 100);
+  if (topK !== undefined) gc.topK = topK;
+  if (gcIn.responseMimeType === "application/json" || gcIn.responseMimeType === "text/plain") gc.responseMimeType = gcIn.responseMimeType;
+  if (gcIn.responseSchema !== undefined && typeof gcIn.responseSchema === "object") gc.responseSchema = gcIn.responseSchema;
+  const budget = clamp(gcIn.thinkingConfig?.thinkingBudget, -1, MAX_OUTPUT_TOKENS);
+  if (budget !== undefined) gc.thinkingConfig = { thinkingBudget: budget };
+  payload.generationConfig = gc;
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent`;
 
   try {
@@ -120,7 +146,7 @@ serve(async (req: Request) => {
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey,
       },
-      body: JSON.stringify(messages),
+      body: JSON.stringify(payload),
     });
 
     if (!geminiRes.ok) {
