@@ -87,7 +87,7 @@ const LedgerContent: React.FC = () => {
               {rows.map((row, i) => (
                 <tr key={i} className="hover:bg-white/[0.04] transition-colors duration-150">
                   <td className="px-4 py-2 sticky left-0 bg-[var(--slab)] z-10 border-r border-white/5 whitespace-nowrap">
-                    <span className="text-[11px] text-white/90 font-black tracking-wide">{row.payload?._label || '—'}</span>
+                    <span className="text-[11px] text-white/90 font-black tracking-wide">{String(row.payload?._label ?? '—')}</span>
                     {row.payload?._src_row != null && (
                       <span className="ml-2 text-[9px] font-mono text-white/40">#{row.payload._src_row}</span>
                     )}

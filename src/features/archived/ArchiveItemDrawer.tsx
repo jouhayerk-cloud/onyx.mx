@@ -208,7 +208,7 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
                       {Object.entries(item.attrs).map(([key, val]) => (
                         <div key={key} className="flex justify-between items-baseline border-b border-white/5 pb-2">
                           <span className="text-sm text-white/50">{key}</span>
-                          <span className="text-sm font-bold text-white/90">{String(val)}</span>
+                          <span className="text-sm font-bold text-white/90 break-words min-w-0">{String(val)}</span>
                         </div>
                       ))}
                     </div>

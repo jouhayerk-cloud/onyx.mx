@@ -75,6 +75,9 @@ const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole
     return () => observer.disconnect();
   }, [hasMore, loadingMore, loadMore]);
 
+  // an open item belongs to the list that was on screen: changing vendor, search or sort closes it
+  useEffect(() => { setSelectedId(null); }, [vendor, search, sort]);
+
   const selectedIndex = useMemo(() => items.findIndex(i => i.id === selectedId), [items, selectedId]);
   const selectedItem = selectedIndex >= 0 ? items[selectedIndex] : null;
   const selectedFinance = selectedItem ? (financeMap[selectedItem.id] ?? null) : null;
@@ -82,8 +85,10 @@ const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole
   const handleNext = useCallback(() => {
     if (selectedIndex >= 0 && selectedIndex < items.length - 1) {
       setSelectedId(items[selectedIndex + 1].id);
+    } else if (selectedIndex >= 0 && hasMore && !loadingMore) {
+      loadMore();   // at the end of the loaded pages: fetch the next page, then Next works again
     }
-  }, [selectedIndex, items]);
+  }, [selectedIndex, items, hasMore, loadingMore, loadMore]);
 
   const handlePrev = useCallback(() => {
     if (selectedIndex > 0) {

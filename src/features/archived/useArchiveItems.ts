@@ -207,7 +207,8 @@ export function useArchiveItems(
           query = query.textSearch('search', search, { config: 'simple', type: 'websearch' });
           const safeText = search.replace(/[,()*%\\"]/g, '').trim().substring(0, 40);
           if (safeText) {
-            query = query.or(`tag_id.ilike.${safeText}%,item_number.ilike.${safeText}%`);
+            const q = safeText.replace(/"/g, '""');   // quoted values: spaces are safe inside the or() list
+            query = query.or(`tag_id.ilike."${q}%",item_number.ilike."${q}%"`);
           }
         }
         
@@ -295,8 +296,8 @@ export function useArchiveItems(
       
       if (vendor === 'ALL' || vendor === v) {
         itemsInScope++;
-        qtyInScope += item.quantity || 0;
-        weightInScope += item.weight_kg || 0;
+        qtyInScope += Number(item.quantity) || 0;   // numeric columns may arrive as strings
+        weightInScope += Number(item.weight_kg) || 0;
         if (finance && usdInScope !== null) {
           usdInScope += (bookFinance[item.id] || 0);
         }
@@ -321,6 +322,7 @@ export function useArchiveItems(
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore && status === 'ready') {
+      setLoadingMore(true);   // block a second observer callback before React applies the page change
       setPage(p => p + 1);
     }
   }, [loadingMore, hasMore, status]);
