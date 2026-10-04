@@ -1,0 +1,82 @@
+/* Base (any theme): dark translucent glass with a backdrop blur. The slab block below swaps in the theme's own slab colour. */
+.arch-glass {
+  background-color: rgba(20, 22, 30, 0.34);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.arch-glass-strong {
+  background-color: rgba(20, 22, 30, 0.50);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  backdrop-filter: blur(30px) saturate(1.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.arch-th {
+  background-color: rgba(20, 22, 30, 0.40);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
+  position: sticky;
+  top: var(--app-topbar-h, 0px);
+  z-index: 5;
+}
+
+.arch-row {
+  background-color: transparent;
+  transition: background-color 0.15s;
+}
+
+.arch-row:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.arch-row[data-selected="true"] {
+  outline: 2px solid var(--main-color, #3b82f6);
+  outline-offset: -2px;
+}
+
+/* Glass override for slab themes */
+html.style-slab .arch-glass {
+  background-color: color-mix(in srgb, var(--slab, #1b1b22) 24%, transparent) !important;
+  backdrop-filter: blur(18px) saturate(1.5) !important;
+  border: 1px solid color-mix(in srgb, var(--slab-hi, #ffffff) 24%, transparent) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.style-slab .arch-glass-strong {
+  background-color: color-mix(in srgb, var(--slab, #1b1b22) 44%, transparent) !important;
+  backdrop-filter: blur(30px) saturate(1.5) !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-right: none !important;
+  border-left: 1px solid color-mix(in srgb, var(--slab-hi, #ffffff) 24%, transparent) !important;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.1), 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+}
+
+html.style-slab .arch-th {
+  background-color: color-mix(in srgb, var(--slab, #1b1b22) 36%, transparent) !important;
+  backdrop-filter: blur(24px) saturate(1.5) !important;
+  position: sticky !important;
+  top: var(--app-topbar-h, 0px) !important;
+  z-index: 5 !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--slab-hi, #ffffff) 24%, transparent) !important;
+}
+
+html.style-slab .arch-row {
+  background-color: transparent !important;
+}
+
+html.style-slab .arch-row:hover {
+  background-color: var(--slab-glass-row-hover, rgba(255, 255, 255, 0.1)) !important;
+}
+
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+  html.style-slab .arch-glass,
+  html.style-slab .arch-glass-strong,
+  html.style-slab .arch-th {
+    background-color: var(--slab, #1b1b22) !important;
+    backdrop-filter: none !important;
+  }
+}

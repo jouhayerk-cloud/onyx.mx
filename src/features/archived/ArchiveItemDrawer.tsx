@@ -8,6 +8,7 @@ import {
   formatDims,
   formatWeight,
   formatMoney,
+  formatNumber,
   vendorColor,
   formatDate
 } from './archiveFormat';
@@ -121,7 +122,7 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
-            className="fixed inset-0 bg-black/40 z-[90]"
+            className="fixed inset-0 bg-black/40 z-[510]"
             onClick={onClose}
           />
           <motion.div
@@ -134,7 +135,7 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: isReduced ? 0 : '100%', opacity: isReduced ? 0 : 1 }}
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed top-16 right-0 bottom-0 w-full sm:w-[440px] bg-[var(--slab)] z-[100] border-l border-white/10 shadow-2xl flex flex-col focus:outline-none"
+            className="fixed top-0 right-0 bottom-0 w-full sm:w-[440px] arch-glass-strong z-[520] flex flex-col focus:outline-none"
             tabIndex={-1}
           >
             <div aria-live="polite" className="sr-only">
@@ -162,7 +163,6 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
               </div>
 
               <div className="p-6 space-y-8">
-                {/* General Section */}
                 <section>
                   <h3 className="text-xs font-black uppercase text-white/40 mb-4 tracking-widest">{tr('General')}</h3>
                   <div className="space-y-4">
@@ -179,7 +179,7 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
                     </div>
                     <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
                       <span className="text-sm text-white/50">{tr('Quantity')}</span>
-                      <span className="text-sm font-bold text-white/90">{item.quantity}</span>
+                      <span className="text-sm font-bold text-white/90">{formatNumber(item.quantity, 0)}</span>
                     </div>
                     <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
                       <span className="text-sm text-white/50">{tr('Weight')}</span>
@@ -200,7 +200,6 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
                   </div>
                 </section>
 
-                {/* Attributes Section */}
                 {Object.keys(item.attrs || {}).length > 0 && (
                   <section>
                     <h3 className="text-xs font-black uppercase text-white/40 mb-4 tracking-widest">{tr('Attributes')}</h3>
@@ -215,7 +214,6 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
                   </section>
                 )}
 
-                {/* Finance Section */}
                 {finance && (
                   <section>
                     <h3 className="text-xs font-black uppercase text-[var(--main-color)] mb-4 tracking-widest">{tr('Finance')}</h3>
@@ -239,46 +237,45 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
                       <div className="grid grid-cols-2 gap-4 mt-4">
                         <div>
                           <div className="text-[10px] text-white/40 uppercase mb-1">{tr('AQ')}</div>
-                          <div className="text-sm font-bold text-white/90">{finance.aq || '—'}</div>
+                          <div className="text-sm font-bold text-white/90">{formatNumber(finance.aq)}</div>
                         </div>
                         <div>
                           <div className="text-[10px] text-white/40 uppercase mb-1">{tr('LND')}</div>
-                          <div className="text-sm font-bold text-white/90">{finance.lnd || '—'}</div>
+                          <div className="text-sm font-bold text-white/90">{formatNumber(finance.lnd)}</div>
                         </div>
                         <div>
                           <div className="text-[10px] text-white/40 uppercase mb-1">{tr('AQC')}</div>
-                          <div className="text-sm font-bold text-white/90">{finance.aqc || '—'}</div>
+                          <div className="text-sm font-bold text-white/90">{formatNumber(finance.aqc)}</div>
                         </div>
                         <div>
                           <div className="text-[10px] text-white/40 uppercase mb-1">{tr('LC')}</div>
-                          <div className="text-sm font-bold text-white/90">{finance.lc || '—'}</div>
+                          <div className="text-sm font-bold text-white/90">{formatNumber(finance.lc)}</div>
                         </div>
                         <div>
                           <div className="text-[10px] text-white/40 uppercase mb-1">{tr('SQM Price')}</div>
-                          <div className="text-sm font-bold text-white/90">{finance.sqm_price || '—'}</div>
+                          <div className="text-sm font-bold text-white/90">{formatNumber(finance.sqm_price)}</div>
                         </div>
                         <div>
                           <div className="text-[10px] text-white/40 uppercase mb-1">{tr('AQ Round')}</div>
-                          <div className="text-sm font-bold text-white/90">{finance.aq_round || '—'}</div>
+                          <div className="text-sm font-bold text-white/90">{formatNumber(finance.aq_round)}</div>
                         </div>
                         <div>
                           <div className="text-[10px] text-white/40 uppercase mb-1">{tr('LND Round')}</div>
-                          <div className="text-sm font-bold text-white/90">{finance.lnd_round || '—'}</div>
+                          <div className="text-sm font-bold text-white/90">{formatNumber(finance.lnd_round)}</div>
                         </div>
                         <div>
                           <div className="text-[10px] text-white/40 uppercase mb-1">{tr('Desc Price')}</div>
-                          <div className="text-sm font-bold text-white/90">{finance.desc_price || '—'}</div>
+                          <div className="text-sm font-bold text-white/90">{formatNumber(finance.desc_price)}</div>
                         </div>
                       </div>
                     </div>
                   </section>
                 )}
                 
-                {/* Actions Section */}
                 <section className="flex flex-col gap-3 pb-8">
                   <button
                     onClick={copyTag}
-                    className="flex items-center justify-center gap-2 p-3 w-full"
+                    className="arch-glass flex items-center justify-center gap-2 p-3 w-full hover:-translate-y-0.5 transition-transform"
                     aria-label={tr('Copy Tag ID')}
                   >
                     <Copy size={16} className="opacity-60" />
@@ -286,7 +283,7 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
                   </button>
                   <button
                     onClick={copySrc}
-                    className="flex items-center justify-center gap-2 p-3 w-full"
+                    className="arch-glass flex items-center justify-center gap-2 p-3 w-full hover:-translate-y-0.5 transition-transform"
                     aria-label={tr('Copy Source Row')}
                   >
                     <Copy size={16} className="opacity-60" />
@@ -296,12 +293,11 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
               </div>
             </div>
             
-            {/* Navigation Footer */}
-            <div className="p-4 border-t border-white/5 flex gap-4 shrink-0 bg-[var(--slab)]">
+            <div className="p-4 border-t border-white/5 flex gap-4 shrink-0 bg-transparent">
               <button
                 onClick={onPrev}
                 disabled={!hasPrev}
-                className="flex-1 flex items-center justify-center gap-2 p-3"
+                className="arch-glass flex-1 flex items-center justify-center gap-2 p-3 hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 <ChevronLeft size={18} />
                 <span className="text-sm font-bold">{tr('Previous')}</span>
@@ -309,7 +305,7 @@ export const ArchiveItemDrawer: React.FC<ArchiveItemDrawerProps> = ({
               <button
                 onClick={onNext}
                 disabled={!hasNext}
-                className="flex-1 flex items-center justify-center gap-2 p-3"
+                className="arch-glass flex-1 flex items-center justify-center gap-2 p-3 hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 <span className="text-sm font-bold">{tr('Next')}</span>
                 <ChevronRight size={18} />

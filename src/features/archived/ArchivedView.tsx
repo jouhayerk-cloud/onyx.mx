@@ -13,6 +13,8 @@ import {
 } from './archivedState';
 import { InventorySkeletonGrid, InventorySkeletonList } from '../inventory/InventorySkeleton';
 
+import './archived.css';
+
 const Gate: React.FC = () => (
   <div className="flex h-full items-center justify-center p-8 bg-black/40">
     <div className="text-sm font-black tracking-widest uppercase text-white/40">
@@ -128,7 +130,7 @@ const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole
         {tab === 'Ledger' && isFinanceRole ? (
           <ArchivedLedger />
         ) : (
-          <div className="px-4 pb-6 pt-3 min-h-full flex flex-col">
+          <div className="px-4 pb-6 pt-3 min-h-full flex flex-col w-full">
             {status === 'error' && (
               <div className="flex flex-col items-center justify-center flex-1 space-y-4 py-12">
                 <div className="text-red-400 font-bold">{error || tr('Error loading archive')}</div>
@@ -156,7 +158,10 @@ const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole
             {items.length > 0 && (
               <>
                 {viewMode === 'gallery' ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                  <div 
+                    className="grid gap-[12px] w-full"
+                    style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))' }}
+                  >
                     {items.map(item => (
                       <ArchiveItemCard
                         key={item.id}
