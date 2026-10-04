@@ -260,7 +260,7 @@ function LineChart({ title, data, unit, minY, maxY, warnBelow, warnAbove, critic
         </div>
       </div>
       
-      <div className="relative w-full h-[120px]" aria-label={`${title} chart. ${trf('Min: {0}', [actMin.toFixed(1)])}, ${trf('Max: {0}', [actMax.toFixed(1)])}, ${trf('Latest: {0}', [latest.toFixed(1)])}`}>
+      <div className="relative w-full h-[120px]" aria-label={`${title} chart. ${trf('Min: {0}', {0: actMin.toFixed(1)})}, ${trf('Max: {0}', {0: actMax.toFixed(1)})}, ${trf('Latest: {0}', {0: latest.toFixed(1)})}`}>
         <svg 
           viewBox={`0 0 ${width} ${height}`} 
           className="absolute inset-0 w-full h-full overflow-visible focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 rounded"
