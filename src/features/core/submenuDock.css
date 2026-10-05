@@ -1,6 +1,6 @@
 .smd-layer {
   position: fixed;
-  height: 0;
+  /* no fixed height: a 0-height flex layer let the cards (overflow hidden) shrink to nothing while the stack still kept its gaps */
   margin-top: calc(env(safe-area-inset-top, 0px) + 82px);
   z-index: 10040;
   pointer-events: none;
@@ -15,10 +15,12 @@
   align-items: center;
   gap: 10px;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .smd-card {
   pointer-events: auto;
+  flex: 0 0 auto;
   width: calc(100% - 24px);
   max-width: 1480px;
   border-radius: 22px;
@@ -91,7 +93,8 @@
 
 .smd-card-content {
   overflow-y: auto;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 html.style-slab .smd-card.smd-card button:not(.smd-close-btn):not([aria-pressed="true"]):not([data-active="true"]):hover {

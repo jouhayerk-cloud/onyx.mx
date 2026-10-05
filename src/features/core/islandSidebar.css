@@ -299,3 +299,16 @@
 .isb-footer-active {
   background-color: rgba(255,255,255,0.1);
 }
+
+/* The panel is fixed, so the page makes room for it: the content column follows the sidebar state
+   (--sidebar-width is set on .app-container by MainAppView: 264px expanded, 92px compact, 0 hidden).
+   The hover peek widens the panel OVER the page and does not move it. On phones the sidebar overlays. */
+@media (min-width: 769px) {
+  .app-container > .app-content {
+    margin-left: var(--sidebar-width, 0px);
+    transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-container > .app-content { transition: none; }
+}
