@@ -52,7 +52,7 @@ export const IslandLaunchers: React.FC<IslandLaunchersProps> = ({ tools, onRun }
             }}
             onKeyDown={(e) => handleKeyDown(e, i)}
             tabIndex={i === 0 ? 0 : -1}
-            className="relative flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed isl-hw10 transition-colors text-white"
+            className="relative flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-full cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed isl-hw10 transition-colors text-white border border-transparent"
           >
             {tool.id === 'global.sidebar' ? (
               <div className="flex items-center justify-center w-6 h-6">

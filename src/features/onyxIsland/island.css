@@ -116,9 +116,66 @@ html.style-slab .onyx-island.onyx-island.onyx-island [role="button"] {
   box-shadow: none !important;
   border-color: transparent !important;
 }
+
+/* Normal hover for not-active tools */
 html.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover {
   background-color: rgba(255, 255, 255, 0.12) !important;
 }
+
+/* Normal pressed (mouse down) state for not-active tools */
+html.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):active {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Active state for tools (toggle pressed) */
+html.style-slab .onyx-island.onyx-island.onyx-island button[aria-pressed="true"],
+html.style-slab .onyx-island.onyx-island.onyx-island [role="button"][aria-pressed="true"],
+html.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"],
+html.style-slab .onyx-island.onyx-island.onyx-island [role="button"][data-active="true"] {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 38%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--main-color, #00aeef) 60%, transparent) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--main-color, #00aeef) 30%, transparent) !important;
+  color: #fff !important;
+}
+
+/* Active + Hover */
+html.style-slab .onyx-island.onyx-island.onyx-island button[aria-pressed="true"]:not(:disabled):hover,
+html.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"]:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 48%, transparent) !important;
+}
+
+/* Active + Pressed (Mouse down) */
+html.style-slab .onyx-island.onyx-island.onyx-island button[aria-pressed="true"]:not(:disabled):active,
+html.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"]:not(:disabled):active {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 58%, transparent) !important;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--main-color, #00aeef) 40%, transparent) !important;
+}
+
+/* Keyboard focus ring */
+html.style-slab .onyx-island.onyx-island.onyx-island button:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--main-color, #00aeef) !important;
+}
+
+/* Disabled state clearly dimmed */
+html.style-slab .onyx-island.onyx-island.onyx-island button:disabled {
+  opacity: 0.35 !important;
+  filter: grayscale(50%);
+}
+
+/* Light Theme (Aqua) active tweaks */
+html.theme-aqua .onyx-island.onyx-island.onyx-island button[aria-pressed="true"],
+html.theme-aqua .onyx-island.onyx-island.onyx-island button[data-active="true"] {
+  color: color-mix(in srgb, var(--main-color, #00aeef) 90%, #000) !important;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not(.theme-dark):not(.style-dark) .onyx-island.onyx-island.onyx-island button[aria-pressed="true"],
+  html:not(.theme-dark):not(.style-dark) .onyx-island.onyx-island.onyx-island button[data-active="true"] {
+    color: color-mix(in srgb, var(--main-color, #00aeef) 90%, #000) !important;
+  }
+}
+
 html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-user { border-left: 1px solid rgba(255, 255, 255, 0.14) !important; border-radius: 0 !important; }
 html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-radius: 0 !important; }
 
