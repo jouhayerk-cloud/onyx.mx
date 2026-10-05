@@ -39,6 +39,7 @@ import {
 import { LiquidBar } from '../../components/LiquidBar';
 import { MainHeader } from './MainHeader';
 import { IslandSidebar } from './IslandSidebar';
+import { isPrintCenterOpenAtom } from '../print/printState';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
 import { HeroBackground } from '../../components/HeroBackground';
@@ -61,6 +62,7 @@ import { tr } from '../../lib/i18n';
 const ControlView        = React.lazy(() => import('../control/ControlView').then(m => ({ default: m.ControlView })));
 const UploadView         = React.lazy(() => import('../upload/UploadView').then(m => ({ default: m.UploadView })));
 const WelcomeView        = React.lazy(() => import('../welcome/WelcomeView').then(m => ({ default: m.WelcomeView })));
+const PrintCenter        = React.lazy(() => import('../print/PrintCenter').then(m => ({ default: m.PrintCenter })));
 const InventoryView      = React.lazy(() => import('../inventory/InventoryView').then(m => ({ default: m.InventoryView })));
 const LogisticsView      = React.lazy(() => import('../logistics/LogisticsView').then(m => ({ default: m.LogisticsView })));
 const FinanceView        = React.lazy(() => import('../finance/FinanceView').then(m => ({ default: m.FinanceView })));
@@ -92,6 +94,7 @@ const DevicesView        = React.lazy(() => import('../pico/devices/DevicesView'
 export function MainAppView() {
     const t = useTranslation();
     const islandOn = useAtomValue(islandCommandsEnabledAtom);
+    const isPrintCenterOpen = useAtomValue(isPrintCenterOpenAtom);
     // Publish the top bar's height so the page can flow under it (topbarOverlay.css).
     const appContentRef = useRef<HTMLDivElement | null>(null);
     useLayoutEffect(() => {
@@ -337,6 +340,7 @@ export function MainAppView() {
                         <UploadWizard />
                         <BatchProcessingWizard />
                         <LabelWizard />
+                        {isPrintCenterOpen && <PrintCenter />}
                         <NFCWizard />
                         <PackWizard />
                         <CratePackingManager />
