@@ -11,7 +11,7 @@ import { buildGeometryTree, buildMaterialColorTree, toggleKey, type SmartFilterN
 import { GEOMETRIES, GEOMETRY_LABELS, type Geometry } from '../../lib/geometry';
 import { GeometryIcon } from './shapeIcons';
 import { vendors } from '../../lib/consts';
-import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
+import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
 import {
     isInventoryViewSliderOpenAtom,
@@ -405,72 +405,7 @@ export const InventoryFiltersPanel: React.FC = () => {
     );
 };
 
-export const usePanelTools = (): ToolDescriptor[] => {
-    const toolsOpen = useAtomValue(inventoryToolsOpenAtom);
-    const isSearchOpen = useAtomValue(isInventorySearchOpenAtom);
-    const isViewSliderOpen = useAtomValue(isInventoryViewSliderOpenAtom);
-    const isFiltersOpen = useAtomValue(isInventoryFiltersPanelOpenAtom);
-    const smartOpen = useAtomValue(isInventorySmartFiltersOpenAtom);
-
-    const tools: ToolDescriptor[] = [];
-
-    if (toolsOpen) {
-        if (isSearchOpen) {
-            tools.push({
-                id: 'inventory.panels.search',
-                moduleId: 'inventory',
-                label: tr('Search Panel'),
-                icon: Search,
-                kind: 'widget',
-                group: tr('Panels'),
-                order: 200,
-                render: () => <InventorySearchPanel />
-            });
-        }
-        if (isViewSliderOpen) {
-            tools.push({
-                id: 'inventory.panels.view',
-                moduleId: 'inventory',
-                label: tr('View Panel'),
-                icon: LayoutTemplate,
-                kind: 'widget',
-                group: tr('Panels'),
-                order: 210,
-                render: () => <InventoryViewPanel />
-            });
-        }
-        if (isFiltersOpen) {
-            tools.push({
-                id: 'inventory.panels.filters',
-                moduleId: 'inventory',
-                label: tr('Filters Panel'),
-                icon: Filter,
-                kind: 'widget',
-                group: tr('Panels'),
-                order: 220,
-                render: () => <InventoryFiltersPanel />
-            });
-        }
-        if (smartOpen) {
-            tools.push({
-                id: 'inventory.panels.smart',
-                moduleId: 'inventory',
-                label: tr('Smart Filters Panel'),
-                icon: Tag,
-                kind: 'widget',
-                group: tr('Panels'),
-                order: 230,
-                render: () => <InventorySmartFiltersPanel />
-            });
-        }
-    }
-
-    return tools;
-};
-
 export const InventoryPanelsRegistrar: React.FC = () => {
-    const islandEnabled = useAtomValue(islandCommandsEnabledAtom);
-    const tools = usePanelTools();
-    useRegisterTools('inventory-panels', tools, islandEnabled);
+    // The panels are now rendered directly as SubmenuDock cards by UniversalToolsBar. Nothing to register.
     return null;
 };

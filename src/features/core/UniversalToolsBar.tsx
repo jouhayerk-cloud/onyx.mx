@@ -8,6 +8,7 @@ import {
     InventoryPanelsRegistrar
 } from './inventoryPanels';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { SubmenuDock, SubmenuCard } from './SubmenuDock';
 import { 
     activeViewAtom, 
     isInventorySelectionModeAtom,
@@ -223,11 +224,11 @@ export const UniversalToolsBar: React.FC = () => {
     const islandEnabled = useAtomValue(islandCommandsEnabledAtom);
     
     // Inventory States
-    const [isInvViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
-    const [isInvFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
-    const [isInvSearchOpen] = useAtom(isInventorySearchOpenAtom);
+    const [isInvViewSliderOpen, setIsInvViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
+    const [isInvFiltersOpen, setIsInvFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
+    const [isInvSearchOpen, setIsInvSearchOpen] = useAtom(isInventorySearchOpenAtom);
     const toolsOpen = useAtomValue(inventoryToolsOpenAtom);
-    const smartOpen = useAtomValue(isInventorySmartFiltersOpenAtom);
+    const [smartOpen, setSmartOpen] = useAtom(isInventorySmartFiltersOpenAtom);
     
     // Both hierarchies are derived from the live rows, so a new material,
     // colour or shape appears as a filter the moment an item using it is
@@ -439,224 +440,230 @@ export const UniversalToolsBar: React.FC = () => {
 
     if (!isInventory && !isFinance && !isTrucking) return null;
 
+    // Elements
+    const renderInvSearch = () => <InventorySearchPanel />;
+    const renderInvView = () => <InventoryViewPanel />;
+    
+    const renderFinSearch = () => (
+        <div className="flex items-center gap-6 group transition-all shrink-0 p-4">
+            <Search size={28} strokeWidth={3} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
+            <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS...")} className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
+            {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={28} strokeWidth={3} /></button>}
+        </div>
+    );
+
+    const renderInvSelection = (className = "") => (
+        <div className={`w-full mx-auto px-6 py-4 flex items-center justify-between gap-4 overflow-x-auto no-scrollbar ${className}`}>
+            <div className="flex items-center gap-6">
+                <div className="w-12 h-12 rounded-xl bg-(--color-inventory)/10 border border-(--color-inventory)/20 flex items-center justify-center text-(--color-inventory) drop-shadow-[0_0_15px_rgba(var(--color-inventory-rgb),0.3)]">
+                    <SquareCheckBig size={28} strokeWidth={2.5} />
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] leading-none mb-1">{tr("Batch Management")}</span>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-black text-white tracking-tighter">{selectedIds.length}</span>
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Items Selected")}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+                <button 
+                    onClick={handleSelectAll}
+                    className="group flex items-center gap-3 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 shadow-xl"
+                >
+                    <div className="w-5 h-5 rounded-md border-2 border-white/20 group-hover:border-white/40 flex items-center justify-center transition-all">
+                        <div className="w-2 h-2 rounded-sm bg-white scale-0 group-hover:scale-100 transition-transform" />
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-[0.2em]">{tr("Select All")}</span>
+                </button>
+
+                <button 
+                    onClick={() => {
+                        setSelectedIds([]);
+                        toast.success(tr("Selection Cleared"));
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20 transition-all font-black text-[11px] tracking-widest uppercase active:scale-95"
+                >
+                    <X size={19} strokeWidth={3} />
+                    <span>{tr("Clear")}</span>
+                </button>
+            </div>
+        </div>
+    );
+
+    const renderFinFilters = (className = "") => (
+        <div className={`w-full px-8 py-3 flex items-center justify-between gap-8 overflow-x-auto no-scrollbar ${className}`}>
+            <div className="flex items-center gap-4 shrink-0">
+                {[
+                    { id: 'All', icon: LayoutGrid, color: '#888' },
+                    { id: 'Acq', icon: DollarSign, color: '#10b981' },
+                    { id: 'Prod', icon: Cpu, color: '#6366f1' },
+                    { id: 'Monthly', icon: Calendar, color: '#38bdf8' },
+                    { id: 'Supplies', icon: Box, color: '#f59e0b' },
+                    { id: 'Labor', icon: Users, color: '#ec4899' },
+                    { id: 'Packing', icon: Archive, color: '#a855f7' },
+                    { id: "Operations", icon: Activity, color: '#ef4444' },
+                    { id: "Logistics", icon: Truck, color: '#06b6d4' }
+                ].map(s => {
+                    const Icon = s.icon;
+                    const isActive = finCategoryFilter === s.id;
+                    return (
+                        <div key={s.id} className="tool-cell flex flex-col items-center gap-1 shrink-0">
+                            <button aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
+                                className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
+                                <Icon size={18} strokeWidth={isActive ? 3.5 : 2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
+                            </button>
+                            <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="flex items-center gap-5 shrink-0">
+                {Object.entries(destinationsConfig).map(([key, cfg]) => (
+                    <button key={key} onClick={() => setFinDestFilter(finDestFilter === key ? 'All' : key as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${finDestFilter === key ? 'scale-110 grayscale-0 brightness-100' : 'grayscale brightness-50 hover:grayscale-0 hover:brightness-100'}`}>
+                        <img src={cfg.icon} alt={cfg.name} className="w-9 h-4.5 object-contain" />
+                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${finDestFilter === key ? 'text-white' : 'text-zinc-500'}`}>{cfg.name.split(' ')[0]}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderFinAction = (className = "") => (
+        <div className={`w-full px-8 py-4 ${className}`}>
+            <SectionHeader icon={Heartbeat} title={tr("Requested")} count={activeQueueRecords.length} amount={activeQueueTotal} isOpen={isFinQueueOpen} onToggle={() => setIsFinQueueOpen(!isFinQueueOpen)} currencyMode={currencyMode} exRate={exRate} />
+            {isFinQueueOpen && (
+                <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 ${activeQueueRecords.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
+                    {activeQueueRecords.length === 0 ? <div className="py-6 text-center border border-white/5 rounded-2xl"><span className="text-[11px] font-black uppercase tracking-[0.6em]">{tr("QUEUE EMPTY")}</span></div> : activeQueueRecords.map(r => {
+                        const v = r.vendor_id || tr("Unknown");
+                        const color = vendors[v as keyof typeof vendors]?.color || '#888';
+                        return <ActiveRequestGridItem key={r.id} label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMode} exRate={exRate} onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: [r.id], title: `Detail: ${v}` })} />;
+                    })}
+                </div>
+            )}
+        </div>
+    );
+
+    const renderFinUpcoming = (className = "") => (
+        <div className={`w-full px-8 py-4 ${className}`}>
+            <SectionHeader 
+                icon={Hourglass} 
+                title={tr("Upcoming Payments")} 
+                count={combinedUpcoming.length} 
+                amount={combinedUpcomingTotal} 
+                isOpen={isFinUpcomingOpen} 
+                onToggle={() => setIsFinUpcomingOpen(!isFinUpcomingOpen)} 
+                currencyMode={currencyMode} 
+                exRate={exRate} 
+            />
+            {isFinUpcomingOpen && (
+                <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 mt-2 ${combinedUpcoming.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
+                    {combinedUpcoming.length === 0 ? (
+                        <div className="py-6 text-center border border-white/5 rounded-2xl">
+                            <span className="text-[11px] font-black uppercase tracking-[0.6em]">{tr("NO UPCOMING PAYMENTS")}</span>
+                        </div>
+                    ) : combinedUpcoming.map(r => {
+                        const v = r.vendor_id || tr("Unknown");
+                        const color = vendors[v as keyof typeof vendors]?.color || '#888';
+                        const isAuto = (r as any).is_auto_gen;
+                        return (
+                            <div key={r.id} className="relative group">
+                                <ActiveRequestGridItem 
+                                    label={r.description || v} 
+                                    amount={r.amount} 
+                                    paidAmount={(r as any).paidAmount}
+                                    totalAmount={(r as any).totalAmount}
+                                    color={color} 
+                                    type={r.subcategory} 
+                                    currencyMode={currencyMode} 
+                                    exRate={exRate} 
+                                    onClick={() => {
+                                        if (isAuto) {
+                                            setInvArtifactConfig({ 
+                                                isOpen: true, 
+                                                itemIds: r.related_inventory_ids || [], 
+                                                title: `Batch Items: ${v}`,
+                                                displayMode: 'gallery'
+                                            });
+                                        } else {
+                                            setPaymentsArtifactConfig({ 
+                                                isOpen: true, 
+                                                paymentIds: Array.isArray(r.related_inventory_ids) ? r.related_inventory_ids : [r.id], 
+                                                title: `Detail: ${v}` 
+                                            });
+                                        }
+                                    }} 
+                                />
+                                
+                                <div 
+                                    className="absolute bottom-2 right-4 text-[32px] font-black uppercase tracking-tighter pointer-events-none z-10 opacity-40 group-hover:opacity-100 transition-opacity"
+                                    style={{ color: color, filter: 'drop-shadow(0 0 12px rgba(0,0,0,0.5))' }}
+                                >
+                                    {v}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+
+    const docks: React.ReactNode[] = [];
+    
+    if (islandEnabled) {
+        if (isInventory && toolsOpen && isInvSearchOpen) docks.push(<SubmenuCard key="inv-search" id="inv-search" title={tr("Search")} onClose={() => setIsInvSearchOpen(false)}>{renderInvSearch()}</SubmenuCard>);
+        if (isInventory && toolsOpen && isInvViewSliderOpen) docks.push(<SubmenuCard key="inv-view" id="inv-view" title={tr("View")} onClose={() => setIsInvViewSliderOpen(false)}>{renderInvView()}</SubmenuCard>);
+        if (isInventory && toolsOpen && isInvFiltersOpen) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} onClose={() => setIsInvFiltersOpen(false)}><InventoryFiltersPanel /></SubmenuCard>);
+        if (isInventory && toolsOpen && smartOpen) docks.push(<SubmenuCard key="inv-smart" id="inv-smart" title={tr("Smart Filters")} onClose={() => setSmartOpen(false)}><InventorySmartFiltersPanel /></SubmenuCard>);
+        if (isInventory && isSelectionMode) docks.push(<SubmenuCard key="inv-select" id="inv-select" title={tr("Batch Management")} onClose={() => setIsSelectionMode(false)}>{renderInvSelection()}</SubmenuCard>);
+        if (isFinance && isFinSearchOpen) docks.push(<SubmenuCard key="fin-search" id="fin-search" title={tr("Search Payments")} onClose={() => setIsFinSearchOpen(false)}>{renderFinSearch()}</SubmenuCard>);
+        if (isFinance && isFinFiltersOpen) docks.push(<SubmenuCard key="fin-filters" id="fin-filters" title={tr("Filters")} onClose={() => setIsFinFiltersOpen(false)}>{renderFinFilters()}</SubmenuCard>);
+        if (isFinance && isFinActionOpen) docks.push(<SubmenuCard key="fin-action" id="fin-action" title={tr("Requested Payments")} onClose={() => setIsFinActionOpen(false)}>{renderFinAction()}</SubmenuCard>);
+        if (isFinance && isFinUpcomingOpen) docks.push(<SubmenuCard key="fin-upcoming" id="fin-upcoming" title={tr("Upcoming Payments")} onClose={() => setIsFinUpcomingOpen(false)}>{renderFinUpcoming()}</SubmenuCard>);
+    }
 
     return (
         <div className="flex flex-col w-full z-50">
             <InventoryPanelsRegistrar />
-            {/* ── TOP BAR (SEARCH/SLIDERS) ────────────────────────────────────────────────────────── */}
-            {((isInventory && toolsOpen && !islandEnabled && (isInvSearchOpen || isInvViewSliderOpen)) || (isFinance && isFinSearchOpen)) && (
+            
+            {islandEnabled && docks.length > 0 && (
+                <SubmenuDock>{docks}</SubmenuDock>
+            )}
+
+            {!islandEnabled && ((isInventory && toolsOpen && (isInvSearchOpen || isInvViewSliderOpen)) || (isFinance && isFinSearchOpen)) && (
                 <div className="w-full animate-in slide-in-from-top duration-500 overflow-hidden pr-4 pl-4">
                     <div className="w-full mx-auto px-6 py-3 flex flex-col gap-4">
-                        {isInventory && toolsOpen && !islandEnabled && isInvSearchOpen && (
-                            <InventorySearchPanel />
-                        )}
-                        {isInventory && toolsOpen && !islandEnabled && isInvViewSliderOpen && (
-                            <InventoryViewPanel />
-                        )}
-                        {isFinance && isFinSearchOpen && (
-                            <div className="flex items-center gap-6 group transition-all shrink-0">
-                                <Search size={28} strokeWidth={3} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
-                                <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS...")} className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
-                                {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={28} strokeWidth={3} /></button>}
-                            </div>
-                        )}
+                        {isInventory && toolsOpen && isInvSearchOpen && renderInvSearch()}
+                        {isInventory && toolsOpen && isInvViewSliderOpen && renderInvView()}
+                        {isFinance && isFinSearchOpen && renderFinSearch()}
                     </div>
                 </div>
             )}
 
-            {/* ── SELECTION TOOLS ─────────────────────────────────────────────────────────── */}
-            {isInventory && isSelectionMode && (
+            {!islandEnabled && isInventory && isSelectionMode && (
                 <div className="w-full border-t border-white/5 animate-in slide-in-from-top duration-500 overflow-hidden px-4 bg-white/[0.02]">
-                    <div className="w-full mx-auto px-6 py-4 flex items-center justify-between gap-4 overflow-x-auto no-scrollbar">
-                        <div className="flex items-center gap-6">
-                            <div className="w-12 h-12 rounded-xl bg-(--color-inventory)/10 border border-(--color-inventory)/20 flex items-center justify-center text-(--color-inventory) drop-shadow-[0_0_15px_rgba(var(--color-inventory-rgb),0.3)]">
-                                <SquareCheckBig size={28} strokeWidth={2.5} />
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] leading-none mb-1">{tr("Batch Management")}</span>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-2xl font-black text-white tracking-tighter">{selectedIds.length}</span>
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Items Selected")}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            <button 
-                                onClick={handleSelectAll}
-                                className="group flex items-center gap-3 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 shadow-xl"
-                            >
-                                <div className="w-5 h-5 rounded-md border-2 border-white/20 group-hover:border-white/40 flex items-center justify-center transition-all">
-                                    <div className="w-2 h-2 rounded-sm bg-white scale-0 group-hover:scale-100 transition-transform" />
-                                </div>
-                                <span className="text-[11px] font-black uppercase tracking-[0.2em]">{tr("Select All")}</span>
-                            </button>
-
-                            <button 
-                                onClick={() => {
-                                    setSelectedIds([]);
-                                    toast.success(tr("Selection Cleared"));
-                                }}
-                                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20 transition-all font-black text-[11px] tracking-widest uppercase active:scale-95"
-                            >
-                                <X size={19} strokeWidth={3} />
-                                <span>{tr("Clear")}</span>
-                            </button>
-                        </div>
-                    </div>
+                    {renderInvSelection()}
                 </div>
             )}
 
-            {/* ── FINANCE TOOLS ─────────────────────────────────────────────────────────── */}
-            {isFinance && (
+            {!islandEnabled && isFinance && (
                 <div className="flex flex-col w-full min-h-0 border-t border-white/5">
-                    {isFinFiltersOpen && (
-                        <div className="w-full px-8 py-3 animate-in slide-in-from-top-4 duration-500 flex items-center justify-between gap-8 overflow-x-auto no-scrollbar">
-                            <div className="flex items-center gap-4 shrink-0">
-                                {[
-                                    { id: 'All', icon: LayoutGrid, color: '#888' },
-                                    { id: 'Acq', icon: DollarSign, color: '#10b981' },
-                                    { id: 'Prod', icon: Cpu, color: '#6366f1' },
-                                    { id: 'Monthly', icon: Calendar, color: '#38bdf8' },
-                                    { id: 'Supplies', icon: Box, color: '#f59e0b' },
-                                    { id: 'Labor', icon: Users, color: '#ec4899' },
-                                    { id: 'Packing', icon: Archive, color: '#a855f7' },
-                                    { id: "Operations", icon: Activity, color: '#ef4444' },
-                                    { id: "Logistics", icon: Truck, color: '#06b6d4' }
-                                ].map(s => {
-                                    const Icon = s.icon;
-                                    const isActive = finCategoryFilter === s.id;
-                                    return (
-                                        <div key={s.id} className="tool-cell flex flex-col items-center gap-1 shrink-0">
-                                            <button aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
-                                                className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
-                                                <Icon size={18} strokeWidth={isActive ? 3.5 : 2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
-                                            </button>
-                                            <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="flex items-center gap-5 shrink-0">
-                                {Object.entries(destinationsConfig).map(([key, cfg]) => (
-                                    <button key={key} onClick={() => setFinDestFilter(finDestFilter === key ? 'All' : key as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${finDestFilter === key ? 'scale-110 grayscale-0 brightness-100' : 'grayscale brightness-50 hover:grayscale-0 hover:brightness-100'}`}>
-                                        <img src={cfg.icon} alt={cfg.name} className="w-9 h-4.5 object-contain" />
-                                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${finDestFilter === key ? 'text-white' : 'text-zinc-500'}`}>{cfg.name.split(' ')[0]}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {isFinActionOpen && (
-                        <div className="w-full border-t border-white/5 px-8 py-4 animate-in slide-in-from-top-4 duration-500 overflow-hidden">
-                            <SectionHeader icon={Heartbeat} title={tr("Requested")} count={activeQueueRecords.length} amount={activeQueueTotal} isOpen={isFinQueueOpen} onToggle={() => setIsFinQueueOpen(!isFinQueueOpen)} currencyMode={currencyMode} exRate={exRate} />
-                            {isFinQueueOpen && (
-                                <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 ${activeQueueRecords.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
-                                    {activeQueueRecords.length === 0 ? <div className="py-6 text-center border border-white/5 rounded-2xl"><span className="text-[11px] font-black uppercase tracking-[0.6em]">{tr("QUEUE EMPTY")}</span></div> : activeQueueRecords.map(r => {
-                                        const v = r.vendor_id || tr("Unknown");
-                                        const color = vendors[v as keyof typeof vendors]?.color || '#888';
-                                        return <ActiveRequestGridItem key={r.id} label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMode} exRate={exRate} onClick={() => setPaymentsArtifactConfig({ isOpen: true, paymentIds: [r.id], title: `Detail: ${v}` })} />;
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {isFinFiltersOpen && renderFinFilters("animate-in slide-in-from-top-4 duration-500")}
+                    {isFinActionOpen && renderFinAction("border-t border-white/5 animate-in slide-in-from-top-4 duration-500 overflow-hidden")}
                 </div>
             )}
 
-            {/* ── UPCOMING PAYMENTS (FINANCE ONLY) ─────────────────────────────────────────── */}
-            {isFinUpcomingOpen && isFinance && (
-                <div className="w-full px-8 py-4 animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5">
-                    <SectionHeader 
-                        icon={Hourglass} 
-                        title={tr("Upcoming Payments")} 
-                        count={combinedUpcoming.length} 
-                        amount={combinedUpcomingTotal} 
-                        isOpen={isFinUpcomingOpen} 
-                        onToggle={() => setIsFinUpcomingOpen(!isFinUpcomingOpen)} 
-                        currencyMode={currencyMode} 
-                        exRate={exRate} 
-                    />
-                    {isFinUpcomingOpen && (
-                        <div className={`grid gap-1 overflow-y-auto max-h-[340px] custom-scrollbar transition-all duration-500 mt-2 ${combinedUpcoming.length === 0 ? 'grid-cols-1 opacity-10' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
-                            {combinedUpcoming.length === 0 ? (
-                                <div className="py-6 text-center border border-white/5 rounded-2xl">
-                                    <span className="text-[11px] font-black uppercase tracking-[0.6em]">{tr("NO UPCOMING PAYMENTS")}</span>
-                                </div>
-                            ) : combinedUpcoming.map(r => {
-                                const v = r.vendor_id || tr("Unknown");
-                                const color = vendors[v as keyof typeof vendors]?.color || '#888';
-                                const isAuto = (r as any).is_auto_gen;
-                                return (
-                                    <div key={r.id} className="relative group">
-                                        <ActiveRequestGridItem 
-                                            label={r.description || v} 
-                                            amount={r.amount} 
-                                            paidAmount={(r as any).paidAmount}
-                                            totalAmount={(r as any).totalAmount}
-                                            color={color} 
-                                            type={r.subcategory} 
-                                            currencyMode={currencyMode} 
-                                            exRate={exRate} 
-                                            onClick={() => {
-                                                if (isAuto) {
-                                                    setInvArtifactConfig({ 
-                                                        isOpen: true, 
-                                                        itemIds: r.related_inventory_ids || [], 
-                                                        title: `Batch Items: ${v}`,
-                                                        displayMode: 'gallery'
-                                                    });
-                                                } else {
-                                                    setPaymentsArtifactConfig({ 
-                                                        isOpen: true, 
-                                                        paymentIds: Array.isArray(r.related_inventory_ids) ? r.related_inventory_ids : [r.id], 
-                                                        title: `Detail: ${v}` 
-                                                    });
-                                                }
-                                            }} 
-                                        />
-                                        
-                                        {/* Vendor Tag (Free Floating High Contrast) */}
-                                        <div 
-                                            className="absolute bottom-2 right-4 text-[32px] font-black uppercase tracking-tighter pointer-events-none z-10 opacity-40 group-hover:opacity-100 transition-opacity"
-                                            style={{ color: color, filter: 'drop-shadow(0 0 12px rgba(0,0,0,0.5))' }}
-                                        >
-                                            {v}
-                                        </div>
+            {!islandEnabled && isFinUpcomingOpen && isFinance && renderFinUpcoming("animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5")}
 
-                                        {/* Removed Auto-Gen Tag */}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* ── Smart filters ────────────────────────────────────────────
-                Two independent bars rather than one crowded one — that was
-                the actual complaint: both hierarchies rendered side by side
-                in a single disclosure, which only grows as branches expand.
-                The deploy row below is the "universal tools bar for smart
-                filters" itself: two keys, one per bar, each gating its own
-                bar without touching the other's selection or open state.
-
-                Material -> Colour is the MAIN filter (open by default, listed
-                first, larger chips via `primary`). Shape is headed by the
-                eight bounded geometry classes from lib/geometry.ts — icons,
-                not text, because a bounded set of eight is exactly small
-                enough to recognise by glyph — with the free-text shape/type
-                values nested underneath as sub-filters, deployed per branch
-                exactly like the old hierarchy's children were. */}
-            {isInventory && toolsOpen && !islandEnabled && smartOpen && (
+            {!islandEnabled && isInventory && toolsOpen && smartOpen && (
                 <InventorySmartFiltersPanel />
             )}
 
-            {/* ── INVENTORY TOOLS ─────────────────────────────────────────────────────────── */}
-            {isInventory && toolsOpen && !islandEnabled && isInvFiltersOpen && (
+            {!islandEnabled && isInventory && toolsOpen && isInvFiltersOpen && (
                 <InventoryFiltersPanel />
             )}
-
 
         </div>
     );
