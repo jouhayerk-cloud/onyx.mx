@@ -259,7 +259,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 const resps = [];
                 for (const c of calls) {
                     if (signal.aborted) break;   // Stop pressed: do not run the remaining queued tool calls
-                    setPhase('acting');
+                    setPhase('thinking');
                     const isWrite = allRisks[c.functionCall.name] === 'write';
                     let result;
                     
