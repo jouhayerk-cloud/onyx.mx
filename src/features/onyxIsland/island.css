@@ -3,7 +3,7 @@
    blurred stacking context can no longer crop or cover it. */
 .onyx-island-band {
   position: relative;
-  height: var(--island-band-h, 64px);
+  height: var(--island-reserve, 0px);   /* the island floats over the page; raise this variable to reserve a strip */
   width: 100%;
   pointer-events: none;
 }
@@ -11,6 +11,7 @@
 .onyx-island-layer {
   position: fixed;
   height: 0;
+  margin-top: env(safe-area-inset-top, 0px);
   z-index: 10050;            /* above the top bar (500), drawers and modals */
   pointer-events: none;
 }
