@@ -77,7 +77,6 @@ export const LiquidOnyxBackground: React.FC = () => {
                 ref={canvasRef} 
                 id="gradient-canvas" 
                 className="w-full h-full opacity-60"
-                data-js-darken-top=""
             />
             <div 
                 className="absolute inset-0 pointer-events-none mix-blend-multiply"
