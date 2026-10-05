@@ -323,7 +323,7 @@ html.theme-aqua .isb-panel.isb-panel .isb-submenu-item {
 }
 html.theme-aqua .isb-panel.isb-panel .isb-item-active {
   color: #04323d !important;
-  background-color: color-mix(in srgb, var(--main-color, #00aeef) 30%, rgba(255, 255, 255, 0.55)) !important;
+  background-color: var(--main-color, #00aeef) !important;
 }
 html.theme-aqua .isb-panel.isb-panel .isb-item:hover {
   background-color: rgba(0, 60, 80, 0.08) !important;

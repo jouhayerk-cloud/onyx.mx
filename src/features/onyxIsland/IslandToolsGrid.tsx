@@ -3,6 +3,7 @@ import { m } from 'framer-motion';
 import { MessageCircle, Bell } from 'lucide-react';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
 import { tr } from '../../lib/i18n';
+import { TactileSwitch } from '../../components/TactileSwitch';
 import { useIslandNotifications } from './notify/store';
 
 interface IslandToolsGridProps {
@@ -114,30 +115,47 @@ export const IslandToolsGrid: React.FC<IslandToolsGridProps> = ({ tools, filter,
                   </m.div>
                 );
               }
-              const Icon = tool.icon;
               const isToggle = tool.kind === 'toggle';
+              const Icon = tool.icon;
+              
+              if (isToggle) {
+                return (
+                  <m.div
+                    key={tool.id}
+                    id={`tile-${tool.id}`}
+                    variants={{ hidden: { opacity: 0, scale: 0.96, y: 4 }, show: { opacity: 1, scale: 1, y: 0 } }}
+                    className="flex items-center justify-center p-2 min-h-[44px]"
+                  >
+                    <TactileSwitch 
+                        active={!!tool.pressed} 
+                        onChange={() => { if (!tool.disabled) tool.run?.(); }} 
+                        label={tool.label} 
+                    />
+                  </m.div>
+                );
+              }
               return (
                 <m.button
                   key={tool.id}
                   id={`tile-${tool.id}`}
                   type="button"
                   title={tool.title || tool.label}
-                  aria-pressed={isToggle ? !!tool.pressed : undefined}
+                  aria-pressed={undefined}
                   disabled={tool.disabled}
                   onClick={(e: React.MouseEvent) => { e.preventDefault(); tool.run?.(); }}
                   onKeyDown={(e: React.KeyboardEvent) => handleKeyDown(e, gIdx, tIdx)}
                   tabIndex={gIdx === 0 && tIdx === 0 ? 0 : -1}
                   variants={{ hidden: { opacity: 0, scale: 0.96, y: 4 }, show: { opacity: 1, scale: 1, y: 0 } }}
                   whileTap={!tool.disabled ? { scale: 0.95 } : undefined}
-                  className="group flex items-center gap-3 p-2 min-h-[44px] rounded-xl cursor-pointer isl-hw10 transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed border border-transparent text-left text-white"
+                  className="group flex flex-col items-center justify-center gap-2 p-2 min-h-[44px] rounded-xl cursor-pointer hover:bg-white/5 transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed border border-transparent text-center text-white"
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full isl-w10 shrink-0 relative text-white group-aria-pressed:bg-transparent">
-                    <Icon size={22} color="currentColor" strokeWidth={2} />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 shrink-0 relative text-white">
+                    <Icon size={22} color="currentColor" strokeWidth={1.5} />
                     {tool.badge != null && (
-                      <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full border border-[var(--glass-tint,rgba(10,12,20,0.4))] shadow-sm" />
+                      <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[var(--main-color,#00aeef)] rounded-full shadow-sm" />
                     )}
                   </div>
-                  <span className="text-[13px] font-medium group-aria-pressed:font-bold max-w-[12ch] truncate flex-1 leading-tight text-white/90 group-aria-pressed:text-white">
+                  <span className="text-[12px] font-medium leading-tight text-white/70 group-hover:text-white">
                     {tool.label}
                   </span>
                 </m.button>

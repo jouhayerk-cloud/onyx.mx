@@ -261,7 +261,7 @@ export const IslandSidebar: React.FC = () => {
 
     const handleMobileHide = () => {
         if (window.innerWidth <= 768) {
-            setSidebarState('hidden');
+            setSidebarState('compact');
         }
     };
 

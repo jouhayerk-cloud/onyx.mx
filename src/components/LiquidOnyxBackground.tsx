@@ -53,23 +53,25 @@ export const LiquidOnyxBackground: React.FC = () => {
             activePalette.c3,
             activePalette.c4
         ]);
+        
+        // Stop default playing immediately to save resources
+        gradient.pause();
+
+        const handleClick = () => {
+            if (typeof gradient.triggerBurst === 'function') {
+                gradient.triggerBurst();
+            }
+        };
+        window.addEventListener('click', handleClick);
 
         return () => {
             gradient.pause();
             gradient.disconnect();
+            window.removeEventListener('click', handleClick);
         };
     }, [theme]); // Re-initialize when theme changes
 
-    // Effect to toggle play/pause when performanceMode changes
-    useEffect(() => {
-        if (gradientRef.current) {
-            if (performanceMode) {
-                gradientRef.current.pause();
-            } else {
-                gradientRef.current.play();
-            }
-        }
-    }, [performanceMode]);
+    // Performance mode is handled by the initial pause and burst logic now.
 
     return (
         <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none">
