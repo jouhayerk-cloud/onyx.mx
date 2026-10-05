@@ -194,7 +194,7 @@ export function MainAppView() {
             if (rafId !== null) return;
             rafId = requestAnimationFrame(() => {
                 rafId = null;
-                if (window.innerWidth <= 768) {
+                if (false) {
                     setSidebarState(current => {
                         if (current !== 'hidden') return 'hidden';
                         return current;
@@ -285,7 +285,7 @@ export function MainAppView() {
         setSidebarState(current => {
             const states: SidebarState[] = ['expanded', 'compact', 'hidden'];
             const isMobile = window.innerWidth <= 768;
-            if (isMobile) return current === 'hidden' ? 'compact' : 'hidden';
+            if (isMobile) return current === 'compact' ? 'expanded' : 'compact';
             const currentIndex = states.indexOf(current);
             const nextIndex = (currentIndex + 1) % states.length;
             return states[nextIndex];

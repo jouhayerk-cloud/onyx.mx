@@ -289,17 +289,28 @@
           this.isGradientLegendVisible && (this.isMetaKey = e.metaKey, this.isMouseDown = !0, !1 === this.conf.playing && requestAnimationFrame(this.animate))
         }), e(this, "handleMouseUp", () => {
           this.isMouseDown = !1
-        }), e(this, "animate", e => {
-          if (!this.shouldSkipFrame(e) || this.isMouseDown) {
-            if (this.t += Math.min(e - this.last, 1e3 / 15), this.last = e, this.isMouseDown) {
-              let e = 160;
-              this.isMetaKey && (e = -160), this.t += e
+        }), e(this, "triggerBurst", () => {
+            this.burstEndTime = Date.now() + 1500;
+            if (!this.conf.playing) {
+                this.conf.playing = true;
+                this.last = performance.now();
+                requestAnimationFrame(this.animate);
             }
-            this.mesh.material.uniforms.u_time.value = this.t, this.minigl.render()
-
+        }), e(this, "animate", e => {
+          if (!this.shouldSkipFrame(e) || this.isMouseDown || this.conf.playing) {
+            let timeDelta = Math.min(e - this.last, 1e3 / 15);
+            this.t += timeDelta * 3;
+            this.last = e;
+            this.mesh.material.uniforms.u_time.value = this.t;
+            this.minigl.render();
           }
+
+          if (this.burstEndTime && Date.now() > this.burstEndTime) {
+             this.conf.playing = false;
+          }
+
           if (0 !== this.last && this.isStatic) return this.minigl.render(), void this.disconnect();
-          (/*this.isIntersecting && */this.conf.playing || this.isMouseDown) && requestAnimationFrame(this.animate)
+          if (this.conf.playing || this.isMouseDown) requestAnimationFrame(this.animate);
         }), e(this, "addIsLoadedClass", () => {
           /*this.isIntersecting && */!this.isLoadedClass && (this.isLoadedClass = !0, this.el.classList.add("isLoaded"), setTimeout(() => {
           this.el.parentElement.classList.add("isLoaded")
@@ -344,10 +355,10 @@
           this.conf = {
             presetName: "",
             wireframe: false,
-            density: [.06, .16],
+            density: [.03, .08],
             zoom: 1,
             rotation: 0,
-            playing: true
+            playing: false
           },
           document.querySelectorAll("canvas").length < 1 ? console.log("DID NOT LOAD HERO STRIPE CANVAS") : (
 
