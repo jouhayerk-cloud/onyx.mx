@@ -156,6 +156,22 @@ import { ArchivedBar, ArchivedReadout } from '../archived/ArchivedChrome';
 import { ArchivedToolsRegistrar } from '../archived/archivedTools';
 import { InventoryToolsRegistrar } from './inventoryTools';
 import { islandCommandsEnabledAtom, useRegisterTools } from '../../lib/toolRegistry';
+import { StoreToolsRegistrar } from '../store/storeTools';
+import { FinanceToolsRegistrar } from '../finance/financeTools';
+import { LogisticsToolsRegistrar, logisticsReadout } from '../logistics/logisticsTools';
+import { PackingToolsRegistrar } from '../logistics/packingTools';
+import { ProcessToolsRegistrar } from '../process/processTools';
+import { UploadToolsRegistrar } from '../upload/uploadTools';
+import { ControlToolsRegistrar } from '../control/controlTools';
+import { MiscViewToolsRouter } from './miscViewTools';
+import { PrintToolsRegistrar } from '../print/printTools';
+
+// logisticsReadout() is a hook (it reads the crate atoms): one small component per side keeps it unconditional
+const LogisticsReadoutSide: React.FC<{ side: 'left' | 'right' }> = ({ side }) => <>{logisticsReadout()[side]}</>;
+
+// Views whose tools all live in the island: their header row is empty, so it is removed (the island replaces the top bar).
+const ISLAND_VIEWS = ['inventory', 'store', 'finance', 'logistics', 'warehouse', 'trucking', 'packing', 'upload', 'process', 'control',
+    'onyx', 'overview', 'dashboard', 'create', 'viewer', 'welcome', 'devices', 'threed'];
 
 declare const __APP_VERSION__: string;
 
@@ -4300,8 +4316,7 @@ export function MainHeader() {
     const isInventory = activeView === 'inventory';
     const isArchived = activeView === 'workbook' && (user?.role === 'Developer' || user?.role === 'Admin');
     const islandOn = useAtomValue(islandCommandsEnabledAtom);   // the island owns the tools of every migrated module
-    // Modules whose tools all live in the island: their header row is empty, so it is removed (the island replaces the top bar).
-    const migratedView = islandOn && (activeView === 'inventory' || isArchived);
+    const migratedView = islandOn && (isArchived || ISLAND_VIEWS.includes(activeView));
     const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
 
     // Global tools: what the right-hand cluster of this bar used to hold, now in the island (every view).
@@ -4333,12 +4348,25 @@ export function MainHeader() {
             {/* Onyx Island: the face (free floating, centred), the toasts and the notification center, one element */}
             {activeView === 'inventory' && <InventoryToolsRegistrar widgets={{ DeployableSearch, InventoryAddButton }} />}
             {isArchived && <ArchivedToolsRegistrar />}
+            {activeView === 'store' && <StoreToolsRegistrar widgets={{ DeployableSearch }} />}
+            {activeView === 'finance' && <FinanceToolsRegistrar />}
+            {(activeView === 'logistics' || activeView === 'warehouse' || activeView === 'trucking') && <LogisticsToolsRegistrar widgets={{ DeployableSearch, SubTabPills }} />}
+            {activeView === 'packing' && <PackingToolsRegistrar widgets={{ DeployableSearch }} />}
+            {activeView === 'process' && <ProcessToolsRegistrar />}
+            {activeView === 'upload' && <UploadToolsRegistrar />}
+            {activeView === 'control' && (
+                <ControlToolsRegistrar handlers={{ handleShopifyExportXLSX, isShopifyExporting, handleMasterExportXLSX, isExporting, handleMasterExportXLSX_V2 }} />
+            )}
+            <MiscViewToolsRouter activeView={activeView} handlers={{ handleMasterExportXLSX, isExporting }} />
+            <PrintToolsRegistrar />
             <IslandBand
                 readout={activeView === 'inventory'
                     ? { left: <InfoNotch part="stats" />, right: <InfoNotch part="user" /> }
                     : isArchived
                         ? { left: <ArchivedReadout part="stats" />, right: <ArchivedReadout part="scope" /> }
-                        : null}
+                        : (activeView === 'logistics' || activeView === 'warehouse' || activeView === 'trucking')
+                            ? { left: <LogisticsReadoutSide side="left" />, right: <LogisticsReadoutSide side="right" /> }
+                            : null}
             />
 
             <div className={`main-header ${migratedView ? 'hidden' : ''} h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
@@ -4385,13 +4413,13 @@ export function MainHeader() {
                         of dead space under both. */}
                     <div className="flex items-end gap-2 sm:gap-6 flex-nowrap min-w-max pr-4">
                         {activeView === 'inventory' && !islandOn && <InventoryBar />}
-                        {activeView === 'store' && <StoreBar />}
-                        {activeView === 'finance' && <FinanceBar />}
-                        {(activeView === 'logistics' || activeView === 'warehouse' || activeView === 'trucking') && <LogisticsBar />}
-                        {activeView === 'packing' && <PackingBar />}
-                        {activeView === 'upload' && <UploadBar />}
-                        {activeView === 'process' && <ProcessBar />}
-                        {activeView === 'control' && <ControlBar />}
+                        {!islandOn && activeView === 'store' && <StoreBar />}
+                        {!islandOn && activeView === 'finance' && <FinanceBar />}
+                        {!islandOn && (activeView === 'logistics' || activeView === 'warehouse' || activeView === 'trucking') && <LogisticsBar />}
+                        {!islandOn && activeView === 'packing' && <PackingBar />}
+                        {!islandOn && activeView === 'upload' && <UploadBar />}
+                        {!islandOn && activeView === 'process' && <ProcessBar />}
+                        {!islandOn && activeView === 'control' && <ControlBar />}
                         {activeView === 'onyx' && <OnyxBar />}
                         {isArchived && !islandOn && <ArchivedBar />}
                         {activeView === 'overview' && (
