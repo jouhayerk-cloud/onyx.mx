@@ -65,7 +65,7 @@ export const SubmenuDock: React.FC<{ children: React.ReactNode }> = ({ children 
   return createPortal(
     <div 
       className="smd-layer"
-      style={{ top: rect.top, left: rect.left, width: rect.width }}
+      style={{ top: rect.top, left: rect.left, right: 0 }}
     >
       <div className="smd-stack" ref={stackRef}>
         {children}

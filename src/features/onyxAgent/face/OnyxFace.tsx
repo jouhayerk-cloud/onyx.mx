@@ -115,7 +115,7 @@ export const OnyxFace = memo(function OnyxFace({
   
   return (
     <div 
-      className={`relative inline-flex items-center justify-center ${roundedClass} ${bgClass} ${className}`}
+      className={`relative inline-flex items-center justify-center transition-all duration-300 ${roundedClass} ${bgClass} ${className}`}
       style={{ width: size, height, ...bareStyle }}
       aria-label={ariaLabel}
       role="img"

@@ -1,0 +1,103 @@
+{
+  "project": "Onyx.mx (Jouhayerk)",
+  "v": "1.66.5",
+  "style": {
+    "rounding": {
+      "default": "8px",
+      "panel": "16px",
+      "button": "8px"
+    },
+    "effects": {
+      "glass": "backdrop-blur-3xl",
+      "alpha": 0.08
+    },
+    "typography": {
+      "display": "Instrument Serif",
+      "body": "DM Sans"
+    },
+    "animations": {
+      "duration": "0.3s",
+      "easing": "cubic-bezier(0.4, 0, 0.2, 1)"
+    }
+  },
+    "state": {
+      "framework": "Jotai (Atoms)",
+      "critical_atoms": ["theme", "currency", "module", "search"]
+    },
+    "database": "Supabase (Postgres)",
+    "cache": "RxDB (Local)",
+    "icons": "Lucide-React",
+    "export": ["ExcelJS", "jsPDF"],
+    "testing": {
+      "unit": "Vitest",
+      "e2e": "Playwright"
+    },
+    "utility_path": "src/utils/"
+  },
+  "layout": {
+    "mobile": {
+      "breakpoint": "1024px",
+      "panel_behavior": "auto-minimize"
+    },
+    "desktop": {
+      "panel_behavior": "maximized-suite"
+    }
+  },
+  "devops": {
+    "deployment": {
+      "github": {
+        "action": ".github/workflows/deploy.yml",
+        "manual_script": "_deploy.bat",
+        "branch": "gh-pages"
+      },
+      "supabase": {
+        "functions_path": "supabase/functions",
+        "cli": "supabase-cli"
+      }
+    },
+    "secrets": [
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY",
+      "GEMINI_API_KEY"
+    ]
+  },
+  "workflows": {
+    "planning": "writing-plans",
+    "design": ["ui-ux-pro-max", "frontend-design"],
+    "implementation": {
+      "sequential": "subagent-driven-development",
+      "parallel": "dispatching-parallel-agents",
+      "batched": "executing-plans"
+    },
+    "verification": "webapp-testing",
+    "specialized": {
+      "excel": "xlsx",
+      "prototypes": "web-artifacts-builder"
+    },
+    "foundational": "using-superpowers"
+  },
+  "vendors": {
+    "JM": { "name": "Jose Meza", "color": "#6BCEBB" },
+    "EM": { "name": "Emmanuel de los Santos", "color": "#00AEEF" },
+    "CA": { "name": "Carlos Arenas", "color": "#85C1E9" },
+    "AN": { "name": "Angel Cabrera", "color": "#FFED00" },
+    "SU": { "name": "Susana", "color": "#B19CD9" },
+    "TE": { "name": "Tellez Taller", "color": "#FFCB05" },
+    "DH": { "name": "Delfino Hernandez", "color": "#8DC63F" },
+    "ML": { "name": "Maria Luisa", "color": "#F9A17A" },
+    "GE": { "name": "Gerardo De Gante", "color": "#F7941D" },
+    "FR": { "name": "Fountain Rock", "color": "#F36F21" },
+    "ET": { "name": "Eduardo Tellez", "color": "#636466" },
+    "AM": { "name": "Alejandro Meza", "color": "#800020" },
+    "BT": { "name": "Bernardo", "color": "#603913" },
+    "RF": { "name": "Roberto Florita", "color": "#00A591" },
+    "GS": { "name": "Gift Store", "color": "#D11C7E" },
+    "CP": { "name": "Cantera Puebla", "color": "#A01E5D" }
+  },
+  "anti_patterns": [
+    "Absolute positioning headers",
+    "Hardcoded hex colors",
+    "Disconnected Supabase/RxDB sync",
+    "Manual DOM manipulation"
+  ]
+}

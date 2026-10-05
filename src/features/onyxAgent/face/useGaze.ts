@@ -49,7 +49,10 @@ function loop() {
       const dy = pointerY - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
       
-      if (dist > 0 && !isIdle) {
+      if (isClicked) {
+        target.tx = 0;
+        target.ty = 0;
+      } else if (dist > 0 && !isIdle) {
         const g = Math.tanh(dist / 320);
         target.tx = (dx / dist) * g;
         target.ty = (dy / dist) * g;
@@ -103,6 +106,19 @@ function onPointerMove(e: PointerEvent) {
   scheduleFrame();
 }
 
+let isClicked = false;
+let clickTimeout: number | null = null;
+
+function onPointerDown(e: PointerEvent) {
+  isClicked = true;
+  if (clickTimeout !== null) window.clearTimeout(clickTimeout);
+  clickTimeout = window.setTimeout(() => {
+    isClicked = false;
+    scheduleFrame();
+  }, 1000);
+  scheduleFrame();
+}
+
 function onVisibilityChange() {
   scheduleFrame();
 }
@@ -150,6 +166,7 @@ export function useGaze(ref: React.RefObject<HTMLElement | null>, opts?: { enabl
     
     if (registry.size === 0 && typeof window !== 'undefined') {
       window.addEventListener('pointermove', onPointerMove, { passive: true });
+      window.addEventListener('pointerdown', onPointerDown, { passive: true });
       document.addEventListener('visibilitychange', onVisibilityChange);
       startIdleDrift();
     }
@@ -161,6 +178,7 @@ export function useGaze(ref: React.RefObject<HTMLElement | null>, opts?: { enabl
       registry.delete(target);
       if (registry.size === 0 && typeof window !== 'undefined') {
         window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerdown', onPointerDown);
         document.removeEventListener('visibilitychange', onVisibilityChange);
         if (frameId !== null) {
           cancelAnimationFrame(frameId);

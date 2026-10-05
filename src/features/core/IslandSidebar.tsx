@@ -278,15 +278,17 @@ export const IslandSidebar: React.FC = () => {
 
     return (
         <LazyMotion features={domAnimation}>
+        <>
+        
         <div 
             className="isb-panel ui-root" 
-            style={panelStyle}
+            style={{ ...panelStyle, top: '12px' }}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
-            <div className="isb-header">
-                <div
-                    className={`isb-logo-wrap ${(!isCompact || isHoverPeek) ? 'isb-header-expanded' : ''}`}
+                        <div className="isb-header">
+                <div 
+                    className="isb-top flex flex-col items-center justify-center cursor-pointer"
                     onClick={handleSidebarStateToggle}
                     title={tr("Toggle Sidebar")}
                     role="button"
@@ -294,10 +296,10 @@ export const IslandSidebar: React.FC = () => {
                     {(!isCompact || isHoverPeek) ? (
                         <>
                             <OnyxLogo className="w-16 h-16 transition-transform duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:scale-105 active:scale-95" />
-                            <div className="isb-logo-text mt-1 text-white opacity-80">Onyx.mx</div>
+                            <div className="isb-logo-text mt-1 text-white opacity-80 font-bold tracking-widest text-sm">Onyx.mx</div>
                         </>
                     ) : (
-                        <OnyxMiniLogo className="w-12 h-12 transition-transform duration-300 hover:scale-105 active:scale-95" />
+                        <OnyxMiniLogo className="w-10 h-10 transition-transform duration-300 hover:scale-105 active:scale-95 mt-2" />
                     )}
                 </div>
             </div>
@@ -414,16 +416,6 @@ export const IslandSidebar: React.FC = () => {
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
                             <NavItem
-                                icon={Printer}
-                                label={tr("Print Center")}
-                                isActive={isPrintCenterOpen}
-                                action={() => { setIsPrintCenterOpen(o => !o); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
-                            <NavItem
                                 icon={Shell}
                                 label={tr("Viewer")}
                                 isActive={activeView === 'viewer'}
@@ -459,6 +451,8 @@ export const IslandSidebar: React.FC = () => {
                 )}
             </div>
         </div>
+        </>
         </LazyMotion>
     );
 };
+

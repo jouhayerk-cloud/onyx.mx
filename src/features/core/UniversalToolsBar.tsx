@@ -60,11 +60,21 @@ import {
     truckDockIsCompactAtom,
     truckStatsIsCompactAtom,
     truckingReadyFieldsAtom,
-    inventoryArtifactConfigAtom
+    inventoryArtifactConfigAtom,
+    isPackingNFCWizardOpenAtom,
+    isPackingCrateWizardOpenAtom,
+    isPaymentWizardOpenAtom,
+    workbookVersionAtom,
+    isBatchActionsModalOpenAtom,
+    batchActionItemsDataAtom,
+    inventoryExportSelectedXLSXTriggerAtom,
+    isBatchWizardOpenAtom,
+    batchWizardItemsAtom
 } from '../../lib/atoms';
+import { isPrintCenterOpenAtom } from '../print/printState';
 import { 
     Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX,
-    Palette, Shapes
+    Palette, Shapes, Printer, Nfc, Copy, FileSpreadsheet, Sparkles
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -73,7 +83,7 @@ const CompactDockCard = React.lazy(() => import('../logistics/TruckingModule').t
 const DeployedTrailerCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.DeployedTrailerCard })));
 import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
-import { normalizeInventoryData } from '../../lib/utils';
+import { normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -239,6 +249,18 @@ export const UniversalToolsBar: React.FC = () => {
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
 
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    
+    // Batch & Print Actions
+    const setPrintCenterOpen = useSetAtom(isPrintCenterOpenAtom);
+    const setNFCOpen = useSetAtom(isPackingNFCWizardOpenAtom);
+    const setPackOpen = useSetAtom(isPackingCrateWizardOpenAtom);
+    const setPayOpen = useSetAtom(isPaymentWizardOpenAtom);
+    const setIsBatchModalOpen = useSetAtom(isBatchActionsModalOpenAtom);
+    const setBatchItemsData = useSetAtom(batchActionItemsDataAtom);
+    const setExportSelectedXLSX = useSetAtom(inventoryExportSelectedXLSXTriggerAtom);
+    const setIsBatchWizardOpen = useSetAtom(isBatchWizardOpenAtom);
+    const setBatchWizardItems = useSetAtom(batchWizardItemsAtom);
+    const workbookPrefix = useAtomValue(workbookVersionAtom);
     
     // Finance States
     const [isFinSearchOpen, setIsFinSearchOpen] = useAtom(isPaymentsSearchOpenAtom);
@@ -452,9 +474,33 @@ export const UniversalToolsBar: React.FC = () => {
         </div>
     );
 
+    const getSelectedItems = () => allInventory.filter(item => selectedIds.includes(item.row));
+
+    const handleCopyTags = () => {
+        const items = getSelectedItems();
+        const tags = items.map(item => {
+            const codes = calculateCodesAndPrices(item.data, fixedEx, workbookPrefix);
+            return codes.bookBarcode;
+        }).filter(Boolean).join(' ');
+        if (tags) {
+            navigator.clipboard.writeText(tags);
+            toast.success(`Copied ${items.length} tags to clipboard`);
+        }
+    };
+
+    const handleOpenTags = () => {
+        setBatchItemsData(getSelectedItems());
+        setIsBatchModalOpen(true);
+    };
+
+    const handleOpenAIWizard = () => {
+        setBatchWizardItems(getSelectedItems());
+        setIsBatchWizardOpen(true);
+    };
+
     const renderInvSelection = (className = "") => (
         <div className={`w-full mx-auto px-6 py-4 flex items-center justify-between gap-4 overflow-x-auto no-scrollbar ${className}`}>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6 shrink-0">
                 <div className="w-12 h-12 rounded-xl bg-(--color-inventory)/10 border border-(--color-inventory)/20 flex items-center justify-center text-(--color-inventory) drop-shadow-[0_0_15px_rgba(var(--color-inventory-rgb),0.3)]">
                     <SquareCheckBig size={28} strokeWidth={2.5} />
                 </div>
@@ -467,26 +513,52 @@ export const UniversalToolsBar: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex items-center gap-4">
-                <button 
-                    onClick={handleSelectAll}
-                    className="group flex items-center gap-3 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 shadow-xl"
-                >
-                    <div className="w-5 h-5 rounded-md border-2 border-white/20 group-hover:border-white/40 flex items-center justify-center transition-all">
-                        <div className="w-2 h-2 rounded-sm bg-white scale-0 group-hover:scale-100 transition-transform" />
-                    </div>
-                    <span className="text-[11px] font-black uppercase tracking-[0.2em]">{tr("Select All")}</span>
+            {/* ── Action Buttons (ported from InventorySelectionDock) ── */}
+            <div className="flex items-center gap-6 md:gap-8 shrink-0">
+                <button onClick={() => setPrintCenterOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Print Center")}>
+                    <Printer size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PRINT")}</span>
+                </button>
+                <button onClick={() => setNFCOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Write NFC")}>
+                    <Nfc size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">NFC</span>
+                </button>
+                <button onClick={() => setPackOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Pack Items")}>
+                    <Package size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PACK")}</span>
+                </button>
+                <button onClick={() => setPayOpen(true)} className="text-white/40 hover:text-green-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Payment Workflow")}>
+                    <DollarSign size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PAY")}</span>
+                </button>
+                <button onClick={handleOpenTags} className="text-white/40 hover:text-(--main-color) transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Manage Tags")}>
+                    <Tag size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("TAGS")}</span>
+                </button>
+                <button onClick={handleCopyTags} className="text-white/40 hover:text-blue-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Copy Tag IDs")}>
+                    <Copy size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("COPY")}</span>
+                </button>
+                <button onClick={() => setExportSelectedXLSX(Date.now())} className="text-white/40 hover:text-green-500 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Export XLSX")}>
+                    <FileSpreadsheet size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("EXPORT")}</span>
+                </button>
+                <button onClick={handleOpenAIWizard} className="text-white/40 hover:text-purple-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("AI Batch Process")}>
+                    <Sparkles size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-purple-900/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-purple-500/50 text-white">{tr("AI GEN")}</span>
                 </button>
 
+                <div className="w-px h-8 bg-white/10 mx-1 shrink-0" />
+
+                <button onClick={handleSelectAll} className="text-white/40 hover:text-white transition-all hover:scale-110 group relative p-0 bg-transparent border-none outline-none" title={tr("Select All")}>
+                    <SquareCheckBig size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("ALL")}</span>
+                </button>
                 <button 
-                    onClick={() => {
-                        setSelectedIds([]);
-                        toast.success(tr("Selection Cleared"));
-                    }}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20 transition-all font-black text-[11px] tracking-widest uppercase active:scale-95"
+                    onClick={() => { setSelectedIds([]); toast.success(tr("Selection Cleared")); }}
+                    className="text-white/20 hover:text-red-500 transition-all hover:rotate-90 p-0 bg-transparent border-none outline-none shrink-0"
                 >
-                    <X size={19} strokeWidth={3} />
-                    <span>{tr("Clear")}</span>
+                    <X size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
                 </button>
             </div>
         </div>

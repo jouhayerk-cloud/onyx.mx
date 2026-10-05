@@ -4,8 +4,11 @@ import { listDocumentJobs, verifyDocumentJob } from '../../lib/documentJobs';
 import { tr } from '../../lib/i18n';
 import { FileDown, FileText, CheckCircle, XCircle, Printer, Copy, AlertCircle, Loader2 } from 'lucide-react';
 
-export function PrintJobsPanel() {
-  const [season, setSeason] = useState<'825' | '826'>('826');
+interface PrintJobsPanelProps {
+    season: '825' | '826';
+}
+
+export function PrintJobsPanel({ season }: PrintJobsPanelProps) {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,25 +105,7 @@ export function PrintJobsPanel() {
   };
 
   return (
-    <div className="w-full max-w-[720px] min-w-[480px] p-4 flex flex-col gap-4 text-white rounded-lg" style={{ background: 'rgba(20, 20, 20, 0.8)', backdropFilter: 'blur(12px)' }}>
-        <div className="flex justify-between items-center border-b border-gray-700 pb-2">
-            <h2 className="text-lg font-semibold">{tr('Print Jobs')}</h2>
-            <div className="flex gap-2">
-                <button 
-                    onClick={() => setSeason('826')}
-                    className={`px-3 py-1 rounded text-sm transition-colors ${season === '826' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'}`}
-                >
-                    826
-                </button>
-                <button 
-                    onClick={() => setSeason('825')}
-                    className={`px-3 py-1 rounded text-sm transition-colors ${season === '825' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'}`}
-                >
-                    825 (Archive)
-                </button>
-            </div>
-        </div>
-
+    <div className="w-full max-w-[720px] min-w-[480px] flex flex-col gap-4 text-white rounded-lg h-full overflow-hidden pb-4" style={{ background: 'rgba(20, 20, 20, 0.8)', backdropFilter: 'blur(12px)' }}>
         {loading && (
             <div className="flex justify-center items-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -128,7 +113,7 @@ export function PrintJobsPanel() {
         )}
 
         {error && (
-            <div className="flex gap-2 items-center p-3 rounded bg-red-900/50 text-red-200">
+            <div className="flex gap-2 items-center p-3 m-4 rounded bg-red-900/50 text-red-200">
                 <AlertCircle className="w-5 h-5" />
                 <span>{error}</span>
             </div>
@@ -141,7 +126,7 @@ export function PrintJobsPanel() {
         )}
 
         {!loading && jobs.length > 0 && (
-            <div className="flex flex-col gap-2 overflow-y-auto max-h-[500px]">
+            <div className="flex flex-col gap-2 overflow-y-auto h-full px-4 pt-4 pb-2">
                 {jobs.map(job => (
                     <div key={job.id} className="flex flex-col p-3 rounded bg-gray-800/60 hover:bg-gray-700/60 transition-colors border border-gray-700/50">
                         <div className="flex justify-between items-start mb-2">

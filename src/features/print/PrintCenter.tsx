@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAtom } from 'jotai/react';
+import { useAtom, useSetAtom } from 'jotai/react';
 import { X, UploadCloud, Search, Printer, FileText } from 'lucide-react';
 import { tr } from '../../lib/i18n';
+import { isPackingPrintWizardOpenAtom, isPackingNFCWizardOpenAtom } from '../../lib/atoms';
 import { isPrintCenterOpenAtom, printCenterTabAtom, PrintCenterTab } from './printState';
 import { PrintJobsPanel } from './PrintJobsPanel';
-import { verifyDocumentJob } from '../../lib/documentJobs';
+import { verifyDocumentJob, checksumV1 } from '../../lib/documentJobs';
 import './printCenter.css';
 
 function PrintTemplatesPlaceholder() {
@@ -29,6 +30,15 @@ export const PrintCenter: React.FC = () => {
 
     const [verifyHash, setVerifyHash] = useState('');
     const [verifyStatus, setVerifyStatus] = useState<'match' | 'mismatch' | 'unverifiable' | 'idle'>('idle');
+    const [dragActive, setDragActive] = useState(false);
+    const [droppedHash, setDroppedHash] = useState('');
+    const setPrintOpen = useSetAtom(isPackingPrintWizardOpenAtom);
+    const setNfcOpen = useSetAtom(isPackingNFCWizardOpenAtom);
+
+    useEffect(() => {
+        // No longer trigger standalone LabelWizard/NFCWizard from tabs.
+        // The PrintCenter now has its own inline split-view UI for templates and NFC.
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
@@ -82,6 +92,22 @@ export const PrintCenter: React.FC = () => {
         setVerifyStatus('idle');
         const status = await verifyDocumentJob(verifyHash.trim());
         setVerifyStatus(status);
+    };
+
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault();
+        setDragActive(false);
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const snapshot = JSON.parse(text);
+            const hash = await checksumV1(snapshot);
+            setDroppedHash(hash);
+        } catch (err) {
+            console.error('Failed to parse or hash dropped file:', err);
+            setDroppedHash(tr('Invalid JSON file or hash failure'));
+        }
     };
 
     if (!isOpen) return null;
@@ -150,8 +176,8 @@ export const PrintCenter: React.FC = () => {
                     )}
                     
                     {tab === 'history' && (
-                        <div className="h-full overflow-hidden flex flex-col items-center pt-4">
-                            <PrintJobsPanel />
+                        <div className="h-full overflow-hidden flex flex-col items-center pt-4 w-full">
+                            <PrintJobsPanel season={season} />
                         </div>
                     )}
                     
@@ -159,14 +185,14 @@ export const PrintCenter: React.FC = () => {
                         <div className="flex flex-col items-center justify-center h-full p-8 max-w-lg mx-auto w-full gap-6">
                             <div className="text-center pc-text-muted">
                                 <Search className="w-12 h-12 mb-4 opacity-50 mx-auto" />
-                                <p>{tr('Paste a dj1 hash to verify a document job.')}</p>
+                                <p>{tr('Paste a document job ID to verify its ledger entry.')}</p>
                             </div>
                             <div className="flex w-full gap-2">
                                 <input 
                                     type="text" 
                                     value={verifyHash} 
                                     onChange={(e) => setVerifyHash(e.target.value)} 
-                                    placeholder="dj1:..."
+                                    placeholder={tr("Job ID...")}
                                     className="pc-input flex-1"
                                 />
                                 <button onClick={handleVerify} className="pc-btn-primary">
@@ -177,13 +203,34 @@ export const PrintCenter: React.FC = () => {
                                 <div className={`pc-verify-status status-${verifyStatus}`}>
                                     {verifyStatus === 'match' && tr('Match: The document is verified.')}
                                     {verifyStatus === 'mismatch' && tr('Mismatch: The document was altered.')}
-                                    {verifyStatus === 'unverifiable' && tr('Unverifiable: Cannot verify this hash.')}
+                                    {verifyStatus === 'unverifiable' && tr('Unverifiable: Cannot verify this ID.')}
                                 </div>
                             )}
-                            <div className="pc-dropzone">
+                            <div 
+                                className={`pc-dropzone flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 w-full transition-colors ${dragActive ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-600 bg-gray-800/50 text-gray-400'}`}
+                                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                                onDragLeave={() => setDragActive(false)}
+                                onDrop={handleDrop}
+                            >
                                 <UploadCloud className="w-8 h-8 mb-2 opacity-50" />
-                                <span>{tr('Or drop a file here')}</span>
+                                <span>{tr('Or drop a snapshot file here to calculate its hash')}</span>
+                                {droppedHash && (
+                                    <div className="mt-4 p-2 bg-black/50 rounded w-full text-center font-mono text-sm select-all break-all text-gray-300">
+                                        {droppedHash}
+                                    </div>
+                                )}
                             </div>
+                        </div>
+                    )}
+
+                    {tab === 'nfc' && (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8 max-w-sm mx-auto">
+                            <div className="w-32 h-32 rounded-full border-4 border-dashed border-gray-600 flex items-center justify-center mb-6 animate-pulse">
+                                <span className="text-gray-500">NFC</span>
+                            </div>
+                            <button className="pc-btn-primary w-full py-4 text-lg font-semibold tracking-wider rounded-xl">
+                                WRITE TO TAG
+                            </button>
                         </div>
                     )}
 
@@ -195,7 +242,24 @@ export const PrintCenter: React.FC = () => {
                     )}
 
                     {tab === 'templates' && (
-                        <PrintTemplatesPlaceholder />
+                        <div className="flex h-full w-full">
+                            <div className="w-1/2 p-6 border-r border-gray-700/50 flex flex-col gap-4">
+                                <h3 className="text-xl font-semibold mb-2">Configure Label</h3>
+                                <div className="space-y-4">
+                                    <input type="text" placeholder="Title" className="pc-input w-full" />
+                                    <input type="text" placeholder="Subtitle" className="pc-input w-full" />
+                                    <select className="pc-input w-full bg-black/20">
+                                        <option>Standard Format</option>
+                                        <option>Compact Format</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="w-1/2 p-6 flex flex-col items-center justify-center bg-black/10">
+                                <div className="w-64 h-40 bg-white rounded flex items-center justify-center text-black font-mono text-sm border-2 border-dashed border-gray-400">
+                                    [ Preview Box ]
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
@@ -204,3 +268,5 @@ export const PrintCenter: React.FC = () => {
 
     return createPortal(content, document.body);
 };
+
+

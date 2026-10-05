@@ -10,8 +10,7 @@
 
 .onyx-island-layer {
   position: fixed;
-  height: 0;
-  margin-top: env(safe-area-inset-top, 0px);
+  inset: 0;
   z-index: 10050;            /* above the top bar (500), drawers and modals */
   pointer-events: none;
 }
@@ -19,7 +18,7 @@
 /* Centred with auto margins, NOT translateX(-50%): framer-motion owns the transform of this element during layout animations and would drop the CSS translate (the island jumped off-centre). Width is always set inline per mode. */
 .onyx-island {
   position: absolute;
-  top: 8px;
+  top: max(8px, env(safe-area-inset-top, 8px));
   left: 0;
   right: 0;
   margin-inline: auto;
@@ -242,3 +241,13 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 .isl-hw10:hover { background-color: rgba(255, 255, 255, 0.10); }
 .isl-hw20:hover { background-color: rgba(255, 255, 255, 0.20); }
 .isl-b20 { background-color: rgba(0, 0, 0, 0.20); }
+
+@media (max-width: 768px) {
+  .onyx-island {
+    top: auto;
+    bottom: max(24px, env(safe-area-inset-bottom, 24px));
+  }
+}
+
+
+

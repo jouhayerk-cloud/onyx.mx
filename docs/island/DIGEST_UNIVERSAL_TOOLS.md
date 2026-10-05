@@ -1,93 +1,73 @@
 # UniversalToolsBar.tsx structure digest (script-generated)
 
 ```
-101: const ActiveRequestGridItem: React.FC<{
-154: const UpcomingGridItem: React.FC<{
-190: const SectionHeader: React.FC<{
-251: const SmartFilterGroup: React.FC<{
-273:                         title={tr("Clear this filter")}>
-290:                                     title={`Filter by ${node.label}`}
-304:                                         aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${node.label}`}
-306:                                         title={`${node.children.length} sub-filter${node.children.length !== 1 ? 's' : ''}`}
-322:                                             title={`Filter by ${node.label} / ${child.label}`}
-339: export const UniversalToolsBar: React.FC = () => {
-340:     const activeView = useAtomValue(activeViewAtom);
-341:     const logisticsSubTab = useAtomValue(logisticsSubTabAtom);
-344:     const [isInvViewSliderOpen, setIsInvViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
-345:     const [invSlider, setInvSlider] = useAtom(inventoryViewSliderAtom);
-346:     const [invMode, setInvMode] = useAtom(inventoryViewModeAtom);
-347:     const [isInvFiltersOpen, setIsInvFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
-348:     const [isInvSearchOpen, setIsInvSearchOpen] = useAtom(isInventorySearchOpenAtom);
-354:     const toolsOpen = useAtomValue(inventoryToolsOpenAtom);
-355:     const smartOpen = useAtomValue(isInventorySmartFiltersOpenAtom);
-356:     const [contentSel, setContentSel] = useAtom(inventoryContentFilterAtom);
-357:     const [materialColorOpen, setMaterialColorOpen] = useAtom(isInventoryMaterialColorFilterOpenAtom);
-358:     const [shapeFilterOpen, setShapeFilterOpen] = useAtom(isInventoryShapeFilterOpenAtom);
-359:     const [shapeSel, setShapeSel] = useAtom(inventoryShapeFilterAtom);
-360:     const [materialColorSel, setMaterialColorSel] = useAtom(inventoryMaterialColorFilterAtom);
-361:     const inventoryRows = useAtomValue(inventoryAtom);
-369:     const [invSearchTerm, setInvSearchTerm] = useAtom(inventorySearchTermAtom);
-370:     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
-371:     const invCategoryFilter = useAtomValue(inventoryCategoryFilterAtom);
-372:     const invMaterialFilter = useAtomValue(inventoryMaterialFilterAtom);
-373:     const filteredIds = useAtomValue(filteredInventoryIdsAtom);
-374:     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
-388:     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
-391:     const [isFinSearchOpen, setIsFinSearchOpen] = useAtom(isPaymentsSearchOpenAtom);
-392:     const [finSearchTerm, setFinSearchTerm] = useAtom(financeSearchTermAtom);
-393:     const [isFinFiltersOpen, setIsFinFiltersOpen] = useAtom(isPaymentFiltersOpenAtom);
-394:     const [isFinActionOpen, setIsFinActionOpen] = useAtom(isPaymentActionPanelOpenAtom);
-395:     const [isFinQueueOpen, setIsFinQueueOpen] = useAtom(isPaymentQueueOpenAtom);
-396:     const [isFinUpcomingOpen, setIsFinUpcomingOpen] = useAtom(isPaymentUpcomingOpenAtom);
-398:     const [finCategoryFilter, setFinCategoryFilter] = useAtom(paymentCategoryFilterAtom);
-399:     const [finDestFilter, setFinDestFilter] = useAtom(paymentDestinationFilterAtom);
-400:     const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
-401:     const financeTotals = useAtomValue(financeTotalsAtom);
-402:     const financeDocs = useAtomValue(financeDataAtom);
-403:     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
-404:     const setInvArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
-405:     const liveEx = useAtomValue(liveExchangeRateAtom);
-406:     const fixedEx = useAtomValue(exchangeRateAtom);
-410:     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
-411:     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
-412:     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
-413:     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
-414:     const truckBusy = useAtomValue(truckIsBusyAtom);
-415:     const showPanels = useAtomValue(truckShowPanelsAtom);
-416:     const topBarState = useAtomValue(truckTopBarStateAtom);
-417:     const [positions, setPositions] = useAtom(truckingPositionsAtom);
-418:     const [recalledShipment, setRecalledShipment] = useAtom(truckingRecalledShipmentAtom);
-419:     const dockCrates = useAtomValue(truckingDockCratesAtom);
-420:     const allCrates = useAtomValue(truckingAllCratesAtom);
-421:     const allLogistics = useAtomValue(logisticsDocsAtom);
-422:     const allInventory = useAtomValue(inventoryAtom);
-423:     const totalWeight = useAtomValue(truckingTotalWeightAtom);
-424:     const floorPct = useAtomValue(truckingFloorPctAtom);
-425:     const [isDockCompact, setIsDockCompact] = useAtom(truckDockIsCompactAtom);
-426:     const [isStatsCompact, setIsStatsCompact] = useAtom(truckStatsIsCompactAtom);
-427:     const readyFields = useAtomValue(truckingReadyFieldsAtom);
-431:         if (activeView === 'trucking' && topBarState === 'trailers') {
-461:     const [invVendorFilter, setInvVendorFilter] = useAtom(inventoryVendorFilterAtom);
-462:     const [invSortKey, setInvSortKey] = useAtom(inventorySortKeyAtom);
-463:     const [invSortOrder, setInvSortOrder] = useAtom(inventorySortOrderAtom);
-464:     const activeVendors = useAtomValue(activeVendorsAtom);
-588:     const isInventory = activeView === 'inventory';
-589:     const isFinance = activeView === 'finance';
-590:     const isTrucking = activeView === 'trucking';
-604:                                 <input autoFocus type="text" value={invSearchTerm} onChange={(e) => setInvSearchTerm(e.target.value)} placeholder={tr("SEARCH INVENTORY...
-675:                                                 title={sort.label}
-695:                                 <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS..."
-767:                                             <button aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
-788:                             <SectionHeader icon={Heartbeat} title={tr("Requested")} count={activeQueueRecords.length} amount={activeQueueTotal} isOpen={isFinQueueOpen} on
-794:                                         return <ActiveRequestGridItem key={r.id} label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyM
-808:                         title={tr("Upcoming Payments")}
-829:                                             label={r.description || v}
-894:                             title={tr("Material / Colour — main filter")}
-903:                             title={tr("Shape — sub filter")}
-913:                                 title={tr("Material / Colour — Main Filter")}
-926:                                 title={tr("Shape — Sub Filter")}
-961:                                         <button aria-pressed={isActive} title={s.id} onClick={() => setInvStatusFilter(s.id as any)}
-1001:                                         title={tr(f.hint)}
-1014:                                 title={tr("Clear content filter")}>
-1028:                                         <button aria-pressed={isActive} title={v}
+86: const ActiveRequestGridItem: React.FC<{
+139: const UpcomingGridItem: React.FC<{
+175: const SectionHeader: React.FC<{
+221: export const UniversalToolsBar: React.FC = () => {
+222:     const activeView = useAtomValue(activeViewAtom);
+223:     const logisticsSubTab = useAtomValue(logisticsSubTabAtom);
+224:     const islandEnabled = useAtomValue(islandCommandsEnabledAtom);
+227:     const [isInvViewSliderOpen, setIsInvViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
+228:     const [isInvFiltersOpen, setIsInvFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
+229:     const [isInvSearchOpen, setIsInvSearchOpen] = useAtom(isInventorySearchOpenAtom);
+230:     const toolsOpen = useAtomValue(inventoryToolsOpenAtom);
+231:     const [smartOpen, setSmartOpen] = useAtom(isInventorySmartFiltersOpenAtom);
+236:     const invCategoryFilter = useAtomValue(inventoryCategoryFilterAtom);
+237:     const invMaterialFilter = useAtomValue(inventoryMaterialFilterAtom);
+238:     const filteredIds = useAtomValue(filteredInventoryIdsAtom);
+239:     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
+241:     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+244:     const [isFinSearchOpen, setIsFinSearchOpen] = useAtom(isPaymentsSearchOpenAtom);
+245:     const [finSearchTerm, setFinSearchTerm] = useAtom(financeSearchTermAtom);
+246:     const [isFinFiltersOpen, setIsFinFiltersOpen] = useAtom(isPaymentFiltersOpenAtom);
+247:     const [isFinActionOpen, setIsFinActionOpen] = useAtom(isPaymentActionPanelOpenAtom);
+248:     const [isFinQueueOpen, setIsFinQueueOpen] = useAtom(isPaymentQueueOpenAtom);
+249:     const [isFinUpcomingOpen, setIsFinUpcomingOpen] = useAtom(isPaymentUpcomingOpenAtom);
+251:     const [finCategoryFilter, setFinCategoryFilter] = useAtom(paymentCategoryFilterAtom);
+252:     const [finDestFilter, setFinDestFilter] = useAtom(paymentDestinationFilterAtom);
+253:     const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
+254:     const financeTotals = useAtomValue(financeTotalsAtom);
+255:     const financeDocs = useAtomValue(financeDataAtom);
+256:     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
+257:     const setInvArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+258:     const liveEx = useAtomValue(liveExchangeRateAtom);
+259:     const fixedEx = useAtomValue(exchangeRateAtom);
+263:     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
+264:     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
+265:     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
+266:     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
+267:     const truckBusy = useAtomValue(truckIsBusyAtom);
+268:     const showPanels = useAtomValue(truckShowPanelsAtom);
+269:     const topBarState = useAtomValue(truckTopBarStateAtom);
+270:     const [positions, setPositions] = useAtom(truckingPositionsAtom);
+271:     const [recalledShipment, setRecalledShipment] = useAtom(truckingRecalledShipmentAtom);
+272:     const dockCrates = useAtomValue(truckingDockCratesAtom);
+273:     const allCrates = useAtomValue(truckingAllCratesAtom);
+274:     const allLogistics = useAtomValue(logisticsDocsAtom);
+275:     const allInventory = useAtomValue(inventoryAtom);
+276:     const totalWeight = useAtomValue(truckingTotalWeightAtom);
+277:     const floorPct = useAtomValue(truckingFloorPctAtom);
+278:     const [isDockCompact, setIsDockCompact] = useAtom(truckDockIsCompactAtom);
+279:     const [isStatsCompact, setIsStatsCompact] = useAtom(truckStatsIsCompactAtom);
+280:     const readyFields = useAtomValue(truckingReadyFieldsAtom);
+284:         if (activeView === 'trucking' && topBarState === 'trailers') {
+437:     const isInventory = activeView === 'inventory';
+438:     const isFinance = activeView === 'finance';
+439:     const isTrucking = activeView === 'trucking';
+450:             <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS...")} className="bg-tra
+513:                             <button aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
+535:             <SectionHeader icon={Heartbeat} title={tr("Requested")} count={activeQueueRecords.length} amount={activeQueueTotal} isOpen={isFinQueueOpen} onToggle={() => se
+541:                         return <ActiveRequestGridItem key={r.id} label={r.description || v} amount={r.amount} color={color} type={r.subcategory} currencyMode={currencyMod
+552:                 title={tr("Upcoming Payments")}
+573:                                     label={r.description || v}
+616:         if (isInventory && toolsOpen && isInvSearchOpen) docks.push(<SubmenuCard key="inv-search" id="inv-search" title={tr("Search")} onClose={() => setIsInvSearchOpen(f
+617:         if (isInventory && toolsOpen && isInvViewSliderOpen) docks.push(<SubmenuCard key="inv-view" id="inv-view" title={tr("View")} onClose={() => setIsInvViewSliderOpen
+618:         if (isInventory && toolsOpen && isInvFiltersOpen) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} onClose={() => setIsInvFiltersO
+619:         if (isInventory && toolsOpen && smartOpen) docks.push(<SubmenuCard key="inv-smart" id="inv-smart" title={tr("Smart Filters")} onClose={() => setSmartOpen(false)}>
+620:         if (isInventory && isSelectionMode) docks.push(<SubmenuCard key="inv-select" id="inv-select" title={tr("Batch Management")} onClose={() => setIsSelectionMode(fals
+621:         if (isFinance && isFinSearchOpen) docks.push(<SubmenuCard key="fin-search" id="fin-search" title={tr("Search Payments")} onClose={() => setIsFinSearchOpen(false)}
+622:         if (isFinance && isFinFiltersOpen) docks.push(<SubmenuCard key="fin-filters" id="fin-filters" title={tr("Filters")} onClose={() => setIsFinFiltersOpen(false)}>{re
+623:         if (isFinance && isFinActionOpen) docks.push(<SubmenuCard key="fin-action" id="fin-action" title={tr("Requested Payments")} onClose={() => setIsFinActionOpen(fals
+624:         if (isFinance && isFinUpcomingOpen) docks.push(<SubmenuCard key="fin-upcoming" id="fin-upcoming" title={tr("Upcoming Payments")} onClose={() => setIsFinUpcomingOp
 ```

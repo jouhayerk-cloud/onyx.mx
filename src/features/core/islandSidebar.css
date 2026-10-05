@@ -1,8 +1,8 @@
 .isb-panel {
   position: fixed;
-  top: 12px;
+  top: max(12px, env(safe-area-inset-top, 12px));
   bottom: 12px;
-  left: 12px;
+  left: max(12px, env(safe-area-inset-left, 12px));
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -328,3 +328,27 @@ html.theme-aqua .isb-panel.isb-panel .isb-item-active {
 html.theme-aqua .isb-panel.isb-panel .isb-item:hover {
   background-color: rgba(0, 60, 80, 0.08) !important;
 }
+
+.isb-floating-logo {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 12px));
+  left: max(12px, env(safe-area-inset-left, 12px));
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  cursor: pointer;
+  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
+  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease, opacity 0.3s ease;
+}
+.isb-floating-logo:hover {
+  background-color: rgba(255,255,255,0.1) !important;
+}
+
+
