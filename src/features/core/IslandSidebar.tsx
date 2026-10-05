@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAtom, useSetAtom } from 'jotai/react';
-import { m, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import {
     activeViewAtom,
     activeSubMenuAtom,
@@ -275,6 +275,7 @@ export const IslandSidebar: React.FC = () => {
     };
 
     return (
+        <LazyMotion features={domAnimation}>
         <div 
             className="isb-panel ui-root" 
             style={panelStyle}
@@ -446,5 +447,6 @@ export const IslandSidebar: React.FC = () => {
                 )}
             </div>
         </div>
+        </LazyMotion>
     );
 };
