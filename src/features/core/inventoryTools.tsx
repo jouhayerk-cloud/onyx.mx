@@ -25,7 +25,7 @@ export interface InventoryWidgets {
 }
 
 export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
-    const [search, setSearch] = useAtom(inventorySearchTermAtom);
+    const [search] = useAtom(inventorySearchTermAtom);
     const [isFiltersOpen, setIsFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
     const [isViewSliderOpen, setIsViewSliderOpen] = useAtom(isInventoryViewSliderOpenAtom);
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
@@ -54,24 +54,6 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         group: tr('Create'),
         order: 10,
         render: () => <widgets.InventoryAddButton />
-    });
-
-    tools.push({
-        id: 'inventory.widget.search',
-        moduleId: 'inventory',
-        label: tr('Search Box'),
-        icon: SearchIcon,
-        kind: 'widget',
-        group: tr('Find'),
-        order: 40,
-        render: () => (
-            <widgets.DeployableSearch
-                value={search}
-                onChange={setSearch}
-                isOpen={isSearchOpen}
-                setIsOpen={setIsSearchOpen}
-            />
-        )
     });
 
     // InventoryBar toggles

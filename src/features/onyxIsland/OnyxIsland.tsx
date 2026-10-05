@@ -223,6 +223,8 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     }
     try {
       tool.run?.();
+      // a toggle opens a bar under the island: close the surface so the bar is visible (the surface would cover it)
+      if (tool.kind === 'toggle' && mode === 'surface') setMode('rest');
     } catch (err: any) {
       toast.error(err?.message || tr('Failed to execute tool'));
     }
