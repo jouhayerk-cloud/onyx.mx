@@ -1,7 +1,6 @@
 import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { AnimatePresence, m } from 'framer-motion';
 import './submenuDock.css';
 
 interface AnchorRect { top: number; left: number; width: number }
@@ -69,9 +68,7 @@ export const SubmenuDock: React.FC<{ children: React.ReactNode }> = ({ children 
       style={{ top: rect.top, left: rect.left, width: rect.width }}
     >
       <div className="smd-stack" ref={stackRef}>
-        <AnimatePresence>
-          {children}
-        </AnimatePresence>
+        {children}
       </div>
     </div>,
     document.body
@@ -85,14 +82,7 @@ export const SubmenuCard: React.FC<{
   children: React.ReactNode;
 }> = ({ id, title, onClose, children }) => {
   return (
-    <m.div
-      key={id}
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8, duration: 0.22 }}
-      className="smd-card ui-root"
-    >
+    <div className="smd-card ui-root" data-bar={id}>
       <div className="smd-card-header">
         <span className="smd-card-title">{title}</span>
         <button onClick={onClose} className="smd-close-btn" aria-label="Close">
@@ -102,6 +92,6 @@ export const SubmenuCard: React.FC<{
       <div className="smd-card-content">
         {children}
       </div>
-    </m.div>
+    </div>
   );
 };

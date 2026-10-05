@@ -19,6 +19,7 @@
 }
 
 .smd-card {
+  animation: smd-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both;
   pointer-events: auto;
   flex: 0 0 auto;
   width: calc(100% - 24px);
@@ -107,4 +108,12 @@ html.style-slab .smd-card.smd-card [role="button"] {
   backdrop-filter: none !important;
   box-shadow: none !important;
   border-color: transparent !important;
+}
+
+@keyframes smd-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .smd-card { animation: none; }
 }

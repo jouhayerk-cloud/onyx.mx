@@ -46,7 +46,7 @@
   background:
     radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.26), transparent 55%),
     radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 34%, transparent), transparent 62%);
-  animation: isb-breathe 4s infinite ease-in-out;
+  opacity: 0.85;   /* static: an endless animation over backdrop-filter re-blurs the page every frame */
 }
 @keyframes isb-breathe {
   0%, 100% { opacity: 0.6; }
@@ -311,4 +311,20 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .app-container > .app-content { transition: none; }
+}
+
+/* Aqua (light) theme: the glass is light, so the text and the active pill must be dark */
+html.theme-aqua .isb-panel.isb-panel,
+html.theme-aqua .isb-panel.isb-panel .isb-item,
+html.theme-aqua .isb-panel.isb-panel .isb-item-main,
+html.theme-aqua .isb-panel.isb-panel .isb-item-label,
+html.theme-aqua .isb-panel.isb-panel .isb-submenu-item {
+  color: var(--text-color, #0b2a33) !important;
+}
+html.theme-aqua .isb-panel.isb-panel .isb-item-active {
+  color: #04323d !important;
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 30%, rgba(255, 255, 255, 0.55)) !important;
+}
+html.theme-aqua .isb-panel.isb-panel .isb-item:hover {
+  background-color: rgba(0, 60, 80, 0.08) !important;
 }
