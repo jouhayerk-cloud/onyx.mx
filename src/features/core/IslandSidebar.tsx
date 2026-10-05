@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAtom, useSetAtom } from 'jotai/react';
 import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
+import { isPrintCenterOpenAtom } from '../print/printState';
 import {
     activeViewAtom,
     activeSubMenuAtom,
@@ -13,7 +14,7 @@ import {
 import {
     Shield, CreditCard, Truck, Package, MapPin,
     ChevronRight, Zap, BarChart3, LayoutDashboard, Pipette, Layers,
-    Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Album, Shell
+    Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Album, Shell, Printer
 } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
@@ -227,6 +228,7 @@ export const IslandSidebar: React.FC = () => {
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
     const setLogisticsSubTab = useSetAtom(logisticsSubTabAtom);
     const [isSettingsOpen, setIsSettingsOpen] = useAtom(isStudioSettingsOpenAtom);
+    const [isPrintCenterOpen, setIsPrintCenterOpen] = useAtom(isPrintCenterOpenAtom);
     
     const [isHoverPeek, setIsHoverPeek] = useState(false);
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -408,6 +410,16 @@ export const IslandSidebar: React.FC = () => {
                                 isCompact={isCompact}
                                 isHoverPeek={isHoverPeek}
                                 onHideSidebarMobile={handleMobileHide}
+                            />
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
+                            <NavItem
+                                icon={Printer}
+                                label={tr("Print Center")}
+                                isActive={isPrintCenterOpen}
+                                action={() => { setIsPrintCenterOpen(o => !o); handleMobileHide(); }}
+                                isCompact={isCompact}
+                                isHoverPeek={isHoverPeek}
                             />
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
