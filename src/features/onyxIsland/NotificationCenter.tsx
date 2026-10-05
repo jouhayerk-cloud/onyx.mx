@@ -145,7 +145,7 @@ export const NotificationCenter: React.FC<{ onClose: () => void; tab?: 'notifica
     const earlierItems = filteredHistory.filter(i => !isToday(i.createdAt, now));
 
     return (
-        <div className="flex flex-col h-full overflow-hidden text-white">
+        <div className="flex flex-col h-full text-white">
             {/* Tabs */}
             {!hideTabs && (
                 <div className="flex p-3 pb-0 shrink-0">
@@ -175,76 +175,80 @@ export const NotificationCenter: React.FC<{ onClose: () => void; tab?: 'notifica
                 </div>
             )}
 
-            <div className="flex-1 overflow-hidden relative mt-2">
+            <div className={`flex-1 min-h-0 ${!hideTabs ? 'relative mt-2' : 'flex flex-col'}`}>
                 {/* Notifications View */}
-                <div 
-                    className={`absolute inset-0 flex flex-col transition-opacity duration-200 ${activeTab === 'notifications' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
-                >
-                    <div className="flex items-center justify-between px-3 pb-2 shrink-0">
-                        <div className="flex gap-2" role="tablist">
-                            {(['all', 'alerts', 'agent'] as Filter[]).map(f => (
-                                <button
-                                    key={f}
-                                    role="tab"
-                                    aria-selected={filter === f}
-                                    onClick={() => setFilter(f)}
-                                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white border ${filter === f ? 'isl-w10 text-white border-white/20' : 'bg-transparent text-white/50 border-transparent isl-hw5'}`}
-                                >
-                                    {f === 'all' ? tr('All') : f === 'alerts' ? tr('Alerts') : tr('Agent')}
-                                </button>
-                            ))}
+                {(!hideTabs || activeTab === 'notifications') && (
+                    <div 
+                        className={!hideTabs ? `absolute inset-0 flex flex-col transition-opacity duration-200 ${activeTab === 'notifications' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}` : 'flex-1 min-h-0 flex flex-col w-full'}
+                    >
+                        <div className="flex items-center justify-between px-3 py-2 shrink-0 border-b border-white/5">
+                            <div className="flex gap-2" role="tablist">
+                                {(['all', 'alerts', 'agent'] as Filter[]).map(f => (
+                                    <button
+                                        key={f}
+                                        role="tab"
+                                        aria-selected={filter === f}
+                                        onClick={() => setFilter(f)}
+                                        className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white border ${filter === f ? 'isl-w10 text-white border-white/20' : 'bg-transparent text-white/50 border-transparent isl-hw5'}`}
+                                    >
+                                        {f === 'all' ? tr('All') : f === 'alerts' ? tr('Alerts') : tr('Agent')}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                onClick={clearHistory}
+                                className="text-[11px] font-semibold text-white/50 hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white px-2 py-1 rounded isl-hw5"
+                            >
+                                {tr('Clear all')}
+                            </button>
                         </div>
-                        <button
-                            onClick={clearHistory}
-                            className="text-[11px] font-semibold text-white/50 hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white px-2 py-1 rounded isl-hw5"
-                        >
-                            {tr('Clear all')}
-                        </button>
-                    </div>
 
-                    <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-4 custom-scrollbar">
-                        {filteredHistory.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-white/40 gap-4">
-                                <OnyxFace expression="sleepy" size={72} tone="mono" className="opacity-50 !bg-transparent" />
-                                <div className="text-sm font-medium">{tr('Nothing new')}</div>
-                            </div>
-                        ) : (
-                            <div role="list" className="flex flex-col gap-1">
-                                {todayItems.length > 0 && (
-                                    <>
-                                        <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white/40 mt-1">
-                                            {tr('Today')}
-                                        </div>
-                                        {todayItems.map(item => (
-                                            <NotificationItem key={item.id} notification={item} now={now} />
-                                        ))}
-                                    </>
-                                )}
-                                {earlierItems.length > 0 && (
-                                    <>
-                                        <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white/40 mt-3">
-                                            {tr('Earlier')}
-                                        </div>
-                                        {earlierItems.map(item => (
-                                            <NotificationItem key={item.id} notification={item} now={now} />
-                                        ))}
-                                    </>
-                                )}
-                            </div>
-                        )}
+                        <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-4 custom-scrollbar min-h-0">
+                            {filteredHistory.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-white/40 gap-4">
+                                    <OnyxFace expression="sleepy" size={72} tone="mono" className="opacity-50 !bg-transparent" />
+                                    <div className="text-sm font-medium">{tr('Nothing new')}</div>
+                                </div>
+                            ) : (
+                                <div role="list" className="flex flex-col gap-1">
+                                    {todayItems.length > 0 && (
+                                        <>
+                                            <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white/40 mt-1">
+                                                {tr('Today')}
+                                            </div>
+                                            {todayItems.map(item => (
+                                                <NotificationItem key={item.id} notification={item} now={now} />
+                                            ))}
+                                        </>
+                                    )}
+                                    {earlierItems.length > 0 && (
+                                        <>
+                                            <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white/40 mt-3">
+                                                {tr('Earlier')}
+                                            </div>
+                                            {earlierItems.map(item => (
+                                                <NotificationItem key={item.id} notification={item} now={now} />
+                                            ))}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Assistant View */}
-                <div 
-                    className={`absolute inset-0 transition-opacity duration-200 ${activeTab === 'assistant' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
-                >
-                    {activeTab === 'assistant' && (
-                        <Suspense fallback={<div className="h-full flex items-center justify-center text-white/50"><div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>}>
-                            <OnyxAgentHost variant="drawer" onClose={onClose} />
-                        </Suspense>
-                    )}
-                </div>
+                {(!hideTabs || activeTab === 'assistant') && (
+                    <div 
+                        className={!hideTabs ? `absolute inset-0 transition-opacity duration-200 ${activeTab === 'assistant' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}` : 'flex-1 min-h-0 flex flex-col w-full'}
+                    >
+                        {activeTab === 'assistant' && (
+                            <Suspense fallback={<div className="h-full flex items-center justify-center text-white/50"><div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>}>
+                                <OnyxAgentHost variant="drawer" onClose={onClose} />
+                            </Suspense>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -1,4 +1,5 @@
 import React, { useMemo, useRef } from 'react';
+import { m } from 'framer-motion';
 import { MessageCircle, Bell } from 'lucide-react';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
 import { tr } from '../../lib/i18n';
@@ -86,51 +87,65 @@ export const IslandToolsGrid: React.FC<IslandToolsGridProps> = ({ tools, filter,
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col p-4 gap-6 w-full" role="tablist">
+    <m.div 
+      ref={containerRef} 
+      role="tablist" 
+      className="flex flex-col p-4 gap-6 w-full"
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.04 } } }}
+    >
       {groups.map(([groupName, groupTools], gIdx) => (
         <div key={groupName} className="flex flex-col gap-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">
+          <m.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">
             {groupName}
-          </div>
+          </m.div>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
             {groupTools.map((tool, tIdx) => {
               if (tool.kind === 'widget' && tool.render) {
                 return (
-                  <div key={tool.id} className="col-span-2 md:col-span-3 xl:col-span-4 isl-w5 rounded-xl p-3 border border-white/10" id={`tile-${tool.id}`}>
+                  <m.div 
+                    key={tool.id} 
+                    id={`tile-${tool.id}`}
+                    variants={{ hidden: { opacity: 0, scale: 0.96, y: 4 }, show: { opacity: 1, scale: 1, y: 0 } }}
+                    className="col-span-2 md:col-span-3 xl:col-span-4 isl-w5 rounded-xl p-3 border border-white/10"
+                  >
                     {tool.render()}
-                  </div>
+                  </m.div>
                 );
               }
               const Icon = tool.icon;
               const isToggle = tool.kind === 'toggle';
               return (
-                <button
+                <m.button
                   key={tool.id}
                   id={`tile-${tool.id}`}
                   type="button"
                   title={tool.title || tool.label}
                   aria-pressed={isToggle ? !!tool.pressed : undefined}
                   disabled={tool.disabled}
-                  onClick={(e) => { e.preventDefault(); tool.run?.(); }}
-                  onKeyDown={(e) => handleKeyDown(e, gIdx, tIdx)}
+                  onClick={(e: React.MouseEvent) => { e.preventDefault(); tool.run?.(); }}
+                  onKeyDown={(e: React.KeyboardEvent) => handleKeyDown(e, gIdx, tIdx)}
                   tabIndex={gIdx === 0 && tIdx === 0 ? 0 : -1}
-                  className="flex items-center gap-3 p-2 min-h-[44px] rounded-xl cursor-pointer isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent text-left"
+                  variants={{ hidden: { opacity: 0, scale: 0.96, y: 4 }, show: { opacity: 1, scale: 1, y: 0 } }}
+                  whileTap={!tool.disabled ? { scale: 0.95 } : undefined}
+                  className="flex items-center gap-3 p-2 min-h-[44px] rounded-xl cursor-pointer isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent text-left text-white"
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full isl-w10 shrink-0 relative">
-                    <Icon size={22} />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full isl-w10 shrink-0 relative text-white">
+                    <Icon size={22} color="currentColor" strokeWidth={2} />
                     {tool.badge != null && (
                       <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full border border-[var(--glass-tint,rgba(10,12,20,0.4))] shadow-sm" />
                     )}
                   </div>
-                  <span className="text-[13px] font-medium max-w-[12ch] truncate flex-1 leading-tight">
+                  <span className="text-[13px] font-medium max-w-[12ch] truncate flex-1 leading-tight text-white/90">
                     {tool.label}
                   </span>
-                </button>
+                </m.button>
               );
             })}
           </div>
         </div>
       ))}
-    </div>
+    </m.div>
   );
 };

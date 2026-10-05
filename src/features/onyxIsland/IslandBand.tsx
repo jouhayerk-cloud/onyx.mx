@@ -1,4 +1,4 @@
-import React, { Suspense, useLayoutEffect, useRef, useState } from 'react';
+import React, { Suspense, useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '../../lib/atoms';
@@ -6,15 +6,14 @@ import { tr } from '../../lib/i18n';
 import './island.css';
 import { IslandLiveRegion } from './IslandLiveRegion';
 import type { IslandReadout } from './islandState';
-// @ts-ignore - bare is expected by the contract but might not be explicitly typed in OnyxFaceProps yet
+// @ts-ignore
 import { OnyxFace } from '../onyxAgent/face/OnyxFace';
+import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
 const OnyxIsland = React.lazy(() => import('./OnyxIsland').then(m => ({ default: m.OnyxIsland })));
 
 interface AnchorRect { top: number; left: number; width: number }
 
-/** Viewport rect of the band. The island is drawn in a portal on <body> (outside the top bar's
- *  sticky, blurred stacking context, which is what cropped it) and follows this rect. */
 function useAnchorRect(ref: React.RefObject<HTMLElement | null>): AnchorRect | null {
   const [rect, setRect] = useState<AnchorRect | null>(null);
   useLayoutEffect(() => {
@@ -34,7 +33,7 @@ function useAnchorRect(ref: React.RefObject<HTMLElement | null>): AnchorRect | n
     ro.observe(el);
     ro.observe(document.documentElement);
     window.addEventListener('resize', schedule);
-    window.addEventListener('scroll', schedule, true);   // a scroller above the bar moves it without resizing it
+    window.addEventListener('scroll', schedule, true);
     return () => {
       if (raf) cancelAnimationFrame(raf);
       ro.disconnect();
@@ -49,15 +48,31 @@ export const IslandBand: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const user = useAtomValue(userAtom);
   const bandRef = useRef<HTMLDivElement | null>(null);
   const rect = useAnchorRect(bandRef);
+  
+  const allTools = useAtomValue(allToolsAtom);
+  const pinnedOverrides = useAtomValue(pinnedToolsAtom);
+  const commandsEnabled = useAtomValue(islandCommandsEnabledAtom);
+
+  const [isMd, setIsMd] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const on = () => setIsMd(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
 
   if (!user) {
     return null;
   }
 
+  const pinnedCount = commandsEnabled ? allTools.filter(t => isToolPinned(t, pinnedOverrides)).length : 0;
+  const hasLaunchers = isMd && pinnedCount > 0;
+  const docked = !!readout || hasLaunchers;
+  const bandHeight = docked ? 72 : 64;
+
   return (
     <>
-      {/* In-flow placeholder: it only reserves the row and tells the island where the bar is. */}
-      <div ref={bandRef} className="onyx-island-band">
+      <div ref={bandRef} className="onyx-island-band" style={{ height: bandHeight }}>
         <IslandLiveRegion />
       </div>
       {rect && createPortal(

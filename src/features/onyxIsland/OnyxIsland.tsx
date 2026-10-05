@@ -228,7 +228,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     }
   };
 
-  const size = mode === 'rest' ? 56 : 44;
+  const size = mode === 'surface' && pane === 'tools' ? 72 : mode === 'rest' ? (hasLaunchers ? 64 : 56) : 44;
   
   let radius = '28px';
   if (mode === 'rest' && !docked) radius = '50%';
@@ -264,7 +264,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
   let rootStyle: React.CSSProperties = {};
   if (mode === 'rest') {
-    rootStyle = docked ? { width: 'min(760px, calc(100vw - 24px))', height: 56 } : { width: 56, height: 56 };
+    rootStyle = docked ? { width: 'fit-content', maxWidth: 'calc(100vw - 24px)', height: 64 } : { width: 56, height: 56 };
   } else if (mode === 'peek') {
     rootStyle = { width: 'min(380px, calc(100vw - 24px))', height: 64 };
   } else if (mode === 'card') {
@@ -376,25 +376,35 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
           {mode === 'surface' && (
             <div className="flex flex-col w-full h-full">
               {/* Surface Header */}
-              <div className="flex items-center gap-2 p-2 shrink-0 border-b border-white/10">
-                {pane === 'tools' ? (
-                  <m.div layoutId="onyx-island-face" className="shrink-0 flex items-center justify-center h-12 w-12">
-                    <OnyxFace expression={faceExpr} bare size={size} tone="mono" />
-                  </m.div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setPane('tools')}
-                    aria-label={tr('Back')}
-                    className="w-12 h-12 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white"
-                  >
-                    <ChevronLeft size={24} />
-                  </button>
-                )}
-                
-                {pane === 'tools' && (
-                  <div className="flex-1 flex items-center relative">
-                    <Search size={18} className="absolute left-3 text-white/40 pointer-events-none" />
+              {pane === 'tools' ? (
+                <div className="flex flex-col p-2 shrink-0 border-b border-white/10">
+                  <div className="flex justify-between items-center w-full min-h-[72px]">
+                    <div className="flex-1 flex justify-start min-w-0">
+                      <div className="hidden md:flex">
+                        <IslandLaunchers tools={leftLaunchers} onRun={runTool} />
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center justify-center mx-2">
+                      <m.div layoutId="onyx-island-face">
+                        <OnyxFace expression={faceExpr} bare size={size} tone="mono" />
+                      </m.div>
+                    </div>
+                    <div className="flex-1 flex justify-end min-w-0 items-center">
+                      <div className="hidden md:flex">
+                        <IslandLaunchers tools={rightLaunchers} onRun={runTool} />
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={tr('Close')}
+                        className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white ml-2"
+                        onClick={() => setMode('rest')}
+                      >
+                        <X size={22} color="currentColor" strokeWidth={2} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1 flex items-center relative w-full mt-2 mb-1 px-1">
+                    <Search size={18} color="currentColor" strokeWidth={2} className="absolute left-4 text-white/40 pointer-events-none" />
                     <input
                       ref={filterInputRef}
                       type="text"
@@ -404,34 +414,46 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                       className="w-full isl-b20 text-[14px] text-white placeholder-white/40 rounded-full py-2.5 pl-10 pr-4 outline-none border border-white/10 focus:border-white/20 transition-colors"
                     />
                   </div>
-                )}
-                {pane !== 'tools' && (
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-2 shrink-0 border-b border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setPane('tools')}
+                    aria-label={tr('Back')}
+                    className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white"
+                  >
+                    <ChevronLeft size={24} color="currentColor" strokeWidth={2} />
+                  </button>
+                  
                   <div className="flex-1 text-[15px] font-semibold">
                     {pane === 'chat' ? tr('Assistant') : tr('Notifications')}
                   </div>
-                )}
 
-                <button
-                  type="button"
-                  aria-label={tr('Close')}
-                  className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white"
-                  onClick={() => setMode('rest')}
-                >
-                  <X size={20} />
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    aria-label={tr('Close')}
+                    className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white"
+                    onClick={() => setMode('rest')}
+                  >
+                    <X size={22} color="currentColor" strokeWidth={2} />
+                  </button>
+                </div>
+              )}
 
               {/* Surface Body */}
-              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <ChunkBoundary>
                   <Suspense fallback={<div className="h-20" />}>
                     {pane === 'tools' && (
-                      <IslandToolsGrid 
-                        tools={commandsEnabled ? allTools : []} 
-                        filter={filterText} 
-                        onRun={runTool} 
-                        onOpenPane={setPane}
-                      />
+                      <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <IslandToolsGrid 
+                          tools={commandsEnabled ? allTools : []} 
+                          filter={filterText} 
+                          onRun={runTool} 
+                          onOpenPane={setPane}
+                        />
+                      </div>
                     )}
                     {pane === 'notifications' && <NotificationCenter tab="notifications" hideTabs onClose={() => setMode('rest')} />}
                     {pane === 'chat' && <NotificationCenter tab="assistant" hideTabs onClose={() => setMode('rest')} />}
