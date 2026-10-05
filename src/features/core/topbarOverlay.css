@@ -7,7 +7,7 @@
   margin-bottom: calc(-1 * var(--app-topbar-h, 0px));
 }
 .app-content > main {
-  padding-top: var(--app-topbar-h, 0px);
+  padding-top: calc(var(--app-topbar-h, 0px) + var(--submenu-h, 0px));   /* --submenu-h: height the open sub menu bars reserve (SubmenuDock) */
 }
 
 /* Island on: there is no bar to draw. The bar element stays (it hosts the island band, the tool registrars and the

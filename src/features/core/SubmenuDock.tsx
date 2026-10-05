@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState, useEffect } from 'react';
+import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { AnimatePresence, m } from 'framer-motion';
@@ -46,6 +46,20 @@ export const SubmenuDock: React.FC<{ children: React.ReactNode }> = ({ children 
   const rect = useBandRect();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const stackRef = useRef<HTMLDivElement | null>(null);
+
+  // The open bars reserve their height in the page flow (--submenu-h on .app-content, read by topbarOverlay.css),
+  // like the old universal tools bar did: the page makes room instead of the bars covering the first rows.
+  useLayoutEffect(() => {
+    const stack = stackRef.current;
+    const host = document.querySelector<HTMLElement>('.app-content');
+    if (!mounted || !stack || !host) return;
+    const apply = () => host.style.setProperty('--submenu-h', stack.offsetHeight > 0 ? `${82 + stack.offsetHeight + 8}px` : '0px');
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(stack);
+    return () => { ro.disconnect(); host.style.setProperty('--submenu-h', '0px'); };
+  }, [mounted, rect]);
   
   if (!mounted || !rect) return null;
 
@@ -54,7 +68,7 @@ export const SubmenuDock: React.FC<{ children: React.ReactNode }> = ({ children 
       className="smd-layer"
       style={{ top: rect.top, left: rect.left, width: rect.width }}
     >
-      <div className="smd-stack">
+      <div className="smd-stack" ref={stackRef}>
         <AnimatePresence>
           {children}
         </AnimatePresence>
