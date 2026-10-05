@@ -15,7 +15,7 @@ const getTools = (isOpen: boolean, toggleOpen: () => void): ToolDescriptor[] => 
         kind: 'widget',
         group: tr('Print'),
         order: 100,
-        render: () => <PrintJobsPanel />
+        render: () => <PrintJobsPanel season='826' />
     },
     {
         id: 'print.center',
@@ -43,3 +43,4 @@ export function usePrintTools(): ToolDescriptor[] {
     const [isOpen, setIsOpen] = useAtom(isPrintCenterOpenAtom);
     return getTools(isOpen, () => setIsOpen((p: boolean) => !p));
 }
+

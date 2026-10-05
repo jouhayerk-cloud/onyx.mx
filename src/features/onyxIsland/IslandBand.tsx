@@ -45,6 +45,12 @@ function useAnchorRect(ref: React.RefObject<HTMLElement | null>): AnchorRect | n
 
 export const IslandBand: React.FC<{ readout?: IslandReadout | null }> = ({ readout = null }) => {
   const user = useAtomValue(userAtom);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
+  useLayoutEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const bandRef = useRef<HTMLDivElement | null>(null);
   const rect = useAnchorRect(bandRef);
 
@@ -62,7 +68,7 @@ export const IslandBand: React.FC<{ readout?: IslandReadout | null }> = ({ reado
           className="onyx-island-layer"
           role="region"
           aria-label={tr('Onyx assistant and notifications')}
-          style={{ top: rect.top, left: rect.left, width: rect.width }}
+          style={{ ...(isMobile ? { bottom: 0, left: 0, width: '100%' } : { top: rect.top, left: rect.left, width: rect.width }) }}
         >
           <Suspense fallback={
             <div className="onyx-island onyx-island--rest">

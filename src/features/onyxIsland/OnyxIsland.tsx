@@ -418,28 +418,37 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 p-2 shrink-0 border-b border-white/10">
+                <div className="flex items-center gap-3 p-3 shrink-0 border-b border-white/10 bg-white/5 shadow-sm">
                   <button
                     type="button"
                     onClick={() => setPane('tools')}
                     aria-label={tr('Back')}
-                    className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white"
+                    className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white"
                   >
-                    <ChevronLeft size={24} color="currentColor" strokeWidth={2} />
+                    <ChevronLeft size={20} color="currentColor" strokeWidth={2} />
                   </button>
                   
-                  <div className="flex-1 text-[15px] font-semibold">
-                    {pane === 'chat' ? tr('Assistant') : tr('Notifications')}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-black/20 overflow-hidden shrink-0">
+                      <m.div layoutId="onyx-island-face">
+                        <OnyxFace expression={faceExpr} bare size={32} tone="mono" />
+                      </m.div>
+                    </div>
+                    <div className="flex-1 truncate text-[16px] font-semibold tracking-wide">
+                      {pane === 'chat' ? tr('Onyx Assistant') : tr('Notifications')}
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    aria-label={tr('Close')}
-                    className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full isl-hw10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white/70 hover:text-white"
-                    onClick={() => setMode('rest')}
-                  >
-                    <X size={22} color="currentColor" strokeWidth={2} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label={tr('Close')}
+                      className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 text-white"
+                      onClick={() => setMode('rest')}
+                    >
+                      <X size={20} color="currentColor" strokeWidth={2} />
+                    </button>
+                  </div>
                 </div>
               )}
 

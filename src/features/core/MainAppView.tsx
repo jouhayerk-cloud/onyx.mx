@@ -37,12 +37,13 @@ import {
 } from 'lucide-react';
 
 import { LiquidBar } from '../../components/LiquidBar';
+import { LiquidOnyxFilters } from '../../components/LiquidOnyxFilters';
 import { MainHeader } from './MainHeader';
 import { IslandSidebar } from './IslandSidebar';
 import { isPrintCenterOpenAtom } from '../print/printState';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
-import { HeroBackground } from '../../components/HeroBackground';
+import { LiquidOnyxBackground } from '../../components/LiquidOnyxBackground';
 import { useLogout, useTranslation } from '../../lib/hooks';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import userIcons from '../../components/userIcons';
@@ -50,7 +51,6 @@ import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { UniversalToolsBar } from './UniversalToolsBar';
 import { ArchivedToolsBar } from '../archived/ArchivedChrome';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
-import { InventorySelectionDock } from './InventorySelectionDock';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { ViewSkeleton } from '../../components/ui/ViewSkeleton';
 import { useRemoteControl } from '../pico/useRemoteControl';
@@ -296,8 +296,21 @@ export function MainAppView() {
 
     return (
         <>
+            <LiquidOnyxFilters />
             <DataSyncProvider />
-            <HeroBackground />
+            <LiquidOnyxBackground />
+
+            {sidebarState === 'hidden' && (
+                <button 
+                    onClick={() => {
+                        const isMobile = window.innerWidth <= 768;
+                        setSidebarState(isMobile ? 'compact' : 'expanded');
+                    }}
+                    className="fixed top-[max(16px,env(safe-area-inset-top,16px))] left-4 z-[9999] md:hidden w-12 h-12 flex items-center justify-center rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-black/60 transition-all shadow-xl"
+                >
+                    <OnyxMiniLogo className="w-8 h-8" />
+                </button>
+            )}
 
             <div 
                 className={`app-container sidebar-${sidebarState}`}
@@ -321,11 +334,11 @@ export function MainAppView() {
                         of the display — the class makes that explicit and pays
                         the inset back as padding, so the bar's CONTENT clears the
                         clock and the notch while its GLASS runs underneath. */}
-                    <LiquidBar className={`app-topbar ${islandOn ? 'app-topbar--island' : ''} sticky top-0 z-[500] w-full flex flex-col bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl`}>
-                        <MainHeader />
-                        <UniversalToolsBar />
-                        {activeView === 'workbook' && !islandOn && <ArchivedToolsBar />}
-                    </LiquidBar>
+                    <LiquidBar className={"app-topbar  sticky top-0 z-[500] w-full flex flex-col bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl"}>
+                            <MainHeader />
+                            <UniversalToolsBar />
+                            {activeView === 'workbook' && !islandOn && <ArchivedToolsBar />}
+                        </LiquidBar>
 
                     <main className="flex-1 flex flex-col min-h-0 p-0 m-0">
                         {/* Suspense catches lazy-loaded view chunks during navigation */}
@@ -346,8 +359,7 @@ export function MainAppView() {
                         <CratePackingManager />
                         <ItemsPayWizard />
                     </Suspense>
-                    <InventorySelectionDock />
-                </div>
+                                    </div>
             </div>
 
             <Suspense fallback={null}>
@@ -359,4 +371,6 @@ export function MainAppView() {
         </>
     );
 }
+
+
 
