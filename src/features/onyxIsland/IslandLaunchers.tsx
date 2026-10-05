@@ -52,9 +52,15 @@ export const IslandLaunchers: React.FC<IslandLaunchersProps> = ({ tools, onRun }
             }}
             onKeyDown={(e) => handleKeyDown(e, i)}
             tabIndex={i === 0 ? 0 : -1}
-            className="relative flex items-center justify-center w-11 h-11 rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed isl-hw10 transition-colors"
+            className="relative flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed isl-hw10 transition-colors text-white"
           >
-            <Icon size={22} />
+            {tool.id === 'global.sidebar' ? (
+              <div className="flex items-center justify-center w-6 h-6">
+                <Icon size={22} color="currentColor" />
+              </div>
+            ) : (
+              <Icon size={22} color="currentColor" strokeWidth={2} />
+            )}
             {tool.badge != null && (
               <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full border border-[var(--glass-tint,rgba(10,12,20,0.4))] shadow-sm" />
             )}

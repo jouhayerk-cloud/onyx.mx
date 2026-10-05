@@ -36,14 +36,13 @@
 /* Liquid glass: a translucent tint over a strong backdrop blur, a lit rim, a specular sheen from the
    top-left and a pool of the accent colour at the lower edge. Nothing here is opaque. */
 .onyx-island-surface {
-  --glass-tint: color-mix(in srgb, #0a0c14 40%, transparent);
   position: relative;
   isolation: isolate;
-  background-color: var(--glass-tint);
-  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.07) 100%);
-  -webkit-backdrop-filter: blur(26px) saturate(1.9) brightness(1.08);
-  backdrop-filter: blur(26px) saturate(1.9) brightness(1.08);
-  border: 1px solid rgba(255, 255, 255, 0.26);
+  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
+  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.07) 100%)) !important;
+  -webkit-backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
+  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
   box-shadow:
     inset 0 1px 0.5px rgba(255, 255, 255, 0.55),
     inset 0 -1px 1px rgba(255, 255, 255, 0.12),
@@ -53,7 +52,23 @@
   border-radius: var(--island-r, 28px);
   overflow: hidden;
   max-width: calc(100vw - 24px);
+  background-size: 200% auto;
 }
+
+@keyframes onyx-sweep {
+  0% { background-position: -150% 0; }
+  100% { background-position: 150% 0; }
+}
+
+@keyframes onyx-breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.onyx-island--surface .onyx-island-surface {
+  animation: onyx-sweep 1.2s ease-out forwards;
+}
+
 .onyx-island-surface::before {
   content: '';
   position: absolute;
@@ -64,6 +79,7 @@
   background:
     radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.26), transparent 55%),
     radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 34%, transparent), transparent 62%);
+  animation: onyx-breathe 4s infinite ease-in-out;
 }
 
 /* Free-floating face: no container at all. Docked (page figures beside the face) it is the glass pill. */
@@ -151,8 +167,10 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .onyx-island-unread {
-    animation: none;
+  .onyx-island-unread,
+  .onyx-island-surface,
+  .onyx-island-surface::before {
+    animation: none !important;
   }
 }
 
