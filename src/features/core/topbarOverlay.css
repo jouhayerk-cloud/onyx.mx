@@ -9,3 +9,10 @@
 .app-content > main {
   padding-top: var(--app-topbar-h, 0px);
 }
+
+/* Island on: there is no bar to draw. The bar element stays (it hosts the island band, the tool registrars and the
+   few rows a selection opens), but it paints no rim or shadow and takes no height when empty. */
+.app-content > .app-topbar.app-topbar--island {
+  border-bottom-width: 0 !important;
+  box-shadow: none !important;
+}

@@ -142,7 +142,8 @@ import {
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
     Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, Archive,
     PackagePlus, Boxes, PackageOpen, History, Bot, Brain, Hourglass, SquareLibrary, Activity, FolderUp, DatabaseBackup, CloudUpload,
-    Wrench, ClipboardClock, LayoutTemplate, Tag, Pointer, QrCode, Table
+    Wrench, ClipboardClock, LayoutTemplate, Tag, Pointer, QrCode, Table,
+    PanelLeftOpen
 } from 'lucide-react';
 
 // ⚡ Dynamic import — themes-assets.ts is 878KB of base64 images.
@@ -168,10 +169,6 @@ import { PrintToolsRegistrar } from '../print/printTools';
 
 // logisticsReadout() is a hook (it reads the crate atoms): one small component per side keeps it unconditional
 const LogisticsReadoutSide: React.FC<{ side: 'left' | 'right' }> = ({ side }) => <>{logisticsReadout()[side]}</>;
-
-// Views whose tools all live in the island: their header row is empty, so it is removed (the island replaces the top bar).
-const ISLAND_VIEWS = ['inventory', 'store', 'finance', 'logistics', 'warehouse', 'trucking', 'packing', 'upload', 'process', 'control',
-    'onyx', 'overview', 'dashboard', 'create', 'viewer', 'welcome', 'devices', 'threed'];
 
 declare const __APP_VERSION__: string;
 
@@ -4316,11 +4313,11 @@ export function MainHeader() {
     const isInventory = activeView === 'inventory';
     const isArchived = activeView === 'workbook' && (user?.role === 'Developer' || user?.role === 'Admin');
     const islandOn = useAtomValue(islandCommandsEnabledAtom);   // the island owns the tools of every migrated module
-    const migratedView = islandOn && (isArchived || ISLAND_VIEWS.includes(activeView));
+    const migratedView = islandOn;   // the island replaces the whole top bar: no header row in any view
     const isToolsBarOpen = isInventory && (isSearchOpen || isFiltersOpen || isViewSliderOpen);
 
     // Global tools: what the right-hand cluster of this bar used to hold, now in the island (every view).
-    const MenuLogoIcon: React.FC<any> = () => <OnyxMiniLogo className="w-6 h-6" />;
+    const MenuLogoIcon = PanelLeftOpen;   // a menu glyph: the Onyx mark is the face, a second logo beside it was redundant
     useRegisterTools('global', [
         ...(sidebarState === 'hidden' ? [{ id: 'global.sidebar', moduleId: 'global', label: tr('Menu'), title: tr('Onyx.mx Menu'), icon: MenuLogoIcon, kind: 'action' as const, group: tr('Navigate'), order: 0, pinned: true, run: () => setSidebarState(window.innerWidth <= 768 ? 'compact' : 'expanded') }] : []),
         ...(sentTruckId ? [{ id: 'global.crate', moduleId: 'global', label: tr('Crate'), title: tr('Active Crate Deployment'), icon: Truck, kind: 'action' as const, group: tr('Navigate'), order: 5, pinned: true, badge: '•', run: () => setView('trucking') }] : []),

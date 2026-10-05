@@ -1,4 +1,4 @@
-import React, { Suspense, useLayoutEffect, useRef, useState, useEffect } from 'react';
+import React, { Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '../../lib/atoms';
@@ -8,7 +8,6 @@ import { IslandLiveRegion } from './IslandLiveRegion';
 import type { IslandReadout } from './islandState';
 // @ts-ignore
 import { OnyxFace } from '../onyxAgent/face/OnyxFace';
-import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
 const OnyxIsland = React.lazy(() => import('./OnyxIsland').then(m => ({ default: m.OnyxIsland })));
 
@@ -48,31 +47,14 @@ export const IslandBand: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const user = useAtomValue(userAtom);
   const bandRef = useRef<HTMLDivElement | null>(null);
   const rect = useAnchorRect(bandRef);
-  
-  const allTools = useAtomValue(allToolsAtom);
-  const pinnedOverrides = useAtomValue(pinnedToolsAtom);
-  const commandsEnabled = useAtomValue(islandCommandsEnabledAtom);
-
-  const [isMd, setIsMd] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches);
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)');
-    const on = () => setIsMd(mq.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
 
   if (!user) {
     return null;
   }
 
-  const pinnedCount = commandsEnabled ? allTools.filter(t => isToolPinned(t, pinnedOverrides)).length : 0;
-  const hasLaunchers = isMd && pinnedCount > 0;
-  const docked = !!readout || hasLaunchers;
-  const bandHeight = docked ? 72 : 64;
-
   return (
     <>
-      <div ref={bandRef} className="onyx-island-band" style={{ height: bandHeight }}>
+      <div ref={bandRef} className="onyx-island-band">
         <IslandLiveRegion />
       </div>
       {rect && createPortal(
