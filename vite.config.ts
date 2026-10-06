@@ -17,7 +17,7 @@ const ICON_VERSION = '1.85';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: 'https://jouhayerk-cloud.github.io/onyx.mx/',
+    base: process.env.CI || process.env.GITHUB_ACTIONS ? 'https://jouhayerk-cloud.github.io/onyx.mx/' : '/',
     assetsInclude: ['**/*.usdz', '**/*.glb'],
     server: {
       port: 1001,
@@ -161,4 +161,5 @@ export default defineConfig(({ mode }) => {
     }
   };
 });
+
 
