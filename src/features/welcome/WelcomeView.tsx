@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai/react';
 import { userAtom, activeViewAtom, sidebarStateAtom } from '../../lib/atoms';
 import { Album, ArrowRight, Lightbulb } from 'lucide-react';
+import { Cabinet, Query } from '@lucasmarkes/hairline/react';
+import { Mascot } from 'page-mascot';
 import { InventoryTutorial } from '../inventory/InventoryTutorial';
 import { tr } from '../../lib/i18n';
 
@@ -34,7 +36,13 @@ export function WelcomeView() {
                 <div className="absolute top-[60%] -right-[10%] w-[40%] h-[40%] rounded-full bg-(--main-color) opacity-10 blur-[100px]" />
             </div>
 
-            <div className="flex-1 overflow-y-auto py-12 flex flex-col items-center justify-center gap-12 w-full px-6 md:px-12 z-10 relative">
+            
+            <div className="absolute top-8 left-0 right-0 flex justify-center z-20 pointer-events-none">
+                <div className="pointer-events-auto translate-y-[-20px]">
+                    <Mascot directions="/mascots/cube-directions.webp" reactions="/mascots/cube-reactions.webp" size={140} />
+                </div>
+            </div>
+<div className="flex-1 overflow-y-auto py-12 flex flex-col items-center justify-center gap-12 w-full px-6 md:px-12 z-10 relative">
                 <div className="text-center animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-700">
                     <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-4">
                         {getGreeting()}, <span className="text-(--main-color)">{displayName}</span>
@@ -52,7 +60,7 @@ export function WelcomeView() {
                     >
                         <div className="flex flex-col items-start p-8">
                             <div className="w-14 h-14 rounded-2xl bg-(--main-color)/20 flex items-center justify-center mb-6 text-(--main-color) group-hover:scale-110 transition-transform">
-                                <Album size={28} strokeWidth={2} />
+                                <Cabinet intensity={0.5} style={{width: '36px', height: '36px', stroke: 'currentColor'}} />
                             </div>
                             <h3 className="text-2xl font-bold text-white mb-2">{tr("Inventory")}</h3>
                             <p className="text-left text-sm text-white/50 mb-8">{tr("Manage and track your products, edit items, and view collections.")}</p>
@@ -69,7 +77,7 @@ export function WelcomeView() {
                     >
                         <div className="flex flex-col items-start p-8 h-full">
                             <div className="w-14 h-14 rounded-2xl bg-yellow-500/20 flex items-center justify-center mb-6 text-yellow-500 group-hover:scale-110 transition-transform">
-                                <Lightbulb size={28} strokeWidth={2} />
+                                <Query intensity={0.5} style={{width: '36px', height: '36px', stroke: 'currentColor'}} />
                             </div>
                             <h3 className="text-2xl font-bold text-white mb-2">{tr("Tutorial")}</h3>
                             <p className="text-left text-sm text-white/50 mb-8">{tr("Learn the basics of using the Inventory module and its features.")}</p>
@@ -86,3 +94,4 @@ export function WelcomeView() {
         </div>
     );
 }
+
