@@ -38,7 +38,7 @@ export function WelcomeView() {
 
             <div className="absolute top-8 left-0 right-0 flex justify-center z-20 pointer-events-none">
                 <div className="pointer-events-auto translate-y-[-20px]">
-                    <Mascot directions={`${import.meta.env.BASE_URL}cube-directions.webp`} reactions={`${import.meta.env.BASE_URL}cube-reactions.webp`} size={160} />
+                    <Mascot directions={`${import.meta.env.BASE_URL}chan-directions.webp`} reactions={`${import.meta.env.BASE_URL}chan-reactions.webp`} size={160} />
                 </div>
             </div>
 
@@ -75,3 +75,4 @@ export function WelcomeView() {
         </div>
     );
 }
+
