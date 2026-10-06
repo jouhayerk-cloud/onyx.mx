@@ -12,7 +12,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 // by URL, so an unchanged URL keeps showing the old cube. This one value is
 // appended as ?v= to every icon link in index.html (the __ICON_VERSION__
 // placeholder) and to every icon in the web app manifest below.
-const ICON_VERSION = '1.84';
+const ICON_VERSION = '1.85';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -105,7 +105,7 @@ export default defineConfig(({ mode }) => {
                     // safe to crop as maskable.
                     { src: `icon-maskable-512.png?v=${ICON_VERSION}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
                     { src: `apple-touch-icon-dark.png?v=${ICON_VERSION}`, sizes: '180x180', type: 'image/png', purpose: 'any' },
-                    { src: `favicon.svg?v=${ICON_VERSION}`, sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+                    { src: `favicon.png?v=${ICON_VERSION}`, sizes: '64x64', type: 'image/png', purpose: 'any' },
                 ],
                 categories: ['business', 'productivity', 'utilities'],
             },
@@ -161,3 +161,4 @@ export default defineConfig(({ mode }) => {
     }
   };
 });
+
