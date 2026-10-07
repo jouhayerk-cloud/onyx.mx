@@ -334,10 +334,12 @@ export function MainAppView() {
                         of the display — the class makes that explicit and pays
                         the inset back as padding, so the bar's CONTENT clears the
                         clock and the notch while its GLASS runs underneath. */}
-                    <LiquidBar className={"app-topbar sticky top-0 z-[500] w-full bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl " + (islandOn ? 'hidden md:flex flex-col' : 'flex flex-col')}>
-                            {(!islandOn) && <MainHeader />}
-                            {(!islandOn) && <UniversalToolsBar />}
-                            {activeView === 'workbook' && !islandOn && <ArchivedToolsBar />}
+                    <LiquidBar className={"app-topbar sticky top-0 z-[500] w-full flex flex-col transition-all " + ((!islandOn ? 'bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl' : 'bg-black/40 backdrop-blur-3xl'))}>
+                            <div className="pointer-events-auto flex flex-col w-full">
+                                <MainHeader />
+                                {(!islandOn) && <UniversalToolsBar />}
+                                {activeView === 'workbook' && !islandOn && <ArchivedToolsBar />}
+                            </div>
                         </LiquidBar>
                         {islandOn && <UniversalToolsBar />}
 
@@ -372,6 +374,8 @@ export function MainAppView() {
         </>
     );
 }
+
+
 
 
 
