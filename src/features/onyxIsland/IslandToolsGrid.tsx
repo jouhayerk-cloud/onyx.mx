@@ -91,7 +91,7 @@ export const IslandToolsGrid: React.FC<IslandToolsGridProps> = ({ tools, filter,
     <m.div 
       ref={containerRef} 
       role="tablist" 
-      className="flex flex-col p-4 gap-6 w-full"
+      className="flex flex-col p-2 gap-3 w-full"
       initial="hidden"
       animate="show"
       variants={{ show: { transition: { staggerChildren: 0.04 } } }}
@@ -101,7 +101,7 @@ export const IslandToolsGrid: React.FC<IslandToolsGridProps> = ({ tools, filter,
           <m.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">
             {groupName}
           </m.div>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-1.5">
             {groupTools.map((tool, tIdx) => {
               if (tool.kind === 'widget' && tool.render) {
                 return (
@@ -109,7 +109,7 @@ export const IslandToolsGrid: React.FC<IslandToolsGridProps> = ({ tools, filter,
                     key={tool.id} 
                     id={`tile-${tool.id}`}
                     variants={{ hidden: { opacity: 0, scale: 0.96, y: 4 }, show: { opacity: 1, scale: 1, y: 0 } }}
-                    className="col-span-2 md:col-span-3 xl:col-span-4 isl-w5 rounded-xl p-3 border border-white/10 overflow-y-auto max-h-[60vh]"
+                    className="col-span-3 md:col-span-4 xl:col-span-5 isl-w5 rounded-xl p-3 border border-white/10 overflow-y-auto max-h-[60vh]"
                   >
                     {tool.render()}
                   </m.div>
@@ -147,9 +147,9 @@ export const IslandToolsGrid: React.FC<IslandToolsGridProps> = ({ tools, filter,
                   tabIndex={gIdx === 0 && tIdx === 0 ? 0 : -1}
                   variants={{ hidden: { opacity: 0, scale: 0.96, y: 4 }, show: { opacity: 1, scale: 1, y: 0 } }}
                   whileTap={!tool.disabled ? { scale: 0.95 } : undefined}
-                  className="group flex flex-col items-center justify-center gap-2 p-2 min-h-[44px] rounded-xl cursor-pointer hover:bg-white/5 transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed border border-transparent text-center text-white"
+                  className="group flex flex-col items-center justify-center gap-1.5 p-1.5 min-h-[44px] rounded-xl cursor-pointer hover:bg-white/5 transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed border border-transparent text-center text-white"
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 shrink-0 relative text-white">
+                  <div className="flex items-center justify-center w-11 h-11 rounded-full bg-white/10 shrink-0 relative text-white">
                     <Icon size={22} color="currentColor" strokeWidth={1.5} />
                     {tool.badge != null && (
                       <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[var(--main-color,#00aeef)] rounded-full shadow-sm" />
@@ -167,3 +167,4 @@ export const IslandToolsGrid: React.FC<IslandToolsGridProps> = ({ tools, filter,
     </m.div>
   );
 };
+

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
     CheckCircle2, AlertCircle, AlertTriangle, Info, Sparkles 
 } from 'lucide-react';
@@ -55,7 +56,7 @@ const NotificationItem: React.FC<{ notification: IslandNotification; now: number
     return (
         <div 
             role="listitem"
-            className="flex gap-3 p-3 rounded-xl isl-hw5 transition-colors cursor-pointer select-none group"
+            className="flex gap-3 p-3 rounded-xl liquid-glass border border-white/10 transition-colors cursor-pointer select-none group shadow-sm hover:bg-white/10"
             onClick={() => setExpanded(!expanded)}
         >
             <div className="shrink-0 mt-0.5 relative">
@@ -145,20 +146,20 @@ export const NotificationCenter: React.FC<{ onClose: () => void; tab?: 'notifica
     const earlierItems = filteredHistory.filter(i => !isToday(i.createdAt, now));
 
     return (
-        <div className="flex flex-col h-full text-white">
+        <div className="flex flex-col h-full text-white liquid-glass rounded-3xl overflow-hidden">
             {/* Tabs */}
             {!hideTabs && (
                 <div className="flex p-3 pb-0 shrink-0">
                     <div 
                         role="tablist" 
-                        className="flex isl-b20 p-1 rounded-lg w-full gap-1 border border-white/5"
+                        className="flex liquid-glass p-1 rounded-xl w-full gap-1 border border-white/10 shadow-inner"
                     >
                         <button
                             role="tab"
                             aria-selected={activeTab === 'notifications'}
                             onClick={() => setActiveTab('notifications')}
                             onKeyDown={(e) => handleTabKeyDown(e, 'assistant')}
-                            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${activeTab === 'notifications' ? 'isl-w15 text-white shadow-sm' : 'text-white/60 hover:text-white isl-hw5'}`}
+                            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${activeTab === 'notifications' ? 'liquid-glass border border-white/20 text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
                         >
                             {tr('Notifications')}
                         </button>
@@ -167,7 +168,7 @@ export const NotificationCenter: React.FC<{ onClose: () => void; tab?: 'notifica
                             aria-selected={activeTab === 'assistant'}
                             onClick={() => setActiveTab('assistant')}
                             onKeyDown={(e) => handleTabKeyDown(e, 'notifications')}
-                            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${activeTab === 'assistant' ? 'isl-w15 text-white shadow-sm' : 'text-white/60 hover:text-white isl-hw5'}`}
+                            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${activeTab === 'assistant' ? 'liquid-glass border border-white/20 text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
                         >
                             {tr('Assistant')}
                         </button>
@@ -181,7 +182,7 @@ export const NotificationCenter: React.FC<{ onClose: () => void; tab?: 'notifica
                     <div 
                         className={!hideTabs ? `absolute inset-0 flex flex-col transition-opacity duration-200 ${activeTab === 'notifications' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}` : 'flex-1 min-h-0 flex flex-col w-full'}
                     >
-                        <div className="flex items-center justify-between px-3 py-2 shrink-0 border-b border-white/5">
+                        <div className="flex items-center justify-between px-3 py-2 shrink-0 border-b border-white/10 liquid-glass">
                             <div className="flex gap-2" role="tablist">
                                 {(['all', 'alerts', 'agent'] as Filter[]).map(f => (
                                     <button
@@ -189,7 +190,7 @@ export const NotificationCenter: React.FC<{ onClose: () => void; tab?: 'notifica
                                         role="tab"
                                         aria-selected={filter === f}
                                         onClick={() => setFilter(f)}
-                                        className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white border ${filter === f ? 'isl-w10 text-white border-white/20' : 'bg-transparent text-white/50 border-transparent isl-hw5'}`}
+                                        className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white border ${filter === f ? 'liquid-glass text-white border-white/20 shadow-sm' : 'bg-transparent text-white/50 border-transparent hover:bg-white/5'}`}
                                     >
                                         {f === 'all' ? tr('All') : f === 'alerts' ? tr('Alerts') : tr('Agent')}
                                     </button>

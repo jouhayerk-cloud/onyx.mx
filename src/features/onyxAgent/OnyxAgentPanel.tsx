@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { OnyxFace } from './face/OnyxFace';
 import { useGaze } from './face/useGaze';
 import { mapWireExpression, FaceExpression } from './face/expressions';
@@ -116,9 +117,9 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
     const visibleMessages = agent.messages.filter(m => m.role !== 'tool');
 
     return (
-        <div className={`glass-panel flex flex-col overflow-hidden max-h-full ${variant === 'drawer' ? 'h-full rounded-2xl border-0 sm:border' : 'h-full w-full'}`}>
+        <div className={`liquid-glass flex flex-col overflow-hidden max-h-full ${variant === 'drawer' ? 'h-full rounded-3xl border border-white/10 shadow-2xl' : 'h-full w-full'}`}>
             {/* 1. HEADER */}
-            <div className="flex gap-5 p-5 border-b border-white/5 items-center shrink-0 bg-white/[0.02]">
+            <div className="flex gap-5 p-5 border-b border-white/10 items-center shrink-0 liquid-glass">
                 <div ref={faceRef} className="shrink-0">
                     <OnyxFace 
                         size={132} 
@@ -144,7 +145,7 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
                     </div>
 
                     {robot.canUse && (
-                        <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 flex flex-col gap-3">
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-3 flex flex-col gap-3 liquid-glass">
                             <div className="flex items-center justify-between gap-3 flex-wrap">
                                 <select
                                     value={robot.selectedId || ''}
@@ -194,7 +195,7 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
             </div>
             
             {/* 2. CHAT AREA */}
-            <div className={`flex-1 overflow-hidden relative flex flex-col ${variant === 'page' ? 'items-center bg-black/20' : ''}`}>
+            <div className={`flex-1 overflow-hidden relative flex flex-col ${variant === 'page' ? 'items-center' : ''}`}>
                 <div 
                     ref={scrollRef}
                     onScroll={onScroll}
@@ -210,29 +211,42 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
                     )}
                     
                     <div role="log" aria-live="polite" className="flex flex-col gap-4">
+                        <AnimatePresence initial={false}>
                         {visibleMessages.map((m) => (
-                            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <motion.div 
+                                key={m.id} 
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
                                 <div className={`max-w-[90%] rounded-2xl px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap break-words ${
                                     m.role === 'user' 
-                                        ? 'bg-white/[0.08] border border-white/10 text-white/90 rounded-tr-sm' 
-                                        : 'bg-black/30 border border-white/5 text-white/80 rounded-tl-sm'
+                                        ? 'liquid-glass border border-white/20 text-white/90 rounded-tr-sm shadow-md' 
+                                        : 'liquid-glass border border-white/10 text-white/80 rounded-tl-sm shadow-md'
                                 }`}>
                                     {m.text}
                                 </div>
-                            </div>
+                            </motion.div>
                         ))}
                         
                         {agent.phase === 'thinking' && (
-                            <div className="flex justify-start">
-                                <div className="max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-4 bg-black/30 border border-white/5 flex items-center gap-1.5 opacity-60">
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                className="flex justify-start"
+                            >
+                                <div className="max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-4 liquid-glass border border-white/10 shadow-md flex items-center gap-1.5 opacity-80">
                                     <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                     <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                                     <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                                 </div>
-                            </div>
+                            </motion.div>
                         )}
+                        </AnimatePresence>
                     </div>
-                    
                     {agent.error && (
                         <div role="alert" className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-bold tracking-wide uppercase mt-2">
                             {agent.error}
@@ -241,7 +255,7 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
                     
                     {/* 3. CONFIRM CARD */}
                     {agent.pendingConfirm && (
-                        <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl mt-2 shadow-lg backdrop-blur-md">
+                        <div className="liquid-glass border border-amber-500/30 p-4 rounded-xl mt-2 shadow-lg">
                             <div className="font-bold text-[13px] mb-4 text-amber-100">{agent.pendingConfirm.summary}</div>
                             <div className="flex gap-3 justify-end">
                                 <button 
@@ -264,7 +278,7 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
             
             {/* 4. ACTIVITY */}
             {agent.activity.length > 0 && (
-                <div className="border-t border-white/5 shrink-0 px-4 py-1 bg-white/[0.01]">
+                <div className="border-t border-white/10 shrink-0 px-4 py-1 liquid-glass">
                     <details className="group">
                         <summary className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 cursor-pointer list-none flex items-center gap-2 p-2 hover:opacity-100 transition-opacity select-none focus:outline-none">
                             <ChevronRight size={12} className="group-open:rotate-90 transition-transform" />
@@ -272,7 +286,7 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
                         </summary>
                         <div className="flex flex-col gap-1.5 mt-1 mb-3 px-2 max-h-[120px] overflow-y-auto custom-scrollbar">
                             {[...agent.activity].reverse().slice(0, 8).map(act => (
-                                <div key={act.id} className="flex items-center gap-2 text-[11px] bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/5 text-white/60">
+                                <div key={act.id} className="flex items-center gap-2 text-[11px] liquid-glass px-2.5 py-1.5 rounded-lg border border-white/10 text-white/70 shadow-sm">
                                     <span className="opacity-40 font-mono text-[9px] mr-1">
                                         {new Date(act.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
@@ -296,7 +310,7 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
             )}
             
             {/* 5. COMPOSER */}
-            <div className={`p-4 border-t border-white/5 shrink-0 bg-white/[0.02] ${variant === 'page' ? 'flex justify-center' : ''}`}>
+            <div className={`p-4 border-t border-white/10 shrink-0 liquid-glass ${variant === 'page' ? 'flex justify-center' : ''}`}>
                 <div className={`flex gap-3 items-end w-full ${variant === 'page' ? 'max-w-3xl' : ''}`}>
                     <button 
                         onClick={agent.reset}
@@ -314,7 +328,7 @@ export const OnyxAgentPanel: React.FC<OnyxAgentPanelProps> = ({
                         onCompositionStart={() => setIsComposing(true)}
                         onCompositionEnd={() => setIsComposing(false)}
                         placeholder={tr('Type a message...')}
-                        className="flex-1 bg-black/30 border border-white/10 rounded-2xl px-4 py-3 text-[13px] resize-none custom-scrollbar focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500/50 min-h-[46px] max-h-[120px]"
+                        className="flex-1 liquid-glass bg-white/5 border border-white/20 rounded-2xl px-4 py-3 text-[13px] resize-none custom-scrollbar focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500/50 min-h-[46px] max-h-[120px] shadow-inner text-white"
                         rows={1}
                     />
                     
