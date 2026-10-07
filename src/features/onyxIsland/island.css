@@ -248,10 +248,11 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
   .onyx-island {
   /* MOBILE BOTTOM: overridden in media query */
     top: auto;
-    bottom: max(24px, env(safe-area-inset-bottom, 24px));
+    bottom: max(8px, env(safe-area-inset-bottom, 8px));
   }
 }
 
 
 
 @media (max-width: 768px) { .onyx-island { top: auto !important; bottom: max(16px, env(safe-area-inset-bottom, 16px)); } }
+
