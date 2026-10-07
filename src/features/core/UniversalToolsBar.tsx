@@ -685,10 +685,10 @@ export const UniversalToolsBar: React.FC = () => {
     const docks: React.ReactNode[] = [];
     
     if (islandEnabled) {
-        if (isInventory && toolsOpen && isInvSearchOpen) docks.push(<SubmenuCard key="inv-search" id="inv-search" title={tr("Search")} onClose={() => setIsInvSearchOpen(false)}>{renderInvSearch()}</SubmenuCard>);
-        if (isInventory && toolsOpen && isInvViewSliderOpen) docks.push(<SubmenuCard key="inv-view" id="inv-view" title={tr("View")} onClose={() => setIsInvViewSliderOpen(false)}>{renderInvView()}</SubmenuCard>);
-        if (isInventory && toolsOpen && isInvFiltersOpen) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} onClose={() => setIsInvFiltersOpen(false)}><InventoryFiltersPanel /></SubmenuCard>);
-        if (isInventory && toolsOpen && smartOpen) docks.push(<SubmenuCard key="inv-smart" id="inv-smart" title={tr("Smart Filters")} onClose={() => setSmartOpen(false)}><InventorySmartFiltersPanel /></SubmenuCard>);
+        if (isInventory && isInvSearchOpen) docks.push(<SubmenuCard key="inv-search" id="inv-search" title={tr("Search")} onClose={() => setIsInvSearchOpen(false)}>{renderInvSearch()}</SubmenuCard>);
+        if (isInventory && isInvViewSliderOpen) docks.push(<SubmenuCard key="inv-view" id="inv-view" title={tr("View")} onClose={() => setIsInvViewSliderOpen(false)}>{renderInvView()}</SubmenuCard>);
+        if (isInventory && isInvFiltersOpen) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} onClose={() => setIsInvFiltersOpen(false)}><InventoryFiltersPanel /></SubmenuCard>);
+        if (isInventory && smartOpen) docks.push(<SubmenuCard key="inv-smart" id="inv-smart" title={tr("Smart Filters")} onClose={() => setSmartOpen(false)}><InventorySmartFiltersPanel /></SubmenuCard>);
         if (isInventory && isSelectionMode) docks.push(<SubmenuCard key="inv-select" id="inv-select" title={tr("Batch Management")} onClose={() => setIsSelectionMode(false)}>{renderInvSelection()}</SubmenuCard>);
         if (isFinance && isFinSearchOpen) docks.push(<SubmenuCard key="fin-search" id="fin-search" title={tr("Search Payments")} onClose={() => setIsFinSearchOpen(false)}>{renderFinSearch()}</SubmenuCard>);
         if (isFinance && isFinFiltersOpen) docks.push(<SubmenuCard key="fin-filters" id="fin-filters" title={tr("Filters")} onClose={() => setIsFinFiltersOpen(false)}>{renderFinFilters()}</SubmenuCard>);
@@ -707,8 +707,8 @@ export const UniversalToolsBar: React.FC = () => {
             {!islandEnabled && ((isInventory && toolsOpen && (isInvSearchOpen || isInvViewSliderOpen)) || (isFinance && isFinSearchOpen)) && (
                 <div className="w-full animate-in slide-in-from-top duration-500 overflow-hidden pr-4 pl-4">
                     <div className="w-full mx-auto px-6 py-3 flex flex-col gap-4">
-                        {isInventory && toolsOpen && isInvSearchOpen && renderInvSearch()}
-                        {isInventory && toolsOpen && isInvViewSliderOpen && renderInvView()}
+                        {isInventory && isInvSearchOpen && renderInvSearch()}
+                        {isInventory && isInvViewSliderOpen && renderInvView()}
                         {isFinance && isFinSearchOpen && renderFinSearch()}
                     </div>
                 </div>
@@ -729,14 +729,15 @@ export const UniversalToolsBar: React.FC = () => {
 
             {!islandEnabled && isFinUpcomingOpen && isFinance && renderFinUpcoming("animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5")}
 
-            {!islandEnabled && isInventory && toolsOpen && smartOpen && (
+            {!islandEnabled && isInventory && smartOpen && (
                 <InventorySmartFiltersPanel />
             )}
 
-            {!islandEnabled && isInventory && toolsOpen && isInvFiltersOpen && (
+            {!islandEnabled && isInventory && isInvFiltersOpen && (
                 <InventoryFiltersPanel />
             )}
 
         </div>
     );
 };
+
