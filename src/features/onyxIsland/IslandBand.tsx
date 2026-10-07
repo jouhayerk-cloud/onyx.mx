@@ -78,7 +78,7 @@ export const IslandBand: React.FC<{ readout?: IslandReadout | null }> = ({ reado
               </div>
             </div>
           }>
-            <OnyxIsland readout={readout} />
+            <div style={{position: 'fixed', top: 100, left: 100, width: 100, height: 100, background: 'red', zIndex: 999999}}>ISLAND BAND</div><OnyxIsland readout={readout} />
           </Suspense>
         </div>,
         document.body
@@ -86,3 +86,4 @@ export const IslandBand: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     </>
   );
 };
+
