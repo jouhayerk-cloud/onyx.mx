@@ -90,7 +90,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const xl = useMediaQuery('(min-width: 1280px)');
   const lg = useMediaQuery('(min-width: 1024px)');
   const md = useMediaQuery('(min-width: 768px)');
-  const maxLaunchers = xl ? 6 : lg ? 4 : md ? 2 : 0;
+  const maxLaunchers = xl ? 6 : lg ? 4 : 4;
   
   const pinnedTools = useMemo(() => {
     if (!commandsEnabled) return [];
@@ -475,6 +475,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     </LazyMotion>
   );
 };
+
 
 
 
