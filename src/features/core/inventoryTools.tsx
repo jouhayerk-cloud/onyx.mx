@@ -93,7 +93,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
 
     tools.push({
         id: 'inventory.view',
-        disabled: !showTools,
+        
         moduleId: 'inventory',
         label: tr('View'),
         icon: LayoutTemplate,
@@ -102,12 +102,12 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         order: 70,
         pinned: true,
         pressed: isViewSliderOpen,
-        run: () => setIsViewSliderOpen(!isViewSliderOpen)
+        run: () => { setShowTools(true); setIsViewSliderOpen(!isViewSliderOpen); }
     });
 
     tools.push({
         id: 'inventory.filter',
-        disabled: !showTools,
+        
         moduleId: 'inventory',
         label: tr('Filter'),
         icon: Filter,
@@ -116,12 +116,12 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         order: 80,
         pinned: true,
         pressed: isFiltersOpen,
-        run: () => setIsFiltersOpen(!isFiltersOpen)
+        run: () => { setShowTools(true); setIsFiltersOpen(!isFiltersOpen); }
     });
 
     tools.push({
         id: 'inventory.search',
-        disabled: !showTools,
+        
         moduleId: 'inventory',
         label: tr('Search'),
         icon: SearchIcon,
@@ -130,12 +130,12 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         order: 90,
         pinned: true, // "Pin by default: Actions, search, filters, view."
         pressed: isSearchOpen || !!search,
-        run: () => setIsSearchOpen(!isSearchOpen)
+        run: () => { setShowTools(true); setIsSearchOpen(!isSearchOpen); }
     });
 
     tools.push({
         id: 'inventory.tags',
-        disabled: !showTools,
+        
         moduleId: 'inventory',
         label: tr('Tags'),
         title: tr('Smart filters — type, shape, material, colour'),
@@ -144,7 +144,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         group: tr('Filters'),
         order: 100,
         pressed: showSmart,
-        run: () => setShowSmart(!showSmart)
+        run: () => { setShowTools(true); setShowSmart(!showSmart); }
     });
 
     return tools;
@@ -158,3 +158,4 @@ export const InventoryToolsRegistrar: React.FC<{ widgets: InventoryWidgets }> = 
 
     return null;
 };
+
