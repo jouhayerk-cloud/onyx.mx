@@ -300,13 +300,13 @@ export function MainAppView() {
             <DataSyncProvider />
             <LiquidOnyxBackground />
 
-            {sidebarState === 'hidden' && (
+            {sidebarState === 'hidden' && !islandOn && (
                 <button 
                     onClick={() => {
                         const isMobile = window.innerWidth <= 768;
                         setSidebarState(isMobile ? 'compact' : 'expanded');
                     }}
-                    className="fixed top-[max(16px,env(safe-area-inset-top,16px))] left-4 z-[9999] md:hidden w-12 h-12 flex items-center justify-center rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-black/60 transition-all shadow-xl"
+                    className="fixed bottom-[max(16px,env(safe-area-inset-bottom,16px))] left-4 z-[9999] md:hidden w-12 h-12 flex items-center justify-center rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-black/60 transition-all shadow-xl"
                 >
                     <OnyxMiniLogo className="w-8 h-8" />
                 </button>
@@ -334,11 +334,12 @@ export function MainAppView() {
                         of the display — the class makes that explicit and pays
                         the inset back as padding, so the bar's CONTENT clears the
                         clock and the notch while its GLASS runs underneath. */}
-                    <LiquidBar className={"app-topbar  sticky top-0 z-[500] w-full flex flex-col bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl"}>
-                            <MainHeader />
-                            <UniversalToolsBar />
+                    <LiquidBar className={"app-topbar sticky top-0 z-[500] w-full bg-white/[0.01] backdrop-blur-2xl border-b border-white/10 shadow-2xl " + (islandOn ? 'hidden md:flex flex-col' : 'flex flex-col')}>
+                            {(!islandOn) && <MainHeader />}
+                            {(!islandOn) && <UniversalToolsBar />}
                             {activeView === 'workbook' && !islandOn && <ArchivedToolsBar />}
                         </LiquidBar>
+                        {islandOn && <UniversalToolsBar />}
 
                     <main className="flex-1 flex flex-col min-h-0 p-0 m-0">
                         {/* Suspense catches lazy-loaded view chunks during navigation */}
@@ -371,6 +372,14 @@ export function MainAppView() {
         </>
     );
 }
+
+
+
+
+
+
+
+
 
 
 

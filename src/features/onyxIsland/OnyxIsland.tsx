@@ -101,7 +101,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const rightLaunchers = pinnedTools.slice(Math.ceil(pinnedTools.length / 2));
 
   const hasLaunchers = leftLaunchers.length > 0 || rightLaunchers.length > 0;
-  const docked = (!!readout || hasLaunchers) && mode === 'rest';
+  const docked = hasLaunchers && mode === 'rest';
 
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -320,7 +320,6 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
             <div className={docked ? 'onyx-island-dock' : 'w-full h-full'}>
               {docked && (
                 <div className="onyx-island-dock-side onyx-island-dock-side--left">
-                  {readout?.left}
                   <IslandLaunchers tools={leftLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
                 </div>
               )}
@@ -340,7 +339,6 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
               {docked && (
                 <div className="onyx-island-dock-side onyx-island-dock-side--right">
                   <IslandLaunchers tools={rightLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
-                  {readout?.right}
                 </div>
               )}
             </div>
@@ -378,20 +376,22 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
               {pane === 'tools' ? (
                 <div className="flex flex-col p-2 shrink-0 border-b border-white/10">
                   <div className="flex justify-between items-center w-full min-h-[72px]">
-                    <div className="flex-1 flex justify-start min-w-0">
-                      <div className="hidden md:flex">
-                        <IslandLaunchers tools={leftLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
+                    <div className="flex-1 flex justify-start min-w-0 items-center">
+                        {readout?.left}
+                        <div className="hidden md:flex">
+                          <IslandLaunchers tools={leftLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
+                        </div>
                       </div>
-                    </div>
                     <div className="shrink-0 flex items-center justify-center mx-2">
                       <m.div layoutId="onyx-island-face">
                         <OnyxFace expression={faceExpr} bare size={size} tone="mono" />
                       </m.div>
                     </div>
                     <div className="flex-1 flex justify-end min-w-0 items-center">
-                      <div className="hidden md:flex">
-                        <IslandLaunchers tools={rightLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
-                      </div>
+                        <div className="hidden md:flex">
+                          <IslandLaunchers tools={rightLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
+                        </div>
+                        {readout?.right}
                       <button
                         type="button"
                         aria-label={tr('Close')}
@@ -475,6 +475,10 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     </LazyMotion>
   );
 };
+
+
+
+
 
 
 
