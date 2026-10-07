@@ -73,6 +73,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const commandsEnabled = useAtomValue(islandCommandsEnabledAtom);
   
   const isReduced = useReducedMotion();
+  const [isHovered, setIsHovered] = React.useState(false);
   const transition = isReduced ? { duration: 0 } : SPRING;
   const transitionSlow = isReduced ? { duration: 0 } : SPRING_SLOW;
 
@@ -253,11 +254,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     dragConstraints: { top: -24, bottom: 0 },
     dragElastic: 0.2,
     onDragEnd: handleDragEnd
-  } : mode === 'surface' && !md && !isReduced ? {
-    drag: 'y' as const,
-    dragConstraints: { top: 0, bottom: 0 },
-    dragElastic: 0.2,
-    onDragEnd: handleDragEnd
+  
   } : {};
 
   const ariaProps: React.AriaAttributes & { role?: string } = mode === 'surface' 
@@ -266,7 +263,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
   let rootStyle: React.CSSProperties = {};
   if (mode === 'rest') {
-    rootStyle = docked ? { width: 'fit-content', maxWidth: 'calc(100vw - 24px)', height: 64 } : { width: 56, height: 56 };
+    rootStyle = docked ? { width: 'fit-content', maxWidth: 'calc(100vw - 24px)', minHeight: 64, height: 'auto' } : { width: 56, height: 56 };
   } else if (mode === 'peek') {
     rootStyle = { width: 'min(380px, calc(100vw - 24px))', height: 64 };
   } else if (mode === 'card') {
@@ -300,8 +297,8 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
         transition={transition}
         {...ariaProps}
         {...swipeProps}
-        onPointerEnter={pauseToastTimer}
-        onPointerLeave={resumeToastTimer}
+        onPointerEnter={() => { setIsHovered(true); pauseToastTimer(); }}
+        onPointerLeave={() => { setIsHovered(false); resumeToastTimer(); }}
         onFocus={pauseToastTimer}
         onBlur={resumeToastTimer}
       >
@@ -324,7 +321,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
               {docked && (
                 <div className="onyx-island-dock-side onyx-island-dock-side--left">
                   {readout?.left}
-                  <IslandLaunchers tools={leftLaunchers} onRun={runTool} />
+                  <IslandLaunchers tools={leftLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
                 </div>
               )}
               <button
@@ -342,7 +339,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
               </button>
               {docked && (
                 <div className="onyx-island-dock-side onyx-island-dock-side--right">
-                  <IslandLaunchers tools={rightLaunchers} onRun={runTool} />
+                  <IslandLaunchers tools={rightLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
                   {readout?.right}
                 </div>
               )}
@@ -383,7 +380,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                   <div className="flex justify-between items-center w-full min-h-[72px]">
                     <div className="flex-1 flex justify-start min-w-0">
                       <div className="hidden md:flex">
-                        <IslandLaunchers tools={leftLaunchers} onRun={runTool} />
+                        <IslandLaunchers tools={leftLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center justify-center mx-2">
@@ -393,7 +390,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                     </div>
                     <div className="flex-1 flex justify-end min-w-0 items-center">
                       <div className="hidden md:flex">
-                        <IslandLaunchers tools={rightLaunchers} onRun={runTool} />
+                        <IslandLaunchers tools={rightLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
                       </div>
                       <button
                         type="button"
@@ -478,3 +475,10 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     </LazyMotion>
   );
 };
+
+
+
+
+
+
+
