@@ -1922,7 +1922,7 @@ export const UnifiedInventoryView = () => {
                 {/* ── MAIN INVENTORY CONTENT ── */}
                 <div 
                     ref={scrollHostRef}
-                    className={`transition-all duration-700 ease-in-out ${
+                    className={`transition-all duration-700 ease-in-out md:pt-[100px] lg:pt-[120px] ${
                         viewMode === 'grid'
                             // Grid is virtualized: this host is now just the positioning
                             // context, and each virtual ROW carries the grid template.

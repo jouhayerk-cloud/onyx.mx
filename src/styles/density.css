@@ -1125,19 +1125,18 @@
    to the scroll container. Wrapper outside, transform inside. */
 .inv-head-wrap {
     position: sticky;
-    /* NOT 0. The app's own chrome (.main-header, inside a sticky wrapper that
-       is a direct child of the .app-content scroller) is already pinned to
-       the top of this same scroll container, so a column header at `top: 0`
-       sticks correctly and is then covered by it. The offset tracks
-       .main-header's `h-20`. */
-    top: var(--inv-head-offset, 80px);
-    z-index: 20;
-    /* Background and rule belong to the WRAPPER, not to .inv-head: a
-       transform does not change the layout box, so at a zoom other than 1
-       the wrapper and the band its child paints differ in height, and a
-       transparent strip would let the scrolling rows show through. */
-    background-color: var(--app-bg-solid);
-    border-bottom: 1px solid var(--border-color);
+    top: var(--inv-head-offset, 0px);
+    z-index: 40;
+    background-color: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+html.dark .inv-head-wrap {
+    background-color: rgba(10, 10, 15, 0.6);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 /* The header carries the structural cells as empty placeholders so its
@@ -1221,3 +1220,4 @@
         transition: none !important;
     }
 }
+

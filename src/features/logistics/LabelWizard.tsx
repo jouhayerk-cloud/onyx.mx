@@ -168,7 +168,7 @@ export const NFCWizard: React.FC = () => {
     const cleanBookV = bookV.startsWith('v') ? bookV : `v${bookV}`;
 
     return (
-        <div className="absolute inset-0 z-[1000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
+        <div className="absolute inset-0 z-[100000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
             <div 
                 className="absolute inset-0 backdrop-blur-xl bg-black/40 pointer-events-auto" 
                 onClick={() => setIsOpen(false)} 
@@ -179,7 +179,7 @@ export const NFCWizard: React.FC = () => {
                 {/* Floating Close Button - Studio Standard */}
                 <button 
                     onClick={() => setIsOpen(false)} 
-                    className="fixed top-6 right-6 md:top-10 md:right-10 z-[20002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/5 backdrop-blur-3xl rounded-full border border-white/10 text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_80px_rgba(0,0,0,0.8)] group active:scale-95"
+                    className="fixed top-6 right-6 md:top-10 md:right-10 z-[100002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/5 backdrop-blur-3xl rounded-full border border-white/10 text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_80px_rgba(0,0,0,0.8)] group active:scale-95"
                 >
                     <X size={32} className="md:w-[48px] md:h-[48px] group-hover:rotate-90 transition-transform duration-700" strokeWidth={1} />
                 </button>
@@ -1178,7 +1178,7 @@ export const LabelWizard: React.FC = () => {
 
             {/* Print Helper Modal */}
             {isPrintHelperOpen && (
-<div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 pointer-events-auto">
+<div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 pointer-events-auto">
                     <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
                         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
                             <div className="flex items-center gap-3">
@@ -1323,7 +1323,7 @@ export const LabelWizard: React.FC = () => {
                 </div>
             )}
 
-        <div className="label-wizard fixed inset-0 z-[5000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
+        <div className="label-wizard fixed inset-0 z-[100000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
             <div className="absolute inset-0 bg-black/20 backdrop-blur-[80px] pointer-events-auto" onClick={() => setIsOpen(false)} />
             
             <div className="relative w-full h-[100dvh] md:w-[95vw] md:h-[95vh] flex flex-col overflow-y-auto overflow-x-hidden no-scrollbar pointer-events-auto p-8 md:p-12 lg:p-16 max-w-7xl mx-auto animate-in zoom-in-95 duration-700 bg-transparent">
@@ -1332,7 +1332,7 @@ export const LabelWizard: React.FC = () => {
                 {!isPrintWorkflowOpen && (
                     <button 
                         onClick={() => setIsOpen(false)} 
-                        className="fixed top-6 right-6 md:top-10 md:right-10 z-[20002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/5 backdrop-blur-3xl rounded-full border border-white/10 text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_80px_rgba(0,0,0,0.8)] group active:scale-95"
+                        className="fixed top-6 right-6 md:top-10 md:right-10 z-[100002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/5 backdrop-blur-3xl rounded-full border border-white/10 text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_80px_rgba(0,0,0,0.8)] group active:scale-95"
                     >
                         <X size={32} className="md:w-[48px] md:h-[48px] group-hover:rotate-90 transition-transform duration-700" strokeWidth={1} />
                     </button>
@@ -1731,7 +1731,7 @@ export const LabelWizard: React.FC = () => {
             {/* UNIFIED PRINT WORKFLOW - VERTICAL CAROUSEL */}
             {isPrintWorkflowOpen && (
                 <div 
-                    className="absolute inset-0 z-[5010] flex flex-col pointer-events-auto bg-transparent overflow-hidden"
+                    className="absolute inset-0 z-[100010] flex flex-col pointer-events-auto bg-transparent overflow-hidden"
                     onKeyDown={(e) => {
                         if (e.key === 'Escape') setIsPrintWorkflowOpen(false);
                     }}
@@ -1797,7 +1797,7 @@ export const LabelWizard: React.FC = () => {
                             <div className="flex-1 relative overflow-hidden bg-transparent">
                                 <iframe
                                     ref={iframeRef}
-                                    src={`phomemo-designer/index.html?v=${selectedIds.length}&theme=${theme}`}
+                                    src={`/phomemo-designer/index.html?v=${selectedIds.length}&theme=${theme}`}
                                     className="w-full h-full border-none bg-transparent"
                                     title="OnyxLabels Designer"
                                     allow="bluetooth"
