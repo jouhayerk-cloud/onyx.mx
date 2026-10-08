@@ -120,7 +120,7 @@ export const PdfPreview: React.FC<PdfPreviewProps> = ({ isOpen, onClose, docs, t
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[6500] bg-[#0a0a0a] animate-in fade-in duration-150 pointer-events-auto">
+        <div className="fixed inset-0 z-[100100] bg-[#0a0a0a] animate-in fade-in duration-150 pointer-events-auto">
             <div className="w-full h-full bg-[#0a0a0a] overflow-hidden flex flex-col">
 
                 {/* Header */}
