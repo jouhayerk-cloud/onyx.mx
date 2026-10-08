@@ -1029,7 +1029,7 @@ export const PackingModule: React.FC = () => {
                     <div className="flex-1 relative">
                         <iframe
                             ref={iframeRef}
-                            src={`phomemo-designer/index.html?mini=true&v=${selectedIds.size}`}
+                            src={`/phomemo-designer/index.html?mini=true&v=${selectedIds.size}`}
                             className="w-full h-full border-none"
                             title={tr("OnyxLabels Designer")}
                             allow="bluetooth"

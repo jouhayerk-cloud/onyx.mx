@@ -2737,6 +2737,12 @@ export function MainHeader() {
     };
 
     // ─── WORKBOOK V2 EXPORT (Rare Earth Format) ──────────────────────────
+    useEffect(() => {
+        const handler = () => handleMasterExportXLSX_V2();
+        document.addEventListener('triggerMasterExport', handler);
+        return () => document.removeEventListener('triggerMasterExport', handler);
+    }, []);
+
     const handleMasterExportXLSX_V2 = async () => {
         setIsExporting(true);
         try {
@@ -4319,14 +4325,18 @@ export function MainHeader() {
     // Global tools: what the right-hand cluster of this bar used to hold, now in the island (every view).
     const MenuLogoIcon = PanelLeftOpen;   // a menu glyph: the Onyx mark is the face, a second logo beside it was redundant
     useRegisterTools('global', [
-        ...(sidebarState === 'hidden' ? [{ id: 'global.sidebar', moduleId: 'global', label: tr('Menu'), title: tr('Onyx.mx Menu'), icon: MenuLogoIcon, kind: 'action' as const, group: tr('Navigate'), order: 0, pinned: true, run: () => setSidebarState(window.innerWidth <= 768 ? 'compact' : 'expanded') }] : []),
         ...(sentTruckId ? [{ id: 'global.crate', moduleId: 'global', label: tr('Crate'), title: tr('Active Crate Deployment'), icon: Truck, kind: 'action' as const, group: tr('Navigate'), order: 5, pinned: true, badge: '•', run: () => setView('trucking') }] : []),
         ...(artifactConfig.itemIds.length > 0 ? [{ id: 'global.manifest', moduleId: 'global', label: tr('Manifest'), title: tr('Toggle Neural Manifest'), icon: Package, kind: 'toggle' as const, group: tr('Navigate'), order: 6, pinned: true, pressed: artifactConfig.isOpen, run: () => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen })) }] : []),
         ...(selectedIds.length > 0 ? [{ id: 'global.shopify', moduleId: 'global', label: tr('Shopify'), title: tr('Download Shopify XLSX'), icon: ShoppingBag, kind: 'action' as const, group: tr('Export'), order: 5, disabled: isShopifyExporting, run: handleShopifyExportXLSX }] : []),
         ...(activeView === 'onyx' ? [
             { id: 'onyx.language', moduleId: 'onyx', label: appLanguage.toUpperCase(), title: tr('Toggle Neural Language'), icon: Languages, kind: 'action' as const, group: tr('Onyx'), order: 10, run: () => setAppLanguage(prev => prev === 'en' ? 'es' : 'en') },
             { id: 'onyx.reset', moduleId: 'onyx', label: tr('Reset credentials'), title: tr('Reset Neural Credentials'), icon: RefreshCw, kind: 'action' as const, group: tr('Onyx'), order: 20, run: () => { if (confirm(tr('Reset Neural Link credentials to system default?'))) { localStorage.removeItem('onyxApiKey'); setOnyxApiKey(''); } } },
-        ] : []),
+        ] : []),        ...(sidebarState === 'hidden' ? [{
+            id: 'global.sidebar', moduleId: 'global', label: tr('Menu'), title: tr('Onyx.mx Menu'), icon: OnyxMiniLogo as any, kind: 'action' as const, group: tr('Onyx'), order: -10, pinned: true, run: () => {
+                const isMobile = window.innerWidth <= 768;
+                setSidebarState(s => s === 'hidden' ? (isMobile ? 'compact' : 'expanded') : 'hidden');
+            }
+        }] : []),
         { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
         { id: 'global.export.seasons', moduleId: 'global', label: tr('Seasons'), icon: Layers, kind: 'widget', group: tr('Export'), order: 20, render: () => <SeasonToggles /> },
         { id: 'global.export.sheets', moduleId: 'global', label: tr('Sheets'), icon: FileSpreadsheet, kind: 'widget', group: tr('Export'), order: 30, render: () => <SheetsUploadButton /> },
@@ -4366,30 +4376,8 @@ export function MainHeader() {
                             : null}
             />
 
-            <div className={`main-header ${migratedView ? 'hidden' : ''} h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
-                {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
-                <div className="flex items-center shrink-0">
-                    {sidebarState === 'hidden' && (
-                        <button 
-                            onClick={() => {
-                                const isMobile = window.innerWidth <= 768;
-                                setSidebarState(isMobile ? 'compact' : 'expanded');
-                            }}
-                            /* Sized and classed as a tool key on purpose. It opens the
-                               sidebar, so it IS a control, and at 48px in its own wider
-                               panel it was the one object in the bar that did not sit on
-                               the 44px grid — it read as a logo plate parked next to the
-                               keys rather than as the first key. .tool-btn carries the
-                               box, the glass fill and the lift/raised/pressed walk; the
-                               .logo-panel class stays only as a hook for the mark's own
-                               opacity, not for a second surface treatment. */
-                            className="logo-panel tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all shrink-0 group/logo mr-3"
-                            title={tr("Onyx.mx Menu")}
-                        >
-                            <OnyxMiniLogo className="w-7 h-7 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
-                        </button>
-                    )}
-                </div>
+            {!migratedView && (
+            <div className={`main-header h-20 max-h-20 flex items-end pl-6 pr-6 pt-2 pb-2 shrink-0 transition-all flex-nowrap w-full overflow-x-auto overflow-y-hidden no-scrollbar shadow-none`}>
 
                 {/* Dynamic Module Bar — aligned left. Deliberately NOT its own
                     scroll container: when it was flex-1 + min-w-0 + overflow-x-auto
@@ -4460,143 +4448,119 @@ export function MainHeader() {
                     Onyx Island pill above, beside the face (see IslandBand). */}
                 <div className="flex items-end justify-end shrink-0 pl-2 sm:pl-4 ml-auto">
                     <div className="flex items-end gap-1 sm:gap-6">
-                    {/* Onyx Neural Controls */}
-                    <div className={`flex items-center gap-2 mr-6 border-r border-white/5 pr-6 ${islandOn ? 'hidden' : ''}`}>
-                        {sentTruckId && (
-                            <button 
-                                onClick={() => setView('trucking')}
-                                className="w-11 h-11 flex items-center justify-center text-(--main-color) animate-pulse drop-shadow-[0_0_10px_var(--main-color)] hover:scale-110 transition-all"
-                                title={tr("Active Crate Deployment")}
-                            >
-                                <Truck size={32} strokeWidth={2.5} />
-                            </button>
-                        )}
-
-                        {artifactConfig.itemIds.length > 0 && (
-                            <button 
-                                onClick={() => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen }))}
-                                className={`w-11 h-11 flex items-center justify-center transition-all active:scale-90 hover:scale-110 ${artifactConfig.isOpen ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white/40 hover:text-white'}`}
-                                title={tr("Toggle Neural Manifest")}
-                            >
-                                <Package size={30} strokeWidth={2.5} />
-                            </button>
-                        )}
-                        
-                        {activeView === 'onyx' && (
-                            <>
-                                {/* Language Toggle */}
+                        {/* Onyx Neural Controls */}
+                        <div className={`flex items-center gap-2 mr-6 border-r border-white/5 pr-6 ${islandOn ? 'hidden' : ''}`}>
+                            {sentTruckId && (
                                 <button 
-                                    onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
-                                    className="px-2 h-10 flex items-center justify-center text-[11px] font-black tracking-[0.3em] text-white/40 hover:text-white transition-all active:scale-95"
-                                    title={tr("Toggle Neural Language")}
+                                    onClick={() => setView('trucking')}
+                                    className="w-11 h-11 flex items-center justify-center text-[var(--main-color)] animate-pulse drop-shadow-[0_0_10px_var(--main-color)] hover:scale-110 transition-all"
+                                    title={tr("Active Crate Deployment")}
                                 >
-                                    {appLanguage.toUpperCase()}
+                                    <Truck size={32} strokeWidth={2.5} />
                                 </button>
+                            )}
 
-                                {/* Reset Neural Credentials */}
+                            {artifactConfig.itemIds.length > 0 && (
                                 <button 
-                                    onClick={() => {
-                                        if (confirm(tr("Reset Neural Link credentials to system default?"))) {
-                                            localStorage.removeItem('onyxApiKey');
-                                            setOnyxApiKey('');
-                                        }
-                                    }}
-                                    className="w-11 h-11 flex items-center justify-center text-white/20 hover:text-red-500 transition-all active:scale-90 hover:scale-110"
-                                    title={tr("Reset Neural Credentials")}
+                                    onClick={() => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen }))}
+                                    className={`w-11 h-11 flex items-center justify-center transition-all active:scale-90 hover:scale-110 ${artifactConfig.isOpen ? 'text-[var(--main-color)] drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white/40 hover:text-white'}`}
+                                    title={tr("Toggle Neural Manifest")}
                                 >
-                                    <RefreshCw size={26} strokeWidth={2.5} />
+                                    <Package size={30} strokeWidth={2.5} />
                                 </button>
-                            </>
-                        )}
+                            )}
+                            
+                            {activeView === 'onyx' && (
+                                <>
+                                    {/* Language Toggle */}
+                                    <button 
+                                        onClick={() => setAppLanguage(prev => prev === 'en' ? 'es' : 'en')}
+                                        className="px-2 h-10 flex items-center justify-center text-[11px] font-black tracking-[0.3em] text-white/40 hover:text-white transition-all active:scale-95"
+                                        title={tr("Toggle Neural Language")}
+                                    >
+                                        {appLanguage.toUpperCase()}
+                                    </button>
+
+                                    {/* Reset Neural Credentials */}
+                                    <button 
+                                        onClick={() => {
+                                            if (confirm(tr("Reset Neural Link credentials to system default?"))) {
+                                                localStorage.removeItem('onyxApiKey');
+                                                setOnyxApiKey('');
+                                            }
+                                        }}
+                                        className="w-11 h-11 flex items-center justify-center text-white/20 hover:text-red-500 transition-all active:scale-90 hover:scale-110"
+                                        title={tr("Reset Neural Credentials")}
+                                    >
+                                        <RefreshCw size={26} strokeWidth={2.5} />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Full Color XLSX Download Button */}
+                        <div className={`flex items-center gap-1.5 ${islandOn ? 'hidden' : ''}`}>
+                            {selectedIds.length > 0 && (
+                                <button
+                                    onClick={handleShopifyExportXLSX}
+                                    disabled={isShopifyExporting}
+                                    className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 bg-[#96bf48]/10 border border-[#96bf48]/20 hover:bg-[#96bf48]/20 group/shopify ${
+                                        isShopifyExporting ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
+                                    title={tr("Download Shopify XLSX")}
+                                >
+                                    <ShoppingBag size={30} strokeWidth={2.5} className={isShopifyExporting ? 'animate-bounce text-[#96bf48]' : 'group-hover/shopify:scale-110 transition-transform text-[#96bf48]/70 group-hover/shopify:text-[#96bf48]'} />
+                                </button>
+                            )}
+                            
+                            {!islandOn && showExport && (
+                                <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <SeasonToggles />
+                                    <SheetsUploadButton />
+                                    <button
+                                        onClick={handleMasterExportXLSX_V2}
+                                        disabled={isExporting}
+                                        className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 shadow-xl hover:shadow-[var(--main-color)]/20 group/xlsx ${
+                                            isExporting ? 'opacity-50 cursor-not-allowed' : ''
+                                        }`}
+                                        style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
+                                        title={tr("Download Workbook V2 (Rare Earth Format)")}
+                                    >
+                                        <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {!islandOn && activeView === 'inventory' && <InventoryAddButton />}
+
+                            {!islandOn && (
+                                <ToolButton icon={FolderUp} label={tr("Export")} active={showExport}
+                                    title={tr("Export tools")} onClick={() => setShowExport(!showExport)} />
+                            )}
+                        </div>
                     </div>
-
-                    {/* Full Color XLSX Download Button */}
-                    <div className={`flex items-center gap-1.5 ${islandOn ? 'hidden' : ''}`}>
-                        {/* Redundant V2 Button Hidden
-                            <ToolButton icon={DatabaseBackup} label="Workbook" disabled={isExporting}
-                                title="Download Workbook V2 (Rare Earth Format)" onClick={handleMasterExportXLSX_V2} />
-                        */}
-
-                        {selectedIds.length > 0 && (
-                            <button
-                                onClick={handleShopifyExportXLSX}
-                                disabled={isShopifyExporting}
-                                className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 bg-[#96bf48]/10 border border-[#96bf48]/20 hover:bg-[#96bf48]/20 group/shopify ${
-                                    isShopifyExporting ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
-                                title={tr("Download Shopify XLSX")}
-                            >
-                                <ShoppingBag size={30} strokeWidth={2.5} className={isShopifyExporting ? 'animate-bounce text-[#96bf48]' : 'group-hover/shopify:scale-110 transition-transform text-[#96bf48]/70 group-hover/shopify:text-[#96bf48]'} />
-                            </button>
-                        )}
-
-                        {/* oldWorkbook 
-                        <button
-                            onClick={handleMasterExportXLSX}
-                            disabled={isExporting}
-                            className={`flex items-center gap-3 px-4 sm:px-6 h-12 rounded-xl transition-all active:scale-95 shadow-xl hover:shadow-(--main-color)/20 group/xlsx ${
-                                isExporting ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                            style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
-                            title="Download Full Workbook XLSX"
-                        >
-                            <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
-                            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Workbook</span>
-                        </button>
-                        */}
-                        
-                        {!islandOn && showExport && (
-                            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <SeasonToggles />
-                                <SheetsUploadButton />
-                        <button
-                            onClick={handleMasterExportXLSX_V2}
-                            disabled={isExporting}
-                            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 shadow-xl hover:shadow-(--main-color)/20 group/xlsx ${
-                                isExporting ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                            style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
-                            title={tr("Download Workbook V2 (Rare Earth Format)")}
-                        >
-                            <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
-                        </button>
-                            </div>
-                        )}
-
-                        {/* Add stays outside the disclosure on purpose: creating an
-                            item is the most frequent action here and must never sit
-                            one click behind a toggle. */}
-                        {!islandOn && activeView === 'inventory' && <InventoryAddButton />}
-
-                        {/* EXPORT — the mirror of TOOLS at the other edge. */}
-                        {!islandOn && (
-                            <ToolButton icon={FolderUp} label={tr("Export")} active={showExport}
-                                title={tr("Export tools")} onClick={() => setShowExport(!showExport)} />
-                        )}
-                    </div>
-
+                </div>
 
                 {activeView === 'store' && (
                     <div className="flex items-center gap-1 mx-2 relative">
                         <button
                             onClick={() => setIsBagOpen(!isBagOpen)}
-                            className="w-16 h-16 flex items-center justify-center text-(--main-color) transition-all relative group/bag"
+                            className="w-16 h-16 flex items-center justify-center text-[var(--main-color)] transition-all relative group/bag"
                         >
                             <ShoppingBag size={36} strokeWidth={1.5} className="group-hover/bag:scale-110 transition-transform drop-shadow-[0_0_8px_var(--main-color)]" />
                             {bagCount > 0 && (
-                                <span className="absolute top-1 right-1 w-6 h-6 bg-(--main-color) text-black text-[12px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_var(--main-color)] animate-in zoom-in duration-300">
+                                <span className="absolute top-1 right-1 w-6 h-6 bg-[var(--main-color)] text-black text-[12px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_var(--main-color)] animate-in zoom-in duration-300">
                                     {bagCount}
                                 </span>
                             )}
                         </button>
                     </div>
                 )}
-                    </div>
-                </div>
             </div>
-            </div>            <ShoppingBagDrawer isOpen={isBagOpen} onClose={() => setIsBagOpen(false)} />
+            )}
+            </div>
+            <ShoppingBagDrawer isOpen={isBagOpen} onClose={() => setIsBagOpen(false)} />
         </>
     );
 }
-
 

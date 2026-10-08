@@ -383,20 +383,30 @@ export const InventoryFiltersPanel: React.FC = () => {
                 </div>
             </div>
 
-            <div className="w-full flex flex-wrap items-center gap-6 animate-in slide-in-from-top-4 duration-700">
-                <button onClick={() => setInvVendorFilter(['All'])} className={`text-[10px] font-black uppercase transition-all ${invVendorFilter.includes('All') ? 'text-white' : 'text-zinc-600 hover:text-white'}`}>{tr("ALL")}<br/>{tr("VENDORS")}</button>
-                <div className="flex flex-wrap items-center gap-6 py-1">
+            
+            <div className="w-full flex flex-wrap items-center gap-4 animate-in slide-in-from-top-4 duration-700 mt-2 border-t border-white/5 pt-4">
+                <button onClick={() => setInvVendorFilter(['All'])} className={`text-[10px] font-black uppercase transition-all ${invVendorFilter.includes('All') ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white'}`}>{tr("ALL VENDORS")}</button>
+                <div className="hidden sm:block h-6 w-px bg-white/10 mx-1" />
+                <div className="flex flex-wrap items-center gap-3">
                     {activeVendors.map(v => {
                         const vendorColor = (vendors as any)[v]?.color || '#ffffff';
                         const isActive = invVendorFilter.includes(v) || invVendorFilter.includes('All');
                         return (
-                            <div key={v} className="tool-cell flex flex-col items-center gap-1">
-                                <button aria-pressed={isActive} title={v}
-                                    onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])}
-                                    className="tool-btn vendor-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
-                                    style={{ ['--vendor-color' as any]: vendorColor }} />
-                                <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none" style={{ color: vendorColor }}>{v}</span>
-                            </div>
+                            <button
+                                key={v}
+                                aria-pressed={isActive}
+                                title={v}
+                                onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])}
+                                className={`flex items-center justify-center px-4 h-10 rounded-xl transition-all active:scale-95 ${isActive ? 'liquid-glass font-black' : 'border font-bold hover:bg-white/5'}`}
+                                style={{ 
+                                    color: isActive ? '#000' : vendorColor,
+                                    backgroundColor: isActive ? vendorColor : 'transparent',
+                                    borderColor: isActive ? 'transparent' : `${vendorColor}40`,
+                                    boxShadow: isActive ? `0 0 20px ${vendorColor}66, inset 0 0 10px rgba(255,255,255,0.5)` : 'none'
+                                }}
+                            >
+                                <span className="text-[11px] uppercase tracking-[0.15em]">{v}</span>
+                            </button>
                         );
                     })}
                 </div>
@@ -409,3 +419,4 @@ export const InventoryPanelsRegistrar: React.FC = () => {
     // The panels are now rendered directly as SubmenuDock cards by UniversalToolsBar. Nothing to register.
     return null;
 };
+

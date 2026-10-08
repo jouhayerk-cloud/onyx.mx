@@ -72,9 +72,11 @@ import {
     batchWizardItemsAtom
 } from '../../lib/atoms';
 import { isPrintCenterOpenAtom } from '../print/printState';
+import { isPackingPrintWizardOpenAtom } from '../../lib/atoms';
+import { PrintCenter } from '../print/PrintCenter';
 import { 
     Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX,
-    Palette, Shapes, Printer, Nfc, Copy, FileSpreadsheet, Sparkles
+    Palette, Shapes, Printer, Nfc, Copy, FileSpreadsheet, Sparkles, Download
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -230,6 +232,7 @@ const SectionHeader: React.FC<{
 
 export const UniversalToolsBar: React.FC = () => {
     const activeView = useAtomValue(activeViewAtom);
+    const setView = useSetAtom(activeViewAtom);
     const logisticsSubTab = useAtomValue(logisticsSubTabAtom);
     const islandEnabled = useAtomValue(islandCommandsEnabledAtom);
     
@@ -251,7 +254,8 @@ export const UniversalToolsBar: React.FC = () => {
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     
     // Batch & Print Actions
-    const setPrintCenterOpen = useSetAtom(isPrintCenterOpenAtom);
+    const [isPrintCenterOpen, setPrintCenterOpen] = useAtom(isPrintCenterOpenAtom);
+    const setPrintWizardOpen = useSetAtom(isPackingPrintWizardOpenAtom);
     const setNFCOpen = useSetAtom(isPackingNFCWizardOpenAtom);
     const setPackOpen = useSetAtom(isPackingCrateWizardOpenAtom);
     const setPayOpen = useSetAtom(isPaymentWizardOpenAtom);
@@ -463,6 +467,7 @@ export const UniversalToolsBar: React.FC = () => {
     if (!isInventory && !isFinance && !isTrucking) return null;
 
     // Elements
+    
     const renderInvSearch = () => <InventorySearchPanel />;
     const renderInvView = () => <InventoryViewPanel />;
     
@@ -515,9 +520,17 @@ export const UniversalToolsBar: React.FC = () => {
 
             {/* ── Action Buttons (ported from InventorySelectionDock) ── */}
             <div className="flex items-center gap-6 md:gap-8 shrink-0">
-                <button onClick={() => setPrintCenterOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Print Center")}>
-                    <Printer size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PRINT")}</span>
+                <button onClick={() => { setIsSelectionMode(false); window.scrollTo({ top: 0, behavior: 'smooth' }); setView('upload'); }} className="text-white/40 hover:text-[var(--main-color)] transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Add")}>
+                    <Plus size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("ADD")}</span>
+                </button>
+                <button onClick={() => { setIsSelectionMode(false); document.dispatchEvent(new CustomEvent('triggerMasterExport')); }} className="text-white/40 hover:text-green-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Global Export")}>
+                    <Download size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("EXPORT")}</span>
+                </button>
+                <button onClick={() => setPrintWizardOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Labels")}>
+                    <Tag size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("LABELS")}</span>
                 </button>
                 <button onClick={() => setNFCOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Write NFC")}>
                     <Nfc size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
@@ -694,6 +707,7 @@ export const UniversalToolsBar: React.FC = () => {
         if (isFinance && isFinFiltersOpen) docks.push(<SubmenuCard key="fin-filters" id="fin-filters" title={tr("Filters")} onClose={() => setIsFinFiltersOpen(false)}>{renderFinFilters()}</SubmenuCard>);
         if (isFinance && isFinActionOpen) docks.push(<SubmenuCard key="fin-action" id="fin-action" title={tr("Requested Payments")} onClose={() => setIsFinActionOpen(false)}>{renderFinAction()}</SubmenuCard>);
         if (isFinance && isFinUpcomingOpen) docks.push(<SubmenuCard key="fin-upcoming" id="fin-upcoming" title={tr("Upcoming Payments")} onClose={() => setIsFinUpcomingOpen(false)}>{renderFinUpcoming()}</SubmenuCard>);
+        if (isPrintCenterOpen) docks.push(<SubmenuCard key="print-center" id="print-center" title={tr("Print Center")} onClose={() => setPrintCenterOpen(false)}><PrintCenter /></SubmenuCard>);
     }
 
     return (
@@ -740,4 +754,11 @@ export const UniversalToolsBar: React.FC = () => {
         </div>
     );
 };
+
+
+
+
+
+
+
 
