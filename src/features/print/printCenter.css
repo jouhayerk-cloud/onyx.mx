@@ -299,3 +299,50 @@ html.theme-aqua .pc-text-muted {
   color: rgba(10, 12, 20, 0.7);
 }
 
+
+.pc-glass-card {
+  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
+  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.07) 100%)) !important;
+  -webkit-backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
+  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.55),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.12),
+    inset 0 0 18px rgba(255, 255, 255, 0.07),
+    0 4px 12px rgba(2, 6, 16, 0.2);
+  color: #fff;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .pc-glass-card {
+    background-color: rgba(12, 14, 22, 0.90) !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .pc-glass-card {
+    background-color: rgba(12, 14, 22, 0.94) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+html.theme-aqua .pc-glass-card {
+  color: #0a0c14;
+}
+
+/* Ensure buttons in glass cards don't get ugly native styling in slab */
+html.style-slab .pc-glass-card button:not([aria-pressed="true"]):not([data-active="true"]):hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+html.style-slab .pc-glass-card button,
+html.style-slab .pc-glass-card [role="button"] {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
