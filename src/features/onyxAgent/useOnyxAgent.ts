@@ -4,6 +4,7 @@ import { userAtom, languageAtom } from '../../lib/atoms';
 import { getGeminiKey } from '../../lib/ai/keys';
 import { supabase } from '../../lib/supabase';
 import { onyxToolDefinitions, onyxToolHandlers } from '../onyx/onyxTools';
+import { mergeToolPacks } from './tools/mergeToolPacks';
 import { 
     onyxAgentPhaseAtom, 
     onyxAgentActivityAtom, 
@@ -14,14 +15,19 @@ import {
 import { tr, trf } from '../../lib/i18n';
 
 export type Message = { id: string; role: 'user' | 'model' | 'tool'; text: string; t: number };
-export type PendingConfirm = { id: string; tool: string; args: Record<string, unknown>; summary: string };
+export type PendingConfirm = { id: string; tool: string; args: Record<string, unknown>; summary: string; risk?: string; detail?: string };
+
+export interface AgentToolPack {
+    source: 'onyx' | 'app' | 'island' | 'print' | 'robot-direct' | 'robot-mcp';
+    definitions: unknown[];
+    handlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>>;
+    risk: Record<string, 'read' | 'navigate' | 'robot' | 'write'>;
+    confirm?: Record<string, boolean>;
+    describe?: (name: string, args: Record<string, unknown>) => string | undefined;
+}
 
 export interface OnyxAgentOptions {
-    extraTools?: Array<{
-        definitions: unknown[];
-        handlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>>;
-        risk: Record<string, 'read' | 'navigate' | 'robot' | 'write'>;
-    }>;
+    extraTools?: Array<Omit<AgentToolPack, 'source'> & { source?: AgentToolPack['source'] }>;
     systemPrompt?: string;
 }
 
@@ -63,23 +69,36 @@ export function useOnyxAgent(options: OnyxAgentOptions = {}) {
         };
     }, [setGlobalPhase]);
 
-    const { allDefinitions, allHandlers, allRisks } = useMemo(() => {
-        const defs = [...onyxToolDefinitions];
-        const handlers: Record<string, any> = { ...onyxToolHandlers };
-        const risks: Record<string, string> = {};
-
-        for (const def of onyxToolDefinitions) {
-            risks[def.name] = 'read';
-        }
-
+    const { allDefinitions, allHandlers, allRisks, allConfirms, allDescribes } = useMemo(() => {
+        const basePack: AgentToolPack = {
+            source: 'onyx',
+            definitions: onyxToolDefinitions,
+            handlers: onyxToolHandlers,
+            risk: Object.fromEntries(onyxToolDefinitions.map((d: any) => [d.name, 'read'] as const))
+        };
+        
+        const packs: AgentToolPack[] = [basePack];
         if (options.extraTools) {
             for (const extra of options.extraTools) {
-                defs.push(...(extra.definitions as any[]));
-                Object.assign(handlers, extra.handlers);
-                Object.assign(risks, extra.risk);
+                packs.push({
+                    source: extra.source || 'app',
+                    definitions: extra.definitions,
+                    handlers: extra.handlers,
+                    risk: extra.risk,
+                    confirm: extra.confirm,
+                    describe: extra.describe
+                });
             }
         }
-        return { allDefinitions: defs, allHandlers: handlers, allRisks: risks };
+        
+        const merged = mergeToolPacks(packs);
+        return { 
+            allDefinitions: merged.definitions, 
+            allHandlers: merged.handlers, 
+            allRisks: merged.risk,
+            allConfirms: merged.confirm,
+            allDescribes: merged.describe
+        };
     }, [options.extraTools]);
 
     const systemPrompt = useMemo(() => {
@@ -260,17 +279,23 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 for (const c of calls) {
                     if (signal.aborted) break;   // Stop pressed: do not run the remaining queued tool calls
                     setPhase('thinking');
-                    const isWrite = allRisks[c.functionCall.name] === 'write';
+                    const risk = allRisks[c.functionCall.name] || 'read';
+                    const needsConfirm = risk === 'write' || allConfirms[c.functionCall.name] === true;
                     let result;
                     
-                    if (isWrite) {
+                    if (needsConfirm) {
                         const approved = await new Promise<boolean>(resolve => {
                             const pendingId = Math.random().toString(36).slice(2);
+                            const describer = allDescribes[c.functionCall.name];
+                            const detail = describer ? describer(c.functionCall.name, c.functionCall.args) : undefined;
+                            
                             setPendingConfirm({
                                 id: pendingId,
                                 tool: c.functionCall.name,
                                 args: c.functionCall.args,
-                                summary: trf('{name} requires confirmation', { name: c.functionCall.name })
+                                summary: detail || trf('{name} requires confirmation', { name: c.functionCall.name }),
+                                risk: risk,
+                                detail: detail
                             });
                             confirmResolverRef.current = resolve;
                             pendingIdRef.current = pendingId;

@@ -3247,4 +3247,5 @@ export const esCatalog: Record<string, string> = {
   'Archived season 825 data export': 'Exportación de datos archivados de la temporada 825',
   'Vendor Batch Import (XLSX)': 'Importación por lotes de proveedores (XLSX)',
   'Vendor batch import template': 'Plantilla de importación por lotes de proveedores',
+
 };
