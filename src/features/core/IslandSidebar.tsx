@@ -313,7 +313,7 @@ export const IslandSidebar: React.FC = () => {
                                 label={tr("Admin")}
                                 icon="shield"
                                 subItems={[
-                                    { id: 'control', label: 'Control Center', icon: 'shield', action: () => { setActiveView('control'); handleMobileHide(); }, isActive: activeView === 'control' }
+                                    { id: 'control', label: tr("Control Center"), icon: 'shield', action: () => { setActiveView('control'); handleMobileHide(); }, isActive: activeView === 'control' }
                                 ]}
                                 isCompact={isCompact}
                                 isHoverPeek={isHoverPeek}
@@ -406,8 +406,8 @@ export const IslandSidebar: React.FC = () => {
                                 label={tr("Labs")}
                                 icon="layers"
                                 subItems={[
-                                    { id: 'process', label: 'Process', icon: 'pipette', action: () => { setActiveView('process'); handleMobileHide(); }, isActive: activeView === 'process' },
-                                    { id: 'threed', label: '3D and AR', icon: 'rotate-3d', action: () => { setActiveView('threed'); handleMobileHide(); }, isActive: activeView === 'threed' }
+                                    { id: 'process', label: tr("Process"), icon: 'pipette', action: () => { setActiveView('process'); handleMobileHide(); }, isActive: activeView === 'process' },
+                                    { id: 'threed', label: tr("3D and AR"), icon: 'rotate-3d', action: () => { setActiveView('threed'); handleMobileHide(); }, isActive: activeView === 'threed' }
                                 ]}
                                 isCompact={isCompact}
                                 isHoverPeek={isHoverPeek}

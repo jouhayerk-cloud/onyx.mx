@@ -75,7 +75,7 @@ export function PrintJobsPanel({ season }: PrintJobsPanelProps) {
 
         setJobs(merged);
       } catch (err: any) {
-        if (active) setError(err.message || 'Failed to load jobs');
+        if (active) setError(err.message || tr('Failed to load jobs'));
       } finally {
         if (active) setLoading(false);
       }
@@ -136,7 +136,7 @@ export function PrintJobsPanel({ season }: PrintJobsPanelProps) {
                                 <span className="text-xs text-gray-400">{new Date(job.created_at).toLocaleString()}</span>
                             </div>
                             <div className="flex gap-2 items-center">
-                                {job.is_reprint && <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400">Reprint</span>}
+                                {job.is_reprint && <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400">{tr('Reprint')}</span>}
                                 <span className={`text-xs px-1.5 py-0.5 rounded ${job.status === 'void' ? 'bg-red-900/50 text-red-400' : 'bg-gray-700 text-gray-300'}`}>
                                     {job.status}
                                 </span>
@@ -145,11 +145,11 @@ export function PrintJobsPanel({ season }: PrintJobsPanelProps) {
 
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400">Count: {job.count}</span>
+                                <span className="text-xs text-gray-400">{tr('Count:')} {job.count}</span>
                                 <div className="flex items-center gap-1 bg-gray-900/50 px-2 py-1 rounded text-xs font-mono text-gray-300">
-                                    <span title={job.checksum}>{job.checksum ? job.checksum.slice(0, 12) + '...' : 'none'}</span>
+                                    <span title={job.checksum}>{job.checksum ? job.checksum.slice(0, 12) + '...' : tr('none')}</span>
                                     {job.checksum && (
-                                        <button onClick={() => handleCopy(job.checksum)} className="hover:text-white transition-colors" title="Copy checksum">
+                                        <button onClick={() => handleCopy(job.checksum)} className="hover:text-white transition-colors" title={tr('Copy checksum')}>
                                             <Copy className="w-3 h-3" />
                                         </button>
                                     )}
@@ -160,22 +160,22 @@ export function PrintJobsPanel({ season }: PrintJobsPanelProps) {
                                 {job.verifiable ? (
                                     <div className="flex items-center gap-2">
                                         {verifyStatus[job.id] === 'loading' && <Loader2 className="w-4 h-4 animate-spin text-blue-400" />}
-                                        {verifyStatus[job.id] === 'match' && <span title="Match"><CheckCircle className="w-4 h-4 text-green-400" /></span>}
-                                        {verifyStatus[job.id] === 'mismatch' && <span title="Mismatch"><XCircle className="w-4 h-4 text-red-400" /></span>}
-                                        {verifyStatus[job.id] === 'unverifiable' && <span title="Unverifiable"><AlertCircle className="w-4 h-4 text-yellow-400" /></span>}
+                                        {verifyStatus[job.id] === 'match' && <span title={tr('Match')}><CheckCircle className="w-4 h-4 text-green-400" /></span>}
+                                        {verifyStatus[job.id] === 'mismatch' && <span title={tr('Mismatch')}><XCircle className="w-4 h-4 text-red-400" /></span>}
+                                        {verifyStatus[job.id] === 'unverifiable' && <span title={tr('Unverifiable')}><AlertCircle className="w-4 h-4 text-yellow-400" /></span>}
                                         
                                         {!verifyStatus[job.id] && (
                                             <button 
                                                 onClick={() => handleVerify(job.id)}
                                                 className="text-xs px-2 py-1 rounded border border-blue-500/50 text-blue-300 hover:bg-blue-900/30 transition-colors"
                                             >
-                                                Verify
+                                                {tr('Verify')}
                                             </button>
                                         )}
                                     </div>
                                 ) : (
-                                    <span className="text-xs text-gray-500 italic" title="Legacy jobs cannot be re-verified because their input was never stored.">
-                                        legacy, not re-verifiable
+                                    <span className="text-xs text-gray-500 italic" title={tr('Legacy jobs cannot be re-verified because their input was never stored.')}>
+                                        {tr('legacy, not re-verifiable')}
                                     </span>
                                 )}
                             </div>

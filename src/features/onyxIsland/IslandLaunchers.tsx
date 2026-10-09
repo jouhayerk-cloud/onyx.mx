@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
+import { tr } from '../../lib/i18n';
 
 interface IslandLaunchersProps {
   tools: ToolDescriptor[];
@@ -36,7 +37,7 @@ export const IslandLaunchers: React.FC<IslandLaunchersProps> = ({ tools, onRun, 
   if (tools.length === 0) return null;
 
   return (
-    <div ref={containerRef} role="toolbar" aria-label="Pinned tools" className="flex items-center gap-1 mx-1">
+    <div ref={containerRef} role="toolbar" aria-label={tr('Pinned tools')} className="flex items-center gap-1 mx-1">
       {tools.map((tool, i) => {
         const Icon = tool.icon;
         const isToggle = tool.kind === 'toggle';

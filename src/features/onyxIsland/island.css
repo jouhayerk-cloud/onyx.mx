@@ -263,3 +263,74 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
   }
 }
 
+/* AQUA PASS: Light theme text contrast and states */
+html.theme-aqua .onyx-island-surface {
+  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.7)) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  color: #1a1a1a !important; /* Text on glass needs 4.5:1 contrast */
+  box-shadow: 
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
+    0 14px 40px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.theme-aqua .onyx-island-surface::before {
+  background:
+    radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.6), transparent 55%),
+    radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent), transparent 62%) !important;
+}
+
+html.theme-aqua .onyx-island {
+  color: #1a1a1a !important;
+}
+html.theme-aqua .onyx-island.ui-root {
+  color: #1a1a1a !important;
+}
+
+/* Light Theme: normal hover for not-active tools */
+html.theme-aqua.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Light Theme: normal pressed state */
+html.theme-aqua.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):active {
+  background-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Light Theme: active state for tools */
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[aria-pressed="true"],
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island [role="button"][aria-pressed="true"],
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"],
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island [role="button"][data-active="true"] {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--main-color, #00aeef) 40%, transparent) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--main-color, #00aeef) 10%, transparent) !important;
+  color: var(--main-color, #005a80) !important;
+}
+
+/* Light Theme: active + hover */
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[aria-pressed="true"]:not(:disabled):hover,
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"]:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 22%, transparent) !important;
+}
+
+/* Light Theme: active + pressed */
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[aria-pressed="true"]:not(:disabled):active,
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"]:not(:disabled):active {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 30%, transparent) !important;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent) !important;
+}
+
+/* Light Theme fills */
+html.theme-aqua .isl-w5 { background-color: rgba(0, 0, 0, 0.04) !important; }
+html.theme-aqua .isl-w10 { background-color: rgba(0, 0, 0, 0.08) !important; }
+html.theme-aqua .isl-w15 { background-color: rgba(0, 0, 0, 0.12) !important; }
+html.theme-aqua .isl-w20 { background-color: rgba(0, 0, 0, 0.18) !important; }
+html.theme-aqua .isl-w50 { background-color: rgba(0, 0, 0, 0.40) !important; }
+html.theme-aqua .isl-hw5:hover { background-color: rgba(0, 0, 0, 0.06) !important; }
+html.theme-aqua .isl-hw10:hover { background-color: rgba(0, 0, 0, 0.10) !important; }
+html.theme-aqua .isl-hw20:hover { background-color: rgba(0, 0, 0, 0.22) !important; }
+html.theme-aqua .isl-b20 { background-color: rgba(255, 255, 255, 0.50) !important; border-color: rgba(0, 0, 0, 0.1) !important; }
+
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island .info-notch-user { border-left-color: rgba(0, 0, 0, 0.14) !important; }
