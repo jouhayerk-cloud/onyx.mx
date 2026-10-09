@@ -7,6 +7,10 @@ import { isPackingPrintWizardOpenAtom, isPackingNFCWizardOpenAtom } from '../../
 import { isPrintCenterOpenAtom, printCenterTabAtom, PrintCenterTab } from './printState';
 import { PrintJobsPanel } from './PrintJobsPanel';
 import { verifyDocumentJob, checksumV1 } from '../../lib/documentJobs';
+import { runDjSelfTest } from './selfTest';
+import type { SelfTestResult } from './selfTest';
+import { getRecentTracked } from './jobTracking';
+import type { TrackedJob } from './jobTracking';
 import { TemplatesTabContent, QueueTabContent } from './TemplatesTab';
 import './printCenter.css';
 
@@ -35,6 +39,28 @@ export const PrintCenter: React.FC = () => {
     const [droppedHash, setDroppedHash] = useState('');
     const setPrintOpen = useSetAtom(isPackingPrintWizardOpenAtom);
     const setNfcOpen = useSetAtom(isPackingNFCWizardOpenAtom);
+
+    const [testResults, setTestResults] = useState<SelfTestResult[] | null>(null);
+    const [isTesting, setIsTesting] = useState(false);
+    const [recentJobs, setRecentJobs] = useState<TrackedJob[]>([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            setRecentJobs(getRecentTracked());
+            const interval = setInterval(() => {
+                setRecentJobs(getRecentTracked());
+            }, 2000);
+            return () => clearInterval(interval);
+        }
+    }, [isOpen]);
+
+    const handleRunSelfTest = async () => {
+        setIsTesting(true);
+        setTestResults(null);
+        const results = await runDjSelfTest();
+        setTestResults(results);
+        setIsTesting(false);
+    };
 
     useEffect(() => {
         // No longer trigger standalone LabelWizard/NFCWizard from tabs.
@@ -145,6 +171,19 @@ export const PrintCenter: React.FC = () => {
                     </div>
                 </header>
 
+                <div className="pc-status-strip">
+                    <span className="font-semibold">
+                        {tr('Tracked this session:')} {recentJobs.length} {recentJobs.length === 1 ? tr('job') : tr('jobs')}
+                    </span>
+                    {recentJobs.length > 0 && (
+                        <span className="ml-4 opacity-80 text-sm">
+                            {tr('Last:')} {recentJobs[0].templateId}
+                            {recentJobs[0].fileName ? ` (${recentJobs[0].fileName})` : ''}
+                            {recentJobs[0].outputBytes ? ` - ${recentJobs[0].outputBytes} ${tr('bytes')}` : ''}
+                        </span>
+                    )}
+                </div>
+
                 <div 
                     className="pc-tabs" 
                     role="tablist" 
@@ -182,12 +221,12 @@ export const PrintCenter: React.FC = () => {
                     )}
                     
                     {tab === 'verify' && (
-                        <div className="flex flex-col items-center justify-center h-full p-8 max-w-lg mx-auto w-full gap-6">
-                            <div className="text-center pc-text-muted">
+                        <div className="flex flex-col items-center justify-start h-full p-8 max-w-lg mx-auto w-full gap-6 overflow-y-auto">
+                            <div className="text-center pc-text-muted shrink-0">
                                 <Search className="w-12 h-12 mb-4 opacity-50 mx-auto" />
                                 <p>{tr('Paste a document job ID to verify its ledger entry.')}</p>
                             </div>
-                            <div className="flex w-full gap-2">
+                            <div className="flex w-full gap-2 shrink-0">
                                 <input 
                                     type="text" 
                                     value={verifyHash} 
@@ -200,23 +239,47 @@ export const PrintCenter: React.FC = () => {
                                 </button>
                             </div>
                             {verifyStatus !== 'idle' && (
-                                <div className={`pc-verify-status status-${verifyStatus}`}>
+                                <div className={`pc-verify-status status-${verifyStatus} shrink-0`}>
                                     {verifyStatus === 'match' && tr('Match: The document is verified.')}
                                     {verifyStatus === 'mismatch' && tr('Mismatch: The document was altered.')}
                                     {verifyStatus === 'unverifiable' && tr('Unverifiable: Cannot verify this ID.')}
                                 </div>
                             )}
                             <div 
-                                className={`pc-dropzone flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 w-full transition-colors ${dragActive ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-600 bg-gray-800/50 text-gray-400'}`}
+                                className={`pc-dropzone flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 w-full transition-colors shrink-0 ${dragActive ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-600 bg-gray-800/50 text-gray-400'}`}
                                 onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                                 onDragLeave={() => setDragActive(false)}
                                 onDrop={handleDrop}
                             >
                                 <UploadCloud className="w-8 h-8 mb-2 opacity-50" />
-                                <span>{tr('Or drop a snapshot file here to calculate its hash')}</span>
+                                <span className="text-center">{tr('Or drop a snapshot file here to calculate its hash')}</span>
                                 {droppedHash && (
                                     <div className="mt-4 p-2 bg-black/50 rounded w-full text-center font-mono text-sm select-all break-all text-gray-300">
                                         {droppedHash}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="w-full mt-2 pt-6 border-t border-gray-600/30 flex flex-col items-center shrink-0">
+                                <button onClick={handleRunSelfTest} disabled={isTesting} className="pc-btn-primary mb-4">
+                                    {isTesting ? tr('Running...') : tr('Run self-test')}
+                                </button>
+                                {testResults && (
+                                    <div className="pc-test-results">
+                                        <div className="text-center font-bold mb-2">
+                                            {testResults.filter(r => r.ok).length} {tr('of')} {testResults.length} {tr('passed')}
+                                        </div>
+                                        {testResults.map((res, i) => (
+                                            <div key={i} className="pc-test-row">
+                                                <div className="pc-test-row-header">
+                                                    <span className="font-semibold">{res.name}</span>
+                                                    <span className={res.ok ? 'text-green-400' : 'text-red-400'}>
+                                                        {res.ok ? tr('Passed') : tr('Failed')}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs opacity-70">{res.detail}</div>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>

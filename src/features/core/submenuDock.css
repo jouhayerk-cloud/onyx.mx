@@ -117,3 +117,27 @@ html.style-slab .smd-card.smd-card [role="button"] {
 @media (prefers-reduced-motion: reduce) {
   .smd-card { animation: none; }
 }
+
+/* Aqua Pass Adjustments */
+html.theme-aqua .smd-card {
+  color: var(--text-color, #0b2a33) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.theme-aqua .smd-card-title {
+  color: rgba(11, 42, 51, 0.6) !important;
+}
+
+html.theme-aqua .smd-close-btn {
+  color: rgba(11, 42, 51, 0.6) !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.theme-aqua .smd-close-btn:hover {
+  background: rgba(0, 0, 0, 0.12) !important;
+  color: var(--text-color, #0b2a33) !important;
+}
+
+html.theme-aqua.style-slab .smd-card.smd-card button:not(.smd-close-btn):not([aria-pressed="true"]):not([data-active="true"]):hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}

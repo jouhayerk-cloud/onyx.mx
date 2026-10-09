@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { tr } from '../../lib/i18n';
 import './submenuDock.css';
 
 interface AnchorRect { top: number; left: number; width: number }
@@ -85,7 +86,7 @@ export const SubmenuCard: React.FC<{
     <div className="smd-card ui-root" data-bar={id}>
       <div className="smd-card-header">
         <span className="smd-card-title">{title}</span>
-        <button onClick={onClose} className="smd-close-btn" aria-label="Close">
+        <button onClick={onClose} className="smd-close-btn" aria-label={tr("Close")}>
           <X size={20} strokeWidth={2.5} />
         </button>
       </div>

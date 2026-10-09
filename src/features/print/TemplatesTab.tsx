@@ -193,7 +193,7 @@ export const QueueTabContent: React.FC = () => {
                                 <div className={`w-2 h-2 rounded-full ${job.ok ? 'bg-green-500' : 'bg-red-500'}`} />
                                 <div className="flex flex-col">
                                     <span className="font-bold">{t?.label || job.templateId}</span>
-                                    <span className="text-xs text-gray-400 font-mono">{job.fileName || 'unknown file'}</span>
+                                    <span className="text-xs text-gray-400 font-mono">{job.fileName || tr('unknown file')}</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-6 text-sm text-gray-400">

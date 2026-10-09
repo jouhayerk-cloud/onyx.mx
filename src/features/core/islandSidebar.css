@@ -351,4 +351,60 @@ html.theme-aqua .isb-panel.isb-panel .isb-item:hover {
   background-color: rgba(255,255,255,0.1) !important;
 }
 
+/* Aqua Pass Adjustments */
+html.theme-aqua .isb-panel {
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.theme-aqua .isb-section-title {
+  color: rgba(11, 42, 51, 0.6) !important;
+}
+
+html.theme-aqua .isb-logo-text {
+  color: var(--text-color, #0b2a33) !important;
+}
+
+html.theme-aqua .isb-flyout,
+html.theme-aqua .isb-tooltip {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  color: var(--text-color, #0b2a33) !important;
+}
+
+html.theme-aqua .isb-flyout-item,
+html.theme-aqua .isb-submenu-item {
+  color: rgba(11, 42, 51, 0.8) !important;
+}
+
+html.theme-aqua .isb-flyout-item:hover,
+html.theme-aqua .isb-submenu-item:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: var(--text-color, #0b2a33) !important;
+}
+
+html.theme-aqua .isb-flyout-item-active,
+html.theme-aqua .isb-submenu-item-active {
+  color: #04323d !important;
+}
+
+html.theme-aqua .isb-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.theme-aqua .isb-footer:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+html.theme-aqua .isb-footer-active {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-aqua .isb-floating-logo {
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.theme-aqua .isb-floating-logo:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
 
