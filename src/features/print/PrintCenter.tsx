@@ -7,6 +7,7 @@ import { isPackingPrintWizardOpenAtom, isPackingNFCWizardOpenAtom } from '../../
 import { isPrintCenterOpenAtom, printCenterTabAtom, PrintCenterTab } from './printState';
 import { PrintJobsPanel } from './PrintJobsPanel';
 import { verifyDocumentJob, checksumV1 } from '../../lib/documentJobs';
+import { TemplatesTabContent, QueueTabContent } from './TemplatesTab';
 import './printCenter.css';
 
 function PrintTemplatesPlaceholder() {
@@ -169,9 +170,8 @@ export const PrintCenter: React.FC = () => {
 
                 <div className="pc-content" id={`tabpanel-${tab}`} role="tabpanel">
                     {tab === 'queue' && (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8">
-                            <Printer className="w-12 h-12 mb-4 opacity-50" />
-                            <p>{tr('Print jobs appear here before they are processed.')}</p>
+                        <div className="h-full overflow-hidden w-full">
+                            <QueueTabContent />
                         </div>
                     )}
                     
@@ -242,23 +242,8 @@ export const PrintCenter: React.FC = () => {
                     )}
 
                     {tab === 'templates' && (
-                        <div className="flex h-full w-full">
-                            <div className="w-1/2 p-6 border-r border-gray-700/50 flex flex-col gap-4">
-                                <h3 className="text-xl font-semibold mb-2">Configure Label</h3>
-                                <div className="space-y-4">
-                                    <input type="text" placeholder="Title" className="pc-input w-full" />
-                                    <input type="text" placeholder="Subtitle" className="pc-input w-full" />
-                                    <select className="pc-input w-full bg-black/20">
-                                        <option>Standard Format</option>
-                                        <option>Compact Format</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="w-1/2 p-6 flex flex-col items-center justify-center bg-black/10">
-                                <div className="w-64 h-40 bg-white rounded flex items-center justify-center text-black font-mono text-sm border-2 border-dashed border-gray-400">
-                                    [ Preview Box ]
-                                </div>
-                            </div>
+                        <div className="h-full overflow-hidden w-full">
+                            <TemplatesTabContent />
                         </div>
                     )}
                 </div>
