@@ -43,6 +43,7 @@ import { supabase } from '../../lib/supabase';
 import { ScannerCenter } from '../../components/ScannerCenter';
 import { PreviewLabels } from '../../components/PreviewLabels';
 import { tr } from '../../lib/i18n';
+import { trackDocumentJob, recordExport } from '../print/jobTracking';
 
 export const NFCWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isPackingNFCWizardOpenAtom);
@@ -529,6 +530,14 @@ export const LabelWizard: React.FC = () => {
                 if (itemErr) throw itemErr;
             }
 
+            recordExport({
+                templateId: 'lbl-item-template-v4',
+                kind: 'label',
+                season: '826',
+                params: { legacyPrintJobId: job.jobId },
+                getSnapshot: () => rows
+            });
+
             // A reprint must not rewrite the original print date — that is the
             // moment the tag first existed. Only the job log grows.
             if (!isReprint) {
@@ -933,7 +942,11 @@ export const LabelWizard: React.FC = () => {
         }
     }, [quantities, isPrintWorkflowOpen, selectedItems, workbookPrefix]);
 
-    const handleGenerateXLSX = async () => {
+    const handleGenerateXLSX = async () => trackDocumentJob({
+        templateId: 'fmt-label-wizard-xlsx',
+        kind: 'xlsx',
+        season: '826'
+    }, async () => {
         setProgress(p => ({ ...p, xlsx: 10 }));
         try {
             const rows = selectedItems.map(item => {
@@ -965,7 +978,7 @@ export const LabelWizard: React.FC = () => {
             toast.error(`XLSX failed: ${error.message}`);
             setProgress(p => ({ ...p, xlsx: -1 }));
         }
-    };
+    });
 
     const handleGeneratePDF = async () => {
         setProgress(p => ({ ...p, pdf: 5 }));

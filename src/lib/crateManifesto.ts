@@ -8,6 +8,7 @@ import QRCode from 'qrcode';
 import { cmToImperial, extractItemHexString, getTextColorForBg } from './utils';
 import { getVendorColor } from './excelStyles';
 import { generateAxonometricDataUrl, resolveItemColor } from './axonometric';
+import { trackDocumentJob } from '../features/print/jobTracking';
 
 export interface ManifestoItem {
     index: number;            // DB item number (numeric portion from itemId)
@@ -239,6 +240,12 @@ export async function exportCrateManifesto(
     returnType: 'blob' | 'doc' | 'download' = 'download',
     existingDoc?: jsPDF
 ): Promise<Blob | jsPDF | void> {
+    return trackDocumentJob({
+        templateId: 'pdf-crate-manifesto',
+        kind: 'pdf',
+        season: '826',
+        getSnapshot: () => items
+    }, async () => {
     const allManifestoItems = [...items];
     if (meta.packingItems && meta.packingItems.length > 0) {
         meta.packingItems.forEach(pi => {
@@ -1019,6 +1026,7 @@ export async function exportCrateManifesto(
     } else {
         doc.save(`MANIFESTO_${safeId}.pdf`);
     }
+    });
 }
 
 export async function exportCombinedTruckManifesto(

@@ -166,6 +166,7 @@ import { UploadToolsRegistrar } from '../upload/uploadTools';
 import { ControlToolsRegistrar } from '../control/controlTools';
 import { MiscViewToolsRouter } from './miscViewTools';
 import { PrintToolsRegistrar } from '../print/printTools';
+import { trackDocumentJob } from '../print/jobTracking';
 
 // logisticsReadout() is a hook (it reads the crate atoms): one small component per side keeps it unconditional
 const LogisticsReadoutSide: React.FC<{ side: 'left' | 'right' }> = ({ side }) => <>{logisticsReadout()[side]}</>;
@@ -1446,7 +1447,12 @@ export function MainHeader() {
     const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
 
     // ─── SELECTED ITEMS EXPORT (Single Sheet) ─────────────────────────────────
-    const handleExportSelectedXLSX = async () => {
+    const handleExportSelectedXLSX = async () => trackDocumentJob({
+        templateId: 'fmt-inventory-selected-xlsx',
+        kind: 'xlsx',
+        season: '826',
+        getSnapshot: () => ({ selectedIds })
+    }, async () => {
         if (selectedIds.length === 0) {
             toast.error(tr("No items selected"));
             return;
@@ -1631,10 +1637,14 @@ export function MainHeader() {
         } finally {
             setIsExporting(false);
         }
-    };
+    });
 
     // ─── FULL WORKBOOK EXPORT (All Vendors, All Content) ─────────────────────
-    const handleMasterExportXLSX = async () => {
+    const handleMasterExportXLSX = async () => trackDocumentJob({
+        templateId: 'fmt-master-book-326-xlsx',
+        kind: 'xlsx',
+        season: 'legacy'
+    }, async () => {
         setIsExporting(true);
         try {
             const workbook = new ExcelJS.Workbook();
@@ -2734,7 +2744,7 @@ export function MainHeader() {
         } finally {
             setIsExporting(false);
         }
-    };
+    });
 
     // ─── WORKBOOK V2 EXPORT (Rare Earth Format) ──────────────────────────
     useEffect(() => {
@@ -2743,7 +2753,11 @@ export function MainHeader() {
         return () => document.removeEventListener('triggerMasterExport', handler);
     }, []);
 
-    const handleMasterExportXLSX_V2 = async () => {
+    const handleMasterExportXLSX_V2 = async () => trackDocumentJob({
+        templateId: 'fmt-workbook-v2-xlsx',
+        kind: 'xlsx',
+        season: '826'
+    }, async () => {
         setIsExporting(true);
         try {
             const workbook = new ExcelJS.Workbook();
@@ -3550,10 +3564,14 @@ export function MainHeader() {
         } finally {
             setIsExporting(false);
         }
-    };
+    });
 
     // 🛍️ SHOPIFY EXPORT 🛍️
-    const handleShopifyExportXLSX = async () => {
+    const handleShopifyExportXLSX = async () => trackDocumentJob({
+        templateId: 'fmt-shopify-matrixify-main-xlsx',
+        kind: 'xlsx',
+        season: '826'
+    }, async () => {
         setIsShopifyExporting(true);
         try {
             const workbook = new ExcelJS.Workbook();
@@ -4302,7 +4320,7 @@ export function MainHeader() {
         } finally {
             setIsShopifyExporting(false);
         }
-    };
+    });
 
     const handleRefresh = () => {
         window.location.reload();
