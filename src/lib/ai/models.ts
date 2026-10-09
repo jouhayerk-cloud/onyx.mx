@@ -36,14 +36,13 @@ export const AI_MODELS: Record<AiJob, AiModelSpec> = {
     content: { model: 'gemini-2.5-flash', timeoutMs: 60000, jobClass: 'text' },
     segmentation: { model: 'gemini-2.5-flash', thinkingBudget: 0, timeoutMs: 40000, jobClass: 'text' },
     translate: { model: 'gemini-2.5-flash', thinkingBudget: 0, timeoutMs: 30000, jobClass: 'text' },
-    // Background replacement. 3.1 is the only one that can return 2K, which
-    // matters because source photos are ~4000px and 1K is a visible downgrade
-    // in the catalogue. 2.5 is the fallback because it already proved it works
-    // against our key -- if the preview model is not enabled on the account we
-    // still produce an image rather than failing the batch.
+    // Background replacement. Nano Banana 2.1 is the newest image edit model (the 3.1 preview id was scheduled off on
+    // 2026-06-25, so it is gone from the chain). Whether generateContent with imageConfig behaves the same on 2.1 is NOT
+    // proven (its docs show the Interactions API): the fallbacks keep the old proven path, so a rejection costs one failed
+    // call per item, not the batch. 2.5 already proved it works against our key. Check a run log after the change.
     bgReplace: {
-        model: 'gemini-3.1-flash-image-preview',
-        fallbacks: ['gemini-2.5-flash-image'],
+        model: 'gemini-nano-banana-2.1',
+        fallbacks: ['gemini-3.1-flash-image', 'gemini-2.5-flash-image'],
         timeoutMs: 180000,
         jobClass: 'image',
     },

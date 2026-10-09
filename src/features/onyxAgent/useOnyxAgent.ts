@@ -211,7 +211,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         }));
 
         try {
-            const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+            // 2.0 and 1.5 are shut down: 2.5 Flash stays the primary, 3.8 Flash is only a fallback (3.x functionResponse has no call id: test before making it primary)
+            const modelsToTry = ["gemini-2.5-flash", "gemini-3.8-flash"];
             let resp = null;
             let usedModel = "";
             let lastAttemptError = "";
