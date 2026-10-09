@@ -379,7 +379,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                     <div className="flex-1 flex justify-start min-w-0 items-center">
                         {readout?.left}
                         <div className="hidden md:flex">
-                          <IslandLaunchers tools={leftLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
+                          <IslandLaunchers tools={leftLaunchers} onRun={runTool} />
                         </div>
                       </div>
                     <div className="shrink-0 flex items-center justify-center mx-2">
@@ -389,7 +389,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                     </div>
                     <div className="flex-1 flex justify-end min-w-0 items-center">
                         <div className="hidden md:flex">
-                          <IslandLaunchers tools={rightLaunchers} onRun={runTool} showLabels={mode === 'rest' && isHovered} />
+                          <IslandLaunchers tools={rightLaunchers} onRun={runTool} />
                         </div>
                         {readout?.right}
                       <button
