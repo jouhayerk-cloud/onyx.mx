@@ -71,6 +71,7 @@ import {
     type MediaAngle, type MediaView, type GeneratedValue,
     Dialog,
 } from '../../components/ui';
+import { trackDocumentJob } from '../print/jobTracking';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -438,6 +439,12 @@ const XLSX_HEADERS = [
 
 /** The Matrixify sheet: one row per image of each entry. Exported documents stay English. */
 async function buildXlsx(entries: readonly ExportEntry[]): Promise<Blob> {
+    return trackDocumentJob({
+        templateId: 'fmt-shopify-batch-wizard-xlsx',
+        kind: 'xlsx',
+        season: '826',
+        getSnapshot: () => entries
+    }, async () => {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Onyx Dashboard';
     const sheet = workbook.addWorksheet('Shopify Export');
@@ -525,6 +532,7 @@ async function buildXlsx(entries: readonly ExportEntry[]): Promise<Blob> {
 
     const buffer = await workbook.xlsx.writeBuffer();
     return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import { generateCratesListHtml } from './generateCratesListHtml';
 import { generateMasterPackingListXlsx } from '../../lib/xlsxRenderer';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
+import { trackDocumentJob, recordExport } from '../print/jobTracking';
 
 export const ExportCard: React.FC<{
     id: string;
@@ -105,7 +106,7 @@ export const ExportCratesWizard: React.FC<{
         return results;
     };
 
-    const generatePackingListXlsx = async () => {
+    const generatePackingListXlsx = async () => trackDocumentJob({ templateId: 'fmt-crates-wizard-packing-list-xlsx', kind: 'xlsx', season: '826' }, async () => {
         const tid = toast.loading(tr("Generating XLSX Packing List..."));
         setProgress(p => ({ ...p, xlsx: 5 }));
         try {
@@ -118,7 +119,7 @@ export const ExportCratesWizard: React.FC<{
             setProgress(p => ({ ...p, xlsx: -1 }));
             toast.error(tr("Failed to generate XLSX"), { id: tid });
         }
-    };
+    });
 
     const generateAllManifestos = async () => {
         setProgress(p => ({ ...p, allCrates: 5 }));
@@ -244,6 +245,7 @@ export const ExportCratesWizard: React.FC<{
                 timestamp: new Date().toLocaleString()
             };
             const htmlContent = generateCratesListHtml(manifestId, fields, shipmentPayload);
+            recordExport({ templateId: 'html-crates-manifest', kind: 'pdf', season: '826', channel: 'print-dialog', manifestId });
             const blob = new Blob([htmlContent], { type: 'text/html' });
             if (blob) { 
                 setUrls(u => ({ ...u, html: URL.createObjectURL(blob) })); 

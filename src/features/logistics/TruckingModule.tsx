@@ -37,6 +37,7 @@ import gsap from 'gsap';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
+import { trackDocumentJob, recordExport } from '../print/jobTracking';
 
 export const TRUCK_L_CM = 1615;
 export const TRUCK_W_CM = 244;
@@ -1932,7 +1933,7 @@ const TruckExportModal: React.FC<{
         return Array.from(itemMap.values());
     };
 
-    const generateManifesto = async () => {
+    const generateManifesto = async () => trackDocumentJob({ templateId: 'fmt-trucking-manifesto-xlsx', kind: 'xlsx', season: '826' }, async () => {
         setProgress(p => ({ ...p, manifesto: 5 }));
         const items = buildConsolidatedItems();
         const blob = await generateConsolidatedManifestoXlsx(items, bookRate);
@@ -1944,7 +1945,7 @@ const TruckExportModal: React.FC<{
             setProgress(p => ({ ...p, manifesto: -1 }));
             toast.error(tr("Failed to generate Excel file"));
         }
-    };
+    });
 
     const generatePdf = async () => {
         const tid = toast.loading(tr("Generating consolidated trailer manifest..."));
@@ -2127,7 +2128,7 @@ const TruckExportModal: React.FC<{
         }
     };
 
-    const generatePacked = async () => {
+    const generatePacked = async () => trackDocumentJob({ templateId: 'fmt-trucking-crates-spreadsheets-xlsx', kind: 'xlsx', season: '826' }, async () => {
         setProgress(p => ({ ...p, packed: 5 }));
         const rootCrates = truckCrates.filter(c => !c.parent_id);
         const blob = await generateCrateSpreadsheetsXlsx(rootCrates, allCrates, allInventory, bookRate, getItemsFromCrate);
@@ -2139,7 +2140,7 @@ const TruckExportModal: React.FC<{
             setProgress(p => ({ ...p, packed: -1 }));
             toast.error(tr("Failed to generate Excel files"));
         }
-    };
+    });
 
     const triggerDownload = (url: string, filename: string) => {
         const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
@@ -2604,7 +2605,7 @@ const ReadyTruckWizard: React.FC<{
         } catch (err: any) { setProgress(p => ({ ...p, pdf: -1 })); toast.error(err.message || 'Failed', { id: tid }); }
     };
 
-    const generatePackingListXlsx = async () => {
+    const generatePackingListXlsx = async () => trackDocumentJob({ templateId: 'fmt-trucking-trailer-packing-list-xlsx', kind: 'xlsx', season: '826' }, async () => {
         const tid = toast.loading(tr("Generating XLSX Packing List..."));
         setProgress(p => ({ ...p, xlsx: 5 }));
         try {
@@ -2716,7 +2717,7 @@ const ReadyTruckWizard: React.FC<{
             setProgress(p => ({ ...p, xlsx: -1 }));
             toast.error(tr("Failed to generate XLSX"), { id: tid });
         }
-    };
+    });
 
     const generateAllManifestos = async () => {
         setProgress(p => ({ ...p, allCrates: 5 }));
@@ -2840,6 +2841,7 @@ const ReadyTruckWizard: React.FC<{
                 timestamp: new Date().toLocaleString()
             };
             const htmlContent = generatePackingListHtml(manifestId, fields, shipmentPayload);
+            recordExport({ templateId: 'html-trailer-manifest', kind: 'pdf', season: '826', channel: 'print-dialog', manifestId });
             const blob = new Blob([htmlContent], { type: 'text/html' });
             if (blob) { 
                 setUrls(u => ({ ...u, html: URL.createObjectURL(blob) })); 
@@ -4122,6 +4124,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
             // 4. Generate HTML Manifesto
             const htmlContent = generatePackingListHtml(manifestId, f, shipmentPayload);
+            recordExport({ templateId: 'html-trailer-manifest', kind: 'pdf', season: '826', channel: 'print-dialog', manifestId });
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const htmlUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');

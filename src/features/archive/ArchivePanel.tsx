@@ -5,6 +5,7 @@ import { vendors } from '../../lib/consts';
 import { getTextColorForBg } from '../../lib/utils';
 import { useAtomValue } from 'jotai/react';
 import { workbookDensityAtom, workbookViewModeAtom, exchangeRateAtom } from '../../lib/atoms';
+import { trackDocumentJob } from '../print/jobTracking';
 
 const ArchiveBalances = lazy(() => import('./ArchiveBalances'));
 
@@ -59,7 +60,12 @@ export const ArchivePanel: React.FC<{ fallback: React.ReactNode }> = ({ fallback
     );
   }
 
-  const handleExportCSV = () => {
+  const handleExportCSV = () => trackDocumentJob({
+    templateId: 'fmt-archive-season-825-csv',
+    kind: 'csv',
+    season: 'legacy',
+    getSnapshot: () => items
+  }, () => {
     let csv = '';
     const headers = ['VND', 'TAG ID', 'Item Number', 'Date', 'Description', 'Qty', 'Wt.', 'Dimensions'];
     if (isFinanceRole) {
@@ -112,7 +118,7 @@ export const ArchivePanel: React.FC<{ fallback: React.ReactNode }> = ({ fallback
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  });
 
   const pyClass = density === 'compact' ? 'py-1' : 'py-3';
   const isGallery = viewMode === 'gallery';

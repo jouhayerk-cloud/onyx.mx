@@ -28,6 +28,7 @@ import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { ImageOff, LayoutGrid, CheckCircle } from 'lucide-react';
 import { ExportWizard } from '../../components/ExportWizard';
 import { tr } from '../../lib/i18n';
+import { trackDocumentJob, recordExport } from '../print/jobTracking';
 
 /* ─── ONYX MASTER TEMPLATE (V3) ─── */
 const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
@@ -171,7 +172,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
     const [name, setName] = useState(`Onyx_Labels_${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' })}`);
     const [includeImages, setIncludeImages] = useState(false);
 
-    const handleGenerateXLSX = async () => {
+    const handleGenerateXLSX = async () => trackDocumentJob({ templateId: 'fmt-packing-printables-wizard-xlsx', kind: 'xlsx', season: '826' }, async () => {
         setProgress((p: any) => ({ ...p, xlsx: 10 }));
         try {
             const data = items.map((item: any) => {
@@ -219,7 +220,7 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
             setProgress((p: any) => ({ ...p, xlsx: -1 }));
             toast.error(tr("XLSX Generation Failed"));
         }
-    };
+    });
 
     const handleGeneratePDF = async () => {
         setProgress((p: any) => ({ ...p, pdf: 5 }));
@@ -566,7 +567,7 @@ export const PackingModule: React.FC = () => {
     };
 
     /* ── Export XLSX ── */
-    const handleExportXLSX = async () => {
+    const handleExportXLSX = async () => trackDocumentJob({ templateId: 'fmt-packing-raw-xml-xlsx', kind: 'xlsx', season: '826' }, async () => {
         if (isExportingXLSX || selectedIds.size === 0) return;
         setIsExportingXLSX(true);
         const tid = toast.loading(tr("Building XLSX..."));
@@ -594,7 +595,7 @@ export const PackingModule: React.FC = () => {
         } finally {
             setIsExportingXLSX(false);
         }
-    };
+    });
 
     /* ── Export PDF (Manifesto Style) ── */
     const handleStartExport = async (cfg: any) => {
@@ -710,6 +711,7 @@ export const PackingModule: React.FC = () => {
             
             // STEP 3: Open Overlay PREVIEW
             setShowPreviewOverlay(true);
+            recordExport({ templateId: 'lbl-packing-batch', kind: 'label', season: '826' });
             
             toast.success(tr("Wizard Step 1 Complete: XLSX generated. Step 2: Verification Ready."), { id: tid });
         } catch (e: any) {
