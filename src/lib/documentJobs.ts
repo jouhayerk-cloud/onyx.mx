@@ -7,11 +7,17 @@ export type DocumentKind = 'xlsx' | 'pdf' | 'label' | 'csv';
 export type DocumentStatus = 'requested' | 'rendered' | 'printed' | 'downloaded' | 'reprinted' | 'void';
 
 let loggedMissingTable = false;
+// Once the ledger tables are known to be missing (migration not applied yet) stop asking the server for a while:
+// every call would be a 404 in the console and a wasted request.
+let ledgerMissingUntil = 0;
+const LEDGER_RETRY_MS = 5 * 60 * 1000;
+function ledgerDown(): boolean { return Date.now() < ledgerMissingUntil; }
 
 function checkMissingTable(err: any): boolean {
     const code = err?.code || err?.details?.code || '';
     const message = err?.message || '';
-    if (code === '42P01' || message.includes('404') || message.includes('does not exist')) {
+    if (code === '42P01' || code === 'PGRST205' || message.includes('404') || message.includes('does not exist') || message.includes('schema cache')) {
+        ledgerMissingUntil = Date.now() + LEDGER_RETRY_MS;
         if (!loggedMissingTable) {
             console.warn('document_jobs table does not exist yet. Failing softly.');
             loggedMissingTable = true;
@@ -147,6 +153,7 @@ export interface DocumentJob {
 }
 
 export async function recordDocumentJob(job: DocumentJob): Promise<any> {
+    if (ledgerDown()) return null;
     try {
         // With no snapshot the hash covers the identifying envelope only (still a valid dj1 value; verify reports it unverifiable).
         const dataHash = await checksumV1(job.snapshot ? job.snapshot : { kind: job.kind, templateId: job.templateId, season: job.season, params: job.params ?? null });
@@ -215,6 +222,7 @@ export async function recordDocumentJob(job: DocumentJob): Promise<any> {
 }
 
 export async function verifyDocumentJob(id: string): Promise<'match' | 'mismatch' | 'unverifiable'> {
+    if (ledgerDown()) return 'unverifiable';
     try {
         const { data: job, error } = await supabase.from('document_jobs').select('*').eq('id', id).single();
         if (error) {
@@ -235,6 +243,7 @@ export async function verifyDocumentJob(id: string): Promise<'match' | 'mismatch
 }
 
 export async function listDocumentJobs(filter: { season?: '825' | '826', kind?: DocumentKind, limit?: number }): Promise<any[]> {
+    if (ledgerDown()) return [];
     try {
         let query = supabase.from('document_jobs_current').select('*');
         if (filter.season) {
@@ -261,6 +270,7 @@ export async function listDocumentJobs(filter: { season?: '825' | '826', kind?: 
 }
 
 export async function getDocumentJobById(id: string): Promise<any | null> {
+    if (ledgerDown()) return null;
     try {
         if (!id || typeof id !== 'string') return null;
         const { data, error } = await supabase
@@ -284,6 +294,7 @@ export async function getDocumentJobById(id: string): Promise<any | null> {
 }
 
 export async function findDocumentJobsByHash(hash: string, limit = 10): Promise<any[]> {
+    if (ledgerDown()) return [];
     try {
         if (!hash || typeof hash !== 'string') return [];
         const clean = hash.trim();
