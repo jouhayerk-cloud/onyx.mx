@@ -4,13 +4,13 @@ import {
     X, Package, Download, FileText, FileSpreadsheet, Globe, Plus, Trash2 
 } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
-import ExcelJS from 'exceljs';
 
 import { exchangeRateAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, getCrateDisplayName } from '../../lib/utils';
 import { exportCombinedTruckManifesto } from '../../lib/crateManifesto';
 import { generateCratesListHtml } from './generateCratesListHtml';
+import { generateMasterPackingListXlsx } from '../../lib/xlsxRenderer';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
 
@@ -109,76 +109,8 @@ export const ExportCratesWizard: React.FC<{
         const tid = toast.loading(tr("Generating XLSX Packing List..."));
         setProgress(p => ({ ...p, xlsx: 5 }));
         try {
-            const wb = new ExcelJS.Workbook();
-            const ws = wb.addWorksheet('Master Packing List');
-
-            const headerFill: any = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF97316' } };
-            const sectionFill: any = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
-            const textWhite: any = { color: { argb: 'FFFFFFFF' }, bold: true };
-
-            ws.addRow(['ONYX LOGISTICS · MASTER PACKING LIST']);
-            ws.getCell('A1').font = { size: 16, bold: true, color: { argb: 'FFF97316' } };
-            ws.addRow([`Exported At: ${new Date().toLocaleString()}`]);
-            ws.addRow([]);
-
-            ws.addRow(['SHIPMENT METADATA']);
-            ws.getRow(4).font = { bold: true };
-            ws.addRow(['Reference', fields.shipmentRef]);
-            ws.addRow(['Senders', (fields.senders || []).join(', ') || 'N/A']);
-            ws.addRow(['Truck Plates', fields.truckPlates || 'N/A']);
-            ws.addRow(['Notes', fields.notes || 'N/A']);
-            ws.addRow([]);
-
-            const startRow = ws.rowCount + 1;
-            ws.addRow(['Crate / Unit', 'Book TAG ID', 'Qty', 'Description', 'Dimensions (CM)', 'Weight (KG)', 'Sub-Container']);
-            const headerRow = ws.getRow(startRow);
-            headerRow.font = textWhite;
-            headerRow.eachCell(cell => { cell.fill = headerFill; cell.alignment = { horizontal: 'center' }; });
-
-            ws.columns = [
-                { key: 'crate', width: 25 },
-                { key: 'tag', width: 22 },
-                { key: 'qty', width: 8 },
-                { key: 'desc', width: 50 },
-                { key: 'dims', width: 22 },
-                { key: 'weight', width: 12 },
-                { key: 'box', width: 25 }
-            ];
-
-            selectedCrates.forEach((crate, cIdx) => {
-                const { label } = getCrateDisplayName(crate, allCrates, allInventory);
-                
-                const sRow = ws.addRow([`UNIT ${cIdx + 1}: ${label.toUpperCase()}`]);
-                ws.mergeCells(sRow.number, 1, sRow.number, 7);
-                sRow.font = { bold: true };
-                sRow.getCell(1).fill = sectionFill;
-
-                const items = getItemsFromCrate(crate);
-                items.forEach(item => {
-                    const inv = item.inv; const data = inv.data || {};
-                    const norm = normalizeInventoryData(inv);
-                    const calculated = calculateCodesAndPrices(norm, bookRate, '326');
-                    const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
-                    const desc = [data.color, data.material, data.shape, data.shortDescription].filter(Boolean).join(' - ');
-                    const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×');
-                    
-                    const row = ws.addRow({
-                        crate: label,
-                        tag: tag,
-                        qty: item.qty,
-                        desc: desc || 'Artifact',
-                        dims: dims || 'N/A',
-                        weight: data.weightKg || data.weight_kg || 0,
-                        box: item.boxLabel || ''
-                    });
-                    row.getCell('qty').alignment = { horizontal: 'center' };
-                    row.getCell('weight').alignment = { horizontal: 'center' };
-                });
-            });
-
+            const blob = await generateMasterPackingListXlsx(selectedCrates, allCrates, allInventory, bookRate, fields, getItemsFromCrate);
             setProgress(p => ({ ...p, xlsx: 90 }));
-            const buffer = await wb.xlsx.writeBuffer();
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             setUrls(u => ({ ...u, xlsx: URL.createObjectURL(blob) }));
             setProgress(p => ({ ...p, xlsx: 100 }));
             toast.success(tr("Packing List Ready"), { id: tid });

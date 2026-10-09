@@ -27,6 +27,7 @@ import toast from '../onyxIsland/notify/toast';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, getCrateDisplayName } from '../../lib/utils';
 import ExcelJS from 'exceljs';
+import { generateConsolidatedManifestoXlsx, generateCrateSpreadsheetsXlsx } from '../../lib/xlsxRenderer';
 import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto, ManifestoMeta } from '../../lib/crateManifesto';
 
 import * as THREE from 'three';
@@ -1934,32 +1935,8 @@ const TruckExportModal: React.FC<{
     const generateManifesto = async () => {
         setProgress(p => ({ ...p, manifesto: 5 }));
         const items = buildConsolidatedItems();
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('Manifesto');
-        ws.columns = [
-            { header: 'Book TAG ID', key: 'tag', width: 20 },
-            { header: 'Quantity', key: 'qty', width: 10 },
-            { header: 'Description', key: 'desc', width: 50 },
-            { header: 'Weight (KG)', key: 'weight', width: 15 },
-            { header: 'Dimensions (CM)', key: 'dims', width: 20 },
-            { header: 'Acq. Cost MXN', key: 'cost', width: 20 },
-        ];
-        items.forEach((item, idx) => {
-            setProgress(p => ({ ...p, manifesto: 5 + Math.round((idx / items.length) * 80) }));
-            const inv = item.inv;
-            const data = inv.data || {};
-            const norm = normalizeInventoryData(inv);
-            const calculated = calculateCodesAndPrices(norm, bookRate, '326');
-            const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
-            const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
-            const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
-            const cost = calculated.acquisitionCostMxn || 0;
-            ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims, cost });
-        });
-        ws.getRow(1).font = { bold: true };
+        const blob = await generateConsolidatedManifestoXlsx(items, bookRate);
         setProgress(p => ({ ...p, manifesto: 95 }));
-        const buffer = await wb.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         if (blob) {
             setUrls(u => ({ ...u, manifesto: URL.createObjectURL(blob) }));
             setProgress(p => ({ ...p, manifesto: 100 }));
@@ -2152,46 +2129,9 @@ const TruckExportModal: React.FC<{
 
     const generatePacked = async () => {
         setProgress(p => ({ ...p, packed: 5 }));
-        const wb = new ExcelJS.Workbook();
-        
-        // Filter to only ROOT containers
         const rootCrates = truckCrates.filter(c => !c.parent_id);
-        
-        for (let i = 0; i < rootCrates.length; i++) {
-            setProgress(p => ({ ...p, packed: 5 + Math.round((i / rootCrates.length) * 80) }));
-            const crate = rootCrates[i];
-            const { label } = getCrateDisplayName(crate, allCrates, allInventory);
-            const safeLabel = label.replace(/[\[\]\*\/\?\:\\]/g, '').substring(0, 31) || `Crate ${i+1}`;
-            let sheetName = safeLabel; let counter = 1;
-            while (wb.worksheets.find(s => s.name === sheetName)) sheetName = `${safeLabel.substring(0, 28)}_${counter++}`;
-            const ws = wb.addWorksheet(sheetName);
-            ws.columns = [
-                { header: 'Book TAG ID', key: 'tag', width: 20 }, { header: 'Quantity', key: 'qty', width: 10 },
-                { header: 'Description', key: 'desc', width: 40 }, { header: 'Weight (KG)', key: 'weight', width: 15 },
-                { header: 'Dimensions (CM)', key: 'dims', width: 20 },
-                { header: 'Container', key: 'container', width: 25 }
-            ];
-            getItemsFromCrate(crate).forEach((item: any) => {
-                const inv = item.inv; const data = inv.data || {};
-                const norm = normalizeInventoryData(inv);
-                const calculated = calculateCodesAndPrices(norm, bookRate, '326');
-                const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
-                const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
-                const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
-                ws.addRow({ 
-                    tag, 
-                    qty: item.qty, 
-                    desc: desc || 'Artifact', 
-                    weight: data.weightKg || data.weight_kg || '', 
-                    dims,
-                    container: item.packetIn || '' // Show nested box label if applicable
-                });
-            });
-            ws.getRow(1).font = { bold: true };
-        }
+        const blob = await generateCrateSpreadsheetsXlsx(rootCrates, allCrates, allInventory, bookRate, getItemsFromCrate);
         setProgress(p => ({ ...p, packed: 95 }));
-        const buffer = await wb.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         if (blob) {
             setUrls(u => ({ ...u, packed: URL.createObjectURL(blob) }));
             setProgress(p => ({ ...p, packed: 100 }));
