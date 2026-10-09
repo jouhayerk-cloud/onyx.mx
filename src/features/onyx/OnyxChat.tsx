@@ -246,11 +246,11 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             }));
             contents.push({ role: 'user', parts: [{ text: finalInput }] });
 
+            // Explicit chat models only: the old filter over every discovered model could pick an image, tts or audio id first,
+            // and 2.0 and 1.5 are shut down.
             const modelsToTry = [
-                ...availableModels.filter(m => m.includes('2.5') || m.includes('2.0')),
                 "gemini-2.5-flash",
-                "gemini-2.0-flash",
-                "gemini-1.5-flash"
+                "gemini-3.8-flash"
             ];
             const uniqueModels = Array.from(new Set(modelsToTry));
             

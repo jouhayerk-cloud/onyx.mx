@@ -13,12 +13,12 @@ const corsHeaders = {
 
 const ALLOWED_ROLES = ["Developer", "Admin", "ClientBoss"];
 const ALLOWED_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.1-pro-preview",
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-2.5-pro",
-  "gemini-2.0-pro-exp",
-  "gemini-1.5-pro"
+  "gemini-2.5-pro"
 ];
 
 async function authenticateCaller(req: Request) {
@@ -135,6 +135,9 @@ serve(async (req: Request) => {
   if (gcIn.responseSchema !== undefined && typeof gcIn.responseSchema === "object") gc.responseSchema = gcIn.responseSchema;
   const budget = clamp(gcIn.thinkingConfig?.thinkingBudget, -1, MAX_OUTPUT_TOKENS);
   if (budget !== undefined) gc.thinkingConfig = { thinkingBudget: budget };
+  // Gemini 3.x uses a level instead of a budget
+  const level = gcIn.thinkingConfig?.thinkingLevel;
+  if (level === "low" || level === "medium" || level === "high") gc.thinkingConfig = { ...(gc.thinkingConfig ?? {}), thinkingLevel: level };
   payload.generationConfig = gc;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent`;
