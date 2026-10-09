@@ -42,7 +42,7 @@ import {
     type PipelineContext,
     type ProcessingMode,
 } from '../catalogHubPipeline';
-import type { BgQuality } from '../bgReplace';
+import type { BgQuality, BgRoom } from '../bgReplace';
 import type { DonorCandidate } from '../variationMatch';
 import { collectAllImages, getCleanImageUrl, normalizeInventoryData } from '../utils';
 import { supabase } from '../supabase';
@@ -1530,6 +1530,8 @@ export interface UseAiRunOptions {
     processingMode?: ProcessingMode;
     /** Defaults to '2K'. */
     bgQuality?: BgQuality;
+    /** Which studio the background replacement paints. Defaults to 'dark'. Read when each photo starts. */
+    bgRoom?: BgRoom;
     user?: unknown;
     /** The whole catalogue, for the donor path (items without photos). Built into a pool once per run. */
     donorInventory?: readonly any[];
@@ -1682,6 +1684,7 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
             checkAbort,
             user: o.user,
             bgQuality: o.bgQuality || '2K',
+            bgRoom: o.bgRoom || 'dark',
             cancelTokens,
             // Unsaved state is the reducer's `dirty`, per item.
             setHasUnsavedChanges: () => {},

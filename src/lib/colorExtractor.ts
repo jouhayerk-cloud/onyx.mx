@@ -381,6 +381,8 @@ export async function generateBitmapAndHexMap(
                             // here, which is the failure the whole background
                             // replacement path exists to avoid. If a lighter
                             // backdrop is ever wanted, change both files together.
+                            // The light-room option (bgReplace 'light') does neither:
+                            // catalogHubPipeline never samples a light-room frame.
                             //
                             // What happens when they disagree: at rgb(46,46,46) the
                             // backdrop survives this guard, gains the +58.8

@@ -54,11 +54,31 @@ import {
  */
 export const BG_PROMPT_VERSION = 'dark-room-v7';
 
+/**
+ * The light room is its own prompt line with its own version. bgCacheKey leaves
+ * the dark key exactly as it was, so adding the light room invalidated no
+ * stored dark result, and a dark result can never satisfy a light request (or
+ * the reverse): the stored cleanedKey differs, so switching rooms re-cleans.
+ *
+ * It is NOT covered by the coupling to colorExtractor.ts described above: that
+ * guard drops RGB <= 45 and would count a light grey backdrop as stone.
+ * catalogHubPipeline therefore never samples a light-room frame for colour
+ * (isLightRoomKey): it reads the cut-out, else the original photo.
+ *
+ * Wording was written in imgCleaner.html and is UNTESTED against stock:
+ * check a few white and cream pieces first, where a light backdrop has the
+ * least contrast with the stone edge.
+ */
+export const BG_LIGHT_PROMPT_VERSION = 'light-room-v1';
+
 export type BgQuality = '1K' | '2K';
 
+/** Which studio the background is repainted as. */
+export type BgRoom = 'dark' | 'light';
+
 /*
- * The model chain (3.1 image preview, then 2.5 image) lives in
- * lib/ai/models.ts as AI_MODELS.bgReplace, with the reasoning for the order.
+ * The model chain lives in lib/ai/models.ts as AI_MODELS.bgReplace, with the
+ * reasoning for the order.
  */
 
 /** Ratios the image models accept. Snapping to one stops silent reframing. */
@@ -116,6 +136,20 @@ export interface BgSubject {
     description?: string;
 }
 
+/** The three phrases that change between rooms; everything else in the prompt is shared. */
+const ROOMS: Record<BgRoom, { roomName: string; envDesc: string; bgDesc: string }> = {
+    dark: {
+        roomName: 'dark room',
+        envDesc: 'empty dark studio room',
+        bgDesc: 'a large empty near-black room receding into deep shadow, thrown far out of focus as if photographed at a wide aperture: smooth and soft, the far wall and floor dissolving into darkness. Keep the piece itself sharp from front to back.',
+    },
+    light: {
+        roomName: 'studio room',
+        envDesc: 'empty light grey studio room',
+        bgDesc: 'a large empty light grey room bathed in soft, diffused light, thrown far out of focus as if photographed at a wide aperture: smooth and soft, the far wall and floor fading into a gentle brightness. Keep the piece itself sharp from front to back.',
+    },
+};
+
 /**
  * The fidelity clauses are the ones that matter. Without them the model
  * "cleans up" the piece: it smooths rough quarry edges into machined ones,
@@ -158,23 +192,24 @@ export interface BgSubject {
  * background lighter, raise that threshold in the same commit -- but it costs
  * dark stone, which is why the wording moved instead.
  */
-export function buildDarkRoomPrompt(subject: BgSubject): string {
+export function buildRoomPrompt(subject: BgSubject, room: BgRoom = 'dark'): string {
     const piece = [subject.material, subject.shape].filter(Boolean).join(' ').trim()
         || 'natural stone artisan piece';
     const detail = subject.description ? ` (${subject.description})` : '';
+    const r = ROOMS[room];
 
     return `Replace ONLY the background of this photograph. The subject is a handmade ${piece}${detail} in natural Mexican stone.
 
 Keep the subject exactly as photographed:
 - Reproduce it pixel-for-pixel. Do not restyle, retouch, straighten, recolour, relight or "improve" it.
 - Its natural veining, mineral banding and dark or near-black patches are STONE, not dirt or shadow. Preserve every one at its original tone.
-- The stone keeps its own colour all the way out to its outline. The dark room and its shadows stay behind the piece and outside it, never spilling onto its surface -- especially around mirror glass, openings and cut-outs, where the stone edge stays clean and unbroken.
+- The stone keeps its own colour all the way out to its outline. The ${r.roomName} and its shadows stay behind the piece and outside it, never spilling onto its surface -- especially around mirror glass, openings and cut-outs, where the stone edge stays clean and unbroken.
 - Its rough, unpolished, chipped or bark-like outer edges are part of the piece. Never smooth, trim or tidy them.
 - If any part is translucent or lit from within, preserve that glow and its exact colour.
 - Keep every component: bases, arms, fittings, hardware, mirror glass and each separate piece in a set.
 
-Replace the surroundings with an empty dark studio room:
-- Behind the subject, a large empty near-black room receding into deep shadow, thrown far out of focus as if photographed at a wide aperture: smooth and soft, the far wall and floor dissolving into darkness. Keep the piece itself sharp from front to back.
+Replace the surroundings with an ${r.envDesc}:
+- Behind the subject, ${r.bgDesc}
 - The piece is usually standing on flattened cardboard boxes or packing sheets. Those are floor covering, not part of the piece: put the studio floor in their place at the height the piece already rests at, so it stands directly on the floor.
 - Add a soft contact shadow where the piece meets the floor, consistent with the existing lighting direction.
 - Remove all props, packing material, cardboard, pallets, tools, people, hands, text and watermarks.
@@ -199,6 +234,7 @@ export interface BgResult {
     dataUrl: string;
     modelUsed: string;
     aspectRatio: string;
+    room: BgRoom;
 }
 
 /** The SDK's ApiError carries the HTTP status; a fetch failure does not. */
@@ -249,7 +285,8 @@ async function generateImageOnce(
 }
 
 /**
- * Ask the model for the piece standing in an empty dark room.
+ * Ask the model for the piece standing in an empty studio room, dark (the
+ * default) or light.
  *
  * Walks the AI_MODELS.bgReplace chain, and within each model retries once
  * without `imageConfig` -- older image models reject the field outright, and
@@ -269,17 +306,17 @@ async function generateImageOnce(
  * and model gave every attempt its own full timeout and could hold that slot
  * for twelve minutes per photo.
  */
-export async function replaceBackgroundWithDarkRoom(
+export async function replaceBackground(
     imageUrl: string,
     subject: BgSubject,
-    opts: { quality?: BgQuality; onLog?: (msg: string) => void; signal?: AbortSignal } = {},
+    opts: { quality?: BgQuality; room?: BgRoom; onLog?: (msg: string) => void; signal?: AbortSignal } = {},
 ): Promise<BgResult> {
-    const { quality = '2K', onLog, signal } = opts;
+    const { quality = '2K', room = 'dark', onLog, signal } = opts;
     if (!getGeminiKey()) throw new AiKeyMissingError();
 
     const source = await loadImageForGeneration(imageUrl);
     const aspectRatio = nearestAspectRatio(source.width, source.height);
-    const prompt = buildDarkRoomPrompt(subject);
+    const prompt = buildRoomPrompt(subject, room);
 
     const requestParts = [
         { inlineData: { mimeType: source.mimeType, data: source.data } },
@@ -304,7 +341,7 @@ export async function replaceBackgroundWithDarkRoom(
                     const remaining = deadline - Date.now();
                     if (remaining <= 0) throw new AiTimeoutError(timeoutMs);
                     try {
-                        onLog?.(`[ WAIT ] ${model}${withImageConfig ? ` @ ${quality}` : ''}...`);
+                        onLog?.(`[ WAIT ] ${model}${withImageConfig ? ` @ ${quality}` : ''}${room === 'light' ? ' (light room)' : ''}...`);
                         const response = await generateImageOnce(model, requestParts, config, remaining, signal);
 
                         const image = extractImagePart(response);
@@ -318,6 +355,7 @@ export async function replaceBackgroundWithDarkRoom(
                             dataUrl: `data:${image.mimeType};base64,${image.data}`,
                             modelUsed: model,
                             aspectRatio,
+                            room,
                         };
                     } catch (err: any) {
                         if (err instanceof AiCancelledError || err instanceof AiKeyMissingError) throw err;
@@ -356,8 +394,12 @@ export const hashString = (input: string): string => {
  * Identifies a generated image by everything that would change it. A rerun
  * whose key already matches what is stored has nothing to do.
  */
-export const bgCacheKey = (sourceUrl: string, quality: BgQuality): string =>
-    hashString(`${BG_PROMPT_VERSION}|${quality}|${sourceUrl}`);
+export const bgCacheKey = (sourceUrl: string, quality: BgQuality, room: BgRoom = 'dark'): string =>
+    hashString(`${room === 'light' ? BG_LIGHT_PROMPT_VERSION : BG_PROMPT_VERSION}|${quality}|${sourceUrl}`);
+
+/** True when a stored cleanedKey names a light-room render of `sourceUrl`, at either quality. */
+export const isLightRoomKey = (key: string | undefined | null, sourceUrl: string): boolean =>
+    !!key && (['1K', '2K'] as const).some(q => key === bgCacheKey(sourceUrl, q, 'light'));
 
 
 /**

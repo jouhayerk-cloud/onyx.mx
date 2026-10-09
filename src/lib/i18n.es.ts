@@ -3247,5 +3247,9 @@ export const esCatalog: Record<string, string> = {
   'Archived season 825 data export': 'Exportación de datos archivados de la temporada 825',
   'Vendor Batch Import (XLSX)': 'Importación por lotes de proveedores (XLSX)',
   'Vendor batch import template': 'Plantilla de importación por lotes de proveedores',
-
+  'Studio room': 'Fondo de estudio',
+  'Dark room': 'Estudio oscuro',
+  'Light room': 'Estudio claro',
+  'Near-black studio behind the piece (the default)': 'Estudio casi negro detrás de la pieza (el predeterminado)',
+  'Soft light grey studio behind the piece. Colours are read from the cut-out or the original photo, never from this background.': 'Estudio gris claro y suave detrás de la pieza. Los colores se leen del recorte o de la foto original, nunca de este fondo.',
 };

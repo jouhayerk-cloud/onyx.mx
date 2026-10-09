@@ -1,5 +1,5 @@
 import { processVideoWithGemini } from './videoAI';
-import { replaceBackgroundWithDarkRoom, uploadCleanedImage, bgCacheKey, type BgQuality } from './bgReplace';
+import { replaceBackground, uploadCleanedImage, bgCacheKey, isLightRoomKey, type BgQuality, type BgRoom } from './bgReplace';
 import { supabase } from './supabase';
 import {
     getCleanImageUrl,
@@ -113,6 +113,8 @@ export interface PipelineContext {
     callGemini?: (prompt: string, imgData: string | null, timeoutMs?: number, modelId?: string, responseSchema?: any) => Promise<any>;
     user: any;
     bgQuality: BgQuality;
+    /** Which studio the background is repainted as. Defaults to 'dark'. */
+    bgRoom?: BgRoom;
     cancelTokens: { current: Record<string, boolean> };
     setHasUnsavedChanges: (val: boolean) => void;
     /** Optional: used to copy the hero's text onto its sibling photos' cards. */
@@ -298,7 +300,7 @@ interface Cutout {
 }
 
 export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
-    const { updateOp, logOp, checkAbort, user, bgQuality, cancelTokens, setHasUnsavedChanges, setQueue } = ctx;
+    const { updateOp, logOp, checkAbort, user, bgQuality, bgRoom = 'dark', cancelTokens, setHasUnsavedChanges, setQueue } = ctx;
     if (cancelTokens.current[op.id]) return;
 
     const item = toPipelineItem(op.item);
@@ -589,7 +591,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                 // place where a dark vein or a rough edge gets mistaken for
                 // background.
                 if (cleanImage) {
-                    const cacheKey = bgCacheKey(imageUrl, bgQuality);
+                    const cacheKey = bgCacheKey(imageUrl, bgQuality, bgRoom);
                     if (result.cleanedKey === cacheKey && result.cleanedUrl && !op.forceRecleanImage) {
                         logOp(op.id, '[ SKIP ] Background already replaced for this image');
                         mark('img_clean', 'done');
@@ -598,10 +600,10 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                             updateOp(op.id, { progress: 20, stepLabel: 'Replacing background...' });
                             const { dataUrl, modelUsed } = await checkAbort(
                                 op.id,
-                                replaceBackgroundWithDarkRoom(
+                                replaceBackground(
                                     imageUrl,
                                     { shape: item.shape, material: item.material, description: item.type },
-                                    { quality: bgQuality, onLog: (m) => logOp(op.id, m), signal: cancel.signal },
+                                    { quality: bgQuality, room: bgRoom, onLog: (m) => logOp(op.id, m), signal: cancel.signal },
                                 ),
                                 // No overall timeout here: each model attempt has
                                 // its own (AI_MODELS.bgReplace), and a timeout at
@@ -771,7 +773,12 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
         const hexWanted = explicit ? wants('hex_map') : true;
         if (!isVideo && (hexWanted || needColorHint)) {
             try {
-                const colorSource = getCleanImageUrl(result.cleanedUrl) || getCleanImageUrl(result.cutoutUrl) || imageUrl;
+                // A light-room frame is never sampled: its backdrop is not
+                // under colorExtractor's black-cloth guard, so the room would
+                // be measured as the stone. The cut-out (transparent
+                // backdrop), else the original photo, instead.
+                const lightFrame = isLightRoomKey(result.cleanedKey, imageUrl);
+                const colorSource = (!lightFrame && getCleanImageUrl(result.cleanedUrl)) || getCleanImageUrl(result.cutoutUrl) || imageUrl;
                 const bitmapRes = await generateBitmapAndHexMap(colorSource, 20, 20, 80, 149, 61, 199, item.material, item.shape, item.vendorColor);
                 // generateBitmapAndHexMap never throws: on a load failure, a
                 // CORS refusal or its timeout it returns an all-#FFFFFF grid,
