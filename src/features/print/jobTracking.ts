@@ -14,6 +14,8 @@ export interface TrackMeta {
     manifestId?: string;
     crateLogisticsId?: string;
     itemCount?: number;
+    workbook?: string;            // e.g. 'v326' when the season alone does not name the book
+    legacyPrintJobId?: string;    // id of the print_jobs row the label wizard already wrote
 }
 
 export interface TrackedJob {
@@ -21,7 +23,8 @@ export interface TrackedJob {
     fileName?: string;
     at: string;
     outputBytes?: number;
-    ok: boolean;
+    ok: boolean;          // no error was thrown by the generator
+    verified?: boolean;   // an output (blob, bytes or text) was seen; false for handlers that save the file themselves
 }
 
 const recentTracked: TrackedJob[] = [];
@@ -47,8 +50,43 @@ function generateId(): string {
 }
 
 function generateJobRef(season: string): string {
-    return `DJ-${season}-${Date.now().toString(36).toUpperCase()}`;
+    return `DJ-${season}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
+
+
+// The ledger needs identities, not content: keep only id-like keys of each record so that prices, costs, image urls and
+// personal data never reach document_jobs.data_snapshot (and the outbox stays small). Deterministic, capped.
+const ID_KEYS = ['id', 'row', 'itemId', 'item_id', 'tagId', 'tag_id', 'bookBarcode', 'book_barcode', 'barcode', 'qty', 'quantity', 'copies', 'crateId', 'crate_id', 'label', 'manifestId'];
+const MAX_SNAPSHOT_ROWS = 5000;
+
+function pickIds(o: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const k of ID_KEYS) {
+        const v = o[k];
+        if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') out[k] = v;
+    }
+    return out;
+}
+
+function minimizeSnapshot(v: unknown, depth = 0): unknown {
+    if (v === null || v === undefined) return v;
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
+    if (Array.isArray(v)) return v.slice(0, MAX_SNAPSHOT_ROWS).map(x => minimizeSnapshot(x, depth + 1));
+    if (typeof v === 'object' && depth < 4) {
+        const o = v as Record<string, unknown>;
+        const out: Record<string, unknown> = pickIds(o);
+        for (const k of Object.keys(o)) {
+            const x = o[k];
+            if (k in out) continue;
+            if (Array.isArray(x)) out[k] = minimizeSnapshot(x, depth + 1);
+            else if (x && typeof x === 'object' && (k === 'inv' || k === 'data' || k === 'item')) out[k] = pickIds(x as Record<string, unknown>);
+        }
+        return out;
+    }
+    return undefined;
+}
+
+const OUTBOX_CAP = 200;
 
 async function saveJobToOutbox(job: DocumentJob): Promise<void> {
     const item = {
@@ -70,7 +108,9 @@ async function saveJobToOutbox(job: DocumentJob): Promise<void> {
                 if (!db.objectStoreNames.contains('outbox')) return;
                 try {
                     const tx = db.transaction('outbox', 'readwrite');
-                    tx.objectStore('outbox').put(item);
+                    const store = tx.objectStore('outbox');
+                    const cnt = store.count();
+                    cnt.onsuccess = () => { if (cnt.result < OUTBOX_CAP) store.put(item); };
                     tx.oncomplete = () => {
                         flushOutbox().catch(() => {});
                     };
@@ -82,7 +122,7 @@ async function saveJobToOutbox(job: DocumentJob): Promise<void> {
             const OUTBOX_KEY = 'onyx_document_jobs_outbox';
             const existing = JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]');
             existing.push(item);
-            localStorage.setItem(OUTBOX_KEY, JSON.stringify(existing));
+            localStorage.setItem(OUTBOX_KEY, JSON.stringify(existing.slice(-OUTBOX_CAP)));
             flushOutbox().catch(() => {});
         }
     } catch (e) {
@@ -129,7 +169,7 @@ async function processRecord(meta: TrackMeta, result?: unknown): Promise<void> {
     let snapshotData: any;
     if (meta.getSnapshot) {
         try {
-            snapshotData = meta.getSnapshot();
+            snapshotData = minimizeSnapshot(meta.getSnapshot());
         } catch (e) {
             // fail soft
         }
@@ -147,11 +187,13 @@ async function processRecord(meta: TrackMeta, result?: unknown): Promise<void> {
         season: season === 'legacy' ? '825' : '826',
         manifestId: meta.manifestId,
         crateId: meta.crateLogisticsId,
-        params: meta.params,
+        params: { ...(meta.params || {}), verified: outputBytes !== undefined },
         snapshot: snapshotData,
+        workbook: meta.workbook,
+        legacyPrintJobId: meta.legacyPrintJobId,
         outputSha256,
         outputBytes,
-        fileName: meta.fileName,
+        fileName: meta.fileName ?? `${meta.templateId}_${new Date().toISOString().slice(0, 10)}`,
         channel: meta.channel,
     };
 
@@ -174,7 +216,8 @@ async function processRecord(meta: TrackMeta, result?: unknown): Promise<void> {
         fileName: meta.fileName,
         at: new Date().toISOString(),
         outputBytes,
-        ok
+        ok,
+        verified: outputBytes !== undefined
     });
 }
 

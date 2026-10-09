@@ -534,7 +534,7 @@ export const LabelWizard: React.FC = () => {
                 templateId: 'lbl-item-template-v4',
                 kind: 'label',
                 season: '826',
-                params: { legacyPrintJobId: job.jobId },
+                legacyPrintJobId: job.jobId,
                 getSnapshot: () => rows
             });
 

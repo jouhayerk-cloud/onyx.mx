@@ -96,7 +96,9 @@ create policy dji_insert on public.document_job_items for insert to authenticate
 revoke update, delete, truncate on public.document_jobs, public.document_job_events, public.document_job_items from anon, authenticated;
 
 create function public.document_jobs_block_mutation() returns trigger
-language plpgsql as $$
+language plpgsql
+set search_path = ''
+as $$
 begin
   raise exception 'document ledger is append-only (% on %)', tg_op, tg_table_name;
 end $$;

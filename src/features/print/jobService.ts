@@ -108,7 +108,12 @@ export async function flushOutbox(): Promise<void> {
                 if (res) {
                     await removeFromOutbox(item.id);
                 } else {
-                    break;
+                    const code = typeof (docJobs as any).getLastRecordErrorCode === 'function' ? (docJobs as any).getLastRecordErrorCode() : null;
+                    if (code && /^(22|23)/.test(code)) {
+                        await removeFromOutbox(item.id);   // permanent data error (constraint, invalid value): retrying can never succeed, do not block the rest
+                        continue;
+                    }
+                    break;   // network or missing table: keep it and stop, try again later
                 }
             } else if (item.type === 'event') {
                 const mod = docJobs as any;
@@ -117,10 +122,10 @@ export async function flushOutbox(): Promise<void> {
                     if (ok) {
                         await removeFromOutbox(item.id);
                     } else {
-                        break;
+                        continue;
                     }
                 } else {
-                    break;
+                    continue;   // no status writer yet: leave the event queued but do not block the jobs behind it
                 }
             }
         }
@@ -144,7 +149,7 @@ function generateId(): string {
 }
 
 function generateJobRef(season: string): string {
-    return `DJ-${season}-${Date.now().toString(36).toUpperCase()}`;
+    return `DJ-${season}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
 export interface RunDocumentJobOptions {

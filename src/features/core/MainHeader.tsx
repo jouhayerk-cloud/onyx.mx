@@ -1643,7 +1643,8 @@ export function MainHeader() {
     const handleMasterExportXLSX = async () => trackDocumentJob({
         templateId: 'fmt-master-book-326-xlsx',
         kind: 'xlsx',
-        season: 'legacy'
+        season: 'legacy',
+        workbook: 'v326'
     }, async () => {
         setIsExporting(true);
         try {

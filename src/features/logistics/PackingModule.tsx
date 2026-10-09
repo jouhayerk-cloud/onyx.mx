@@ -711,7 +711,6 @@ export const PackingModule: React.FC = () => {
             
             // STEP 3: Open Overlay PREVIEW
             setShowPreviewOverlay(true);
-            recordExport({ templateId: 'lbl-packing-batch', kind: 'label', season: '826' });
             
             toast.success(tr("Wizard Step 1 Complete: XLSX generated. Step 2: Verification Ready."), { id: tid });
         } catch (e: any) {
