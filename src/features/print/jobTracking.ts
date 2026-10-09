@@ -178,9 +178,19 @@ async function processRecord(meta: TrackMeta, result?: unknown): Promise<void> {
     });
 }
 
+// A combined export (params.combined) calls the single-document exporters many times: only the combined job is recorded.
+let combinedDepth = 0;
+
 export async function trackDocumentJob<T>(meta: TrackMeta, run: () => Promise<T> | T): Promise<T> {
-    const result = await run();
-    processRecord(meta, result).catch(() => {});
+    const isCombined = meta.params?.combined === true;
+    if (isCombined) combinedDepth++;
+    let result: T;
+    try {
+        result = await run();
+    } finally {
+        if (isCombined) combinedDepth--;
+    }
+    if (isCombined || combinedDepth === 0) processRecord(meta, result).catch(() => {});
     return result;
 }
 

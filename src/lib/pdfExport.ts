@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
 import { generateAxonometricDataUrl, resolveItemColor } from './axonometric';
+import { trackDocumentJob } from '../features/print/jobTracking';
 
 // We accept a generalized artifact structure so different modules can use it
 export interface CatalogArtifact {
@@ -1152,6 +1153,12 @@ export async function exportCatalogPdf(
     output: 'download' | 'blob' = 'download',
     onStats?: (stats: CatalogExportStats) => void,
 ) {
+    return trackDocumentJob({
+        templateId: 'pdf-inventory-sheet',
+        kind: 'pdf',
+        season: '826',
+        getSnapshot: () => results
+    }, async () => {
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
 
@@ -1341,4 +1348,5 @@ export async function exportCatalogPdf(
     const safeTitle = (config.title || 'ArtOfDecor').replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_');
     doc.save(`${safeTitle}_${new Date().toISOString().slice(0, 10)}.pdf`);
     onProgress?.(100, 'Catalogue Downloaded');
+    });
 }

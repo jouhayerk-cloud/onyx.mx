@@ -1035,6 +1035,12 @@ export async function exportCombinedTruckManifesto(
     onProgress?: (pct: number) => void,
     returnType: 'blob' | 'download' = 'download'
 ): Promise<Blob | void> {
+    return trackDocumentJob({
+        templateId: 'pdf-crate-manifesto',
+        kind: 'pdf',
+        season: '826',
+        params: { combined: true }
+    }, async () => {
     let doc: jsPDF;
     let startIdx = 0;
 
@@ -1063,4 +1069,5 @@ export async function exportCombinedTruckManifesto(
     } else {
         doc.save(`COMBINED_MANIFESTO_${safeId}.pdf`);
     }
+    });
 }
