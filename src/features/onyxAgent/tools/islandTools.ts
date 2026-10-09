@@ -15,7 +15,7 @@ export interface IslandToolContext {
 
 export const islandToolDefinitions = [
   {
-    name: "get_app_context",
+    name: "get_ui_snapshot",
     description: "Returns a compact snapshot of the app context, including active view, user role, season, readouts, filters, search text, sidebar state, unread notifications, tool registry summary, and robot status.",
     parameters: {
       type: "OBJECT",
@@ -101,7 +101,7 @@ export const islandToolDefinitions = [
 ];
 
 export const islandToolRisk: Record<string, 'read' | 'navigate' | 'robot' | 'write'> = {
-  get_app_context: 'read',
+  get_ui_snapshot: 'read',
   list_island_tools: 'read',
   run_island_tool: 'write',
   open_island_surface: 'navigate',
@@ -113,7 +113,7 @@ const DESTRUCTIVE_TERMS = ['delete', 'clear', 'reset', 'logout', 'remove', 'dest
 
 export function createIslandToolHandlers(ctx: IslandToolContext): Record<string, (args: Record<string, unknown>) => Promise<unknown>> {
   return {
-    get_app_context: async () => {
+    get_ui_snapshot: async () => {
       return { ok: true, context: ctx.getSnapshot() };
     },
     list_island_tools: async (args) => {
