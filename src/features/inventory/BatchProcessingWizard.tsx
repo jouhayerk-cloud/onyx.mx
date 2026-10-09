@@ -61,6 +61,7 @@ import { hasGeminiKey, setGeminiKey } from '../../lib/ai/keys';
 import { aiErrorMessage } from '../../lib/ai/errors';
 import { saveAiPatch, type AiPatch, type InventoryUpdate } from '../../lib/ai/persist';
 import type { ProcessingMode } from '../../lib/catalogHubPipeline';
+import type { BgRoom } from '../../lib/bgReplace';
 import {
     useAiRun, rowOf, TEXT_PROCESSES,
     type RunItem, type RunPhoto, type RunItemStatus, type RunProcessStatus, type ProcessId, type SaveOutcome,
@@ -99,6 +100,16 @@ const MODE_OPTIONS: readonly { value: ProcessingMode; label: string; title: stri
     { value: 'local', label: 'Local', title: 'Cut the piece out on this device; no Gemini call for the image' },
     { value: 'cloud', label: 'AI mask', title: 'Gemini traces the piece and its layers, then the cut-out is made from that' },
     { value: 'hybrid', label: 'Hybrid', title: 'Local cut-out, refined by Gemini' },
+];
+
+/**
+ * The studio the Cloud engine paints behind the piece. Dark is what the
+ * catalogue was cleaned with; Light is a second look. Colours are never read
+ * from a light backdrop (see bgReplace.ts), so picking it does not change them.
+ */
+const ROOM_OPTIONS: readonly { value: BgRoom; label: string; title: string }[] = [
+    { value: 'dark', label: 'Dark room', title: 'Near-black studio behind the piece (the default)' },
+    { value: 'light', label: 'Light room', title: 'Soft light grey studio behind the piece. Colours are read from the cut-out or the original photo, never from this background.' },
 ];
 
 /** The columns "Clear AI data" empties: the AI half of the canonical map, never the vendor's fields. */
@@ -571,6 +582,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         return new Set(DEFAULT_PROCESSES);
     });
     const [mode, setMode] = useState<ProcessingMode>('bgreplace');
+    const [room, setRoom] = useState<BgRoom>('dark');
     /**
      * Restrict fresh runs to each item's first photo. Off by default: it was
      * once hard-wired on with no control, which is why multi-photo items only
@@ -584,6 +596,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         processes,
         processingMode: mode,
         bgQuality: '2K',
+        bgRoom: room,
         user,
         donorInventory: fullInventory,
         heroOnly,
@@ -1260,7 +1273,9 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                     </Key>
                 </>}>
                 <p>{trf('A new background clean on all {photos} photos of {items} items with the {engine} engine, including photos that already have one. Hero-only is switched off.', {
-                    photos, items: confirm.ids.length, engine: tr(MODE_OPTIONS.find(o => o.value === mode)?.label || mode),
+                    photos, items: confirm.ids.length,
+                    engine: tr(MODE_OPTIONS.find(o => o.value === mode)?.label || mode)
+                        + (mode === 'bgreplace' ? ` · ${tr(ROOM_OPTIONS.find(o => o.value === room)?.label || room)}` : ''),
                 })}</p>
             </Dialog>
         );
@@ -1289,6 +1304,16 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                             onChange={setMode}
                             options={MODE_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
                         />
+                        {mode === 'bgreplace' && (
+                            <Segmented<BgRoom>
+                                label={tr('Studio room')}
+                                size="sm"
+                                value={room}
+                                onChange={setRoom}
+                                disabled={run.isRunning}
+                                options={ROOM_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
+                            />
+                        )}
                         <Chip pressed={heroOnly} onPressedChange={setHeroOnly}
                             title={tr('All photos per item, or only the first. Hero-only is cheaper (roughly half the images) but leaves the rest uncleaned.')}>
                             {tr('Hero photo only')}
