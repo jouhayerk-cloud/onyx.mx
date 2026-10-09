@@ -143,6 +143,7 @@ export interface DocumentJob {
     fileName?: string;
     channel?: string;
     legacyPrintJobId?: string;
+    parentJobId?: string;
 }
 
 export async function recordDocumentJob(job: DocumentJob): Promise<any> {
@@ -173,6 +174,7 @@ export async function recordDocumentJob(job: DocumentJob): Promise<any> {
             file_name: job.fileName,
             channel: job.channel,
             legacy_print_job_id: job.legacyPrintJobId,
+            parent_job_id: job.parentJobId,
             client_created_at: new Date().toISOString()
         };
 
@@ -254,6 +256,78 @@ export async function listDocumentJobs(filter: { season?: '825' | '826', kind?: 
     } catch (err: any) {
         if (checkMissingTable(err)) return [];
         console.error('List failed', err);
+        return [];
+    }
+}
+
+export async function getDocumentJobById(id: string): Promise<any | null> {
+    try {
+        if (!id || typeof id !== 'string') return null;
+        const { data, error } = await supabase
+            .from('document_jobs_current')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (error) {
+            if (checkMissingTable(error)) return null;
+            if ((error as any).code === 'PGRST116') return null;
+            console.error('getDocumentJobById: error querying view:', error);
+            return null;
+        }
+        return data ?? null;
+    } catch (err: any) {
+        if (checkMissingTable(err)) return null;
+        console.error('getDocumentJobById failed', err);
+        return null;
+    }
+}
+
+export async function findDocumentJobsByHash(hash: string, limit = 10): Promise<any[]> {
+    try {
+        if (!hash || typeof hash !== 'string') return [];
+        const clean = hash.trim();
+        if (!clean || /[,()]/.test(clean)) return [];
+
+        const lower = clean.toLowerCase();
+        const withDj1 = lower.startsWith('dj1:') ? lower : `dj1:${lower}`;
+        const withoutDj1 = lower.startsWith('dj1:') ? lower.slice(4) : lower;
+
+        const conditions = [
+            `data_hash.eq.${withDj1}`,
+            `data_hash.eq.${withoutDj1}`,
+            `output_sha256.eq.${withoutDj1}`,
+            `output_sha256.eq.${withDj1}`
+        ];
+
+        if (clean !== lower) {
+            const withDj1Raw = clean.toLowerCase().startsWith('dj1:') ? clean : `dj1:${clean}`;
+            const withoutDj1Raw = clean.toLowerCase().startsWith('dj1:') ? clean.slice(4) : clean;
+            conditions.push(
+                `data_hash.eq.${withDj1Raw}`,
+                `data_hash.eq.${withoutDj1Raw}`,
+                `output_sha256.eq.${withoutDj1Raw}`,
+                `output_sha256.eq.${withDj1Raw}`
+            );
+        }
+
+        const uniqueConditions = Array.from(new Set(conditions));
+        const queryLimit = typeof limit === 'number' && limit > 0 ? limit : 10;
+
+        let query = supabase.from('document_jobs_current').select('*');
+        query = query.or(uniqueConditions.join(','));
+        query = query.order('created_at', { ascending: false }).limit(queryLimit);
+
+        const { data, error } = await query;
+        if (error) {
+            if (checkMissingTable(error)) return [];
+            console.error('findDocumentJobsByHash: error querying view:', error);
+            return [];
+        }
+        return data || [];
+    } catch (err: any) {
+        if (checkMissingTable(err)) return [];
+        console.error('findDocumentJobsByHash failed', err);
         return [];
     }
 }

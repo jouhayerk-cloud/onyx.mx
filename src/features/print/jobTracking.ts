@@ -16,6 +16,7 @@ export interface TrackMeta {
     itemCount?: number;
     workbook?: string;            // e.g. 'v326' when the season alone does not name the book
     legacyPrintJobId?: string;    // id of the print_jobs row the label wizard already wrote
+    parentJobId?: string;
 }
 
 export interface TrackedJob {
@@ -191,6 +192,7 @@ async function processRecord(meta: TrackMeta, result?: unknown): Promise<void> {
         snapshot: snapshotData,
         workbook: meta.workbook,
         legacyPrintJobId: meta.legacyPrintJobId,
+        parentJobId: meta.parentJobId,
         outputSha256,
         outputBytes,
         fileName: meta.fileName ?? `${meta.templateId}_${new Date().toISOString().slice(0, 10)}`,

@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAtom, useSetAtom } from 'jotai/react';
+import { useAtom } from 'jotai/react';
 import { X, UploadCloud, Search, Printer, FileText } from 'lucide-react';
 import { tr } from '../../lib/i18n';
-import { isPackingPrintWizardOpenAtom, isPackingNFCWizardOpenAtom } from '../../lib/atoms';
 import { isPrintCenterOpenAtom, printCenterTabAtom, PrintCenterTab } from './printState';
 import { PrintJobsPanel } from './PrintJobsPanel';
-import { verifyDocumentJob, checksumV1 } from '../../lib/documentJobs';
+import { verifyDocumentJob, checksumV1, findDocumentJobsByHash, getDocumentJobById } from '../../lib/documentJobs';
 import { runDjSelfTest } from './selfTest';
 import type { SelfTestResult } from './selfTest';
 import { getRecentTracked } from './jobTracking';
 import type { TrackedJob } from './jobTracking';
-import { TemplatesTabContent, QueueTabContent } from './TemplatesTab';
+import { TemplatesTabContent } from './TemplatesTab';
+import { getTemplate } from './templateCatalogue';
 import './printCenter.css';
 
 function PrintTemplatesPlaceholder() {
@@ -22,6 +22,57 @@ function PrintTemplatesPlaceholder() {
         </div>
     );
 }
+
+const LocalQueueTabContent: React.FC = () => {
+    const tracked = getRecentTracked();
+    
+    if (tracked.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8">
+                <Printer className="w-12 h-12 mb-4 opacity-50" />
+                <p>{tr('No recent print jobs in the queue.')}</p>
+            </div>
+        );
+    }
+    
+    return (
+        <div className="flex flex-col h-full p-6 overflow-y-auto">
+            <h3 className="text-lg font-bold mb-4">{tr("Recent Tracked Jobs")}</h3>
+            <div className="flex flex-col gap-3 max-w-4xl mx-auto w-full">
+                {tracked.map((job, idx) => {
+                    const t = getTemplate(job.templateId);
+                    return (
+                        <div key={`${job.templateId}-${job.at}-${idx}`} className="pc-glass-card ui-root flex items-center justify-between p-4">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-2 h-2 rounded-full ${job.ok ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold">{t?.label || job.templateId}</span>
+                                        {job.verified === false && (
+                                            <span 
+                                                className="px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 cursor-help"
+                                                title={tr('File was saved by the generator itself so no output hash was seen.')}
+                                            >
+                                                {tr('unverified')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span className="text-xs text-gray-400 font-mono">{job.fileName || tr('unknown file')}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-6 text-sm text-gray-400">
+                                {job.outputBytes !== undefined && (
+                                    <span>{(job.outputBytes / 1024).toFixed(1)} KB</span>
+                                )}
+                                <span>{new Date(job.at).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
 
 export const PrintCenter: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isPrintCenterOpenAtom);
@@ -35,10 +86,11 @@ export const PrintCenter: React.FC = () => {
 
     const [verifyHash, setVerifyHash] = useState('');
     const [verifyStatus, setVerifyStatus] = useState<'match' | 'mismatch' | 'unverifiable' | 'idle'>('idle');
+    const [matchedJobs, setMatchedJobs] = useState<any[] | null>(null);
+    const [jobVerifyStatuses, setJobVerifyStatuses] = useState<Record<string, 'match' | 'mismatch' | 'unverifiable'>>({});
+
     const [dragActive, setDragActive] = useState(false);
     const [droppedHash, setDroppedHash] = useState('');
-    const setPrintOpen = useSetAtom(isPackingPrintWizardOpenAtom);
-    const setNfcOpen = useSetAtom(isPackingNFCWizardOpenAtom);
 
     const [testResults, setTestResults] = useState<SelfTestResult[] | null>(null);
     const [isTesting, setIsTesting] = useState(false);
@@ -114,11 +166,31 @@ export const PrintCenter: React.FC = () => {
         nextButton?.focus();
     };
 
-    const handleVerify = async () => {
-        if (!verifyHash.trim()) return;
+    const handleVerify = async (inputStr?: string) => {
+        const input = (typeof inputStr === 'string' ? inputStr : verifyHash).trim();
+        if (!input) return;
+        
         setVerifyStatus('idle');
-        const status = await verifyDocumentJob(verifyHash.trim());
-        setVerifyStatus(status);
+        setMatchedJobs(null);
+        setJobVerifyStatuses({});
+
+        if (input.startsWith('dj1:') || /^[a-fA-F0-9]{64}$/.test(input)) {
+            const jobs = await findDocumentJobsByHash(input);
+            if (jobs && jobs.length > 0) {
+                setMatchedJobs(jobs);
+            } else {
+                setMatchedJobs([]);
+            }
+        } else {
+            await getDocumentJobById(input);
+            const status = await verifyDocumentJob(input);
+            setVerifyStatus(status);
+        }
+    };
+    
+    const handleVerifyJobRow = async (jobId: string) => {
+        const status = await verifyDocumentJob(jobId);
+        setJobVerifyStatuses(prev => ({ ...prev, [jobId]: status }));
     };
 
     const handleDrop = async (e: React.DragEvent) => {
@@ -131,6 +203,7 @@ export const PrintCenter: React.FC = () => {
             const snapshot = JSON.parse(text);
             const hash = await checksumV1(snapshot);
             setDroppedHash(hash);
+            setVerifyHash(hash);
         } catch (err) {
             console.error('Failed to parse or hash dropped file:', err);
             setDroppedHash(tr('Invalid JSON file or hash failure'));
@@ -210,7 +283,7 @@ export const PrintCenter: React.FC = () => {
                 <div className="pc-content" id={`tabpanel-${tab}`} role="tabpanel">
                     {tab === 'queue' && (
                         <div className="h-full overflow-hidden w-full">
-                            <QueueTabContent />
+                            <LocalQueueTabContent />
                         </div>
                     )}
                     
@@ -234,17 +307,55 @@ export const PrintCenter: React.FC = () => {
                                     placeholder={tr("Job ID...")}
                                     className="pc-input flex-1"
                                 />
-                                <button onClick={handleVerify} className="pc-btn-primary">
+                                <button onClick={() => handleVerify()} className="pc-btn-primary">
                                     {tr('Verify')}
                                 </button>
                             </div>
-                            {verifyStatus !== 'idle' && (
-                                <div className={`pc-verify-status status-${verifyStatus} shrink-0`}>
-                                    {verifyStatus === 'match' && tr('Match: The document is verified.')}
-                                    {verifyStatus === 'mismatch' && tr('Mismatch: The document was altered.')}
-                                    {verifyStatus === 'unverifiable' && tr('Unverifiable: Cannot verify this ID.')}
-                                </div>
+                            
+                            {matchedJobs !== null ? (
+                                matchedJobs.length === 0 ? (
+                                    <div className="pc-verify-status status-unverifiable shrink-0">
+                                        {tr('No matching jobs found for this hash.')}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2 w-full shrink-0 overflow-y-auto max-h-64 pr-2">
+                                        {matchedJobs.map(job => (
+                                            <div key={job.id} className="pc-glass-card ui-root p-4 flex flex-col gap-2">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-sm">{job.job_ref || job.id}</span>
+                                                        <span className="text-xs text-gray-400 font-mono">{job.template_id} - Season {job.season}</span>
+                                                        <span className="text-xs text-gray-500">{job.file_name}</span>
+                                                        <span className="text-xs text-gray-500">{new Date(job.created_at).toLocaleString()}</span>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleVerifyJobRow(job.id)}
+                                                        className="pc-btn-primary text-xs py-1 px-3"
+                                                    >
+                                                        {tr('Verify')}
+                                                    </button>
+                                                </div>
+                                                {jobVerifyStatuses[job.id] && (
+                                                    <div className={`pc-verify-status status-${jobVerifyStatuses[job.id]} mt-2 p-2 text-xs`}>
+                                                        {jobVerifyStatuses[job.id] === 'match' && tr('Match: The document is verified.')}
+                                                        {jobVerifyStatuses[job.id] === 'mismatch' && tr('Mismatch: The document was altered.')}
+                                                        {jobVerifyStatuses[job.id] === 'unverifiable' && tr('Unverifiable: Cannot verify this ID.')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            ) : (
+                                verifyStatus !== 'idle' && (
+                                    <div className={`pc-verify-status status-${verifyStatus} shrink-0`}>
+                                        {verifyStatus === 'match' && tr('Match: The document is verified.')}
+                                        {verifyStatus === 'mismatch' && tr('Mismatch: The document was altered.')}
+                                        {verifyStatus === 'unverifiable' && tr('Unverifiable: Cannot verify this ID.')}
+                                    </div>
+                                )
                             )}
+
                             <div 
                                 className={`pc-dropzone flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 w-full transition-colors shrink-0 ${dragActive ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-600 bg-gray-800/50 text-gray-400'}`}
                                 onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
@@ -316,5 +427,3 @@ export const PrintCenter: React.FC = () => {
 
     return createPortal(content, document.body);
 };
-
-
