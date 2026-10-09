@@ -188,3 +188,15 @@ export function createIslandToolHandlers(ctx: IslandToolContext): Record<string,
     }
   };
 }
+
+import type { AgentToolPack } from '../useOnyxAgent';
+
+export function createIslandToolPack(ctx: IslandToolContext): AgentToolPack {
+  return {
+    source: 'island',
+    definitions: islandToolDefinitions,
+    handlers: createIslandToolHandlers(ctx),
+    risk: islandToolRisk
+  };
+}
+
