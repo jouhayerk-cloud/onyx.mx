@@ -295,7 +295,7 @@ export function MainAppView() {
         });
     };
 
-    const sidebarWidth = sidebarState === 'expanded' ? '264px' : sidebarState === 'compact' ? '92px' : '0px';
+    const sidebarWidth = sidebarState === 'expanded' ? '264px' : sidebarState === 'rail' ? '104px' : sidebarState === 'compact' ? '92px' : '0px';
 
     return (
         <>

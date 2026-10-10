@@ -192,7 +192,7 @@ export const PointsAtom = atom(
     set(allAnnotationDataAtom, (prev) => ({ ...prev, points: update })),
 );
 
-export type SidebarState = 'expanded' | 'compact' | 'hidden';
+export type SidebarState = 'expanded' | 'rail' | 'compact' | 'hidden';
 // First visit of a session: a phone starts with the sidebar hidden (it would cover most of a 390 px list), larger screens expanded.
 const initialSidebarState = (): SidebarState => (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'hidden' : 'expanded');
 export const sidebarStateAtom = atomWithStorage<SidebarState>('sidebarState', initialSidebarState(), sessionJSONStorage);
