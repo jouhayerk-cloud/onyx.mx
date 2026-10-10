@@ -28,6 +28,8 @@ export interface ToolDescriptor {
   order: number;
   /** Default pin state: pinned tools get a launcher beside the face in COMPACT. */
   pinned?: boolean;
+  /** Side of the face for a pinned launcher in the docked island. Without it the pinned tools are split in two halves. Within a side the launchers follow `order`. */
+  dock?: 'left' | 'right';
   disabled?: boolean;
   /** For toggles: current state. */
   pressed?: boolean;
@@ -60,7 +62,7 @@ export const isToolPinned = (tool: ToolDescriptor, overrides: Record<string, boo
 
 /** What changes how a tool is drawn. Closures (run, render) are NOT part of it: they are read through a ref so they are always fresh without re-registering. */
 const signature = (tools: ToolDescriptor[]): string =>
-  tools.map(t => [t.id, t.moduleId, t.label, t.kind, t.group, t.order, t.pinned ? 1 : 0, t.disabled ? 1 : 0, t.pressed ? 1 : 0, t.badge ?? '', t.title ?? '', t.render ? 'w' : ''].join('|')).join(';');
+  tools.map(t => [t.id, t.moduleId, t.label, t.kind, t.group, t.order, t.pinned ? 1 : 0, t.disabled ? 1 : 0, t.pressed ? 1 : 0, t.badge ?? '', t.title ?? '', t.dock ?? '', t.render ? 'w' : ''].join('|')).join(';');
 
 /**
  * Register a module's tools while the calling component is mounted.

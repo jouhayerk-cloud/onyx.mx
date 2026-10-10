@@ -137,14 +137,22 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const lg = useMediaQuery('(min-width: 1024px)');
   const md = useMediaQuery('(min-width: 768px)');
   const maxLaunchers = xl ? 6 : 4;
+  // a page that gives its tools a dock side (Tools left of the face, Actions right of it) may show more launchers
+  const maxDockLaunchers = xl ? 10 : lg ? 8 : 6;
 
-  const pinnedTools = useMemo(() => {
-    if (!commandsEnabled) return [];
-    return allTools.filter(t => isToolPinned(t, pinnedOverrides)).slice(0, maxLaunchers);
-  }, [allTools, pinnedOverrides, maxLaunchers, commandsEnabled]);
-
-  const leftLaunchers = pinnedTools.slice(0, Math.ceil(pinnedTools.length / 2));
-  const rightLaunchers = pinnedTools.slice(Math.ceil(pinnedTools.length / 2));
+  const { leftLaunchers, rightLaunchers } = useMemo(() => {
+    if (!commandsEnabled) return { leftLaunchers: [] as ToolDescriptor[], rightLaunchers: [] as ToolDescriptor[] };
+    const pinned = allTools.filter(t => isToolPinned(t, pinnedOverrides));
+    if (pinned.some(t => t.dock)) {
+      const byOrder = (a: ToolDescriptor, b: ToolDescriptor) => a.order - b.order || a.id.localeCompare(b.id);
+      return {
+        leftLaunchers: pinned.filter(t => t.dock !== 'right').sort(byOrder).slice(0, maxDockLaunchers),
+        rightLaunchers: pinned.filter(t => t.dock === 'right').sort(byOrder).slice(0, maxDockLaunchers),
+      };
+    }
+    const cut = pinned.slice(0, maxLaunchers);
+    return { leftLaunchers: cut.slice(0, Math.ceil(cut.length / 2)), rightLaunchers: cut.slice(Math.ceil(cut.length / 2)) };
+  }, [allTools, pinnedOverrides, maxLaunchers, maxDockLaunchers, commandsEnabled]);
 
   const hasLaunchers = leftLaunchers.length > 0 || rightLaunchers.length > 0;
   const docked = hasLaunchers && mode === 'rest';
