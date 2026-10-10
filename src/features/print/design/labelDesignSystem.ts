@@ -49,6 +49,7 @@ export const LABEL_LAYOUT_GRID = {
     snapGridMm: 1,
 };
 
+/** Converts millimetres to label printer dots at 203 dpi, rounded to a whole dot. */
 export function mmToDots(mm: number): number {
     return Math.round(mm * 8); // 203 dpi: 8 dots = 1 mm
 }
