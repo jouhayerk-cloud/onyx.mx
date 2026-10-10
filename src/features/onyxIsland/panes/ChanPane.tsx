@@ -11,6 +11,8 @@ import {
     ChevronRight, 
     RotateCcw 
 } from 'lucide-react';
+import { useAtom } from 'jotai';
+import { islandChanDraftAtom } from '../islandState';
 import { useOnyxAgentWiring } from '../../onyxAgent/useOnyxAgentWiring';
 import { tr } from '../../../lib/i18n';
 import './chanPane.css';
@@ -47,6 +49,16 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
 
     useEffect(() => {
         textareaRef.current?.focus();
+    }, []);
+
+    // a message typed in the deployed island starts the conversation as soon as this tab opens
+    const [draft, setDraft] = useAtom(islandChanDraftAtom);
+    useEffect(() => {
+        const first = draft.trim();
+        if (!first) return;
+        setDraft('');
+        if (!agent.busy) agent.send(first); else setText(first);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
