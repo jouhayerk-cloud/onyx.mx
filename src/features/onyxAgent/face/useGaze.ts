@@ -149,6 +149,7 @@ function stopIdleDrift() {
   }
 }
 
+/** Hook that moves an element's gaze CSS variables toward the pointer; resets them when disabled. */
 export function useGaze(ref: React.RefObject<HTMLElement | null>, opts?: { enabled?: boolean }) {
   const enabled = opts?.enabled ?? true;
 
