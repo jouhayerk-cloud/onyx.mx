@@ -3,6 +3,7 @@ import { AlertTriangle, Check, Package } from 'lucide-react';
 import { tr, trf } from '../../../lib/i18n';
 import type { PackingState } from './types';
 
+/** Board showing the packing_check state of a run, or a placeholder when there is none. */
 export const PackingBoard: React.FC<{ packing: PackingState | null }> = ({ packing }) => {
   if (!packing) {
     return (
