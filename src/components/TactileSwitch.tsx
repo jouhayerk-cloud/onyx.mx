@@ -10,6 +10,9 @@ interface TactileSwitchProps {
 }
 
 export const TactileSwitch: React.FC<TactileSwitchProps> = ({ active, onChange, label, width = 64, height = 32 }) => {
+    // The knob is a wide glass pill that squashes under the finger and springs to the other end (Liquid Glass Tactile Switch study).
+    const [pressed, setPressed] = useState(false);
+    const knobW = Math.round((height - 4) * 1.45);
     return (
         <div className="flex flex-col items-center gap-2">
             <div 
@@ -21,18 +24,24 @@ export const TactileSwitch: React.FC<TactileSwitchProps> = ({ active, onChange, 
                     boxShadow: 'inset 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255,255,255,0.05)',
                 }}
                 onClick={() => onChange(!active)}
+                onPointerDown={() => setPressed(true)}
+                onPointerUp={() => setPressed(false)}
+                onPointerLeave={() => setPressed(false)}
+                onPointerCancel={() => setPressed(false)}
             >
                 <m.div
                     layout
                     initial={false}
                     animate={{
-                        x: active ? width - height + 2 : 2,
+                        x: active ? width - knobW - 2 : 2,
+                        scaleX: pressed ? 1.14 : 1,
+                        scaleY: pressed ? 0.9 : 1,
                         backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.6)'
                     }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                     className="absolute rounded-full pointer-events-none"
                     style={{
-                        width: height - 4,
+                        width: knobW,
                         height: height - 4,
                         boxShadow: '0 4px 12px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.1)',
                     }}

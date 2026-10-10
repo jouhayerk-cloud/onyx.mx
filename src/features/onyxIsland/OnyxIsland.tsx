@@ -9,7 +9,7 @@ import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToa
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
 import { islandModeAtom, islandPaneAtom, islandItemAtom, expressionForKind, type IslandReadout, type IslandPane } from './islandState';
-import { SPRING, SPRING_SLOW, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
+import { SPRING, SPRING_BOUNCY, SPRING_SLOW, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
 import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
 import { userAtom, activeViewAtom, SelectedItemDataAtom } from '../../lib/atoms';
@@ -20,6 +20,7 @@ import { IslandTabs } from './IslandTabs';
 import toast from './notify/toast';
 import './islandTokens.css';
 import './islandShell.css';
+import './islandGlass.css';
 
 const InboxPane = lazy(() => import('./panes/InboxPane').then(m => ({ default: m.InboxPane })));
 const ChanPane = lazy(() => import('./panes/ChanPane').then(m => ({ default: m.ChanPane })));
@@ -120,7 +121,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const selectedItem = listItem ?? storedItem;
 
   const isReduced = useReducedMotion();
-  const transition = isReduced ? { duration: 0 } : SPRING;
+  const transition = isReduced ? { duration: 0 } : mode === 'rest' ? SPRING_BOUNCY : SPRING;
   const transitionSlow = isReduced ? { duration: 0 } : SPRING_SLOW;
 
   const islandRef = useRef<HTMLDivElement>(null);
