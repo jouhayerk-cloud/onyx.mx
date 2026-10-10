@@ -24,7 +24,8 @@ import './islandTokens.css';
 import './islandShell.css';
 import './islandGlass.css';
 import './islandRefraction.css';
-import { IslandRefractionDefs, useIslandRefraction } from './IslandRefraction';
+// The Chromium refraction map (IslandRefraction.tsx) is switched off: the island uses the same plain blur as the sidebar panel,
+// and the url() backdrop filter made the island look transparent instead of blurred on some machines.
 import './islandDeploy.css';
 
 const InboxPane = lazy(() => import('./panes/InboxPane').then(m => ({ default: m.InboxPane })));
@@ -155,7 +156,6 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
   useGaze(islandRef);
   const surfaceRef = useRef<HTMLDivElement>(null);
-  useIslandRefraction(surfaceRef);
   const isIdle = useIdleTimer(10 * 60 * 1000);
 
   const xl = useMediaQuery('(min-width: 1280px)');
@@ -174,7 +174,9 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     const byOrder = (a: ToolDescriptor, b: ToolDescriptor) => a.order - b.order || a.id.localeCompare(b.id);
     const allPinned = allTools.filter(t => isToolPinned(t, pinnedOverrides));
     const pinned = phoneRows ? allPinned.filter(t => !t.parent) : allPinned;
-    const children = phoneRows ? allPinned.filter(t => t.parent).sort(byOrder) : none;
+    // Tools children (left dock) first, Actions children (right dock) after them, each group in its own order
+    const dockRank = (t: ToolDescriptor) => (t.dock === 'right' ? 1 : 0);
+    const children = phoneRows ? allPinned.filter(t => t.parent).sort((a, b) => dockRank(a) - dockRank(b) || byOrder(a, b)) : none;
     if (pinned.some(t => t.dock)) {
       return {
         leftLaunchers: pinned.filter(t => t.dock !== 'right').sort(byOrder).slice(0, maxDockLaunchers),
@@ -402,7 +404,8 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const sheet = useSheetDrag(() => setMode('rest'));
 
   let radius = '24px';
-  if (mode === 'rest') radius = docked ? (isShelfVisible ? '20px' : '999px') : '50%';
+  // a second row (phone: children of Tools and Actions) makes the island two rows tall: a full pill radius would round it like a bubble
+  if (mode === 'rest') radius = docked ? (subRow.length > 0 ? '16px' : isShelfVisible ? '20px' : '999px') : '50%';
   else if (mode === 'peek') radius = '28px';
   else if (isSheet) radius = '24px 24px 0 0';
 
@@ -504,7 +507,6 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   return (
     <LazyMotion features={domMax} strict>
       <div id="onyx-island-announcer" aria-live="polite" className="onyx-sr-only" />
-      <IslandRefractionDefs />
       <m.div
         ref={islandRef}
         layout
@@ -532,7 +534,11 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
             <div className={docked || isShelfVisible ? 'flex flex-col' : 'w-full h-full'}>
               {docked && subRow.length > 0 && (
                 <div className="isl-subrow">
-                  <IslandLaunchers tools={subRow} onRun={runTool} showLabels />
+                  <div className="isl-subrow-track">
+                    {subRow.some(t => t.dock !== 'right') && <IslandLaunchers tools={subRow.filter(t => t.dock !== 'right')} onRun={runTool} showLabels />}
+                    {subRow.some(t => t.dock !== 'right') && subRow.some(t => t.dock === 'right') && <span className="isl-subrow-sep" aria-hidden="true" />}
+                    {subRow.some(t => t.dock === 'right') && <IslandLaunchers tools={subRow.filter(t => t.dock === 'right')} onRun={runTool} showLabels />}
+                  </div>
                 </div>
               )}
               <div className={docked ? 'onyx-island-dock' : 'w-full h-full'}>

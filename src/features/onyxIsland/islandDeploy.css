@@ -110,15 +110,20 @@
 /* Phone: the children of the open group (View, Search, Filter / Add, Select, Export) are a second row above the main row */
 .isl-subrow {
   display: flex;
-  justify-content: center;
-  gap: 2px;
   padding: 8px 8px 4px;
   border-bottom: 1px solid var(--isl-line);
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
   scrollbar-width: none;
   animation: isl-subrow-in 0.3s ease both;
 }
 .isl-subrow::-webkit-scrollbar { display: none; }
-.isl-subrow > div { display: flex; align-items: center; gap: 2px; }
+/* Tools children, a divider, Actions children, all in one row. Auto margins centre the row when it fits and let it scroll from the left edge when it does not. */
+.isl-subrow-track { display: flex; align-items: center; gap: 2px; margin-inline: auto; flex: none; }
+.isl-subrow-track > div { display: flex; align-items: center; gap: 2px; flex: none; }
+.isl-subrow-track .isl-launcher { scroll-snap-align: center; }
+.isl-subrow-sep { flex: none; width: 1px; height: 28px; margin-inline: 6px; background: var(--isl-line-strong); opacity: 0.5; }
 @keyframes isl-subrow-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .isl-subrow { animation: none; } }
