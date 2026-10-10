@@ -506,12 +506,14 @@ export const IslandSidebar: React.FC = () => {
     return (
         <>
         {sidebarState === 'hidden' && (
-            <button 
-                className="isb-edge-tab hidden md:flex" 
+            <button
+                type="button"
+                className="isb-toggle-circle"
                 onClick={() => setSidebarState('expanded')}
                 aria-label={tr("Show sidebar")}
+                title={tr("Onyx.mx Menu")}
             >
-                <ChevronsRight size={16} />
+                <OnyxMiniLogo className="isb-toggle-logo" />
             </button>
         )}
         {isPhoneDrawerOpen && (

@@ -1,39 +1,67 @@
-/* Edge Tab for Desktop Hidden State */
-.isb-edge-tab {
+/* The sidebar toggle while the sidebar is hidden: a round glass button on the left edge, mid height (replaces the rectangle tab and the island's
+   Menu launcher). Liquid glass study: a blur with a lit rim, and a spring when pressed. */
+.isb-toggle-circle {
+  --isb-spring: ease;
   position: fixed;
-  left: 0;
+  left: max(8px, env(safe-area-inset-left, 0px));
   top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 64px;
-  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
-  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
-  border-left: none;
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
+  translate: 0 -50%;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50% !important;     /* the slab theme sets a radius on every button with !important */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 1050;
-  color: rgba(255, 255, 255, 0.7);
-  transition: all 0.2s ease;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
-}
-.isb-edge-tab:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  isolation: isolate;
   color: #fff;
-  width: 20px;
+  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
+  background-image: radial-gradient(120% 120% at 30% 14%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.06) 50%, transparent 72%) !important;
+  -webkit-backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
+  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.14),
+    0 8px 22px rgba(2, 6, 16, 0.35),
+    0 1px 3px rgba(2, 6, 16, 0.3);
+  transition: transform 0.55s var(--isb-spring);
 }
-html.theme-aqua .isb-edge-tab {
-  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.70)) !important;
-  border-color: rgba(11, 42, 51, 0.15) !important;
-  color: rgba(11, 42, 51, 0.75) !important;
+@supports (transition-timing-function: linear(0, 1)) {
+  .isb-toggle-circle {
+    --isb-spring: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+  }
 }
-html.theme-aqua .isb-edge-tab:hover {
-  background-color: rgba(11, 42, 51, 0.08) !important;
-  color: #0b2a33 !important;
+/* the lit rim: a 1 px ring, bright at the top left, fading, a little light at the bottom right */
+.isb-toggle-circle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0.3));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.isb-toggle-circle:hover { transform: scale(1.06); }
+.isb-toggle-circle:active { transform: scale(0.92, 0.88); transition-duration: 0.12s; }
+.isb-toggle-circle:focus-visible { outline: 2px solid var(--main-color, #00aeef); outline-offset: 3px; }
+.isb-toggle-logo { width: 28px; height: 28px; object-fit: contain; pointer-events: none; }
+html.theme-aqua .isb-toggle-circle {
+  color: #0b2a33;
+  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.7)) !important;
+  border-color: rgba(11, 42, 51, 0.15);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.85), inset 0 -2px 4px rgba(0, 0, 0, 0.06), 0 8px 22px rgba(11, 42, 51, 0.16), 0 1px 3px rgba(11, 42, 51, 0.1);
+}
+html.theme-aqua .isb-toggle-circle::before { background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 45%, rgba(11, 42, 51, 0.18)); }
+@media (prefers-reduced-transparency: reduce) {
+  .isb-toggle-circle { background-color: rgba(12, 14, 22, 0.94) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  html.theme-aqua .isb-toggle-circle { background-color: rgba(246, 250, 252, 0.96) !important; }
 }
 
 /* Rail State overrides */
@@ -80,22 +108,23 @@ html.theme-aqua .isb-section-title.isb-label-rail {
   display: none;
 }
 
+/* the collapse button inside the sidebar: a small round glass button, the same language as the toggle above */
 .isb-collapse-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  background: transparent;
-  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
-.isb-collapse-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-html.theme-aqua .isb-collapse-btn:hover {
-  background: rgba(11, 42, 51, 0.1);
-}
+.isb-collapse-btn:hover { background-color: rgba(255, 255, 255, 0.16); }
+.isb-collapse-btn:active { transform: scale(0.92); }
+html.theme-aqua .isb-collapse-btn { background-color: rgba(11, 42, 51, 0.05); border-color: rgba(11, 42, 51, 0.14); box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8); }
+html.theme-aqua .isb-collapse-btn:hover { background-color: rgba(11, 42, 51, 0.1); }
 
 /* Scroll Fades for List */
 .isb-list--scrollable {
@@ -153,5 +182,6 @@ html.theme-aqua .isb-collapse-btn:hover {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .isb-edge-tab { transition: none !important; }
+  .isb-toggle-circle, .isb-collapse-btn { transition: none !important; }
+  .isb-toggle-circle:hover, .isb-toggle-circle:active, .isb-collapse-btn:active { transform: none; }
 }
