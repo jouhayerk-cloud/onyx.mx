@@ -125,7 +125,6 @@ import { CameraView } from '../../lib/Types';
 import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
-import { saveAs } from 'file-saver';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import toast from '../onyxIsland/notify/toast';
 import userIcons from '../../components/userIcons';
@@ -166,7 +165,7 @@ import { UploadToolsRegistrar } from '../upload/uploadTools';
 import { ControlToolsRegistrar } from '../control/controlTools';
 import { MiscViewToolsRouter } from './miscViewTools';
 import { PrintToolsRegistrar } from '../print/printTools';
-import { trackDocumentJob } from '../print/jobTracking';
+import { trackDocumentJob, saveExportFile } from '../print/jobTracking';
 
 // logisticsReadout() is a hook (it reads the crate atoms): one small component per side keeps it unconditional
 const LogisticsReadoutSide: React.FC<{ side: 'left' | 'right' }> = ({ side }) => <>{logisticsReadout()[side]}</>;
@@ -1629,7 +1628,7 @@ export function MainHeader() {
 
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveAs(new Blob([buffer]), `Onyx-mx_Selected_Items_${dateStr}.xlsx`);
+            saveExportFile(new Blob([buffer]), `Onyx-mx_Selected_Items_${dateStr}.xlsx`);
             toast.success(tr("Selected Items WorkBook Ready"), { icon: '📦' });
         } catch (error) {
             console.error('Selected export failed:', error);
@@ -2737,7 +2736,7 @@ export function MainHeader() {
 
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveAs(new Blob([buffer]), `Onyx-mx_Book-326_${dateStr}.xlsx`);
+            saveExportFile(new Blob([buffer]), `Onyx-mx_Book-326_${dateStr}.xlsx`);
             toast.success(tr("WorkBook Ready"), { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
@@ -3557,7 +3556,7 @@ export function MainHeader() {
 
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveAs(new Blob([buffer]), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
+            saveExportFile(new Blob([buffer]), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
             toast.success(tr("Workbook V2 Ready"), { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
@@ -4313,7 +4312,7 @@ export function MainHeader() {
 
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveAs(new Blob([buffer]), `Shopify_Export_${dateStr}.xlsx`);
+            saveExportFile(new Blob([buffer]), `Shopify_Export_${dateStr}.xlsx`);
             toast.success(`Shopify Export Ready — ${readyItems.length} ready, ${notReadyItems.length} to V2`, { icon: '🛍️' });
         } catch (error) {
             console.error('Shopify Export failed:', error);

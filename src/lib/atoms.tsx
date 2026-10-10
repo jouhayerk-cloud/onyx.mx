@@ -193,7 +193,9 @@ export const PointsAtom = atom(
 );
 
 export type SidebarState = 'expanded' | 'compact' | 'hidden';
-export const sidebarStateAtom = atomWithStorage<SidebarState>('sidebarState', 'expanded', sessionJSONStorage);
+// First visit of a session: a phone starts with the sidebar hidden (it would cover most of a 390 px list), larger screens expanded.
+const initialSidebarState = (): SidebarState => (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'hidden' : 'expanded');
+export const sidebarStateAtom = atomWithStorage<SidebarState>('sidebarState', initialSidebarState(), sessionJSONStorage);
 export const isUploadWizardOpenAtom = atom<boolean>(false);
 export const isAiProcessingEnabledAtom = atomWithStorage<boolean>('isAiProcessingEnabled', true, sessionJSONStorage);
 
