@@ -9,6 +9,7 @@ export const documentTypesAtom = atom<Record<string, DocumentType<any, any>>>({}
 // A module-level registry for synchronous access by runDocumentJob
 const registry = new Map<string, DocumentType<any, any>>();
 
+/** Adds a document type to the module-level registry used by runDocumentJob. */
 export function registerDocumentType(type: DocumentType<any, any>): void {
     registry.set(type.id, type);
 }
