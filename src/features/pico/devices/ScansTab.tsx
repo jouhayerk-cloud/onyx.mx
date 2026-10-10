@@ -137,6 +137,7 @@ const ScanRow: React.FC<{
   );
 };
 
+/** Tab listing recent device scans, filterable by device. */
 export const ScansTab: React.FC<{ devices: DeviceState[] }> = ({ devices }) => {
   const { status, scans } = useDeviceScans();
   const [filterDevice, setFilterDevice] = useState<string | null>(null);
