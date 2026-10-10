@@ -66,6 +66,7 @@ const stickS3Profile: DeviceProfile = {
   accent: '--main-color',
 };
 
+/** Returns the device profile for a hardware model string, or the generic profile when unknown. */
 export function profileFor(hardwareModel?: string | null): DeviceProfile {
   if (hardwareModel === 'M5StackChan') return stackChanProfile;
   if (hardwareModel === 'M5StickS3') return stickS3Profile;
