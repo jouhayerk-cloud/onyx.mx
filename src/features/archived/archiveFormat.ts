@@ -53,6 +53,7 @@ export function vendorColor(vendor: string): string {
     return v ? v.color : '#4B5563';
 }
 
+/** Formats an ISO date in en-US as Mon D, YYYY, or returns the input unchanged when it is not a date. */
 export function formatDate(iso: string | null): string {
     if (!iso) return '';
     const date = new Date(iso);
