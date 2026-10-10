@@ -261,6 +261,7 @@ export function isCanonicalId(value: unknown): value is string {
 // Builders
 // ---------------------------------------------------------------------------
 
+/** Wraps a JSON-RPC message in an MCP envelope of type mcp. */
 export function buildEnvelope(payload: JsonRpcMessage): McpEnvelope {
   return { type: 'mcp', payload };
 }
