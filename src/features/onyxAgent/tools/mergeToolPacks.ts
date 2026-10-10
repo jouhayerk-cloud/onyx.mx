@@ -9,6 +9,7 @@ export interface MergedTools {
     clashes: Array<{ name: string; kept: string; dropped: string }>;
 }
 
+/** Merges tool packs into one set, keeping the first definition of each name and recording clashes. */
 export function mergeToolPacks(packs: readonly AgentToolPack[]): MergedTools {
     const definitions: unknown[] = [];
     const handlers: AgentToolPack['handlers'] = {};
