@@ -50,7 +50,7 @@
 .isl-deck {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   padding: 8px 10px 10px;
   border-top: 1px solid var(--isl-line);

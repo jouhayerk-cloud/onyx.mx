@@ -569,7 +569,6 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                   name={name}
                   meta={meta}
                   figures={figures}
-                  onOpenPane={(p) => { setPane(p); setMode('surface'); }}
                   onAsk={(t) => { if (t) setChanDraft(t); setPane('chat'); setMode('surface'); }}
                 />
               )}
