@@ -9,7 +9,7 @@ import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToa
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
 import { islandModeAtom, islandPaneAtom, islandItemAtom, islandChanDraftAtom, expressionForKind, islandDeployAtom, type IslandReadout, type IslandPane, type IslandDeploy } from './islandState';
-import { SPRING, SPRING_BOUNCY, SPRING_SLOW, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
+import { SPRING, SPRING_BOUNCY, SPRING_SLOW, FACE_DEPLOY_DELAY_MS, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
 import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
 import { userAtom, activeViewAtom, SelectedItemDataAtom } from '../../lib/atoms';
@@ -183,7 +183,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const setChanDraft = useSetAtom(islandChanDraftAtom);
   const [tempShelfOpen, setTempShelfOpen] = useState(false);
   const [isInside, setIsInside] = useState(false);
-  const [dwellTimer, setDwellTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const dwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [islandWidth, setIslandWidth] = useState(1000);
   const [islandFont, setIslandFont] = useState('600 13px sans-serif');
@@ -456,27 +456,34 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     </m.div>
   );
 
+  // The pointer over the island only pauses the timers. The island deploys on hover ONLY when the pointer rests on the face
+  // for FACE_DEPLOY_DELAY_MS; leaving the face, pressing it or moving to a launcher cancels the wait. Keyboard focus never deploys
+  // it (Alt+Down does).
+  const cancelDwell = useCallback(() => {
+    if (dwellRef.current) { clearTimeout(dwellRef.current); dwellRef.current = null; }
+  }, []);
+  useEffect(() => cancelDwell, [cancelDwell]);
+
   const handlePointerEnter = useCallback(() => {
     setIsInside(true);
     pauseToastTimer();
-    if (mode === 'rest' && storedDeploy !== 3 && !tempShelfOpen) {
-      setDwellTimer(setTimeout(() => setTempShelfOpen(true), 600));
-    }
-  }, [mode, storedDeploy, tempShelfOpen]);
+  }, []);
 
   const handlePointerLeave = useCallback(() => {
     setIsInside(false);
     resumeToastTimer();
-    if (dwellTimer) { clearTimeout(dwellTimer); setDwellTimer(null); }
-  }, [dwellTimer]);
+    cancelDwell();
+  }, [cancelDwell]);
+
+  const handleFaceEnter = useCallback(() => {
+    if (mode !== 'rest' || storedDeploy === 3 || tempShelfOpen || dwellRef.current) return;
+    dwellRef.current = setTimeout(() => { dwellRef.current = null; setTempShelfOpen(true); }, FACE_DEPLOY_DELAY_MS);
+  }, [mode, storedDeploy, tempShelfOpen]);
 
   const handleFocusCapture = useCallback(() => {
     setIsInside(true);
     pauseToastTimer();
-    if (mode === 'rest' && storedDeploy !== 3 && !tempShelfOpen) {
-      setTempShelfOpen(true);
-    }
-  }, [mode, storedDeploy, tempShelfOpen]);
+  }, []);
 
   const handleBlurCapture = useCallback((e: React.FocusEvent) => {
     if (!islandRef.current?.contains(e.relatedTarget as Node)) {
@@ -535,7 +542,9 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                   style={docked ? undefined : { width: '100%', height: '100%' }}
                   aria-label={tr('Open Onyx panel: tools, selected item, Chan and inbox')}
                   aria-expanded="false"
-                  onClick={handleFaceClick}
+                  onClick={() => { cancelDwell(); handleFaceClick(); }}
+                onPointerEnter={handleFaceEnter}
+                onPointerLeave={cancelDwell}
                 >
                   {faceNode(faceSize)}
                   {unread > 0 && <span className="onyx-island-unread" aria-hidden="true" />}
