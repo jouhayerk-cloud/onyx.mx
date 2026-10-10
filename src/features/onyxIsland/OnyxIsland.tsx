@@ -286,7 +286,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
   const sheet = useSheetDrag(() => setMode('rest'));
 
-  const faceSize = mode === 'rest' ? (docked ? 40 : 52) : 44;
+  const faceSize = mode === 'rest' ? (docked ? 52 : 64) : 52;
 
   let radius = '24px';
   if (mode === 'rest') radius = docked ? '999px' : '50%';
@@ -305,19 +305,19 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     : { role: 'group', 'aria-label': tr('Onyx assistant and notifications') };
 
   // Size ladder (design doc 3): rest 56, peek 384 x 56, card 440, panel 520/640/760, phone sheet at the bottom
-  const panelHeight = 'min(560px, calc(100vh - 96px))';
+  const panelHeight = 'min(640px, calc(100vh - 96px))';
   let rootStyle: React.CSSProperties = {};
   if (mode === 'rest') {
-    rootStyle = docked ? { width: 'fit-content', maxWidth: 'calc(100vw - 24px)', minHeight: 56, height: 'auto' } : { width: 56, height: 56 };
+    rootStyle = docked ? { width: 'fit-content', maxWidth: 'calc(100vw - 24px)', minHeight: 68, height: 'auto' } : { width: 68, height: 68 };
   } else if (mode === 'peek') {
-    rootStyle = { width: 'min(384px, calc(100vw - 24px))', height: 56 };
+    rootStyle = { width: 'min(440px, calc(100vw - 24px))', height: 68 };
   } else if (mode === 'card') {
-    rootStyle = { width: 'min(440px, calc(100vw - 24px))', maxHeight: 280 };
+    rootStyle = { width: 'min(500px, calc(100vw - 24px))', maxHeight: 320 };
   } else if (isSheet) {
     rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxWidth: '100vw', ...(pane === 'tools' || pane === 'item' ? { maxHeight: '88vh' } : { height: '88vh' }) };
   } else {
-    const w = xl ? 760 : lg ? 640 : 520;
-    rootStyle = { width: `min(${w}px, calc(100vw - 24px))`, ...(pane === 'tools' || pane === 'item' ? { maxHeight: 'min(600px, calc(100vh - 96px))' } : { height: panelHeight }) };
+    const w = xl ? 860 : lg ? 720 : 580;
+    rootStyle = { width: `min(${w}px, calc(100vw - 24px))`, ...(pane === 'tools' || pane === 'item' ? { maxHeight: 'min(680px, calc(100vh - 96px))' } : { height: panelHeight }) };
   }
 
   // Accessibility announcement for the panel
@@ -408,7 +408,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
           {(mode === 'peek' || mode === 'card') && (
             <div className="flex items-start w-full h-full p-2 cursor-pointer" onClick={handleToastClick}>
-              <div className="shrink-0 flex items-center justify-center h-10 w-12">
+              <div className="shrink-0 flex items-center justify-center h-12 w-14">
                 {faceNode(faceSize)}
               </div>
               <AnimatePresence>

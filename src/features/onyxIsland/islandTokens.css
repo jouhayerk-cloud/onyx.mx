@@ -33,7 +33,7 @@
   --isl-radius-panel: 24px;
   --isl-radius-row: 14px;
   --isl-radius-chip: 999px;
-  --isl-target: 36px;                              /* desktop target; 44px on coarse pointers */
+  --isl-target: 44px;                              /* launcher and button target (was 36px on desktop; 44px is also the touch target) */
   --isl-focus: 0 0 0 2px var(--isl-surface-solid), 0 0 0 4px var(--isl-accent);
 }
 
@@ -79,7 +79,7 @@ html.theme-aqua .onyx-island {
 
 /* Shared pieces the panes use ------------------------------------------------ */
 
-.isl-pane { color: var(--isl-ink); font-size: 13px; line-height: 1.4; }
+.isl-pane { color: var(--isl-ink); font-size: 14px; line-height: 1.4; }
 .isl-caption { color: var(--isl-ink-3); font-size: 11px; font-weight: 600; line-height: 1.2; }
 .isl-title { color: var(--isl-ink); font-size: 13px; font-weight: 600; }
 .isl-num { font-variant-numeric: tabular-nums; }
