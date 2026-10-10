@@ -184,6 +184,7 @@ const TYPED_KEYS: readonly (keyof EntryState)[] = [
 /** Did a person change any of the typed fields (not the vendor, book or number the screen sets)? */
 export const typedChanged = (a: EntryState, b: EntryState): boolean => TYPED_KEYS.some(k => a[k] !== b[k]);
 
+/** True when every field of two entry states holds the same value. */
 export const sameEntry = (a: EntryState, b: EntryState): boolean =>
     (Object.keys(a) as (keyof EntryState)[]).every(k => a[k] === b[k]);
 
