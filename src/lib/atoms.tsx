@@ -815,6 +815,8 @@ export const picoRemoteCommandAtom = nullableAtom<{deviceId: string, command: st
  *  without clearing which of them were open — reopening restores exactly what
  *  was on screen. */
 export const inventoryToolsOpenAtom = atomWithStorage<boolean>('inventoryToolsOpen', false);
+/** Inventory island: the Actions group (Add, Select, Export) is deployed to the right of the face. */
+export const inventoryActionsOpenAtom = atomWithStorage<boolean>('inventoryActionsOpen', false);
 
 export const isArchiveVisibleAtom = atomWithStorage<boolean>('isArchiveVisible', true);
 

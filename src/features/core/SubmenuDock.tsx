@@ -86,16 +86,20 @@ export const SubmenuCard: React.FC<{
   id: string;
   title: string;
   onClose: () => void;
+  /** No title row and no close button (the island tool that opened the bar closes it); `title` is still the accessible name. */
+  headless?: boolean;
   children: React.ReactNode;
-}> = ({ id, title, onClose, children }) => {
+}> = ({ id, title, onClose, headless = false, children }) => {
   return (
-    <div className="smd-card ui-root" data-bar={id}>
-      <div className="smd-card-header">
-        <span className="smd-card-title">{title}</span>
-        <button onClick={onClose} className="smd-close-btn" aria-label={tr("Close")}>
-          <X size={20} strokeWidth={2.5} />
-        </button>
-      </div>
+    <div className="smd-card ui-root" data-bar={id} role="region" aria-label={headless ? title : undefined}>
+      {!headless && (
+        <div className="smd-card-header">
+          <span className="smd-card-title">{title}</span>
+          <button onClick={onClose} className="smd-close-btn" aria-label={tr("Close")}>
+            <X size={20} strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
       <div className="smd-card-content">
         {children}
       </div>
