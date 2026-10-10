@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../../../lib/supabase';
 
+/** Hook that subscribes to a Supabase Realtime broadcast topic and forwards the listed events. */
 export function useDeviceChannel(
   topic: string | null | undefined,
   events: string[] = [],
