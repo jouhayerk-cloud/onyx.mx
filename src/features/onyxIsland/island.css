@@ -78,7 +78,12 @@
   z-index: -1;
   border-radius: inherit;
   pointer-events: none;
+  /* layers, top to bottom: specular band along the top edge, fine frost grain, a light frost body (so the glass reads over a dark page,
+     where blurring dark pixels shows nothing), the soft highlight from the top-left, the pool of the accent at the lower edge */
   background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0, rgba(255, 255, 255, 0) 38%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .4 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>") 0 0 / 140px 140px,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03) 55%, rgba(255, 255, 255, 0.07)),
     radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.26), transparent 55%),
     radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 34%, transparent), transparent 62%);
   opacity: 0.85;   /* static: an endless animation over backdrop-filter re-blurs the page every frame */
