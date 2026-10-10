@@ -25,6 +25,7 @@ import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { THEME_ASSETS } from '../../lib/themes-assets';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import changelogText from '../../assets/CHANGELOG.md?raw';
+import { SiriAccessPanel } from './SiriAccessPanel';
 import { tr } from '../../lib/i18n';
 
 declare const __APP_VERSION__: string;
@@ -348,6 +349,11 @@ export const StudioSettingsPortal: React.FC = () => {
                                                 ))}
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Siri access: personal tokens for the iPhone Shortcut */}
+                                    <div className="mt-12">
+                                        <SiriAccessPanel />
                                     </div>
 
                                 </div>

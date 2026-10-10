@@ -27,6 +27,12 @@ verify_jwt = true
 
 [functions.siri-inventory]
 # Read-only Siri and Apple Shortcut voice adapter for warehouse inventory queries.
-# Verifies incoming caller JWT before delegating to executeOnyxDataTool.
+# Verifies a Supabase JWT or a siri token itself and answers 401 otherwise.
+# A siri token is not a JWT, so the gateway check must be off.
+verify_jwt = false
+
+[functions.siri-token]
+# API to create, list, and revoke siri tokens.
+# Requires a valid Supabase JWT.
 verify_jwt = true
 

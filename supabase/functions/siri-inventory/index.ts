@@ -93,8 +93,12 @@ interface AuthFailure {
 
 type AuthResult = AuthSuccess | AuthFailure;
 
+import { isSiriToken, hashSiriToken } from "../_shared/siriToken.ts";
+
+const tokenUsageCache = new Map<string, number>();
+
 /**
- * Validates the Bearer token against Supabase Auth and resolves the caller's
+ * Validates the Bearer token against Supabase Auth (or Siri token) and resolves the caller's
  * application role and vendor scope from the app_users table.
  * Matches the resolution pattern in onyx-mcp/index.ts.
  */
@@ -115,21 +119,61 @@ async function authenticateCaller(req: Request): Promise<AuthResult> {
     };
   }
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser(token);
+  let user: Record<string, any> | null = null;
 
-  if (authError || !user) {
-    return {
-      errorResponse: new Response(
-        JSON.stringify({ ok: false, error: "Unauthorized: Invalid or expired token" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      ),
-    };
+  if (isSiriToken(token)) {
+    const tokenHash = await hashSiriToken(token);
+    const { data: siriToken } = await supabase
+      .from("siri_tokens")
+      .select("id, user_id")
+      .eq("token_hash", tokenHash)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+
+    if (!siriToken) {
+      return {
+        errorResponse: new Response(
+          JSON.stringify({ ok: false, error: "Unauthorized: Invalid or expired token" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        ),
+      };
+    }
+
+    user = { id: siriToken.user_id };
+
+    const now = Date.now();
+    const lastUpdate = tokenUsageCache.get(siriToken.id) ?? 0;
+    if (now - lastUpdate > 60000) {
+      tokenUsageCache.set(siriToken.id, now);
+      supabase
+        .from("siri_tokens")
+        .update({ last_used_at: new Date().toISOString() })
+        .eq("id", siriToken.id)
+        .then()
+        .catch(() => {});
+    }
+  } else {
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+
+    if (authError || !authUser) {
+      return {
+        errorResponse: new Response(
+          JSON.stringify({ ok: false, error: "Unauthorized: Invalid or expired token" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        ),
+      };
+    }
+    user = authUser;
   }
 
   let appUser: Record<string, unknown> | null = null;
