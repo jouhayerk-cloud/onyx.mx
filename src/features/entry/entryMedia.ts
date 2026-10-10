@@ -32,6 +32,7 @@ export async function readPickedFiles(files: readonly File[]): Promise<EntryPhot
     return out;
 }
 
+/** Progress of a photo upload: files done out of the total, and a label for the current step. */
 export interface UploadProgress {
     done: number;
     total: number;
