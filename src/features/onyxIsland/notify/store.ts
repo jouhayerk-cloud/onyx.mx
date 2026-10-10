@@ -346,6 +346,7 @@ export function markAllRead() {
   }
 }
 
+/** Empties the island notification history and saves the change. */
 export function clearHistory() {
   history = [];
   updateSnapshot();
