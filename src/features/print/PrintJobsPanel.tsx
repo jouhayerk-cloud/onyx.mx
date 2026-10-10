@@ -8,6 +8,7 @@ interface PrintJobsPanelProps {
     season: '825' | '826';
 }
 
+/** Panel listing recent document and legacy print jobs for one season, with verify status. */
 export function PrintJobsPanel({ season }: PrintJobsPanelProps) {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
