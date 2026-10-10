@@ -5,6 +5,7 @@ import { logisticsSubTabAtom } from '../../lib/atoms';
 import { CratesInventoryView } from './CratesInventoryView';
 import { Box, Package, Archive, Filter } from 'lucide-react';
 
+/** Warehouse tab that shows the crate inventory view. */
 export const WarehouseView: React.FC = () => {
     const [activeTab, setActiveTab] = useAtom(logisticsSubTabAtom);
 
