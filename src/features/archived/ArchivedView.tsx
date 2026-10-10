@@ -219,6 +219,7 @@ const InnerArchivedView: React.FC<{ isFinanceRole: boolean }> = ({ isFinanceRole
   );
 };
 
+/** Archived page: finance roles get the full view, everyone else the access gate. */
 export const ArchivedView: React.FC = () => {
   const user = useAtomValue(userAtom);
   const isFinanceRole = user?.role === 'Developer' || user?.role === 'Admin';

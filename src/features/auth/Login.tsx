@@ -9,6 +9,7 @@ import { OnyxLogo } from '../../components/OnyxLogo';
 import userIcons from '../../components/userIcons';
 import { tr } from '../../lib/i18n';
 
+/** Sign-in screen: email and password form, with a timeout message when the connection stalls. */
 export function Login() {
   const t = useTranslation();
   const setUser = useSetAtom(userAtom);

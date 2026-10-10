@@ -14,6 +14,7 @@ const DeviceDetailDrawer = React.lazy(() => import('./detail/DeviceDetailDrawer'
 const TABS = ['Fleet', 'Scans', 'Workflows', 'Control', 'Admin'] as const;
 type TabType = typeof TABS[number];
 
+/** Top-level Pico devices screen with tabs for the fleet, scans, workflows, control and admin. */
 export const DevicesView: React.FC = () => {
   const fleet = useDeviceFleet();
   const now = useNow();

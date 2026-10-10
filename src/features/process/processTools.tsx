@@ -5,6 +5,7 @@ import { tr } from '../../lib/i18n';
 import { processActiveTabAtom } from '../../lib/atoms';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
+/** Builds the process view tool entries, wired to the active process tab. */
 export function useProcessTools(): ToolDescriptor[] {
   const [activeTab, setActiveTab] = useAtom(processActiveTabAtom);
 

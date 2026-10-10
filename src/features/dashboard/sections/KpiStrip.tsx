@@ -17,6 +17,7 @@ interface KpiStripProps {
     currentExchangeRate: number;
 }
 
+/** Strip of headline KPIs: item count, acquisition, liability, logistics and operations spend. */
 export const KpiStrip: React.FC<KpiStripProps> = ({
     totalItems,
     totalAcqUsd,

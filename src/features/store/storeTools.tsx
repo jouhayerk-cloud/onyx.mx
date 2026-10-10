@@ -15,6 +15,8 @@ export interface StoreWidgets {
     DeployableSearch: React.ComponentType<any>;
 }
 
+/** Builds the store view tool entries: search, vendor filter and view mode. */
+
 export function useStoreTools(widgets: StoreWidgets): ToolDescriptor[] {
     const [search, setSearch] = useAtom(storeSearchTermAtom);
     const [vendorFilter, setVendorFilter] = useAtom(storeActiveVendorFilterAtom);

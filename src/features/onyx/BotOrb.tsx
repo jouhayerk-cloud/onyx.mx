@@ -21,6 +21,7 @@ interface BotOrbProps {
     onClose: () => void;
 }
 
+/** Voice orb for Onyx: streams microphone audio to Gemini Live and plays its spoken replies. */
 export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
     const [isBotOpen, setIsBotOpen] = useAtom(isBotOrbOpenAtom);
     const [, setUserApiKey] = useAtom(onyxApiKeyAtom);

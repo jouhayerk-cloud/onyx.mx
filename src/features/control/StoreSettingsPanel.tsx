@@ -13,6 +13,7 @@ interface StoreUser {
     store_logo?: string;
 }
 
+/** Admin panel that lists app users and toggles each user's store access. */
 export function StoreSettingsPanel() {
     const [users, setUsers] = useState<StoreUser[]>([]);
     const [loading, setLoading] = useState(true);

@@ -11,6 +11,7 @@ import { TruckingModule } from './TruckingModule';
 import { PackingModule } from './PackingModule';
 import { DeployedView } from './DeployedView';
 
+/** Logistics module shell: shows the active sub-tab and keeps the logistics documents in sync. */
 export const LogisticsView: React.FC = () => {
     const [activeTab, setActiveTab] = useAtom(logisticsSubTabAtom);
     const setLogisticsDocs = useSetAtom(logisticsDocsAtom);

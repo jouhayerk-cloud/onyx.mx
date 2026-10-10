@@ -12,6 +12,7 @@ export function relativeTime(iso: string | null | undefined, nowMs: number): str
   return trf('{n} d ago', { n: Math.floor(s / 86400) });
 }
 
+/** Formats a duration in ms as '350 ms', '2.5 s' or 'N min M s'. */
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)} ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;

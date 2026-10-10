@@ -9,9 +9,11 @@ export type IslandMode = 'rest' | 'peek' | 'card' | 'surface';
 /** Page-specific figures docked into the island pill, one half on each side of the face. */
 export interface IslandReadout { left: React.ReactNode; right: React.ReactNode }
 
+/** Current display mode of the island: rest, peek, card or surface. Starts at rest. */
 export const islandModeAtom = atom<IslandMode>('rest');
 /** Tools, the selected item, Chan (the conversation) and the notification history. Reopening keeps the last one. */
 export type IslandPane = 'tools' | 'item' | 'chat' | 'notifications';
+/** Pane open in the island. Starts on tools. */
 export const islandPaneAtom = atom<IslandPane>('tools');
 
 export function expressionForKind(kind: NotifyKind): OnyxChanFace {

@@ -17,6 +17,7 @@ export interface DeviceExtra {
   offline_queue_len?: number;
 }
 
+/** Validates a device's raw extra telemetry, keeping in-range values and dropping the rest. */
 export function readExtra(state: DeviceState): DeviceExtra {
   try {
     const extraRaw = state.extra;

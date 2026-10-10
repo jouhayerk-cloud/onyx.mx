@@ -88,6 +88,7 @@ export const ONYX_CONTEXT = {
     }
 };
 
+/** Builds Onyx's grounding text: warehouse rules and the vendor name list from ONYX_CONTEXT. */
 export const getOnyxSystemGrounding = () => {
     const vendors = Object.entries(ONYX_CONTEXT.vendor_mapping)
         .map(([id, info]) => `${info.name} (${info.firstName}) = ID: ${id}`)

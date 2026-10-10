@@ -63,6 +63,7 @@ function BreakdownBar({ data, title, icon: Icon }: { data: Record<string, number
     );
 }
 
+/** Control panel with inventory counts by status, vendor and category, refreshed on demand. */
 export function DatabaseStatsPanel() {
     const [stats, setStats] = useState<InventoryStats | null>(null);
     const [loading, setLoading] = useState(true);

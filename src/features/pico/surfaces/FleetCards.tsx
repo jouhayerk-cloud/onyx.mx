@@ -26,6 +26,7 @@ const Metric: React.FC<{ label: string; children: React.ReactNode }> = ({ label,
   </div>
 );
 
+/** Card grid of fleet devices with their latest telemetry; onSelect reports the chosen device. */
 export const FleetCards: React.FC<FleetCardsProps> = ({ devices, telemetryFor, now, onSelect }) => {
   if (devices.length === 0) {
     return (

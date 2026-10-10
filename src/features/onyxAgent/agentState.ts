@@ -3,6 +3,7 @@ import { nullableAtom } from '../../lib/atoms';
 
 export type AgentPhase = 'idle' | 'listening' | 'thinking' | 'acting' | 'speaking' | 'error';
 
+/** Whether the Onyx agent panel is open. Starts closed. */
 export const onyxAgentOpenAtom = atom<boolean>(false);
 export const onyxAgentPhaseAtom = atom<AgentPhase>('idle');
 export const onyxMirrorRobotAtom = atom<boolean>(false);

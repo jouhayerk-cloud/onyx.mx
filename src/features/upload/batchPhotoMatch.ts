@@ -37,6 +37,7 @@ export interface PhotoMatchResult {
 const IMAGE_EXT = /\.(jpe?g|png|webp|heic|heif|gif|bmp|tiff?)$/i;
 const NAME_RE = /^([A-Za-z]{1,6})?[\s._-]*0*(\d{1,4})(?:[\s._-]*(?:\((\d{1,2})\)|(\d{1,2})|([A-Za-z])))?$/;
 
+/** True when a file has an image MIME type or an image extension such as jpg, png or heic. */
 export function isImageFile(file: File): boolean {
     return file.type.startsWith('image/') || IMAGE_EXT.test(file.name);
 }

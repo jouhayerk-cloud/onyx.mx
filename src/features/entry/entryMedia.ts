@@ -16,6 +16,7 @@ import { handleFileUpload, readFileAsDataURL } from '../../lib/utils';
 import { compressAndTrimVideo } from '../../lib/videoCompressor';
 import { photoKey, type EntryPhoto } from './entryModel';
 
+/** Reads picked image and video files into photos with previews, skipping other types and read errors. */
 export async function readPickedFiles(files: readonly File[]): Promise<EntryPhoto[]> {
     const out: EntryPhoto[] = [];
     for (const file of files) {
@@ -31,6 +32,7 @@ export async function readPickedFiles(files: readonly File[]): Promise<EntryPhot
     return out;
 }
 
+/** Progress of a photo upload: files done out of the total, and a label for the current step. */
 export interface UploadProgress {
     done: number;
     total: number;

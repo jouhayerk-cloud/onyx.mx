@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai';
 import { workbookSuppliesDataAtom } from '../../lib/atoms';
 import { tr } from '../../lib/i18n';
 
+/** Workbook tab summarizing supplies in, out and remaining, with the item rows. */
 export const WorkbookSuppliesView: React.FC = () => {
     const rawData = useAtomValue(workbookSuppliesDataAtom);
 

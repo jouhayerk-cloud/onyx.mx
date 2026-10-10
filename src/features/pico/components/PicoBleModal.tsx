@@ -10,6 +10,7 @@ interface PicoBleModalProps {
   onDevicePaired: (device: PicoDevice) => void;
 }
 
+/** Modal that pairs a Pico over Web Bluetooth and hands the paired device back to the caller. */
 export const PicoBleModal: React.FC<PicoBleModalProps> = ({ isOpen, onClose, onDevicePaired }) => {
   const { state, pair, disconnect, isWebBluetoothSupported } = useBleDevice();
   const [isPairing, setIsPairing] = useState(false);

@@ -6,6 +6,7 @@ const db = supabase as any;
 
 export type TelemetryRange = '1h' | '24h' | '7d';
 
+/** Loads a device's telemetry for a time range from Supabase, thinned to 240 points, every 30 s. */
 export function useTelemetryRange(deviceId: string | null, range: TelemetryRange) {
   const [points, setPoints] = useState<TelemetryPoint[]>([]);
   const [loading, setLoading] = useState(false);

@@ -35,6 +35,7 @@ const csvCell = (v: unknown): string => {
     return '"' + (/^[=+\-@\t\r]/.test(t) ? "'" + t : t) + '"';
 };
 
+/** Builds archive CSV text, file name and row count from items; adds finance columns for finance roles. */
 export function buildArchiveCsv(
     items: ArchiveItem[],
     finance: Record<string, ArchiveFinance>,

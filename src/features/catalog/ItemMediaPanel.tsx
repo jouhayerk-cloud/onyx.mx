@@ -53,6 +53,7 @@ export const MEDIA_ORIGIN_INITIAL: Record<MediaOrigin, string> = {
   raw: 'R',
 };
 
+/** Tooltip for a media origin: PROCESSED is the public image, RAW is never shown publicly. */
 export const mediaOriginTitle = (origin: MediaOrigin): string =>
   origin === 'processed'
     ? tr('PROCESSED — background-cleaned. This is the image shown publicly.')
