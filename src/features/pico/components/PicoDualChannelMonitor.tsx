@@ -13,6 +13,7 @@ interface PicoDualChannelMonitorProps {
   className?: string;
 }
 
+/** Panel comparing the direct device socket with the Supabase channel: status, latency, events. */
 export const PicoDualChannelMonitor: React.FC<PicoDualChannelMonitorProps> = ({
   directSocket,
   isDirectConnected,
