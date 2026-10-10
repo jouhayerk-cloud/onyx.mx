@@ -41,6 +41,7 @@ async function runCheck(
     }
 }
 
+/** Runs the built-in document self checks and returns one named result per check. */
 export async function runDjSelfTest(): Promise<SelfTestResult[]> {
     const results: SelfTestResult[] = [];
 
