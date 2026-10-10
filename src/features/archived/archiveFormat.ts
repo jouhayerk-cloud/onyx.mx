@@ -22,6 +22,7 @@ export function formatDims(item: ArchiveItem): string {
     return parts.join(' × ') + ' cm';
 }
 
+/** Formats a weight in kilograms, such as 12.5 kg, or an empty string when there is none. */
 export function formatWeight(kg: number | null): string {
     if (kg == null) return '';
     return `${kg} kg`;
