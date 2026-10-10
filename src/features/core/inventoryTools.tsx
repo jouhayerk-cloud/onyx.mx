@@ -100,6 +100,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         tools.push({
             id: 'inventory.view',
             moduleId: 'inventory',
+            parent: 'inventory.tools',
             label: tr('View'),
             icon: LayoutTemplate,
             kind: 'toggle',
@@ -114,6 +115,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         tools.push({
             id: 'inventory.search',
             moduleId: 'inventory',
+            parent: 'inventory.tools',
             label: tr('Search'),
             icon: SearchIcon,
             kind: 'toggle',
@@ -128,6 +130,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         tools.push({
             id: 'inventory.filter',
             moduleId: 'inventory',
+            parent: 'inventory.tools',
             label: tr('Filter'),
             icon: Filter,
             kind: 'toggle',
@@ -186,6 +189,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         tools.push({
             id: 'inventory.add',
             moduleId: 'inventory',
+            parent: 'inventory.actions',
             label: tr('Add'),
             title: tr('Add Entry'),
             icon: Plus,
@@ -203,6 +207,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         tools.push({
             id: 'inventory.select',
             moduleId: 'inventory',
+            parent: 'inventory.actions',
             label: tr('Select'),
             title: tr('Select items to act on'),
             icon: SquareCheckBig,
@@ -218,6 +223,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         tools.push({
             id: 'inventory.export',
             moduleId: 'inventory',
+            parent: 'inventory.actions',
             label: tr('Export'),
             title: tr('Global Export'),
             icon: Download,

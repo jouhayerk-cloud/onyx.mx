@@ -3,11 +3,11 @@
 .isb-toggle-circle {
   --isb-spring: ease;
   position: fixed;
-  left: max(8px, env(safe-area-inset-left, 0px));
+  left: -14px;                       /* a quarter of the circle sits outside the page */
   top: 50%;
   translate: 0 -50%;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   padding: 0;
   border-radius: 50% !important;     /* the slab theme sets a radius on every button with !important */
   display: flex;
@@ -27,7 +27,12 @@
     inset 0 -2px 4px rgba(0, 0, 0, 0.14),
     0 8px 22px rgba(2, 6, 16, 0.35),
     0 1px 3px rgba(2, 6, 16, 0.3);
-  transition: transform 0.55s var(--isb-spring);
+  transition: left 0.5s var(--isb-spring), transform 0.5s var(--isb-spring);
+  animation: isb-toggle-peek 0.6s var(--isb-spring) both;
+}
+@keyframes isb-toggle-peek {
+  from { left: -64px; }
+  to { left: -14px; }
 }
 @supports (transition-timing-function: linear(0, 1)) {
   .isb-toggle-circle {
@@ -49,9 +54,12 @@
   mask-composite: exclude;
 }
 .isb-toggle-circle:hover { transform: scale(1.06); }
+@media (hover: hover) { .isb-toggle-circle:hover { left: -4px; } }
+/* tapped: bigger, and fully inside the page, while the sidebar is about to open */
+.isb-toggle-circle.is-opening { left: 14px; transform: scale(1.3); }
 .isb-toggle-circle:active { transform: scale(0.92, 0.88); transition-duration: 0.12s; }
 .isb-toggle-circle:focus-visible { outline: 2px solid var(--main-color, #00aeef); outline-offset: 3px; }
-.isb-toggle-logo { width: 28px; height: 28px; object-fit: contain; pointer-events: none; }
+.isb-toggle-logo { width: 30px; height: 30px; object-fit: contain; pointer-events: none; translate: 8px 0; }   /* the logo sits in the visible three quarters */
 html.theme-aqua .isb-toggle-circle {
   color: #0b2a33;
   background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.7)) !important;
@@ -182,6 +190,6 @@ html.theme-aqua .isb-collapse-btn:hover { background-color: rgba(11, 42, 51, 0.1
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .isb-toggle-circle, .isb-collapse-btn { transition: none !important; }
+  .isb-toggle-circle, .isb-collapse-btn { transition: none !important; animation: none !important; }
   .isb-toggle-circle:hover, .isb-toggle-circle:active, .isb-collapse-btn:active { transform: none; }
 }

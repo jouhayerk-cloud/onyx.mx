@@ -82,11 +82,15 @@
   display: flex; flex-direction: column; gap: 10px; min-width: 0;
   padding: 10px 12px; border-radius: 12px; border: 1px solid var(--isl-line); background: var(--isl-fill-1);
 }
-.isl-chan-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; flex-wrap: wrap; }
-.isl-chan-text { min-width: 0; }
-.isl-chan-greet { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.2; color: var(--isl-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.isl-chan-meta { margin: 2px 0 0; font-size: 12px; font-weight: 500; line-height: 1.2; color: var(--isl-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.isl-chan-figures { flex: none; display: flex; align-items: center; gap: 12px; color: var(--isl-ink-2); font-size: 12px; }
+.isl-chan-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; flex-wrap: nowrap; }   /* greeting and totals always share one row */
+.isl-chan-text { flex: 1 1 auto; min-width: 0; }
+.isl-chan-greet { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.2; color: var(--isl-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isl-chan-meta { margin: 2px 0 0; font-size: 11px; font-weight: 500; line-height: 1.2; color: var(--isl-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isl-chan-figures { flex: none; display: flex; align-items: center; gap: 8px; color: var(--isl-ink-2); font-size: 11px; }
+/* the page totals (InfoNotch) a little smaller: no inner padding, 10 px captions over 12 px values */
+.isl-chan-figures .info-notch-stats { padding: 0 !important; column-gap: 8px !important; row-gap: 1px !important; }
+.isl-chan-figures .info-notch-stats [class*="text-[11px]"] { font-size: 10px !important; }
+.isl-chan-figures .info-notch-stats [class*="text-[13px]"] { font-size: 12px !important; }
 .isl-chan-form { display: flex; align-items: center; gap: 8px; }
 .isl-chan-input {
   flex: 1 1 auto; min-width: 0; min-height: var(--isl-target); padding: 0 12px;
@@ -102,4 +106,19 @@
   border: 1px solid var(--isl-bd); background: var(--isl-bg); color: var(--isl-accent); cursor: pointer;
 }
 .isl-chan-send:focus-visible { outline: none; box-shadow: var(--isl-focus); }
-@media (max-width: 560px) { .isl-chan-figures { width: 100%; } }
+
+/* Phone: the children of the open group (View, Search, Filter / Add, Select, Export) are a second row above the main row */
+.isl-subrow {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 8px 4px;
+  border-bottom: 1px solid var(--isl-line);
+  overflow-x: auto;
+  scrollbar-width: none;
+  animation: isl-subrow-in 0.3s ease both;
+}
+.isl-subrow::-webkit-scrollbar { display: none; }
+.isl-subrow > div { display: flex; align-items: center; gap: 2px; }
+@keyframes isl-subrow-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .isl-subrow { animation: none; } }
