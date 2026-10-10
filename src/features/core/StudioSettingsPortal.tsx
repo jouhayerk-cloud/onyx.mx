@@ -351,10 +351,12 @@ export const StudioSettingsPortal: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Siri access: personal tokens for the iPhone Shortcut */}
-                                    <div className="mt-12">
-                                        <SiriAccessPanel />
-                                    </div>
+                                    {/* Siri access: personal tokens for the iPhone Shortcut. Off until the siri-token function is deployed (set VITE_SIRI_TOKENS=true). */}
+                                    {import.meta.env.VITE_SIRI_TOKENS === 'true' && (
+                                        <div className="mt-12">
+                                            <SiriAccessPanel />
+                                        </div>
+                                    )}
 
                                 </div>
                             ) : (
