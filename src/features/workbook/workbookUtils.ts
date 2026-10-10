@@ -1,4 +1,5 @@
 
+/** Finds the header row in the first 10 rows, the first with two or more column keywords; else 0. */
 export const findHeaderRowIndex = (data: any[][]): number => {
     if (!data || data.length === 0) return 0;
 
