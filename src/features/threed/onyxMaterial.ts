@@ -62,6 +62,7 @@ export function thicknessForItem(item: {
   return THREE.MathUtils.clamp(Math.min(...dims) / 100, 0.008, 0.3);
 }
 
+/** Builds the physical stone material for an onyx piece from the shared PBR values. */
 export function createOnyxMaterial(options: OnyxMaterialOptions = {}): THREE.MeshPhysicalMaterial {
   const {
     color = 0xffffff,
