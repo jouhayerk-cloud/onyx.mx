@@ -7,6 +7,11 @@
    --ui-* token, so Aqua and dark follow the theme.
    ========================================================================== */
 
+/* The full width row a field's tags sit in: a grid child (s6), so its chips wrap inside the form's width. */
+.entry .entry-tags-row {
+    min-width: 0;
+}
+
 .entry .entry-tags {
     display: flex;
     flex-wrap: wrap;

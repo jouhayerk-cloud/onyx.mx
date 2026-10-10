@@ -1,17 +1,20 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { tr, trf } from '../../../lib/i18n';
-import { matchEntry, suggestFor, visibleLibrary } from '../../../lib/shapeTypeLibrary';
+import { typeKey } from '../../../lib/canonicalType';
+import { suggestTypes, type TypeEntry } from '../../../lib/typeLibrary';
 import { Spring, falloff, sleep, wake } from '../../welcome/hairline/engine';
 import { ShapeFigure } from './ShapeFigure';
-import type { LibraryEntry, PickerValue } from './types';
 import './shapeTypePicker.css';
 
+/** What the picker reads and writes: the Type input only. The Shape input is never touched here. */
+export interface TypePickerValue { type: string }
+
 export interface ShapeTypePickerProps {
-    value: PickerValue;
-    onChange: (v: PickerValue) => void;
-    library: readonly LibraryEntry[];
+    value: TypePickerValue;
+    onChange: (v: TypePickerValue) => void;
+    library: readonly TypeEntry[];
     canSave: boolean;
-    onSave?: (v: PickerValue) => Promise<boolean> | boolean | void;
+    onSave: (type: string) => void | Promise<void>;
     disabled?: boolean;
     loading?: boolean;
 }
@@ -20,7 +23,7 @@ export interface ShapeTypePickerProps {
 const FIRST = 24;
 /** A tile lifts while the pointer is within this many tile widths of it. */
 const REACH = 3;
-/** Most suggestions offered under a partial or unknown pair. */
+/** Most suggestions offered under a Type that is not in the library. */
 const SUGGESTIONS = 4;
 /** How long "Saved" stays on the button. */
 const SAVED_MS = 2000;
@@ -39,9 +42,9 @@ function columnsOf(tiles: HTMLElement[]): number {
 }
 
 /**
- * The Shape + Type selector: one hairline tile per (shape, type) pair of the library. It sits inside the form's Field,
- * so it draws no label of its own. The existing Shape and Type inputs are untouched; they write the same PickerValue
- * this reads, and the tile matching them is the chosen one.
+ * The Type selector: one hairline tile per canonical Type of the library (no photo, the figure and the Type name only).
+ * It sits inside the form's Field, so it draws no label of its own. The existing Type input is untouched; it writes the
+ * same value this reads, and the tile matching it is the chosen one. Shape is not a tile: it is a free sub group.
  *
  * The grid is a radiogroup with one tab stop (arrows, Home, End), as VendorPicker. The pointer lifts the nearby tiles
  * by setting --sf-lift on each tile from the shared loop; nothing runs at rest, and reduced motion turns it off.
@@ -58,21 +61,17 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     const lifts = useRef(new Map<string, Spring>());
     const savedTimer = useRef<number | undefined>(undefined);
 
-    const typed = value.shape.trim() !== '' || value.type.trim() !== '';
-    const chosen = useMemo(() => matchEntry(library, value.shape, value.type), [library, value.shape, value.type]);
-    const newPair = value.shape.trim() !== '' && value.type.trim() !== '' && !chosen;
+    const typed = value.type.trim();
+    const chosen = useMemo(() => (typed ? library.find(e => e.key === typeKey(typed)) : undefined), [library, typed]);
+    const newType = typed !== '' && !chosen;
 
-    const all = useMemo(() => visibleLibrary(library), [library]);
-    const q = query.trim().toLowerCase();
-    const matches = useMemo(() => (
-        q ? all.filter(e => e.shape.toLowerCase().includes(q) || e.type.toLowerCase().includes(q)) : all
-    ), [all, q]);
+    const matches = useMemo(() => suggestTypes(library, query, library.length), [library, query]);
     const shown = expanded ? matches : matches.slice(0, FIRST);
     const tabKey = shown.some(e => e.key === chosen?.key) ? chosen?.key : shown[0]?.key;
 
     const suggestions = useMemo(() => (
-        chosen || !typed ? [] : suggestFor(library, value.shape, value.type, SUGGESTIONS)
-    ), [library, chosen, typed, value.shape, value.type]);
+        chosen || !typed ? [] : suggestTypes(library, typed, SUGGESTIONS)
+    ), [library, chosen, typed]);
 
     const springOf = (key: string): Spring => {
         let s = lifts.current.get(key);
@@ -137,11 +136,9 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     };
 
     const save = async () => {
-        if (!onSave || saveState !== 'idle') return;
+        if (saveState !== 'idle') return;
         setSaveState('pending');
-        let ok: boolean | void;
-        try { ok = await onSave(value); } catch { ok = false; }
-        if (ok === false) { setSaveState('idle'); return; }
+        try { await onSave(typed); } catch { setSaveState('idle'); return; }
         setSaveState('saved');
         window.clearTimeout(savedTimer.current);
         savedTimer.current = window.setTimeout(() => setSaveState('idle'), SAVED_MS);
@@ -150,21 +147,21 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     return (
         <div className="stp">
             <div className="stp-head">
-                <span id={`${uid}-title`} className="stp-title">{tr('Pick a shape and type')}</span>
+                <span id={`${uid}-title`} className="stp-title">{tr('Pick a type')}</span>
                 <input
                     type="search"
                     className="stp-search"
                     value={query}
                     onChange={e => setQuery(e.target.value)}
-                    placeholder={tr('Find a shape or type')}
-                    aria-label={tr('Find a shape or type')}
+                    placeholder={tr('Find a type')}
+                    aria-label={tr('Find a type')}
                     disabled={disabled}
                 />
             </div>
 
-            {loading && <p className="stp-quiet">{tr('Loading shapes...')}</p>}
-            {!loading && all.length === 0 && <p className="stp-quiet">{tr('No shapes yet. Save an item and it appears here.')}</p>}
-            {all.length > 0 && matches.length === 0 && <p className="stp-quiet">{tr('No shape or type matches.')}</p>}
+            {loading && <p className="stp-quiet">{tr('Loading types...')}</p>}
+            {!loading && library.length === 0 && <p className="stp-quiet">{tr('No types yet. Save an item and it appears here.')}</p>}
+            {library.length > 0 && matches.length === 0 && <p className="stp-quiet">{tr('No type matches.')}</p>}
 
             {shown.length > 0 && (
                 <div
@@ -186,26 +183,26 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
                                 type="button"
                                 role="radio"
                                 aria-checked={isChosen}
-                                aria-label={`${entry.shape}, ${entry.type}, ${count}`}
+                                aria-label={`${entry.label}, ${count}`}
                                 tabIndex={entry.key === tabKey ? 0 : -1}
                                 className="stp-tile"
                                 disabled={disabled}
-                                onClick={() => onChange({ shape: entry.shape, type: entry.type })}
+                                onClick={() => onChange({ type: entry.label })}
                             >
                                 <span className="stp-fig">
                                     <ShapeFigure
                                         family={entry.family}
                                         isMirror={entry.isMirror}
-                                        motif={entry.motif}
+                                        typeId={entry.id}
                                         dims={entry.dims}
-                                        holes={entry.holes}
+                                        holes={entry.holes[0]}
                                         active={isChosen}
                                         className="stp-svg"
                                     />
                                 </span>
                                 <span className="stp-cap" aria-hidden="true">
-                                    <span className="stp-shape">{entry.shape}</span>
-                                    <span className="stp-type">{entry.type} · {count}</span>
+                                    <span className="stp-shape">{entry.label}</span>
+                                    <span className="stp-type">{count}</span>
                                 </span>
                             </button>
                         );
@@ -227,21 +224,20 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
                 </div>
             )}
 
-            {(newPair || saveState === 'saved') && (
-                <div className="stp-new">
-                    {newPair && <span className="stp-new__name">{trf('New pair: {shape} · {type}', { shape: value.shape.trim(), type: value.type.trim() })}</span>}
-                    {newPair && canSave && (
+            {(newType || saveState === 'saved') && (
+                <div className="stp-add">
+                    {newType && canSave && (
                         <button
                             type="button"
                             className="stp-save"
-                            disabled={disabled || !onSave || saveState !== 'idle'}
+                            disabled={disabled || saveState !== 'idle'}
                             onClick={save}
                         >
                             {saveState === 'saved' ? tr('Saved') : saveState === 'pending' ? tr('Saving...') : tr('Save to library')}
                         </button>
                     )}
-                    {newPair && !canSave && <span className="stp-quiet">{tr('Only Developer and Admin can add pairs to the library.')}</span>}
-                    {!newPair && saveState === 'saved' && <span className="stp-quiet">{tr('Saved')}</span>}
+                    {newType && !canSave && <span className="stp-quiet">{tr('Only Developer and Admin can add types to the library.')}</span>}
+                    {!newType && saveState === 'saved' && <span className="stp-quiet">{tr('Saved')}</span>}
                 </div>
             )}
 
@@ -253,9 +249,9 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
                             type="button"
                             className="stp-chip"
                             disabled={disabled}
-                            onClick={() => onChange({ shape: s.shape, type: s.type })}
+                            onClick={() => onChange({ type: s.label })}
                         >
-                            {trf('Did you mean {pair}', { pair: `${s.shape} · ${s.type}` })}
+                            {trf('Did you mean {type}', { type: s.label })}
                         </button>
                     ))}
                 </div>

@@ -3336,4 +3336,12 @@ export const esCatalog: Record<string, string> = {
   'Colour tags': 'Etiquetas de color',
   'Material tags': 'Etiquetas de material',
   'Known sizes': 'Medidas conocidas',
+  'Pick a type': 'Elige un tipo',
+  'Pick a Type, or type below. Both stay in step.': 'Elige un tipo, o escríbelo abajo. Ambos se mantienen iguales.',
+  'Find a type': 'Buscar un tipo',
+  'Loading types...': 'Cargando tipos...',
+  'No types yet. Save an item and it appears here.': 'Aún no hay tipos. Guarda un artículo y aparecerá aquí.',
+  'No type matches.': 'Ningún tipo coincide.',
+  'Only Developer and Admin can add types to the library.': 'Solo Developer y Admin pueden agregar tipos a la biblioteca.',
+  'Did you mean {type}': '¿Quisiste decir {type}?',
 };
