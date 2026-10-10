@@ -3252,4 +3252,13 @@ export const esCatalog: Record<string, string> = {
   'Light room': 'Estudio claro',
   'Near-black studio behind the piece (the default)': 'Estudio casi negro detrás de la pieza (el predeterminado)',
   'Soft light grey studio behind the piece. Colours are read from the cut-out or the original photo, never from this background.': 'Estudio gris claro y suave detrás de la pieza. Los colores se leen del recorte o de la foto original, nunca de este fondo.',
+  'One folder per vendor. Pick a folder to see its pieces.': 'Una carpeta por proveedor. Elige una para ver sus piezas.',
+  'Payments, expenses and accounts.': 'Pagos, gastos y cuentas.',
+  'Warehouse, crates and pallets.': 'Almacén, cajas y tarimas.',
+  'Trucking, manifests and loads.': 'Transporte, manifiestos y cargas.',
+  'Shipping': 'Envíos',
+  'Finances vault': 'Bóveda de finanzas',
+  'Logistics conveyor': 'Banda de logística',
+  'Inventory folders, one per vendor. Arrow keys choose a vendor, Enter opens it.': 'Carpetas de inventario, una por proveedor. Las flechas eligen un proveedor y Enter lo abre.',
+  'Shipping truck. Press Enter to open Trucking.': 'Camión de envíos. Presiona Enter para abrir Transporte.',
 };

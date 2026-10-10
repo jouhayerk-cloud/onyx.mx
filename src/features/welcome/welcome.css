@@ -1,0 +1,212 @@
+/* Welcome page: four hairline figures around the Onyx Chan face. */
+
+.wl-root {
+  --wl-ink: #fff;
+  --wl-ink-2: rgba(255, 255, 255, 0.58);
+  --wl-line: rgba(255, 255, 255, 0.13);
+}
+html.theme-aqua .wl-root {
+  --wl-ink: #0b2a33;
+  --wl-ink-2: rgba(11, 42, 51, 0.68);
+  --wl-line: rgba(11, 42, 51, 0.16);
+}
+
+.wl-grid {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  max-width: 1100px;
+  /* centred when it fits, scrolled from its top when it does not (justify-content: center would crop the top) */
+  margin-block: auto;
+  grid-template-columns: minmax(0, 1fr);
+}
+.wl-face { grid-column: 1 / -1; order: -1; }
+@media (min-width: 640px) {
+  .wl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .wl-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 300px) minmax(0, 1fr);
+    grid-template-areas: "inv face fin" "log face shp";
+    gap: 20px 24px;
+  }
+  .wl-face { grid-area: face; grid-column: auto; order: 0; }
+  .wl-tile[data-area="inv"] { grid-area: inv; }
+  .wl-tile[data-area="fin"] { grid-area: fin; }
+  .wl-tile[data-area="log"] { grid-area: log; }
+  .wl-tile[data-area="shp"] { grid-area: shp; }
+}
+
+/* ── the face ───────────────────────────────────────────────────────────── */
+.wl-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 8px 0;
+}
+.wl-halo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(190px, 22vw, 250px);
+  aspect-ratio: 1;
+}
+.wl-halo::before,
+.wl-halo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--wl-line);
+  pointer-events: none;
+}
+.wl-halo::after { inset: -14px; border-color: color-mix(in srgb, var(--wl-line) 55%, transparent); }
+/* the mascot is a button: the slab styles would paint a dark square behind the sprite */
+.wl-halo > button {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-radius: 50% !important;
+}
+.wl-hello { color: var(--wl-ink); font-weight: 900; letter-spacing: -0.03em; line-height: 1.04; font-size: clamp(1.9rem, 3.2vw, 2.7rem); }
+.wl-hello b { color: var(--main-color, #00aeef); font-weight: 900; }
+.wl-lede { color: var(--wl-ink-2); font-weight: 500; font-size: 0.95rem; max-width: 26ch; }
+
+/* ── a tile ─────────────────────────────────────────────────────────────── */
+.wl-tile {
+  --hl-accent: #00aeef;
+  --hl-plate: #0d1015;
+  --hl-edge: var(--hl-accent);
+  --hl-hi: color-mix(in srgb, var(--hl-accent) 38%, #fff);
+  --hl-mid: color-mix(in srgb, var(--hl-accent) 58%, var(--hl-plate));
+  --hl-lo: color-mix(in srgb, var(--hl-accent) 30%, var(--hl-plate));
+  --hl-lo-fill: color-mix(in srgb, var(--hl-accent) 9%, #000);
+  --hl-stroke: 1.1;
+  /* the package's own figures read the same colours */
+  --hairline-plate: var(--hl-plate);
+  --hairline-hi: var(--hl-hi);
+  --hairline-edge: var(--hl-edge);
+  --hairline-mid: var(--hl-mid);
+  --hairline-lo: var(--hl-lo);
+  --hairline-stroke: var(--hl-stroke);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 24px;
+  border: 1px solid var(--wl-line);
+  background: color-mix(in srgb, var(--hl-accent) 4%, transparent);
+  overflow: hidden;
+  transition: border-color 0.25s ease, background-color 0.25s ease;
+  animation: wl-in 0.6s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.wl-tile:hover,
+.wl-tile:focus-within {
+  border-color: color-mix(in srgb, var(--hl-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--hl-accent) 8%, transparent);
+}
+.wl-tile[data-area="inv"] { --hl-accent: #00aeef; animation-delay: 0.05s; }
+.wl-tile[data-area="fin"] { --hl-accent: #f2b53c; animation-delay: 0.12s; }
+.wl-tile[data-area="log"] { --hl-accent: #35d0a2; animation-delay: 0.19s; }
+.wl-tile[data-area="shp"] { --hl-accent: #ff7a45; animation-delay: 0.26s; }
+@keyframes wl-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .wl-tile { animation: none; } }
+
+html.theme-aqua .wl-tile {
+  --hl-plate: #f6f1e6;
+  --hl-hi: color-mix(in srgb, var(--hl-accent) 70%, #000);
+  --hl-edge: color-mix(in srgb, var(--hl-accent) 85%, #000);
+  --hl-mid: color-mix(in srgb, var(--hl-accent) 70%, var(--hl-plate));
+  --hl-lo: color-mix(in srgb, var(--hl-accent) 40%, var(--hl-plate));
+  --hl-lo-fill: color-mix(in srgb, var(--hl-accent) 14%, var(--hl-plate));
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.wl-fig {
+  position: relative;
+  margin: 10px 10px 0;
+  aspect-ratio: 5 / 4;
+  border-radius: 16px;
+  background: var(--hl-plate);
+  border: 1px solid color-mix(in srgb, var(--hl-accent) 22%, transparent);
+  overflow: hidden;
+  cursor: pointer;
+}
+.wl-fig > :not(.wl-read) { width: 100%; height: 100%; }
+.wl-read {
+  position: absolute;
+  left: 12px;
+  bottom: 9px;
+  z-index: 2;
+  max-width: calc(100% - 24px);
+  font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--hl-hi);
+  pointer-events: none;
+}
+
+.wl-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px 16px;
+}
+.wl-title { color: var(--wl-ink); font-weight: 800; font-size: 1.18rem; letter-spacing: -0.01em; line-height: 1.1; }
+.wl-sub { color: var(--wl-ink-2); font-size: 0.8rem; margin-top: 4px; line-height: 1.3; }
+.wl-go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--hl-accent) 55%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--hl-accent) 80%, var(--wl-ink));
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.2s ease, gap 0.2s ease, color 0.2s ease;
+}
+.wl-go:hover,
+.wl-go:focus-visible { background: color-mix(in srgb, var(--hl-accent) 18%, transparent); gap: 10px; outline: none; }
+html.theme-aqua .wl-go { color: color-mix(in srgb, var(--hl-accent) 70%, #000); }
+
+/* ── the drawn figures (cabinet, truck) ─────────────────────────────────── */
+.hl-stage { width: 100%; height: 100%; outline: none; touch-action: manipulation; }
+.hl-stage:focus-visible { box-shadow: inset 0 0 0 2px var(--hl-hi); border-radius: 16px; }
+.hl-stage svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hl-stage path { vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.hl-plate { fill: var(--hl-plate); stroke: var(--hl-edge); stroke-width: var(--hl-stroke); }
+.hl-face { fill: var(--hl-plate); stroke: var(--hl-mid); stroke-width: var(--hl-stroke); }
+.hl-slot { fill: var(--hl-lo-fill); stroke: var(--hl-lo); stroke-width: var(--hl-stroke); }
+.hl-crease { fill: none; stroke: var(--hl-mid); stroke-width: var(--hl-stroke); }
+.hl-dash { fill: none; stroke: var(--hl-lo); stroke-width: var(--hl-stroke); }
+.hl-spoke { fill: none; stroke: var(--hl-mid); stroke-width: var(--hl-stroke); }
+.hl-mark { fill: var(--hl-edge); stroke: none; }
+.hl-bright { fill: var(--hl-hi); }
+
+.hl-folder { will-change: transform; }
+.hl-folder-body { fill: color-mix(in srgb, var(--hl-plate) 68%, var(--c)); stroke: var(--c); stroke-width: var(--hl-stroke); }
+.hl-folder-crease { fill: none; stroke: color-mix(in srgb, var(--c) 60%, var(--hl-plate)); stroke-width: var(--hl-stroke); }
+.hl-folder-tab { fill: var(--c); stroke: var(--c); stroke-width: var(--hl-stroke); }
+.hl-folder.is-active .hl-folder-body { stroke: var(--hl-hi); stroke-width: calc(var(--hl-stroke) * 1.7); fill: color-mix(in srgb, var(--hl-plate) 50%, var(--c)); }
+.hl-folder.is-active .hl-folder-tab { stroke: var(--hl-hi); }
+
+/* Aqua: the vendor colours need more body on the cream plate */
+html.theme-aqua .hl-folder-body { fill: color-mix(in srgb, var(--hl-plate) 50%, var(--c)); }
+html.theme-aqua .hl-folder.is-active .hl-folder-body { fill: color-mix(in srgb, var(--hl-plate) 36%, var(--c)); }
+html.theme-aqua .hl-folder-crease { stroke: color-mix(in srgb, var(--c) 80%, #000); }
