@@ -13,6 +13,7 @@ export function buildTypeFigure(id: string | null | undefined, dims: Dims | null
     if (!id) return null;
     // Mirrors have one drawing per shape (round, squared, rectangular); the variant is the Shape text.
     if (id === 'mirror') return buildMirrorFigure(mirrorVariantOf(variant), dims);
+    // Order matters: the first group that knows the id wins.
     return buildLampFigure(id, dims, holes, variant)
         ?? buildVesselFigure(id, dims, holes)
         ?? buildStoneFigure(id, dims, holes)
