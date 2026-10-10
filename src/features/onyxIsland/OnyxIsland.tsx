@@ -1,14 +1,14 @@
-import React, { lazy, Suspense, useEffect, useRef, useState, useMemo } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState, useMemo, useCallback, useLayoutEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { m, LazyMotion, domMax, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { OnyxFace } from '../onyxAgent/face/OnyxFace';
 import { useGaze } from '../onyxAgent/face/useGaze';
 import { onyxAgentPhaseAtom } from '../onyxAgent/agentState';
 import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToastTimer, pushNotification } from './notify/store';
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
-import { islandModeAtom, islandPaneAtom, islandItemAtom, expressionForKind, type IslandReadout, type IslandPane } from './islandState';
+import { islandModeAtom, islandPaneAtom, islandItemAtom, expressionForKind, islandDeployAtom, type IslandReadout, type IslandPane, type IslandDeploy } from './islandState';
 import { SPRING, SPRING_BOUNCY, SPRING_SLOW, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
 import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
@@ -17,10 +17,15 @@ import { IslandLaunchers } from './IslandLaunchers';
 import { IslandToolsGrid } from './IslandToolsGrid';
 import { IslandHeader, displayNameOf, greeting } from './IslandHeader';
 import { IslandTabs } from './IslandTabs';
+import { IslandShelf } from './IslandShelf';
+import { fitTools } from './useIslandFit';
 import toast from './notify/toast';
 import './islandTokens.css';
 import './islandShell.css';
 import './islandGlass.css';
+import './islandRefraction.css';
+import { IslandRefractionDefs, useIslandRefraction } from './IslandRefraction';
+import './islandDeploy.css';
 
 const InboxPane = lazy(() => import('./panes/InboxPane').then(m => ({ default: m.InboxPane })));
 const ChanPane = lazy(() => import('./panes/ChanPane').then(m => ({ default: m.ChanPane })));
@@ -106,6 +111,23 @@ const VIEW_LABELS: Record<string, string> = {
   viewer: 'Viewer', welcome: 'Home', control: 'Control Center', store: 'Store', upload: 'Upload', packing: 'Packing',
 };
 
+const labelWidthCache = new Map<string, number>();
+let canvasContext: CanvasRenderingContext2D | null = null;
+function measureTextW(text: string, font: string) {
+  const key = text + '|' + font;
+  if (labelWidthCache.has(key)) return labelWidthCache.get(key)!;
+  if (!canvasContext && typeof document !== 'undefined') {
+    canvasContext = document.createElement('canvas').getContext('2d');
+  }
+  let w = text.length * 7;
+  if (canvasContext) {
+    canvasContext.font = font;
+    w = canvasContext.measureText(text).width;
+  }
+  labelWidthCache.set(key, w);
+  return w;
+}
+
 export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ readout = null }) => {
   const [mode, setMode] = useAtom(islandModeAtom);
   const [pane, setPane] = useAtom(islandPaneAtom);
@@ -132,6 +154,8 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const [filterText, setFilterText] = useState('');
 
   useGaze(islandRef);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  useIslandRefraction(surfaceRef);
   const isIdle = useIdleTimer(10 * 60 * 1000);
 
   const xl = useMediaQuery('(min-width: 1280px)');
@@ -155,10 +179,73 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     return { leftLaunchers: cut.slice(0, Math.ceil(cut.length / 2)), rightLaunchers: cut.slice(Math.ceil(cut.length / 2)) };
   }, [allTools, pinnedOverrides, maxLaunchers, maxDockLaunchers, commandsEnabled]);
 
+  const [storedDeploy, setStoredDeploy] = useAtom(islandDeployAtom);
+  const [tempShelfOpen, setTempShelfOpen] = useState(false);
+  const [isInside, setIsInside] = useState(false);
+  const [dwellTimer, setDwellTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const [islandWidth, setIslandWidth] = useState(1000);
+  const [islandFont, setIslandFont] = useState('600 13px sans-serif');
+  const [islandIconWidth, setIslandIconWidth] = useState(44);
+  const [, setTick] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = islandRef.current?.closest('.onyx-island-layer') as HTMLElement;
+    if (!el) return;
+    const update = () => {
+      setIslandWidth(el.getBoundingClientRect().width);
+      const style = window.getComputedStyle(el);
+      setIslandFont(`${style.fontWeight || '600'} ${style.fontSize || '13px'} ${style.fontFamily || 'sans-serif'}`);
+      setIslandIconWidth(parseInt(style.getPropertyValue('--isl-target')) || 44);
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    update();
+    return () => observer.disconnect();
+  }, [mode]);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined' && document.fonts) {
+      document.fonts.ready.then(() => setTick(t => t + 1));
+    }
+  }, []);
+
+  const getLabelWidthFn = useCallback((tool: ToolDescriptor) => {
+    return Math.ceil(measureTextW(tool.short || tool.label, islandFont)) + 6;
+  }, [islandFont]);
+
   const hasLaunchers = leftLaunchers.length > 0 || rightLaunchers.length > 0;
   const docked = hasLaunchers && mode === 'rest';
   const isSheet = mode === 'surface' && !md;
+  const faceSize = mode === 'rest' ? (docked ? 52 : 64) : 52;
+  const budget = Math.max(0, (islandWidth - faceSize - 24 - 18) / 2);
+  const isShelfVisible = mode === 'rest' && (storedDeploy === 3 || tempShelfOpen);
+  const deployForFit = isShelfVisible ? 3 : storedDeploy;
+  
+  const leftFit = fitTools(budget, leftLaunchers, deployForFit, getLabelWidthFn, islandIconWidth, 2, 0, islandIconWidth);
+  const rightFit = fitTools(budget, rightLaunchers, deployForFit, getLabelWidthFn, islandIconWidth, 2, 0, islandIconWidth);
 
+  const currentLevel = isShelfVisible ? 3 : (storedDeploy === 'auto' ? Math.max(leftFit.level, rightFit.level) : storedDeploy);
+  const minLevel = hasLaunchers ? 1 : 0;
+
+  const handleDeployUp = useCallback(() => {
+    setStoredDeploy(Math.min(3, currentLevel + 1) as IslandDeploy);
+    if (tempShelfOpen) setTempShelfOpen(false);
+  }, [currentLevel, tempShelfOpen, setStoredDeploy]);
+
+  const handleDeployDown = useCallback(() => {
+    setStoredDeploy(Math.max(minLevel, currentLevel - 1) as IslandDeploy);
+    if (tempShelfOpen) setTempShelfOpen(false);
+  }, [minLevel, currentLevel, tempShelfOpen, setStoredDeploy]);
+
+  useEffect(() => {
+    if (isShelfVisible && storedDeploy !== 3 && !isInside && mode === 'rest') {
+      const t = setTimeout(() => {
+        setTempShelfOpen(false);
+      }, 4000);
+      return () => clearTimeout(t);
+    }
+  }, [isShelfVisible, storedDeploy, isInside, mode]);
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (current) {
@@ -192,22 +279,39 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
         return;
       }
 
-      // Alt+1..4 jump between the tabs while the panel is open (Ctrl+digit belongs to the browser's own tabs)
       if (mode === 'surface' && e.altKey && !e.ctrlKey && !e.metaKey && TAB_KEYS[e.code]) {
         e.preventDefault();
         setPane(TAB_KEYS[e.code]);
         return;
       }
 
-      if (e.key === 'Escape' && mode !== 'rest') {
-        setMode('rest');
-        if (mode !== 'surface' && current) dismissNotification();
+      if (e.key === 'Escape') {
+        if (mode === 'rest') {
+          if (tempShelfOpen) setTempShelfOpen(false);
+        } else {
+          setMode('rest');
+          if (mode !== 'surface' && current) dismissNotification();
+        }
+      }
+      
+      if (e.altKey && !e.ctrlKey && !e.metaKey && mode === 'rest') {
+        if (e.key === 'ArrowDown') {
+          const isInput = document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || (document.activeElement as HTMLElement)?.isContentEditable;
+          if (!isInput) {
+            e.preventDefault();
+            handleDeployUp();
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          handleDeployDown();
+        }
       }
     };
     const onPointerDown = (e: PointerEvent) => {
       if (mode === 'rest' || mode === 'peek') return;
       if (islandRef.current && !islandRef.current.contains(e.target as Node)) {
         setMode(mode === 'card' && current ? 'peek' : 'rest');
+        if (tempShelfOpen) setTempShelfOpen(false);
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -216,7 +320,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [mode, current, setMode, setPane]);
+  }, [mode, current, setMode, setPane, tempShelfOpen, handleDeployUp, handleDeployDown]);
 
   const prevModeRef = useRef(mode);
   useEffect(() => {
@@ -287,8 +391,6 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
   const sheet = useSheetDrag(() => setMode('rest'));
 
-  const faceSize = mode === 'rest' ? (docked ? 52 : 64) : 52;
-
   let radius = '24px';
   if (mode === 'rest') radius = docked ? '999px' : '50%';
   else if (mode === 'peek') radius = '28px';
@@ -353,9 +455,39 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     </m.div>
   );
 
+  const handlePointerEnter = useCallback(() => {
+    setIsInside(true);
+    pauseToastTimer();
+    if (mode === 'rest' && storedDeploy !== 3 && !tempShelfOpen) {
+      setDwellTimer(setTimeout(() => setTempShelfOpen(true), 600));
+    }
+  }, [mode, storedDeploy, tempShelfOpen]);
+
+  const handlePointerLeave = useCallback(() => {
+    setIsInside(false);
+    resumeToastTimer();
+    if (dwellTimer) { clearTimeout(dwellTimer); setDwellTimer(null); }
+  }, [dwellTimer]);
+
+  const handleFocusCapture = useCallback(() => {
+    setIsInside(true);
+    pauseToastTimer();
+    if (mode === 'rest' && storedDeploy !== 3 && !tempShelfOpen) {
+      setTempShelfOpen(true);
+    }
+  }, [mode, storedDeploy, tempShelfOpen]);
+
+  const handleBlurCapture = useCallback((e: React.FocusEvent) => {
+    if (!islandRef.current?.contains(e.relatedTarget as Node)) {
+      setIsInside(false);
+      resumeToastTimer();
+    }
+  }, []);
+
   return (
     <LazyMotion features={domMax} strict>
       <div id="onyx-island-announcer" aria-live="polite" className="onyx-sr-only" />
+      <IslandRefractionDefs />
       <m.div
         ref={islandRef}
         layout
@@ -364,12 +496,13 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
         transition={transition}
         {...ariaProps}
         {...swipeProps}
-        onPointerEnter={pauseToastTimer}
-        onPointerLeave={resumeToastTimer}
-        onFocus={pauseToastTimer}
-        onBlur={resumeToastTimer}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        onFocusCapture={handleFocusCapture}
+        onBlurCapture={handleBlurCapture}
       >
         <div
+          ref={surfaceRef}
           className="onyx-island-surface w-full h-full flex flex-col"
           style={{
             '--island-r': radius,
@@ -379,30 +512,64 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
           } as React.CSSProperties}
         >
           {mode === 'rest' && (
-            <div className={docked ? 'onyx-island-dock' : 'w-full h-full'}>
-              {docked && (
-                <div className="onyx-island-dock-side onyx-island-dock-side--left">
-                  <IslandLaunchers tools={leftLaunchers} onRun={runTool} />
-                  {leftLaunchers.length > 0 && <span className="isl-sep" aria-hidden="true" />}
-                </div>
-              )}
-              <button
-                ref={faceBtnRef}
-                type="button"
-                className={`relative flex items-center justify-center cursor-pointer focus:outline-none rounded-full ${docked ? 'isl-dock-face' : 'w-full h-full isl-dock-face'}`}
-                style={docked ? undefined : { width: '100%', height: '100%' }}
-                aria-label={tr('Open Onyx panel: tools, selected item, Chan and inbox')}
-                aria-expanded="false"
-                onClick={handleFaceClick}
-              >
-                {faceNode(faceSize)}
-                {unread > 0 && <span className="onyx-island-unread" aria-hidden="true" />}
-              </button>
-              {docked && (
-                <div className="onyx-island-dock-side onyx-island-dock-side--right">
-                  {rightLaunchers.length > 0 && <span className="isl-sep" aria-hidden="true" />}
-                  <IslandLaunchers tools={rightLaunchers} onRun={runTool} />
-                </div>
+            <div className={docked || isShelfVisible ? 'flex flex-col' : 'w-full h-full'}>
+              <div className={docked ? 'onyx-island-dock' : 'w-full h-full'}>
+                {docked && (
+                  <div className="onyx-island-dock-side onyx-island-dock-side--left">
+                    <IslandLaunchers
+                      tools={leftFit.visible}
+                      onRun={runTool}
+                      showLabels={leftFit.showLabels}
+                      overflow={leftFit.overflow.length > 0}
+                      onMore={() => { setMode('surface'); setPane('tools'); }}
+                      reverse
+                    />
+                    {leftLaunchers.length > 0 && <span className="isl-sep" aria-hidden="true" />}
+                  </div>
+                )}
+                <button
+                  ref={faceBtnRef}
+                  type="button"
+                  className={`relative flex items-center justify-center cursor-pointer focus:outline-none rounded-full ${docked ? 'isl-dock-face' : 'w-full h-full isl-dock-face'}`}
+                  style={docked ? undefined : { width: '100%', height: '100%' }}
+                  aria-label={tr('Open Onyx panel: tools, selected item, Chan and inbox')}
+                  aria-expanded="false"
+                  onClick={handleFaceClick}
+                >
+                  {faceNode(faceSize)}
+                  {unread > 0 && <span className="onyx-island-unread" aria-hidden="true" />}
+                </button>
+                {docked && (
+                  <div className="onyx-island-dock-side onyx-island-dock-side--right">
+                    {rightLaunchers.length > 0 && <span className="isl-sep" aria-hidden="true" />}
+                    <IslandLaunchers
+                      tools={rightFit.visible}
+                      onRun={runTool}
+                      showLabels={rightFit.showLabels}
+                      overflow={rightFit.overflow.length > 0}
+                      onMore={() => { setMode('surface'); setPane('tools'); }}
+                    />
+                    {hasLaunchers && (
+                      <button
+                        type="button"
+                        className="isl-dock-deploy"
+                        aria-label={isShelfVisible ? tr('Show fewer tools') : tr('Show more tools')}
+                        onClick={(e) => { e.stopPropagation(); isShelfVisible ? handleDeployDown() : handleDeployUp(); }}
+                      >
+                        {isShelfVisible ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              {isShelfVisible && (
+                <IslandShelf
+                  tools={allTools}
+                  onRun={runTool}
+                  onMore={() => { setMode('surface'); setPane('tools'); }}
+                  onAuto={() => { setStoredDeploy('auto'); setTempShelfOpen(false); }}
+                  isAuto={storedDeploy === 'auto'}
+                />
               )}
             </div>
           )}

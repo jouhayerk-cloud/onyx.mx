@@ -22,6 +22,7 @@ import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { tr } from '../../lib/i18n';
 import './islandSidebar.css';
 import './islandSidebarRail.css';
+import './islandSidebarDrawer.css';
 
 const ICON_MAP: Record<string, React.FC<any>> = {
     truck: Truck,
@@ -256,12 +257,86 @@ export const IslandSidebar: React.FC = () => {
     const listRef = useRef<HTMLDivElement>(null);
     const [scrollState, setScrollState] = useState({ top: false, bottom: false });
 
-    const isCompact = sidebarState === 'compact';
-    const isRail = sidebarState === 'rail';
-    const showExpanded = (!isCompact && !isRail) || isHoverPeek;
-    
+    // Phone / Drawer responsive state
+    const [isPhone, setIsPhone] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            return window.matchMedia('(max-width: 768px)').matches;
+        }
+        return false;
+    });
+
+    const [dragOffset, setDragOffset] = useState<number | null>(null);
+    const dragStartRef = useRef<{
+        startX: number;
+        startY: number;
+        startTime: number;
+        isSwiping: boolean;
+        isVertical: boolean;
+        pointerId: number;
+    } | null>(null);
+
+    const lastFocusedElementRef = useRef<HTMLElement | null>(null);
+    const prevSidebarStateRef = useRef<SidebarState>(sidebarState);
+
+    const isCompact = !isPhone && sidebarState === 'compact';
+    const isRail = !isPhone && sidebarState === 'rail';
+    const showExpanded = isPhone || (!isCompact && !isRail) || isHoverPeek;
+    const isPhoneDrawerOpen = isPhone && sidebarState !== 'hidden';
+
+    // matchMedia listener for phone breakpoint
+    useEffect(() => {
+        const mql = window.matchMedia('(max-width: 768px)');
+
+        if (mql.matches) {
+            setIsPhone(true);
+            setSidebarState(current => (current === 'compact' || current === 'rail' ? 'hidden' : current));
+        }
+
+        const handleMediaChange = (e: MediaQueryListEvent) => {
+            const matches = e.matches;
+            setIsPhone(matches);
+            setDragOffset(null);
+            dragStartRef.current = null;
+            if (matches) {
+                setSidebarState('hidden');
+            } else {
+                setSidebarState(current => (current === 'hidden' ? 'expanded' : current));
+            }
+        };
+
+        mql.addEventListener('change', handleMediaChange);
+        return () => mql.removeEventListener('change', handleMediaChange);
+    }, [setSidebarState]);
+
+    // On phone only two states exist: hidden and expanded
+    useEffect(() => {
+        if (isPhone && (sidebarState === 'compact' || sidebarState === 'rail')) {
+            setSidebarState('expanded');
+        }
+    }, [isPhone, sidebarState, setSidebarState]);
+
+    // Focus restoration when drawer closes
+    useEffect(() => {
+        const wasOpen = prevSidebarStateRef.current !== 'hidden';
+        const isOpen = sidebarState !== 'hidden';
+
+        if (isPhone) {
+            if (!wasOpen && isOpen) {
+                if (document.activeElement instanceof HTMLElement) {
+                    lastFocusedElementRef.current = document.activeElement;
+                }
+            } else if (wasOpen && !isOpen) {
+                if (lastFocusedElementRef.current && typeof lastFocusedElementRef.current.focus === 'function') {
+                    lastFocusedElementRef.current.focus();
+                }
+                lastFocusedElementRef.current = null;
+            }
+        }
+        prevSidebarStateRef.current = sidebarState;
+    }, [sidebarState, isPhone]);
+
     const handleMouseEnter = () => {
-        if (!isCompact && !isRail) return;
+        if (isPhone || (!isCompact && !isRail)) return;
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = setTimeout(() => {
             setIsHoverPeek(true);
@@ -269,14 +344,17 @@ export const IslandSidebar: React.FC = () => {
     };
 
     const handleMouseLeave = () => {
+        if (isPhone) return;
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         setIsHoverPeek(false);
     };
 
     const handleSidebarStateToggle = useCallback(() => {
         setSidebarState(current => {
-            const isMobile = window.innerWidth <= 768;
-            if (isMobile) return current === 'hidden' ? 'compact' : 'hidden';
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            if (isMobile) {
+                return current === 'hidden' ? 'expanded' : 'hidden';
+            }
             const states: SidebarState[] = ['expanded', 'rail', 'compact', 'hidden'];
             const currentIndex = states.indexOf(current);
             const nextIndex = (currentIndex + 1) % states.length;
@@ -287,8 +365,16 @@ export const IslandSidebar: React.FC = () => {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement;
-            const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
+            const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
             if (isInput) return;
+
+            if (e.key === 'Escape') {
+                if (isPhone && sidebarState !== 'hidden') {
+                    e.preventDefault();
+                    setSidebarState('hidden');
+                    return;
+                }
+            }
 
             if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
                 e.preventDefault();
@@ -297,7 +383,7 @@ export const IslandSidebar: React.FC = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleSidebarStateToggle]);
+    }, [handleSidebarStateToggle, isPhone, sidebarState, setSidebarState]);
 
     const handleScroll = useCallback(() => {
         if (!listRef.current) return;
@@ -312,7 +398,7 @@ export const IslandSidebar: React.FC = () => {
         handleScroll();
         window.addEventListener('resize', handleScroll);
         return () => window.removeEventListener('resize', handleScroll);
-    }, [handleScroll, sidebarState, isHoverPeek]);
+    }, [handleScroll, sidebarState, isHoverPeek, isPhone]);
     
     useEffect(() => {
         if (!listRef.current) return;
@@ -329,21 +415,90 @@ export const IslandSidebar: React.FC = () => {
         }
     }, [activeView, activeSubMenu, isPrintCenterOpen]);
 
-    // On a phone the rail floats over the list and would cover its first column: after a choice it goes away completely
-    // (the island's menu launcher brings it back).
-    const handleMobileHide = () => {
-        if (window.innerWidth <= 768) {
+    const handleMobileHide = useCallback(() => {
+        if (isPhone || window.innerWidth <= 768) {
             setSidebarState('hidden');
         }
-    };
+    }, [isPhone, setSidebarState]);
+
+    // Swipe left gesture handlers (pointer events)
+    const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        if (!e.isPrimary) return;
+        dragStartRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            startTime: Date.now(),
+            isSwiping: false,
+            isVertical: false,
+            pointerId: e.pointerId
+        };
+    }, []);
+
+    const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        const drag = dragStartRef.current;
+        if (!drag || e.pointerId !== drag.pointerId) return;
+        if (drag.isVertical) return;
+
+        const deltaX = e.clientX - drag.startX;
+        const deltaY = e.clientY - drag.startY;
+
+        if (!drag.isSwiping) {
+            if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+                drag.isVertical = true;
+                return;
+            }
+            if (deltaX < -8 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                drag.isSwiping = true;
+                try {
+                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                } catch {
+                    // Ignore pointer capture errors if unsupported
+                }
+            }
+        }
+
+        if (drag.isSwiping) {
+            const offset = Math.min(0, deltaX);
+            setDragOffset(offset);
+        }
+    }, []);
+
+    const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        const drag = dragStartRef.current;
+        if (!drag || e.pointerId !== drag.pointerId) return;
+
+        if (drag.isSwiping && dragOffset !== null) {
+            const distance = -dragOffset;
+            const elapsed = Date.now() - drag.startTime;
+            const velocity = distance / Math.max(1, elapsed);
+            if (distance > 60 || (distance > 20 && velocity > 0.3)) {
+                setSidebarState('hidden');
+            }
+        }
+
+        setDragOffset(null);
+        dragStartRef.current = null;
+    }, [dragOffset, setSidebarState]);
+
+    const handlePointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        const drag = dragStartRef.current;
+        if (!drag || e.pointerId !== drag.pointerId) return;
+
+        setDragOffset(null);
+        dragStartRef.current = null;
+    }, []);
 
     const showManagement = user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting';
     const showLogistics = user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor';
     const showTools = user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor';
 
     const panelStyle: React.CSSProperties = {
-        width: isHoverPeek ? '240px' : 'calc(var(--sidebar-width) - 24px)',
-        transform: sidebarState === 'hidden' ? 'translateX(-150%)' : 'translateX(0)',
+        width: isPhone ? 'min(280px, 85vw)' : (isHoverPeek ? '240px' : 'calc(var(--sidebar-width) - 24px)'),
+        transform: isPhone
+            ? (dragOffset !== null
+                ? `translateX(${dragOffset}px)`
+                : (sidebarState === 'hidden' ? 'translateX(calc(-100% - 24px))' : 'translateX(0)'))
+            : (sidebarState === 'hidden' ? 'translateX(-150%)' : 'translateX(0)'),
         opacity: sidebarState === 'hidden' ? 0 : 1,
         pointerEvents: sidebarState === 'hidden' ? 'none' : 'auto'
     };
@@ -359,10 +514,25 @@ export const IslandSidebar: React.FC = () => {
                 <ChevronsRight size={16} />
             </button>
         )}
+        {isPhoneDrawerOpen && (
+            <div 
+                className="isb-scrim" 
+                onClick={() => setSidebarState('hidden')}
+                aria-hidden="true"
+            />
+        )}
         <LazyMotion features={domAnimation}>
         <div 
-            className="isb-panel ui-root" 
+            className={`isb-panel ui-root ${isPhone ? 'isb-drawer' : ''} ${dragOffset !== null ? 'isb-dragging' : ''}`} 
             style={panelStyle}
+            role={isPhoneDrawerOpen ? 'dialog' : undefined}
+            aria-modal={isPhoneDrawerOpen ? true : undefined}
+            aria-label={isPhoneDrawerOpen ? tr("Main menu") : undefined}
+            tabIndex={isPhoneDrawerOpen ? -1 : undefined}
+            onPointerDown={isPhoneDrawerOpen ? handlePointerDown : undefined}
+            onPointerMove={isPhoneDrawerOpen ? handlePointerMove : undefined}
+            onPointerUp={isPhoneDrawerOpen ? handlePointerUp : undefined}
+            onPointerCancel={isPhoneDrawerOpen ? handlePointerCancel : undefined}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -542,7 +712,7 @@ export const IslandSidebar: React.FC = () => {
 
             <div 
                 className={`isb-footer isb-footer-height-aware ${isSettingsOpen ? 'isb-footer-active' : ''}`}
-                onClick={() => setIsSettingsOpen(true)}
+                onClick={() => { setIsSettingsOpen(true); handleMobileHide(); }}
                 title={tr("Studio Settings & Manifesto")}
                 role="button"
             >
@@ -567,4 +737,3 @@ export const IslandSidebar: React.FC = () => {
         </>
     );
 };
-

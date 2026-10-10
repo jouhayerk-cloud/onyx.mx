@@ -3344,4 +3344,8 @@ export const esCatalog: Record<string, string> = {
   'No type matches.': 'Ningún tipo coincide.',
   'Only Developer and Admin can add types to the library.': 'Solo Developer y Admin pueden agregar tipos a la biblioteca.',
   'Did you mean {type}': '¿Quisiste decir {type}?',
+  'More tools': 'Más herramientas',
+  'Show more tools': 'Mostrar más herramientas',
+  'Show fewer tools': 'Mostrar menos herramientas',
+  'Auto': 'Auto',
 };
