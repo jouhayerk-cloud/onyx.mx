@@ -3,6 +3,9 @@
  * Loaded after islandGlass.css; colours come from --isl-* tokens only.
  */
 
+/* a launcher whose icon is an image (the Menu logo) must not grow to the size of the file */
+.isl-launcher img, .isl-launcher svg { width: 24px; height: 24px; flex: none; object-fit: contain; }
+
 /* the title sits UNDER the icon (never beside it) */
 .isl-launcher--labelled {
   width: auto;

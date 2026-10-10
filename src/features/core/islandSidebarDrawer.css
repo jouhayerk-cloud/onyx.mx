@@ -51,3 +51,9 @@
 html.theme-aqua .isb-scrim {
   background-color: rgba(0, 0, 0, 0.35);
 }
+
+/* Phone: the open drawer and its scrim sit above the island (z-index 10050), so the drawer is never cut by the dock */
+@media (max-width: 768px) {
+  .isb-scrim { z-index: 10055; }
+  .isb-panel[role="dialog"] { z-index: 10060; }
+}

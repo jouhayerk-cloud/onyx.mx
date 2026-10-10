@@ -145,6 +145,18 @@ html, body, #root {
   z-index: 1;
 }
 
+/* Phone: the page is pinned to the whole layout viewport instead of 100dvh. On iOS 100dvh can be shorter than the screen (it follows
+   the browser toolbars), which left a strip of the page background under the app and kept the island dock off the bottom edge. */
+@media (max-width: 768px) {
+  .app-container {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-height: none;
+  }
+}
+
 /* Global Mesh Gradient Placeholder */
 .mesh-gradient-root {
   position: fixed;
