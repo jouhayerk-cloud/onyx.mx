@@ -135,6 +135,7 @@ export async function handleSiriTokenApi(req: Request): Promise<Response> {
                 .from("siri_tokens")
                 .insert({
                     user_id: user.id,
+                    app_user_id: appUser.id,
                     label: tokenLabel,
                     token_hash: tokenHash,
                     token_prefix: prefix,

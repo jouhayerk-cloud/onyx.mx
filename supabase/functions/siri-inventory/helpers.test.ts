@@ -69,7 +69,7 @@ Deno.test("stripMoneyFields removes pattern-matched money fields at arbitrary ne
   const result = stripMoneyFields(input);
   assertEquals(result.id, "item-1");
   assertEquals(result.tag, "tag-1");
-  assertEquals(result.financials.safe_key, "hello");
+  assertEquals((result.financials.nested as Record<string, unknown>).safe_key, "hello");
   assertEquals((result.financials as Record<string, unknown>).retail_usd, undefined);
   assertEquals((result.financials as Record<string, unknown>).estimated_cost, undefined);
   assertEquals((result.financials as Record<string, unknown>).margin_rate, undefined);
@@ -91,8 +91,9 @@ Deno.test("stripMoneyFields recursively strips arrays and nested objects within 
   assertEquals((result[0] as Record<string, unknown>).price_mxn, undefined);
   assertEquals(result[1].item_id, "B");
   assertEquals((result[1] as Record<string, unknown>).book_retail, undefined);
-  assertEquals(result[1].nested[0].label, "raw");
-  assertEquals((result[1].nested[0] as Record<string, unknown>).cost_val, undefined);
+  const nested = (result[1] as { nested: Array<Record<string, unknown>> }).nested;
+  assertEquals(nested[0]?.label, "raw");
+  assertEquals(nested[0]?.cost_val, undefined);
 });
 
 // ── Test 4: stripMoneyFields primitives and edge cases ────────────────────────

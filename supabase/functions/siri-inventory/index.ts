@@ -120,12 +120,14 @@ async function authenticateCaller(req: Request): Promise<AuthResult> {
   }
 
   let user: Record<string, any> | null = null;
+  // a siri token remembers its app_users row (app_users.id is not the auth user id in this project)
+  let tokenAppUserId: string | null = null;
 
   if (isSiriToken(token)) {
     const tokenHash = await hashSiriToken(token);
     const { data: siriToken } = await supabase
       .from("siri_tokens")
-      .select("id, user_id")
+      .select("id, user_id, app_user_id")
       .eq("token_hash", tokenHash)
       .is("revoked_at", null)
       .gt("expires_at", new Date().toISOString())
@@ -144,17 +146,18 @@ async function authenticateCaller(req: Request): Promise<AuthResult> {
     }
 
     user = { id: siriToken.user_id };
+    tokenAppUserId = (siriToken.app_user_id as string | null) ?? null;
 
     const now = Date.now();
     const lastUpdate = tokenUsageCache.get(siriToken.id) ?? 0;
     if (now - lastUpdate > 60000) {
       tokenUsageCache.set(siriToken.id, now);
-      supabase
-        .from("siri_tokens")
-        .update({ last_used_at: new Date().toISOString() })
-        .eq("id", siriToken.id)
-        .then()
-        .catch(() => {});
+      void Promise.resolve(
+        supabase
+          .from("siri_tokens")
+          .update({ last_used_at: new Date().toISOString() })
+          .eq("id", siriToken.id),
+      ).catch(() => {});
     }
   } else {
     const {
@@ -180,7 +183,7 @@ async function authenticateCaller(req: Request): Promise<AuthResult> {
   const { data: userById } = await supabase
     .from("app_users")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", tokenAppUserId ?? user.id)
     .maybeSingle();
 
   if (userById) {
