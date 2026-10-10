@@ -11,6 +11,8 @@ import { tr } from '../../lib/i18n';
 
 type ControlTab = 'users' | 'database' | 'store';
 
+/** Control page with tabs for the identity registry, the database and store settings. */
+
 export function ControlView() {
     const [activeTab, setActiveTab] = useState<ControlTab>('users');
     const setActiveView = useSetAtom(activeViewAtom);
