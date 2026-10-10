@@ -39,6 +39,7 @@ export function PrintToolsRegistrar() {
     return null;
 }
 
+/** Returns the print tool entries, with the Print Center toggle wired to its open state. */
 export function usePrintTools(): ToolDescriptor[] {
     const [isOpen, setIsOpen] = useAtom(isPrintCenterOpenAtom);
     return getTools(isOpen, () => setIsOpen((p: boolean) => !p));
