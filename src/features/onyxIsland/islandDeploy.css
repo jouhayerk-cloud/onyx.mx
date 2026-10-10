@@ -46,62 +46,30 @@
   box-shadow: var(--isl-focus);
 }
 
-/* Shelf */
-.isl-shelf-wrap {
+/* The deployed island: three cards (Chan, Notifications, Details) under the dock row */
+.isl-deck {
   width: 100%;
-  max-height: 340px;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  gap: 12px;
-  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px 10px 10px;
   border-top: 1px solid var(--isl-line);
 }
-
-.isl-shelf-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+@media (max-width: 560px) { .isl-deck { grid-template-columns: minmax(0, 1fr); } }
+.isl-deck-card {
+  --isl-bg: var(--isl-fill-1);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  min-height: 92px; padding: 10px 12px; text-align: left;
+  border-radius: 12px; border: 1px solid var(--isl-line);
+  background: var(--isl-bg); color: var(--isl-ink); cursor: pointer; min-width: 0;
 }
-.isl-shelf-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--isl-ink-2);
+.isl-deck-card:hover { --isl-bg: var(--isl-fill-2); }
+.isl-deck-card:focus-visible { outline: none; box-shadow: var(--isl-focus); }
+.isl-deck-head { display: flex; align-items: center; gap: 8px; width: 100%; font-size: 13px; font-weight: 600; }
+.isl-deck-badge {
+  margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; background: var(--isl-accent); color: var(--isl-accent-ink);
 }
-
-.isl-shelf-groups {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.isl-shelf-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.isl-shelf-divider {
-  width: 1px;
-  height: 20px;
-  background: var(--isl-line);
-}
-
-.isl-shelf-btn {
-  width: auto;
-  min-width: var(--isl-target);
-  height: auto;
-  min-height: 52px;
-  flex-direction: column;
-  padding: 6px 8px 4px;
-  gap: 3px;
-  border-radius: 12px;
-}
-.isl-shelf-btn-label {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-}
+.isl-deck-line { width: 100%; font-size: 12px; line-height: 1.35; color: var(--isl-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.isl-deck-dim { color: var(--isl-ink-3); }

@@ -392,7 +392,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const sheet = useSheetDrag(() => setMode('rest'));
 
   let radius = '24px';
-  if (mode === 'rest') radius = docked ? '999px' : '50%';
+  if (mode === 'rest') radius = docked ? (isShelfVisible ? '20px' : '999px') : '50%';
   else if (mode === 'peek') radius = '28px';
   else if (isSheet) radius = '24px 24px 0 0';
 
@@ -554,7 +554,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                         type="button"
                         className="isl-dock-deploy"
                         aria-label={isShelfVisible ? tr('Show fewer tools') : tr('Show more tools')}
-                        onClick={(e) => { e.stopPropagation(); isShelfVisible ? handleDeployDown() : handleDeployUp(); }}
+                        onClick={(e) => { e.stopPropagation(); if (isShelfVisible) { setStoredDeploy('auto'); setTempShelfOpen(false); } else handleDeployUp(); }}
                       >
                         {isShelfVisible ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
                       </button>
@@ -563,13 +563,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                 )}
               </div>
               {isShelfVisible && (
-                <IslandShelf
-                  tools={allTools}
-                  onRun={runTool}
-                  onMore={() => { setMode('surface'); setPane('tools'); }}
-                  onAuto={() => { setStoredDeploy('auto'); setTempShelfOpen(false); }}
-                  isAuto={storedDeploy === 'auto'}
-                />
+                <IslandShelf onOpenPane={(p) => { setPane(p); setMode('surface'); }} />
               )}
             </div>
           )}
