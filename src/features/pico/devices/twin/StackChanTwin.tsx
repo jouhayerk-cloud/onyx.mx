@@ -69,6 +69,7 @@ const Fact: React.FC<{ label: string; value: React.ReactNode; isError?: boolean 
   </div>
 );
 
+/** Digital twin of a StackChan showing its face, battery, session and telemetry. */
 export const StackChanTwin: React.FC<StackChanTwinProps> = ({ device, points, extra }) => {
   const now = Date.now();
   const sessionOpen = !!device.session_open_until && Date.parse(device.session_open_until) > now;
