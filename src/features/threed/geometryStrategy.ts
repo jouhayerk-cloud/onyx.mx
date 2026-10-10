@@ -109,6 +109,7 @@ function strategyFromDimensions(item: InventoryItemData): GeometryStrategy | nul
   return 'extrude';
 }
 
+/** Picks how an item's 3D mesh is built: by type, then by shape, then by size, else placeholder. */
 export function resolveGeometryStrategy(item: InventoryItemData): GeometryStrategy {
   const typeLeaf = normalizeType(item.generatedType);
   for (const [pattern, strategy] of TYPE_RULES) {
