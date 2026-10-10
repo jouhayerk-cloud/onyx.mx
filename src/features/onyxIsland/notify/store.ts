@@ -254,8 +254,10 @@ export function pushNotification(input: NotifyInput): string {
     count: 1,
   };
 
-  history = [notification, ...history].slice(0, 100);
-  schedulePersist();
+  if (!input.ephemeral) {
+    history = [notification, ...history].slice(0, 100);
+    schedulePersist();
+  }
 
   if (input.silent) {
     updateSnapshot();

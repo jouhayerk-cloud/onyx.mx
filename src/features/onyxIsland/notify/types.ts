@@ -23,6 +23,8 @@ export interface NotifyInput {
   duration?: number | null;
   source?: NotifySource;
   silent?: boolean;
+  /** Shown as a toast but never written to the history (the one-time welcome). */
+  ephemeral?: boolean;
 }
 
 export interface IslandNotification {
