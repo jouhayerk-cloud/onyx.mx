@@ -1,107 +1,82 @@
-import React, { useRef } from 'react';
-import type { ToolDescriptor } from '../../lib/toolRegistry';
+import React, { useMemo } from 'react';
+import { useAtomValue } from 'jotai';
+import { MessageCircle, Bell, Package } from 'lucide-react';
 import { tr } from '../../lib/i18n';
-import { MoreHorizontal } from 'lucide-react';
+import { SelectedItemDataAtom } from '../../lib/atoms';
+import { onyxAgentPhaseAtom } from '../onyxAgent/agentState';
+import { useIslandNotifications } from './notify/store';
+import { islandItemAtom, type IslandPane } from './islandState';
 
 interface IslandShelfProps {
-  tools: ToolDescriptor[];
-  onRun: (tool: ToolDescriptor) => void;
-  onMore: () => void;
-  onAuto: () => void;
-  isAuto: boolean;
+  /** Opens the full panel on the given tab. */
+  onOpenPane: (pane: IslandPane) => void;
 }
 
-export const IslandShelf: React.FC<IslandShelfProps> = ({ tools, onRun, onMore, onAuto, isAuto }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+const PHASE_TEXT: Record<string, string> = {
+  idle: 'Ready',
+  listening: 'Listening',
+  thinking: 'Thinking',
+  acting: 'Working',
+  speaking: 'Answering',
+  error: 'Something went wrong',
+};
 
-  const shelfTools = tools.filter(t => t.kind === 'action' || t.kind === 'toggle');
+/**
+ * The deployed island (level 3): three cards under the dock row and nothing else. Chan (the assistant), the
+ * notifications and the details of the selected item. A card opens the full panel on its tab. The tools stay in the
+ * dock row above.
+ */
+export const IslandShelf: React.FC<IslandShelfProps> = ({ onOpenPane }) => {
+  const phase = useAtomValue(onyxAgentPhaseAtom);
+  const { history, unread } = useIslandNotifications();
+  const listItem = useAtomValue(islandItemAtom);
+  const stored = useAtomValue(SelectedItemDataAtom);
+  const item = (listItem ?? stored) as unknown as Record<string, unknown> | null;
 
-  const groups: { name: string; tools: ToolDescriptor[] }[] = [];
-  shelfTools.forEach(t => {
-    let group = groups.find(g => g.name === t.group);
-    if (!group) {
-      group = { name: t.group, tools: [] };
-      groups.push(group);
-    }
-    group.tools.push(t);
-  });
+  const latest = useMemo(
+    () => [...history].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3),
+    [history],
+  );
 
-  const handleKeyDown = (e: React.KeyboardEvent, index: number, total: number) => {
-    let nextIndex = index;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextIndex = (index + 1) % total;
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') nextIndex = (index - 1 + total) % total;
-    else if (e.key === 'Home') nextIndex = 0;
-    else if (e.key === 'End') nextIndex = total - 1;
-    else return;
-    e.preventDefault();
-    const buttons = Array.from(containerRef.current?.querySelectorAll('.isl-launcher:not(:disabled)') ?? []) as HTMLButtonElement[];
-    buttons[nextIndex]?.focus();
-  };
-
-  const allRenderedTools = groups.flatMap(g => g.tools);
-  const total = allRenderedTools.length + 1; // +1 for More
-
-  let globalIndex = 0;
+  const text = (key: string): string => String(item?.[key] ?? '').trim();
+  const itemTitle = [text('shape'), text('shortDescription') || text('short_description')].filter(Boolean).join(' · ') || text('name');
+  const itemMaterial = [text('material'), text('color')].filter(Boolean).join(' · ');
+  const dims = [text('widthCm'), text('heightCm'), text('lengthCm')].filter(Boolean);
+  const itemSize = dims.length > 0 ? `${dims.join(' x ')} cm` : '';
+  const priceNumber = Number(text('price'));
+  const itemPrice = Number.isFinite(priceNumber) && text('price') !== '' ? `$${priceNumber.toLocaleString()}` : '';
+  const itemId = text('itemId') || text('item_id') || text('tag_id');
 
   return (
-    <div ref={containerRef} className="isl-shelf-wrap" role="region" aria-label={tr('More tools')}>
-      <div className="isl-shelf-header">
-        <span className="isl-shelf-title">{tr('Tools')}</span>
-        <button
-          type="button"
-          className="isl-chip"
-          onClick={onAuto}
-          aria-pressed={isAuto}
-        >
-          {tr('Auto')}
-        </button>
-      </div>
-      <div className="isl-shelf-groups" role="toolbar" aria-label={tr('Tools')}>
-        {groups.map((group, gIndex) => (
-          <React.Fragment key={group.name}>
-            {gIndex > 0 && <div className="isl-shelf-divider" aria-hidden="true" />}
-            <div className="isl-shelf-group">
-              {group.tools.map(tool => {
-                const i = globalIndex++;
-                const Icon = tool.icon;
-                const isToggle = tool.kind === 'toggle';
-                const label = tool.short ?? tool.label;
-                return (
-                  <button
-                    key={tool.id}
-                    type="button"
-                    title={tool.title || tool.label}
-                    aria-label={tool.label}
-                    aria-pressed={isToggle ? !!tool.pressed : undefined}
-                    disabled={tool.disabled}
-                    onClick={e => { e.preventDefault(); onRun(tool); }}
-                    onKeyDown={e => handleKeyDown(e, i, total)}
-                    tabIndex={i === 0 ? 0 : -1}
-                    className="isl-launcher isl-shelf-btn"
-                  >
-                    <Icon size={20} color="currentColor" strokeWidth={2} aria-hidden="true" />
-                    <span className="isl-shelf-btn-label">{label}</span>
-                    {tool.badge != null && <span className="isl-launcher-badge" aria-hidden="true" />}
-                  </button>
-                );
-              })}
-            </div>
-          </React.Fragment>
-        ))}
-        <button
-          key="more"
-          type="button"
-          title={tr('More tools')}
-          aria-label={tr('More tools')}
-          onClick={e => { e.preventDefault(); onMore(); }}
-          onKeyDown={e => handleKeyDown(e, globalIndex, total)}
-          tabIndex={globalIndex === 0 ? 0 : -1}
-          className="isl-launcher isl-shelf-btn"
-        >
-          <MoreHorizontal size={20} color="currentColor" strokeWidth={2} aria-hidden="true" />
-          <span className="isl-shelf-btn-label">{tr('More tools')}</span>
-        </button>
-      </div>
+    <div className="isl-deck" role="group" aria-label={tr('Chan, notifications and details')}>
+      <button type="button" className="isl-deck-card" onClick={() => onOpenPane('chat')}>
+        <span className="isl-deck-head"><MessageCircle size={18} aria-hidden="true" />{tr('Chan')}</span>
+        <span className="isl-deck-line">{tr(PHASE_TEXT[phase] || 'Ready')}</span>
+        <span className="isl-deck-line isl-deck-dim">{tr('Ask Chan about this page')}</span>
+      </button>
+
+      <button type="button" className="isl-deck-card" onClick={() => onOpenPane('notifications')}>
+        <span className="isl-deck-head">
+          <Bell size={18} aria-hidden="true" />{tr('Notifications')}
+          {unread > 0 && <span className="isl-deck-badge">{unread}</span>}
+        </span>
+        {latest.length === 0
+          ? <span className="isl-deck-line isl-deck-dim">{tr('No notifications')}</span>
+          : latest.map(n => <span key={n.id} className="isl-deck-line">{n.title ? `${n.title}: ${n.message}` : n.message}</span>)}
+      </button>
+
+      <button type="button" className="isl-deck-card" onClick={() => onOpenPane('item')}>
+        <span className="isl-deck-head"><Package size={18} aria-hidden="true" />{tr('Details')}</span>
+        {item ? (
+          <>
+            <span className="isl-deck-line">{[itemId, itemTitle].filter(Boolean).join(' · ')}</span>
+            {itemMaterial && <span className="isl-deck-line">{itemMaterial}</span>}
+            {(itemSize || itemPrice) && <span className="isl-deck-line">{[itemSize, itemPrice].filter(Boolean).join(' · ')}</span>}
+          </>
+        ) : (
+          <span className="isl-deck-line isl-deck-dim">{tr('Select an item in the list')}</span>
+        )}
+      </button>
     </div>
   );
 };
