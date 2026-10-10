@@ -8,6 +8,7 @@ interface PicoLiveLogProps {
   onClearLogs?: () => void;
 }
 
+/** Live scan log filterable by scan type (RFID, NFC, QR, barcode), with a clear action. */
 export const PicoLiveLog: React.FC<PicoLiveLogProps> = ({ logs, onClearLogs }) => {
   const [filter, setFilter] = useState<'ALL' | 'UHF_RFID' | 'NFC' | 'QR' | 'BARCODE'>('ALL');
 
