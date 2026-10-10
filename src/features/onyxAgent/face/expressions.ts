@@ -108,6 +108,7 @@ export const EXPRESSIONS: Record<FaceExpression, { left: ShapeSpec; right: Shape
   'inventory-display': calmFace,
 };
 
+/** Maps a wire expression name, ignoring case, to a face expression; unknown names fall back to calm. */
 export function mapWireExpression(wire: string): FaceExpression {
   const ex = wire.toLowerCase();
   switch (ex) {
