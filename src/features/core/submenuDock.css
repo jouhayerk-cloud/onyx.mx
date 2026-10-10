@@ -36,7 +36,7 @@
     scroll-snap-type: x mandatory;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
-    align-items: stretch;
+    align-items: flex-start;   /* each card keeps its own height: stretch made every card as tall as the Filters card */
     gap: 8px;
     padding: 0 4%;
     max-height: none;

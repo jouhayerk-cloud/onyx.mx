@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { 
-    InventorySmartFiltersPanel, 
+    InventorySmartFiltersPanel,
+    InventoryFiltersPanel,
     InventoryPanelsRegistrar
 } from './inventoryPanels';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';

@@ -1,0 +1,13 @@
+{
+  "strings": [
+    ["ALL", "TODOS"],
+    ["VENDORS", "PROVEEDORES"],
+    ["DATES", "FECHAS"],
+    ["IDS", "IDS"],
+    ["SIZE", "TAMAÑO"],
+    ["NEW", "NUEVO"],
+    ["PACKED", "EMPACADO"],
+    ["SHIPPED", "ENVIADO"],
+    ["Clear Filters", "Borrar filtros"]
+  ]
+}

@@ -3348,4 +3348,5 @@ export const esCatalog: Record<string, string> = {
   'Show more tools': 'Mostrar más herramientas',
   'Show fewer tools': 'Mostrar menos herramientas',
   'Auto': 'Auto',
+
 };
