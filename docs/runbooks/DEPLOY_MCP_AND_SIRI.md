@@ -1,5 +1,7 @@
 # Deploy the MCP data server and Siri (2026-10-11)
 
+**Status 2026-10-11: phases 1 and 2 are DONE.** The siri_tokens migration is applied (10 columns, RLS on, one select policy, no grant on `token_hash`), and `siri-token`, `siri-inventory` and `onyx-mcp` are deployed (v1). The checks that need no login pass (health 200 with 33 tools, 401 without a token, 405 on GET, 401 for a made-up Siri token). Left: phase 3 (you run the smoke script with your login), phase 4 (flag set in deploy.yml) and phase 5 (the iPhone).
+
 Project ref: `yircifkayqpuydfdqzlm`. Run every command from the repo root `C:\Jouhayerk\git\app` in PowerShell.
 The Supabase CLI (2.120.0, installed with scoop) is already logged in on this PC, and `deno` 2.9.7 is installed.
 
@@ -13,18 +15,18 @@ The Supabase CLI (2.120.0, installed with scoop) is already logged in on this PC
 1. Dry run (changes nothing, the transaction is rolled back):
    ```powershell
    (Get-Content supabase\migrations\20261011140000_siri_tokens.sql -Raw) -replace '(?im)^commit;','rollback;' | Set-Content $env:TEMP\siri_tokens_dryrun.sql
-   supabase db query --project-ref yircifkayqpuydfdqzlm -f $env:TEMP\siri_tokens_dryrun.sql
+   supabase db query --linked --project-ref yircifkayqpuydfdqzlm -f $env:TEMP\siri_tokens_dryrun.sql
    ```
    Expected: no error. A foreign key error on `app_users` means the table or primary key differs from what was read today: stop and tell me.
 2. Apply:
    ```powershell
-   supabase db query --project-ref yircifkayqpuydfdqzlm -f supabase\migrations\20261011140000_siri_tokens.sql
+   supabase db query --linked --project-ref yircifkayqpuydfdqzlm -f supabase\migrations\20261011140000_siri_tokens.sql
    ```
-3. Verify (expected: 11 columns incl. `app_user_id`, RLS `true`, and no grant on `token_hash`):
+3. Verify (expected: 10 columns incl. `app_user_id`, RLS `true`, and no grant on `token_hash`):
    ```powershell
-   supabase db query --project-ref yircifkayqpuydfdqzlm "select column_name from information_schema.columns where table_schema='public' and table_name='siri_tokens' order by ordinal_position"
-   supabase db query --project-ref yircifkayqpuydfdqzlm "select relrowsecurity from pg_class where oid='public.siri_tokens'::regclass"
-   supabase db query --project-ref yircifkayqpuydfdqzlm "select grantee, privilege_type, column_name from information_schema.column_privileges where table_name='siri_tokens' and grantee in ('anon','authenticated') order by 1,3"
+   supabase db query --linked --project-ref yircifkayqpuydfdqzlm "select column_name from information_schema.columns where table_schema='public' and table_name='siri_tokens' order by ordinal_position"
+   supabase db query --linked --project-ref yircifkayqpuydfdqzlm "select relrowsecurity from pg_class where oid='public.siri_tokens'::regclass"
+   supabase db query --linked --project-ref yircifkayqpuydfdqzlm "select grantee, privilege_type, column_name from information_schema.column_privileges where table_name='siri_tokens' and grantee in ('anon','authenticated') order by 1,3"
    ```
    Then in the Supabase dashboard open Advisors, Security: there must be no new warning for `siri_tokens`.
 4. Rollback: `drop table public.siri_tokens;` (nothing else depends on it yet).
@@ -64,7 +66,7 @@ Follow `docs\siri\SHORTCUT_BUILD_GUIDE.md` step by step: a Text action named "Si
 `onyx-mcp` answers JSON-RPC over HTTPS with a Supabase user token (`tools/list`, `tools/call`). The Onyx agent inside the app can use it; connecting it to an outside AI client needs an OAuth bridge that does not exist yet, so that is a later wave (see `docs\mcp\TOOL_BACKLOG.md` for the next tools).
 
 ## Emergency stop
-Revoke every Siri token: `supabase db query --project-ref yircifkayqpuydfdqzlm "update public.siri_tokens set revoked_at = now() where revoked_at is null"`.
+Revoke every Siri token: `supabase db query --linked --project-ref yircifkayqpuydfdqzlm "update public.siri_tokens set revoked_at = now() where revoked_at is null"`.
 Turn Siri off: delete the function (phase 2 rollback). Nothing else in the app depends on these functions.
 
 ## Who does what

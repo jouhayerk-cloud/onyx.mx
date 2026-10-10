@@ -30,6 +30,8 @@ jobs:
           # working cypher back in the public bundle. Delete the repo secret too.
           VITE_GOOGLE_SHEETS_WEBHOOK: ${{ secrets.VITE_GOOGLE_SHEETS_WEBHOOK }}
           VITE_SUPABASE_OFFLINE_KEY: ${{ secrets.VITE_SUPABASE_OFFLINE_KEY }}
+          # Not a secret: shows the Siri access panel in Settings (the siri-token function is live since 2026-10-11)
+          VITE_SIRI_TOKENS: 'true'
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
