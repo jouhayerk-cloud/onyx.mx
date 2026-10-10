@@ -3348,5 +3348,13 @@ export const esCatalog: Record<string, string> = {
   'Show more tools': 'Mostrar más herramientas',
   'Show fewer tools': 'Mostrar menos herramientas',
   'Auto': 'Auto',
-
+  'Packed': 'Empacado',
+  'Not Packed': 'Sin empacar',
+  'Shipped': 'Enviado',
+  'Not Shipped': 'Sin enviar',
+  'Acquired': 'Adquirido',
+  'AI': 'IA',
+  'Clear Filters': 'Limpiar filtros',
+  'Filters': 'Filtros',
+  'Smart Filters': 'Filtros inteligentes',
 };

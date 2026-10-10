@@ -45,7 +45,7 @@ const SmartFilterGroup: React.FC<{
     onClear: () => void;
     renderIcon?: (node: SmartFilterNode) => React.ReactNode;
     primary?: boolean;
-}> = ({ title, tree, selected, onToggle, onClear, renderIcon, primary }) => {
+}> = ({ tree, selected, onToggle, onClear, renderIcon }) => {
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
     const sel = new Set(selected || []);
     const activeCount = (selected || []).length;
@@ -53,73 +53,70 @@ const SmartFilterGroup: React.FC<{
     if (tree.length === 0) return null;
 
     return (
-        <div className="flex flex-col gap-2 w-full">
-            <div className="flex items-center gap-3 flex-wrap">
-                <span className={`font-black uppercase tracking-[0.2em] opacity-40 leading-none ${primary ? 'text-[9px]' : 'text-[8px]'}`}>{title}</span>
-                {activeCount > 0 && (
-                    <button onClick={onClear}
-                        className="smart-clear text-[8px] font-black uppercase tracking-[0.16em] px-2 py-0.5 rounded-md"
-                        title={tr("Clear this filter")}>
-                        {tr("Clear")} {activeCount}
-                    </button>
-                )}
-            </div>
-
-            <div className="flex flex-wrap items-start gap-1.5 w-full">
-                {tree.map(node => {
-                    const isOpen = expanded.has(node.key);
-                    const isSel = sel.has(node.key);
-                    return (
-                        <div key={node.key} className="flex flex-col gap-1">
-                            <div className="flex items-stretch">
+        <div className="flex items-center gap-1.5 shrink-0">
+            {tree.map(node => {
+                const isOpen = expanded.has(node.key);
+                const isSel = sel.has(node.key);
+                return (
+                    <React.Fragment key={node.key}>
+                        <div className="flex items-center shrink-0">
+                            <button
+                                onClick={() => onToggle(node.key)}
+                                aria-pressed={isSel}
+                                className={`utb-control utb-smart-chip ${node.children.length > 0 ? 'rounded-r-none border-r-0' : ''}`}
+                                title={`Filter by ${node.label}`}
+                                aria-label={`Filter by ${node.label}`}
+                            >
+                                {renderIcon?.(node)}
+                                <span>{node.label}</span>
+                                <span className="utb-count-badge tabular-nums opacity-50">{node.count}</span>
+                            </button>
+                            {node.children.length > 0 && (
                                 <button
-                                    onClick={() => onToggle(node.key)}
-                                    aria-pressed={isSel}
-                                    className={`smart-chip flex items-center gap-1.5 rounded-l-lg font-black uppercase tracking-[0.1em] ${primary ? 'smart-chip-primary px-3 py-2 text-[10px]' : 'px-2.5 py-1.5 text-[9px]'}`}
-                                    title={`Filter by ${node.label}`}
+                                    onClick={() => setExpanded(p => {
+                                        const n = new Set(p);
+                                        n.has(node.key) ? n.delete(node.key) : n.add(node.key);
+                                        return n;
+                                    })}
+                                    aria-pressed={isOpen}
+                                    aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${node.label}`}
+                                    className="utb-control utb-expand-btn rounded-l-none"
+                                    title={`${node.children.length} sub-filter${node.children.length !== 1 ? 's' : ''}`}
                                 >
-                                    {renderIcon?.(node)}
-                                    {node.label}
-                                    <span className="smart-count tabular-nums opacity-50">{node.count}</span>
+                                    <ChevronDown size={12} strokeWidth={3} className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
                                 </button>
-                                {node.children.length > 0 && (
-                                    <button
-                                        onClick={() => setExpanded(p => {
-                                            const n = new Set(p);
-                                            n.has(node.key) ? n.delete(node.key) : n.add(node.key);
-                                            return n;
-                                        })}
-                                        aria-pressed={isOpen}
-                                        aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${node.label}`}
-                                        className="smart-expand flex items-center justify-center px-1.5 rounded-r-lg"
-                                        title={`${node.children.length} sub-filter${node.children.length !== 1 ? 's' : ''}`}
-                                    >
-                                        <ChevronDown size={13} strokeWidth={3}
-                                            className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
-                                    </button>
-                                )}
-                            </div>
-
-                            {isOpen && (
-                                <div className="smart-children flex flex-wrap gap-1 pl-2 ml-1 animate-in fade-in duration-200">
-                                    {node.children.map(child => (
-                                        <button
-                                            key={child.key}
-                                            onClick={() => onToggle(child.key)}
-                                            aria-pressed={sel.has(child.key)}
-                                            className="smart-chip smart-chip-child flex items-center gap-1.5 px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-[0.08em]"
-                                            title={`Filter by ${node.label} / ${child.label}`}
-                                        >
-                                            {child.label}
-                                            <span className="smart-count tabular-nums opacity-50">{child.count}</span>
-                                        </button>
-                                    ))}
-                                </div>
                             )}
                         </div>
-                    );
-                })}
-            </div>
+
+                        {isOpen && node.children.map(child => (
+                            <button
+                                key={child.key}
+                                onClick={() => onToggle(child.key)}
+                                aria-pressed={sel.has(child.key)}
+                                className="utb-control utb-smart-chip utb-smart-child"
+                                title={`Filter by ${node.label} / ${child.label}`}
+                                aria-label={`Filter by ${node.label} / ${child.label}`}
+                            >
+                                <span>{child.label}</span>
+                                <span className="utb-count-badge tabular-nums opacity-50">{child.count}</span>
+                            </button>
+                        ))}
+                    </React.Fragment>
+                );
+            })}
+
+            {activeCount > 0 && (
+                <button
+                    onClick={onClear}
+                    className="utb-control utb-clear-btn shrink-0"
+                    title={tr("Clear this filter")}
+                    aria-label={tr("Clear this filter")}
+                >
+                    <X size={12} strokeWidth={2.5} />
+                    <span>{tr("Clear")}</span>
+                    <span className="utb-count-badge tabular-nums">{activeCount}</span>
+                </button>
+            )}
         </div>
     );
 };
@@ -251,31 +248,30 @@ export const InventorySmartFiltersPanel: React.FC = () => {
     const shapeTree = React.useMemo(() => buildGeometryTree(inventoryRows || []), [inventoryRows]);
     const materialColorTree = React.useMemo(() => buildMaterialColorTree(inventoryRows || []), [inventoryRows]);
 
+    const totalSmartCount = (materialColorSel || []).length + (shapeSel || []).length;
+    const handleClearAllSmart = () => {
+        setMaterialColorSel([]);
+        setShapeSel([]);
+    };
+
     return (
-        <div className="smart-filters w-full animate-in slide-in-from-top duration-300 flex flex-col p-4">
-            <div className="smart-filter-deploy flex flex-wrap items-center gap-4 pb-2">
+        <div className="utb-row">
+            <div className="utb-scroll-row">
                 <button
                     onClick={() => setMaterialColorOpen(!materialColorOpen)}
                     aria-pressed={materialColorOpen}
-                    className="smart-deploy-key flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.16em]"
+                    className="utb-control utb-smart-deploy"
                     title={tr("Material / Colour — main filter")}
+                    aria-label={tr("Material / Colour — main filter")}
                 >
-                    <Palette size={13} strokeWidth={2.4} />
-                    {tr("Material / Colour")}
+                    <Palette size={14} strokeWidth={2.4} className="shrink-0" />
+                    <span>{tr("Material / Colour")}</span>
+                    {(materialColorSel || []).length > 0 && (
+                        <span className="utb-count-badge tabular-nums">{(materialColorSel || []).length}</span>
+                    )}
                 </button>
-                <button
-                    onClick={() => setShapeFilterOpen(!shapeFilterOpen)}
-                    aria-pressed={shapeFilterOpen}
-                    className="smart-deploy-key flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.16em]"
-                    title={tr("Shape — sub filter")}
-                >
-                    <Shapes size={13} strokeWidth={2.4} />
-                    {tr("Shape")}
-                </button>
-            </div>
 
-            {materialColorOpen && (
-                <div className="smart-filters-main py-2 w-full">
+                {materialColorOpen && (
                     <SmartFilterGroup
                         title={tr("Material / Colour — Main Filter")}
                         tree={materialColorTree}
@@ -284,11 +280,25 @@ export const InventorySmartFiltersPanel: React.FC = () => {
                         onClear={() => setMaterialColorSel([])}
                         primary
                     />
-                </div>
-            )}
+                )}
 
-            {shapeFilterOpen && (
-                <div className="smart-filters-shape py-2 w-full">
+                <div className="utb-divider shrink-0" aria-hidden="true" />
+
+                <button
+                    onClick={() => setShapeFilterOpen(!shapeFilterOpen)}
+                    aria-pressed={shapeFilterOpen}
+                    className="utb-control utb-smart-deploy"
+                    title={tr("Shape — sub filter")}
+                    aria-label={tr("Shape — sub filter")}
+                >
+                    <Shapes size={14} strokeWidth={2.4} className="shrink-0" />
+                    <span>{tr("Shape")}</span>
+                    {(shapeSel || []).length > 0 && (
+                        <span className="utb-count-badge tabular-nums">{(shapeSel || []).length}</span>
+                    )}
+                </button>
+
+                {shapeFilterOpen && (
                     <SmartFilterGroup
                         title={tr("Shape — Sub Filter")}
                         tree={shapeTree}
@@ -300,11 +310,37 @@ export const InventorySmartFiltersPanel: React.FC = () => {
                             return geom ? <GeometryIcon geom={geom} size={13} strokeWidth={2.4} /> : null;
                         }}
                     />
-                </div>
-            )}
+                )}
+            </div>
+
+            <button
+                onClick={handleClearAllSmart}
+                disabled={totalSmartCount === 0}
+                aria-label={tr("Clear Filters")}
+                title={tr("Clear Filters")}
+                className={`utb-control utb-clear-btn shrink-0 ${totalSmartCount === 0 ? 'opacity-30 cursor-default' : ''}`}
+            >
+                <X size={14} strokeWidth={2.5} />
+                <span className="utb-label-desktop">{tr("Clear")}</span>
+                {totalSmartCount > 0 && (
+                    <span className="utb-count-badge tabular-nums">{totalSmartCount}</span>
+                )}
+            </button>
         </div>
     );
 };
+
+const STATUS_FILTERS = [
+    { id: 'All', icon: LayoutGrid, color: '#FFFFFF' },
+    { id: 'New', icon: Plus, color: '#38bdf8' },
+    { id: 'Packed', icon: PackageCheck, color: '#eab308' },
+    { id: 'Not Packed', icon: PackageOpen, color: '#a1a1aa' },
+    { id: 'Shipped', icon: Send, color: '#06b6d4' },
+    { id: 'Not Shipped', icon: PackageX, color: '#f43f5e' },
+    { id: 'Acquired', icon: Tag, color: '#10b981' },
+    { id: 'Requested', icon: Activity, color: '#f59e0b' },
+    { id: 'Paid', icon: DollarSign, color: '#10b981' }
+];
 
 export const InventoryFiltersPanel: React.FC = () => {
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
@@ -314,80 +350,99 @@ export const InventoryFiltersPanel: React.FC = () => {
     const inventoryRows = useAtomValue(inventoryAtom);
     const contentCounts = React.useMemo(() => countContent(inventoryRows || []), [inventoryRows]);
 
+    const isStatusActive = invStatusFilter !== 'All';
+    const aiActiveCount = (contentSel || []).length;
+    const isVendorActive = !invVendorFilter.includes('All');
+    const vendorActiveCount = isVendorActive ? invVendorFilter.length : 0;
+    const totalActiveCount = (isStatusActive ? 1 : 0) + aiActiveCount + vendorActiveCount;
+
+    const handleClearAll = () => {
+        setInvStatusFilter('All');
+        setContentSel([]);
+        setInvVendorFilter(['All']);
+    };
+
     return (
-        <div className="flex flex-col w-full min-h-0 gap-4 p-4">
-            <div className="w-full flex flex-wrap items-center gap-5 animate-in slide-in-from-top-4 duration-500">
-                <div className="flex flex-wrap items-center gap-5">
-                    {[
-                        { id: 'All', icon: LayoutGrid, color: '#FFFFFF' },
-                        { id: 'New', icon: Plus, color: '#38bdf8' },
-                        { id: 'Packed', icon: PackageCheck, color: '#eab308' },
-                        { id: 'Not Packed', icon: PackageOpen, color: '#a1a1aa' },
-                        { id: 'Shipped', icon: Send, color: '#06b6d4' },
-                        { id: 'Not Shipped', icon: PackageX, color: '#f43f5e' },
-                        { id: 'Acquired', icon: Tag, color: '#10b981' },
-                        { id: 'Requested', icon: Activity, color: '#f59e0b' },
-                        { id: 'Paid', icon: DollarSign, color: '#10b981' }
-                    ].map(s => {
+        <div className="utb-filters-panel">
+            <div className="utb-row">
+                <div className="utb-scroll-row">
+                    {STATUS_FILTERS.map(s => {
                         const Icon = s.icon;
                         const isActive = invStatusFilter === s.id;
                         return (
-                            <div key={s.id} className="tool-cell flex flex-col items-center gap-1">
-                                <button aria-pressed={isActive} title={s.id} onClick={() => setInvStatusFilter(s.id as any)}
-                                    className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all"
-                                    style={{ color: isActive ? s.color : undefined }}>
-                                    <Icon size={18} strokeWidth={isActive ? 3.5 : 2.5} />
-                                </button>
-                                <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
-                            </div>
+                            <button
+                                key={s.id}
+                                aria-pressed={isActive}
+                                aria-label={tr(s.id)}
+                                title={tr(s.id)}
+                                onClick={() => setInvStatusFilter(s.id as any)}
+                                className="utb-control utb-status-chip"
+                                style={{
+                                    color: isActive ? s.color : undefined,
+                                    borderColor: isActive ? `color-mix(in srgb, ${s.color} 50%, transparent)` : undefined,
+                                    backgroundColor: isActive ? `color-mix(in srgb, ${s.color} 20%, transparent)` : undefined
+                                }}
+                            >
+                                <Icon size={14} strokeWidth={isActive ? 3 : 2.2} className="shrink-0" />
+                                <span className="utb-status-text">{tr(s.id)}</span>
+                            </button>
                         );
                     })}
                 </div>
 
-                <div className="hidden sm:block h-9 w-px bg-white/10 mx-2" />
-
-                <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 leading-none">
-                        {tr("AI Content")}
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        {CONTENT_FILTERS.map(f => {
-                            const on = (contentSel || []).includes(f.key);
-                            const n = contentCounts[f.key as ContentKey] ?? 0;
-                            return (
-                                <button
-                                    key={f.key}
-                                    onClick={() => setContentSel(prev => {
-                                        const cur = prev || [];
-                                        return cur.includes(f.key)
-                                            ? cur.filter(k => k !== f.key)
-                                            : [...cur, f.key];
-                                    })}
-                                    aria-pressed={on}
-                                    title={tr(f.hint)}
-                                    className="smart-chip flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]"
-                                >
-                                    {tr(f.label)}
-                                    <span className="smart-count tabular-nums opacity-50">{n}</span>
-                                </button>
-                            );
-                        })}
-                        {(contentSel || []).length > 0 && (
-                            <button onClick={() => setContentSel([])}
-                                className="smart-clear text-[8px] font-black uppercase tracking-[0.16em] px-2 py-1 rounded-md"
-                                title={tr("Clear content filter")}>
-                                {tr("Clear")} {(contentSel || []).length}
-                            </button>
-                        )}
-                    </div>
-                </div>
+                <button
+                    onClick={handleClearAll}
+                    disabled={totalActiveCount === 0}
+                    aria-label={tr("Clear Filters")}
+                    title={tr("Clear Filters")}
+                    className={`utb-control utb-clear-btn shrink-0 ${totalActiveCount === 0 ? 'opacity-30 cursor-default' : ''}`}
+                >
+                    <X size={14} strokeWidth={2.5} />
+                    <span className="utb-label-desktop">{tr("Clear")}</span>
+                    {totalActiveCount > 0 && (
+                        <span className="utb-count-badge tabular-nums">{totalActiveCount}</span>
+                    )}
+                </button>
             </div>
 
-            
-            <div className="w-full flex flex-wrap items-center gap-4 animate-in slide-in-from-top-4 duration-700 mt-2 border-t border-white/5 pt-4">
-                <button onClick={() => setInvVendorFilter(['All'])} className={`text-[10px] font-black uppercase transition-all ${invVendorFilter.includes('All') ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white'}`}>{tr("ALL VENDORS")}</button>
-                <div className="hidden sm:block h-6 w-px bg-white/10 mx-1" />
-                <div className="flex flex-wrap items-center gap-3">
+            <div className="utb-row">
+                <div className="utb-scroll-row">
+                    <span className="utb-label shrink-0">{tr("AI")}</span>
+                    {CONTENT_FILTERS.map(f => {
+                        const on = (contentSel || []).includes(f.key);
+                        const n = contentCounts[f.key as ContentKey] ?? 0;
+                        return (
+                            <button
+                                key={f.key}
+                                onClick={() => setContentSel(prev => {
+                                    const cur = prev || [];
+                                    return cur.includes(f.key)
+                                        ? cur.filter(k => k !== f.key)
+                                        : [...cur, f.key];
+                                })}
+                                aria-pressed={on}
+                                title={tr(f.hint)}
+                                aria-label={tr(f.hint)}
+                                className="utb-control utb-ai-chip"
+                            >
+                                <span>{tr(f.label)}</span>
+                                <span className="utb-count-badge tabular-nums opacity-60">{n}</span>
+                            </button>
+                        );
+                    })}
+
+                    <div className="utb-divider shrink-0" aria-hidden="true" />
+
+                    <button
+                        onClick={() => setInvVendorFilter(['All'])}
+                        aria-pressed={invVendorFilter.includes('All')}
+                        title={tr("ALL VENDORS")}
+                        aria-label={tr("ALL VENDORS")}
+                        className="utb-control utb-vendor-chip"
+                    >
+                        <span>{tr("ALL")}</span>
+                    </button>
+
                     {activeVendors.map(v => {
                         const vendorColor = (vendors as any)[v]?.color || '#ffffff';
                         const isActive = invVendorFilter.includes(v) || invVendorFilter.includes('All');
@@ -396,16 +451,17 @@ export const InventoryFiltersPanel: React.FC = () => {
                                 key={v}
                                 aria-pressed={isActive}
                                 title={v}
+                                aria-label={v}
                                 onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])}
-                                className={`flex items-center justify-center px-4 h-10 rounded-xl transition-all active:scale-95 ${isActive ? 'liquid-glass font-black' : 'border font-bold hover:bg-white/5'}`}
-                                style={{ 
+                                className="utb-control utb-vendor-chip"
+                                style={{
                                     color: isActive ? '#000' : vendorColor,
                                     backgroundColor: isActive ? vendorColor : 'transparent',
                                     borderColor: isActive ? 'transparent' : `${vendorColor}40`,
-                                    boxShadow: isActive ? `0 0 20px ${vendorColor}66, inset 0 0 10px rgba(255,255,255,0.5)` : 'none'
+                                    boxShadow: isActive ? `0 0 12px ${vendorColor}66` : 'none'
                                 }}
                             >
-                                <span className="text-[11px] uppercase tracking-[0.15em]">{v}</span>
+                                <span className="tabular-nums tracking-wider">{v}</span>
                             </button>
                         );
                     })}

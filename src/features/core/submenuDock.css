@@ -550,3 +550,203 @@ html.theme-aqua .smd-card [class*="bg-red"] svg {
     backdrop-filter: none !important;
   }
 }
+
+/* UTB Compact Filters & Smart Filters (Wave TB-2) */
+.utb-filters-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 4px;
+}
+
+.utb-scroll-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.utb-scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.utb-status-chip {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  height: 32px;
+}
+
+.utb-ai-chip {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.utb-vendor-chip {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 8px;
+  min-width: 28px;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 900;
+  border-radius: 14px;
+}
+
+.utb-smart-chip {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  height: 32px;
+}
+
+.utb-smart-deploy {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  height: 32px;
+}
+
+.utb-smart-child {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 11px;
+  border-radius: 14px;
+  opacity: 0.9;
+}
+
+.utb-expand-btn {
+  height: 32px;
+  padding: 0 6px;
+  border-left: none;
+  flex-shrink: 0;
+}
+
+.utb-divider {
+  width: 1px;
+  height: 16px;
+  background-color: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.utb-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 900;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+  margin-left: 4px;
+}
+
+.utb-label {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+/* Mobile responsive compact heights & 44px touch target padding */
+@media (max-width: 768px) {
+  .utb-filters-panel .utb-status-chip,
+  .utb-filters-panel .utb-clear-btn {
+    height: 32px;
+    border-width: 1px;
+    border-radius: 16px;
+  }
+  .utb-filters-panel .utb-vendor-chip,
+  .utb-filters-panel .utb-ai-chip {
+    height: 28px;
+    border-width: 1px;
+    border-radius: 14px;
+  }
+  .utb-status-chip,
+  .utb-vendor-chip,
+  .utb-ai-chip,
+  .utb-smart-chip,
+  .utb-smart-deploy {
+    position: relative;
+  }
+  .utb-status-chip::after,
+  .utb-vendor-chip::after,
+  .utb-ai-chip::after,
+  .utb-smart-chip::after,
+  .utb-smart-deploy::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 44px;
+    min-height: 44px;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Icon-only status chips below 480px */
+@media (max-width: 480px) {
+  .utb-status-chip .utb-status-text {
+    display: none;
+  }
+  .utb-status-chip {
+    padding: 0;
+    width: 32px;
+    justify-content: center;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .utb-status-chip,
+  .utb-vendor-chip,
+  .utb-ai-chip,
+  .utb-smart-chip,
+  .utb-smart-deploy,
+  .utb-expand-btn {
+    transition: none !important;
+  }
+}
+
+/* Focus-visible ring */
+.utb-status-chip:focus-visible,
+.utb-vendor-chip:focus-visible,
+.utb-ai-chip:focus-visible,
+.utb-smart-chip:focus-visible,
+.utb-smart-deploy:focus-visible,
+.utb-expand-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--main-color, #00aeef) !important;
+}
+
+/* Aqua theme readability adjustments */
+html.theme-aqua .utb-divider {
+  background-color: rgba(11, 42, 51, 0.20) !important;
+}
+html.theme-aqua .utb-count-badge {
+  background: rgba(11, 42, 51, 0.12) !important;
+  color: #0b2a33 !important;
+}
+html.theme-aqua .utb-label {
+  color: rgba(11, 42, 51, 0.70) !important;
+}
+html.theme-aqua .utb-status-chip:not([aria-pressed="true"]) {
+  color: #0b2a33 !important;
+}
