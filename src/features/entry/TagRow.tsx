@@ -39,6 +39,7 @@ export const TagRow: React.FC<{
 );
 
 /** The sizes known for the chosen Shape and Type, most common first; the count says how many items have each. */
+/** A row of clickable known-size chips (width, length, height). */
 export const SizeRow: React.FC<{ sizes: readonly SizeSuggestion[]; onPick: (s: SizeSuggestion) => void }> = ({ sizes, onPick }) => (
     <div role="group" aria-label={tr('Known sizes')} className="entry-tags" onKeyDown={backToInput}>
         {sizes.map(s => (
