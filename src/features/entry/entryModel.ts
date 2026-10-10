@@ -80,6 +80,7 @@ export const NON_VENDOR_CODES: ReadonlySet<string> = new Set(['R', 'M', 'W', 'C'
 /** Vendors offered for a new entry (owner's list: every vendor except the codes above). */
 export const VENDOR_CODES: readonly string[] = Object.keys(vendors).filter(c => !NON_VENDOR_CODES.has(c)).sort();
 
+/** Display name for a vendor code, or the code itself when the vendor is not in the vendors list. */
 export const vendorName = (code: string): string =>
     (vendors as Record<string, { name: string }>)[code]?.name ?? code;
 
