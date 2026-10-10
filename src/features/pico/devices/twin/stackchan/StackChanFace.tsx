@@ -2,6 +2,7 @@ import React from 'react';
 import { tr, trf } from '../../../../../lib/i18n';
 import { Monitor } from 'lucide-react';
 
+/** Renders the StackChan screen as an SVG face for an expression, or a placeholder if none. */
 export const StackChanFace: React.FC<{ expression?: string }> = ({ expression }) => {
   const expr = expression || 'not_reported';
   
