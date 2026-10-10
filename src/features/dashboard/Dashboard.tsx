@@ -7,6 +7,7 @@ import { PaymentsView } from './PaymentsView';
 import { ShippingView } from './ShippingView';
 import { AcquisitionsView } from './AcquisitionsView';
 
+/** Dashboard host that shows the acquisitions, payments or shipping view for the active tab. */
 export function Dashboard() {
     const [activeTab] = useAtom(dashboardActiveTabAtom);
 
