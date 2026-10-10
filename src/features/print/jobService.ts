@@ -89,6 +89,7 @@ async function removeFromOutbox(id: string) {
     }
 }
 
+/** Returns how many items are waiting in the offline outbox. */
 export async function getOutboxSize(): Promise<number> {
     const items = await loadOutbox();
     return items.length;
