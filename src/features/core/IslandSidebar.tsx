@@ -284,7 +284,7 @@ export const IslandSidebar: React.FC = () => {
         
         <div 
             className="isb-panel ui-root" 
-            style={{ ...panelStyle, top: '12px' }}
+            style={panelStyle}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
