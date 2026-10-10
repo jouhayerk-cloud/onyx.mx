@@ -13,6 +13,7 @@ export interface ControlHandlers {
   handleMasterExportXLSX_V2: () => void;
 }
 
+/** Builds the command tool entries for the Control view, wired to the given handlers. */
 export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   const tools: ToolDescriptor[] = [];
 
