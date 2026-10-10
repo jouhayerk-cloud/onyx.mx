@@ -25,36 +25,10 @@ export const VESSEL_FIGURE_IDS: readonly string[] = [
  */
 export const DEFAULTS: Record<string, Dims> = {
     'bowl':  { w: 50, h: 36, d: 50 },
-    'canoe': { w: 70, h: 10, d: 23 },
+    'canoe': { w: 100, h: 10, d: 23 },
     'plate': { w: 55, h: 3,  d: 55 },
     'basin': { w: 42, h: 14, d: 42 },
 };
-
-// ── geometric helpers ────────────────────────────────────────────────────────
-
-/**
- * An elongated ring tapering to sharp pointed ends along the x-axis.
- * Creates the tapered prow and stern contour of a carved stone canoe vessel.
- */
-function pointedRing(x0: number, y0: number, len: number, wid: number, steps = 14): P2[] {
-    const yMid = y0 + wid / 2;
-    const pts: P2[] = [];
-    // Upper arc: from left prow tip (x0, yMid) to right prow tip (x0 + len, yMid)
-    for (let i = 0; i <= steps; i++) {
-        const u = i / steps;
-        const x = x0 + u * len;
-        const y = yMid + (wid / 2) * Math.sin(u * Math.PI);
-        pts.push([x, y]);
-    }
-    // Lower arc: from right prow tip back to left prow tip
-    for (let i = steps - 1; i >= 1; i--) {
-        const u = i / steps;
-        const x = x0 + u * len;
-        const y = yMid - (wid / 2) * Math.sin(u * Math.PI);
-        pts.push([x, y]);
-    }
-    return pts;
-}
 
 // ── vessel builders (back to front, 1 bright mark, <= 14 paths) ─────────────
 
@@ -94,40 +68,98 @@ function buildBowl(cam: Cam, dims: Dims): FigurePart[] {
 }
 
 /**
- * Canoe shaped vessel (~70 cm long, 10 cm tall, 23 cm wide):
- * Hull of an elongated ring tapering to pointed ends at both prows, inner rim crease.
+ * Canoe shaped vessel (~100 cm long, 10 cm tall, 23 cm wide):
+ * Long, low, shallow oval trough of pale translucent banded onyx.
+ * Hull of two rounded stadium rings (r = d/2), top face inner stadium crease,
+ * floor crease, wavy horizontal band crease, and a tiny bright glint inside the hollow.
  */
 function buildCanoe(cam: Cam, dims: Dims): FigurePart[] {
-    const bw = dims.w * 0.72;
-    const bd = dims.d * 0.48;
-    const bx0 = (dims.w - bw) / 2;
-    const by0 = (dims.d - bd) / 2;
-    const botRing = pointedRing(bx0, by0, bw, bd, 14);
-    const botPts = botRing.map(([x, y]) => proj(cam, x, y, 0));
-
-    const topRing = pointedRing(0, 0, dims.w, dims.d, 14);
+    // Top ring: length w, width d, radius d / 2 (stadium footprint) at height h
+    const tr = dims.d / 2;
+    const topRing = ring(0, 0, dims.w, dims.d, tr, 8);
     const topPts = topRing.map(([x, y]) => proj(cam, x, y, dims.h));
 
-    const iw = dims.w * 0.88;
-    const id = dims.d * 0.64;
-    const ix0 = (dims.w - iw) / 2;
-    const iy0 = (dims.d - id) / 2;
-    const innerRing = pointedRing(ix0, iy0, iw, id, 14);
-    const innerPts = innerRing.map(([x, y]) => proj(cam, x, y, dims.h));
+    // Base ring: top ring is about 4% larger than base ring
+    const bw = dims.w / 1.04;
+    const bd = dims.d / 1.04;
+    const bx0 = (dims.w - bw) / 2;
+    const by0 = (dims.d - bd) / 2;
+    const br = bd / 2;
+    const botRing = ring(bx0, by0, bw, bd, br, 8);
+    const botPts = botRing.map(([x, y]) => proj(cam, x, y, 0));
 
-    // Accent glint mark at the right prow tip
-    const [px, py] = proj(cam, dims.w - 0.6, dims.d / 2, dims.h);
+    // Silhouette body: hull of bottom and top rounded stadium rings
+    const bodyPath = pathOf(hull([...botPts, ...topPts]));
+
+    // Top rim crease
+    const topCrease = pathOf(topPts);
+
+    // Inner stadium ring crease on the top face (inset ~12% of d)
+    const topInset = dims.d * 0.12;
+    const iw = dims.w - 2 * topInset;
+    const id = dims.d - 2 * topInset;
+    const ir = id / 2;
+    const innerRing = ring(topInset, topInset, iw, id, ir, 8);
+    const innerPts = innerRing.map(([x, y]) => proj(cam, x, y, dims.h));
+    const innerCrease = pathOf(innerPts);
+
+    // Floor crease: smaller inner stadium ring inside the hollow
+    const floorZ = dims.h * 0.85;
+    const fw = dims.w * 0.78;
+    const fd = dims.d * 0.42;
+    const fx0 = (dims.w - fw) / 2;
+    const fy0 = (dims.d - fd) / 2;
+    const fr = fd / 2;
+    const floorRing = ring(fx0, fy0, fw, fd, fr, 8);
+    const floorPts = floorRing.map(([x, y]) => proj(cam, x, y, floorZ));
+    const floorCrease = pathOf(floorPts);
+
+    // Wavy band crease along the outside wall (soft horizontal onyx banding with gentle sine wave)
+    const wavyPts: P2[] = [];
+    const waveSteps = 28;
+    const zMid = dims.h * 0.45;
+    const amp = dims.h * 0.1;
+    // Interpolate outside wall at zMid between base and top rings
+    const tz = 0.45;
+    const wMid = bw + tz * (dims.w - bw);
+    const dMid = bd + tz * (dims.d - bd);
+    const x0Mid = bx0 + tz * (0 - bx0);
+    const y0Mid = by0 + tz * (0 - by0);
+    const rMid = dMid / 2;
+    const xStart = x0Mid + rMid * 0.25;
+    const xEnd = x0Mid + wMid - rMid * 0.25;
+    for (let i = 0; i <= waveSteps; i++) {
+        const u = i / waveSteps;
+        const x = xStart + u * (xEnd - xStart);
+        let dy = rMid;
+        if (x < x0Mid + rMid) {
+            const dx = x - (x0Mid + rMid);
+            dy = Math.sqrt(Math.max(0, rMid * rMid - dx * dx));
+        } else if (x > x0Mid + wMid - rMid) {
+            const dx = x - (x0Mid + wMid - rMid);
+            dy = Math.sqrt(Math.max(0, rMid * rMid - dx * dx));
+        }
+        const y = y0Mid + rMid + dy;
+        const z = zMid + amp * Math.sin(u * Math.PI * 4);
+        wavyPts.push(proj(cam, x, y, z));
+    }
+    const wavyCrease = pathOf(wavyPts, false);
+
+    // Tiny bright mark inside the hollow
+    const [gx, gy] = proj(cam, dims.w * 0.54, dims.d * 0.5, floorZ);
     const bright = pathOf([
-        [px - 1.6, py],
-        [px, py - 1.4],
-        [px + 1.6, py],
-        [px, py + 1.4],
+        [gx - 1.4, gy],
+        [gx, gy - 1.2],
+        [gx + 1.4, gy],
+        [gx, gy + 1.2],
     ]);
 
     return [
-        { d: pathOf(hull([...botPts, ...topPts])), kind: 'plate' },
-        { d: pathOf(topPts), kind: 'crease' },
-        { d: pathOf(innerPts), kind: 'crease' },
+        { d: bodyPath, kind: 'plate' },
+        { d: topCrease, kind: 'crease' },
+        { d: innerCrease, kind: 'crease' },
+        { d: floorCrease, kind: 'crease' },
+        { d: wavyCrease, kind: 'crease' },
         { d: bright, kind: 'bright' },
     ];
 }

@@ -1088,155 +1088,325 @@ function drawWineRack(
 }
 
 /**
- * Hull: A long boat hull with pointed ends and an inner rim (canoe / canoa).
+ * Hull: A long, low, shallow oval trough of natural onyx (canoe / canoa).
+ * Follows stadium footprint (straight sides, rounded ends), leaning walls,
+ * thin rim with an inner hollow, recessed floor, and soft banding.
  */
 function drawHull(
     ctx: CanvasRenderingContext2D,
     geo: { W: number; H: number; D: number },
     helpers: AxoDrawHelpers,
 ): void {
-    const { W, H, D } = geo;
+    const lengthW = Math.max(geo.W, 10);
+    const depthD = Math.max(geo.D, 4);
+    const heightH = Math.max(geo.H, 1);
 
-    const pStern = toCanvas(helpers, 0, H, D / 2); // Left tip
-    const pBow = toCanvas(helpers, W, H, D / 2); // Right tip
-    const pMidFront = toCanvas(helpers, W / 2, H * 0.82, 0); // Front gunwale center
-    const pMidBack = toCanvas(helpers, W / 2, H * 0.82, D); // Back gunwale center
-    const pKeel = toCanvas(helpers, W / 2, 0, D / 2); // Bottom center
+    const radius = depthD / 2;
+    const straightL = Math.max(0, lengthW - depthD);
+    const cx0 = lengthW / 2;
+    const cz0 = depthD / 2;
 
-    // Outer hull body (sweeping front/bottom face)
+    // Sample stadium footprint with 56 points
+    // Starting on the back straight edge (z = depthD) so visible front quads form a single contiguous interval
+    const N = 56;
+    const arcLen = Math.PI * radius;
+    const totalPerimeter = 2 * straightL + 2 * arcLen;
+
+    interface PerimeterPt {
+        x: number;
+        z: number;
+        nx: number;
+        nz: number;
+    }
+
+    const basePts: PerimeterPt[] = [];
+    for (let i = 0; i < N; i++) {
+        const s = (i / N) * totalPerimeter;
+        let x = 0;
+        let z = 0;
+        let nx = 0;
+        let nz = 0;
+
+        if (s < straightL) {
+            // 1. Back straight edge (z = depthD, x goes from cx0 + straightL / 2 down to cx0 - straightL / 2)
+            const sBack = s;
+            x = radius + straightL - sBack;
+            z = depthD;
+            nx = 0;
+            nz = 1;
+        } else if (s < straightL + arcLen) {
+            // 2. Left semicircle (around center (radius, cz0), theta from pi/2 to 3pi/2)
+            const sArc = s - straightL;
+            const theta = Math.PI / 2 + (sArc / arcLen) * Math.PI;
+            x = radius + radius * Math.cos(theta);
+            z = cz0 + radius * Math.sin(theta);
+            nx = Math.cos(theta);
+            nz = Math.sin(theta);
+        } else if (s < 2 * straightL + arcLen) {
+            // 3. Front straight edge (z = 0, x goes from radius up to radius + straightL)
+            const sFront = s - (straightL + arcLen);
+            x = radius + sFront;
+            z = 0;
+            nx = 0;
+            nz = -1;
+        } else {
+            // 4. Right semicircle (around center (radius + straightL, cz0), theta from -pi/2 to pi/2)
+            const sArc = s - (2 * straightL + arcLen);
+            const theta = -Math.PI / 2 + (sArc / arcLen) * Math.PI;
+            x = radius + straightL + radius * Math.cos(theta);
+            z = cz0 + radius * Math.sin(theta);
+            nx = Math.cos(theta);
+            nz = Math.sin(theta);
+        }
+
+        basePts.push({ x, z, nx, nz });
+    }
+
+    // Top footprint: 4% larger than base, walls lean outward slightly
+    const topScale = 1.04;
+    const insetRim = 0.06 * depthD;
+    const insetFloor = insetRim + 0.10 * depthD;
+    const floorY = heightH * 0.65; // lowered by 35% of H
+
+    const ptsBase = basePts.map(p => ({ x: p.x, y: 0, z: p.z }));
+    const ptsTop = basePts.map(p => ({
+        x: cx0 + (p.x - cx0) * topScale,
+        y: heightH,
+        z: cz0 + (p.z - cz0) * topScale,
+    }));
+    const ptsInnerTop = ptsTop.map((p, idx) => ({
+        x: p.x - basePts[idx].nx * insetRim,
+        y: heightH,
+        z: p.z - basePts[idx].nz * insetRim,
+    }));
+    const ptsFloor = ptsTop.map((p, idx) => ({
+        x: p.x - basePts[idx].nx * insetFloor,
+        y: floorY,
+        z: p.z - basePts[idx].nz * insetFloor,
+    }));
+
+    // Project all point sets to 2D canvas coordinates
+    const pBase2D = ptsBase.map(p => toCanvas(helpers, p.x, p.y, p.z));
+    const pTop2D = ptsTop.map(p => toCanvas(helpers, p.x, p.y, p.z));
+    const pInnerTop2D = ptsInnerTop.map(p => toCanvas(helpers, p.x, p.y, p.z));
+    const pFloor2D = ptsFloor.map(p => toCanvas(helpers, p.x, p.y, p.z));
+
+    // Determine visibility of each side wall quad
+    const isQuadVis: boolean[] = [];
+    for (let k = 0; k < N; k++) {
+        const next = (k + 1) % N;
+        const p0 = pBase2D[k];
+        const p1 = pBase2D[next];
+        const p3 = pTop2D[k];
+        const cross = (p1.x - p0.x) * (p3.y - p0.y) - (p1.y - p0.y) * (p3.x - p0.x);
+        isQuadVis.push(cross < -0.001);
+    }
+
+    // Identify the contiguous chain of visible quads
+    let startK = -1;
+    for (let k = 0; k < N; k++) {
+        const prev = (k - 1 + N) % N;
+        if (isQuadVis[k] && !isQuadVis[prev]) {
+            startK = k;
+            break;
+        }
+    }
+    const visibleIndices: number[] = [];
+    if (startK !== -1) {
+        let curr = startK;
+        while (isQuadVis[curr]) {
+            visibleIndices.push(curr);
+            curr = (curr + 1) % N;
+            if (curr === startK) break;
+        }
+    }
+
+    // 1. Fill visible side wall quads by normal direction
+    for (const k of visibleIndices) {
+        const next = (k + 1) % N;
+        const p0 = pBase2D[k];
+        const p1 = pBase2D[next];
+        const p2 = pTop2D[next];
+        const p3 = pTop2D[k];
+
+        const midNx = (basePts[k].nx + basePts[next].nx) / 2;
+        const midNz = (basePts[k].nz + basePts[next].nz) / 2;
+        const isLeft = midNx < midNz;
+        const fillColor = isLeft ? helpers.colorLeft : helpers.colorRight;
+        const shadeOverlay = isLeft ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0.15)';
+
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+
+        if (helpers.isWireframe) {
+            ctx.fillStyle = 'rgba(0,0,0,0)';
+            ctx.fill();
+        } else if (helpers.hexPattern) {
+            ctx.fillStyle = helpers.hexPattern;
+            ctx.fill();
+            ctx.fillStyle = shadeOverlay;
+            ctx.fill();
+        } else {
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+            // Tiny stroke matching fill to prevent subpixel antialiasing seams
+            ctx.strokeStyle = fillColor;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        }
+    }
+
+    // 2. Stroke silhouette on outer body (profile sides and bottom curve on table)
+    if (visibleIndices.length > 0) {
+        const sK = visibleIndices[0];
+        const eK = (visibleIndices[visibleIndices.length - 1] + 1) % N;
+
+        ctx.save();
+        ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+        ctx.lineWidth = helpers.lineWidth ?? 5;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pTop2D[sK].x, pTop2D[sK].y);
+        ctx.lineTo(pBase2D[sK].x, pBase2D[sK].y);
+        for (let i = 0; i < visibleIndices.length; i++) {
+            const nextK = (visibleIndices[i] + 1) % N;
+            ctx.lineTo(pBase2D[nextK].x, pBase2D[nextK].y);
+        }
+        ctx.lineTo(pTop2D[eK].x, pTop2D[eK].y);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // 3. One soft band line along the outside wall
+    if (!helpers.isWireframe && visibleIndices.length > 0) {
+        ctx.save();
+        ctx.beginPath();
+        for (let i = 0; i < visibleIndices.length; i++) {
+            const k = visibleIndices[i];
+            const bx = ptsBase[k].x * 0.58 + ptsTop[k].x * 0.42;
+            const bz = ptsBase[k].z * 0.58 + ptsTop[k].z * 0.42;
+            const pt = toCanvas(helpers, bx, heightH * 0.42, bz);
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+        }
+        const eK = (visibleIndices[visibleIndices.length - 1] + 1) % N;
+        const endBx = ptsBase[eK].x * 0.58 + ptsTop[eK].x * 0.42;
+        const endBz = ptsBase[eK].z * 0.58 + ptsTop[eK].z * 0.42;
+        const endPt = toCanvas(helpers, endBx, heightH * 0.42, endBz);
+        ctx.lineTo(endPt.x, endPt.y);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = Math.max(1.5, (helpers.lineWidth ?? 5) * 0.4);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // 4. Shallow hollow interior: inner polygon filled one shade darker than colorTop
     ctx.beginPath();
-    ctx.moveTo(pStern.x, pStern.y);
-    ctx.bezierCurveTo(pStern.x, pKeel.y, pKeel.x - (pKeel.x - pStern.x) * 0.4, pKeel.y, pKeel.x, pKeel.y);
-    ctx.bezierCurveTo(pKeel.x + (pBow.x - pKeel.x) * 0.4, pKeel.y, pBow.x, pKeel.y, pBow.x, pBow.y);
-    ctx.bezierCurveTo(
-        pBow.x - (pBow.x - pMidFront.x) * 0.5,
-        pMidFront.y,
-        pMidFront.x + (pBow.x - pMidFront.x) * 0.3,
-        pMidFront.y,
-        pMidFront.x,
-        pMidFront.y,
-    );
-    ctx.bezierCurveTo(
-        pMidFront.x - (pMidFront.x - pStern.x) * 0.3,
-        pMidFront.y,
-        pStern.x + (pMidFront.x - pStern.x) * 0.5,
-        pMidFront.y,
-        pStern.x,
-        pStern.y,
-    );
+    for (let k = 0; k < N; k++) {
+        if (k === 0) ctx.moveTo(pInnerTop2D[k].x, pInnerTop2D[k].y);
+        else ctx.lineTo(pInnerTop2D[k].x, pInnerTop2D[k].y);
+    }
     ctx.closePath();
 
     if (helpers.isWireframe) {
         ctx.fillStyle = 'rgba(0,0,0,0)';
+        ctx.fill();
     } else if (helpers.hexPattern) {
         ctx.fillStyle = helpers.hexPattern;
         ctx.fill();
-        const shGrd = ctx.createLinearGradient(pStern.x, 0, pBow.x, 0);
-        shGrd.addColorStop(0, 'rgba(0,0,0,0.35)');
-        shGrd.addColorStop(0.5, 'rgba(255,255,255,0.1)');
-        shGrd.addColorStop(1, 'rgba(0,0,0,0.15)');
-        ctx.fillStyle = shGrd;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.fill();
     } else {
-        const grd = ctx.createLinearGradient(pStern.x, 0, pBow.x, 0);
-        grd.addColorStop(0, helpers.colorLeft);
-        grd.addColorStop(1, helpers.colorRight);
-        ctx.fillStyle = grd;
+        // colorRight is the intermediate shade between colorTop and colorLeft
+        ctx.fillStyle = helpers.colorRight;
+        ctx.fill();
     }
-    ctx.fill();
 
-    // Outline bottom sweeping keel curve
+    // 5. Floor: second inner polygon in colorLeft
     ctx.beginPath();
-    ctx.moveTo(pStern.x, pStern.y);
-    ctx.bezierCurveTo(pStern.x, pKeel.y, pKeel.x - (pKeel.x - pStern.x) * 0.4, pKeel.y, pKeel.x, pKeel.y);
-    ctx.bezierCurveTo(pKeel.x + (pBow.x - pKeel.x) * 0.4, pKeel.y, pBow.x, pKeel.y, pBow.x, pBow.y);
-    ctx.stroke();
-
-    // Top rim (outer gunwales)
-    ctx.beginPath();
-    ctx.moveTo(pStern.x, pStern.y);
-    ctx.bezierCurveTo(
-        pStern.x + (pMidFront.x - pStern.x) * 0.5,
-        pMidFront.y,
-        pMidFront.x - (pMidFront.x - pStern.x) * 0.3,
-        pMidFront.y,
-        pMidFront.x,
-        pMidFront.y,
-    );
-    ctx.bezierCurveTo(
-        pMidFront.x + (pBow.x - pMidFront.x) * 0.3,
-        pMidFront.y,
-        pBow.x - (pBow.x - pMidFront.x) * 0.5,
-        pMidFront.y,
-        pBow.x,
-        pBow.y,
-    );
-    ctx.bezierCurveTo(
-        pBow.x - (pBow.x - pMidBack.x) * 0.5,
-        pMidBack.y,
-        pMidBack.x + (pBow.x - pMidBack.x) * 0.3,
-        pMidBack.y,
-        pMidBack.x,
-        pMidBack.y,
-    );
-    ctx.bezierCurveTo(
-        pMidBack.x - (pMidBack.x - pStern.x) * 0.3,
-        pMidBack.y,
-        pStern.x + (pMidBack.x - pStern.x) * 0.5,
-        pMidBack.y,
-        pStern.x,
-        pStern.y,
-    );
+    for (let k = 0; k < N; k++) {
+        if (k === 0) ctx.moveTo(pFloor2D[k].x, pFloor2D[k].y);
+        else ctx.lineTo(pFloor2D[k].x, pFloor2D[k].y);
+    }
     ctx.closePath();
 
-    ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : helpers.hexPattern || helpers.colorTop;
-    ctx.fill();
-    ctx.stroke();
+    if (helpers.isWireframe) {
+        ctx.fillStyle = 'rgba(0,0,0,0)';
+        ctx.fill();
+    } else if (helpers.hexPattern) {
+        ctx.fillStyle = helpers.hexPattern;
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.fill();
+    } else {
+        ctx.fillStyle = helpers.colorLeft;
+        ctx.fill();
+    }
+    if (!helpers.isWireframe) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.lineWidth = Math.max(1, (helpers.lineWidth ?? 5) * 0.3);
+        ctx.stroke();
+        ctx.restore();
+    }
 
-    // Inner rim (hollow hull interior)
-    const pInnerStern = toCanvas(helpers, W * 0.08, H * 0.82, D / 2);
-    const pInnerBow = toCanvas(helpers, W * 0.92, H * 0.82, D / 2);
-    const pInnerFront = toCanvas(helpers, W / 2, H * 0.82, D * 0.16);
-    const pInnerBack = toCanvas(helpers, W / 2, H * 0.82, D * 0.84);
-
+    // 6. Rim: outer top polygon minus inner polygon, filled with colorTop using even-odd rule
     ctx.beginPath();
-    ctx.moveTo(pInnerStern.x, pInnerStern.y);
-    ctx.bezierCurveTo(
-        pInnerStern.x + (pInnerFront.x - pInnerStern.x) * 0.5,
-        pInnerFront.y,
-        pInnerFront.x - (pInnerFront.x - pInnerStern.x) * 0.3,
-        pInnerFront.y,
-        pInnerFront.x,
-        pInnerFront.y,
-    );
-    ctx.bezierCurveTo(
-        pInnerFront.x + (pInnerBow.x - pInnerFront.x) * 0.3,
-        pInnerFront.y,
-        pInnerBow.x - (pInnerBow.x - pInnerFront.x) * 0.5,
-        pInnerFront.y,
-        pInnerBow.x,
-        pInnerBow.y,
-    );
-    ctx.bezierCurveTo(
-        pInnerBow.x - (pInnerBow.x - pInnerBack.x) * 0.5,
-        pInnerBack.y,
-        pInnerBack.x + (pInnerBow.x - pInnerBack.x) * 0.3,
-        pInnerBack.y,
-        pInnerBack.x,
-        pInnerBack.y,
-    );
-    ctx.bezierCurveTo(
-        pInnerBack.x - (pInnerBack.x - pInnerStern.x) * 0.3,
-        pInnerBack.y,
-        pInnerStern.x + (pInnerBack.x - pInnerStern.x) * 0.5,
-        pInnerBack.y,
-        pInnerStern.x,
-        pInnerStern.y,
-    );
+    for (let k = 0; k < N; k++) {
+        if (k === 0) ctx.moveTo(pTop2D[k].x, pTop2D[k].y);
+        else ctx.lineTo(pTop2D[k].x, pTop2D[k].y);
+    }
     ctx.closePath();
 
-    ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : '#C0C0C0';
-    ctx.fill();
+    for (let k = 0; k < N; k++) {
+        if (k === 0) ctx.moveTo(pInnerTop2D[k].x, pInnerTop2D[k].y);
+        else ctx.lineTo(pInnerTop2D[k].x, pInnerTop2D[k].y);
+    }
+    ctx.closePath();
+
+    if (helpers.isWireframe) {
+        ctx.fillStyle = 'rgba(0,0,0,0)';
+        ctx.fill('evenodd');
+    } else if (helpers.hexPattern) {
+        ctx.fillStyle = helpers.hexPattern;
+        ctx.fill('evenodd');
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.fill('evenodd');
+    } else {
+        ctx.fillStyle = helpers.colorTop;
+        ctx.fill('evenodd');
+    }
+
+    // 7. Outline strokes on the outer and inner rim
+    ctx.save();
+    ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+    ctx.lineWidth = helpers.lineWidth ?? 5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    for (let k = 0; k < N; k++) {
+        if (k === 0) ctx.moveTo(pTop2D[k].x, pTop2D[k].y);
+        else ctx.lineTo(pTop2D[k].x, pTop2D[k].y);
+    }
+    ctx.closePath();
     ctx.stroke();
+
+    ctx.beginPath();
+    for (let k = 0; k < N; k++) {
+        if (k === 0) ctx.moveTo(pInnerTop2D[k].x, pInnerTop2D[k].y);
+        else ctx.lineTo(pInnerTop2D[k].x, pInnerTop2D[k].y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.restore();
 }
 
 /**
