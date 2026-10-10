@@ -2,6 +2,7 @@ import { recordDocumentJob } from '../../lib/documentJobs';
 import type { DocumentJob } from '../../lib/documentJobs';
 import type { DocumentKind, DocumentChannel } from './types';
 import { flushOutbox } from './jobService';
+import { saveAs } from 'file-saver';
 
 export interface TrackMeta {
     templateId: string;
@@ -226,16 +227,31 @@ async function processRecord(meta: TrackMeta, result?: unknown): Promise<void> {
 // A combined export (params.combined) calls the single-document exporters many times: only the combined job is recorded.
 let combinedDepth = 0;
 
+// The name the last export saved under, so the queue shows the real file instead of "unknown file" for handlers that
+// save the file themselves. Exports are started by a click, one at a time, so one slot is enough.
+let lastSavedName: string | undefined;
+
+/** Save a generated file and remember its name for the tracked job. Use instead of saveAs inside trackDocumentJob. */
+export function saveExportFile(blob: Blob, name: string): void {
+    lastSavedName = name;
+    saveAs(blob, name);
+}
+
 export async function trackDocumentJob<T>(meta: TrackMeta, run: () => Promise<T> | T): Promise<T> {
     const isCombined = meta.params?.combined === true;
     if (isCombined) combinedDepth++;
+    else if (combinedDepth === 0) lastSavedName = undefined;
     let result: T;
     try {
         result = await run();
     } finally {
         if (isCombined) combinedDepth--;
     }
-    if (isCombined || combinedDepth === 0) processRecord(meta, result).catch(() => {});
+    if (isCombined || combinedDepth === 0) {
+        const named = meta.fileName || !lastSavedName ? meta : { ...meta, fileName: lastSavedName };
+        lastSavedName = undefined;
+        processRecord(named, result).catch(() => {});
+    }
     return result;
 }
 

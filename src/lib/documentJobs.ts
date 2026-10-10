@@ -27,6 +27,11 @@ function checkMissingTable(err: any): boolean {
     return false;
 }
 
+// PM4 4.4 rule 6: fields that describe the run, not the document, are never part of the canonical form, so the same
+// snapshot printed on two days hashes the same. Both spellings, at any depth. Snapshots reach the ledger already reduced
+// to id-like keys (jobTracking.minimizeSnapshot), so no stored hash changes with this rule.
+const VOLATILE_KEYS = new Set(['printed_at', 'printedAt', 'updated_at', 'updatedAt', 'job_id', 'jobId']);
+
 export function canonicalJson(value: any): string {
     if (value === null || value === undefined) return 'null';
     if (typeof value === 'number') {
@@ -56,7 +61,7 @@ export function canonicalJson(value: any): string {
         const keys = Object.keys(value).sort();
         const out: string[] = [];
         for (const k of keys) {
-            if (value[k] === undefined) continue;
+            if (value[k] === undefined || VOLATILE_KEYS.has(k)) continue;
             const v = canonicalJson(value[k]);
             out.push(`${JSON.stringify(k)}:${v}`);
         }

@@ -1713,3 +1713,10 @@ html.style-slab.theme-aqua {
     line-height: 1.5;
 }
 .ui-root .ui-dialog__acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+/* Aqua: Tailwind's yellow-500 text (the LD and landed columns of the inventory list) is about 1.5:1 on the light glass.
+   A dark amber of the same hue keeps the colour coding and is readable. */
+html.theme-aqua .text-yellow-500,
+html.theme-aqua .text-yellow-500\/90 {
+  color: #8a5a00 !important;
+}

@@ -259,9 +259,11 @@ export const IslandSidebar: React.FC = () => {
         });
     };
 
+    // On a phone the rail floats over the list and would cover its first column: after a choice it goes away completely
+    // (the island's menu launcher brings it back).
     const handleMobileHide = () => {
         if (window.innerWidth <= 768) {
-            setSidebarState('compact');
+            setSidebarState('hidden');
         }
     };
 
@@ -412,6 +414,16 @@ export const IslandSidebar: React.FC = () => {
                                 isCompact={isCompact}
                                 isHoverPeek={isHoverPeek}
                                 onHideSidebarMobile={handleMobileHide}
+                            />
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
+                            <NavItem
+                                icon={Printer}
+                                label={tr("Print Center")}
+                                isActive={isPrintCenterOpen}
+                                action={() => { setIsPrintCenterOpen(open => !open); handleMobileHide(); }}
+                                isCompact={isCompact}
+                                isHoverPeek={isHoverPeek}
                             />
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (

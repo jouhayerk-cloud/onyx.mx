@@ -16,6 +16,19 @@
   gap: 10px;
   width: 100%;
   flex-shrink: 0;
+  /* Three bars used to take about 560 px of a 687 px window and push the table off screen. The whole stack is capped
+     (a little over half the height, never past the bottom edge); beyond the cap the stack itself scrolls. */
+  max-height: min(55dvh, calc(100dvh - 82px - env(safe-area-inset-top, 0px) - 24px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* On a phone the island sits at the bottom: leave its band free. */
+@media (max-width: 768px) {
+  .smd-stack {
+    max-height: min(55dvh, calc(100dvh - 82px - env(safe-area-inset-top, 0px) - 110px));
+  }
 }
 
 .smd-card {

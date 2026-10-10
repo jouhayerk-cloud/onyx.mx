@@ -71,9 +71,7 @@ import {
     isBatchWizardOpenAtom,
     batchWizardItemsAtom
 } from '../../lib/atoms';
-import { isPrintCenterOpenAtom } from '../print/printState';
 import { isPackingPrintWizardOpenAtom } from '../../lib/atoms';
-import { PrintCenter } from '../print/PrintCenter';
 import { 
     Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX,
     Palette, Shapes, Printer, Nfc, Copy, FileSpreadsheet, Sparkles, Download
@@ -254,7 +252,6 @@ export const UniversalToolsBar: React.FC = () => {
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     
     // Batch & Print Actions
-    const [isPrintCenterOpen, setPrintCenterOpen] = useAtom(isPrintCenterOpenAtom);
     const setPrintWizardOpen = useSetAtom(isPackingPrintWizardOpenAtom);
     const setNFCOpen = useSetAtom(isPackingNFCWizardOpenAtom);
     const setPackOpen = useSetAtom(isPackingCrateWizardOpenAtom);
@@ -707,7 +704,6 @@ export const UniversalToolsBar: React.FC = () => {
         if (isFinance && isFinFiltersOpen) docks.push(<SubmenuCard key="fin-filters" id="fin-filters" title={tr("Filters")} onClose={() => setIsFinFiltersOpen(false)}>{renderFinFilters()}</SubmenuCard>);
         if (isFinance && isFinActionOpen) docks.push(<SubmenuCard key="fin-action" id="fin-action" title={tr("Requested Payments")} onClose={() => setIsFinActionOpen(false)}>{renderFinAction()}</SubmenuCard>);
         if (isFinance && isFinUpcomingOpen) docks.push(<SubmenuCard key="fin-upcoming" id="fin-upcoming" title={tr("Upcoming Payments")} onClose={() => setIsFinUpcomingOpen(false)}>{renderFinUpcoming()}</SubmenuCard>);
-        if (isPrintCenterOpen) docks.push(<SubmenuCard key="print-center" id="print-center" title={tr("Print Center")} onClose={() => setPrintCenterOpen(false)}><PrintCenter /></SubmenuCard>);
     }
 
     return (

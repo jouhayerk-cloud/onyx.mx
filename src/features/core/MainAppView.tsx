@@ -361,6 +361,8 @@ export function MainAppView() {
                         <PackWizard />
                         <CratePackingManager />
                         <ItemsPayWizard />
+                        {/* A portal sheet with its own header. It used to also be wrapped in a sub menu bar, which left an empty second bar behind it. */}
+                        {isPrintCenterOpen && <PrintCenter />}
                     </Suspense>
                                     </div>
             </div>
