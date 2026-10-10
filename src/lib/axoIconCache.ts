@@ -64,7 +64,7 @@ export function describeAxoIcon(item: any): AxoIconRequest {
     // Round the dimensions: sub-0.01cm differences cannot survive the projection
     // and would only fragment the cache.
     const dims = `${g.W.toFixed(2)}x${g.H.toFixed(2)}x${g.D.toFixed(2)}`;
-    const key = `${g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${color}`;
+    const key = `${g.extra ? 'x:' + g.extra : g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${color}`;
 
     return { key, w, h, d, shape, desc, color };
 }

@@ -1,3 +1,5 @@
+import { classifyExtra, drawExtra, extractHolesCount } from './axoExtra';
+import type { AxoExtraClass } from './axoExtra';
 import { classifyGeometry } from './geometry';
 import type { Geometry } from './geometry';
 
@@ -39,6 +41,8 @@ export interface ResolvedAxoGeometry {
     D: number;
     geom: AxoGeom;
     isMirror: boolean;
+    /** One of the extra classes (lamps, hull, panel, wine rack, table) drawn by axoExtra.ts, else null. */
+    extra?: AxoExtraClass | null;
 }
 
 /**
@@ -97,7 +101,19 @@ export function resolveAxoGeometry(
         D = minVal;
     }
 
-    return { W, H, D, geom, isMirror };
+    const extra = classifyExtra(shapeStr, descStr);
+    if (extra === 'lamp-floor') {
+        if (H <= W * 1.5) H = Math.max(H, W * 2.5, 130);
+    } else if (extra === 'panel') {
+        D = Math.min(D, Math.min(W, H) * 0.15, 8);
+    } else if (extra === 'hull') {
+        W = Math.max(W, D * 2.5);
+        H = Math.min(H, W * 0.25, 20);
+    } else if (extra === 'wine-rack') {
+        D = Math.min(D, 20);
+    }
+
+    return { W, H, D, geom, isMirror, extra };
 }
 
 export async function generateAxonometricDataUrl(
@@ -108,7 +124,7 @@ export async function generateAxonometricDataUrl(
     hexMapString?: string
 ): Promise<string> {
     return new Promise((resolve) => {
-        const { W, H, D, geom, isMirror } = resolveAxoGeometry(w_cm, h_cm, d_cm, shapeStr, descStr);
+        const { W, H, D, geom, isMirror, extra } = resolveAxoGeometry(w_cm, h_cm, d_cm, shapeStr, descStr);
 
         const cos30 = Math.cos(Math.PI / 6);
         const sin30 = Math.sin(Math.PI / 6);
@@ -212,6 +228,16 @@ export async function generateAxonometricDataUrl(
 
         ctx.lineWidth = 5;
         ctx.strokeStyle = COLOR_OUTLINE;
+
+        if (extra) {
+            drawExtra(ctx, extra, { W, H, D }, {
+                project, scale, cx, cy,
+                colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: COLOR_OUTLINE,
+                lineWidth: 5, holes: extractHolesCount(shapeStr, descStr), isWireframe,
+            });
+            resolve(canvas.toDataURL(asJpeg ? 'image/jpeg' : 'image/png', 1.0));
+            return;
+        }
 
         if (geom === 'cylinder') {
             const cb_u = (W/2 - D/2) * cos30;
