@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react';
 import { Vault, Slow } from '@lucasmarkes/hairline/react';
 import { Mascot } from 'page-mascot';
 import { InventoryTutorial } from '../inventory/InventoryTutorial';
-import { FileCabinet } from './hairline/FileCabinet';
+import { FolderTray } from './hairline/FolderTray';
 import { Truck } from './hairline/Truck';
 import { tr } from '../../lib/i18n';
 import './welcome.css';
@@ -108,7 +108,7 @@ export function WelcomeView() {
                             sub={tr('One folder per vendor. Pick a folder to see its pieces.')}
                             onOpen={() => openInventory(null)}
                             ownClicks
-                            figure={onRead => <FileCabinet onOpen={openInventory} onRead={onRead} />}
+                            figure={onRead => <FolderTray onOpen={openInventory} onRead={onRead} />}
                         />
                     )}
                     {can(ROLES.finance) && (
