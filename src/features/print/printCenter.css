@@ -61,10 +61,18 @@
   .pc-surface {
     background-color: rgba(12, 14, 22, 0.90) !important;
   }
+  html.theme-aqua .pc-surface {
+    background-color: rgba(244, 251, 251, 0.94) !important;
+  }
 }
 @media (prefers-reduced-transparency: reduce) {
   .pc-surface {
     background-color: rgba(12, 14, 22, 0.94) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  html.theme-aqua .pc-surface {
+    background-color: rgba(244, 251, 251, 0.96) !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
@@ -254,49 +262,318 @@ html.style-slab .pc-surface [role="button"] {
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* ==========================================================================
+   Aqua Theme (Light Glass) Overrides
+   ========================================================================== */
+
 html.theme-aqua .pc-layer {
-  color: #0a0c14;
+  color: #0b2a33 !important;
 }
+
+html.theme-aqua .pc-surface {
+  color: #0b2a33 !important;
+  background-color: var(--slab-glass-hi, color-mix(in srgb, #f4fbfb 65%, transparent)) !important;
+  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.70) 0%, rgba(255, 255, 255, 0.35) 38%, rgba(255, 255, 255, 0.15) 62%, rgba(255, 255, 255, 0.40) 100%)) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.90),
+    inset 0 -1px 1px rgba(11, 42, 51, 0.05),
+    inset 0 0 18px rgba(255, 255, 255, 0.50),
+    0 14px 40px rgba(11, 42, 51, 0.15),
+    0 1px 3px rgba(11, 42, 51, 0.10) !important;
+}
+
+html.theme-aqua .pc-header {
+  border-bottom-color: rgba(11, 42, 51, 0.12) !important;
+}
+
 html.theme-aqua .pc-title {
-  color: #0a0c14;
+  color: #0b2a33 !important;
 }
+
+html.theme-aqua .pc-tabs {
+  border-bottom-color: rgba(11, 42, 51, 0.12) !important;
+}
+
 html.theme-aqua .pc-tab {
-  color: rgba(10, 12, 20, 0.6);
+  color: rgba(11, 42, 51, 0.72) !important;
 }
+
 html.theme-aqua .pc-tab.active {
-  color: #0a0c14;
+  color: #0b2a33 !important;
+  border-bottom-color: var(--main-color, #00aeef) !important;
 }
+
 html.theme-aqua .pc-tab:hover {
-  color: rgba(10, 12, 20, 0.9);
+  color: #0b2a33 !important;
 }
+
+html.theme-aqua .pc-tab:focus-visible {
+  background: rgba(11, 42, 51, 0.08) !important;
+}
+
 html.theme-aqua .pc-close-btn {
-  color: rgba(10, 12, 20, 0.8);
-  background: rgba(10, 12, 20, 0.05);
+  color: rgba(11, 42, 51, 0.72) !important;
+  background: rgba(11, 42, 51, 0.05) !important;
 }
+
 html.theme-aqua .pc-close-btn:hover {
-  background: rgba(10, 12, 20, 0.15);
-  color: #0a0c14;
+  background: rgba(11, 42, 51, 0.12) !important;
+  color: #0b2a33 !important;
 }
+
 html.theme-aqua .pc-season-select {
-  color: #0a0c14;
-  background: rgba(10, 12, 20, 0.05);
-  border-color: rgba(10, 12, 20, 0.2);
+  color: #0b2a33 !important;
+  background: rgba(11, 42, 51, 0.05) !important;
+  border-color: rgba(11, 42, 51, 0.20) !important;
 }
+
+html.theme-aqua .pc-season-select:focus-visible {
+  box-shadow: 0 0 0 2px var(--main-color, #00aeef) !important;
+}
+
+html.theme-aqua .pc-season-select option {
+  background: #ffffff !important;
+  color: #0b2a33 !important;
+}
+
 html.theme-aqua .pc-input {
-  color: #0a0c14;
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.15);
+  color: #0b2a33 !important;
+  background: rgba(11, 42, 51, 0.05) !important;
+  border-color: rgba(11, 42, 51, 0.20) !important;
 }
+
+html.theme-aqua .pc-input::placeholder {
+  color: rgba(11, 42, 51, 0.60) !important;
+  opacity: 1 !important;
+}
+
+html.theme-aqua .pc-input:focus {
+  border-color: var(--main-color, #00aeef) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--main-color, #00aeef) 30%, transparent) !important;
+}
+
 html.theme-aqua .pc-dropzone {
-  border-color: rgba(10, 12, 20, 0.2);
-  color: rgba(10, 12, 20, 0.6);
+  border-color: rgba(11, 42, 51, 0.25) !important;
+  color: rgba(11, 42, 51, 0.72) !important;
+  background-color: rgba(11, 42, 51, 0.03) !important;
 }
+
 html.theme-aqua .pc-dropzone:hover {
-  border-color: rgba(10, 12, 20, 0.4);
-  color: rgba(10, 12, 20, 0.9);
+  border-color: rgba(11, 42, 51, 0.45) !important;
+  color: #0b2a33 !important;
+  background-color: rgba(11, 42, 51, 0.06) !important;
 }
+
 html.theme-aqua .pc-text-muted {
-  color: rgba(10, 12, 20, 0.7);
+  color: rgba(11, 42, 51, 0.72) !important;
+}
+
+/* Verification Status Badges in Aqua */
+html.theme-aqua .pc-verify-status.status-match {
+  background: rgba(22, 101, 52, 0.12) !important;
+  color: #15803d !important;
+  border: 1px solid rgba(22, 101, 52, 0.30) !important;
+}
+
+html.theme-aqua .pc-verify-status.status-mismatch {
+  background: rgba(185, 28, 28, 0.12) !important;
+  color: #b91c1c !important;
+  border: 1px solid rgba(185, 28, 28, 0.30) !important;
+}
+
+html.theme-aqua .pc-verify-status.status-unverifiable {
+  background: rgba(180, 83, 9, 0.12) !important;
+  color: #854d0e !important;
+  border: 1px solid rgba(180, 83, 9, 0.30) !important;
+}
+
+/* Slab Button Reset in Aqua */
+html.theme-aqua.style-slab .pc-surface button:not(.pc-close-btn):not(.pc-btn-primary):not(.pc-tab):not([aria-pressed="true"]):not([data-active="true"]):hover,
+html.theme-aqua.style-slab .pc-glass-card button:not([aria-pressed="true"]):not([data-active="true"]):hover {
+  background-color: rgba(11, 42, 51, 0.08) !important;
+}
+
+/* History Tab dark container inline-style override in Aqua */
+html.theme-aqua .pc-layer div[style*="rgba(20, 20, 20"] {
+  background: var(--slab-glass-hi, rgba(255, 255, 255, 0.65)) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.14)) !important;
+  box-shadow: 0 4px 20px rgba(11, 42, 51, 0.08) !important;
+  color: #0b2a33 !important;
+}
+
+/* Scoped Tailwind Text Color Overrides */
+html.theme-aqua .pc-layer .text-white:not(.pc-btn-primary) {
+  color: #0b2a33 !important;
+}
+
+html.theme-aqua .pc-layer .hover\:text-white:hover {
+  color: #007a99 !important;
+}
+
+html.theme-aqua .pc-layer .text-gray-200 {
+  color: rgba(11, 42, 51, 0.85) !important;
+}
+
+html.theme-aqua .pc-layer .hover\:text-gray-200:hover {
+  color: #0b2a33 !important;
+}
+
+html.theme-aqua .pc-layer .text-gray-300 {
+  color: rgba(11, 42, 51, 0.78) !important;
+}
+
+html.theme-aqua .pc-layer .text-gray-400 {
+  color: rgba(11, 42, 51, 0.72) !important;
+}
+
+html.theme-aqua .pc-layer h3.text-gray-400 {
+  color: #0b2a33 !important;
+}
+
+html.theme-aqua .pc-layer .text-gray-500 {
+  color: rgba(11, 42, 51, 0.68) !important;
+}
+
+html.theme-aqua .pc-layer .text-green-400,
+html.theme-aqua .pc-layer .text-green-300,
+html.theme-aqua .pc-layer .text-green-500 {
+  color: #15803d !important;
+}
+
+html.theme-aqua .pc-layer .text-red-400,
+html.theme-aqua .pc-layer .text-red-500 {
+  color: #b91c1c !important;
+}
+
+html.theme-aqua .pc-layer .text-red-200 {
+  color: #7f1d1d !important;
+}
+
+html.theme-aqua .pc-layer .text-yellow-400,
+html.theme-aqua .pc-layer .text-yellow-500 {
+  color: #854d0e !important;
+}
+
+html.theme-aqua .pc-layer .text-blue-300,
+html.theme-aqua .pc-layer .text-blue-400 {
+  color: #007a99 !important;
+}
+
+html.theme-aqua .pc-layer .text-purple-400 {
+  color: #6b21a8 !important;
+}
+
+/* Scoped Tailwind Background Overrides */
+html.theme-aqua .pc-layer .bg-white\/5,
+html.theme-aqua.style-slab .pc-layer button.bg-white\/5 {
+  background-color: rgba(11, 42, 51, 0.05) !important;
+  border: 1px solid rgba(11, 42, 51, 0.16) !important;
+  color: rgba(11, 42, 51, 0.78) !important;
+}
+
+html.theme-aqua .pc-layer .hover\:bg-white\/10:hover,
+html.theme-aqua.style-slab .pc-layer button.hover\:bg-white\/10:hover {
+  background-color: rgba(11, 42, 51, 0.10) !important;
+  color: #0b2a33 !important;
+}
+
+html.theme-aqua .pc-layer .bg-black\/50 {
+  background-color: rgba(11, 42, 51, 0.08) !important;
+  border: 1px solid rgba(11, 42, 51, 0.16) !important;
+}
+
+html.theme-aqua .pc-layer .bg-gray-800\/50,
+html.theme-aqua .pc-layer .bg-gray-800\/60 {
+  background-color: rgba(11, 42, 51, 0.05) !important;
+}
+
+html.theme-aqua .pc-layer .hover\:bg-gray-700\/60:hover {
+  background-color: rgba(11, 42, 51, 0.09) !important;
+}
+
+html.theme-aqua .pc-layer .bg-gray-900\/50 {
+  background-color: rgba(11, 42, 51, 0.07) !important;
+  border: 1px solid rgba(11, 42, 51, 0.14) !important;
+}
+
+html.theme-aqua .pc-layer .bg-gray-700 {
+  background-color: rgba(11, 42, 51, 0.08) !important;
+  border: 1px solid rgba(11, 42, 51, 0.15) !important;
+}
+
+html.theme-aqua .pc-layer .bg-gray-500\/20 {
+  background-color: rgba(11, 42, 51, 0.08) !important;
+  border: 1px solid rgba(11, 42, 51, 0.16) !important;
+}
+
+html.theme-aqua .pc-layer .bg-yellow-500\/20,
+html.theme-aqua .pc-layer .bg-yellow-900\/50 {
+  background-color: rgba(180, 83, 9, 0.12) !important;
+}
+
+html.theme-aqua .pc-layer .bg-green-500\/20 {
+  background-color: rgba(22, 101, 52, 0.12) !important;
+}
+
+html.theme-aqua .pc-layer .bg-purple-500\/20 {
+  background-color: rgba(126, 34, 206, 0.12) !important;
+}
+
+html.theme-aqua .pc-layer .bg-red-900\/50 {
+  background-color: rgba(185, 28, 28, 0.12) !important;
+}
+
+html.theme-aqua .pc-layer .bg-blue-500\/20,
+html.theme-aqua.style-slab .pc-layer button.bg-blue-500\/20 {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 18%, transparent) !important;
+}
+
+html.theme-aqua .pc-layer .bg-blue-500\/10 {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 12%, transparent) !important;
+}
+
+html.theme-aqua .pc-layer .hover\:bg-blue-900\/30:hover {
+  background-color: rgba(0, 122, 153, 0.12) !important;
+}
+
+/* Scoped Tailwind Border Overrides */
+html.theme-aqua .pc-layer .border-white\/10 {
+  border-color: rgba(11, 42, 51, 0.18) !important;
+}
+
+html.theme-aqua .pc-layer .border-yellow-500\/30 {
+  border-color: rgba(180, 83, 9, 0.35) !important;
+}
+
+html.theme-aqua .pc-layer .border-blue-500 {
+  border-color: var(--main-color, #00aeef) !important;
+}
+
+html.theme-aqua .pc-layer .border-blue-500\/50 {
+  border-color: rgba(0, 122, 153, 0.40) !important;
+}
+
+html.theme-aqua .pc-layer .border-gray-600 {
+  border-color: rgba(11, 42, 51, 0.22) !important;
+}
+
+html.theme-aqua .pc-layer .border-gray-600\/30 {
+  border-color: rgba(11, 42, 51, 0.15) !important;
+}
+
+html.theme-aqua .pc-layer .border-gray-700\/50 {
+  border-color: rgba(11, 42, 51, 0.12) !important;
+}
+
+/* Opacity Tweaks for Light Contrast */
+html.theme-aqua .pc-layer svg.opacity-50 {
+  opacity: 0.70 !important;
+}
+
+html.theme-aqua .pc-layer .opacity-70 {
+  opacity: 0.90 !important;
+  color: rgba(11, 42, 51, 0.72) !important;
 }
 
 
@@ -320,6 +597,9 @@ html.theme-aqua .pc-text-muted {
   .pc-glass-card {
     background-color: rgba(12, 14, 22, 0.90) !important;
   }
+  html.theme-aqua .pc-glass-card {
+    background-color: rgba(244, 251, 251, 0.94) !important;
+  }
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -328,10 +608,23 @@ html.theme-aqua .pc-text-muted {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
+  html.theme-aqua .pc-glass-card {
+    background-color: rgba(244, 251, 251, 0.96) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
 }
 
 html.theme-aqua .pc-glass-card {
-  color: #0a0c14;
+  color: #0b2a33 !important;
+  background-color: var(--slab-glass-hi, color-mix(in srgb, #f4fbfb 60%, transparent)) !important;
+  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.30) 38%, rgba(255, 255, 255, 0.10) 62%, rgba(255, 255, 255, 0.35) 100%)) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.85),
+    inset 0 -1px 1px rgba(11, 42, 51, 0.04),
+    inset 0 0 18px rgba(255, 255, 255, 0.30),
+    0 4px 16px rgba(11, 42, 51, 0.08) !important;
 }
 
 /* Ensure buttons in glass cards don't get ugly native styling in slab */
@@ -358,9 +651,14 @@ html.style-slab .pc-glass-card [role="button"] {
 }
 
 html.theme-aqua .pc-status-strip {
-  background-color: rgba(10, 12, 20, 0.05);
-  border-bottom-color: rgba(10, 12, 20, 0.1);
-  color: rgba(10, 12, 20, 0.85);
+  background-color: rgba(11, 42, 51, 0.04) !important;
+  border-bottom: 1px solid rgba(11, 42, 51, 0.12) !important;
+  color: #0b2a33 !important;
+}
+
+html.theme-aqua .pc-status-strip .opacity-80 {
+  opacity: 1 !important;
+  color: rgba(11, 42, 51, 0.72) !important;
 }
 
 .pc-test-results {
@@ -380,7 +678,17 @@ html.theme-aqua .pc-status-strip {
 }
 
 html.theme-aqua .pc-test-row {
-  background-color: rgba(10, 12, 20, 0.05);
+  background-color: rgba(11, 42, 51, 0.05) !important;
+  border: 1px solid rgba(11, 42, 51, 0.10) !important;
+  color: #0b2a33 !important;
+}
+
+html.theme-aqua .pc-test-row-header span.font-semibold {
+  color: #0b2a33 !important;
+}
+
+html.theme-aqua .pc-test-results .font-bold {
+  color: #0b2a33 !important;
 }
 
 .pc-test-row-header {
@@ -395,12 +703,12 @@ html.theme-aqua .pc-test-row {
     background-color: rgba(0, 0, 0, 0.4);
   }
   html.theme-aqua .pc-status-strip {
-    background-color: rgba(10, 12, 20, 0.15);
+    background-color: rgba(11, 42, 51, 0.12) !important;
   }
   .pc-test-row {
     background-color: rgba(0, 0, 0, 0.5);
   }
   html.theme-aqua .pc-test-row {
-    background-color: rgba(10, 12, 20, 0.15);
+    background-color: rgba(11, 42, 51, 0.10) !important;
   }
 }

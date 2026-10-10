@@ -167,7 +167,7 @@ html.style-slab .onyx-island.onyx-island.onyx-island button:disabled {
 /* Light Theme (Aqua) active tweaks */
 html.theme-aqua .onyx-island.onyx-island.onyx-island button[aria-pressed="true"],
 html.theme-aqua .onyx-island.onyx-island.onyx-island button[data-active="true"] {
-  color: color-mix(in srgb, var(--main-color, #00aeef) 90%, #000) !important;
+  color: #007a99 !important;
 }
 
 @media (prefers-color-scheme: light) {
@@ -265,37 +265,37 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 
 /* AQUA PASS: Light theme text contrast and states */
 html.theme-aqua .onyx-island-surface {
-  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.7)) !important;
-  border: 1px solid rgba(0, 0, 0, 0.15) !important;
-  color: #1a1a1a !important; /* Text on glass needs 4.5:1 contrast */
+  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.70)) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
+  color: #0b2a33 !important; /* Text on glass needs 4.5:1 contrast */
   box-shadow: 
-    inset 0 1px 0.5px rgba(255, 255, 255, 0.8),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.80),
     inset 0 -1px 1px rgba(0, 0, 0, 0.05),
-    0 14px 40px rgba(0, 0, 0, 0.15),
-    0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    0 14px 40px rgba(11, 42, 51, 0.15),
+    0 1px 3px rgba(11, 42, 51, 0.10) !important;
 }
 
 html.theme-aqua .onyx-island-surface::before {
   background:
-    radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.6), transparent 55%),
+    radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.60), transparent 55%),
     radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent), transparent 62%) !important;
 }
 
 html.theme-aqua .onyx-island {
-  color: #1a1a1a !important;
+  color: #0b2a33 !important;
 }
 html.theme-aqua .onyx-island.ui-root {
-  color: #1a1a1a !important;
+  color: #0b2a33 !important;
 }
 
 /* Light Theme: normal hover for not-active tools */
 html.theme-aqua.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover {
-  background-color: rgba(0, 0, 0, 0.06) !important;
+  background-color: rgba(11, 42, 51, 0.07) !important;
 }
 
 /* Light Theme: normal pressed state */
 html.theme-aqua.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):active {
-  background-color: rgba(0, 0, 0, 0.12) !important;
+  background-color: rgba(11, 42, 51, 0.13) !important;
 }
 
 /* Light Theme: active state for tools */
@@ -303,34 +303,164 @@ html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[aria-pres
 html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island [role="button"][aria-pressed="true"],
 html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"],
 html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island [role="button"][data-active="true"] {
-  background-color: color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent) !important;
-  border: 1px solid color-mix(in srgb, var(--main-color, #00aeef) 40%, transparent) !important;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--main-color, #00aeef) 10%, transparent) !important;
-  color: var(--main-color, #005a80) !important;
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 18%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--main-color, #00aeef) 50%, transparent) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--main-color, #00aeef) 12%, transparent) !important;
+  color: #007a99 !important;
 }
 
 /* Light Theme: active + hover */
 html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[aria-pressed="true"]:not(:disabled):hover,
 html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"]:not(:disabled):hover {
-  background-color: color-mix(in srgb, var(--main-color, #00aeef) 22%, transparent) !important;
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 24%, transparent) !important;
 }
 
 /* Light Theme: active + pressed */
 html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[aria-pressed="true"]:not(:disabled):active,
 html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[data-active="true"]:not(:disabled):active {
-  background-color: color-mix(in srgb, var(--main-color, #00aeef) 30%, transparent) !important;
-  box-shadow: 0 0 6px color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent) !important;
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 32%, transparent) !important;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--main-color, #00aeef) 20%, transparent) !important;
 }
 
 /* Light Theme fills */
-html.theme-aqua .isl-w5 { background-color: rgba(0, 0, 0, 0.04) !important; }
-html.theme-aqua .isl-w10 { background-color: rgba(0, 0, 0, 0.08) !important; }
-html.theme-aqua .isl-w15 { background-color: rgba(0, 0, 0, 0.12) !important; }
-html.theme-aqua .isl-w20 { background-color: rgba(0, 0, 0, 0.18) !important; }
-html.theme-aqua .isl-w50 { background-color: rgba(0, 0, 0, 0.40) !important; }
-html.theme-aqua .isl-hw5:hover { background-color: rgba(0, 0, 0, 0.06) !important; }
-html.theme-aqua .isl-hw10:hover { background-color: rgba(0, 0, 0, 0.10) !important; }
-html.theme-aqua .isl-hw20:hover { background-color: rgba(0, 0, 0, 0.22) !important; }
-html.theme-aqua .isl-b20 { background-color: rgba(255, 255, 255, 0.50) !important; border-color: rgba(0, 0, 0, 0.1) !important; }
+html.theme-aqua .isl-w5 { background-color: rgba(11, 42, 51, 0.05) !important; }
+html.theme-aqua .isl-w10 { background-color: rgba(11, 42, 51, 0.08) !important; }
+html.theme-aqua .isl-w15 { background-color: rgba(11, 42, 51, 0.12) !important; }
+html.theme-aqua .isl-w20 { background-color: rgba(11, 42, 51, 0.16) !important; }
+html.theme-aqua .isl-w50 { background-color: rgba(11, 42, 51, 0.40) !important; }
+html.theme-aqua .isl-hw5:hover { background-color: rgba(11, 42, 51, 0.07) !important; }
+html.theme-aqua .isl-hw10:hover { background-color: rgba(11, 42, 51, 0.10) !important; }
+html.theme-aqua .isl-hw20:hover { background-color: rgba(11, 42, 51, 0.22) !important; }
+html.theme-aqua .isl-b20 { background-color: rgba(255, 255, 255, 0.50) !important; border-color: rgba(11, 42, 51, 0.15) !important; }
 
-html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island .info-notch-user { border-left-color: rgba(0, 0, 0, 0.14) !important; }
+/* Notches */
+html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island .info-notch-user { border-left-color: rgba(11, 42, 51, 0.18) !important; }
+
+/* Search box in expanded island */
+html.theme-aqua .onyx-island input,
+html.theme-aqua .onyx-island-surface input {
+  color: #0b2a33 !important;
+}
+html.theme-aqua .onyx-island input::placeholder,
+html.theme-aqua .onyx-island-surface input::placeholder,
+html.theme-aqua .onyx-island [placeholder]::placeholder,
+html.theme-aqua .onyx-island-surface [placeholder]::placeholder {
+  color: rgba(11, 42, 51, 0.58) !important;
+  opacity: 1 !important;
+}
+
+/* Stats strip (TYPES, QTY, TOTAL MXN) */
+html.theme-aqua .onyx-island .info-notch-stats,
+html.theme-aqua .onyx-island-surface .info-notch-stats {
+  border-color: rgba(11, 42, 51, 0.18) !important;
+}
+html.theme-aqua .onyx-island .info-notch-stats [class*="uppercase"],
+html.theme-aqua .onyx-island .info-notch-stats .text-\[10px\],
+html.theme-aqua .onyx-island .info-notch-stats .text-xs,
+html.theme-aqua .onyx-island-surface .info-notch-stats [class*="uppercase"] {
+  color: rgba(11, 42, 51, 0.72) !important;
+  font-weight: 700 !important;
+}
+html.theme-aqua .onyx-island .info-notch-stats .font-mono,
+html.theme-aqua .onyx-island .info-notch-stats .font-bold,
+html.theme-aqua .onyx-island .info-notch-stats .font-semibold,
+html.theme-aqua .onyx-island-surface .info-notch-stats .font-mono {
+  color: #0b2a33 !important;
+  font-weight: 700 !important;
+}
+
+/* Tool tile labels and SVGs inside island */
+html.theme-aqua .onyx-island button:not([aria-pressed="true"]):not([data-active="true"]):not([class*="bg-cyan"]):not([class*="bg-blue"]) span,
+html.theme-aqua .onyx-island [role="button"]:not([aria-pressed="true"]):not([data-active="true"]):not([class*="bg-cyan"]):not([class*="bg-blue"]) span {
+  color: #0b2a33 !important;
+}
+html.theme-aqua .onyx-island button:not([aria-pressed="true"]):not([data-active="true"]):not([class*="bg-cyan"]):not([class*="bg-blue"]) svg,
+html.theme-aqua .onyx-island [role="button"]:not([aria-pressed="true"]):not([data-active="true"]):not([class*="bg-cyan"]):not([class*="bg-blue"]) svg,
+html.theme-aqua .onyx-island-surface svg:not([class*="text-cyan"]):not([class*="text-blue"]):not([class*="text-green"]):not([class*="text-red"]) {
+  color: rgba(11, 42, 51, 0.78) !important;
+}
+
+/* Accent cyan as text on light glass */
+html.theme-aqua .onyx-island [class*="text-cyan"]:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island .text-\[var\(--main-color\)\]:not([class*="bg-cyan"]):not([class*="bg-blue"]),
+html.theme-aqua .onyx-island .text-\[var\(--main-color\,\#00aeef\)\]:not([class*="bg-cyan"]):not([class*="bg-blue"]) {
+  color: #007a99 !important;
+}
+
+/* Scoped Tailwind text-white utilities */
+html.theme-aqua .onyx-island .text-white\/10:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/10:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.60) !important; }
+html.theme-aqua .onyx-island .text-white\/20:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/20:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.60) !important; }
+html.theme-aqua .onyx-island .text-white\/30:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/30:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.62) !important; }
+html.theme-aqua .onyx-island .text-white\/40:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/40:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.65) !important; }
+html.theme-aqua .onyx-island .text-white\/50:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/50:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.68) !important; }
+html.theme-aqua .onyx-island .text-white\/60:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/60:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.72) !important; }
+html.theme-aqua .onyx-island .text-white\/70:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/70:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.80) !important; }
+html.theme-aqua .onyx-island .text-white\/80:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/80:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.88) !important; }
+html.theme-aqua .onyx-island .text-white\/90:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .onyx-island-surface .text-white\/90:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: #0b2a33 !important; }
+html.theme-aqua .onyx-island .text-white:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-\[var\(--main-color\)\]"]),
+html.theme-aqua .onyx-island-surface .text-white:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-\[var\(--main-color\)\]"]) { color: #0b2a33 !important; }
+
+/* Scoped Tailwind bg-white utilities */
+html.theme-aqua .onyx-island .bg-white\/5,
+html.theme-aqua .onyx-island-surface .bg-white\/5 { background-color: rgba(11, 42, 51, 0.05) !important; }
+html.theme-aqua .onyx-island .bg-white\/10,
+html.theme-aqua .onyx-island-surface .bg-white\/10 { background-color: rgba(11, 42, 51, 0.08) !important; }
+html.theme-aqua .onyx-island .bg-white\/15,
+html.theme-aqua .onyx-island-surface .bg-white\/15 { background-color: rgba(11, 42, 51, 0.12) !important; }
+html.theme-aqua .onyx-island .bg-white\/20,
+html.theme-aqua .onyx-island-surface .bg-white\/20 { background-color: rgba(11, 42, 51, 0.16) !important; }
+
+html.theme-aqua .onyx-island .hover\:bg-white\/5:hover,
+html.theme-aqua .onyx-island-surface .hover\:bg-white\/5:hover { background-color: rgba(11, 42, 51, 0.07) !important; }
+html.theme-aqua .onyx-island .hover\:bg-white\/10:hover,
+html.theme-aqua .onyx-island-surface .hover\:bg-white\/10:hover { background-color: rgba(11, 42, 51, 0.10) !important; }
+html.theme-aqua .onyx-island .hover\:bg-white\/20:hover,
+html.theme-aqua .onyx-island-surface .hover\:bg-white\/20:hover { background-color: rgba(11, 42, 51, 0.18) !important; }
+
+/* Scoped Tailwind border-white utilities */
+html.theme-aqua .onyx-island .border-white\/5,
+html.theme-aqua .onyx-island-surface .border-white\/5 { border-color: rgba(11, 42, 51, 0.15) !important; }
+html.theme-aqua .onyx-island .border-white\/10,
+html.theme-aqua .onyx-island-surface .border-white\/10 { border-color: rgba(11, 42, 51, 0.22) !important; }
+html.theme-aqua .onyx-island .border-white\/15,
+html.theme-aqua .onyx-island-surface .border-white\/15 { border-color: rgba(11, 42, 51, 0.26) !important; }
+html.theme-aqua .onyx-island .border-white\/20,
+html.theme-aqua .onyx-island-surface .border-white\/20 { border-color: rgba(11, 42, 51, 0.30) !important; }
+html.theme-aqua .onyx-island .border-white\/30,
+html.theme-aqua .onyx-island-surface .border-white\/30 { border-color: rgba(11, 42, 51, 0.38) !important; }
+html.theme-aqua .onyx-island .border-white,
+html.theme-aqua .onyx-island-surface .border-white { border-color: rgba(11, 42, 51, 0.30) !important; }
+
+/* Preserve white text on solid colored backgrounds */
+html.theme-aqua .onyx-island [class*="bg-cyan"] .text-white,
+html.theme-aqua .onyx-island [class*="bg-cyan"] [class*="text-white"],
+html.theme-aqua .onyx-island [class*="bg-cyan"] svg,
+html.theme-aqua .onyx-island [class*="bg-blue"] .text-white,
+html.theme-aqua .onyx-island [class*="bg-blue"] [class*="text-white"],
+html.theme-aqua .onyx-island [class*="bg-blue"] svg,
+html.theme-aqua .onyx-island [class*="bg-green"] .text-white,
+html.theme-aqua .onyx-island [class*="bg-green"] [class*="text-white"],
+html.theme-aqua .onyx-island [class*="bg-green"] svg,
+html.theme-aqua .onyx-island [class*="bg-red"] .text-white,
+html.theme-aqua .onyx-island [class*="bg-red"] [class*="text-white"],
+html.theme-aqua .onyx-island [class*="bg-red"] svg {
+  color: #ffffff !important;
+}
+
+/* Reduced transparency fallback */
+@media (prefers-reduced-transparency: reduce) {
+  html.theme-aqua .onyx-island-surface {
+    background-color: #f0f7f9 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
