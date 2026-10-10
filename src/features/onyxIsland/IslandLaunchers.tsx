@@ -48,7 +48,7 @@ export const IslandLaunchers: React.FC<IslandLaunchersProps> = ({ tools, onRun }
             tabIndex={i === 0 ? 0 : -1}
             className="isl-launcher"
           >
-            <Icon size={20} color="currentColor" strokeWidth={2} aria-hidden="true" />
+            <Icon size={24} color="currentColor" strokeWidth={2} aria-hidden="true" />
             {tool.badge != null && <span className="isl-launcher-badge" aria-hidden="true" />}
           </button>
         );

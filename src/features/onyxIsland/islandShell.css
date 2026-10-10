@@ -7,7 +7,7 @@
 .onyx-island-dock { column-gap: 2px; }
 .onyx-island-dock-side { gap: 2px; }
 .isl-sep { width: 1px; height: 22px; background: var(--isl-line); margin-inline: 4px; flex: none; }
-.isl-dock-face { position: relative; width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+.isl-dock-face { position: relative; width: 56px; height: 56px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 .isl-dock-face:focus-visible { outline: none; box-shadow: var(--isl-focus); }
 
 .isl-launcher {
@@ -66,11 +66,11 @@
   padding: 10px 12px 8px 12px;
   flex: none;
 }
-.isl-head-face { flex: none; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+.isl-head-face { flex: none; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
 .isl-head-text { flex: 1 1 auto; min-width: 0; }
-.isl-greet { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.2; color: var(--isl-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isl-greet { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.2; color: var(--isl-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .isl-greet-name { color: var(--isl-ink); }
-.isl-meta { margin: 2px 0 0; font-size: 12px; font-weight: 500; line-height: 1.2; color: var(--isl-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isl-meta { margin: 2px 0 0; font-size: 13px; font-weight: 500; line-height: 1.2; color: var(--isl-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .isl-head-figures { flex: none; display: none; align-items: center; gap: 12px; color: var(--isl-ink-2); font-size: 12px; }
 @media (min-width: 640px) { .isl-head-figures { display: flex; } }
 
@@ -87,7 +87,7 @@
 .isl-tab {
   --isl-bg: transparent; --isl-bd: transparent;
   position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none;
-  min-height: var(--isl-target); padding: 0 12px; border-radius: 999px;
+  min-height: var(--isl-target); padding: 0 14px; border-radius: 999px;
   border: 1px solid var(--isl-bd); background: var(--isl-bg);
   color: var(--isl-ink-2); font-size: 13px; font-weight: 600; cursor: pointer;
 }
