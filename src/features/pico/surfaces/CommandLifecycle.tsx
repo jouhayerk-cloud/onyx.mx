@@ -21,6 +21,7 @@ const Chip: React.FC<{ status: CommandStatus; count?: number }> = ({ status, cou
   </span>
 );
 
+/** Shows a chip per command status (queued, leased, acked, failed, expired) with its count. */
 export const CommandLifecycle: React.FC<{ commands: CommandRow[]; now: number }> = ({ commands, now }) => {
   if (commands.length === 0) {
     return (
