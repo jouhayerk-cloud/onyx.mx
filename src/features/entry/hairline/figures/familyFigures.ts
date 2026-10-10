@@ -74,11 +74,50 @@ function buildBox(cam: Cam, dims: Dims, isMirror: boolean): FigurePart[] {
 
 function buildCylinder(cam: Cam, dims: Dims): FigurePart[] {
     const r = Math.min(dims.w, dims.d) / 2;
-    const p = prism(cam, 0, 0, 0, dims.w, dims.d, dims.h, r);
-    const bright = discY(cam, dims.w / 2, dims.d, dims.h - 0.8, 0.7, 10);
+    const x0 = (dims.w - 2 * r) / 2;
+    const y0 = (dims.d - 2 * r) / 2;
+    const cx = dims.w / 2;
+    const cy = dims.d / 2;
+    const p = prism(cam, x0, y0, 0, 2 * r, 2 * r, dims.h, r);
+
+    // Thick open top rim: inner ring offset by ~14% of radius
+    const rInner = r * 0.86;
+    const ix0 = cx - rInner;
+    const iy0 = cy - rInner;
+    const innerRing = ring(ix0, iy0, 2 * rInner, 2 * rInner, rInner);
+    const innerPts = innerRing.map(([x, y]) => proj(cam, x, y, dims.h));
+    const innerRim = pathOf(innerPts);
+
+    // Strata arcs wrapping the front of the stone tube
+    const strata = (zBase: number, wave: (t: number) => number): string => {
+        const pts: P2[] = [];
+        const n = 12;
+        for (let i = 0; i <= n; i++) {
+            const t = i / n;
+            const a = (3 * Math.PI) / 4 - t * Math.PI;
+            const x = cx + r * Math.cos(a);
+            const y = cy + r * Math.sin(a);
+            const z = zBase + wave(t);
+            pts.push(proj(cam, x, y, z));
+        }
+        return pathOf(pts, false);
+    };
+
+    const s1 = strata(dims.h * 0.28, t => Math.sin(t * Math.PI) * 0.45);
+    const s2 = strata(dims.h * 0.52, t => Math.sin(t * 2 * Math.PI) * 0.35);
+    const s3 = strata(dims.h * 0.74, t => -Math.sin(t * Math.PI) * 0.4);
+
+    // Small bright mark inside the opening
+    const bright = discY(cam, cx, cy, dims.h - 0.8, 0.6, 8);
+
     return [
         { d: p.body, kind: 'plate' },
+        { d: innerRim, kind: 'slot' },
         { d: p.crease, kind: 'crease' },
+        { d: innerRim, kind: 'crease' },
+        { d: s1, kind: 'crease' },
+        { d: s2, kind: 'crease' },
+        { d: s3, kind: 'crease' },
         { d: bright, kind: 'bright' },
     ];
 }

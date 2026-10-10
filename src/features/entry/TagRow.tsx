@@ -15,16 +15,26 @@ const backToInput = (e: React.KeyboardEvent<HTMLDivElement>) => {
     inputs?.[inputs.length - 1]?.focus();
 };
 
-/** The values a field suggests, as chips: one click fills the field. */
-export const TagRow: React.FC<{ label: string; tags: readonly string[]; onPick: (tag: string) => void; max?: number }> = ({
-    label, tags, onPick, max = 8,
+/**
+ * The values a field suggests, as chips: one click fills the field. renderLead, when given, draws a node before each
+ * chip's text (aria-hidden: the chip's text is its label).
+ */
+export const TagRow: React.FC<{
+    label: string; tags: readonly string[]; onPick: (tag: string) => void; max?: number;
+    renderLead?: (tag: string) => React.ReactNode;
+}> = ({
+    label, tags, onPick, max = 8, renderLead,
 }) => (
     <div role="group" aria-label={label} className="entry-tags" onKeyDown={backToInput}>
-        {tags.slice(0, max).map(tag => (
-            <button key={tag} type="button" className="entry-tag" onMouseDown={keepFocus} onClick={() => onPick(tag)}>
-                {tag}
-            </button>
-        ))}
+        {tags.slice(0, max).map(tag => {
+            const lead = renderLead?.(tag);
+            return (
+                <button key={tag} type="button" className={lead ? 'entry-tag entry-tag--lead' : 'entry-tag'} onMouseDown={keepFocus} onClick={() => onPick(tag)}>
+                    {lead && <span className="entry-tag__lead" aria-hidden="true">{lead}</span>}
+                    {tag}
+                </button>
+            );
+        })}
     </div>
 );
 

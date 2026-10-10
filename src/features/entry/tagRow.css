@@ -56,6 +56,27 @@
     font: 400 11px/1 var(--ui-font-body);
 }
 
+/* A chip with a lead (the mirror's Shape figures) is 34px high; the lead is a 28 x 22 box before the text. */
+.entry .entry-tag--lead {
+    min-height: 52px;
+    padding: 0 12px 0 6px;
+}
+
+.entry .entry-tag__lead {
+    display: inline-flex;
+    flex: none;
+    width: 56px;
+    height: 44px;
+}
+
+/* The figure fills its lead box. Its plate is the chip's own well colour; the strokes keep shapeFigure.css. */
+.entry .tag-fig {
+    --hl-plate: var(--ui-well);
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
 /* The three dimension fields and the known-sizes row share one wrapper, so
    a focus inside it counts as staying in the dimensions. The wrapper takes no
    box of its own: the W / H / D fields stay cells of the entry grid. */

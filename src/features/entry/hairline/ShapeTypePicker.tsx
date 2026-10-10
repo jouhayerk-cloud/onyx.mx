@@ -194,6 +194,7 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
                                         family={entry.family}
                                         isMirror={entry.isMirror}
                                         typeId={entry.id}
+                                        variant={entry.shapes[0]?.label ?? null}
                                         dims={entry.dims}
                                         holes={entry.holes[0]}
                                         active={isChosen}
