@@ -48,6 +48,7 @@ export function buildConsolidatedItems(
     return Array.from(itemMap.values());
 }
 
+/** Turns consolidated items into manifesto rows with vendor, dimensions, weight and packet location. */
 export function buildManifestoItems(
     items: ConsolidatedItem[],
     bookRate: number,
