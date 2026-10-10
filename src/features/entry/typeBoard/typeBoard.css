@@ -292,6 +292,55 @@ html.theme-aqua .tb-count {
     aspect-ratio: 5 / 4;
 }
 
+/* Shape variants (mirror: round, squared, rectangular; lamps: cylinder, squared): one block per variant inside the card. */
+.tb-variants {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tb-variant {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--tb-line);
+    border-radius: 12px;
+}
+
+.tb-variant-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.tb-variant-title {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.tb-variant-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+
+.tb-variant-photo {
+    flex: 0 0 96px;
+    width: 96px;
+}
+
+.tb-variant-info {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
 .tb-flags {
     display: flex;
     flex-wrap: wrap;
