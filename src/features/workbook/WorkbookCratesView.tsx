@@ -4,6 +4,7 @@ import { workbookCratesFileDataAtom } from '../../lib/atoms';
 import { vendors as vendorConfigs } from '../../lib/consts';
 import { tr } from '../../lib/i18n';
 
+/** Workbook tab summarizing crate payments owed and paid, with the remaining balance. */
 export const WorkbookCratesView: React.FC = () => {
     const rawData = useAtomValue(workbookCratesFileDataAtom);
 
