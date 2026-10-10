@@ -92,6 +92,7 @@ export function useFinanceTools(): ToolDescriptor[] {
     return tools;
 }
 
+/** Registers the finance tools with the island; renders nothing. */
 export const FinanceToolsRegistrar: React.FC = () => {
     const islandEnabled = useAtomValue(islandCommandsEnabledAtom);
     const tools = useFinanceTools();
