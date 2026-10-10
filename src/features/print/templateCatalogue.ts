@@ -221,6 +221,7 @@ export const TEMPLATE_CATALOGUE: TemplateEntry[] = [
     }
 ];
 
+/** Looks up a template catalogue entry by its id, or undefined when there is none. */
 export function getTemplate(id: string): TemplateEntry | undefined {
     return TEMPLATE_CATALOGUE.find(t => t.id === id);
 }
