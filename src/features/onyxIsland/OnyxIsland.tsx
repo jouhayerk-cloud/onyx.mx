@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useRef, useState, useMemo, useCallback, useLayoutEffect } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { m, LazyMotion, domMax, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { OnyxFace } from '../onyxAgent/face/OnyxFace';
@@ -8,7 +8,7 @@ import { onyxAgentPhaseAtom } from '../onyxAgent/agentState';
 import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToastTimer, pushNotification } from './notify/store';
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
-import { islandModeAtom, islandPaneAtom, islandItemAtom, expressionForKind, islandDeployAtom, type IslandReadout, type IslandPane, type IslandDeploy } from './islandState';
+import { islandModeAtom, islandPaneAtom, islandItemAtom, islandChanDraftAtom, expressionForKind, islandDeployAtom, type IslandReadout, type IslandPane, type IslandDeploy } from './islandState';
 import { SPRING, SPRING_BOUNCY, SPRING_SLOW, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
 import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
@@ -180,6 +180,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   }, [allTools, pinnedOverrides, maxLaunchers, maxDockLaunchers, commandsEnabled]);
 
   const [storedDeploy, setStoredDeploy] = useAtom(islandDeployAtom);
+  const setChanDraft = useSetAtom(islandChanDraftAtom);
   const [tempShelfOpen, setTempShelfOpen] = useState(false);
   const [isInside, setIsInside] = useState(false);
   const [dwellTimer, setDwellTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -563,7 +564,14 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                 )}
               </div>
               {isShelfVisible && (
-                <IslandShelf onOpenPane={(p) => { setPane(p); setMode('surface'); }} />
+                <IslandShelf
+                  greeting={greeting()}
+                  name={name}
+                  meta={meta}
+                  figures={figures}
+                  onOpenPane={(p) => { setPane(p); setMode('surface'); }}
+                  onAsk={(t) => { if (t) setChanDraft(t); setPane('chat'); setMode('surface'); }}
+                />
               )}
             </div>
           )}

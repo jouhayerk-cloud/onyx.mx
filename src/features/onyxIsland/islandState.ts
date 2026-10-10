@@ -18,6 +18,8 @@ export interface IslandReadout { left: React.ReactNode; right: React.ReactNode }
 export const islandModeAtom = atom<IslandMode>('rest');
 /** Tools, the selected item, Chan (the conversation) and the notification history. Reopening keeps the last one. */
 export type IslandPane = 'tools' | 'item' | 'chat' | 'notifications';
+/** A message typed in the deployed island's Chan field: the Chan tab sends it when it opens, then clears it. */
+export const islandChanDraftAtom = atom('' as string);
 /** Pane open in the island. Starts on tools. */
 export const islandPaneAtom = atom<IslandPane>('tools');
 

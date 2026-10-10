@@ -50,7 +50,7 @@
 .isl-deck {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr);
   gap: 8px;
   padding: 8px 10px 10px;
   border-top: 1px solid var(--isl-line);
@@ -73,3 +73,30 @@
 }
 .isl-deck-line { width: 100%; font-size: 12px; line-height: 1.35; color: var(--isl-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .isl-deck-dim { color: var(--isl-ink-3); }
+
+/* Chan in the deployed island: greeting, the totals of the page and the message field as ONE card */
+.isl-chan {
+  display: flex; flex-direction: column; gap: 10px; min-width: 0;
+  padding: 10px 12px; border-radius: 12px; border: 1px solid var(--isl-line); background: var(--isl-fill-1);
+}
+.isl-chan-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; flex-wrap: wrap; }
+.isl-chan-text { min-width: 0; }
+.isl-chan-greet { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.2; color: var(--isl-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isl-chan-meta { margin: 2px 0 0; font-size: 12px; font-weight: 500; line-height: 1.2; color: var(--isl-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isl-chan-figures { flex: none; display: flex; align-items: center; gap: 12px; color: var(--isl-ink-2); font-size: 12px; }
+.isl-chan-form { display: flex; align-items: center; gap: 8px; }
+.isl-chan-input {
+  flex: 1 1 auto; min-width: 0; min-height: var(--isl-target); padding: 0 12px;
+  border-radius: 12px; border: 1px solid var(--isl-line-strong);
+  background: var(--isl-fill-1); color: var(--isl-ink); font-size: 14px; outline: none;
+}
+.isl-chan-input::placeholder { color: var(--isl-ink-3); }
+.isl-chan-input:focus { box-shadow: var(--isl-focus); }
+.isl-chan-send {
+  --isl-bg: var(--isl-accent-fill); --isl-bd: transparent;
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: var(--isl-target); height: var(--isl-target); border-radius: 12px;
+  border: 1px solid var(--isl-bd); background: var(--isl-bg); color: var(--isl-accent); cursor: pointer;
+}
+.isl-chan-send:focus-visible { outline: none; box-shadow: var(--isl-focus); }
+@media (max-width: 560px) { .isl-chan-figures { width: 100%; } }
