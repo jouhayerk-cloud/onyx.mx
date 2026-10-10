@@ -39,8 +39,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
     const [showSmart, setShowSmart] = useAtom(isInventorySmartFiltersOpenAtom);
     const [showActions, setShowActions] = useAtom(inventoryActionsOpenAtom);
 
-    // On a narrow screen both groups do not fit beside the face: opening one folds the other.
-    const narrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 480px)').matches;
+    // Tools and Actions can both stay open: on a phone their children share one scrollable row above the face (OnyxIsland).
 
     const handleToggleSelectionMode = () => {
         setIsSelectionMode(!isSelectionMode);
@@ -82,11 +81,6 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
         run: () => {
             const next = !showTools;
             setShowTools(next);
-            if (next && narrow() && showActions) {
-                setShowActions(false);
-                setIsSelectionMode(false);
-                setSelectedIds([]);
-            }
             if (!next) {
                 setIsViewSliderOpen(false);
                 setIsFiltersOpen(false);
@@ -175,12 +169,6 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
             if (!next) {
                 setIsSelectionMode(false);
                 setSelectedIds([]);
-            } else if (narrow() && showTools) {
-                setShowTools(false);
-                setIsViewSliderOpen(false);
-                setIsFiltersOpen(false);
-                setIsSearchOpen(false);
-                setShowSmart(false);
             }
         }
     });
