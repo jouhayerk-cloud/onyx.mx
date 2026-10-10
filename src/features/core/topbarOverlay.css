@@ -16,3 +16,10 @@
   border-bottom-width: 0 !important;
   box-shadow: none !important;
 }
+
+/* Phone: the island dock rests on the bottom edge and covers the last rows: the page pays its height as bottom padding. */
+@media (max-width: 768px) {
+  .app-content > main {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  }
+}
