@@ -502,6 +502,20 @@ export const UniversalToolsBar: React.FC = () => {
 
     const renderInvSelection = (className = "") => (
         <div className={`w-full mx-auto px-4 py-3 flex items-center gap-3 ${className}`}>
+            {/* Select all and Clear stay at the left end of the bar, outside the scrolling icons */}
+            <div className="flex items-center gap-4 shrink-0 pr-3 border-r border-white/10">
+
+                <button onClick={handleSelectAll} className="text-white/40 hover:text-white transition-all hover:scale-110 group relative p-0 bg-transparent border-none outline-none" title={tr("Select All")}>
+                    <SquareCheckBig size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("ALL")}</span>
+                </button>
+                <button 
+                    onClick={() => { setSelectedIds([]); toast.success(tr("Selection Cleared")); }}
+                    className="text-white/20 hover:text-red-500 transition-all hover:rotate-90 p-0 bg-transparent border-none outline-none shrink-0"
+                >
+                    <X size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
+                </button>
+            </div>
             <div className="flex items-center gap-6 shrink-0">
                 <div className="w-12 h-12 rounded-xl bg-(--color-inventory)/10 border border-(--color-inventory)/20 flex items-center justify-center text-(--color-inventory) drop-shadow-[0_0_15px_rgba(var(--color-inventory-rgb),0.3)]">
                     <SquareCheckBig size={28} strokeWidth={2.5} />
@@ -553,20 +567,6 @@ export const UniversalToolsBar: React.FC = () => {
             </div>
             </div>
 
-            {/* Select all and Clear stay at the right end of the bar, outside the scrolling icons */}
-            <div className="flex items-center gap-4 shrink-0 pl-3 border-l border-white/10">
-
-                <button onClick={handleSelectAll} className="text-white/40 hover:text-white transition-all hover:scale-110 group relative p-0 bg-transparent border-none outline-none" title={tr("Select All")}>
-                    <SquareCheckBig size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("ALL")}</span>
-                </button>
-                <button 
-                    onClick={() => { setSelectedIds([]); toast.success(tr("Selection Cleared")); }}
-                    className="text-white/20 hover:text-red-500 transition-all hover:rotate-90 p-0 bg-transparent border-none outline-none shrink-0"
-                >
-                    <X size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                </button>
-            </div>
         </div>
     );
 
