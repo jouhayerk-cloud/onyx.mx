@@ -27,6 +27,7 @@ export interface AppContextSnapshot {
   robotStatus: { id: string | null; online: 'TODO_robot_online_status' };
 }
 
+/** Hook returning the current app context snapshot (view, role, search, tools, robot), memoized. */
 export function useAppContext(): AppContextSnapshot {
   const user = useAtomValue(userAtom);
   const activeView = useAtomValue(activeViewAtom);
