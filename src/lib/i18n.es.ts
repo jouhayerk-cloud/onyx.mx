@@ -3331,4 +3331,9 @@ export const esCatalog: Record<string, string> = {
   'Save to library': 'Guardar en la biblioteca',
   'Only Developer and Admin can add pairs to the library.': 'Solo Developer y Admin pueden agregar pares a la biblioteca.',
   'Did you mean {pair}': '¿Quisiste decir {pair}?',
+  'Shape tags': 'Etiquetas de forma',
+  'Type tags': 'Etiquetas de tipo',
+  'Colour tags': 'Etiquetas de color',
+  'Material tags': 'Etiquetas de material',
+  'Known sizes': 'Medidas conocidas',
 };

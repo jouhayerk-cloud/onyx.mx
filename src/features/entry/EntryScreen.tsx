@@ -696,6 +696,7 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
                         locks={locks}
                         numberState={numberState}
                         suggestionRows={catalogue}
+                        shapeLibrary={!isEdit}
                         photoNote={photoNote}
                         disabled={saving || missing}
                     />

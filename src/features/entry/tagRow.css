@@ -1,0 +1,59 @@
+/* ==========================================================================
+   TAG ROWS — the values the form suggests for the focused field
+   --------------------------------------------------------------------------
+   TagRow.tsx: Shape, Type, Colour and Material show their tags under the
+   input while it has the focus; SizeRow shows the known sizes under the
+   dimensions. Chips are 28px high with 11px text, and every colour is a
+   --ui-* token, so Aqua and dark follow the theme.
+   ========================================================================== */
+
+.entry .entry-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    margin-top: 2px;
+}
+
+.entry .entry-tag {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 10px;
+    margin: 0;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-pill);
+    background-color: var(--ui-well);
+    color: var(--ui-dim);
+    font: 700 11px/1 var(--ui-font-display);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--ui-ease), border-color var(--ui-ease), color var(--ui-ease);
+}
+
+.entry .entry-tag:hover {
+    background-color: var(--ui-hover);
+    border-color: var(--ui-accent);
+    color: var(--ui-ink);
+}
+
+.entry .entry-tag:focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: 2px;
+}
+
+.entry .entry-tag__count {
+    color: var(--ui-faint);
+    font: 400 11px/1 var(--ui-font-body);
+}
+
+/* The three dimension fields and the known-sizes row share one wrapper, so
+   a focus inside it counts as staying in the dimensions. The wrapper takes no
+   box of its own: the W / H / D fields stay cells of the entry grid. */
+.entry .entry-dims {
+    display: contents;
+}
