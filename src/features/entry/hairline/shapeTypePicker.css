@@ -1,0 +1,251 @@
+/* ==========================================================================
+   SHAPE + TYPE PICKER: hairline tiles in the Add Entry form
+   --------------------------------------------------------------------------
+   Scoped under .stp. Dark is the default; html.theme-aqua is the light theme.
+   The tile plate and the figure plate are the same flat colour (--stp-tile),
+   and the figure's --hl-* and --hairline-* colours are mapped from --stp-*
+   here so the figures draw in the same ink as the welcome page's tiles.
+   Text meets 4.5:1 against the tile in both themes.
+   ========================================================================== */
+
+.stp {
+    --stp-ink: #eef1f5;
+    --stp-ink-2: #aeb7c3;
+    --stp-line: rgba(255, 255, 255, 0.16);
+    --stp-tile: #14171c;
+    --stp-accent: #4fb3ff;
+    --stp-focus: #4fb3ff;
+    --stp-edge: #00aeef;
+    --stp-hi: #9fdcff;
+    --stp-mid: #2f7fa8;
+    --stp-lo: #1f4f66;
+    --stp-lo-fill: #0c2632;
+
+    --hl-plate: var(--stp-tile);
+    --hl-edge: var(--stp-edge);
+    --hl-hi: var(--stp-hi);
+    --hl-mid: var(--stp-mid);
+    --hl-lo: var(--stp-lo);
+    --hl-lo-fill: var(--stp-lo-fill);
+    --hl-stroke: 1.1;
+    --hairline-plate: var(--hl-plate);
+    --hairline-hi: var(--hl-hi);
+    --hairline-edge: var(--hl-edge);
+    --hairline-mid: var(--hl-mid);
+    --hairline-lo: var(--hl-lo);
+    --hairline-stroke: var(--hl-stroke);
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    color: var(--stp-ink);
+}
+
+html.theme-aqua .stp {
+    --stp-ink: #1b1e22;
+    --stp-ink-2: #4a5059;
+    --stp-line: rgba(0, 0, 0, 0.16);
+    --stp-tile: #f6f1e6;
+    --stp-accent: #0a6fb5;
+    --stp-focus: #0a6fb5;
+    --stp-edge: #0a7fb8;
+    --stp-hi: #074f80;
+    --stp-mid: #3b8fb8;
+    --stp-lo: #8fb9cc;
+    --stp-lo-fill: #e3ebe9;
+}
+
+/* ── header: title and search ───────────────────────────────────────────── */
+.stp-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+.stp .stp-title {
+    font: 800 12px/1.2 var(--ui-font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stp-ink);
+}
+
+.stp .stp-search {
+    flex: 1 1 180px;
+    max-width: 280px;
+    min-height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--stp-line);
+    border-radius: 8px;
+    background: var(--stp-tile);
+    color: var(--stp-ink);
+    font: 500 13px/1.2 var(--ui-font-body);
+}
+
+.stp .stp-search::placeholder {
+    color: var(--stp-ink-2);
+}
+
+.stp .stp-search:focus-visible {
+    outline: 2px solid var(--stp-focus);
+    outline-offset: 2px;
+}
+
+.stp .stp-search:disabled {
+    opacity: 0.55;
+}
+
+/* ── grid of tiles ──────────────────────────────────────────────────────── */
+.stp .stp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+}
+
+.stp .stp-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    padding: 6px 6px 8px;
+    border: 1px solid var(--stp-line);
+    border-radius: 12px;
+    background: var(--stp-tile);
+    color: var(--stp-ink);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 160ms ease;
+}
+
+.stp .stp-tile[aria-checked="true"] {
+    border-color: var(--stp-accent);
+}
+
+.stp .stp-tile:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.stp .stp-tile:focus-visible {
+    outline: 2px solid var(--stp-focus);
+    outline-offset: 2px;
+}
+
+/* The figure box is 5:4. It lifts by --sf-lift, which the loop sets on the tile. */
+.stp .stp-fig {
+    display: block;
+    aspect-ratio: 5 / 4;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--stp-tile);
+    transform: translateY(calc(var(--sf-lift, 0) * -6px));
+}
+
+.stp .stp-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.stp .stp-cap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 0 2px;
+}
+
+.stp .stp-shape {
+    font: 700 12px/1.25 var(--ui-font-body);
+    color: var(--stp-ink);
+    overflow-wrap: anywhere;
+}
+
+.stp .stp-type {
+    font: 500 11px/1.3 var(--ui-font-body);
+    color: var(--stp-ink-2);
+    overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stp .stp-tile {
+        transition: none;
+    }
+}
+
+/* ── buttons and chips ──────────────────────────────────────────────────── */
+.stp .stp-more-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.stp .stp-more,
+.stp .stp-save,
+.stp .stp-chip {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--stp-line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--stp-ink);
+    font: 700 12px/1 var(--ui-font-display);
+    cursor: pointer;
+}
+
+.stp .stp-save {
+    border-color: var(--stp-accent);
+    color: var(--stp-accent);
+}
+
+.stp .stp-chip {
+    font: 500 12px/1.2 var(--ui-font-body);
+    color: var(--stp-ink-2);
+}
+
+.stp .stp-more:focus-visible,
+.stp .stp-save:focus-visible,
+.stp .stp-chip:focus-visible {
+    outline: 2px solid var(--stp-focus);
+    outline-offset: 2px;
+}
+
+.stp .stp-more:disabled,
+.stp .stp-save:disabled,
+.stp .stp-chip:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.stp .stp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* ── the new pair row and quiet text ────────────────────────────────────── */
+.stp .stp-new {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 8px 10px;
+    border: 1px dashed var(--stp-line);
+    border-radius: 10px;
+}
+
+.stp .stp-new__name {
+    font: 700 13px/1.3 var(--ui-font-body);
+    color: var(--stp-ink);
+    overflow-wrap: anywhere;
+}
+
+.stp .stp-quiet {
+    margin: 0;
+    font: 500 12px/1.4 var(--ui-font-body);
+    color: var(--stp-ink-2);
+}

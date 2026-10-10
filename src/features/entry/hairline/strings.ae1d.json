@@ -1,0 +1,18 @@
+[
+    ["Pick a shape and type", "Elige una forma y un tipo"],
+    ["Find a shape or type", "Busca una forma o un tipo"],
+    ["Loading shapes...", "Cargando formas..."],
+    ["No shapes yet. Save an item and it appears here.", "Aún no hay formas. Guarda un artículo y aparecerá aquí."],
+    ["No shape or type matches.", "Ninguna forma o tipo coincide."],
+    ["Show all {n}", "Mostrar todas ({n})"],
+    ["Show fewer", "Mostrar menos"],
+    ["saved", "guardado"],
+    ["1 piece", "1 pieza"],
+    ["{n} pieces", "{n} piezas"],
+    ["New pair: {shape} · {type}", "Par nuevo: {shape} · {type}"],
+    ["Save to library", "Guardar en la biblioteca"],
+    ["Saving...", "Guardando..."],
+    ["Saved", "Guardado"],
+    ["Only Developer and Admin can add pairs to the library.", "Solo Developer y Admin pueden agregar pares a la biblioteca."],
+    ["Did you mean {pair}", "¿Quisiste decir {pair}?"]
+]

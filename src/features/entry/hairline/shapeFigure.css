@@ -1,0 +1,72 @@
+/* Add Entry shape selector: hairline figure styling */
+
+.sf-figure {
+    --sf-accent: var(--hl-accent, #00aeef);
+    --sf-plate: var(--hl-plate, #0d1015);
+    --sf-edge: var(--hl-edge, var(--sf-accent));
+    --sf-hi: var(--hl-hi, color-mix(in srgb, var(--sf-accent) 38%, #fff));
+    --sf-mid: var(--hl-mid, color-mix(in srgb, var(--sf-accent) 58%, var(--sf-plate)));
+    --sf-lo: var(--hl-lo, color-mix(in srgb, var(--sf-accent) 30%, var(--sf-plate)));
+    --sf-lo-fill: var(--hl-lo-fill, color-mix(in srgb, var(--sf-accent) 9%, #000));
+    --sf-stroke: var(--hl-stroke, 1.1);
+
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+html.theme-aqua .sf-figure {
+    --sf-plate: var(--hl-plate, #f6f1e6);
+    --sf-hi: var(--hl-hi, color-mix(in srgb, var(--sf-accent) 70%, #000));
+    --sf-edge: var(--hl-edge, color-mix(in srgb, var(--sf-accent) 85%, #000));
+    --sf-mid: var(--hl-mid, color-mix(in srgb, var(--sf-accent) 70%, var(--sf-plate)));
+    --sf-lo: var(--hl-lo, color-mix(in srgb, var(--sf-accent) 40%, var(--sf-plate)));
+    --sf-lo-fill: var(--hl-lo-fill, color-mix(in srgb, var(--sf-accent) 14%, var(--sf-plate)));
+}
+
+.sf-figure path {
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.sf-plate {
+    fill: var(--sf-plate);
+    stroke: var(--sf-edge);
+    stroke-width: var(--sf-stroke);
+}
+
+.sf-face {
+    fill: var(--sf-plate);
+    stroke: var(--sf-mid);
+    stroke-width: var(--sf-stroke);
+}
+
+.sf-slot {
+    fill: var(--sf-lo-fill);
+    stroke: var(--sf-lo);
+    stroke-width: var(--sf-stroke);
+}
+
+.sf-crease {
+    fill: none;
+    stroke: var(--sf-mid);
+    stroke-width: var(--sf-stroke);
+}
+
+.sf-mark {
+    fill: var(--sf-edge);
+    stroke: none;
+}
+
+.sf-bright {
+    fill: var(--sf-hi);
+    stroke: none;
+}
+
+/* Active tile: silhouette stroke becomes the bright colour and 1.6 times thicker */
+.sf-figure.is-active .sf-plate {
+    stroke: var(--sf-hi);
+    stroke-width: calc(var(--sf-stroke) * 1.6);
+}

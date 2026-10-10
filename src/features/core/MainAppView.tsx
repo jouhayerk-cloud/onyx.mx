@@ -61,6 +61,8 @@ import { tr } from '../../lib/i18n';
 // Saves ~2-3MB of JS parse time on initial load.
 const ControlView        = React.lazy(() => import('../control/ControlView').then(m => ({ default: m.ControlView })));
 const UploadView         = React.lazy(() => import('../upload/UploadView').then(m => ({ default: m.UploadView })));
+// Dev only review board of the Type figures, photos and axonometric icons (activeView 'typeboard'); not in the production bundle.
+const TypeAuditBoard     = import.meta.env.DEV ? React.lazy(() => import('../entry/typeBoard/TypeAuditBoard').then(m => ({ default: m.TypeAuditBoard }))) : null;
 const WelcomeView        = React.lazy(() => import('../welcome/WelcomeView').then(m => ({ default: m.WelcomeView })));
 const PrintCenter        = React.lazy(() => import('../print/PrintCenter').then(m => ({ default: m.PrintCenter })));
 const InventoryView      = React.lazy(() => import('../inventory/InventoryView').then(m => ({ default: m.InventoryView })));
@@ -258,6 +260,7 @@ export function MainAppView() {
             // Workbook holds the 326 book and the ARCHIVE 825 tab (finance, production, logistics tabs inside): Admin and Developer only.
             case 'workbook': return (user?.role === 'Developer' || user?.role === 'Admin') ? <ArchivedView /> : <InventoryView />;
             case 'upload': return <UploadView />;
+            case 'typeboard': return TypeAuditBoard ? <TypeAuditBoard /> : <WelcomeView />;
             case 'welcome': return <WelcomeView />;
             case 'inventory': return <InventoryView />;
             case 'warehouse':

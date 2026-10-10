@@ -7,7 +7,8 @@
  * the wizard's (4-5xl ghost placeholders cycling random catalogue values,
  * suggestion popovers for prices and dimensions) and the dead UploadEntryForm.
  * Suggestions are a plain datalist per categorical field, cross-filtered by
- * the others; numbers get none.
+ * the others. The focused field also shows its values as tags (TagRow), and
+ * the dimensions show the known sizes (SizeRow).
  */
 import React, { useId, useMemo, useRef, useState } from 'react';
 import { Link2, Lock, Star, Upload, X } from 'lucide-react';
@@ -15,11 +16,13 @@ import toast from '../onyxIsland/notify/toast';
 import { getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { tr, trf } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
-import { buildAttributeSuggestions } from '../../lib/attributeSuggestions';
+import { buildAttributeSuggestions, buildSizeSuggestions, type SizeSuggestion } from '../../lib/attributeSuggestions';
 import { ENTRY_BOOKS, ENTRY_STATUSES, normalizeWorkbook } from '../../lib/inventoryCreate';
 import { Field, Input, Key, Segmented, Select, VendorPicker, cx } from '../../components/ui';
 import { VENDOR_CODES, photoKey, type EntryPhoto, type EntryState } from './entryModel';
 import { readPickedFiles } from './entryMedia';
+import { ShapeLibraryField } from './ShapeLibraryField';
+import { SizeRow, TagRow } from './TagRow';
 
 export type EntryLocks = Partial<Record<'vendorId' | 'workbook' | 'itemNumber', string>>;
 
@@ -40,6 +43,10 @@ export interface EntryFormProps {
     numberState?: EntryNumberState;
     /** Rows to learn the Shape / Type / Material / Colour suggestions from. */
     suggestionRows?: readonly any[];
+    /** Normalised (lower-case) values never suggested, e.g. person names. Passed on to buildAttributeSuggestions. */
+    hiddenValues?: ReadonlySet<string>;
+    /** Show the hairline shape + type selector above the Shape and Type inputs (Add Entry). */
+    shapeLibrary?: boolean;
     /** A note under the photos, e.g. that reordering moves the stored cutouts. */
     photoNote?: string;
     disabled?: boolean;
@@ -48,12 +55,11 @@ export interface EntryFormProps {
 type SuggestField = 'shape' | 'type' | 'color' | 'material';
 
 /**
- * The manual columns only. attributeSuggestions falls back to generated_type
- * (the AI's Shopify category) for Type, so picking a suggestion could write
- * "Home Decor > Decorative Bowls" into short_description; the rows are
- * reduced to the four manual columns before they are read.
+ * The manual columns only: what people typed for Shape, Type, Material, Colour
+ * and the dimensions. The rows are reduced to them before they are read, so
+ * the AI's category (generated_type) is never offered as a value.
  */
-function useSuggestions(rows: readonly any[] | undefined, value: EntryState): Record<SuggestField, string[]> {
+function useSuggestions(rows: readonly any[] | undefined, value: EntryState, hidden?: ReadonlySet<string>): Record<SuggestField, string[]> & { sizes: SizeSuggestion[] } {
     const manual = useMemo(() => (rows || []).map(r => {
         const d = r?.data && typeof r.data === 'object' ? r.data : (r || {});
         return {
@@ -61,27 +67,48 @@ function useSuggestions(rows: readonly any[] | undefined, value: EntryState): Re
             material: d.material,
             color: d.color,
             short_description: d.short_description ?? d.shortDescription,
+            width_cm: d.width_cm ?? d.widthCm,
+            length_cm: d.length_cm ?? d.lengthCm,
+            height_cm: d.height_cm ?? d.heightCm,
         };
     }), [rows]);
     return useMemo(() => {
         const s = buildAttributeSuggestions(manual, {
             shape: value.shape, material: value.material, color: value.color, type: value.type,
-        });
+        }, undefined, { hidden });
         const cap = (l?: string[]) => (l || []).slice(0, 40);
-        return { shape: cap(s.shape), type: cap(s.type), color: cap(s.color), material: cap(s.material) };
-    }, [manual, value.shape, value.material, value.color, value.type]);
+        return {
+            shape: cap(s.shape), type: cap(s.type), color: cap(s.color), material: cap(s.material),
+            sizes: buildSizeSuggestions(manual, { shape: value.shape, type: value.type }),
+        };
+    }, [manual, hidden, value.shape, value.material, value.color, value.type]);
 }
 
 const BOOK_OPTIONS = ENTRY_BOOKS.map(b => ({ value: b, label: b.slice(1) }));
 
 export function EntryForm({
     value, onChange, photos, onPhotosChange, locks = {}, numberState,
-    suggestionRows, photoNote, disabled = false,
+    suggestionRows, hiddenValues, shapeLibrary = false, photoNote, disabled = false,
 }: EntryFormProps) {
     const uid = useId();
-    const suggestions = useSuggestions(suggestionRows, value);
+    const suggestions = useSuggestions(suggestionRows, value, hiddenValues);
+    /** The field whose tags show: a suggested field, or the dimensions. */
+    const [activeField, setActiveField] = useState<SuggestField | 'dims' | null>(null);
     const set = <K extends keyof EntryState>(k: K) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         onChange({ [k]: e.target.value } as Partial<EntryState>);
+
+    /** Focus left a field (or the dimensions): its tags go, unless focus went into the same field's tags. */
+    const leaveField = (e: React.FocusEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLElement;
+        const box = target.closest('.entry-dims') ?? target.closest('.ui-field');
+        if (!box?.contains(e.relatedTarget as Node | null)) setActiveField(null);
+    };
+
+    const pickSize = (s: SizeSuggestion) => onChange({
+        widthCm: s.widthCm === null ? '' : String(s.widthCm),
+        lengthCm: s.lengthCm === null ? '' : String(s.lengthCm),
+        heightCm: s.heightCm === null ? '' : String(s.heightCm),
+    });
 
     // A stored vendor that is no longer in the list stays choosable.
     const vendorCodes = useMemo(() => (
@@ -105,25 +132,31 @@ export function EntryForm({
                 : undefined;
 
     const listId = (f: SuggestField) => `${uid}-${f}`;
-    const textField = (f: SuggestField, label: string, span: string) => (
+    const textField = (f: SuggestField, label: string, span: string, tagsLabel: string) => (
         <Field label={label} className={span}>
-            <Input value={value[f]} onChange={set(f)} list={listId(f)} autoComplete="off" disabled={disabled} />
+            <Input value={value[f]} onChange={set(f)} onFocus={() => setActiveField(f)} list={listId(f)} autoComplete="off" disabled={disabled} />
             <datalist id={listId(f)}>
                 {suggestions[f].map(s => <option key={s} value={s} />)}
             </datalist>
+            {activeField === f && suggestions[f].length > 0 && (
+                <TagRow label={tagsLabel} tags={suggestions[f]}
+                    onPick={tag => onChange({ [f]: tag } as Partial<EntryState>)} />
+            )}
         </Field>
     );
 
-    const numField = (f: keyof EntryState, label: string, span = '', opts: { step?: string; min?: string } = {}) => (
+    const numField = (f: keyof EntryState, label: string, span = '', opts: { step?: string; min?: string; onFocus?: () => void } = {}) => (
         <Field label={label} className={span}>
             <Input type="number" inputMode="decimal" min={opts.min ?? '0'} step={opts.step ?? 'any'} className="ui-tnum"
-                value={value[f]} onChange={set(f)} disabled={disabled} />
+                value={value[f]} onChange={set(f)} onFocus={opts.onFocus} disabled={disabled} />
         </Field>
     );
+
+    const focusDims = () => setActiveField('dims');
 
     return (
         <div className="entry-form">
-            <div className="entry-grid">
+            <div className="entry-grid" onBlur={leaveField}>
                 <Field label={tr('Vendor')} className="s6" group>
                     <VendorPicker codes={vendorCodes} value={value.vendorId}
                         onChange={(code) => onChange({ vendorId: code })}
@@ -150,18 +183,36 @@ export function EntryForm({
 
                 {numField('quantity', tr('Qty'), '', { min: '1', step: '1' })}
 
-                {textField('shape', tr('Shape'), 's2')}
-                {textField('type', tr('Type'), 's2')}
-                {textField('material', tr('Material'), 's2')}
-                {textField('color', tr('Vendor colour'), 's3')}
+                {shapeLibrary && (
+                    <Field label={tr('Shape and type')} className="s6" group hint={tr('Pick a pair, or type below. Both stay in step.')}>
+                        <ShapeLibraryField
+                            value={{ shape: value.shape, type: value.type }}
+                            onChange={v => onChange({ shape: v.shape, type: v.type })}
+                            rows={suggestionRows}
+                            disabled={disabled}
+                        />
+                    </Field>
+                )}
+
+                {textField('shape', tr('Shape'), 's2', tr('Shape tags'))}
+                {textField('type', tr('Type'), 's2', tr('Type tags'))}
+                {textField('material', tr('Material'), 's2', tr('Material tags'))}
+                {textField('color', tr('Vendor colour'), 's3', tr('Colour tags'))}
 
                 <Field label={tr('Status')} className="s3">
                     <Select value={value.status} onChange={set('status')} options={statusOptions} disabled={disabled} />
                 </Field>
 
-                {numField('widthCm', tr('W cm'))}
-                {numField('heightCm', tr('H cm'))}
-                {numField('lengthCm', tr('D cm'))}
+                <div className="entry-dims">
+                    {numField('widthCm', tr('W cm'), '', { onFocus: focusDims })}
+                    {numField('heightCm', tr('H cm'), '', { onFocus: focusDims })}
+                    {numField('lengthCm', tr('D cm'), '', { onFocus: focusDims })}
+                    {(activeField === 'shape' || activeField === 'type' || activeField === 'dims') && suggestions.sizes.length > 0 && (
+                        <div className="s6">
+                            <SizeRow sizes={suggestions.sizes} onPick={pickSize} />
+                        </div>
+                    )}
+                </div>
                 {numField('weightKg', tr('Kg'))}
                 {numField('price', tr('Price MXN'), 's2')}
 
