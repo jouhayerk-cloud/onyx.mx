@@ -637,8 +637,12 @@ const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'bot
     // Labels on row one, values on row two: grid-flow-col fills the first child
     // into row 1 and the second into row 2, so the value columns line up
     // regardless of how long each label is.
-    const lbl = "text-[7px] font-black uppercase tracking-[0.16em] opacity-40 leading-none";
-    const val = "text-[12px] font-black leading-none tracking-tight tabular-nums";
+    // The island panel header shows these figures: 11 px sentence-case captions and ink from the island tokens
+    // (never 7 px, never decorative colours). Outside the island the fallbacks keep the old look.
+    const lbl = "text-[11px] font-semibold leading-none";
+    const val = "text-[13px] font-bold leading-none tracking-tight tabular-nums";
+    const lblStyle = { color: 'var(--isl-ink-3, color-mix(in srgb, currentColor 55%, transparent))' } as React.CSSProperties;
+    const valStyle = { color: 'var(--isl-ink, var(--text-color))' } as React.CSSProperties;
 
     const displayName = (user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
         ? user.name.split(' ')[0]
@@ -651,14 +655,14 @@ const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'bot
             title={tr("Sync calculated fields to the database")}
             className={`info-notch-stats grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-3.5 gap-y-1 px-3.5 py-1.5 ${isSyncingCalc ? 'animate-pulse' : ''}`}
         >
-            <span className={lbl}>{tr("Types")}</span>
-            <span className={`${val} text-(--text-color)`}>{typesCount.toLocaleString()}</span>
+            <span className={lbl} style={lblStyle}>{tr("Types")}</span>
+            <span className={val} style={valStyle}>{typesCount.toLocaleString()}</span>
 
-            <span className={lbl}>{tr("Qty")}</span>
-            <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
+            <span className={lbl} style={lblStyle}>{tr("Qty")}</span>
+            <span className={val} style={valStyle}>{totalQty.toLocaleString()}</span>
 
-            <span className={lbl}>{showFinancials ? tr("Total MXN") : tr("Total")}</span>
-            <span className={`${val} text-(--main-color)`}>
+            <span className={lbl} style={lblStyle}>{showFinancials ? tr("Total MXN") : tr("Total")}</span>
+            <span className={val} style={valStyle}>
                 {showFinancials ? `$${totalValue.toLocaleString()}` : '\u2022\u2022\u2022'}
             </span>
         </button>
@@ -670,7 +674,7 @@ const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'bot
             title={tr("Settings")}
             className="info-notch-user grid grid-rows-2 auto-cols-max items-center gap-y-1 px-3.5 py-1.5 text-left"
         >
-            <span className={`${lbl} text-(--main-color)`}>{tr("Welcome")}</span>
+            <span className={`${lbl} text-(--main-color)`} style={lblStyle}>{tr("Welcome")}</span>
             <span className="text-[12px] font-black leading-none tracking-tight capitalize text-(--text-color)">
                 {displayName}
             </span>
@@ -4386,7 +4390,7 @@ export function MainHeader() {
             <PrintToolsRegistrar />
             <IslandBand
                 readout={activeView === 'inventory'
-                    ? { left: <InfoNotch part="stats" />, right: <InfoNotch part="user" /> }
+                    ? { left: <InfoNotch part="stats" />, right: null }   // the greeting and the name are in the panel header now
                     : isArchived
                         ? { left: <ArchivedReadout part="stats" />, right: <ArchivedReadout part="scope" /> }
                         : (activeView === 'logistics' || activeView === 'warehouse' || activeView === 'trucking')

@@ -1,0 +1,320 @@
+/*
+ * Inbox pane styles (Onyx Island v3).
+ * Design: ISLAND_V3_DESIGN.md section 4 (tab "Inbox"), section 5.
+ * Strictly flat fills, using only island tokens.
+ */
+
+.isl-inbox-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+    color: var(--isl-ink);
+    font-size: 13px;
+    line-height: 1.4;
+    overflow: hidden;
+}
+
+/* Header row --------------------------------------------------------------- */
+
+.isl-inbox-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--isl-line);
+    flex-shrink: 0;
+    min-height: var(--isl-target);
+}
+
+/* Segmented control (filters) ---------------------------------------------- */
+
+.isl-inbox-tablist {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    background: var(--isl-fill-1);
+    border-radius: var(--isl-radius-chip);
+    border: 1px solid var(--isl-line);
+}
+
+.isl-inbox-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--isl-target);
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--isl-ink-3);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: var(--isl-radius-chip);
+    cursor: pointer;
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+
+.isl-inbox-tab:hover {
+    color: var(--isl-ink);
+}
+
+.isl-inbox-tab--active {
+    background: var(--isl-fill-2);
+    color: var(--isl-ink);
+    border-bottom: 2px solid var(--isl-accent);
+}
+
+.isl-inbox-tab:focus-visible {
+    outline: none;
+    box-shadow: var(--isl-focus);
+}
+
+/* Header actions & inline confirmation ------------------------------------- */
+
+.isl-inbox-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.isl-btn--ghost {
+    border-color: transparent;
+    color: var(--isl-ink-2);
+}
+
+.isl-btn--ghost:hover:not([disabled]) {
+    background: var(--isl-fill-2);
+    border-color: transparent;
+    color: var(--isl-ink);
+}
+
+.isl-btn--ghost:focus-visible {
+    outline: none;
+    box-shadow: var(--isl-focus);
+}
+
+.isl-inbox-confirm {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.isl-inbox-confirm-prompt {
+    color: var(--isl-ink-2);
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 2px;
+}
+
+/* Scroll area -------------------------------------------------------------- */
+
+.isl-inbox-scroll {
+    flex: 1 1 0%;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 10px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Group sections ----------------------------------------------------------- */
+
+.isl-inbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.isl-inbox-group-title {
+    padding: 2px 4px;
+}
+
+.isl-inbox-group-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Notification row button -------------------------------------------------- */
+
+button.isl-inbox-row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: var(--isl-target);
+    padding: 8px 12px;
+    text-align: left;
+    color: var(--isl-ink);
+    cursor: pointer;
+    background: var(--isl-fill-1);
+    border-radius: var(--isl-radius-row);
+    border: 1px solid var(--isl-line);
+    transition: background-color 0.1s ease, border-color 0.1s ease;
+    position: relative;
+    font: inherit;
+    box-sizing: border-box;
+}
+
+button.isl-inbox-row:hover {
+    background: var(--isl-fill-2);
+}
+
+button.isl-inbox-row:focus-visible {
+    outline: none;
+    box-shadow: var(--isl-focus);
+}
+
+.isl-inbox-row-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+}
+
+.isl-inbox-row-icon-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.isl-inbox-icon-anchor {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.isl-inbox-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+}
+
+.isl-inbox-row-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.isl-inbox-row-firstline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    width: 100%;
+}
+
+.isl-inbox-row-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.isl-inbox-row-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.isl-inbox-row-message {
+    color: var(--isl-ink-2);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-top: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.isl-inbox-row-message--expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    white-space: pre-wrap;
+}
+
+/* Actions when expanded ---------------------------------------------------- */
+
+.isl-inbox-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--isl-line);
+    width: 100%;
+}
+
+/* Empty states ------------------------------------------------------------- */
+
+.isl-inbox-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex: 1;
+    min-height: 180px;
+    padding: 32px 16px;
+    gap: 6px;
+    margin: auto;
+}
+
+.isl-inbox-empty-icon {
+    color: var(--isl-ink-3);
+    margin-bottom: 6px;
+}
+
+.isl-inbox-empty-title {
+    color: var(--isl-ink);
+}
+
+.isl-inbox-empty-caption {
+    color: var(--isl-ink-3);
+    max-width: 280px;
+}
+
+/* Screen reader only utility (fallback) ------------------------------------ */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Reduced motion ----------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .isl-inbox-tab,
+    button.isl-inbox-row,
+    .isl-btn {
+        transition: none !important;
+    }
+}

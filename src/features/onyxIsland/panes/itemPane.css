@@ -1,0 +1,190 @@
+/*
+ * Item pane styles (design: docs/_inputs/ISLAND_V3_DESIGN.md section 4 Item tab).
+ * Flat content-layer fills only: inside the island panel, everything is flat.
+ * No glass, no blur, no backdrop-filter, no box-shadow glows, no color literals.
+ */
+
+.isl-item-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Panel width from 768 px up: the picture on the left, everything about the piece on the right */
+@media (min-width: 768px) {
+    .isl-item-pane {
+        display: grid;
+        grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+        column-gap: 16px;
+        row-gap: 10px;
+        align-content: start;
+    }
+    .isl-item-pane > .isl-item-header { grid-column: 1 / -1; }
+    .isl-item-pane > .isl-item-picture-box { grid-column: 1; grid-row: 2 / span 5; align-self: start; }
+    .isl-item-pane > :not(.isl-item-header):not(.isl-item-picture-box) { grid-column: 2; }
+}
+
+/* Empty state */
+.isl-item-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 36px 16px;
+    gap: 8px;
+}
+
+.isl-item-empty-icon {
+    color: var(--isl-ink-3);
+    margin-bottom: 4px;
+}
+
+/* Header row */
+.isl-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--isl-target);
+}
+
+.isl-item-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: var(--isl-radius-chip);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: normal;
+}
+
+.isl-item-vendor-name {
+    color: var(--isl-ink-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 4:3 picture box */
+.isl-item-picture-box {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: var(--isl-fill-1);
+    border-radius: var(--isl-radius-row);
+    border: 1px solid var(--isl-line);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.isl-item-picture-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.isl-item-picture-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--isl-ink-3);
+}
+
+.isl-item-placeholder-icon {
+    color: var(--isl-ink-3);
+}
+
+/* Titles */
+.isl-item-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.isl-item-title-primary {
+    color: var(--isl-ink);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0;
+}
+
+.isl-item-title-secondary {
+    color: var(--isl-ink-2);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0;
+}
+
+/* Two-column definition list */
+.isl-item-dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    margin: 0;
+    padding: 0;
+}
+
+.isl-item-dl-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.isl-item-dl-entry dt {
+    margin: 0;
+}
+
+.isl-item-dl-entry dd {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Status chips */
+.isl-item-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.isl-chip--hidden {
+    color: var(--isl-warn);
+}
+
+.isl-dot--quiet {
+    width: 6px;
+    height: 6px;
+    opacity: 0.8;
+}
+
+/* Actions row */
+.isl-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .isl-item-pane,
+    .isl-item-pane * {
+        transition: none !important;
+        animation: none !important;
+    }
+}

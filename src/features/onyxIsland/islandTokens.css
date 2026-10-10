@@ -1,0 +1,137 @@
+/*
+ * Island tokens (design: swarm/artifacts/ISLAND_V3_DESIGN.md section 5).
+ *
+ * Glass (the functional layer) is only the island surface itself, the phone sheet and the sub menu bars. Everything
+ * inside the panel is FLAT: panes use --isl-fill-1 and --isl-fill-2, never blur or a glass class.
+ * One accent. Status colours only for status. Contrast figures are against the glass surface (dark #12141b, Aqua #eef1ee).
+ */
+
+.onyx-island {
+  /* text and icons */
+  --isl-ink: #ffffff;                              /* 17.6:1 */
+  --isl-ink-2: rgba(255, 255, 255, 0.74);          /* 10.3:1 */
+  --isl-ink-3: rgba(255, 255, 255, 0.58);          /* 6.7:1  captions, placeholders */
+  /* lines */
+  --isl-line: rgba(255, 255, 255, 0.14);           /* decorative hairline */
+  --isl-line-strong: rgba(255, 255, 255, 0.42);    /* outline of a control: 3:1 */
+  /* flat fills inside the panel */
+  --isl-fill-1: rgba(255, 255, 255, 0.05);         /* rows, cards */
+  --isl-fill-2: rgba(255, 255, 255, 0.10);         /* hover, selected tab */
+  --isl-fill-3: rgba(255, 255, 255, 0.16);         /* pressed */
+  /* the one accent */
+  --isl-accent: var(--main-color, #00aeef);        /* 7.3:1 as text on dark */
+  --isl-accent-ink: #0b2a33;                       /* text on an accent fill: 5.96:1 */
+  --isl-accent-fill: color-mix(in srgb, var(--isl-accent) 22%, transparent);
+  /* status, only for status */
+  --isl-ok: #34d399;                               /* 9.6:1 */
+  --isl-warn: #fbbf24;                             /* 11.0:1 */
+  --isl-err: #f87171;                              /* 6.7:1 */
+  --isl-info: #7cc4ff;
+  /* opaque fallbacks (reduced transparency, increased contrast) */
+  --isl-surface-solid: #14161d;
+  /* geometry */
+  --isl-radius-panel: 24px;
+  --isl-radius-row: 14px;
+  --isl-radius-chip: 999px;
+  --isl-target: 36px;                              /* desktop target; 44px on coarse pointers */
+  --isl-focus: 0 0 0 2px var(--isl-surface-solid), 0 0 0 4px var(--isl-accent);
+}
+
+html.theme-aqua .onyx-island {
+  --isl-ink: #0b2a33;                              /* 13.2:1 */
+  --isl-ink-2: #415a60;                            /* 6.5:1 */
+  --isl-ink-3: #586e73;                            /* 4.7:1 */
+  --isl-line: rgba(11, 42, 51, 0.16);
+  --isl-line-strong: rgba(11, 42, 51, 0.52);
+  --isl-fill-1: rgba(255, 255, 255, 0.55);
+  --isl-fill-2: rgba(11, 42, 51, 0.07);
+  --isl-fill-3: rgba(11, 42, 51, 0.12);
+  --isl-accent: #006d88;                           /* 4.7:1 as text; fills use #00aeef with --isl-accent-ink */
+  --isl-accent-ink: #0b2a33;
+  --isl-accent-fill: color-mix(in srgb, #00aeef 26%, transparent);
+  --isl-ok: #0a7a55;                               /* 4.7:1 */
+  --isl-warn: #8a5a00;                             /* 5.2:1 */
+  --isl-err: #b42318;                              /* 5.8:1 */
+  --isl-info: #0b5cad;
+  --isl-surface-solid: #eef1ee;
+}
+
+@media (pointer: coarse) {
+  .onyx-island { --isl-target: 44px; }
+}
+
+@media (prefers-contrast: more) {
+  .onyx-island {
+    --isl-line: var(--isl-line-strong);
+    --isl-ink-2: var(--isl-ink);
+    --isl-ink-3: var(--isl-ink-2);
+  }
+}
+
+/* Reduce transparency: the surface and the sheet become opaque */
+@media (prefers-reduced-transparency: reduce) {
+  .onyx-island .onyx-island-surface {
+    background: var(--isl-surface-solid) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* Shared pieces the panes use ------------------------------------------------ */
+
+.isl-pane { color: var(--isl-ink); font-size: 13px; line-height: 1.4; }
+.isl-caption { color: var(--isl-ink-3); font-size: 11px; font-weight: 600; line-height: 1.2; }
+.isl-title { color: var(--isl-ink); font-size: 13px; font-weight: 600; }
+.isl-num { font-variant-numeric: tabular-nums; }
+
+/* Interactive pieces take their colours from two per-element variables (--isl-bg, --isl-bd). The last rule of this file
+   paints them with enough specificity to beat slab.css and island.css, which flatten every button inside the island. */
+.isl-row {
+  --isl-bg: var(--isl-fill-1); --isl-bd: var(--isl-line);
+  background: var(--isl-bg);
+  border-radius: var(--isl-radius-row);
+  border: 1px solid var(--isl-bd);
+  color: var(--isl-ink);
+}
+button.isl-row { cursor: pointer; text-align: left; width: 100%; }
+button.isl-row:hover { --isl-bg: var(--isl-fill-2); }
+.isl-btn {
+  --isl-bg: transparent; --isl-bd: var(--isl-line-strong);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--isl-target); padding: 0 12px;
+  border-radius: var(--isl-radius-chip);
+  border: 1px solid var(--isl-bd);
+  background: var(--isl-bg); color: var(--isl-ink);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+.isl-btn:hover { --isl-bg: var(--isl-fill-2); }
+.isl-btn:active { --isl-bg: var(--isl-fill-3); }
+.isl-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.isl-btn--primary { --isl-bg: var(--isl-accent); --isl-bd: transparent; color: var(--isl-accent-ink); }
+html.theme-aqua .onyx-island .isl-btn--primary { --isl-bg: #00aeef; }
+.isl-btn--primary:hover { --isl-bg: color-mix(in srgb, var(--isl-accent) 88%, #fff); }
+html.theme-aqua .onyx-island .isl-btn--primary:hover { --isl-bg: #29bdf3; }
+.isl-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+  border-radius: var(--isl-radius-chip); font-size: 11px; font-weight: 600;
+  background: var(--isl-fill-2); color: var(--isl-ink-2);
+}
+.isl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--isl-accent); flex: none; }
+html.theme-aqua .onyx-island .isl-dot { background: #0094c4; }
+
+/* focus ring for every island control */
+.onyx-island :is(.isl-btn, .isl-row, .isl-tab, .isl-icon-btn, .isl-launcher, .isl-tile):focus-visible { outline: none; box-shadow: var(--isl-focus); }
+
+/* The bypass: wins over html.style-slab .onyx-island x3 button (slab.css rules in island.css). */
+html.style-slab .onyx-island.onyx-island.onyx-island.onyx-island.onyx-island.onyx-island :is(.isl-btn, .isl-row, .isl-tab, .isl-icon-btn, .isl-launcher, .isl-tile) {
+  background-color: var(--isl-bg, transparent) !important;
+  border-color: var(--isl-bd, transparent) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none;
+}
+html.style-slab .onyx-island.onyx-island.onyx-island.onyx-island.onyx-island.onyx-island :is(.isl-btn, .isl-row, .isl-tab, .isl-icon-btn, .isl-launcher, .isl-tile):focus-visible {
+  box-shadow: var(--isl-focus) !important;
+}

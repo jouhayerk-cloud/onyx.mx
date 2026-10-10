@@ -1,0 +1,16 @@
+[
+  ["Chan", "Chan"],
+  ["Mark all read", "Marcar todo como leído"],
+  ["Clear all notifications?", "¿Borrar todas las notificaciones?"],
+  ["Yesterday", "Ayer"],
+  ["Nothing yet", "Nada por aquí"],
+  ["Exports, syncs and Chan's messages will appear here.", "Las exportaciones, sincronizaciones y mensajes de Chan aparecerán aquí."],
+  ["No notifications in this filter.", "No hay notificaciones en este filtro."],
+  ["Unread", "No leído"],
+  ["{n} unread", "{n} sin leer"],
+  ["Success", "Éxito"],
+  ["Warning", "Advertencia"],
+  ["Info", "Información"],
+  ["Loading", "Cargando"],
+  ["Notification filters", "Filtros de notificaciones"]
+]

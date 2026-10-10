@@ -1,0 +1,17 @@
+[
+  ["Tools", "Herramientas"],
+  ["Item", "Artículo"],
+  ["Inbox", "Bandeja"],
+  ["Island sections", "Secciones de la isla"],
+  ["{label}, {n} unread", "{label}, {n} sin leer"],
+  ["Open Onyx panel: tools, selected item, Chan and inbox", "Abrir el panel de Onyx: herramientas, artículo seleccionado, Chan y bandeja"],
+  ["Search tools", "Buscar herramientas"],
+  ["User", "Usuario"],
+  ["Home", "Inicio"],
+  ["Copied {tag}", "Copiado {tag}"],
+  ["Could not copy the tag", "No se pudo copiar el tag"],
+  ["Control Center", "Centro de control"],
+  ["Store", "Tienda"],
+  ["Packing", "Empaque"],
+  ["Upload", "Subir"]
+]
