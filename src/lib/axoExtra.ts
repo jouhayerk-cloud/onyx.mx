@@ -7,9 +7,9 @@ import { tr } from './i18n';
  * The base geometry classifier (geometry.ts) only recognises 8 primitive shapes:
  * box, bowl, plate, mirror, cylinder, sphere, octahedron, polyhedron.
  * Roughly 38% of inventory items (table lamps, floor lamps, tower lamps, wall panels,
- * wine racks, tables, and canoe bowls) fall back to a plain box or bowl.
+ * wine racks, tables, canoe bowls, and stone tubes) fall back to a plain box or bowl.
  *
- * This module introduces 8 dedicated visual classes to give those items authentic
+ * This module introduces 9 dedicated visual classes to give those items authentic
  * axonometric silhouettes while keeping axonometric.ts and geometry.ts untouched.
  */
 
@@ -21,7 +21,8 @@ export type AxoExtraClass =
     | 'hull'
     | 'panel'
     | 'wine-rack'
-    | 'table';
+    | 'table'
+    | 'tube';
 
 export const AXO_EXTRA_CLASSES: AxoExtraClass[] = [
     'lamp-table',
@@ -32,6 +33,7 @@ export const AXO_EXTRA_CLASSES: AxoExtraClass[] = [
     'panel',
     'wine-rack',
     'table',
+    'tube',
 ];
 
 export interface AxoPoint2D {
@@ -68,6 +70,8 @@ export interface AxoDrawHelpers {
     isWireframe?: boolean;
     /** Optional repetitive pattern */
     hexPattern?: CanvasPattern | null;
+    /** Optional shape text override (e.g. 'cylinder', 'round', 'squared', 'cube') */
+    shapeText?: string;
 }
 
 /**
@@ -113,31 +117,26 @@ export function getAxoExtraLabel(cls: AxoExtraClass): string {
             return tr('Wine Rack');
         case 'table':
             return tr('Table');
+        case 'tube':
+            return tr('Tube');
     }
 }
 
+/** Module-level store of the last classified item's normalised text */
+let lastClassifiedShapeText = '';
+
 /**
  * Classifies an inventory item from its shape and type/description strings into
- * one of the 8 extra classes, or returns null so base classification handles it.
- *
- * Rules:
- * - table lamp, lampara de mesa -> lamp-table
- * - floor lamp, lampara de pie -> lamp-floor
- * - tower lamp, torre -> lamp-tower
- * - pendant lamp or pendant with a square or cube shade is NOT ours (stays with cylinder)
- *   UNLESS explicitly described as pendant lamp with squared -> lamp-pendant
- * - canoe, canoa -> hull
- * - wall panel, panel, painted wall panel, luminary -> panel
- * - wine rack, N holes -> wine-rack
- * - table, coffee table, mesa -> table
- * - mirror, bowl, plate, rock, sculpture, sphere stay with existing base classes -> null
+ * one of the extra classes, or returns null so base classification handles it.
  */
 export function classifyExtra(shape: string = '', type: string = ''): AxoExtraClass | null {
     const s = norm(shape);
     const t = norm(type);
     const text = `${s} ${t}`;
+    lastClassifiedShapeText = text;
 
     const has = (...words: string[]) => words.some(w => text.includes(norm(w)));
+    const shapeHas = (...words: string[]) => words.some(w => s.includes(norm(w)));
 
     // 1. Canoe / boat hull takes precedence over bowl
     if (has('canoe', 'canoa')) {
@@ -191,17 +190,9 @@ export function classifyExtra(shape: string = '', type: string = ''): AxoExtraCl
         return 'lamp-tower';
     }
 
-    // Pendant lamp with squared shade
-    // Regular pendant or pendant with square/cube shade stays with cylinder;
-    // only "pendant lamp with squared" (or Spanish equivalent) maps to lamp-pendant.
-    const isPendantSquared =
-        has('pendant lamp with squared', 'pendant lamp squared', 'lampara colgante cuadrada', 'colgante cuadrado') ||
-        (has('pendant', 'colgante') && has('lamp', 'lampara') && has('squared', 'cuadrad'));
-    if (isPendantSquared) {
+    // Pendant lamp (any shape)
+    if (has('pendant lamp', 'lampara colgante', 'pendant', 'colgante')) {
         return 'lamp-pendant';
-    }
-    if (has('pendant', 'colgante')) {
-        return null;
     }
 
     // 4. Wall panels and luminaries
@@ -248,6 +239,14 @@ export function classifyExtra(shape: string = '', type: string = ''): AxoExtraCl
         )
     ) {
         return 'table';
+    }
+
+    // 7. Stone Tube: anything the text calls a cylinder or round that is not excluded above
+    if (
+        shapeHas('cylinder', 'cilinder', 'round', 'cilindro', 'redondo') ||
+        has('cylinder', 'cilinder', 'round', 'cilindro', 'redondo')
+    ) {
+        return 'tube';
     }
 
     return null;
@@ -304,31 +303,63 @@ function drawPolygonFace(
 }
 
 /**
- * Renders an axonometric cylinder matching the base rasteriser's conventions.
+ * Resolves shape preference (tube, post, or cube) from text hints or class default.
  */
-function drawIsoCylinder(
-    ctx: CanvasRenderingContext2D,
+function resolveShapePreference(
     helpers: AxoDrawHelpers,
-    cx3d: number,
-    cz3d: number,
-    yBottom: number,
-    yTop: number,
-    radiusX: number,
-    radiusZ: number,
+    defaultShape: 'tube' | 'post',
+): 'tube' | 'post' | 'cube' {
+    const text = norm(helpers.shapeText ?? lastClassifiedShapeText);
+    if (text) {
+        if (['cube', 'cubo'].some(w => text.includes(w))) {
+            return 'cube';
+        }
+        if (['squared', 'square', 'cuadrado', 'rectangular', 'rectangulo'].some(w => text.includes(w))) {
+            return 'post';
+        }
+        if (['cylinder', 'cilinder', 'round', 'cilindro', 'redondo'].some(w => text.includes(w))) {
+            return 'tube';
+        }
+    }
+    return defaultShape;
+}
+
+interface StoneTubeOptions {
+    hasCordTop?: boolean;
+    hasCordFoot?: boolean;
+    hasSlit?: boolean;
+    openBottom?: boolean;
+}
+
+/**
+ * Stone Tube: A hollow cylinder of natural stone, open on top (thick irregular rim
+ * and inner wall showing), with 3 horizontal strata lines wrapping around the body.
+ */
+function drawStoneTube(
+    ctx: CanvasRenderingContext2D,
+    geo: { W: number; H: number; D: number },
+    helpers: AxoDrawHelpers,
+    options: StoneTubeOptions = {},
 ): void {
+    const { W, H, D } = geo;
+    const cx3d = W / 2;
+    const cz3d = D / 2;
+    const rx = W / 2;
+    const rz = D / 2;
+
     const cos30 = Math.cos(Math.PI / 6);
     const sin30 = Math.sin(Math.PI / 6);
 
-    const a = radiusX * cos30;
-    const b = -radiusX * sin30;
-    const c = -radiusZ * cos30;
-    const d = -radiusZ * sin30;
+    const a = rx * cos30;
+    const b = -rx * sin30;
+    const c = -rz * cos30;
+    const d = -rz * sin30;
 
-    const cb = helpers.project(cx3d, yBottom, cz3d);
-    const ct = helpers.project(cx3d, yTop, cz3d);
+    const cb = helpers.project(cx3d, 0, cz3d);
+    const ct = helpers.project(cx3d, H, cz3d);
 
-    const t1 = Math.atan2(-radiusZ, radiusX);
-    const t2 = Math.atan2(radiusZ, -radiusX);
+    const t1 = Math.atan2(-rz, rx);
+    const t2 = Math.atan2(rz, -rx);
     const x1 = Math.cos(t1);
     const z1 = Math.sin(t1);
     const x2 = Math.cos(t2);
@@ -348,23 +379,41 @@ function drawIsoCylinder(
     let tFrontEnd = t1;
     if (tFrontEnd < tFrontStart) tFrontEnd += 2 * Math.PI;
 
-    // 1. Bottom ellipse
-    ctx.beginPath();
-    for (let t = 0; t <= 2 * Math.PI + 0.05; t += 0.05) {
-        const ctVal = Math.min(t, 2 * Math.PI);
-        const u = a * Math.cos(ctVal) + c * Math.sin(ctVal);
-        const v = b * Math.cos(ctVal) + d * Math.sin(ctVal);
-        const px = helpers.cx + (cb.u + u) * helpers.scale;
-        const py = helpers.cy + (cb.v + v) * helpers.scale;
-        if (t === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+    // 1. Bottom
+    if (options.openBottom) {
+        // Light shines out of the open bottom for pendant lamps
+        ctx.beginPath();
+        for (let t = 0; t <= 2 * Math.PI + 0.05; t += 0.05) {
+            const ctVal = Math.min(t, 2 * Math.PI);
+            const u = a * Math.cos(ctVal) + c * Math.sin(ctVal);
+            const v = b * Math.cos(ctVal) + d * Math.sin(ctVal);
+            const px = helpers.cx + (cb.u + u) * helpers.scale;
+            const py = helpers.cy + (cb.v + v) * helpers.scale;
+            if (t === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : '#FEF08A';
+        ctx.fill();
+        if (helpers.isWireframe) ctx.stroke();
+    } else {
+        ctx.beginPath();
+        for (let t = 0; t <= 2 * Math.PI + 0.05; t += 0.05) {
+            const ctVal = Math.min(t, 2 * Math.PI);
+            const u = a * Math.cos(ctVal) + c * Math.sin(ctVal);
+            const v = b * Math.cos(ctVal) + d * Math.sin(ctVal);
+            const px = helpers.cx + (cb.u + u) * helpers.scale;
+            const py = helpers.cy + (cb.v + v) * helpers.scale;
+            if (t === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : helpers.colorRight;
+        ctx.fill();
+        if (helpers.isWireframe) ctx.stroke();
     }
-    ctx.closePath();
-    ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : helpers.colorRight;
-    ctx.fill();
-    if (helpers.isWireframe) ctx.stroke();
 
-    // Bottom front arc stroke
+    // Bottom front arc outline
     ctx.beginPath();
     for (let t = tFrontStart; t <= tFrontEnd + 0.05; t += 0.05) {
         const ctVal = Math.min(t, tFrontEnd);
@@ -377,12 +426,17 @@ function drawIsoCylinder(
     }
     ctx.stroke();
 
-    // 2. Side mantle
+    // 2. Cylinder mantle body
     ctx.beginPath();
-    ctx.moveTo(pBotRight.x, pBotRight.y);
+    ctx.moveTo(pBotLeft.x, pBotLeft.y);
+    for (let t = tFrontStart; t <= tFrontEnd + 0.05; t += 0.05) {
+        const ctVal = Math.min(t, tFrontEnd);
+        const u = a * Math.cos(ctVal) + c * Math.sin(ctVal);
+        const v = b * Math.cos(ctVal) + d * Math.sin(ctVal);
+        ctx.lineTo(helpers.cx + (cb.u + u) * helpers.scale, helpers.cy + (cb.v + v) * helpers.scale);
+    }
     ctx.lineTo(pTopRight.x, pTopRight.y);
     ctx.lineTo(pTopLeft.x, pTopLeft.y);
-    ctx.lineTo(pBotLeft.x, pBotLeft.y);
     ctx.closePath();
 
     if (helpers.isWireframe) {
@@ -403,6 +457,7 @@ function drawIsoCylinder(
     }
     ctx.fill();
 
+    // Side mantle edge strokes
     ctx.beginPath();
     ctx.moveTo(pBotRight.x, pBotRight.y);
     ctx.lineTo(pTopRight.x, pTopRight.y);
@@ -413,7 +468,71 @@ function drawIsoCylinder(
     ctx.lineTo(pTopLeft.x, pTopLeft.y);
     ctx.stroke();
 
-    // 3. Top cap ellipse
+    // 3. Three horizontal strata lines wrapping the visible mantle
+    if (!helpers.isWireframe) {
+        const strataHeights = [H * 0.28, H * 0.52, H * 0.76];
+        const tone1 = 'rgba(255, 255, 255, 0.28)';
+        const tone2 = 'rgba(0, 0, 0, 0.22)';
+
+        for (let i = 0; i < strataHeights.length; i++) {
+            const sy = strataHeights[i];
+            const sc = helpers.project(cx3d, sy, cz3d);
+            const tone = i % 2 === 0 ? tone1 : tone2;
+
+            ctx.save();
+            ctx.beginPath();
+            for (let t = tFrontStart; t <= tFrontEnd + 0.05; t += 0.05) {
+                const ctVal = Math.min(t, tFrontEnd);
+                const u = a * Math.cos(ctVal) + c * Math.sin(ctVal);
+                const v = b * Math.cos(ctVal) + d * Math.sin(ctVal);
+                const wave = Math.sin(ctVal * 3.5 + i * 2.1) * Math.min(2.5, H * 0.015 * helpers.scale);
+                const px = helpers.cx + (sc.u + u) * helpers.scale;
+                const py = helpers.cy + (sc.v + v) * helpers.scale + wave;
+                if (t === tFrontStart) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.lineWidth = Math.max(2, (helpers.lineWidth ?? 5) * 0.55);
+            ctx.strokeStyle = tone;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // 4. Vertical light slit (for tower lamps)
+    if (options.hasSlit) {
+        const midT = (tFrontStart + tFrontEnd) / 2;
+        const slitW = Math.max(2, rx * 0.18 * helpers.scale);
+        const slitYBot = H * 0.16;
+        const slitYTop = H * 0.84;
+        const pSlitBot = helpers.project(cx3d, slitYBot, cz3d);
+        const pSlitTop = helpers.project(cx3d, slitYTop, cz3d);
+
+        const midU = a * Math.cos(midT) + c * Math.sin(midT);
+        const midV = b * Math.cos(midT) + d * Math.sin(midT);
+
+        const sxBot = helpers.cx + (pSlitBot.u + midU) * helpers.scale;
+        const syBot = helpers.cy + (pSlitBot.v + midV) * helpers.scale;
+        const sxTop = helpers.cx + (pSlitTop.u + midU) * helpers.scale;
+        const syTop = helpers.cy + (pSlitTop.v + midV) * helpers.scale;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(sxBot - slitW / 2, syBot);
+        ctx.lineTo(sxBot + slitW / 2, syBot);
+        ctx.lineTo(sxTop + slitW / 2, syTop);
+        ctx.lineTo(sxTop - slitW / 2, syTop);
+        ctx.closePath();
+
+        ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : '#FEF08A';
+        ctx.fill();
+        ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+        ctx.lineWidth = Math.max(2, (helpers.lineWidth ?? 5) * 0.6);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // 5. Open top: thick rim as a ring (outer and inner ellipse), inner wall one shade darker
+    // Outer top ellipse
     ctx.beginPath();
     for (let t = 0; t <= 2 * Math.PI + 0.05; t += 0.05) {
         const ctVal = Math.min(t, 2 * Math.PI);
@@ -428,6 +547,254 @@ function drawIsoCylinder(
     ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : helpers.hexPattern || helpers.colorTop;
     ctx.fill();
     ctx.stroke();
+
+    // Inner top ellipse (thick stone rim opening)
+    const rimScale = 0.72;
+    ctx.beginPath();
+    for (let t = 0; t <= 2 * Math.PI + 0.05; t += 0.05) {
+        const ctVal = Math.min(t, 2 * Math.PI);
+        const u = a * rimScale * Math.cos(ctVal) + c * rimScale * Math.sin(ctVal);
+        const v = b * rimScale * Math.cos(ctVal) + d * rimScale * Math.sin(ctVal);
+        const px = helpers.cx + (ct.u + u) * helpers.scale;
+        const py = helpers.cy + (ct.v + v) * helpers.scale;
+        if (t === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    if (helpers.isWireframe) {
+        ctx.fillStyle = 'rgba(0,0,0,0)';
+        ctx.fill();
+    } else {
+        // Inner wall one shade darker
+        const innerGrd = ctx.createLinearGradient(
+            helpers.cx + ct.u * helpers.scale,
+            helpers.cy + (ct.v - rz * sin30 * rimScale) * helpers.scale,
+            helpers.cx + ct.u * helpers.scale,
+            helpers.cy + (ct.v + rz * sin30 * rimScale) * helpers.scale,
+        );
+        innerGrd.addColorStop(0, helpers.colorLeft);
+        innerGrd.addColorStop(1, helpers.colorRight);
+        ctx.fillStyle = innerGrd;
+        ctx.fill();
+    }
+    ctx.stroke();
+
+    // 6. Accessories (cords)
+    if (options.hasCordFoot) {
+        // Thin power cord leaving foot
+        const footX = pBotRight.x;
+        const footY = pBotRight.y;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(footX, footY);
+        ctx.bezierCurveTo(footX + 16, footY + 6, footX + 26, footY + 16, footX + 42, footY + 12);
+        ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+        ctx.lineWidth = Math.max(2, (helpers.lineWidth ?? 5) * 0.4);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    if (options.hasCordTop) {
+        // Pendant: thin cord rises to ceiling cap at canvas top
+        const pTopCenter = {
+            x: helpers.cx + ct.u * helpers.scale,
+            y: helpers.cy + ct.v * helpers.scale,
+        };
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(pTopCenter.x, pTopCenter.y);
+        ctx.lineTo(pTopCenter.x, 0);
+        ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+        ctx.lineWidth = Math.max(2, (helpers.lineWidth ?? 5) * 0.4);
+        ctx.stroke();
+
+        const capW = 20;
+        const capH = 6;
+        ctx.beginPath();
+        ctx.rect(pTopCenter.x - capW / 2, 0, capW, capH);
+        ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : helpers.colorRight;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+interface StonePostOptions {
+    isCube?: boolean;
+    isChunky?: boolean;
+    hasCordFoot?: boolean;
+    hasSlit?: boolean;
+    hasCordTop?: boolean;
+    openBottom?: boolean;
+}
+
+/**
+ * Stone Post / Cube: A column or cube of natural stone, open on top (thick rim
+ * with an inset square), with 3 horizontal strata lines wrapping the visible faces.
+ */
+function drawStonePost(
+    ctx: CanvasRenderingContext2D,
+    geo: { W: number; H: number; D: number },
+    helpers: AxoDrawHelpers,
+    options: StonePostOptions = {},
+): void {
+    let { W, H, D } = geo;
+
+    if (options.isCube) {
+        const avg = (W + H + D) / 3;
+        W = avg;
+        H = avg;
+        D = avg;
+    } else if (options.isChunky) {
+        if (W < H * 0.28) W = Math.max(W, H * 0.28);
+        if (D < H * 0.28) D = Math.max(D, H * 0.28);
+    }
+
+    // 1. Left face (darkest)
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: 0, y: 0, z: 0 },
+            { x: 0, y: 0, z: D },
+            { x: 0, y: H, z: D },
+            { x: 0, y: H, z: 0 },
+        ],
+        helpers.colorLeft,
+        'rgba(0, 0, 0, 0.35)',
+    );
+
+    // 2. Right / front face (medium)
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: 0, y: 0, z: 0 },
+            { x: W, y: 0, z: 0 },
+            { x: W, y: H, z: 0 },
+            { x: 0, y: H, z: 0 },
+        ],
+        helpers.colorRight,
+        'rgba(0, 0, 0, 0.15)',
+    );
+
+    // 3. Three horizontal strata lines wrapping the visible faces
+    if (!helpers.isWireframe) {
+        const strataHeights = [H * 0.28, H * 0.52, H * 0.76];
+        const tone1 = 'rgba(255, 255, 255, 0.28)';
+        const tone2 = 'rgba(0, 0, 0, 0.22)';
+
+        for (let i = 0; i < strataHeights.length; i++) {
+            const sy = strataHeights[i];
+            const tone = i % 2 === 0 ? tone1 : tone2;
+            const wave = (i % 2 === 0 ? 1 : -1) * 1.5;
+
+            const pLeftBack = toCanvas(helpers, 0, sy, D);
+            const pLeftMid = toCanvas(helpers, 0, sy, D / 2);
+            const pCorner = toCanvas(helpers, 0, sy, 0);
+            const pRightMid = toCanvas(helpers, W / 2, sy, 0);
+            const pRightBack = toCanvas(helpers, W, sy, 0);
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(pLeftBack.x, pLeftBack.y);
+            ctx.quadraticCurveTo(pLeftMid.x, pLeftMid.y + wave, pCorner.x, pCorner.y);
+            ctx.quadraticCurveTo(pRightMid.x, pRightMid.y - wave, pRightBack.x, pRightBack.y);
+            ctx.lineWidth = Math.max(2, (helpers.lineWidth ?? 5) * 0.55);
+            ctx.strokeStyle = tone;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // 4. Vertical light slit on front face (for tower lamps)
+    if (options.hasSlit) {
+        const slitW = Math.max(2, W * 0.12);
+        const slitBottom = H * 0.15;
+        const slitTop = H * 0.85;
+        const slitX = W * 0.5;
+
+        const slitPts = [
+            { x: slitX - slitW / 2, y: slitBottom, z: 0 },
+            { x: slitX + slitW / 2, y: slitBottom, z: 0 },
+            { x: slitX + slitW / 2, y: slitTop, z: 0 },
+            { x: slitX - slitW / 2, y: slitTop, z: 0 },
+        ];
+        drawPolygonFace(
+            ctx,
+            helpers,
+            slitPts,
+            helpers.isWireframe ? 'rgba(0,0,0,0)' : '#FEF08A',
+            'rgba(255, 255, 255, 0.4)',
+        );
+    }
+
+    // 5. Open top: thick rim with an inset square, inner wall one shade darker
+    // Outer top square
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: 0, y: H, z: 0 },
+            { x: W, y: H, z: 0 },
+            { x: W, y: H, z: D },
+            { x: 0, y: H, z: D },
+        ],
+        helpers.colorTop,
+        'rgba(255, 255, 255, 0.15)',
+    );
+
+    // Inner top square (opening)
+    const rimInsetX = W * 0.18;
+    const rimInsetZ = D * 0.18;
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: rimInsetX, y: H, z: rimInsetZ },
+            { x: W - rimInsetX, y: H, z: rimInsetZ },
+            { x: W - rimInsetX, y: H, z: D - rimInsetZ },
+            { x: rimInsetX, y: H, z: D - rimInsetZ },
+        ],
+        helpers.isWireframe ? 'rgba(0,0,0,0)' : helpers.colorRight,
+        'rgba(0, 0, 0, 0.25)',
+    );
+
+    // 6. Accessories
+    if (options.hasCordFoot) {
+        // Power cord leaving foot
+        const pFoot = toCanvas(helpers, 0, 0, 0);
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(pFoot.x, pFoot.y);
+        ctx.bezierCurveTo(pFoot.x + 14, pFoot.y + 6, pFoot.x + 24, pFoot.y + 16, pFoot.x + 38, pFoot.y + 12);
+        ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+        ctx.lineWidth = Math.max(2, (helpers.lineWidth ?? 5) * 0.4);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    if (options.hasCordTop) {
+        // Pendant cord and ceiling cap
+        const pTopCenter = toCanvas(helpers, W / 2, H, D / 2);
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(pTopCenter.x, pTopCenter.y);
+        ctx.lineTo(pTopCenter.x, 0);
+        ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+        ctx.lineWidth = Math.max(2, (helpers.lineWidth ?? 5) * 0.4);
+        ctx.stroke();
+
+        const capW = 20;
+        const capH = 6;
+        ctx.beginPath();
+        ctx.rect(pTopCenter.x - capW / 2, 0, capW, capH);
+        ctx.fillStyle = helpers.isWireframe ? 'rgba(0,0,0,0)' : helpers.colorRight;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
 }
 
 /**
@@ -873,234 +1240,86 @@ function drawHull(
 }
 
 /**
- * Tower Lamp: A tall square column with two lit slits and a plinth.
+ * Tower Lamp: A chunky stone post (or stone tube if round) with a vertical light slit on one face.
  */
 function drawLampTower(
     ctx: CanvasRenderingContext2D,
     geo: { W: number; H: number; D: number },
     helpers: AxoDrawHelpers,
 ): void {
-    const { W, H, D } = geo;
-    const plinthH = Math.max(3, H * 0.08);
-
-    // 1. Plinth (base plinth box)
-    drawPolygonFace(
-        ctx,
-        helpers,
-        [
-            { x: 0, y: 0, z: 0 },
-            { x: 0, y: 0, z: D },
-            { x: 0, y: plinthH, z: D },
-            { x: 0, y: plinthH, z: 0 },
-        ],
-        helpers.colorLeft,
-        'rgba(0, 0, 0, 0.35)',
-    );
-    drawPolygonFace(
-        ctx,
-        helpers,
-        [
-            { x: 0, y: 0, z: 0 },
-            { x: W, y: 0, z: 0 },
-            { x: W, y: plinthH, z: 0 },
-            { x: 0, y: plinthH, z: 0 },
-        ],
-        helpers.colorRight,
-        'rgba(0, 0, 0, 0.15)',
-    );
-    drawPolygonFace(
-        ctx,
-        helpers,
-        [
-            { x: 0, y: plinthH, z: 0 },
-            { x: W, y: plinthH, z: 0 },
-            { x: W, y: plinthH, z: D },
-            { x: 0, y: plinthH, z: D },
-        ],
-        helpers.colorTop,
-        'rgba(255, 255, 255, 0.15)',
-    );
-
-    // 2. Tower column
-    const colInset = Math.max(2, Math.min(W, D) * 0.08);
-    const colLeft = colInset;
-    const colRight = W - colInset;
-    const colBack = D - colInset;
-
-    // Left face
-    drawPolygonFace(
-        ctx,
-        helpers,
-        [
-            { x: colLeft, y: plinthH, z: colInset },
-            { x: colLeft, y: plinthH, z: colBack },
-            { x: colLeft, y: H, z: colBack },
-            { x: colLeft, y: H, z: colInset },
-        ],
-        helpers.colorLeft,
-        'rgba(0, 0, 0, 0.35)',
-    );
-    // Front face
-    drawPolygonFace(
-        ctx,
-        helpers,
-        [
-            { x: colLeft, y: plinthH, z: colInset },
-            { x: colRight, y: plinthH, z: colInset },
-            { x: colRight, y: H, z: colInset },
-            { x: colLeft, y: H, z: colInset },
-        ],
-        helpers.colorRight,
-        'rgba(0, 0, 0, 0.15)',
-    );
-    // Top face
-    drawPolygonFace(
-        ctx,
-        helpers,
-        [
-            { x: colLeft, y: H, z: colInset },
-            { x: colRight, y: H, z: colInset },
-            { x: colRight, y: H, z: colBack },
-            { x: colLeft, y: H, z: colBack },
-        ],
-        helpers.colorTop,
-        'rgba(255, 255, 255, 0.15)',
-    );
-
-    // 3. Two vertical lit slits on front face (z = colInset)
-    const colW = colRight - colLeft;
-    const slitW = Math.max(1.5, colW * 0.12);
-    const slitBottom = plinthH + H * 0.12;
-    const slitTop = H - H * 0.1;
-
-    const slitCenters = [colLeft + colW * 0.33, colLeft + colW * 0.67];
-
-    for (const sx of slitCenters) {
-        const slitPts = [
-            { x: sx - slitW / 2, y: slitBottom, z: colInset },
-            { x: sx + slitW / 2, y: slitBottom, z: colInset },
-            { x: sx + slitW / 2, y: slitTop, z: colInset },
-            { x: sx - slitW / 2, y: slitTop, z: colInset },
-        ];
-        drawPolygonFace(
-            ctx,
-            helpers,
-            slitPts,
-            helpers.isWireframe ? 'rgba(0,0,0,0)' : '#FEF08A',
-            'rgba(255, 255, 255, 0.4)',
-        );
+    const pref = resolveShapePreference(helpers, 'post');
+    if (pref === 'tube') {
+        drawStoneTube(ctx, geo, helpers, { hasSlit: true });
+    } else {
+        drawStonePost(ctx, geo, helpers, { isChunky: true, hasSlit: true });
     }
 }
 
 /**
- * Table Lamp: Base plate, thin stem, shade as a cylinder.
+ * Table Lamp: A natural stone tube (round), stone cube (cube or W, H, D within 25%),
+ * or stone post (squared), with a thin power cord leaving the foot.
  */
 function drawLampTable(
     ctx: CanvasRenderingContext2D,
     geo: { W: number; H: number; D: number },
     helpers: AxoDrawHelpers,
 ): void {
-    const { W, H, D } = geo;
-    const cx3d = W / 2;
-    const cz3d = D / 2;
+    const pref = resolveShapePreference(helpers, 'tube');
+    const maxDim = Math.max(geo.W, geo.H, geo.D);
+    const minDim = Math.min(geo.W, geo.H, geo.D);
+    const isWithin25 = maxDim > 0 && (maxDim - minDim) / maxDim <= 0.25;
 
-    const rBase = Math.min(W, D) * 0.32;
-    const baseH = Math.max(2, H * 0.06);
-
-    const shadeYBot = H * 0.48;
-    const shadeYTop = H * 0.9;
-    const rShade = Math.min(W, D) * 0.45;
-
-    // 1. Base disc
-    drawIsoCylinder(ctx, helpers, cx3d, cz3d, 0, baseH, rBase, rBase);
-
-    // 2. Center stem
-    const pStemBot = toCanvas(helpers, cx3d, baseH, cz3d);
-    const pStemTop = toCanvas(helpers, cx3d, shadeYBot, cz3d);
-    ctx.beginPath();
-    ctx.moveTo(pStemBot.x, pStemBot.y);
-    ctx.lineTo(pStemTop.x, pStemTop.y);
-    ctx.stroke();
-
-    // 3. Drum shade
-    drawIsoCylinder(ctx, helpers, cx3d, cz3d, shadeYBot, shadeYTop, rShade, rShade);
-
-    // 4. Finial tip
-    const pFinBot = toCanvas(helpers, cx3d, shadeYTop, cz3d);
-    const pFinTop = toCanvas(helpers, cx3d, H * 0.96, cz3d);
-    ctx.beginPath();
-    ctx.moveTo(pFinBot.x, pFinBot.y);
-    ctx.lineTo(pFinTop.x, pFinTop.y);
-    ctx.stroke();
+    if (pref === 'cube' || isWithin25) {
+        drawStonePost(ctx, geo, helpers, { isCube: true, hasCordFoot: true });
+    } else if (pref === 'post') {
+        drawStonePost(ctx, geo, helpers, { hasCordFoot: true });
+    } else {
+        drawStoneTube(ctx, geo, helpers, { hasCordFoot: true });
+    }
 }
 
 /**
- * Floor Lamp: Flat base plate, thin pole, elevated shade on top.
+ * Floor Lamp: A natural stone post (or stone tube if round) standing on the floor.
  */
 function drawLampFloor(
     ctx: CanvasRenderingContext2D,
     geo: { W: number; H: number; D: number },
     helpers: AxoDrawHelpers,
 ): void {
-    const { W, H, D } = geo;
-    const cx3d = W / 2;
-    const cz3d = D / 2;
-
-    const rBase = Math.min(W, D) * 0.42;
-    const baseH = Math.max(2, H * 0.03);
-
-    const shadeYBot = H * 0.76;
-    const shadeYTop = H * 0.96;
-    const rShade = Math.min(W, D) * 0.38;
-
-    // 1. Flat base disc
-    drawIsoCylinder(ctx, helpers, cx3d, cz3d, 0, baseH, rBase, rBase);
-
-    // 2. Slender central pole
-    const pPoleBot = toCanvas(helpers, cx3d, baseH, cz3d);
-    const pPoleTop = toCanvas(helpers, cx3d, shadeYBot, cz3d);
-    ctx.beginPath();
-    ctx.moveTo(pPoleBot.x, pPoleBot.y);
-    ctx.lineTo(pPoleTop.x, pPoleTop.y);
-    ctx.stroke();
-
-    // 3. Drum shade
-    drawIsoCylinder(ctx, helpers, cx3d, cz3d, shadeYBot, shadeYTop, rShade, rShade);
-
-    // 4. Top finial
-    const pFinBot = toCanvas(helpers, cx3d, shadeYTop, cz3d);
-    const pFinTop = toCanvas(helpers, cx3d, H, cz3d);
-    ctx.beginPath();
-    ctx.moveTo(pFinBot.x, pFinBot.y);
-    ctx.lineTo(pFinTop.x, pFinTop.y);
-    ctx.stroke();
+    const pref = resolveShapePreference(helpers, 'post');
+    if (pref === 'tube') {
+        drawStoneTube(ctx, geo, helpers);
+    } else {
+        drawStonePost(ctx, geo, helpers);
+    }
 }
 
 /**
- * Pendant Lamp: Cord extending to the canvas ceiling and a drum shade.
+ * Pendant Lamp: A natural stone tube (or post if squared) hung from a thin cord
+ * to the canvas top with a ceiling cap, and light shining out of the open bottom.
  */
 function drawLampPendant(
     ctx: CanvasRenderingContext2D,
     geo: { W: number; H: number; D: number },
     helpers: AxoDrawHelpers,
 ): void {
-    const { W, H, D } = geo;
-    const cx3d = W / 2;
-    const cz3d = D / 2;
+    const pref = resolveShapePreference(helpers, 'tube');
+    if (pref === 'post' || pref === 'cube') {
+        drawStonePost(ctx, geo, helpers, { hasCordTop: true, openBottom: true });
+    } else {
+        drawStoneTube(ctx, geo, helpers, { hasCordTop: true, openBottom: true });
+    }
+}
 
-    const shadeYBot = H * 0.12;
-    const shadeYTop = H * 0.65;
-    const rShade = Math.min(W, D) * 0.45;
-
-    // 1. Drum shade
-    drawIsoCylinder(ctx, helpers, cx3d, cz3d, shadeYBot, shadeYTop, rShade, rShade);
-
-    // 2. Cord reaching to the canvas top (y = 0 in 2D canvas coordinates)
-    const pShadeTop = toCanvas(helpers, cx3d, shadeYTop, cz3d);
-    ctx.beginPath();
-    ctx.moveTo(pShadeTop.x, pShadeTop.y);
-    ctx.lineTo(pShadeTop.x, 0);
-    ctx.stroke();
+/**
+ * Plain Stone Tube: A hollow cylinder of natural stone.
+ */
+function drawTube(
+    ctx: CanvasRenderingContext2D,
+    geo: { W: number; H: number; D: number },
+    helpers: AxoDrawHelpers,
+): void {
+    drawStoneTube(ctx, geo, helpers);
 }
 
 /**
@@ -1143,6 +1362,9 @@ export function drawExtra(
             break;
         case 'lamp-pendant':
             drawLampPendant(ctx, geo, helpers);
+            break;
+        case 'tube':
+            drawTube(ctx, geo, helpers);
             break;
     }
 

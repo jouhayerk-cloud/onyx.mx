@@ -65,6 +65,8 @@ export interface ShapeFigureProps {
     motif?: Motif | null;
     /** Canonical Type id (src/lib/canonicalType.ts): when it has a dedicated figure it wins over motif and family. */
     typeId?: string | null;
+    /** Shape text that picks a drawing inside a Type that has shape variants (the mirror: Round, Squared, Rectangular). */
+    variant?: string | null;
     dims?: Dims | null;
     holes?: number;
     /** 0 at rest, 1 fully lifted by the pointer (the parent drives it from the grid's pointer position). */

@@ -22,7 +22,9 @@ import { ENTRY_BOOKS, ENTRY_STATUSES, normalizeWorkbook } from '../../lib/invent
 import { Field, Input, Key, Segmented, Select, VendorPicker, cx } from '../../components/ui';
 import { VENDOR_CODES, photoKey, type EntryPhoto, type EntryState } from './entryModel';
 import { readPickedFiles } from './entryMedia';
+import { canonicalType } from '../../lib/canonicalType';
 import { ShapeLibraryField } from './ShapeLibraryField';
+import { ShapeFigure } from './hairline/ShapeFigure';
 import { SizeRow, TagRow } from './TagRow';
 
 export type EntryLocks = Partial<Record<'vendorId' | 'workbook' | 'itemNumber', string>>;
@@ -165,10 +167,18 @@ export function EntryForm({
         e.currentTarget.closest('.entry-grid')?.querySelector<HTMLInputElement>(`input[list="${listId(f)}"]`)?.focus();
     };
 
+    /** Mirrors, table lamps and pendants come in shapes (Round, Squared, Rectangular; Cylinder, Squared): their Shape tags show the drawing of each. */
+    const variantTypeId = canonicalType(value.type).id;
+    const shapeLead = variantTypeId === 'mirror' || variantTypeId === 'table-lamp' || variantTypeId === 'pendant'
+        ? (tag: string) => <ShapeFigure family={variantTypeId === 'mirror' ? 'box' : 'cylinder'} isMirror={variantTypeId === 'mirror'}
+            typeId={variantTypeId} variant={tag} dims={null} className="tag-fig" />
+        : undefined;
+
     /** The tags of a suggested field: a full width row, placed after the row of fields it belongs to, shown while it has focus. */
     const tagRow = (f: SuggestField, label: string) => activeField === f && suggestions[f].length > 0 && (
         <div className="s6 entry-tags-row" onKeyDownCapture={e => backToField(e, f)}>
-            <TagRow label={label} tags={suggestions[f]} onPick={tag => onChange({ [f]: tag } as Partial<EntryState>)} />
+            <TagRow label={label} tags={suggestions[f]} onPick={tag => onChange({ [f]: tag } as Partial<EntryState>)}
+                renderLead={f === 'shape' ? shapeLead : undefined} />
         </div>
     );
 

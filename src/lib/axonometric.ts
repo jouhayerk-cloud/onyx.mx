@@ -1,4 +1,6 @@
 import { classifyExtra, drawExtra, extractHolesCount } from './axoExtra';
+import { classifyMirror, drawMirror } from './axoMirrors';
+import type { AxoMirrorClass } from './axoMirrors';
 import type { AxoExtraClass } from './axoExtra';
 import { classifyGeometry } from './geometry';
 import type { Geometry } from './geometry';
@@ -43,6 +45,8 @@ export interface ResolvedAxoGeometry {
     isMirror: boolean;
     /** One of the extra classes (lamps, hull, panel, wine rack, table) drawn by axoExtra.ts, else null. */
     extra?: AxoExtraClass | null;
+    /** One of the stone slab mirror classes drawn by axoMirrors.ts, else null. */
+    mirrorClass?: AxoMirrorClass | null;
 }
 
 /**
@@ -91,9 +95,15 @@ export function resolveAxoGeometry(
 
     const { geom, isMirror } = classifyGeometry(shapeStr, descStr);
 
-    // A round mirror is drawn as a disc, so it needs a square face and a thin
-    // depth whatever the row claims.
-    if (geom === 'mirror') {
+    // Mirrors are thick stone slabs: round and squared ones need a square face, a rectangular one keeps its sides.
+    const mirrorClass = classifyMirror(shapeStr, descStr);
+    if (mirrorClass === 'mirror-round' || mirrorClass === 'mirror-square') {
+        const maxVal = Math.max(W, H);
+        W = maxVal;
+        H = maxVal;
+    } else if (mirrorClass === 'mirror-rect') {
+        D = Math.min(D, 12);
+    } else if (geom === 'mirror') {
         const maxVal = Math.max(W, H, D);
         const minVal = Math.min(W, H, D);
         W = maxVal;
@@ -102,8 +112,8 @@ export function resolveAxoGeometry(
     }
 
     const extra = classifyExtra(shapeStr, descStr);
-    if (extra === 'lamp-floor') {
-        if (H <= W * 1.5) H = Math.max(H, W * 2.5, 130);
+    if (extra === 'tube') {
+        D = W;
     } else if (extra === 'panel') {
         D = Math.min(D, Math.min(W, H) * 0.15, 8);
     } else if (extra === 'hull') {
@@ -113,7 +123,7 @@ export function resolveAxoGeometry(
         D = Math.min(D, 20);
     }
 
-    return { W, H, D, geom, isMirror, extra };
+    return { W, H, D, geom, isMirror, extra, mirrorClass };
 }
 
 export async function generateAxonometricDataUrl(
@@ -124,7 +134,7 @@ export async function generateAxonometricDataUrl(
     hexMapString?: string
 ): Promise<string> {
     return new Promise((resolve) => {
-        const { W, H, D, geom, isMirror, extra } = resolveAxoGeometry(w_cm, h_cm, d_cm, shapeStr, descStr);
+        const { W, H, D, geom, isMirror, extra, mirrorClass } = resolveAxoGeometry(w_cm, h_cm, d_cm, shapeStr, descStr);
 
         const cos30 = Math.cos(Math.PI / 6);
         const sin30 = Math.sin(Math.PI / 6);
@@ -228,6 +238,16 @@ export async function generateAxonometricDataUrl(
 
         ctx.lineWidth = 5;
         ctx.strokeStyle = COLOR_OUTLINE;
+
+        if (mirrorClass) {
+            drawMirror(ctx, mirrorClass, { W, H, D }, {
+                project, scale, cx, cy,
+                colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: COLOR_OUTLINE,
+                lineWidth: 5, isWireframe,
+            });
+            resolve(canvas.toDataURL(asJpeg ? 'image/jpeg' : 'image/png', 1.0));
+            return;
+        }
 
         if (extra) {
             drawExtra(ctx, extra, { W, H, D }, {

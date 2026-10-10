@@ -18,18 +18,19 @@ function getFigureParts(
     dims: Dims | null | undefined,
     holes?: number,
     typeId?: string | null,
+    variant?: string | null,
 ): FigurePart[] {
     const rw = dims && dims.w > 0 ? Math.round(dims.w) : '';
     const rh = dims && dims.h > 0 ? Math.round(dims.h) : '';
     const rd = dims && dims.d > 0 ? Math.round(dims.d) : '';
-    const key = `${typeId ?? ''}|${family}|${isMirror ? 1 : 0}|${motif ?? ''}|${holes ?? ''}|${rw},${rh},${rd}`;
+    const key = `${typeId ?? ''}|${variant ?? ''}|${family}|${isMirror ? 1 : 0}|${motif ?? ''}|${holes ?? ''}|${rw},${rh},${rd}`;
 
     const cached = partsCache.get(key);
     if (cached) return cached;
 
     let parts: FigurePart[] | null = null;
     if (typeId) {
-        parts = buildTypeFigure(typeId, dims ?? null, holes);
+        parts = buildTypeFigure(typeId, dims ?? null, holes, variant);
     }
     if (!parts && motif) {
         parts = buildMotifFigure(motif, dims ?? null, holes);
@@ -47,6 +48,7 @@ export const ShapeFigure: React.FC<ShapeFigureProps> = ({
     isMirror = false,
     motif = null,
     typeId = null,
+    variant = null,
     dims = null,
     holes,
     lift = 0,
@@ -54,8 +56,8 @@ export const ShapeFigure: React.FC<ShapeFigureProps> = ({
     className = '',
 }) => {
     const parts = useMemo(
-        () => getFigureParts(family, isMirror, motif, dims, holes, typeId),
-        [family, isMirror, motif, dims, holes, typeId],
+        () => getFigureParts(family, isMirror, motif, dims, holes, typeId, variant),
+        [family, isMirror, motif, dims, holes, typeId, variant],
     );
 
     const rootClass = ['sf-figure', active ? 'is-active' : '', className]
