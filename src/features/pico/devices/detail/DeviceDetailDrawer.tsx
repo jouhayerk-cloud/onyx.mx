@@ -29,6 +29,7 @@ const CHIP: Record<string, string> = {
 };
 const CHIP_LABEL: Record<string, string> = { online: 'Online', stale: 'Stale', offline: 'Offline' };
 
+/** Side drawer with overview, telemetry, commands and runs for the selected device. */
 export const DeviceDetailDrawer: React.FC<DeviceDetailDrawerProps> = ({
   deviceId,
   onClose,
