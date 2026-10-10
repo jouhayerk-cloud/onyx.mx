@@ -26,6 +26,7 @@ export interface UseArchiveItemsResult {
   retry: () => void;
 }
 
+/** Loads archived items for a vendor, search and sort, one page at a time, with the book's totals. */
 export function useArchiveItems(
   vendor: string | 'ALL',
   search: string,
