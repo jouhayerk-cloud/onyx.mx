@@ -1,145 +1,187 @@
 import React, { useEffect } from 'react';
-import { 
-    CheckCircle2, AlertCircle, AlertTriangle, Info, Sparkles, X 
+import {
+  CheckCircle2, AlertCircle, AlertTriangle, Info, Sparkles, X
 } from 'lucide-react';
-import { tr } from '../../lib/i18n';
-import type { IslandNotification } from './notify/types';
+import { tr, trf } from '../../lib/i18n';
+import type { IslandNotification, NotifyKind } from './notify/types';
+import './islandToast.css';
 
 // A custom toast renderer is app code: if it throws while rendering, show nothing instead of taking the island (and the page) down.
 class RenderBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
-    state = { failed: false };
-    static getDerivedStateFromError() { return { failed: true }; }
-    render() { return this.state.failed ? null : this.props.children; }
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() { return this.state.failed ? null : this.props.children; }
 }
 
 interface IslandToastContentProps {
-    notification: IslandNotification;
-    expanded: boolean;
-    onToggleExpand: () => void;
-    onDismiss: () => void;
+  notification: IslandNotification;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onDismiss: () => void;
 }
 
 let timerStyleInjected = false;
 function useTimerStyle() {
-    useEffect(() => {
-        if (!timerStyleInjected && typeof document !== 'undefined') {
-            timerStyleInjected = true;
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes onyx-toast-timer {
-                    from { transform: scaleX(1); }
-                    to { transform: scaleX(0); }
-                }
-                @media (prefers-reduced-motion: reduce) {
-                    .onyx-toast-timer-bar { animation: none !important; transform: scaleX(0) !important; }
-                }
-            `;
-            document.head.appendChild(style);
+  useEffect(() => {
+    if (!timerStyleInjected && typeof document !== 'undefined') {
+      timerStyleInjected = true;
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes onyx-toast-timer {
+          from { transform: scaleX(1); }
+          to { transform: scaleX(0); }
         }
-    }, []);
+        @media (prefers-reduced-motion: reduce) {
+          .onyx-toast-timer-bar { animation: none !important; transform: scaleX(0) !important; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+}
+
+const ICON_SIZE = 18;
+
+function kindWord(kind: NotifyKind): string {
+  switch (kind) {
+    case 'success': return tr('Success');
+    case 'error': return tr('Error');
+    case 'warning': return tr('Warning');
+    case 'agent': return tr('Assistant');
+    case 'loading': return tr('Loading');
+    default: return tr('Information');
+  }
+}
+
+// Loading gets a static three-dot mark instead of a spinner (no animation)
+function KindIcon({ kind }: { kind: NotifyKind }) {
+  switch (kind) {
+    case 'loading': return <span className="isl-toast__dots" aria-hidden="true"><span /><span /><span /></span>;
+    case 'success': return <CheckCircle2 size={ICON_SIZE} aria-hidden="true" />;
+    case 'error': return <AlertCircle size={ICON_SIZE} aria-hidden="true" />;
+    case 'warning': return <AlertTriangle size={ICON_SIZE} aria-hidden="true" />;
+    case 'agent': return <Sparkles size={ICON_SIZE} aria-hidden="true" />;
+    default: return <Info size={ICON_SIZE} aria-hidden="true" />;
+  }
+}
+
+function relativeTime(ts: number): string {
+  const min = Math.floor((Date.now() - ts) / 60000);
+  if (min < 1) return tr('Just now');
+  if (min < 60) return trf('{n} min ago', { n: min });
+  const h = Math.floor(min / 60);
+  if (h < 24) return trf('{n} h ago', { n: h });
+  return trf('{n} d ago', { n: Math.floor(h / 24) });
 }
 
 export const IslandToastContent: React.FC<IslandToastContentProps> = ({
-    notification,
-    expanded,
-    onToggleExpand,
-    onDismiss
+  notification,
+  expanded,
+  onToggleExpand,
+  onDismiss
 }) => {
-    useTimerStyle();
-    
-    const { kind, title, message, count, duration, render, actions, id } = notification;
+  useTimerStyle();
 
-    const renderIcon = () => {
-        const size = 18;
-        switch (kind) {
-            case 'success': return <CheckCircle2 size={size} color="#34d399" />;
-            case 'error': return <AlertCircle size={size} color="#f87171" />;
-            case 'warning': return <AlertTriangle size={size} color="#fbbf24" />;
-            case 'info': return <Info size={size} color="#60a5fa" />;
-            case 'agent': return <Sparkles size={size} color="var(--main-color, #00aeef)" />;
-            case 'loading': return (
-                <div 
-                    style={{ width: size, height: size, borderWidth: 2, borderTopColor: '#a3a3a3', borderRightColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: 'transparent' }} 
-                    className="rounded-full animate-spin border-solid"
-                />
-            );
-            default: return <Info size={size} color="#60a5fa" />;
-        }
-    };
+  const { kind, title, message, count, duration, render, actions, id, updatedAt } = notification;
+  const loading = kind === 'loading';
+  const stripe = kind === 'error' || kind === 'warning';
+  const visibleActions = (actions ?? []).slice(0, 2);
 
-    const handleActionClick = (e: React.MouseEvent, actionOnClick: () => void) => {
-        e.stopPropagation();
-        actionOnClick();
-        onDismiss();
-    };
+  // Peek: one line, the title or the message. Card: the title (the message moves to the body when there is a title).
+  const peekText = title || message || (loading ? tr('Working') : '');
+  const cardTitle = title || (loading ? tr('Working') : message);
+  const cardBody = (title || loading) ? message : '';
 
-    return (
-        <div className="flex flex-col w-full relative min-w-0" onClick={onToggleExpand}>
-            <div className="flex items-start gap-3 p-3">
-                <div className="shrink-0 mt-0.5">
-                    {renderIcon()}
-                </div>
-                
-                <div className="flex-1 min-w-0 flex flex-col justify-center cursor-pointer select-none">
-                    {title && (
-                        <div className={`text-[13px] font-semibold text-white ${!expanded ? 'truncate' : ''}`}>
-                            {title}
-                        </div>
-                    )}
-                    <div className={`text-[13px] text-white/80 ${!expanded ? 'truncate' : 'whitespace-pre-wrap'}`}>
-                        {message}
-                    </div>
-                    {expanded && render && (
-                        <div className="mt-2 min-w-0 cursor-default" onClick={e => e.stopPropagation()}>
-                            <RenderBoundary>{render({ id, dismiss: onDismiss })}</RenderBoundary>
-                        </div>
-                    )}
-                    {expanded && actions && actions.length > 0 && (
-                        <div className="mt-3 flex gap-2 flex-wrap">
-                            {actions.slice(0, 2).map((act, i) => (
-                                <button
-                                    key={i}
-                                    onClick={e => handleActionClick(e, act.onClick)}
-                                    className="px-3 py-1.5 isl-w10 isl-hw20 text-white rounded-md text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                                >
-                                    {act.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+  const handleActionClick = (e: React.MouseEvent, actionOnClick: () => void) => {
+    e.stopPropagation();
+    actionOnClick();
+    onDismiss();
+  };
 
-                <div className="flex items-center gap-2 shrink-0">
-                    {count > 1 && (
-                        <span className="text-[11px] font-medium px-1.5 py-0.5 isl-w10 text-white/90 rounded-full">
-                            &times;{count}
-                        </span>
-                    )}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDismiss();
-                        }}
-                        aria-label={tr('Dismiss')}
-                        className="p-1 -mr-1 rounded-full text-white/50 hover:text-white isl-hw10 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
-            </div>
-            {typeof duration === 'number' && duration > 0 && (
-                <div className="absolute bottom-0 left-3 right-3 h-[2px] isl-w20 origin-left rounded-full overflow-hidden pointer-events-none">
-                    <div 
-                        className="h-full isl-w50 origin-left onyx-toast-timer-bar"
-                        style={{ 
-                            animationName: 'onyx-toast-timer',
-                            animationDuration: `${duration}ms`,
-                            animationTimingFunction: 'linear',
-                            animationFillMode: 'forwards'
-                        }}
-                    />
-                </div>
-            )}
+  const iconClass = `isl-toast__icon isl-toast__icon--${kind}`;
+
+  const countChip = count > 1 && (
+    <span className="isl-chip isl-num">
+      <span aria-hidden="true">&times;{count}</span>
+      <span className="onyx-sr-only">{trf('Repeated {n} times', { n: count })}</span>
+    </span>
+  );
+
+  const peekContent = (
+    <div className="isl-toast__peek">
+      <span className={iconClass}>
+        <KindIcon kind={kind} />
+        <span className="onyx-sr-only">{kindWord(kind)}: </span>
+      </span>
+      <span className="isl-toast__text">{peekText}</span>
+      {countChip}
+    </div>
+  );
+
+  const cardContent = (
+    <div className={`isl-toast__card${stripe ? ` isl-toast__card--${kind}` : ''}`}>
+      <div className="isl-toast__head">
+        <span className={iconClass}>
+          <KindIcon kind={kind} />
+          <span className="onyx-sr-only">{kindWord(kind)}: </span>
+        </span>
+        <div className="isl-toast__headtext">
+          {stripe && <span className="isl-caption" aria-hidden="true">{kindWord(kind)}</span>}
+          <div className="isl-title isl-toast__title">{cardTitle}</div>
+          {cardBody && <div className="isl-toast__body">{cardBody}</div>}
         </div>
-    );
+        {countChip}
+        <button
+          type="button"
+          className="isl-icon-btn isl-toast__dismiss"
+          onClick={e => {
+            e.stopPropagation();
+            onDismiss();
+          }}
+          aria-label={tr('Dismiss')}
+        >
+          <X size={16} aria-hidden="true" />
+        </button>
+      </div>
+      {render && (
+        <div className="isl-toast__custom" onClick={e => e.stopPropagation()}>
+          <RenderBoundary>{render({ id, dismiss: onDismiss })}</RenderBoundary>
+        </div>
+      )}
+      <div className="isl-toast__foot">
+        {visibleActions.map((act, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`isl-btn${visibleActions.length === 1 ? ' isl-btn--primary' : ''}`}
+            onClick={e => handleActionClick(e, act.onClick)}
+          >
+            {act.label}
+          </button>
+        ))}
+        <span className="isl-caption isl-toast__time">{relativeTime(updatedAt)}</span>
+      </div>
+    </div>
+  );
+
+  const timer = typeof duration === 'number' && duration > 0 && (
+    <div className="isl-toast__timer" aria-hidden="true">
+      <div
+        className="isl-toast__timer-bar onyx-toast-timer-bar"
+        style={{
+          animationName: 'onyx-toast-timer',
+          animationDuration: `${duration}ms`,
+          animationTimingFunction: 'linear',
+          animationFillMode: 'forwards'
+        }}
+      />
+    </div>
+  );
+
+  return (
+    <div className="isl-toast" onClick={onToggleExpand}>
+      {expanded ? cardContent : peekContent}
+      {timer}
+    </div>
+  );
 };

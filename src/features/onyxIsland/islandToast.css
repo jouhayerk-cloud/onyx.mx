@@ -1,0 +1,157 @@
+/*
+ * Island toast content (design doc sections 3, 5, 6). Scoped to .isl-toast.
+ * Flat everywhere: no glass class, no shadow, no gradient, no blur. Colours come from the --isl-* tokens only.
+ */
+
+.isl-toast {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  color: var(--isl-ink);
+  cursor: pointer;
+}
+
+/* peek: one line; the face beside it is 40 px high, so the line sits centred on it */
+.isl-toast__peek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 40px;
+}
+
+.isl-toast__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* kind icon: the colour is the status token, the icon shape and the hidden kind word carry the meaning too */
+.isl-toast__icon {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--isl-ink-2);
+}
+.isl-toast__icon--success { color: var(--isl-ok); }
+.isl-toast__icon--error { color: var(--isl-err); }
+.isl-toast__icon--warning { color: var(--isl-warn); }
+.isl-toast__icon--info { color: var(--isl-info); }
+.isl-toast__icon--agent { color: var(--isl-accent); }
+
+/* loading: three static dots, no animation */
+.isl-toast__dots { display: inline-flex; align-items: center; gap: 3px; }
+.isl-toast__dots span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+
+/* card */
+.isl-toast__card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 0 2px;
+}
+/* error and warning: a 3 px stripe in the status token (the icon and the word stay) */
+.isl-toast__card--error,
+.isl-toast__card--warning {
+  padding-left: 10px;
+  border-left: 3px solid var(--isl-err);
+}
+.isl-toast__card--warning { border-left-color: var(--isl-warn); }
+
+.isl-toast__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.isl-toast__headtext {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.isl-toast__title { overflow-wrap: anywhere; }
+
+.isl-toast__body {
+  color: var(--isl-ink-2);
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  overflow: hidden;
+}
+
+.isl-toast__head .isl-chip { flex: none; }
+
+/* dismiss: a 36 px target (44 px on coarse pointers) with a 16 px icon */
+.isl-toast .isl-icon-btn {
+  --isl-bg: transparent;
+  --isl-bd: transparent;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--isl-target);
+  height: var(--isl-target);
+  min-width: var(--isl-target);
+  margin: -9px -9px -9px 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--isl-bd);
+  background: var(--isl-bg);
+  color: var(--isl-ink-2);
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+.isl-toast .isl-icon-btn:hover { --isl-bg: var(--isl-fill-2); color: var(--isl-ink); }
+.isl-toast .isl-icon-btn:active { --isl-bg: var(--isl-fill-3); }
+
+/* custom render content and the footer do not expand the card on click */
+.isl-toast__custom { min-width: 0; margin-top: 4px; cursor: default; }
+
+.isl-toast__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: default;
+}
+
+.isl-toast__time { margin-left: auto; }
+
+/* the time-left bar along the bottom edge (animated by the inline style in IslandToastContent) */
+.isl-toast__timer {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--isl-line);
+}
+
+.isl-toast__timer-bar {
+  width: 100%;
+  height: 100%;
+  background: var(--isl-ink-3);
+  transform-origin: left;
+}

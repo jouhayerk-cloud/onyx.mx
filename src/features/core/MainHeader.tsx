@@ -156,6 +156,7 @@ import { ArchivedBar, ArchivedReadout } from '../archived/ArchivedChrome';
 import { ArchivedToolsRegistrar } from '../archived/archivedTools';
 import { InventoryToolsRegistrar } from './inventoryTools';
 import { islandCommandsEnabledAtom, useRegisterTools } from '../../lib/toolRegistry';
+import { pushNotification } from '../onyxIsland/notify/store';
 import { StoreToolsRegistrar } from '../store/storeTools';
 import { FinanceToolsRegistrar } from '../finance/financeTools';
 import { LogisticsToolsRegistrar, logisticsReadout } from '../logistics/logisticsTools';
@@ -599,14 +600,8 @@ const ShippingStats: React.FC = () => {
  * in beside it and still opens Settings; it stops the notch from being a bare
  * strip of digits and gives the right half of it a purpose.
  */
-const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'both' }) => {
-    const typesCount = useAtomValue(filteredInventoryCountAtom);
-    const totalQty = useAtomValue(filteredInventoryTotalQtyAtom);
-    const totalValue = useAtomValue(filteredInventoryTotalValueAtom);
-    const showFinancials = useAtomValue(showFinancialsAtom);
-    const user = useAtomValue(userAtom);
-    const openSettingsPortal = useSetAtom(isStudioSettingsOpenAtom);
-
+/** Writes the calculated fields of every item to the database (the old hidden click of the island figures). */
+const useSyncCalculatedFields = () => {
     const items = useAtomValue(inventoryAtom);
     // Both hooks always run (a short-circuited hook breaks React's hook order).
     const storedRate = useAtomValue(exchangeRateAtom);
@@ -614,11 +609,11 @@ const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'bot
     const exRate = storedRate || liveRate || DEFAULT_EXCHANGE_RATE;
     const db = useDatabase();
     const setInvVersion = useSetAtom(InventoryVersionAtom);
-    const [isSyncingCalc, setIsSyncingCalc] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
 
-    const handleSyncCalculatedFields = async () => {
-        if (isSyncingCalc) return;
-        setIsSyncingCalc(true);
+    const run = async () => {
+        if (isSyncing) return;
+        setIsSyncing(true);
         const tid = toast.loading(tr("Syncing calculated fields to database..."));
         try {
             const count = await syncAllCalculatedFieldsToDB(items, exRate, db, (pct, curr, tot) => {
@@ -630,9 +625,47 @@ const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'bot
             console.error('[Sync Fields Error]', err);
             toast.error(`Sync failed: ${err.message || 'Unknown error'}`, { id: tid });
         } finally {
-            setIsSyncingCalc(false);
+            setIsSyncing(false);
         }
     };
+    return { run, isSyncing };
+};
+
+/** The "Sync fields" tool of the island, with a confirmation card (it writes to the database). */
+const InventorySyncRegistrar: React.FC = () => {
+    const { run, isSyncing } = useSyncCalculatedFields();
+    const enabled = useAtomValue(islandCommandsEnabledAtom);
+    const ask = () => {
+        pushNotification({
+            id: 'inventory-sync-confirm',
+            kind: 'warning',
+            message: '',
+            duration: null,
+            render: (ctx) => (
+                <div className="isl-pane flex flex-col gap-2 p-1">
+                    <div className="isl-title">{tr('Sync calculated fields?')}</div>
+                    <div className="isl-caption">{tr('This writes the calculated fields of every item to the database.')}</div>
+                    <div className="flex gap-2 pt-1">
+                        <button type="button" className="isl-btn" onClick={ctx.dismiss}>{tr('Cancel')}</button>
+                        <button type="button" className="isl-btn isl-btn--primary" onClick={() => { ctx.dismiss(); void run(); }}>{tr('Sync now')}</button>
+                    </div>
+                </div>
+            ),
+        });
+    };
+    useRegisterTools('inventory-sync', [
+        { id: 'inventory.sync-fields', moduleId: 'inventory', label: tr('Sync fields'), title: tr('Write the calculated fields of every item to the database'), icon: RefreshCw, kind: 'action' as const, group: tr('Data'), order: 900, disabled: isSyncing, run: ask },
+    ], enabled);
+    return null;
+};
+
+const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'both' }) => {
+    const typesCount = useAtomValue(filteredInventoryCountAtom);
+    const totalQty = useAtomValue(filteredInventoryTotalQtyAtom);
+    const totalValue = useAtomValue(filteredInventoryTotalValueAtom);
+    const showFinancials = useAtomValue(showFinancialsAtom);
+    const user = useAtomValue(userAtom);
+    const openSettingsPortal = useSetAtom(isStudioSettingsOpenAtom);
 
     // Labels on row one, values on row two: grid-flow-col fills the first child
     // into row 1 and the second into row 2, so the value columns line up
@@ -648,12 +681,13 @@ const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'bot
         ? user.name.split(' ')[0]
         : user?.email?.split('@')[0] || 'User';
 
+    // Plain figures: a click used to write to the database from here. The sync is the explicit "Sync fields" tool
+    // (InventorySyncRegistrar) with a confirmation.
     const statsBtn = (
-        <button
-            onClick={handleSyncCalculatedFields}
-            disabled={isSyncingCalc}
-            title={tr("Sync calculated fields to the database")}
-            className={`info-notch-stats grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-3.5 gap-y-1 px-3.5 py-1.5 ${isSyncingCalc ? 'animate-pulse' : ''}`}
+        <div
+            role="group"
+            aria-label={tr("Inventory figures")}
+            className="info-notch-stats grid grid-rows-2 grid-flow-col auto-cols-max items-center gap-x-3.5 gap-y-1 px-3.5 py-1.5"
         >
             <span className={lbl} style={lblStyle}>{tr("Types")}</span>
             <span className={val} style={valStyle}>{typesCount.toLocaleString()}</span>
@@ -665,7 +699,7 @@ const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'bot
             <span className={val} style={valStyle}>
                 {showFinancials ? `$${totalValue.toLocaleString()}` : '\u2022\u2022\u2022'}
             </span>
-        </button>
+        </div>
     );
 
     const userBtn = (
@@ -4388,6 +4422,7 @@ export function MainHeader() {
             )}
             <MiscViewToolsRouter activeView={activeView} handlers={{ handleMasterExportXLSX, isExporting }} />
             <PrintToolsRegistrar />
+            {activeView === 'inventory' && <InventorySyncRegistrar />}
             <IslandBand
                 readout={activeView === 'inventory'
                     ? { left: <InfoNotch part="stats" />, right: null }   // the greeting and the name are in the panel header now

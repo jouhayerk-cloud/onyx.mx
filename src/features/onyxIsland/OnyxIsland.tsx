@@ -5,7 +5,7 @@ import { Search } from 'lucide-react';
 import { OnyxFace } from '../onyxAgent/face/OnyxFace';
 import { useGaze } from '../onyxAgent/face/useGaze';
 import { onyxAgentPhaseAtom } from '../onyxAgent/agentState';
-import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToastTimer } from './notify/store';
+import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToastTimer, pushNotification } from './notify/store';
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
 import { islandModeAtom, islandPaneAtom, islandItemAtom, expressionForKind, type IslandReadout, type IslandPane } from './islandState';
@@ -15,7 +15,7 @@ import type { ToolDescriptor } from '../../lib/toolRegistry';
 import { userAtom, activeViewAtom, SelectedItemDataAtom } from '../../lib/atoms';
 import { IslandLaunchers } from './IslandLaunchers';
 import { IslandToolsGrid } from './IslandToolsGrid';
-import { IslandHeader, displayNameOf } from './IslandHeader';
+import { IslandHeader, displayNameOf, greeting } from './IslandHeader';
 import { IslandTabs } from './IslandTabs';
 import toast from './notify/toast';
 import './islandTokens.css';
@@ -321,6 +321,19 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   }, [mode]);
 
   const name = displayNameOf(user);
+
+  // One welcome per browser session (design interview 2026-10-09): the island peeks "Good evening, Ramses" for 3 s and
+  // keeps no trace in the inbox.
+  const hasUser = !!user;
+  useEffect(() => {
+    if (!hasUser) return;
+    try {
+      if (sessionStorage.getItem('onyxWelcomed')) return;
+      sessionStorage.setItem('onyxWelcomed', '1');
+    } catch { return; }
+    pushNotification({ kind: 'info', message: `${greeting()}, ${displayNameOf(user)}`, duration: 3000, ephemeral: true, source: 'system' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUser]);
   const viewLabel = tr(VIEW_LABELS[activeView] || 'Home');
   const meta = user?.role ? `${tr(user.role)} · ${viewLabel}` : viewLabel;
   const figures = readout && (readout.left || readout.right) ? <>{readout.left}{readout.right}</> : null;

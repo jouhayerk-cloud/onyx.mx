@@ -1,0 +1,14 @@
+[
+  ["Working", "Trabajando"],
+  ["Loading", "Cargando"],
+  ["Success", "Éxito"],
+  ["Error", "Error"],
+  ["Warning", "Aviso"],
+  ["Information", "Información"],
+  ["Assistant", "Asistente"],
+  ["Just now", "Ahora mismo"],
+  ["{n} min ago", "hace {n} min"],
+  ["{n} h ago", "hace {n} h"],
+  ["{n} d ago", "hace {n} d"],
+  ["Repeated {n} times", "Repetido {n} veces"]
+]

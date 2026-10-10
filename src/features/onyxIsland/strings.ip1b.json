@@ -1,0 +1,9 @@
+[
+  ["Sync fields", "Sincronizar campos"],
+  ["Sync calculated fields?", "¿Sincronizar campos calculados?"],
+  ["This writes the calculated fields of every item to the database.", "Esto escribe los campos calculados de todos los artículos en la base de datos."],
+  ["Sync now", "Sincronizar ahora"],
+  ["Data", "Datos"],
+  ["Write the calculated fields of every item to the database", "Escribe los campos calculados de todos los artículos en la base de datos"],
+  ["Inventory figures", "Cifras del inventario"]
+]
