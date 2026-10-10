@@ -16,6 +16,7 @@ interface PicoRoleHardwareCardProps {
   onConfigure?: (deviceId: string) => void;
 }
 
+/** Card for a connected Pico with expression, text-to-speech, simulated scan and disconnect controls. */
 export const PicoRoleHardwareCard: React.FC<PicoRoleHardwareCardProps> = ({
   device,
   session,
