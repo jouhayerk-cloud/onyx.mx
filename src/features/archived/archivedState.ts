@@ -14,6 +14,7 @@ export const archivedSearchAtom = atom<string>('');
 /** Sort order for archived items, starting on tag. */
 export const archivedSortAtom = atom<ArchiveSort>('tag');
 export const archivedViewModeAtom = atomWithStorage<'gallery' | 'table'>('archivedViewMode', 'gallery');
+/** Active tab of the archived view: Items or Ledger. */
 export const archivedTabAtom = atom<'Items' | 'Ledger'>('Items');
 
 export interface ArchivedMeta {
