@@ -9,6 +9,7 @@ export interface EdgeTransportOptions {
   isOnline?: () => boolean;
 }
 
+/** Creates an MCP transport that POSTs requests to the edge endpoint and delivers replies locally. */
 export function createEdgeTransport(options: EdgeTransportOptions): McpTransport {
   const handlers = new Set<McpMessageHandler>();
 
