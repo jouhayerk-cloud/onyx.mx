@@ -14,6 +14,7 @@ interface ExpenseSectionProps {
     };
 }
 
+/** Expense breakdown by category: monthly, supplies, labor, logistics, operations. */
 export const ExpenseSection: React.FC<ExpenseSectionProps> = ({ opsBreakdown }) => {
     const showFinancials = useAtomValue(showFinancialsAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
