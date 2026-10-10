@@ -37,6 +37,7 @@ export function formatNumber(value: number | null, maxDecimals: number = 2): str
     }).format(value);
 }
 
+/** Formats a number as MXN or USD currency in en-US, up to 2 decimals; a dash when missing. */
 export function formatMoney(value: number | null, currency: 'MXN' | 'USD'): string {
     if (value == null || isNaN(value)) return '—';
     const formatter = new Intl.NumberFormat('en-US', {
