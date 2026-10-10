@@ -1,0 +1,14 @@
+[
+  ["Selected item", "Artículo seleccionado"],
+  ["Nothing selected", "Nada seleccionado"],
+  ["Select an item in the list to see it here.", "Selecciona un artículo de la lista para verlo aquí."],
+  ["No photo yet", "Sin foto todavía"],
+  ["Size", "Tamaño"],
+  ["Workbook", "Libro de trabajo"],
+  ["Hidden", "Oculto"],
+  ["Described", "Descrito"],
+  ["Cleaned", "Limpiado"],
+  ["Open details", "Abrir detalles"],
+  ["Copy tag", "Copiar tag"],
+  ["Show in list", "Mostrar en lista"]
+]

@@ -1,0 +1,23 @@
+[
+  ["Ready", "Listo"],
+  ["Thinking", "Pensando"],
+  ["Working", "Trabajando"],
+  ["Offline", "Sin conexión"],
+  ["Robot", "Robot"],
+  ["No robot is online", "Ningún robot en línea"],
+  ["Chan is thinking", "Chan está pensando"],
+  ["How can I help?", "¿En qué puedo ayudar?"],
+  ["Chan can read this page and run tools you confirm.", "Chan puede leer esta página y ejecutar herramientas que confirmes."],
+  ["Which pieces have no photo?", "¿Qué piezas no tienen foto?"],
+  ["Summarise pending payments", "Resumir pagos pendientes"],
+  ["Summarise the next shipment", "Resumir el siguiente embarque"],
+  ["What can Chan do here?", "¿Qué puede hacer Chan aquí?"],
+  ["Read page context and answer questions", "Leer el contexto de la página y responder preguntas"],
+  ["Search items and navigate between views", "Buscar artículos y navegar entre vistas"],
+  ["Chan asks before it changes anything.", "Chan pide confirmación antes de hacer cualquier cambio."],
+  ["Confirm action", "Confirmar acción"],
+  ["Message Chan", "Mensaje para Chan"],
+  ["Ask Chan...", "Pregunta a Chan..."],
+  ["Send", "Enviar"],
+  ["Recent actions", "Acciones recientes"]
+]

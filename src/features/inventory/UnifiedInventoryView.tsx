@@ -61,6 +61,7 @@ import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, read
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from '../onyxIsland/notify/toast';
+import { islandItemAtom } from '../onyxIsland/islandState';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -1914,6 +1915,18 @@ export const UnifiedInventoryView = () => {
         }
         return handler;
     }, [toggleExpandCard]);
+
+    // The island's Item tab shows the row that was opened last (islandItemAtom, not SelectedItemDataAtom, which other views own).
+    const setIslandItem = useSetAtom(islandItemAtom);
+    const prevExpanded = useRef<Record<string, number>>({});
+    useEffect(() => {
+        const prev = prevExpanded.current;
+        prevExpanded.current = expandedCards;
+        const added = Object.keys(expandedCards).filter(id => !prev[id]);
+        if (!added.length) return;
+        const row = (items as any[]).find(x => String(x.row) === added[added.length - 1]);
+        if (row?.data) setIslandItem(row.data);
+    }, [expandedCards, items, setIslandItem]);
 
     return (
         <div className="flex-1 flex flex-col relative m-0 gap-0">

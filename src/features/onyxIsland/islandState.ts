@@ -1,5 +1,6 @@
 import type React from 'react';
 import { atom } from 'jotai';
+import type { InventoryItemData } from '../../lib/Types';
 import { NotifyKind } from './notify/types';
 import { OnyxChanFace } from '../pico/useDeviceControl';
 
@@ -9,7 +10,9 @@ export type IslandMode = 'rest' | 'peek' | 'card' | 'surface';
 export interface IslandReadout { left: React.ReactNode; right: React.ReactNode }
 
 export const islandModeAtom = atom<IslandMode>('rest');
-export const islandPaneAtom = atom<'tools' | 'chat' | 'notifications'>('tools');
+/** Tools, the selected item, Chan (the conversation) and the notification history. Reopening keeps the last one. */
+export type IslandPane = 'tools' | 'item' | 'chat' | 'notifications';
+export const islandPaneAtom = atom<IslandPane>('tools');
 
 export function expressionForKind(kind: NotifyKind): OnyxChanFace {
   switch (kind) {
@@ -22,3 +25,7 @@ export function expressionForKind(kind: NotifyKind): OnyxChanFace {
     default: return 'calm';
   }
 }
+
+/** The inventory row the user opened last in the list: what the island's Item tab shows. Separate from SelectedItemDataAtom on purpose, which other views (Process, Create, Catalog) read as their own selection. */
+// `null as T | null`: without strict null checks atom<T | null>(null) picks the read-only overload (null is assignable to a function)
+export const islandItemAtom = atom(null as InventoryItemData | null);
