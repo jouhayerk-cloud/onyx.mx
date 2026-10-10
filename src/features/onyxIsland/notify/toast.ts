@@ -59,6 +59,7 @@ export function notifyAgent(message: string, opts?: { title?: string; actions?: 
   });
 }
 
+/** Pushes an info notification from a device, with optional id and duration. */
 export function notifyDevice(message: string, opts?: ToastOptions) {
   return pushNotification({
     kind: 'info',
