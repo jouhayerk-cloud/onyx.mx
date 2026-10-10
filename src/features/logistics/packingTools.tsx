@@ -21,6 +21,8 @@ export interface PackingWidgets {
     DeployableSearch: React.ComponentType<any>;
 }
 
+/** Builds the packing tool entries for search, view mode and the print wizard, wired to the widgets. */
+
 export function usePackingTools(widgets: PackingWidgets, handlers?: any): ToolDescriptor[] {
     const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
