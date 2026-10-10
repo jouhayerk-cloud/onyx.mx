@@ -115,6 +115,7 @@ export const ERROR_RPC_CODE: Record<ContractErrorCode, number> = {
 // Guards
 // ---------------------------------------------------------------------------
 
+/** Type guard: true for a non-null object that is not an array. */
 export function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
