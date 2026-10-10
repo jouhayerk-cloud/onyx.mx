@@ -8,6 +8,7 @@ import { mockExtraFor, tick } from '../devices/mock/mockExtras';
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
+/** Builds the simulated demo fleet and advances the mock device twins to the given time. */
 export function buildMockFleet(now: number) {
   tick(now); // Progress device simulations
 
