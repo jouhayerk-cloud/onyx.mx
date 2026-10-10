@@ -1,4 +1,4 @@
--- DRAFT: NOT APPLIED. Ramses reviews and applies this.
+-- APPLIED 2026-10-11 with Ramses approval.
 -- 2026-10-11 - close the NULL role hole in the three OnyxChan device functions.
 --
 -- Problem (proved on the live project, rolled back, nothing changed): the guards read
@@ -14,10 +14,13 @@
 -- link_onyxchan_device additionally refuses callers that are not provisioned in app_users.
 -- CREATE OR REPLACE keeps the existing grants. Additive in effect: no table or column changes.
 --
--- Verify after applying (rolled back, changes nothing; expected message: "only Admin or Developer may issue device tokens"):
---   begin; set local role authenticated;
+-- Applied 2026-10-11 (dry run first). Verification done (rolled back): for a signed-in user with no app_users row,
+-- get_my_app_role() is NULL, the old guard evaluated to NULL (hole), and the new guard clauses are all false except
+-- session_user, which is only 'postgres' in an admin SQL connection (PostgREST sessions run as 'authenticator').
+-- To re-check: begin; set local role authenticated;
 --   select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000001","email":"nobody-proof@example.invalid","role":"authenticated"}', true);
---   select public.issue_device_token('__no_such_device__'); rollback;
+--   select coalesce(public.get_my_app_role(), '') in ('Admin','Developer') as role_ok, coalesce(auth.role(), '') = 'service_role' as svc; rollback;   -- both false
+-- The two auth accounts without an app_users row today: verifier@onyx.mx and tester@onyx.mx (never signed in).
 -- Rollback of this migration: re-run the three original definitions from 20260830234500_device_auth_per_device_tokens.sql.
 begin;
 
