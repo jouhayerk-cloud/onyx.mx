@@ -40,6 +40,12 @@ export interface ToolDescriptor {
   run?: () => void;
   /** widget: complex controls (search box, select, vendor rail) drawn inside the EXPANDED grid. Dropdowns it opens must portal to document.body. */
   render?: () => React.ReactNode;
+  /** Compact label, already translated, at most 12 characters. */
+  short?: string;
+  /** Priority from 0 to 100, default 50, higher stays visible longer. */
+  priority?: number;
+  /** Never moves into the More list. */
+  essential?: boolean;
 }
 
 /** owner key -> its descriptors. An owner is one registrant (usually the module id). */
@@ -62,7 +68,7 @@ export const isToolPinned = (tool: ToolDescriptor, overrides: Record<string, boo
 
 /** What changes how a tool is drawn. Closures (run, render) are NOT part of it: they are read through a ref so they are always fresh without re-registering. */
 const signature = (tools: ToolDescriptor[]): string =>
-  tools.map(t => [t.id, t.moduleId, t.label, t.kind, t.group, t.order, t.pinned ? 1 : 0, t.disabled ? 1 : 0, t.pressed ? 1 : 0, t.badge ?? '', t.title ?? '', t.dock ?? '', t.render ? 'w' : ''].join('|')).join(';');
+  tools.map(t => [t.id, t.moduleId, t.label, t.kind, t.group, t.order, t.pinned ? 1 : 0, t.disabled ? 1 : 0, t.pressed ? 1 : 0, t.badge ?? '', t.title ?? '', t.dock ?? '', t.render ? 'w' : '', t.short ?? '', t.priority ?? '', t.essential ? 1 : 0].join('|')).join(';');
 
 /**
  * Register a module's tools while the calling component is mounted.

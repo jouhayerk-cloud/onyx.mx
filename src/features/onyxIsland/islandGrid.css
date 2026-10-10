@@ -1,0 +1,279 @@
+/*
+ * Island tools grid and density layout (ISD-3).
+ * Colours and geometry come exclusively from islandTokens.css.
+ */
+
+.isl-grid-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  width: 100%;
+}
+
+/* ── Density toolbar ─────────────────────────────────────────────────────── */
+.isl-grid-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  flex: none;
+}
+
+.isl-grid-segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: var(--isl-radius-chip);
+  background: var(--isl-fill-1);
+  border: 1px solid var(--isl-line);
+  gap: 2px;
+}
+
+.isl-grid-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 2px 12px;
+  border-radius: var(--isl-radius-chip);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--isl-ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+
+.isl-grid-seg-btn:hover {
+  background: var(--isl-fill-2);
+  color: var(--isl-ink);
+}
+
+.isl-grid-seg-btn:active {
+  background: var(--isl-fill-3);
+  color: var(--isl-ink);
+}
+
+.isl-grid-seg-btn.is-active,
+.isl-grid-seg-btn[aria-pressed="true"] {
+  background: var(--isl-fill-2);
+  color: var(--isl-ink);
+  font-weight: 600;
+  border-color: var(--isl-line);
+}
+
+.isl-grid-seg-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--isl-focus);
+}
+
+@media (pointer: coarse) {
+  .isl-grid-seg-btn {
+    min-height: var(--isl-target);
+    padding: 4px 14px;
+  }
+}
+
+/* ── Flow container and sections ─────────────────────────────────────────── */
+.isl-grid-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.isl-grid-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.isl-grid-section--widget {
+  flex-basis: 100%;
+  width: 100%;
+}
+
+.isl-grid-section-title {
+  margin: 0;
+  padding: 0 4px;
+}
+
+/* ── Tool grids ──────────────────────────────────────────────────────────── */
+.isl-grid-tools {
+  width: 100%;
+}
+
+.isl-grid-tools--comfortable {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 6px;
+}
+
+.isl-grid-tools--compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px;
+}
+
+/* ── Tiles ───────────────────────────────────────────────────────────────── */
+.isl-grid-tools .isl-grid-tile {
+  --isl-bg: transparent;
+  --isl-bd: transparent;
+  border: 1px solid var(--isl-bd);
+  background: var(--isl-bg);
+  color: var(--isl-ink);
+  cursor: pointer;
+  transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+}
+
+.isl-grid-tools .isl-grid-tile:hover {
+  --isl-bg: var(--isl-fill-2);
+}
+
+.isl-grid-tools .isl-grid-tile:active {
+  --isl-bg: var(--isl-fill-3);
+}
+
+.isl-grid-tools .isl-grid-tile:focus-visible {
+  outline: none;
+  box-shadow: var(--isl-focus);
+}
+
+.isl-grid-tools .isl-grid-tile[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Comfortable tile */
+.isl-grid-tools .isl-grid-tile--comfortable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 80px;
+  padding: 8px 4px;
+  border-radius: var(--isl-radius-row);
+  text-align: center;
+}
+
+.isl-grid-tools .isl-grid-tile--comfortable .isl-grid-tile-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--isl-fill-2);
+  color: var(--isl-ink);
+  flex: none;
+  transition: background-color 0.1s ease;
+}
+
+.isl-grid-tools .isl-grid-tile--comfortable:hover .isl-grid-tile-icon {
+  background: var(--isl-fill-3);
+}
+
+.isl-grid-tools .isl-grid-tile--comfortable .isl-grid-tile-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--isl-ink-2);
+  word-break: break-word;
+  transition: color 0.1s ease;
+}
+
+.isl-grid-tools .isl-grid-tile--comfortable:hover .isl-grid-tile-label {
+  color: var(--isl-ink);
+}
+
+/* Compact tile */
+.isl-grid-tools .isl-grid-tile--compact {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: var(--isl-target);
+  height: var(--isl-target);
+  padding: 0 10px;
+  border-radius: var(--isl-radius-row);
+  text-align: left;
+}
+
+.isl-grid-tools .isl-grid-tile--compact .isl-grid-tile-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--isl-ink);
+  flex: none;
+}
+
+.isl-grid-tools .isl-grid-tile--compact .isl-grid-tile-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--isl-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+  transition: color 0.1s ease;
+}
+
+.isl-grid-tools .isl-grid-tile--compact:hover .isl-grid-tile-label {
+  color: var(--isl-ink);
+}
+
+/* Badges */
+.isl-grid-tools .isl-grid-tile-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--isl-accent);
+}
+
+.isl-grid-tools .isl-grid-tile--compact .isl-grid-tile-badge {
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+}
+
+/* Widget row */
+.isl-grid-widget {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+/* Toggle cell */
+.isl-grid-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  min-height: var(--isl-target);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .isl-grid-seg-btn,
+  .isl-grid-tools .isl-grid-tile,
+  .isl-grid-tools .isl-grid-tile--comfortable .isl-grid-tile-icon,
+  .isl-grid-tools .isl-grid-tile .isl-grid-tile-label {
+    transition: none;
+  }
+}

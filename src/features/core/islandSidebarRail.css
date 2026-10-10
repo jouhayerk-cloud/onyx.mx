@@ -1,0 +1,157 @@
+/* Edge Tab for Desktop Hidden State */
+.isb-edge-tab {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 64px;
+  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
+  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
+  border-left: none;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1050;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.2s ease;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
+}
+.isb-edge-tab:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff;
+  width: 20px;
+}
+html.theme-aqua .isb-edge-tab {
+  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.70)) !important;
+  border-color: rgba(11, 42, 51, 0.15) !important;
+  color: rgba(11, 42, 51, 0.75) !important;
+}
+html.theme-aqua .isb-edge-tab:hover {
+  background-color: rgba(11, 42, 51, 0.08) !important;
+  color: #0b2a33 !important;
+}
+
+/* Rail State overrides */
+.isb-item-main-rail {
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+.isb-label-rail {
+  max-width: 60px;
+  opacity: 1;
+  display: flex;
+  justify-content: center;
+}
+.isb-item-label-rail {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: center;
+  line-height: 1.2;
+  opacity: 0.8;
+}
+
+/* thin 1px divider for section titles */
+.isb-section-title.isb-label-rail {
+  max-height: 1px;
+  padding: 0;
+  margin: 8px 16px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: transparent;
+  overflow: hidden;
+  min-height: 1px;
+}
+html.theme-aqua .isb-section-title.isb-label-rail {
+  background-color: rgba(11, 42, 51, 0.15);
+}
+
+.isb-chevron-wrap-rail {
+  display: none;
+}
+
+.isb-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+.isb-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+html.theme-aqua .isb-collapse-btn:hover {
+  background: rgba(11, 42, 51, 0.1);
+}
+
+/* Scroll Fades for List */
+.isb-list--scrollable {
+  mask-image: linear-gradient(to bottom, black, black);
+  -webkit-mask-image: linear-gradient(to bottom, black, black);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  transition: mask-image 0.2s, -webkit-mask-image 0.2s;
+}
+.isb-list--more-top {
+  mask-image: linear-gradient(to bottom, transparent, black 20px, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 20px, black 100%);
+}
+.isb-list--more-bottom {
+  mask-image: linear-gradient(to top, transparent, black 20px, black 100%);
+  -webkit-mask-image: linear-gradient(to top, transparent, black 20px, black 100%);
+}
+.isb-list--more-top.isb-list--more-bottom {
+  mask-image: linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 20px, black calc(100% - 20px), transparent);
+}
+
+/* Height Aware (@media max-height: 800px) */
+@media (max-height: 800px) {
+  .isb-header {
+    padding: 16px 12px;
+  }
+  .isb-logo-text.isb-height-aware {
+    display: none;
+  }
+  .isb-header .w-16.h-16 {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .isb-section {
+    margin-bottom: 4px;
+  }
+  .isb-section-title {
+    padding: 8px 12px 2px 12px;
+  }
+  .isb-footer.isb-footer-height-aware {
+    flex-direction: row;
+    gap: 12px;
+    padding: 12px;
+  }
+  .isb-footer.isb-footer-height-aware .mt-4,
+  .isb-footer.isb-footer-height-aware .mt-3 {
+    margin-top: 0 !important;
+    transform: scale(0.9);
+  }
+  .isb-collapse-btn.isb-height-aware-collapse {
+    top: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .isb-edge-tab { transition: none !important; }
+}

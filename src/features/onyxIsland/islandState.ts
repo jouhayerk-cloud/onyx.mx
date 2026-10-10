@@ -1,10 +1,15 @@
 import type React from 'react';
 import { atom } from 'jotai';
+import { atomWithStorage } from 'jotai/utils';
 import type { InventoryItemData } from '../../lib/Types';
 import { NotifyKind } from './notify/types';
 import { OnyxChanFace } from '../pico/useDeviceControl';
 
 export type IslandMode = 'rest' | 'peek' | 'card' | 'surface';
+
+export type IslandLevel = 0 | 1 | 2 | 3;
+export type IslandDeploy = "auto" | IslandLevel;
+export const islandDeployAtom = atomWithStorage<IslandDeploy>("onyxIslandDeploy", "auto");
 
 /** Page-specific figures docked into the island pill, one half on each side of the face. */
 export interface IslandReadout { left: React.ReactNode; right: React.ReactNode }
