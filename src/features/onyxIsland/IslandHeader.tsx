@@ -8,6 +8,7 @@ import { tr } from '../../lib/i18n';
  * ones the panel had.
  */
 
+/** Time-of-day greeting for the given hour, translated: morning before 12, afternoon before 18. */
 export const greeting = (now = new Date()): string => {
     const h = now.getHours();
     if (h < 12) return tr('Good morning');
