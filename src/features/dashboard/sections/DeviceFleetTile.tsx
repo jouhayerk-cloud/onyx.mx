@@ -6,6 +6,7 @@ import { useDeviceFleet } from '../../pico/surfaces/useDeviceFleet';
 import { connectivity } from '../../pico/surfaces/types';
 import { tr } from '../../../lib/i18n';
 
+/** Dashboard tile for device telemetry; links to Devices when no telemetry is available. */
 export const DeviceFleetTile: React.FC = () => {
     const { devices, source, error } = useDeviceFleet();
     const setActiveView = useSetAtom(activeViewAtom);
