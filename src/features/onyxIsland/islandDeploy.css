@@ -1,0 +1,107 @@
+/*
+ * Island deployment levels and shelf (design doc 3).
+ * Loaded after islandGlass.css; colours come from --isl-* tokens only.
+ */
+
+/* the title sits UNDER the icon (never beside it) */
+.isl-launcher--labelled {
+  width: auto;
+  min-width: var(--isl-target);
+  height: auto;
+  min-height: 52px;
+  flex-direction: column;
+  padding: 6px 8px 4px;
+  gap: 3px;
+  border-radius: 12px;
+}
+.isl-launcher-label {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.isl-dock-deploy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--isl-fill-1);
+  color: var(--isl-ink-2);
+  border: 1px solid var(--isl-line);
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease;
+  z-index: 10;
+  flex: none;
+  margin-left: 2px;
+}
+.isl-dock-deploy:hover {
+  background: var(--isl-fill-2);
+  color: var(--isl-ink);
+}
+.isl-dock-deploy:focus-visible {
+  outline: none;
+  box-shadow: var(--isl-focus);
+}
+
+/* Shelf */
+.isl-shelf-wrap {
+  width: 100%;
+  max-height: 340px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+  overflow-y: auto;
+  border-top: 1px solid var(--isl-line);
+}
+
+.isl-shelf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.isl-shelf-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--isl-ink-2);
+}
+
+.isl-shelf-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.isl-shelf-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.isl-shelf-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--isl-line);
+}
+
+.isl-shelf-btn {
+  width: auto;
+  min-width: var(--isl-target);
+  height: auto;
+  min-height: 52px;
+  flex-direction: column;
+  padding: 6px 8px 4px;
+  gap: 3px;
+  border-radius: 12px;
+}
+.isl-shelf-btn-label {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
