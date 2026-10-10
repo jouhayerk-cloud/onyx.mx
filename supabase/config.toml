@@ -24,3 +24,9 @@ verify_jwt = false
 # All callers must provide a valid Supabase JWT. The function then checks
 # the caller's role in app_users before granting access to tools.
 verify_jwt = true
+
+[functions.siri-inventory]
+# Read-only Siri and Apple Shortcut voice adapter for warehouse inventory queries.
+# Verifies incoming caller JWT before delegating to executeOnyxDataTool.
+verify_jwt = true
+
