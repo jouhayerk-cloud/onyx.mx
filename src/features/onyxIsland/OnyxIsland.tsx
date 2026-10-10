@@ -196,7 +196,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     const update = () => {
       setIslandWidth(el.getBoundingClientRect().width);
       const style = window.getComputedStyle(el);
-      setIslandFont(`${style.fontWeight || '600'} ${style.fontSize || '13px'} ${style.fontFamily || 'sans-serif'}`);
+      setIslandFont(`600 11px ${style.fontFamily || 'sans-serif'}`);      // the launcher titles are 11 px, under the icon
       setIslandIconWidth(parseInt(style.getPropertyValue('--isl-target')) || 44);
     };
     const observer = new ResizeObserver(update);
@@ -212,7 +212,8 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   }, []);
 
   const getLabelWidthFn = useCallback((tool: ToolDescriptor) => {
-    return Math.ceil(measureTextW(tool.short || tool.label, islandFont)) + 6;
+    // a labelled launcher is as wide as its title plus 16 px of padding, never narrower than the icon; fitTools adds the icon width itself
+    return Math.max(0, Math.ceil(measureTextW(tool.short || tool.label, islandFont)) + 16 - islandIconWidth);
   }, [islandFont]);
 
   const hasLaunchers = leftLaunchers.length > 0 || rightLaunchers.length > 0;
@@ -221,7 +222,8 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const faceSize = mode === 'rest' ? (docked ? 52 : 64) : 52;
   const budget = Math.max(0, (islandWidth - faceSize - 24 - 18) / 2);
   const isShelfVisible = mode === 'rest' && (storedDeploy === 3 || tempShelfOpen);
-  const deployForFit = isShelfVisible ? 3 : storedDeploy;
+  // the deployed island no longer lists tools, so the dock row keeps fitting the width (level 3 would show every tool and overflow a phone)
+  const deployForFit: IslandDeploy = (isShelfVisible || storedDeploy === 3) ? 'auto' : storedDeploy;
   
   const leftFit = fitTools(budget, leftLaunchers, deployForFit, getLabelWidthFn, islandIconWidth, 2, 0, islandIconWidth);
   const rightFit = fitTools(budget, rightLaunchers, deployForFit, getLabelWidthFn, islandIconWidth, 2, 0, islandIconWidth);
