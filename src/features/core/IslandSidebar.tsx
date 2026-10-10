@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAtom, useSetAtom } from 'jotai/react';
 import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import { isPrintCenterOpenAtom } from '../print/printState';
@@ -14,12 +14,14 @@ import {
 import {
     Shield, CreditCard, Truck, Package, MapPin,
     ChevronRight, Zap, BarChart3, LayoutDashboard, Pipette, Layers,
-    Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Album, Shell, Printer
+    Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Album, Shell, Printer,
+    ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { tr } from '../../lib/i18n';
 import './islandSidebar.css';
+import './islandSidebarRail.css';
 
 const ICON_MAP: Record<string, React.FC<any>> = {
     truck: Truck,
@@ -44,11 +46,17 @@ interface NavItemProps {
     isActive: boolean;
     action: () => void;
     isCompact: boolean;
+    isRail: boolean;
     isHoverPeek: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, action, isCompact, isHoverPeek }) => {
+const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, action, isCompact, isRail, isHoverPeek }) => {
     const [isHovered, setIsHovered] = useState(false);
+    
+    const showExpanded = (!isCompact && !isRail) || isHoverPeek;
+    const showRail = isRail && !isHoverPeek;
+    const showCompact = isCompact && !isHoverPeek;
+
     return (
         <a 
             href="#" 
@@ -59,17 +67,17 @@ const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, action, 
             aria-current={isActive ? 'page' : undefined}
             role="button"
         >
-            <div className="isb-item-main">
+            <div className={`isb-item-main ${showRail ? 'isb-item-main-rail' : ''}`}>
                 <div className="isb-item-icon">
                     <Icon size={22} strokeWidth={isActive ? 2 : 1.75} />
                 </div>
-                <div className={`isb-label-wrap ${(!isCompact || isHoverPeek) ? 'isb-label-expanded' : 'isb-label-compact'}`}>
-                    <div className="isb-item-label">{label}</div>
+                <div className={`isb-label-wrap ${showExpanded ? 'isb-label-expanded' : showRail ? 'isb-label-rail' : 'isb-label-compact'}`}>
+                    <div className={`isb-item-label ${showRail ? 'isb-item-label-rail' : ''}`}>{label}</div>
                 </div>
             </div>
             
             <AnimatePresence>
-                {isCompact && !isHoverPeek && isHovered && (
+                {showCompact && isHovered && (
                     <m.div 
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -97,11 +105,12 @@ interface NavItemWithSubmenuProps {
         icon: string;
     }[];
     isCompact: boolean;
+    isRail: boolean;
     isHoverPeek: boolean;
     onHideSidebarMobile: () => void;
 }
 
-const NavItemWithSubmenuComponent: React.FC<NavItemWithSubmenuProps> = React.memo(({ viewId, label, icon, subItems, isCompact, isHoverPeek, onHideSidebarMobile }) => {
+const NavItemWithSubmenuComponent: React.FC<NavItemWithSubmenuProps> = React.memo(({ viewId, label, icon, subItems, isCompact, isRail, isHoverPeek, onHideSidebarMobile }) => {
     const [activeView] = useAtom(activeViewAtom);
     const [activeSubMenu, setActiveSubMenu] = useAtom(activeSubMenuAtom);
     
@@ -115,7 +124,11 @@ const NavItemWithSubmenuComponent: React.FC<NavItemWithSubmenuProps> = React.mem
         setActiveSubMenu(isOpen ? null : viewId);
     };
 
-    const showFlyout = isCompact && !isHoverPeek && isHovered;
+    const showExpanded = (!isCompact && !isRail) || isHoverPeek;
+    const showRail = isRail && !isHoverPeek;
+    const showCompact = isCompact && !isHoverPeek;
+    
+    const showFlyout = (showCompact || showRail) && isHovered;
 
     return (
         <div 
@@ -130,21 +143,21 @@ const NavItemWithSubmenuComponent: React.FC<NavItemWithSubmenuProps> = React.mem
                 role="button"
                 aria-expanded={isOpen}
             >
-                <div className="isb-item-main">
+                <div className={`isb-item-main ${showRail ? 'isb-item-main-rail' : ''}`}>
                     <div className="isb-item-icon">
                         <NavIcon size={22} strokeWidth={isParentActive ? 2 : 1.75} />
                     </div>
-                    <div className={`isb-label-wrap ${(!isCompact || isHoverPeek) ? 'isb-label-expanded' : 'isb-label-compact'}`}>
-                        <div className="isb-item-label">{label}</div>
+                    <div className={`isb-label-wrap ${showExpanded ? 'isb-label-expanded' : showRail ? 'isb-label-rail' : 'isb-label-compact'}`}>
+                        <div className={`isb-item-label ${showRail ? 'isb-item-label-rail' : ''}`}>{label}</div>
                     </div>
                 </div>
-                <div className={`isb-chevron-wrap ${(!isCompact || isHoverPeek) ? 'isb-label-expanded' : 'isb-label-compact'}`}>
+                <div className={`isb-chevron-wrap ${showExpanded ? 'isb-label-expanded' : 'isb-label-compact'} ${showRail ? 'isb-chevron-wrap-rail' : ''}`}>
                     <div className={`isb-chevron ${isOpen ? 'isb-chevron-open' : ''}`}>
                         <ChevronRight size={16} strokeWidth={2} />
                     </div>
                 </div>
 
-                {isCompact && !isHoverPeek && isHovered && !showFlyout && (
+                {showCompact && isHovered && !showFlyout && (
                     <div className="isb-tooltip">{label}</div>
                 )}
             </a>
@@ -178,7 +191,7 @@ const NavItemWithSubmenuComponent: React.FC<NavItemWithSubmenuProps> = React.mem
             </AnimatePresence>
 
             <AnimatePresence>
-                {(!isCompact || isHoverPeek) && isOpen && (
+                {showExpanded && isOpen && (
                     <m.div 
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
@@ -207,12 +220,19 @@ const NavItemWithSubmenuComponent: React.FC<NavItemWithSubmenuProps> = React.mem
     );
 });
 
-const SidebarSection: React.FC<{ title: string, show: boolean, isCompact: boolean, isHoverPeek: boolean, children: React.ReactNode }> = ({ title, show, isCompact, isHoverPeek, children }) => {
+const SidebarSection: React.FC<{ title: string, show: boolean, isCompact: boolean, isRail: boolean, isHoverPeek: boolean, children: React.ReactNode }> = ({ title, show, isCompact, isRail, isHoverPeek, children }) => {
     const hasRenderableChildren = React.Children.toArray(children).some(child => !!child);
     if (!show || !hasRenderableChildren) return null;
+    
+    const showExpanded = (!isCompact && !isRail) || isHoverPeek;
+    const showRail = isRail && !isHoverPeek;
+
     return (
         <div className="isb-section">
-            <div className={`isb-section-title ${(!isCompact || isHoverPeek) ? 'isb-label-expanded' : 'isb-label-compact'}`}>
+            <div 
+                className={`isb-section-title ${showExpanded ? 'isb-label-expanded' : showRail ? 'isb-label-rail' : 'isb-label-compact'}`}
+                title={showRail ? title : undefined}
+            >
                 {title}
             </div>
             <div className="isb-section-items">
@@ -225,6 +245,7 @@ const SidebarSection: React.FC<{ title: string, show: boolean, isCompact: boolea
 export const IslandSidebar: React.FC = () => {
     const [user] = useAtom(userAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
+    const [activeSubMenu] = useAtom(activeSubMenuAtom);
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
     const setLogisticsSubTab = useSetAtom(logisticsSubTabAtom);
     const [isSettingsOpen, setIsSettingsOpen] = useAtom(isStudioSettingsOpenAtom);
@@ -232,11 +253,15 @@ export const IslandSidebar: React.FC = () => {
     
     const [isHoverPeek, setIsHoverPeek] = useState(false);
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+    const [scrollState, setScrollState] = useState({ top: false, bottom: false });
 
     const isCompact = sidebarState === 'compact';
+    const isRail = sidebarState === 'rail';
+    const showExpanded = (!isCompact && !isRail) || isHoverPeek;
     
     const handleMouseEnter = () => {
-        if (!isCompact) return;
+        if (!isCompact && !isRail) return;
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = setTimeout(() => {
             setIsHoverPeek(true);
@@ -248,16 +273,61 @@ export const IslandSidebar: React.FC = () => {
         setIsHoverPeek(false);
     };
 
-    const handleSidebarStateToggle = () => {
+    const handleSidebarStateToggle = useCallback(() => {
         setSidebarState(current => {
-            const states: SidebarState[] = ['expanded', 'compact', 'hidden'];
             const isMobile = window.innerWidth <= 768;
             if (isMobile) return current === 'hidden' ? 'compact' : 'hidden';
+            const states: SidebarState[] = ['expanded', 'rail', 'compact', 'hidden'];
             const currentIndex = states.indexOf(current);
             const nextIndex = (currentIndex + 1) % states.length;
             return states[nextIndex];
         });
-    };
+    }, [setSidebarState]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
+            if (isInput) return;
+
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+                e.preventDefault();
+                handleSidebarStateToggle();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleSidebarStateToggle]);
+
+    const handleScroll = useCallback(() => {
+        if (!listRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+        setScrollState({
+            top: scrollTop > 0,
+            bottom: Math.ceil(scrollTop + clientHeight) < scrollHeight - 2
+        });
+    }, []);
+
+    useEffect(() => {
+        handleScroll();
+        window.addEventListener('resize', handleScroll);
+        return () => window.removeEventListener('resize', handleScroll);
+    }, [handleScroll, sidebarState, isHoverPeek]);
+    
+    useEffect(() => {
+        if (!listRef.current) return;
+        const ob = new MutationObserver(() => handleScroll());
+        ob.observe(listRef.current, { childList: true, subtree: true });
+        return () => ob.disconnect();
+    }, [handleScroll]);
+    
+    useEffect(() => {
+        if (!listRef.current) return;
+        const activeItem = listRef.current.querySelector('.isb-item-active');
+        if (activeItem) {
+            activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }, [activeView, activeSubMenu, isPrintCenterOpen]);
 
     // On a phone the rail floats over the list and would cover its first column: after a choice it goes away completely
     // (the island's menu launcher brings it back).
@@ -279,36 +349,55 @@ export const IslandSidebar: React.FC = () => {
     };
 
     return (
-        <LazyMotion features={domAnimation}>
         <>
-        
+        {sidebarState === 'hidden' && (
+            <button 
+                className="isb-edge-tab hidden md:flex" 
+                onClick={() => setSidebarState('expanded')}
+                aria-label={tr("Show sidebar")}
+            >
+                <ChevronsRight size={16} />
+            </button>
+        )}
+        <LazyMotion features={domAnimation}>
         <div 
             className="isb-panel ui-root" 
             style={panelStyle}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
-                        <div className="isb-header">
+            <div className="isb-header relative flex-col">
                 <div 
-                    className="isb-top flex flex-col items-center justify-center cursor-pointer"
+                    className="isb-top flex flex-col items-center justify-center cursor-pointer w-full"
                     onClick={handleSidebarStateToggle}
                     title={tr("Toggle Sidebar")}
                     role="button"
                 >
-                    {(!isCompact || isHoverPeek) ? (
+                    {showExpanded ? (
                         <>
                             <OnyxLogo className="w-16 h-16 transition-transform duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:scale-105 active:scale-95" />
-                            <div className="isb-logo-text mt-1 text-white opacity-80 font-bold tracking-widest text-sm">Onyx.mx</div>
+                            <div className="isb-logo-text isb-height-aware mt-1 text-white opacity-80 font-bold tracking-widest text-sm">Onyx.mx</div>
                         </>
                     ) : (
                         <OnyxMiniLogo className="w-10 h-10 transition-transform duration-300 hover:scale-105 active:scale-95 mt-2" />
                     )}
                 </div>
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleSidebarStateToggle(); }}
+                    className={`isb-collapse-btn ${showExpanded ? 'absolute right-3 top-3 isb-height-aware-collapse' : 'mt-2'} text-white/40 hover:text-white`}
+                    aria-label={tr("Toggle Sidebar")}
+                >
+                    {sidebarState === 'expanded' ? <ChevronsLeft size={18} /> : <ChevronsRight size={18} />}
+                </button>
             </div>
 
-            <div className="isb-list">
+            <div 
+                ref={listRef}
+                onScroll={handleScroll}
+                className={`isb-list isb-list--scrollable ${scrollState.top ? 'isb-list--more-top' : ''} ${scrollState.bottom ? 'isb-list--more-bottom' : ''}`}
+            >
                 {showManagement && (
-                    <SidebarSection title={tr("Management")} show={true} isCompact={isCompact} isHoverPeek={isHoverPeek}>
+                    <SidebarSection title={tr("Management")} show={true} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
                         {user?.role === 'Developer' && (
                             <NavItemWithSubmenuComponent
                                 viewId="admin"
@@ -318,6 +407,7 @@ export const IslandSidebar: React.FC = () => {
                                     { id: 'control', label: tr("Control Center"), icon: 'shield', action: () => { setActiveView('control'); handleMobileHide(); }, isActive: activeView === 'control' }
                                 ]}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                                 onHideSidebarMobile={handleMobileHide}
                             />
@@ -329,6 +419,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={activeView === 'dashboard'}
                                 action={() => { setActiveView('dashboard'); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -339,6 +430,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={activeView === 'workbook'}
                                 action={() => { setActiveView('workbook'); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -349,6 +441,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={activeView === 'finance'}
                                 action={() => { setActiveView('finance'); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -359,6 +452,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={activeView === 'devices'}
                                 action={() => { setActiveView('devices'); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -366,7 +460,7 @@ export const IslandSidebar: React.FC = () => {
                 )}
 
                 {showLogistics && (
-                    <SidebarSection title={tr("Logistics")} show={true} isCompact={isCompact} isHoverPeek={isHoverPeek}>
+                    <SidebarSection title={tr("Logistics")} show={true} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
                             <NavItem
                                 icon={Album}
@@ -374,6 +468,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={activeView === 'inventory'}
                                 action={() => { setActiveView('inventory'); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -384,6 +479,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={activeView === 'warehouse'}
                                 action={() => { setActiveView('warehouse'); setLogisticsSubTab('empty'); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -394,6 +490,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={activeView === 'trucking'}
                                 action={() => { setActiveView('trucking'); setLogisticsSubTab('shipping'); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -401,7 +498,7 @@ export const IslandSidebar: React.FC = () => {
                 )}
 
                 {showTools && (
-                    <SidebarSection title={tr("Tools")} show={true} isCompact={isCompact} isHoverPeek={isHoverPeek}>
+                    <SidebarSection title={tr("Tools")} show={true} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
                             <NavItemWithSubmenuComponent
                                 viewId="labs"
@@ -412,6 +509,7 @@ export const IslandSidebar: React.FC = () => {
                                     { id: 'threed', label: tr("3D and AR"), icon: 'rotate-3d', action: () => { setActiveView('threed'); handleMobileHide(); }, isActive: activeView === 'threed' }
                                 ]}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                                 onHideSidebarMobile={handleMobileHide}
                             />
@@ -423,6 +521,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={isPrintCenterOpen}
                                 action={() => { setIsPrintCenterOpen(open => !open); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -433,6 +532,7 @@ export const IslandSidebar: React.FC = () => {
                                 isActive={activeView === 'viewer'}
                                 action={() => { setActiveView('viewer'); handleMobileHide(); }}
                                 isCompact={isCompact}
+                                isRail={isRail}
                                 isHoverPeek={isHoverPeek}
                             />
                         )}
@@ -441,12 +541,12 @@ export const IslandSidebar: React.FC = () => {
             </div>
 
             <div 
-                className={`isb-footer ${isSettingsOpen ? 'isb-footer-active' : ''}`}
+                className={`isb-footer isb-footer-height-aware ${isSettingsOpen ? 'isb-footer-active' : ''}`}
                 onClick={() => setIsSettingsOpen(true)}
                 title={tr("Studio Settings & Manifesto")}
                 role="button"
             >
-                {(!isCompact || isHoverPeek) ? (
+                {showExpanded ? (
                     <>
                         <OnyxMiniLogo className={`w-8 h-8 transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : 'opacity-80'}`} />
                         <div className="mt-4">
@@ -463,8 +563,8 @@ export const IslandSidebar: React.FC = () => {
                 )}
             </div>
         </div>
-        </>
         </LazyMotion>
+        </>
     );
 };
 
