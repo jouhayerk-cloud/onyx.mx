@@ -133,24 +133,149 @@ html.style-slab .smd-card.smd-card [role="button"] {
 
 /* Aqua Pass Adjustments */
 html.theme-aqua .smd-card {
-  color: var(--text-color, #0b2a33) !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.70)) !important;
+  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.3) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.4) 100%)) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.85),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
+    0 14px 40px rgba(11, 42, 51, 0.12),
+    0 1px 3px rgba(11, 42, 51, 0.08) !important;
+  color: #0b2a33 !important;
 }
 
 html.theme-aqua .smd-card-title {
-  color: rgba(11, 42, 51, 0.6) !important;
+  color: rgba(11, 42, 51, 0.75) !important;
+  font-weight: 900;
 }
 
 html.theme-aqua .smd-close-btn {
-  color: rgba(11, 42, 51, 0.6) !important;
-  background: rgba(0, 0, 0, 0.05) !important;
+  color: rgba(11, 42, 51, 0.72) !important;
+  background: rgba(11, 42, 51, 0.06) !important;
 }
 
 html.theme-aqua .smd-close-btn:hover {
-  background: rgba(0, 0, 0, 0.12) !important;
-  color: var(--text-color, #0b2a33) !important;
+  background: rgba(11, 42, 51, 0.14) !important;
+  color: #0b2a33 !important;
 }
 
+/* Search box placeholder and input inside sub menu bars */
+html.theme-aqua .smd-card input {
+  color: #0b2a33 !important;
+}
+html.theme-aqua .smd-card input::placeholder,
+html.theme-aqua .smd-card [placeholder]::placeholder {
+  color: rgba(11, 42, 51, 0.58) !important;
+  opacity: 1 !important;
+}
+
+/* Small caps labels ("AI CONTENT", "ALL VENDORS", "SORT BY", "DENSITY") */
+html.theme-aqua .smd-card [class*="uppercase"]:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .smd-card [class*="tracking-"]:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) {
+  color: rgba(11, 42, 51, 0.75) !important;
+  font-weight: 700;
+}
+
+/* Count numbers next to AI content chips (485, 451...) */
+html.theme-aqua .smd-card .font-mono:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .smd-card button span.font-mono,
+html.theme-aqua .smd-card [role="button"] span.font-mono {
+  color: rgba(11, 42, 51, 0.72) !important;
+}
+
+/* Icon captions under filter tiles (ALL, NEW, PACKED...) */
+html.theme-aqua .smd-card button:not([aria-pressed="true"]):not([data-active="true"]):not([class*="bg-cyan"]):not([class*="bg-blue"]) span,
+html.theme-aqua .smd-card [role="button"]:not([aria-pressed="true"]):not([data-active="true"]):not([class*="bg-cyan"]):not([class*="bg-blue"]) span {
+  color: rgba(11, 42, 51, 0.78) !important;
+}
+
+/* Vendor chips (AM, AN, BT...) unselected outlines & button styles */
+html.theme-aqua .smd-card button:not([aria-pressed="true"]):not([data-active="true"]):not([class*="bg-cyan"]):not([class*="bg-blue"]),
+html.theme-aqua .smd-card [role="button"]:not([aria-pressed="true"]):not([data-active="true"]):not([class*="bg-cyan"]):not([class*="bg-blue"]) {
+  border-color: rgba(11, 42, 51, 0.25) !important;
+  color: #0b2a33 !important;
+}
+
+/* Batch Management bar icons and SVGs */
+html.theme-aqua .smd-card svg:not([class*="text-cyan"]):not([class*="text-blue"]):not([class*="text-green"]):not([class*="text-red"]) {
+  color: rgba(11, 42, 51, 0.78) !important;
+}
+html.theme-aqua .smd-card button:not([aria-pressed="true"]):not([data-active="true"]) svg {
+  color: rgba(11, 42, 51, 0.78) !important;
+}
+
+/* Button hover & active states */
 html.theme-aqua.style-slab .smd-card.smd-card button:not(.smd-close-btn):not([aria-pressed="true"]):not([data-active="true"]):hover {
-  background-color: rgba(0, 0, 0, 0.08) !important;
+  background-color: rgba(11, 42, 51, 0.08) !important;
+}
+
+html.theme-aqua.style-slab .smd-card.smd-card button[aria-pressed="true"],
+html.theme-aqua.style-slab .smd-card.smd-card [role="button"][aria-pressed="true"],
+html.theme-aqua.style-slab .smd-card.smd-card button[data-active="true"],
+html.theme-aqua.style-slab .smd-card.smd-card [role="button"][data-active="true"] {
+  background-color: color-mix(in srgb, var(--main-color, #00aeef) 18%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--main-color, #00aeef) 50%, transparent) !important;
+  color: #007a99 !important;
+}
+
+/* Darker cyan text on light glass */
+html.theme-aqua .smd-card [class*="text-cyan"]:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]),
+html.theme-aqua .smd-card .text-\[var\(--main-color\)\]:not([class*="bg-cyan"]),
+html.theme-aqua .smd-card .text-\[var\(--main-color\,\#00aeef\)\]:not([class*="bg-cyan"]) {
+  color: #007a99 !important;
+}
+
+/* Scoped Tailwind text-white utilities */
+html.theme-aqua .smd-card .text-white\/10:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.60) !important; }
+html.theme-aqua .smd-card .text-white\/20:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.60) !important; }
+html.theme-aqua .smd-card .text-white\/30:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.62) !important; }
+html.theme-aqua .smd-card .text-white\/40:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.65) !important; }
+html.theme-aqua .smd-card .text-white\/50:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.68) !important; }
+html.theme-aqua .smd-card .text-white\/60:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.72) !important; }
+html.theme-aqua .smd-card .text-white\/70:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.80) !important; }
+html.theme-aqua .smd-card .text-white\/80:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: rgba(11, 42, 51, 0.88) !important; }
+html.theme-aqua .smd-card .text-white\/90:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]) { color: #0b2a33 !important; }
+html.theme-aqua .smd-card .text-white:not([class*="bg-cyan"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-\[var\(--main-color\)\]"]) { color: #0b2a33 !important; }
+
+/* Scoped Tailwind bg-white utilities */
+html.theme-aqua .smd-card .bg-white\/5 { background-color: rgba(11, 42, 51, 0.05) !important; }
+html.theme-aqua .smd-card .bg-white\/10 { background-color: rgba(11, 42, 51, 0.08) !important; }
+html.theme-aqua .smd-card .bg-white\/15 { background-color: rgba(11, 42, 51, 0.12) !important; }
+html.theme-aqua .smd-card .bg-white\/20 { background-color: rgba(11, 42, 51, 0.16) !important; }
+
+html.theme-aqua .smd-card .hover\:bg-white\/5:hover { background-color: rgba(11, 42, 51, 0.07) !important; }
+html.theme-aqua .smd-card .hover\:bg-white\/10:hover { background-color: rgba(11, 42, 51, 0.10) !important; }
+html.theme-aqua .smd-card .hover\:bg-white\/20:hover { background-color: rgba(11, 42, 51, 0.18) !important; }
+
+/* Scoped Tailwind border-white utilities */
+html.theme-aqua .smd-card .border-white\/5 { border-color: rgba(11, 42, 51, 0.15) !important; }
+html.theme-aqua .smd-card .border-white\/10 { border-color: rgba(11, 42, 51, 0.22) !important; }
+html.theme-aqua .smd-card .border-white\/15 { border-color: rgba(11, 42, 51, 0.26) !important; }
+html.theme-aqua .smd-card .border-white\/20 { border-color: rgba(11, 42, 51, 0.30) !important; }
+html.theme-aqua .smd-card .border-white\/30 { border-color: rgba(11, 42, 51, 0.38) !important; }
+html.theme-aqua .smd-card .border-white { border-color: rgba(11, 42, 51, 0.30) !important; }
+
+/* Preserve white text on solid colored backgrounds */
+html.theme-aqua .smd-card [class*="bg-cyan"] .text-white,
+html.theme-aqua .smd-card [class*="bg-cyan"] [class*="text-white"],
+html.theme-aqua .smd-card [class*="bg-cyan"] svg,
+html.theme-aqua .smd-card [class*="bg-blue"] .text-white,
+html.theme-aqua .smd-card [class*="bg-blue"] [class*="text-white"],
+html.theme-aqua .smd-card [class*="bg-blue"] svg,
+html.theme-aqua .smd-card [class*="bg-green"] .text-white,
+html.theme-aqua .smd-card [class*="bg-green"] [class*="text-white"],
+html.theme-aqua .smd-card [class*="bg-green"] svg,
+html.theme-aqua .smd-card [class*="bg-red"] .text-white,
+html.theme-aqua .smd-card [class*="bg-red"] [class*="text-white"],
+html.theme-aqua .smd-card [class*="bg-red"] svg {
+  color: #ffffff !important;
+}
+
+/* Reduced transparency fallback */
+@media (prefers-reduced-transparency: reduce) {
+  html.theme-aqua .smd-card {
+    background-color: #f0f7f9 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
 }
