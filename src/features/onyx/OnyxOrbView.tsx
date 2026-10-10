@@ -10,6 +10,8 @@ import {
 import { useAtom, useAtomValue } from 'jotai';
 import { tr } from '../../lib/i18n';
 
+/** Main Onyx view: the orb, the chat, an error HUD and the setup and context dialogs. */
+
 export function OnyxOrbView() {
     const onyx = useOnyx();
     const [isContextOpen, setIsContextOpen] = useState(false);
