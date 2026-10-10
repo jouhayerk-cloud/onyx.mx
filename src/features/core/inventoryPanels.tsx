@@ -1,3 +1,4 @@
+import { SeasonToggles } from './SeasonToggles';
 import React from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { 
@@ -124,11 +125,26 @@ const SmartFilterGroup: React.FC<{
 export const InventorySearchPanel: React.FC = () => {
     const [invSearchTerm, setInvSearchTerm] = useAtom(inventorySearchTermAtom);
 
+    // A plain input: the smart search itself lives in the inventory filter that reads inventorySearchTermAtom
     return (
-        <div className="flex items-center gap-6 group transition-all w-full flex-wrap p-4">
-            <Search size={28} strokeWidth={3} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
-            <input autoFocus type="text" value={invSearchTerm} onChange={(e) => setInvSearchTerm(e.target.value)} placeholder={tr("SEARCH INVENTORY...")} className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none flex-1 tracking-tight min-w-[200px]" />
-            {invSearchTerm && <button onClick={() => setInvSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={28} strokeWidth={3} /></button>}
+        <div className="utb-row utb-search-row">
+            <div className="utb-search-container">
+                <Search size={16} strokeWidth={3} className="utb-search-icon" aria-hidden="true" />
+                <input
+                    autoFocus
+                    type="text"
+                    value={invSearchTerm}
+                    onChange={(e) => setInvSearchTerm(e.target.value)}
+                    placeholder={tr("SEARCH INVENTORY...")}
+                    aria-label={tr("Search")}
+                    className="utb-search-input"
+                />
+                {invSearchTerm && (
+                    <button onClick={() => setInvSearchTerm('')} className="utb-control utb-clear-btn utb-icon-only" aria-label={tr("Clear")} title={tr("Clear")}>
+                        <X size={16} strokeWidth={3} />
+                    </button>
+                )}
+            </div>
         </div>
     );
 };
@@ -152,88 +168,65 @@ export const InventoryViewPanel: React.FC = () => {
         }
     };
 
+    const densityLabel = invSlider <= 33 ? tr("Compact") : invSlider <= 66 ? tr("Standard") : tr("Spacious");
+    const DensityIcon = invSlider <= 33 ? LayoutList : invSlider <= 66 ? LayoutGrid : Layout;
+
     return (
-        <div className="flex flex-col w-full animate-in slide-in-from-top-4 duration-500 py-2 gap-6 p-4">
-            <div className="flex flex-wrap items-center gap-8 w-full justify-between">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <button 
-                        onClick={handleToggleDensity}
-                        className="relative w-12 h-12 flex items-center justify-center overflow-hidden group/view transition-transform active:scale-90"
-                    >
-                        <div className="transition-all duration-300 ease-out flex items-center justify-center"
-                             style={{ 
-                                 transform: `scale(${1 + (invSlider / 100) * 0.8})`,
-                                 color: invSlider > 66 ? 'var(--main-color)' : 'white'
-                             }}>
-                            {invSlider <= 33 ? <LayoutList size={24} strokeWidth={2.5} /> : 
-                             invSlider <= 66 ? <LayoutGrid size={24} strokeWidth={2.5} /> : 
-                             <Layout size={24} strokeWidth={2.5} />}
-                        </div>
-                        <div className="absolute inset-0 opacity-20 transition-all duration-500"
-                             style={{ 
-                                 background: `radial-gradient(circle, var(--main-color) 0%, transparent 70%)`,
-                                 opacity: (invSlider / 100) * 0.3
-                             }} />
-                    </button>
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] leading-none mb-1">{tr("Density")}</span>
-                        <span className="text-[14px] font-black text-white uppercase tracking-tighter">
-                            {invSlider <= 33 ? tr("Compact") : invSlider <= 66 ? tr("Standard") : tr("Spacious")}
-                        </span>
-                    </div>
-                </div>
-                <div className="flex-1 relative flex items-center group px-4 min-w-[200px]">
-                    <div className="absolute left-4 right-4 h-1.5 bg-white/5 rounded-full" />
-                    <div className="absolute left-4 h-1.5 bg-white/20 rounded-full transition-all duration-300" 
-                         style={{ width: `calc(${(invSlider / 100) * 100}% - 8px)` }} />
-                    <input 
-                        type="range" min="1" max="100" step="1" value={invSlider} 
-                        onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            setInvSlider(val);
-                            if (val <= 33) setInvMode('list');
-                            else if (val <= 66) setInvMode('grid');
-                            else setInvMode('gallery');
-                        }}
-                        className="w-full h-8 bg-transparent appearance-none cursor-pointer relative z-10 
-                                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 
-                                   [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(255,255,255,0.5)]
-                                   [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-black [&::-webkit-slider-thumb]:transition-transform"
-                    />
-                </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 w-full">
-                <div className="flex items-center gap-2 text-white/20 uppercase font-black text-[9px] tracking-[0.2em]">
-                    <ArrowUpDown size={17} />
-                    <span>{tr("SORT BY")}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    {[
-                        { key: 'Date', label: tr("DATE") },
-                        { key: 'Vendor', label: 'VENDOR' },
-                        { key: 'Status', label: tr("STATUS") },
-                        { key: 'Number', label: tr("NUM") },
-                        { key: 'Value', label: tr("VALUE") },
-                        { key: 'Qty', label: 'QTY' }
-                    ].map(sort => (
-                    <div key={sort.key} className="tool-cell flex flex-col items-center gap-1">
+        <div className="utb-row utb-view-row">
+            <button onClick={handleToggleDensity} className="utb-control utb-view-density" aria-label={tr("Density")} title={tr("Density") + ': ' + densityLabel}>
+                <DensityIcon size={16} strokeWidth={2.4} />
+                <span className="utb-view-density-text">{densityLabel}</span>
+            </button>
+
+            <input
+                type="range" min="1" max="100" step="1" value={invSlider}
+                aria-label={tr("Size")}
+                onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setInvSlider(val);
+                    if (val <= 33) setInvMode('list');
+                    else if (val <= 66) setInvMode('grid');
+                    else setInvMode('gallery');
+                }}
+                className="utb-view-slider"
+                style={{ ['--utb-fill' as string]: `${invSlider}%` } as React.CSSProperties}
+            />
+
+            <div className="utb-divider shrink-0" aria-hidden="true" />
+
+            <div className="utb-view-sort" role="group" aria-label={tr("SORT BY")}>
+                <ArrowUpDown size={14} className="utb-view-sort-icon" aria-hidden="true" />
+                {[
+                    { key: 'Date', label: tr("DATE") },
+                    { key: 'Vendor', label: tr("VENDOR") },
+                    { key: 'Status', label: tr("STATUS") },
+                    { key: 'Number', label: tr("NUM") },
+                    { key: 'Value', label: tr("VALUE") },
+                    { key: 'Qty', label: tr("QTY") }
+                ].map(sort => {
+                    const on = invSortKey === sort.key;
+                    return (
                         <button
-                            aria-pressed={invSortKey === sort.key}
+                            key={sort.key}
+                            aria-pressed={on}
                             title={sort.label}
                             onClick={() => {
-                                if (invSortKey === sort.key) setInvSortOrder(invSortOrder === 'asc' ? 'desc' : 'asc');
+                                if (on) setInvSortOrder(invSortOrder === 'asc' ? 'desc' : 'asc');
                                 else { setInvSortKey(sort.key as any); setInvSortOrder('desc'); }
                             }}
-                            className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
-                            {invSortKey === sort.key
-                                ? (invSortOrder === 'asc' ? <ArrowUp size={18} strokeWidth={3} /> : <ArrowDown size={18} strokeWidth={3} />)
-                                : <ArrowUpDown size={18} strokeWidth={2.2} />}
+                            className="utb-control utb-sort-chip"
+                        >
+                            <span>{sort.label}</span>
+                            {on && (invSortOrder === 'asc' ? <ArrowUp size={12} strokeWidth={3} /> : <ArrowDown size={12} strokeWidth={3} />)}
                         </button>
-                        <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{sort.label}</span>
-                    </div>
-                    ))}
-                </div>
+                    );
+                })}
             </div>
+
+            <div className="utb-divider shrink-0" aria-hidden="true" />
+
+            {/* the workbook (season) toggles 825, 326 and 826 live here, not in the island */}
+            <SeasonToggles />
         </div>
     );
 };
@@ -342,13 +335,22 @@ const STATUS_FILTERS = [
     { id: 'Paid', icon: DollarSign, color: '#10b981' }
 ];
 
+// Dark text on a light vendor colour, white text on a dark one (relative luminance of the hex colour)
+const readableOn = (hex: string): string => {
+    const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
+    if (!m) return '#0b1118';
+    const n = parseInt(m[1], 16);
+    const lin = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const lum = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+    return lum > 0.35 ? '#0b1118' : '#ffffff';
+};
+
 export const InventoryFiltersPanel: React.FC = () => {
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [contentSel, setContentSel] = useAtom(inventoryContentFilterAtom);
     const [invVendorFilter, setInvVendorFilter] = useAtom(inventoryVendorFilterAtom);
     const activeVendors = useAtomValue(activeVendorsAtom);
     const inventoryRows = useAtomValue(inventoryAtom);
-    const contentCounts = React.useMemo(() => countContent(inventoryRows || []), [inventoryRows]);
 
     const isStatusActive = invStatusFilter !== 'All';
     const aiActiveCount = (contentSel || []).length;
@@ -388,6 +390,7 @@ export const InventoryFiltersPanel: React.FC = () => {
                             </button>
                         );
                     })}
+
                 </div>
 
                 <button
@@ -405,47 +408,23 @@ export const InventoryFiltersPanel: React.FC = () => {
                 </button>
             </div>
 
+            {/* vendors: one row, each in its own colour; with ALL active every vendor shows its colour */}
             <div className="utb-row">
-                <div className="utb-scroll-row">
-                    <span className="utb-label shrink-0">{tr("AI")}</span>
-                    {CONTENT_FILTERS.map(f => {
-                        const on = (contentSel || []).includes(f.key);
-                        const n = contentCounts[f.key as ContentKey] ?? 0;
-                        return (
-                            <button
-                                key={f.key}
-                                onClick={() => setContentSel(prev => {
-                                    const cur = prev || [];
-                                    return cur.includes(f.key)
-                                        ? cur.filter(k => k !== f.key)
-                                        : [...cur, f.key];
-                                })}
-                                aria-pressed={on}
-                                title={tr(f.hint)}
-                                aria-label={tr(f.hint)}
-                                className="utb-control utb-ai-chip"
-                            >
-                                <span>{tr(f.label)}</span>
-                                <span className="utb-count-badge tabular-nums opacity-60">{n}</span>
-                            </button>
-                        );
-                    })}
-
-                    <div className="utb-divider shrink-0" aria-hidden="true" />
-
+                <div className="utb-scroll-row utb-vendor-row" role="group" aria-label={tr("ALL VENDORS")}>
                     <button
                         onClick={() => setInvVendorFilter(['All'])}
                         aria-pressed={invVendorFilter.includes('All')}
                         title={tr("ALL VENDORS")}
                         aria-label={tr("ALL VENDORS")}
-                        className="utb-control utb-vendor-chip"
+                        className="utb-control utb-vendor-chip utb-vendor-all"
                     >
                         <span>{tr("ALL")}</span>
                     </button>
 
                     {activeVendors.map(v => {
                         const vendorColor = (vendors as any)[v]?.color || '#ffffff';
-                        const isActive = invVendorFilter.includes(v) || invVendorFilter.includes('All');
+                        const isAll = invVendorFilter.includes('All');
+                        const isActive = isAll || invVendorFilter.includes(v);
                         return (
                             <button
                                 key={v}
@@ -454,12 +433,8 @@ export const InventoryFiltersPanel: React.FC = () => {
                                 aria-label={v}
                                 onClick={() => setInvVendorFilter(invVendorFilter.includes(v) ? invVendorFilter.filter(x => x !== v).length === 0 ? ['All'] : invVendorFilter.filter(x => x !== v) : [...invVendorFilter.filter(x => x !== 'All'), v])}
                                 className="utb-control utb-vendor-chip"
-                                style={{
-                                    color: isActive ? '#000' : vendorColor,
-                                    backgroundColor: isActive ? vendorColor : 'transparent',
-                                    borderColor: isActive ? 'transparent' : `${vendorColor}40`,
-                                    boxShadow: isActive ? `0 0 12px ${vendorColor}66` : 'none'
-                                }}
+                                data-solo={isActive && !isAll ? 'true' : 'false'}
+                                style={{ ['--vc' as string]: vendorColor, ['--vt' as string]: readableOn(vendorColor) } as React.CSSProperties}
                             >
                                 <span className="tabular-nums tracking-wider">{v}</span>
                             </button>

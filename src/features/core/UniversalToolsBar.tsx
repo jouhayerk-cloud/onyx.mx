@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { 
+    InventorySearchPanel,
+    InventoryViewPanel,
     InventorySmartFiltersPanel,
     InventoryFiltersPanel,
     InventoryPanelsRegistrar
@@ -463,63 +465,17 @@ export const UniversalToolsBar: React.FC = () => {
 
     // Elements
     
-    const renderInvSearch = () => (
-        <div className="utb-row">
-            <div className="utb-search-container">
-                <Search size={16} strokeWidth={3} className="utb-search-icon" />
-                <input autoFocus type="text" placeholder={tr("SEARCH INVENTORY...")} className="utb-search-input" aria-label={tr("Search")} />
-                <button className="utb-control utb-clear-btn utb-icon-only" aria-label={tr("Clear")} title={tr("Clear")}><X size={16} strokeWidth={3}/></button>
-            </div>
-            <div className="utb-scrollable">
-                <button className="utb-control" aria-pressed="true">{tr("ALL")}</button>
-                <button className="utb-control">{tr("IDS")}</button>
-                <button className="utb-control">{tr("VENDORS")}</button>
-            </div>
-        </div>
-    );
+    // The real panels own the state and the handlers (inventorySearchTermAtom, the view slider and sort atoms, the filter atoms): the bars only restyle them
+    const renderInvSearch = () => <InventorySearchPanel />;
+    const renderInvView = () => <InventoryViewPanel />;
+    const renderInvFilters = () => <InventoryFiltersPanel />;
 
-    const renderInvView = () => (
-        <div className="utb-row utb-wrap-360">
-            <div className="utb-segmented" role="group" aria-label={tr("Density")}>
-                <button className="utb-segment" aria-pressed="true" aria-label={tr("Compact")} title={tr("Compact")}><LayoutList size={16} strokeWidth={2}/></button>
-                <button className="utb-segment" aria-pressed="false" aria-label={tr("Cozy")} title={tr("Cozy")}><LayoutGrid size={16} strokeWidth={2}/></button>
-            </div>
-            <div className="utb-slider-wrapper">
-                <span className="text-[12px] font-bold text-white/60 uppercase">{tr("SIZE")}</span>
-                <input type="range" className="utb-slider" min="1" max="5" defaultValue="3" aria-label={tr("Size")} />
-            </div>
-        </div>
-    );
-
-    const renderInvFilters = () => (
-        <div className="utb-row">
-            <div className="utb-filter-badge tabular-nums">
-                <Filter size={16} strokeWidth={2.5} />
-                {allInventory.length}
-            </div>
-            <div className="utb-scrollable">
-                <button className="utb-control" aria-pressed="true">{tr("ALL")}</button>
-                <button className="utb-control">{tr("NEW")}</button>
-                <button className="utb-control">{tr("PACKED")}</button>
-                <button className="utb-control">{tr("SHIPPED")}</button>
-            </div>
-            <button className="utb-control utb-clear-btn utb-icon-only" aria-label={tr("Clear Filters")} title={tr("Clear Filters")}>
-                <X size={18} strokeWidth={2.5} />
-            </button>
-        </div>
-    );
-    
     const renderFinSearch = () => (
         <div className="utb-row">
             <div className="utb-search-container">
                 <Search size={16} strokeWidth={3} className="utb-search-icon" />
                 <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS...")} className="utb-search-input" aria-label={tr("Search")} />
                 {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="utb-control utb-clear-btn utb-icon-only" aria-label={tr("Clear")} title={tr("Clear")}><X size={16} strokeWidth={3}/></button>}
-            </div>
-            <div className="utb-scrollable">
-                <button className="utb-control" aria-pressed="true">{tr("ALL")}</button>
-                <button className="utb-control">{tr("VENDORS")}</button>
-                <button className="utb-control">{tr("DATES")}</button>
             </div>
         </div>
     );
@@ -720,9 +676,9 @@ export const UniversalToolsBar: React.FC = () => {
     const docks: React.ReactNode[] = [];
     
     if (islandEnabled) {
-        if (isInventory && isInvSearchOpen) docks.push(<SubmenuCard key="inv-search" id="inv-search" title={tr("Search")} onClose={() => setIsInvSearchOpen(false)}>{renderInvSearch()}</SubmenuCard>);
-        if (isInventory && isInvViewSliderOpen) docks.push(<SubmenuCard key="inv-view" id="inv-view" title={tr("View")} onClose={() => setIsInvViewSliderOpen(false)}>{renderInvView()}</SubmenuCard>);
-        if (isInventory && isInvFiltersOpen) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} onClose={() => setIsInvFiltersOpen(false)}><InventoryFiltersPanel /></SubmenuCard>);
+        if (isInventory && isInvSearchOpen) docks.push(<SubmenuCard key="inv-search" id="inv-search" title={tr("Search")} hideTitle onClose={() => setIsInvSearchOpen(false)}>{renderInvSearch()}</SubmenuCard>);
+        if (isInventory && isInvViewSliderOpen) docks.push(<SubmenuCard key="inv-view" id="inv-view" title={tr("View")} hideTitle onClose={() => setIsInvViewSliderOpen(false)}>{renderInvView()}</SubmenuCard>);
+        if (isInventory && isInvFiltersOpen) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} hideTitle onClose={() => setIsInvFiltersOpen(false)}><InventoryFiltersPanel /></SubmenuCard>);
         if (isInventory && smartOpen) docks.push(<SubmenuCard key="inv-smart" id="inv-smart" title={tr("Smart Filters")} onClose={() => setSmartOpen(false)}><InventorySmartFiltersPanel /></SubmenuCard>);
         if (isInventory && isSelectionMode) docks.push(<SubmenuCard key="inv-select" id="inv-select" title={tr("Batch Management")} headless onClose={() => setIsSelectionMode(false)}>{renderInvSelection()}</SubmenuCard>);
         if (isFinance && isFinSearchOpen) docks.push(<SubmenuCard key="fin-search" id="fin-search" title={tr("Search Payments")} onClose={() => setIsFinSearchOpen(false)}>{renderFinSearch()}</SubmenuCard>);

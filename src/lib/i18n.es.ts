@@ -3357,4 +3357,6 @@ export const esCatalog: Record<string, string> = {
   'Clear Filters': 'Limpiar filtros',
   'Filters': 'Filtros',
   'Smart Filters': 'Filtros inteligentes',
+  'Seasons': 'Temporadas',
+  'VENDOR': 'PROVEEDOR',
 };

@@ -88,10 +88,12 @@ export const SubmenuCard: React.FC<{
   onClose: () => void;
   /** No title row and no close button (the island tool that opened the bar closes it); `title` is still the accessible name. */
   headless?: boolean;
+  /** Keeps the close button but not the title text (the View bar); `title` is still the accessible name. */
+  hideTitle?: boolean;
   children: React.ReactNode;
-}> = ({ id, title, onClose, headless = false, children }) => {
+}> = ({ id, title, onClose, headless = false, hideTitle = false, children }) => {
   return (
-    <div className="smd-card ui-root" data-bar={id} role="region" aria-label={headless ? title : undefined}>
+    <div className={`smd-card ui-root${hideTitle ? ' smd-card--notitle' : ''}`} data-bar={id} role="region" aria-label={headless || hideTitle ? title : undefined}>
       {!headless && (
         <div className="smd-card-title-area">
           <span className="smd-card-title">{title}</span>

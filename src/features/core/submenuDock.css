@@ -750,3 +750,150 @@ html.theme-aqua .utb-label {
 html.theme-aqua .utb-status-chip:not([aria-pressed="true"]) {
   color: #0b2a33 !important;
 }
+
+/* ── Search, View and Vendor rows (the real panels, restyled) ─────────────────────────────── */
+.utb-search-row .utb-search-container { flex: 1 1 auto; max-width: none; }
+
+/* View bar: density, slider, sort chips and the season toggles 825, 326, 826 in one row that scrolls sideways when it does not fit */
+.utb-view-row {
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.utb-view-row::-webkit-scrollbar { display: none; }
+.utb-view-row > * { flex-shrink: 0; }
+.utb-view-density { padding: 0 10px; }
+.utb-view-density-text { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.utb-view-slider {
+  flex: 1 0 140px;
+  min-width: 140px;
+  max-width: 360px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, currentColor 55%, transparent) var(--utb-fill, 50%), color-mix(in srgb, currentColor 16%, transparent) var(--utb-fill, 50%));
+  cursor: pointer;
+  outline: none;
+}
+.utb-view-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: currentColor;
+  border: 3px solid rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 8px color-mix(in srgb, currentColor 35%, transparent);
+}
+.utb-view-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: currentColor;
+  border: 3px solid rgba(0, 0, 0, 0.55);
+}
+.utb-view-slider:focus-visible { box-shadow: 0 0 0 2px var(--main-color, #00aeef); }
+.utb-view-sort { display: flex; align-items: center; gap: 4px; }
+.utb-view-sort-icon { opacity: 0.4; margin-right: 2px; }
+.utb-sort-chip { height: 28px; padding: 0 8px; gap: 3px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; }
+.utb-view-row .season-toggles { padding-inline: 2px; }
+
+/* Vendors: one row, colour coded; the colours come from the chip style, ALL is neutral */
+.utb-vendor-row { flex-wrap: nowrap; }
+.utb-vendor-all[aria-pressed="true"] { background: #ffffff; color: #0b1118; border-color: #ffffff; }
+html.theme-aqua .utb-vendor-all[aria-pressed="true"] { background: #0b2a33; color: #ffffff; border-color: #0b2a33; }
+
+.season-switch:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--main-color, #00aeef); }
+
+/* Vendor chips: the colour comes from --vc (set per vendor). The slab and Aqua themes paint every pressed or idle button with !important rules, so these are !important and out-rank them on specificity. */
+html:root:root:root .smd-card.smd-card .utb-filters-panel .utb-vendor-chip.utb-vendor-chip:not(.utb-vendor-all) {
+  background-color: transparent !important;
+  color: var(--vc, #ffffff) !important;
+  border-color: color-mix(in srgb, var(--vc, #ffffff) 50%, transparent) !important;
+  box-shadow: none !important;
+}
+html:root:root:root .smd-card.smd-card .utb-filters-panel .utb-vendor-chip.utb-vendor-chip:not(.utb-vendor-all)[aria-pressed="true"] {
+  background-color: var(--vc, #ffffff) !important;
+  color: var(--vt, #0b1118) !important;
+  border-color: var(--vc, #ffffff) !important;
+}
+html:root:root:root .smd-card.smd-card .utb-filters-panel .utb-vendor-chip.utb-vendor-chip:not(.utb-vendor-all)[data-solo="true"] {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--vc, #ffffff) 60%, transparent) !important;
+}
+
+/* a card without its title text (the View bar): no title area on desktop; on a phone the close button floats at the top right so no row is spent on it */
+.smd-card--notitle .smd-card-title-area { display: none; }
+@media (max-width: 768px) {
+  .smd-card--notitle { position: relative; }
+  .smd-card--notitle .smd-card-title-area { display: flex; position: absolute; top: 0; right: 0; height: auto; padding: 0; z-index: 2; }
+  .smd-card--notitle .smd-card-title { display: none; }
+  .smd-card--notitle .smd-card-content { padding-right: 44px; }
+}
+
+/* View bar: the slider knob and the filled part of the track use the active colour; the season switches sit at the right end */
+.utb-view-slider {
+  background: linear-gradient(90deg, var(--main-color, #00aeef) var(--utb-fill, 50%), color-mix(in srgb, currentColor 16%, transparent) var(--utb-fill, 50%));
+}
+.utb-view-slider::-webkit-slider-thumb {
+  background: var(--main-color, #00aeef);
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 0 12px color-mix(in srgb, var(--main-color, #00aeef) 75%, transparent);
+}
+.utb-view-slider::-moz-range-thumb {
+  background: var(--main-color, #00aeef);
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--main-color, #00aeef) 75%, transparent);
+}
+.utb-view-row .season-toggles { margin-left: auto; }
+.smd-card--notitle .smd-card-content { padding-left: 14px; }
+
+/* The slab theme restyles every input with !important, so the View slider needs its own out-ranking rules */
+html:root:root:root .smd-card.smd-card input.utb-view-slider.utb-view-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 2px !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(90deg, var(--main-color, #00aeef) var(--utb-fill, 50%), color-mix(in srgb, currentColor 18%, transparent) var(--utb-fill, 50%)) !important;
+}
+html:root:root:root .smd-card.smd-card input.utb-view-slider.utb-view-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: var(--main-color, #00aeef) !important;
+  border: 3px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 0 14px color-mix(in srgb, var(--main-color, #00aeef) 80%, transparent) !important;
+}
+html:root:root:root .smd-card.smd-card input.utb-view-slider.utb-view-slider::-moz-range-thumb {
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: var(--main-color, #00aeef) !important;
+  border: 3px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--main-color, #00aeef) 80%, transparent) !important;
+}
+
+/* Filters bar without the AI chips: the status chips and the vendor chips grow to use the row, and scroll sideways only when they do not fit */
+.utb-filters-panel .utb-status-chip { flex: 1 0 auto; height: 36px; padding: 0 14px; font-size: 13px; }
+.utb-filters-panel .utb-vendor-row .utb-vendor-chip { flex: 1 0 auto; height: 32px; min-width: 38px; max-width: 72px; font-size: 12px; }
+.utb-filters-panel .utb-vendor-row .utb-vendor-all { max-width: 64px; }
+
+/* View slider: the runnable track must not paint over the tinted fill */
+html:root:root:root .smd-card.smd-card input.utb-view-slider.utb-view-slider::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  background: transparent !important;
+  height: 4px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+html:root:root:root .smd-card.smd-card input.utb-view-slider.utb-view-slider::-webkit-slider-thumb { margin-top: -8px; }
+
+/* the label inside a vendor chip follows the chip text colour (the themes colour spans on their own) */
+html:root:root:root .smd-card.smd-card .utb-filters-panel .utb-vendor-chip.utb-vendor-chip:not(.utb-vendor-all) span { color: inherit !important; }

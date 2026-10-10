@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { SeasonToggles } from './SeasonToggles';
 import type { InventoryItemData } from '../../lib/Types';
 // Navigation Modernization - Atomic Sync Force
 import React, { useState, useMemo, useEffect } from 'react';
@@ -767,36 +768,6 @@ const ToolButton: React.FC<{
         </span>
     </div>
 );
-
-const SeasonToggles: React.FC = () => {
-    const [visible, setVisible] = useAtom(visibleWorkbooksAtom);
-    const flip = (id: WorkbookId) =>
-        setVisible(prev => ({ ...prev, [id]: !(prev?.[id] ?? true) }));
-
-    return (
-        <div className="season-toggles flex items-center gap-2 shrink-0">
-            {WORKBOOK_IDS.map(id => {
-                const on = visible?.[id] ?? true;
-                return (
-                    <button
-                        key={id}
-                        onClick={() => flip(id)}
-                        aria-pressed={on}
-                        className={`season-toggle flex flex-col items-center gap-1 transition-all ${on ? 'text-(--main-color)' : 'text-(--text-color)/35'}`}
-                        title={`${on ? 'Hide' : 'Show'} season ${id.replace('v', '')}`}
-                    >
-                        <span className="season-track relative w-7 h-3.5 rounded-full shrink-0 block">
-                            <span className="season-knob absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all" />
-                        </span>
-                        <span className="text-[9px] font-black uppercase tracking-[0.1em] leading-none">
-                            {id.replace('v', '')}
-                        </span>
-                    </button>
-                );
-            })}
-        </div>
-    );
-};
 
 /**
  * The two bulk-upload actions, lifted out of InventoryBar so they can sit in
@@ -4389,7 +4360,6 @@ export function MainHeader() {
             { id: 'onyx.reset', moduleId: 'onyx', label: tr('Reset credentials'), title: tr('Reset Neural Credentials'), icon: RefreshCw, kind: 'action' as const, group: tr('Onyx'), order: 20, run: () => { if (confirm(tr('Reset Neural Link credentials to system default?'))) { localStorage.removeItem('onyxApiKey'); setOnyxApiKey(''); } } },
         ] : []),        
         { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
-        { id: 'global.export.seasons', moduleId: 'global', label: tr('Seasons'), icon: Layers, kind: 'widget', group: tr('Export'), order: 20, render: () => <SeasonToggles /> },
         { id: 'global.export.sheets', moduleId: 'global', label: tr('Sheets'), icon: FileSpreadsheet, kind: 'widget', group: tr('Export'), order: 30, render: () => <SheetsUploadButton /> },
     ], islandOn);
 
