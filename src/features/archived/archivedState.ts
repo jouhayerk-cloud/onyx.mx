@@ -11,6 +11,7 @@ import type { ArchiveSort } from './useArchiveItems';
 export const archivedVendorAtom = atom<string | 'ALL'>('ALL');
 /** Raw text of the search box; the page debounces it before querying. */
 export const archivedSearchAtom = atom<string>('');
+/** Sort order for archived items, starting on tag. */
 export const archivedSortAtom = atom<ArchiveSort>('tag');
 export const archivedViewModeAtom = atomWithStorage<'gallery' | 'table'>('archivedViewMode', 'gallery');
 export const archivedTabAtom = atom<'Items' | 'Ledger'>('Items');
