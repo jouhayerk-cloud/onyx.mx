@@ -97,8 +97,8 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
     if (ctx.role !== 'Developer' && ctx.role !== 'Admin') {
       return { ok: false, error: 'not allowed' };
     }
-    if (!ctx.deviceId || !ctx.online) {
-      return { ok: false, error: 'no robot online' };
+    if (!ctx.online || ctx.deviceId === null) {
+      return { ok: false, code: 'device_offline', error: 'No robot is online or connected.' };
     }
     const now = Date.now();
     if (now - lastRobotCommandAt < 1000) {
@@ -119,7 +119,15 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
         language = 'es';
       }
       
-      ctx.control.say(text, language);
+      try {
+        const res = await ctx.control.say(text, language);
+        if ((res as unknown) === false) {
+          return { ok: false, code: 'send_failed', error: 'Device control rejected speech command.' };
+        }
+      } catch (err) {
+        return { ok: false, code: 'send_failed', error: err instanceof Error ? err.message : 'Failed to send speech command.' };
+      }
+      // queued means accepted for sending, not executed by the robot
       return { ok: true, queued: true, device_id: ctx.deviceId };
     },
     robot_face: async (args) => {
@@ -135,7 +143,15 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
         duration = clamp(args.duration, 1, 60);
       }
       
-      ctx.control.setFace(expression, duration);
+      try {
+        const res = await ctx.control.setFace(expression, duration);
+        if ((res as unknown) === false) {
+          return { ok: false, code: 'send_failed', error: 'Device control rejected face command.' };
+        }
+      } catch (err) {
+        return { ok: false, code: 'send_failed', error: err instanceof Error ? err.message : 'Failed to send face command.' };
+      }
+      // queued means accepted for sending, not executed by the robot
       return { ok: true, queued: true, device_id: ctx.deviceId };
     },
     robot_move: async (args) => {
@@ -145,7 +161,15 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
       const pan = clamp(Number(args.pan ?? 0), -90, 90);
       const tilt = clamp(Number(args.tilt ?? 0), 0, 90);
       
-      ctx.control.move(pan, tilt);
+      try {
+        const res = await ctx.control.move(pan, tilt);
+        if ((res as unknown) === false) {
+          return { ok: false, code: 'send_failed', error: 'Device control rejected move command.' };
+        }
+      } catch (err) {
+        return { ok: false, code: 'send_failed', error: err instanceof Error ? err.message : 'Failed to send move command.' };
+      }
+      // queued means accepted for sending, not executed by the robot
       return { ok: true, queued: true, device_id: ctx.deviceId };
     },
     robot_show_vendor_card: async (args) => {
@@ -159,7 +183,15 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
         details = args.details.map(d => sanitizeString(String(d)).slice(0, 60)).slice(0, 4);
       }
       
-      ctx.control.showVendorCard(vendor, title, details);
+      try {
+        const res = await ctx.control.showVendorCard(vendor, title, details);
+        if ((res as unknown) === false) {
+          return { ok: false, code: 'send_failed', error: 'Device control rejected vendor card command.' };
+        }
+      } catch (err) {
+        return { ok: false, code: 'send_failed', error: err instanceof Error ? err.message : 'Failed to send vendor card command.' };
+      }
+      // queued means accepted for sending, not executed by the robot
       return { ok: true, queued: true, device_id: ctx.deviceId };
     },
     robot_show_item_card: async (args) => {
@@ -172,7 +204,15 @@ export function createRobotToolHandlers(ctx: RobotToolContext): Record<string, (
       const stock = typeof args.stock === 'number' && Number.isFinite(args.stock) ? args.stock : undefined;
       const vendor = typeof args.vendor === 'string' ? sanitizeString(args.vendor).slice(0, 40) : undefined;
       
-      ctx.control.showInventoryCard(item_id, title, price, stock, vendor);
+      try {
+        const res = await ctx.control.showInventoryCard(item_id, title, price, stock, vendor);
+        if ((res as unknown) === false) {
+          return { ok: false, code: 'send_failed', error: 'Device control rejected item card command.' };
+        }
+      } catch (err) {
+        return { ok: false, code: 'send_failed', error: err instanceof Error ? err.message : 'Failed to send item card command.' };
+      }
+      // queued means accepted for sending, not executed by the robot
       return { ok: true, queued: true, device_id: ctx.deviceId };
     }
   };

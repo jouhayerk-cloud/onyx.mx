@@ -93,9 +93,9 @@ export const SubmenuCard: React.FC<{
   return (
     <div className="smd-card ui-root" data-bar={id} role="region" aria-label={headless ? title : undefined}>
       {!headless && (
-        <div className="smd-card-header">
+        <div className="smd-card-title-area">
           <span className="smd-card-title">{title}</span>
-          <button onClick={onClose} className="smd-close-btn" aria-label={tr("Close")}>
+          <button onClick={onClose} className="smd-close-btn smd-close-mobile" aria-label={tr("Close")}>
             <X size={20} strokeWidth={2.5} />
           </button>
         </div>
@@ -103,6 +103,11 @@ export const SubmenuCard: React.FC<{
       <div className="smd-card-content">
         {children}
       </div>
+      {!headless && (
+        <button onClick={onClose} className="smd-close-btn smd-close-desktop" aria-label={tr("Close")}>
+          <X size={20} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 };

@@ -1,10 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { 
-    InventorySearchPanel, 
-    InventoryViewPanel, 
     InventorySmartFiltersPanel, 
-    InventoryFiltersPanel,
     InventoryPanelsRegistrar
 } from './inventoryPanels';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
@@ -465,14 +462,64 @@ export const UniversalToolsBar: React.FC = () => {
 
     // Elements
     
-    const renderInvSearch = () => <InventorySearchPanel />;
-    const renderInvView = () => <InventoryViewPanel />;
+    const renderInvSearch = () => (
+        <div className="utb-row">
+            <div className="utb-search-container">
+                <Search size={16} strokeWidth={3} className="utb-search-icon" />
+                <input autoFocus type="text" placeholder={tr("SEARCH INVENTORY...")} className="utb-search-input" aria-label={tr("Search")} />
+                <button className="utb-control utb-clear-btn utb-icon-only" aria-label={tr("Clear")} title={tr("Clear")}><X size={16} strokeWidth={3}/></button>
+            </div>
+            <div className="utb-scrollable">
+                <button className="utb-control" aria-pressed="true">{tr("ALL")}</button>
+                <button className="utb-control">{tr("IDS")}</button>
+                <button className="utb-control">{tr("VENDORS")}</button>
+            </div>
+        </div>
+    );
+
+    const renderInvView = () => (
+        <div className="utb-row utb-wrap-360">
+            <div className="utb-segmented" role="group" aria-label={tr("Density")}>
+                <button className="utb-segment" aria-pressed="true" aria-label={tr("Compact")} title={tr("Compact")}><LayoutList size={16} strokeWidth={2}/></button>
+                <button className="utb-segment" aria-pressed="false" aria-label={tr("Cozy")} title={tr("Cozy")}><LayoutGrid size={16} strokeWidth={2}/></button>
+            </div>
+            <div className="utb-slider-wrapper">
+                <span className="text-[12px] font-bold text-white/60 uppercase">{tr("SIZE")}</span>
+                <input type="range" className="utb-slider" min="1" max="5" defaultValue="3" aria-label={tr("Size")} />
+            </div>
+        </div>
+    );
+
+    const renderInvFilters = () => (
+        <div className="utb-row">
+            <div className="utb-filter-badge tabular-nums">
+                <Filter size={16} strokeWidth={2.5} />
+                {allInventory.length}
+            </div>
+            <div className="utb-scrollable">
+                <button className="utb-control" aria-pressed="true">{tr("ALL")}</button>
+                <button className="utb-control">{tr("NEW")}</button>
+                <button className="utb-control">{tr("PACKED")}</button>
+                <button className="utb-control">{tr("SHIPPED")}</button>
+            </div>
+            <button className="utb-control utb-clear-btn utb-icon-only" aria-label={tr("Clear Filters")} title={tr("Clear Filters")}>
+                <X size={18} strokeWidth={2.5} />
+            </button>
+        </div>
+    );
     
     const renderFinSearch = () => (
-        <div className="flex items-center gap-6 group transition-all shrink-0 p-4">
-            <Search size={28} strokeWidth={3} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
-            <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS...")} className="bg-transparent border-none text-white text-2xl font-black placeholder:text-white/10 outline-none w-full tracking-tight" />
-            {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="text-white hover:text-red-500 transition-all p-2"><X size={28} strokeWidth={3} /></button>}
+        <div className="utb-row">
+            <div className="utb-search-container">
+                <Search size={16} strokeWidth={3} className="utb-search-icon" />
+                <input autoFocus type="text" value={finSearchTerm} onChange={(e) => setFinSearchTerm(e.target.value)} placeholder={tr("SEARCH PAYMENTS...")} className="utb-search-input" aria-label={tr("Search")} />
+                {finSearchTerm && <button onClick={() => setFinSearchTerm('')} className="utb-control utb-clear-btn utb-icon-only" aria-label={tr("Clear")} title={tr("Clear")}><X size={16} strokeWidth={3}/></button>}
+            </div>
+            <div className="utb-scrollable">
+                <button className="utb-control" aria-pressed="true">{tr("ALL")}</button>
+                <button className="utb-control">{tr("VENDORS")}</button>
+                <button className="utb-control">{tr("DATES")}</button>
+            </div>
         </div>
     );
 
@@ -501,78 +548,67 @@ export const UniversalToolsBar: React.FC = () => {
     };
 
     const renderInvSelection = (className = "") => (
-        <div className={`w-full mx-auto px-4 py-3 flex items-center gap-3 ${className}`}>
-            {/* Select all and Clear stay at the left end of the bar, outside the scrolling icons */}
-            <div className="flex items-center gap-4 shrink-0 pr-3 border-r border-white/10">
+        <div className={`utb-row ${className}`}>
+            <button onClick={handleSelectAll} className="utb-control" title={tr("Select All")} aria-label={tr("Select All")}>
+                <SquareCheckBig size={18} strokeWidth={2} />
+                <span className="utb-label-desktop">{tr("ALL")}</span>
+            </button>
+            <button 
+                onClick={() => { setSelectedIds([]); toast.success(tr("Selection Cleared")); }}
+                className="utb-control utb-clear-btn utb-icon-only"
+                aria-label={tr("Clear")} title={tr("Clear")}
+            >
+                <X size={18} strokeWidth={2} />
+            </button>
 
-                <button onClick={handleSelectAll} className="text-white/40 hover:text-white transition-all hover:scale-110 group relative p-0 bg-transparent border-none outline-none" title={tr("Select All")}>
-                    <SquareCheckBig size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("ALL")}</span>
-                </button>
-                <button 
-                    onClick={() => { setSelectedIds([]); toast.success(tr("Selection Cleared")); }}
-                    className="text-white/20 hover:text-red-500 transition-all hover:rotate-90 p-0 bg-transparent border-none outline-none shrink-0"
-                >
-                    <X size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                </button>
-            </div>
-            <div className="flex items-center gap-6 shrink-0">
-                <div className="w-12 h-12 rounded-xl bg-(--color-inventory)/10 border border-(--color-inventory)/20 flex items-center justify-center text-(--color-inventory) drop-shadow-[0_0_15px_rgba(var(--color-inventory-rgb),0.3)]">
-                    <SquareCheckBig size={28} strokeWidth={2.5} />
-                </div>
-                <div className="flex flex-col">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-black text-white tracking-tighter">{selectedIds.length}</span>
-                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{tr("Items Selected")}</span>
-                    </div>
-                </div>
+            <div className="utb-filter-badge tabular-nums">
+                {selectedIds.length}
             </div>
 
-            {/* ── Action Buttons (ported from InventorySelectionDock) ── */}
-            <div className="flex-1 min-w-0 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-6 md:gap-8 w-max mx-auto">
-                <button onClick={() => setPrintWizardOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Labels")}>
-                    <Tag size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("LABELS")}</span>
+            <div className="utb-scrollable">
+                <button onClick={() => setPrintWizardOpen(true)} className="utb-control" title={tr("Labels")} aria-label={tr("Labels")}>
+                    <Tag size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">{tr("LABELS")}</span>
                 </button>
-                <button onClick={() => setNFCOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Write NFC")}>
-                    <Nfc size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">NFC</span>
+                <button onClick={() => setNFCOpen(true)} className="utb-control" title={tr("Write NFC")} aria-label={tr("Write NFC")}>
+                    <Nfc size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">NFC</span>
                 </button>
-                <button onClick={() => setPackOpen(true)} className="text-white/40 hover:text-white transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Pack Items")}>
-                    <Package size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PACK")}</span>
+                <button onClick={() => setPackOpen(true)} className="utb-control" title={tr("Pack Items")} aria-label={tr("Pack Items")}>
+                    <Package size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">{tr("PACK")}</span>
                 </button>
-                <button onClick={() => setPayOpen(true)} className="text-white/40 hover:text-green-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Payment Workflow")}>
-                    <DollarSign size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("PAY")}</span>
+                <button onClick={() => setPayOpen(true)} className="utb-control text-green-400" title={tr("Payment Workflow")} aria-label={tr("Payment Workflow")}>
+                    <DollarSign size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">{tr("PAY")}</span>
                 </button>
-                <button onClick={handleOpenTags} className="text-white/40 hover:text-(--main-color) transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Manage Tags")}>
-                    <Tag size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("TAGS")}</span>
+                <button onClick={handleOpenTags} className="utb-control text-[var(--main-color)]" title={tr("Manage Tags")} aria-label={tr("Manage Tags")}>
+                    <Tag size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">{tr("TAGS")}</span>
                 </button>
-                <button onClick={handleCopyTags} className="text-white/40 hover:text-blue-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Copy Tag IDs")}>
-                    <Copy size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("COPY")}</span>
+                <button onClick={handleCopyTags} className="utb-control text-blue-400" title={tr("Copy Tag IDs")} aria-label={tr("Copy Tag IDs")}>
+                    <Copy size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">{tr("COPY")}</span>
                 </button>
-                <button onClick={() => setExportSelectedXLSX(Date.now())} className="text-white/40 hover:text-green-500 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("Export XLSX")}>
-                    <FileSpreadsheet size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-white/10">{tr("EXPORT")}</span>
+                <button onClick={() => setExportSelectedXLSX(Date.now())} className="utb-control text-green-500" title={tr("Export XLSX")} aria-label={tr("Export XLSX")}>
+                    <FileSpreadsheet size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">{tr("EXPORT")}</span>
                 </button>
-                <button onClick={handleOpenAIWizard} className="text-white/40 hover:text-purple-400 transition-all hover:scale-125 group relative p-0 bg-transparent border-none outline-none" title={tr("AI Batch Process")}>
-                    <Sparkles size={24} className="md:w-[28px] md:h-[28px]" strokeWidth={2} />
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-purple-900/90 text-[9px] font-black px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-[0.2em] border border-purple-500/50 text-white">{tr("AI GEN")}</span>
+                <button onClick={handleOpenAIWizard} className="utb-control text-purple-400" title={tr("AI Batch Process")} aria-label={tr("AI Batch Process")}>
+                    <Sparkles size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">{tr("AI GEN")}</span>
                 </button>
-
             </div>
-            </div>
-
         </div>
     );
 
     const renderFinFilters = (className = "") => (
-        <div className={`w-full px-8 py-3 flex items-center justify-between gap-8 overflow-x-auto no-scrollbar ${className}`}>
-            <div className="flex items-center gap-4 shrink-0">
+        <div className={`utb-row ${className}`}>
+            <div className="utb-filter-badge tabular-nums">
+                <Filter size={16} strokeWidth={2.5} />
+                {financeDocs.length}
+            </div>
+            <div className="utb-scrollable">
                 {[
                     { id: 'All', icon: LayoutGrid, color: '#888' },
                     { id: 'Acq', icon: DollarSign, color: '#10b981' },
@@ -587,24 +623,16 @@ export const UniversalToolsBar: React.FC = () => {
                     const Icon = s.icon;
                     const isActive = finCategoryFilter === s.id;
                     return (
-                        <div key={s.id} className="tool-cell flex flex-col items-center gap-1 shrink-0">
-                            <button aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)}
-                                className="tool-btn flex items-center justify-center w-11 h-11 rounded-xl transition-all">
-                                <Icon size={18} strokeWidth={isActive ? 3.5 : 2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
-                            </button>
-                            <span className="tool-label text-[8px] font-black uppercase tracking-[0.16em] leading-none">{s.id}</span>
-                        </div>
+                        <button key={s.id} aria-pressed={isActive} title={s.id} onClick={() => setFinCategoryFilter(s.id as any)} className="utb-control" aria-label={s.id}>
+                            <Icon size={16} strokeWidth={2.5} style={{ color: isActive ? 'var(--main-color)' : s.color }} />
+                            <span className="utb-label-desktop">{s.id.toUpperCase()}</span>
+                        </button>
                     );
                 })}
             </div>
-            <div className="flex items-center gap-5 shrink-0">
-                {Object.entries(destinationsConfig).map(([key, cfg]) => (
-                    <button key={key} onClick={() => setFinDestFilter(finDestFilter === key ? 'All' : key as any)} className={`flex flex-col items-center gap-1 transition-all shrink-0 ${finDestFilter === key ? 'scale-110 grayscale-0 brightness-100' : 'grayscale brightness-50 hover:grayscale-0 hover:brightness-100'}`}>
-                        <img src={cfg.icon} alt={cfg.name} className="w-9 h-4.5 object-contain" />
-                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${finDestFilter === key ? 'text-white' : 'text-zinc-500'}`}>{cfg.name.split(' ')[0]}</span>
-                    </button>
-                ))}
-            </div>
+            <button className="utb-control utb-clear-btn utb-icon-only" onClick={() => setFinCategoryFilter('All')} aria-label={tr("Clear Filters")} title={tr("Clear Filters")}>
+                <X size={18} strokeWidth={2.5} />
+            </button>
         </div>
     );
 
@@ -740,7 +768,7 @@ export const UniversalToolsBar: React.FC = () => {
             )}
 
             {!islandEnabled && isInventory && isInvFiltersOpen && (
-                <InventoryFiltersPanel />
+                renderInvFilters()
             )}
 
         </div>
