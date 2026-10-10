@@ -83,6 +83,7 @@ export interface GeneratePanelProps {
     mode: 'create' | 'edit';
 }
 
+/** Add Entry panel that runs the chosen AI processes and shows what they generated. */
 export function GeneratePanel({
     run, item, processes, onProcessesChange, photos, onGenerate, preparing, prepLabel,
     aiEnabled, onEnableAi, blockedReason, keyMissing, onKeySaved, mode,
