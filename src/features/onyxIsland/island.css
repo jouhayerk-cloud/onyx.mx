@@ -255,7 +255,8 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 
 
 /* Phone: the dock rests on the bottom edge (a small gap above the home indicator), not floating above the list */
-@media (max-width: 768px) { .onyx-island { top: auto !important; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); } }
+/* 10 px above the home indicator's strip (the bar itself sits in the lower part of the inset); 8 px where there is no inset */
+@media (max-width: 768px) { .onyx-island { top: auto !important; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 10px)); } }
 
 
 @media (max-width: 768px) {
