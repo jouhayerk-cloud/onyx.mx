@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useIslandNotifications } from './notify/store';
 import { tr } from '../../lib/i18n';
 
+/** Screen-reader region that announces new island notifications; errors are announced assertively. */
 export const IslandLiveRegion: React.FC = () => {
   const { current } = useIslandNotifications();
   const [politeText, setPoliteText] = useState('');
