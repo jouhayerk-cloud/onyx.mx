@@ -50,6 +50,7 @@ const ROLES = {
     logistics: ['Developer', 'Admin', 'ClientBoss'],
 } as const;
 
+/** Welcome page with tiles for inventory, finance, logistics and shop, each shown by role. */
 export function WelcomeView() {
     const user = useAtomValue(userAtom);
     const setActiveView = useSetAtom(activeViewAtom);
