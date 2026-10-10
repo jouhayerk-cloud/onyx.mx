@@ -1,6 +1,7 @@
 import React from 'react';
 import { vendors } from '../../lib/consts';
 
+/** Truck length in centimetres. */
 export const TRUCK_L_CM = 1615;
 export const TRUCK_W_CM = 244;
 export const BASE_SCALE = 1.5;
