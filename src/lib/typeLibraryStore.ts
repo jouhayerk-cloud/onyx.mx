@@ -102,7 +102,8 @@ export async function hideValue(value: string): Promise<void> {
 }
 
 /** The selector's Type library: inventory rows merged with the saved Types and the hidden values. Fetches them once on mount. */
-export function useTypeLibrary(rows: readonly TypeRow[]): {
+/** `enabled` false (Edit Entry) makes no request: the library is then built from the inventory rows alone. */
+export function useTypeLibrary(rows: readonly TypeRow[], enabled = true): {
     library: TypeEntry[];
     loading: boolean;
     saved: SavedType[];
@@ -116,6 +117,7 @@ export function useTypeLibrary(rows: readonly TypeRow[]): {
     const [reloadToken, setReloadToken] = useState(0);
 
     useEffect(() => {
+        if (!enabled) { setLoading(false); return; }
         let cancelled = false;
         setLoading(true);
         Promise.all([fetchSavedTypes(), fetchHiddenValues()]).then(([types, hiddenValues]) => {
@@ -125,7 +127,7 @@ export function useTypeLibrary(rows: readonly TypeRow[]): {
             setLoading(false);
         });
         return () => { cancelled = true; };
-    }, [reloadToken]);
+    }, [reloadToken, enabled]);
 
     const library = useMemo(() => buildTypeLibrary(rows, saved, hidden), [rows, saved, hidden]);
 
