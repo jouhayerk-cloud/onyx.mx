@@ -1,0 +1,101 @@
+/* Welcome page: Riffle-style inventory folder tray with full vendor colors. */
+
+.hl-tray-stage {
+    width: 100%;
+    height: 100%;
+    outline: none;
+    touch-action: manipulation;
+}
+
+.hl-tray-stage:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--hl-hi, #fff);
+    border-radius: 16px;
+}
+
+.hl-tray-stage svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.hl-tray-stage path {
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.hl-tray-folder {
+    will-change: transform;
+    cursor: pointer;
+}
+
+/* Full colour per vendor */
+.hl-tray-folder .hl-folder-body {
+    fill: var(--c);
+    stroke: color-mix(in srgb, var(--c) 75%, #000);
+    stroke-width: var(--hl-stroke, 1.1);
+}
+
+/* Tab a step lighter */
+.hl-tray-folder .hl-folder-tab {
+    fill: color-mix(in srgb, var(--c) 80%, #fff);
+    stroke: color-mix(in srgb, var(--c) 75%, #000);
+    stroke-width: var(--hl-stroke, 1.1);
+}
+
+/* Crease lines a step darker */
+.hl-tray-folder .hl-folder-crease {
+    fill: none;
+    stroke: color-mix(in srgb, var(--c) 65%, #000);
+    stroke-width: var(--hl-stroke, 1.1);
+}
+
+/* Stood-up active folder */
+.hl-tray-folder.is-active .hl-folder-body {
+    stroke: var(--hl-hi, #fff);
+    stroke-width: calc(var(--hl-stroke, 1.1) * 1.8);
+    filter: drop-shadow(0 -2px 5px color-mix(in srgb, var(--c) 45%, transparent));
+}
+
+.hl-tray-folder.is-active .hl-folder-tab {
+    stroke: var(--hl-hi, #fff);
+    stroke-width: calc(var(--hl-stroke, 1.1) * 1.5);
+    fill: color-mix(in srgb, var(--c) 60%, #fff);
+}
+
+.hl-tray-folder.is-active .hl-folder-crease {
+    stroke: color-mix(in srgb, var(--c) 50%, #000);
+}
+
+/* Aqua theme adjustments: ensure crisp edge stroke on cream background */
+html.theme-aqua .hl-tray-folder .hl-folder-body {
+    fill: var(--c);
+    stroke: color-mix(in srgb, var(--c) 60%, #000);
+    stroke-width: calc(var(--hl-stroke, 1.1) * 1.15);
+}
+
+html.theme-aqua .hl-tray-folder .hl-folder-tab {
+    fill: color-mix(in srgb, var(--c) 85%, #fff);
+    stroke: color-mix(in srgb, var(--c) 60%, #000);
+}
+
+html.theme-aqua .hl-tray-folder .hl-folder-crease {
+    stroke: color-mix(in srgb, var(--c) 50%, #000);
+}
+
+html.theme-aqua .hl-tray-folder.is-active .hl-folder-body {
+    stroke: #0b2a33;
+    stroke-width: calc(var(--hl-stroke, 1.1) * 2);
+}
+
+html.theme-aqua .hl-tray-folder.is-active .hl-folder-tab {
+    stroke: #0b2a33;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hl-tray-folder {
+        will-change: auto;
+        transition: none;
+    }
+}
