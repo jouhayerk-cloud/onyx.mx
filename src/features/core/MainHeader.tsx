@@ -4387,12 +4387,7 @@ export function MainHeader() {
         ...(activeView === 'onyx' ? [
             { id: 'onyx.language', moduleId: 'onyx', label: appLanguage.toUpperCase(), title: tr('Toggle Neural Language'), icon: Languages, kind: 'action' as const, group: tr('Onyx'), order: 10, run: () => setAppLanguage(prev => prev === 'en' ? 'es' : 'en') },
             { id: 'onyx.reset', moduleId: 'onyx', label: tr('Reset credentials'), title: tr('Reset Neural Credentials'), icon: RefreshCw, kind: 'action' as const, group: tr('Onyx'), order: 20, run: () => { if (confirm(tr('Reset Neural Link credentials to system default?'))) { localStorage.removeItem('onyxApiKey'); setOnyxApiKey(''); } } },
-        ] : []),        ...(sidebarState === 'hidden' ? [{
-            id: 'global.sidebar', moduleId: 'global', label: tr('Menu'), title: tr('Onyx.mx Menu'), icon: OnyxMiniLogo as any, kind: 'action' as const, group: tr('Onyx'), order: -10, pinned: true, run: () => {
-                const isMobile = window.innerWidth <= 768;
-                setSidebarState(s => s === 'hidden' ? (isMobile ? 'compact' : 'expanded') : 'hidden');
-            }
-        }] : []),
+        ] : []),        
         { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
         { id: 'global.export.seasons', moduleId: 'global', label: tr('Seasons'), icon: Layers, kind: 'widget', group: tr('Export'), order: 20, render: () => <SeasonToggles /> },
         { id: 'global.export.sheets', moduleId: 'global', label: tr('Sheets'), icon: FileSpreadsheet, kind: 'widget', group: tr('Export'), order: 30, render: () => <SheetsUploadButton /> },
