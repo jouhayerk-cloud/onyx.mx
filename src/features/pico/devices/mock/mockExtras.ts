@@ -8,6 +8,7 @@ export function tick(now: number): void {
   phase = (now / 10000) % (Math.PI * 2);
 }
 
+/** Returns simulated wire-format extra telemetry for a mock device id, or {} when unknown. */
 export function mockExtraFor(deviceId: string): Record<string, unknown> {
   const sin = Math.sin(phase);
   const cos = Math.cos(phase);
