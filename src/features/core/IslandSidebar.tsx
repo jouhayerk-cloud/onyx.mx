@@ -253,6 +253,13 @@ export const IslandSidebar: React.FC = () => {
     const [isPrintCenterOpen, setIsPrintCenterOpen] = useAtom(isPrintCenterOpenAtom);
     
     const [isHoverPeek, setIsHoverPeek] = useState(false);
+    // the round toggle peeks in from the left edge; a tap makes it grow and slide into the page, then the sidebar opens
+    const [toggleOpening, setToggleOpening] = useState(false);
+    const handleToggleOpen = () => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setSidebarState('expanded'); return; }
+        setToggleOpening(true);
+        window.setTimeout(() => { setSidebarState('expanded'); setToggleOpening(false); }, 300);
+    };
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const listRef = useRef<HTMLDivElement>(null);
     const [scrollState, setScrollState] = useState({ top: false, bottom: false });
@@ -508,8 +515,8 @@ export const IslandSidebar: React.FC = () => {
         {sidebarState === 'hidden' && (
             <button
                 type="button"
-                className="isb-toggle-circle"
-                onClick={() => setSidebarState('expanded')}
+                className={`isb-toggle-circle${toggleOpening ? ' is-opening' : ''}`}
+                onClick={handleToggleOpen}
                 aria-label={tr("Show sidebar")}
                 title={tr("Onyx.mx Menu")}
             >

@@ -30,6 +30,8 @@ export interface ToolDescriptor {
   pinned?: boolean;
   /** Side of the face for a pinned launcher in the docked island. Without it the pinned tools are split in two halves. Within a side the launchers follow `order`. */
   dock?: 'left' | 'right';
+  /** Id of the group toggle this tool belongs to (inventory.view belongs to inventory.tools). On a phone the island draws such children as a second row above the main row; elsewhere they stay beside the toggle. */
+  parent?: string;
   disabled?: boolean;
   /** For toggles: current state. */
   pressed?: boolean;
@@ -68,7 +70,7 @@ export const isToolPinned = (tool: ToolDescriptor, overrides: Record<string, boo
 
 /** What changes how a tool is drawn. Closures (run, render) are NOT part of it: they are read through a ref so they are always fresh without re-registering. */
 const signature = (tools: ToolDescriptor[]): string =>
-  tools.map(t => [t.id, t.moduleId, t.label, t.kind, t.group, t.order, t.pinned ? 1 : 0, t.disabled ? 1 : 0, t.pressed ? 1 : 0, t.badge ?? '', t.title ?? '', t.dock ?? '', t.render ? 'w' : '', t.short ?? '', t.priority ?? '', t.essential ? 1 : 0].join('|')).join(';');
+  tools.map(t => [t.id, t.moduleId, t.label, t.kind, t.group, t.order, t.pinned ? 1 : 0, t.disabled ? 1 : 0, t.pressed ? 1 : 0, t.badge ?? '', t.title ?? '', t.dock ?? '', t.parent ?? '', t.render ? 'w' : '', t.short ?? '', t.priority ?? '', t.essential ? 1 : 0].join('|')).join(';');
 
 /**
  * Register a module's tools while the calling component is mounted.

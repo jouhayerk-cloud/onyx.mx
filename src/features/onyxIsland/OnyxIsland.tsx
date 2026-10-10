@@ -165,19 +165,26 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   // a page that gives its tools a dock side (Tools left of the face, Actions right of it) may show more launchers
   const maxDockLaunchers = xl ? 10 : lg ? 8 : 6;
 
-  const { leftLaunchers, rightLaunchers } = useMemo(() => {
-    if (!commandsEnabled) return { leftLaunchers: [] as ToolDescriptor[], rightLaunchers: [] as ToolDescriptor[] };
-    const pinned = allTools.filter(t => isToolPinned(t, pinnedOverrides));
+  // On a phone the children of a group toggle (View, Search, Filter under Tools; Add, Select, Export under Actions) are a second
+  // row above the main row, and the island grows taller. On a desktop they stay beside the toggle (the default configuration).
+  const phoneRows = !md;
+  const { leftLaunchers, rightLaunchers, subRow } = useMemo(() => {
+    const none = [] as ToolDescriptor[];
+    if (!commandsEnabled) return { leftLaunchers: none, rightLaunchers: none, subRow: none };
+    const byOrder = (a: ToolDescriptor, b: ToolDescriptor) => a.order - b.order || a.id.localeCompare(b.id);
+    const allPinned = allTools.filter(t => isToolPinned(t, pinnedOverrides));
+    const pinned = phoneRows ? allPinned.filter(t => !t.parent) : allPinned;
+    const children = phoneRows ? allPinned.filter(t => t.parent).sort(byOrder) : none;
     if (pinned.some(t => t.dock)) {
-      const byOrder = (a: ToolDescriptor, b: ToolDescriptor) => a.order - b.order || a.id.localeCompare(b.id);
       return {
         leftLaunchers: pinned.filter(t => t.dock !== 'right').sort(byOrder).slice(0, maxDockLaunchers),
         rightLaunchers: pinned.filter(t => t.dock === 'right').sort(byOrder).slice(0, maxDockLaunchers),
+        subRow: children,
       };
     }
     const cut = pinned.slice(0, maxLaunchers);
-    return { leftLaunchers: cut.slice(0, Math.ceil(cut.length / 2)), rightLaunchers: cut.slice(Math.ceil(cut.length / 2)) };
-  }, [allTools, pinnedOverrides, maxLaunchers, maxDockLaunchers, commandsEnabled]);
+    return { leftLaunchers: cut.slice(0, Math.ceil(cut.length / 2)), rightLaunchers: cut.slice(Math.ceil(cut.length / 2)), subRow: children };
+  }, [allTools, pinnedOverrides, maxLaunchers, maxDockLaunchers, commandsEnabled, phoneRows]);
 
   const [storedDeploy, setStoredDeploy] = useAtom(islandDeployAtom);
   const setChanDraft = useSetAtom(islandChanDraftAtom);
@@ -414,7 +421,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const panelHeight = 'min(640px, calc(100vh - 96px))';
   let rootStyle: React.CSSProperties = {};
   if (mode === 'rest') {
-    rootStyle = docked ? { width: 'fit-content', maxWidth: 'calc(100vw - 24px)', minHeight: 68, height: 'auto' } : { width: 68, height: 68 };
+    rootStyle = docked ? { width: 'fit-content', maxWidth: 'calc(100vw - 24px)', minWidth: isShelfVisible ? 'min(380px, calc(100vw - 24px))' : undefined, minHeight: 68, height: 'auto' } : { width: 68, height: 68 };
   } else if (mode === 'peek') {
     rootStyle = { width: 'min(440px, calc(100vw - 24px))', height: 68 };
   } else if (mode === 'card') {
@@ -523,6 +530,11 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
         >
           {mode === 'rest' && (
             <div className={docked || isShelfVisible ? 'flex flex-col' : 'w-full h-full'}>
+              {docked && subRow.length > 0 && (
+                <div className="isl-subrow">
+                  <IslandLaunchers tools={subRow} onRun={runTool} showLabels />
+                </div>
+              )}
               <div className={docked ? 'onyx-island-dock' : 'w-full h-full'}>
                 {docked && (
                   <div className="onyx-island-dock-side onyx-island-dock-side--left">
