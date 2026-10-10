@@ -5,6 +5,7 @@ import { tr } from '../../lib/i18n';
 import { uploadItemDataAtom, isUploadWizardOpenAtom, isAiProcessingEnabledAtom } from '../../lib/atoms';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
+/** Builds the upload tool entries: Add Entry opens the wizard, and a toggle switches AI processes. */
 export function useUploadTools(): ToolDescriptor[] {
   const setItemData = useSetAtom(uploadItemDataAtom);
   const setUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
