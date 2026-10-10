@@ -54,11 +54,17 @@ export const SubmenuDock: React.FC<{ children: React.ReactNode }> = ({ children 
     const stack = stackRef.current;
     const host = document.querySelector<HTMLElement>('.app-content');
     if (!mounted || !stack || !host) return;
-    const apply = () => host.style.setProperty('--submenu-h', stack.offsetHeight > 0 ? `${82 + stack.offsetHeight + 8}px` : '0px');
+    // desktop: the layer starts 82 px below the top (under the bar row); phone: 8 px under the status bar (see submenuDock.css)
+    const apply = () => {
+      const h = stack.offsetHeight;
+      const phone = window.matchMedia('(max-width: 768px)').matches;
+      host.style.setProperty('--submenu-h', h <= 0 ? '0px' : phone ? `calc(env(safe-area-inset-top, 0px) + ${8 + h + 8}px)` : `${82 + h + 8}px`);
+    };
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(stack);
-    return () => { ro.disconnect(); host.style.setProperty('--submenu-h', '0px'); };
+    window.addEventListener('resize', apply);
+    return () => { ro.disconnect(); window.removeEventListener('resize', apply); host.style.setProperty('--submenu-h', '0px'); };
   }, [mounted, rect]);
   
   if (!mounted || !rect) return null;
