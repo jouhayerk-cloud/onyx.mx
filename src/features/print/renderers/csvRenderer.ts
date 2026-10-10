@@ -228,6 +228,7 @@ export function csvToBlob(text: string, options?: CsvOptions): Blob {
     return new Blob(content, { type: mime });
 }
 
+/** Renders rows as CSV text and a Blob, with file name, MIME type and row count. */
 export function renderCsv<T = any>(
     rows: T[],
     columns: CsvColumn<T>[],
