@@ -11,6 +11,7 @@ export function encode(bytes: Uint8Array): string {
     return btoa(binary);
 }
 
+/** Decodes a base64 string into raw bytes. */
 export function decode(base64: string): Uint8Array {
     const binaryString = atob(base64);
     const len = binaryString.length;
