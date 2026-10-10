@@ -116,6 +116,7 @@ const LedgerContent: React.FC = () => {
   );
 };
 
+/** Ledger tab of the archive: only Developer and Admin roles see it; others get an access notice. */
 export const ArchivedLedger: React.FC = () => {
   const user = useAtomValue(userAtom);
   const isFinanceRole = user?.role === 'Developer' || user?.role === 'Admin';
