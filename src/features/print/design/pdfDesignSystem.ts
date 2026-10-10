@@ -64,6 +64,7 @@ export const PDF_QR_BLOCK = {
     quietZone: 4, // modules
 };
 
+/** Converts millimetres to PDF points, at about 2.83465 points per millimetre. */
 export function mmToPt(mm: number): number {
     return mm * 2.83465;
 }
