@@ -28,6 +28,7 @@ export function formatWeight(kg: number | null): string {
     return `${kg} kg`;
 }
 
+/** Formats a number in en-US with at most maxDecimals decimals; a dash when missing or NaN. */
 export function formatNumber(value: number | null, maxDecimals: number = 2): string {
     if (value == null || isNaN(value)) return '—';
     return new Intl.NumberFormat('en-US', {
