@@ -143,6 +143,7 @@ const swatchFor = (name: string) => {
     return SWATCHES[k] || 'transparent';
 };
 
+/** Public page for one tagged artifact; it loads the record and locks the app shell scroll. */
 export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
     const [record, setRecord] = useState<PublicArtifactRecord | null>(null);
     const [loading, setLoading] = useState(true);

@@ -1,5 +1,6 @@
 import { vendors } from '../../lib/consts';
 
+/** Builds the printable HTML crates list for a manifest, with per-crate items and total weight. */
 export function generateCratesListHtml(manifestId: string, metadata: any, payload: any) {
     const { crates, timestamp } = payload;
     const totalWeight = crates.reduce((sum: number, c: any) => {

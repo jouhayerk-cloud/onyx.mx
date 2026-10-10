@@ -34,6 +34,7 @@ export interface LogisticsWidgets {
     SubTabPills: React.ComponentType<any>;
 }
 
+/** Builds the logistics tool entries for the active view and sub-tab, wired to the given widgets. */
 export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): ToolDescriptor[] {
     const [activeView] = useAtom(activeViewAtom);
     const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);

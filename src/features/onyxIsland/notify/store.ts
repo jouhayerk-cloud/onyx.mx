@@ -132,6 +132,7 @@ function startToastTimer(toast: IslandNotification) {
   }
 }
 
+/** Pauses the current toast timer and keeps the time it has left. */
 export function pauseToastTimer() {
   paused = true;
   if (timerId && currentToastRemainingDuration !== null && currentToastStartedAt !== null) {
@@ -345,6 +346,7 @@ export function markAllRead() {
   }
 }
 
+/** Empties the island notification history and saves the change. */
 export function clearHistory() {
   history = [];
   updateSnapshot();

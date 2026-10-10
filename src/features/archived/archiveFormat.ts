@@ -22,11 +22,13 @@ export function formatDims(item: ArchiveItem): string {
     return parts.join(' × ') + ' cm';
 }
 
+/** Formats a weight in kilograms, such as 12.5 kg, or an empty string when there is none. */
 export function formatWeight(kg: number | null): string {
     if (kg == null) return '';
     return `${kg} kg`;
 }
 
+/** Formats a number in en-US with at most maxDecimals decimals; a dash when missing or NaN. */
 export function formatNumber(value: number | null, maxDecimals: number = 2): string {
     if (value == null || isNaN(value)) return '—';
     return new Intl.NumberFormat('en-US', {
@@ -35,6 +37,7 @@ export function formatNumber(value: number | null, maxDecimals: number = 2): str
     }).format(value);
 }
 
+/** Formats a number as MXN or USD currency in en-US, up to 2 decimals; a dash when missing. */
 export function formatMoney(value: number | null, currency: 'MXN' | 'USD'): string {
     if (value == null || isNaN(value)) return '—';
     const formatter = new Intl.NumberFormat('en-US', {
@@ -52,6 +55,7 @@ export function vendorColor(vendor: string): string {
     return v ? v.color : '#4B5563';
 }
 
+/** Formats an ISO date in en-US as Mon D, YYYY, or returns the input unchanged when it is not a date. */
 export function formatDate(iso: string | null): string {
     if (!iso) return '';
     const date = new Date(iso);

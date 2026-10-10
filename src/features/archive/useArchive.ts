@@ -8,6 +8,7 @@ const db = supabase as any;
 
 export type ArchiveStatus = 'loading' | 'ready' | 'empty' | 'unavailable';
 
+/** Archive data hook: loads the newest book, its vendor list and items a page at a time. */
 export function useArchive() {
   const user = useAtomValue(userAtom);
   const isFinanceRole = user?.role === 'Developer' || user?.role === 'Admin';

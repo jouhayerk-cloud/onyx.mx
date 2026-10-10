@@ -17,6 +17,7 @@ export interface ManifestoItem {
     packetIn: any;
 }
 
+/** Maps packed crate items to manifesto rows, with normalized codes, prices and image URLs. */
 export function buildCrateManifestoItems(
     packedItems: any[],
     normalizeInventoryData: (data: any) => any,

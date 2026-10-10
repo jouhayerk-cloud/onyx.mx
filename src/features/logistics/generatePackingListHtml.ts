@@ -1,5 +1,6 @@
 import { vendors } from '../../lib/consts';
 
+/** Builds the printable HTML packing list for a manifest, with per-crate items and truck stats. */
 export function generatePackingListHtml(manifestId: string, metadata: any, payload: any) {
     const { crates, truckStats, timestamp } = payload;
     const cratesJson = JSON.stringify(crates);

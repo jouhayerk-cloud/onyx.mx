@@ -20,6 +20,7 @@ export interface ChanPaneProps {
     onClose: () => void;
 }
 
+/** Chan pane of the island: the conversation with the Onyx agent and its message box. */
 export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
     void onClose;
     const wiring = useOnyxAgentWiring();

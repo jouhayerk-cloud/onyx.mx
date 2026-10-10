@@ -49,6 +49,7 @@ const toast = Object.assign(
 export { toast };   // react-hot-toast also had a named export
 export default toast;
 
+/** Pushes an agent notification with an optional title and action buttons. */
 export function notifyAgent(message: string, opts?: { title?: string; actions?: NotifyAction[] }) {
   return pushNotification({
     kind: 'agent',
@@ -59,6 +60,7 @@ export function notifyAgent(message: string, opts?: { title?: string; actions?: 
   });
 }
 
+/** Pushes an info notification from a device, with optional id and duration. */
 export function notifyDevice(message: string, opts?: ToastOptions) {
   return pushNotification({
     kind: 'info',

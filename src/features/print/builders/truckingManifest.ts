@@ -23,6 +23,7 @@ export interface ManifestoItem {
     packetIn: string;
 }
 
+/** Merges the items of truck crates into one entry per item id, with total quantity and crate names. */
 export function buildConsolidatedItems(
     truckCrates: any[],
     allCrates: any[],
@@ -47,6 +48,7 @@ export function buildConsolidatedItems(
     return Array.from(itemMap.values());
 }
 
+/** Turns consolidated items into manifesto rows with vendor, dimensions, weight and packet location. */
 export function buildManifestoItems(
     items: ConsolidatedItem[],
     bookRate: number,

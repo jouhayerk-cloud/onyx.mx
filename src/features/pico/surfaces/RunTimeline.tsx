@@ -91,6 +91,7 @@ const RunCard: React.FC<{ run: AgentRun; now: number }> = ({ run, now }) => {
   );
 };
 
+/** Timeline of agent runs with their status, or a placeholder when there are no runs. */
 export const RunTimeline: React.FC<{ runs: AgentRun[]; now: number }> = ({ runs, now }) => {
   if (runs.length === 0) {
     return (

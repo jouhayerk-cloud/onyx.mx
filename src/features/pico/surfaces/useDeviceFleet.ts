@@ -86,6 +86,7 @@ export function useNow(intervalMs = 15_000): number {
   return now;
 }
 
+/** Loads fleet devices with telemetry, runs and commands, tagged live, mock or none as source. */
 export function useDeviceFleet() {
   const [devices, setDevices] = useState<DeviceState[]>([]);
   const [telemetry, setTelemetry] = useState<TelemetryPoint[]>([]);

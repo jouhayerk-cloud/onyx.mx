@@ -32,6 +32,7 @@ export interface TrackedJob {
 const recentTracked: TrackedJob[] = [];
 const MAX_RECENT = 50;
 
+/** Returns a copy of the recent tracked document jobs, newest first, up to 50. */
 export function getRecentTracked(): TrackedJob[] {
     return [...recentTracked];
 }

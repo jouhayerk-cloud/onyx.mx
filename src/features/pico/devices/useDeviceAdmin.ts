@@ -25,6 +25,7 @@ export interface Assignment {
   created_at: string;
 }
 
+/** Loads Pico devices, token state and user assignments from Supabase for the admin tab. */
 export function useDeviceAdmin() {
   const [status, setStatus] = useState<'loading' | 'ready'>('loading');
   const [devices, setDevices] = useState<AdminDevice[]>([]);

@@ -7,6 +7,7 @@ import { tr } from '../../lib/i18n';
 
 const OnyxAgentHost = lazy(() => import('./OnyxAgentHost').then(m => ({ default: m.OnyxAgentHost })));
 
+/** Top-bar slot holding the Onyx agent button and its lazy host, shown only to allowed roles. */
 export function OnyxAgentSlot() {
     const user = useAtomValue(userAtom);
     const role = user?.role;

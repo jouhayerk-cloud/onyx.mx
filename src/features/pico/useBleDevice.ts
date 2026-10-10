@@ -35,6 +35,7 @@ export interface BleState {
   isNusSupported: boolean;
 }
 
+/** Hook that pairs a Pico over Web Bluetooth (Nordic UART) and tracks its BLE state. */
 export function useBleDevice(onScanEvent?: (event: PicoScanEvent) => void) {
   const [state, setState] = useState<BleState>({
     status: 'idle',

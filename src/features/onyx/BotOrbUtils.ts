@@ -1,6 +1,7 @@
 
 import { Blob } from '@google/genai';
 
+/** Encodes raw bytes as a base64 string. */
 export function encode(bytes: Uint8Array): string {
     let binary = '';
     const len = bytes.byteLength;
@@ -10,6 +11,7 @@ export function encode(bytes: Uint8Array): string {
     return btoa(binary);
 }
 
+/** Decodes a base64 string into raw bytes. */
 export function decode(base64: string): Uint8Array {
     const binaryString = atob(base64);
     const len = binaryString.length;

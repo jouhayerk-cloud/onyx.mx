@@ -11,6 +11,7 @@ interface MaterialBreakdownSectionProps {
     };
 }
 
+/** Pie chart of top materials and bar chart of top categories from the attribute stats. */
 export const MaterialBreakdownSection: React.FC<MaterialBreakdownSectionProps> = ({ attributeStats }) => {
     const pieOption = useMemo<EChartsOption>(() => ({
         tooltip: { trigger: 'item' },

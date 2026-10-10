@@ -55,6 +55,7 @@ export const SCENE_ENVIRONMENTS: readonly SceneEnvironment[] = [
 /** The current default, matching the previous hardcoded behaviour. */
 export const DEFAULT_SCENE_ID = 'sunset';
 
+/** Returns the environment with this id, falling back to the first (sunset) when unknown. */
 export function getSceneEnvironment(id: string): SceneEnvironment {
   return SCENE_ENVIRONMENTS.find(s => s.id === id) ?? SCENE_ENVIRONMENTS[0];
 }

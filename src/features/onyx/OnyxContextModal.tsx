@@ -11,6 +11,7 @@ interface OnyxContextModalProps {
     onClose: () => void;
 }
 
+/** Onyx context dialog: shows its grounding rules and lets the user clear the saved Gemini key. */
 export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onClose }) => {
     const [, setUserApiKey] = useAtom(onyxApiKeyAtom);
 

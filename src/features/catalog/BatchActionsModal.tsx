@@ -46,6 +46,8 @@ const ACTION_PROCESSES: Partial<Record<ActionType, ProcessId[]>> = {
     colorsType: ['dominant_colors', 'product_type'],
 };
 
+/** Batch modal for catalog items: runs AI actions or delete on the selected items. */
+
 export function BatchActionsModal() {
     const t = useTranslation();
     const notify = useNotify();

@@ -10,6 +10,7 @@ export interface ArchiveBalanceRow {
   payload: Record<string, any>;
 }
 
+/** Loads the vendor balance rows of the newest complete archive book, with their columns. */
 export function useArchiveBalances() {
   const [status, setStatus] = useState<BalancesStatus>('loading');
   const [error, setError] = useState<string | null>(null);
