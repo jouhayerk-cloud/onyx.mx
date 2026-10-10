@@ -12,6 +12,8 @@ import {
 } from '../../lib/atoms';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
+/** Builds the finance view tool entries, wired to its search, filter, action and upcoming state. */
+
 export function useFinanceTools(): ToolDescriptor[] {
     const [search, setSearch] = useAtom(financeSearchTermAtom);
     const [isSearchOpen, setIsSearchOpen] = useAtom(isPaymentsSearchOpenAtom);
