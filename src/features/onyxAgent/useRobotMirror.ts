@@ -21,6 +21,7 @@ const PHASE_TO_FACE: Record<AgentPhase, FaceExpression> = {
 
 const mirrorClock: { current: number } = { current: 0 };
 
+/** Mirrors the agent phase onto the robot face, sending at most one change per 1.5 seconds. */
 export function useRobotMirror(opts: UseRobotMirrorOpts): void {
   const { enabled, phase, control, online } = opts;
   const lastFaceSent = useRef<FaceExpression | null>(null);
