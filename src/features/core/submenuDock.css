@@ -897,3 +897,6 @@ html:root:root:root .smd-card.smd-card input.utb-view-slider.utb-view-slider::-w
 
 /* the label inside a vendor chip follows the chip text colour (the themes colour spans on their own) */
 html:root:root:root .smd-card.smd-card .utb-filters-panel .utb-vendor-chip.utb-vendor-chip:not(.utb-vendor-all) span { color: inherit !important; }
+
+/* the clear button inside the Search field stays a small round button on a phone too (the 44px control rule made it a big ring) */
+.utb-search-container .utb-control.utb-icon-only { width: 32px; height: 32px; min-height: 0; padding: 0; flex-shrink: 0; }

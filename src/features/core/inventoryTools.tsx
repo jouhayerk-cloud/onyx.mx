@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import {
-    Pointer, Wrench, LayoutTemplate, Filter, Search as SearchIcon, Tag, Plus, SquareCheckBig, Download
+    Pointer, Wrench, LayoutTemplate, Filter, Search as SearchIcon, Tag, Plus, SquareCheckBig, Download, FileSpreadsheet
 } from 'lucide-react';
 import { tr } from '../../lib/i18n';
 import {
@@ -16,7 +16,8 @@ import {
     isInventorySmartFiltersOpenAtom,
     activeViewAtom,
     inventoryStatusFilterAtom,
-    isUploadWizardOpenAtom
+    isUploadWizardOpenAtom,
+    userAtom
 } from '../../lib/atoms';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
@@ -33,6 +34,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
+    const appUser = useAtomValue(userAtom);
     const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
     const setView = useSetAtom(activeViewAtom);
     const [showTools, setShowTools] = useAtom(inventoryToolsOpenAtom);
@@ -222,6 +224,24 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
             dock: 'right',
             run: () => { document.dispatchEvent(new CustomEvent('triggerMasterExport')); }
         });
+
+        // Sheets sits next to Export (Admin and Developer only, as the upload itself is); MainHeader's SheetsUploadBridge runs it
+        if (appUser?.role === 'Admin' || appUser?.role === 'Developer') {
+            tools.push({
+                id: 'inventory.sheets',
+                moduleId: 'inventory',
+                parent: 'inventory.actions',
+                label: tr('Sheets'),
+                title: tr('Upload inventory to Google Sheets'),
+                icon: FileSpreadsheet,
+                kind: 'action',
+                group: tr('Actions'),
+                order: 50,
+                pinned: true,
+                dock: 'right',
+                run: () => { document.dispatchEvent(new CustomEvent('triggerSheetsUpload')); }
+            });
+        }
     }
 
     return tools;

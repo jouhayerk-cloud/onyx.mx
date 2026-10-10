@@ -1,14 +1,14 @@
 import React, { lazy, Suspense, useEffect, useRef, useState, useMemo, useCallback, useLayoutEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { m, LazyMotion, domMax, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageCircle, Bell, LayoutGrid, Package } from 'lucide-react';
 import { OnyxFace } from '../onyxAgent/face/OnyxFace';
 import { useGaze } from '../onyxAgent/face/useGaze';
 import { onyxAgentPhaseAtom } from '../onyxAgent/agentState';
 import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToastTimer, pushNotification } from './notify/store';
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
-import { islandModeAtom, islandPaneAtom, islandItemAtom, islandChanDraftAtom, expressionForKind, islandDeployAtom, type IslandReadout, type IslandPane, type IslandDeploy } from './islandState';
+import { islandModeAtom, islandPaneAtom, islandStackOpenAtom, islandItemAtom, islandChanDraftAtom, expressionForKind, islandDeployAtom, type IslandReadout, type IslandPane, type IslandDeploy } from './islandState';
 import { SPRING, SPRING_BOUNCY, SPRING_SLOW, FACE_DEPLOY_DELAY_MS, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
 import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
@@ -16,7 +16,7 @@ import { userAtom, activeViewAtom, SelectedItemDataAtom } from '../../lib/atoms'
 import { IslandLaunchers } from './IslandLaunchers';
 import { IslandToolsGrid } from './IslandToolsGrid';
 import { IslandHeader, displayNameOf, greeting } from './IslandHeader';
-import { IslandTabs } from './IslandTabs';
+import { IslandStackPanel } from './IslandStackPanel';
 import { IslandShelf } from './IslandShelf';
 import { fitTools } from './useIslandFit';
 import toast from './notify/toast';
@@ -132,6 +132,7 @@ function measureTextW(text: string, font: string) {
 export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ readout = null }) => {
   const [mode, setMode] = useAtom(islandModeAtom);
   const [pane, setPane] = useAtom(islandPaneAtom);
+  const [stackOpen, setStackOpen] = useAtom(islandStackOpenAtom);
   const { current, unread } = useIslandNotifications();
   const phase = useAtomValue(onyxAgentPhaseAtom);
   const allTools = useAtomValue(allToolsAtom);
@@ -148,11 +149,9 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const transitionSlow = isReduced ? { duration: 0 } : SPRING_SLOW;
 
   const islandRef = useRef<HTMLDivElement>(null);
-  const filterInputRef = useRef<HTMLInputElement>(null);
   const faceBtnRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  const [filterText, setFilterText] = useState('');
 
   useGaze(islandRef);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -274,7 +273,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   }, []);
 
   useEffect(() => {
-    const TAB_KEYS: Record<string, IslandPane> = { Digit1: 'tools', Digit2: 'item', Digit3: 'chat', Digit4: 'notifications' };
+    const TAB_KEYS: Record<string, IslandPane> = { Digit1: 'chat', Digit2: 'notifications' };
     const onKeyDown = (e: KeyboardEvent) => {
       const isCmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k';
       if (isCmdK) {
@@ -286,7 +285,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
           setMode('rest');
         } else {
           setMode('surface');
-          setPane('tools');
+          setPane('chat');
         }
         return;
       }
@@ -338,11 +337,9 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   useEffect(() => {
     if (mode === 'surface' && prevModeRef.current !== 'surface') {
       previousFocusRef.current = document.activeElement as HTMLElement;
-      setFilterText('');
-      // focus the filter in Tools, the selected tab otherwise, next frame
+      // focus the header of the requested panel (Chan unless the Inbox was asked for), next frame
       requestAnimationFrame(() => {
-        if (pane === 'tools') filterInputRef.current?.focus();
-        else document.getElementById(`isl-tab-${pane}`)?.focus();
+        document.getElementById(pane === 'notifications' ? 'isl-stack-notifications-h' : 'isl-stack-chat-h')?.focus();
       });
     } else if (mode === 'rest' && prevModeRef.current === 'surface') {
       const ae = document.activeElement;
@@ -430,10 +427,10 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   } else if (mode === 'card') {
     rootStyle = { width: 'min(500px, calc(100vw - 24px))', maxHeight: 320 };
   } else if (isSheet) {
-    rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxWidth: '100vw', ...(pane === 'tools' || pane === 'item' ? { maxHeight: '88vh' } : { height: '88vh' }) };
+    rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxWidth: '100vw', height: '88vh' };
   } else {
     const w = xl ? 860 : lg ? 720 : 580;
-    rootStyle = { width: `min(${w}px, calc(100vw - 24px))`, ...(pane === 'tools' || pane === 'item' ? { maxHeight: 'min(680px, calc(100vh - 96px))' } : { height: panelHeight }) };
+    rootStyle = { width: `min(${w}px, calc(100vw - 24px))`, height: panelHeight };
   }
 
   // Accessibility announcement for the panel
@@ -641,36 +638,28 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                 figures={figures}
                 onClose={() => setMode('rest')}
               />
-              <IslandTabs value={pane} onChange={setPane} unread={unread} itemSelected={!!selectedItem} />
-
-              <div className="isl-body" id="isl-panel" role="tabpanel" aria-labelledby={`isl-tab-${pane}`}>
+              {/* the deployed island is a stack of panels: Chan and Inbox always, All tools and Item on top only when asked for */}
+              <div className="isl-body isl-stack" id="isl-panel" role="region" aria-label={tr('Island panels')}>
                 <ChunkBoundary>
                   <Suspense fallback={<div className="h-20" />}>
                     {pane === 'tools' && (
-                      <>
-                        <div className="isl-search">
-                          <Search size={18} color="currentColor" strokeWidth={2} aria-hidden="true" />
-                          <input
-                            ref={filterInputRef}
-                            type="text"
-                            aria-label={tr('Search tools')}
-                            placeholder={tr('Search tools...')}
-                            value={filterText}
-                            onChange={e => setFilterText(e.target.value)}
-                          />
-                        </div>
+                      <IslandStackPanel id="tools" title={tr('All tools')} icon={LayoutGrid} open grow={2} onClose={() => setPane('chat')}>
                         <div className="isl-scroll custom-scrollbar">
-                          <IslandToolsGrid
-                            tools={commandsEnabled ? allTools : []}
-                            filter={filterText}
-                            onRun={runTool}
-                          />
+                          <IslandToolsGrid tools={commandsEnabled ? allTools : []} filter="" onRun={runTool} />
                         </div>
-                      </>
+                      </IslandStackPanel>
                     )}
-                    {pane === 'item' && <div className="isl-scroll custom-scrollbar"><ItemPaneConnected /></div>}
-                    {pane === 'notifications' && <InboxPane onClose={() => setMode('rest')} />}
-                    {pane === 'chat' && <ChanPane view={activeView} onClose={() => setMode('rest')} />}
+                    {pane === 'item' && (
+                      <IslandStackPanel id="item" title={tr('Item')} icon={Package} open grow={2} onClose={() => setPane('chat')}>
+                        <div className="isl-scroll custom-scrollbar"><ItemPaneConnected /></div>
+                      </IslandStackPanel>
+                    )}
+                    <IslandStackPanel id="chat" title="Chan" icon={MessageCircle} open={stackOpen.chat} grow={3} onToggle={() => setStackOpen(p => ({ ...p, chat: !p.chat }))}>
+                      <ChanPane view={activeView} onClose={() => setMode('rest')} />
+                    </IslandStackPanel>
+                    <IslandStackPanel id="notifications" title={tr('Inbox')} icon={Bell} open={stackOpen.notifications} grow={2} badge={unread} onToggle={() => setStackOpen(p => ({ ...p, notifications: !p.notifications }))}>
+                      <InboxPane onClose={() => setMode('rest')} />
+                    </IslandStackPanel>
                   </Suspense>
                 </ChunkBoundary>
               </div>

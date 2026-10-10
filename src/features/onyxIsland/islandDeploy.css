@@ -127,3 +127,55 @@
 .isl-subrow-sep { flex: none; width: 1px; height: 28px; margin-inline: 6px; background: var(--isl-line-strong); opacity: 0.5; }
 @keyframes isl-subrow-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .isl-subrow { animation: none; } }
+
+/* ── Deployed island: a stack of panels (Chan, Inbox, and All tools or Item when asked for) ───────────── */
+.isl-stack { gap: 8px; padding: 0 10px 10px; overflow: hidden; }
+.isl-stack-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-height: 0;
+  border: 1px solid var(--isl-line);
+  border-radius: 14px;
+  background: var(--isl-fill-1);
+  overflow: hidden;
+}
+.isl-stack-panel.is-open { flex-basis: 0; min-height: 96px; }
+.isl-stack-head { display: flex; align-items: center; flex: none; min-height: 40px; }
+.isl-stack-toggle {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  color: var(--isl-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+.isl-stack-static { cursor: default; }
+.isl-stack-title { flex: 1 1 auto; min-width: 0; }
+.isl-stack-chev { flex: none; opacity: 0.6; transition: transform 0.2s ease; }
+.isl-stack-panel:not(.is-open) .isl-stack-chev { transform: rotate(-90deg); }
+.isl-stack-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 40px;
+  background: transparent;
+  border: 0;
+  color: var(--isl-ink-2);
+  cursor: pointer;
+}
+.isl-stack-toggle:focus-visible, .isl-stack-close:focus-visible { outline: none; box-shadow: inset var(--isl-focus); }
+.isl-stack-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-top: 1px solid var(--isl-line); }
+.isl-stack-body > * { min-height: 0; }
+@media (prefers-reduced-motion: reduce) { .isl-stack-chev { transition: none; } }

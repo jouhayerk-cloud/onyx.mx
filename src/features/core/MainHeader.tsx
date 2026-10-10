@@ -797,7 +797,8 @@ const InventoryAddButton: React.FC = () => {
     );
 };
 
-const SheetsUploadButton: React.FC = () => {
+/** The Google Sheets upload: shared by the legacy header button and the island Actions tool (through the triggerSheetsUpload event). */
+const useSheetsUpload = () => {
     const items = useAtomValue(inventoryAtom);
     // Both hooks always run (a short-circuited hook breaks React's hook order).
     const storedRate = useAtomValue(exchangeRateAtom);
@@ -854,16 +855,34 @@ const SheetsUploadButton: React.FC = () => {
         }
     };
 
-    if (user?.role !== 'Admin' && user?.role !== 'Developer') return null;
+    const allowed = user?.role === 'Admin' || user?.role === 'Developer';
+    return { upload: handleGoogleSheetsUpload, allowed };
+};
+
+const SheetsUploadButton: React.FC = () => {
+    const { upload, allowed } = useSheetsUpload();
+    if (!allowed) return null;
 
     return (
         <ToolButton
             icon={FileSpreadsheet}
             label={tr("Sheets")}
             title={tr("Upload inventory to Google Sheets")}
-            onClick={handleGoogleSheetsUpload}
+            onClick={upload}
         />
     );
+};
+
+/** Headless: lets the island Actions row (Sheets next to Export) start the upload from anywhere. */
+const SheetsUploadBridge: React.FC = () => {
+    const { upload, allowed } = useSheetsUpload();
+    useEffect(() => {
+        if (!allowed) return;
+        const handler = () => { void upload(); };
+        document.addEventListener('triggerSheetsUpload', handler);
+        return () => document.removeEventListener('triggerSheetsUpload', handler);
+    }, [upload, allowed]);
+    return null;
 };
 
 const InventoryBar: React.FC = () => {
@@ -4360,7 +4379,6 @@ export function MainHeader() {
             { id: 'onyx.reset', moduleId: 'onyx', label: tr('Reset credentials'), title: tr('Reset Neural Credentials'), icon: RefreshCw, kind: 'action' as const, group: tr('Onyx'), order: 20, run: () => { if (confirm(tr('Reset Neural Link credentials to system default?'))) { localStorage.removeItem('onyxApiKey'); setOnyxApiKey(''); } } },
         ] : []),        
         { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
-        { id: 'global.export.sheets', moduleId: 'global', label: tr('Sheets'), icon: FileSpreadsheet, kind: 'widget', group: tr('Export'), order: 30, render: () => <SheetsUploadButton /> },
     ], islandOn);
 
     return (
@@ -4375,6 +4393,7 @@ export function MainHeader() {
             <div className="w-full shrink-0 relative">
             {/* Onyx Island: the face (free floating, centred), the toasts and the notification center, one element */}
             {activeView === 'inventory' && <InventoryToolsRegistrar widgets={{ DeployableSearch, InventoryAddButton }} />}
+            {activeView === 'inventory' && islandOn && <SheetsUploadBridge />}
             {isArchived && <ArchivedToolsRegistrar />}
             {activeView === 'store' && <StoreToolsRegistrar widgets={{ DeployableSearch }} />}
             {activeView === 'finance' && <FinanceToolsRegistrar />}

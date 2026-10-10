@@ -20,8 +20,13 @@ export const islandModeAtom = atom<IslandMode>('rest');
 export type IslandPane = 'tools' | 'item' | 'chat' | 'notifications';
 /** A message typed in the deployed island's Chan field: the Chan tab sends it when it opens, then clears it. */
 export const islandChanDraftAtom = atom('' as string);
-/** Pane open in the island. Starts on tools. */
-export const islandPaneAtom = atom<IslandPane>('tools');
+/**
+ * Pane requested in the deployed island. The deployed island is a stack of panels: Chan and Inbox are always there;
+ * 'tools' (All tools) and 'item' appear on top only when something asks for them. Starts on chat.
+ */
+export const islandPaneAtom = atom<IslandPane>('chat');
+/** Which of the two always present panels are expanded (the other one shows only its header). */
+export const islandStackOpenAtom = atom<{ chat: boolean; notifications: boolean }>({ chat: true, notifications: true });
 
 export function expressionForKind(kind: NotifyKind): OnyxChanFace {
   switch (kind) {
