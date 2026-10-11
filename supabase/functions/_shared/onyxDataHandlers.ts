@@ -15,6 +15,10 @@ import {
   WRITE_ROLES,
   MAX_LIMIT,
   COST_COLUMNS,
+  TELEMETRY_SELECT_COLUMNS,
+  validateTelemetryArgs,
+  shapeTelemetryRow,
+  type OnyxChanTelemetryResult,
 } from "./onyxDataTools.ts";
 
 export interface CallerContext {
@@ -146,6 +150,22 @@ export async function executeOnyxDataTool(
     // ── Tool Implementations ─────────────────────────────────────────────────
 
     // ── 1. inventory_search ──────────────────────────────────────────────────
+    // ── devices_onyxchan_telemetry: read only; the select list never contains token columns ──
+    if (toolName === "devices_onyxchan_telemetry") {
+      const parsed = validateTelemetryArgs(args);
+      if (!parsed.ok) {
+        return { isError: true, content: [{ type: "text", text: `Invalid arguments: ${parsed.error}` }] };
+      }
+      let tq = supabase.from("onyxchan_devices").select(TELEMETRY_SELECT_COLUMNS).limit(parsed.params.limit);
+      if (parsed.params.device_id) tq = tq.eq("device_id", parsed.params.device_id);
+      const { data: telemetryRows, error: telemetryError } = await tq;
+      if (telemetryError) throw telemetryError;
+      const telemetry: OnyxChanTelemetryResult = {
+        devices: (telemetryRows ?? []).map((r: Record<string, unknown>) => shapeTelemetryRow(r)),
+      };
+      return { content: [{ type: "text", text: JSON.stringify(telemetry, null, 2) }] };
+    }
+
     if (toolName === "inventory_search") {
       const { limit, offset } = clampPagination(args, 20);
       let q = supabase.from("inventory").select("*", { count: "exact" });
