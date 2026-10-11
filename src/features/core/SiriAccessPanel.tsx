@@ -3,7 +3,8 @@ import { useAtom } from 'jotai';
 import { themeAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { tr } from '../../lib/i18n';
-import { Shield, AlertCircle, X, Terminal } from 'lucide-react';
+import { AlertCircle, X, Check, Copy, Loader2 } from 'lucide-react';
+import './siriAccess.css';
 
 interface SiriTokenItem {
     id: string;
@@ -63,6 +64,17 @@ export const SiriAccessPanel: React.FC = () => {
     useEffect(() => {
         void fetchTokens();
     }, [fetchTokens]);
+
+    useEffect(() => {
+        if (!confirmRevokeId) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setConfirmRevokeId(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [confirmRevokeId]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -182,209 +194,196 @@ export const SiriAccessPanel: React.FC = () => {
     };
 
     return (
-        <div className={`p-4 md:p-8 space-y-6 ${L ? 'text-black' : 'text-white'}`}>
-            {/* Header */}
-            <div className="flex items-center gap-3 pb-4 border-b border-white/10">
-                <Terminal size={20} className="text-blue-500" />
-                <div>
-                    <h2 className={`text-base md:text-lg font-black uppercase tracking-[0.2em] ${L ? 'text-black' : 'text-white'}`}>
-                        {tr("Siri Shortcuts")}
-                    </h2>
-                    <p className={`text-xs ${L ? 'text-black/60' : 'text-white/60'}`}>
-                        {tr("Manage personal tokens for iPhone Shortcuts and Siri voice actions.")}
-                    </p>
+        <div className={`sa-panel ${L ? 'sa-theme-aqua' : ''}`}>
+            {/* Header Section */}
+            <div className="sa-section-header">
+                <div className="sa-section-caption">
+                    {tr("Siri Shortcuts")}
                 </div>
+                <p className="sa-section-desc">
+                    {tr("Manage personal tokens for iPhone Shortcuts and Siri voice actions.")}
+                </p>
             </div>
 
             {/* Error banner */}
             {errorMessage && (
-                <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                        <AlertCircle size={18} className="shrink-0 text-red-400" />
-                        <span>{errorMessage}</span>
+                <div role="alert" className="sa-error-banner">
+                    <div className="sa-error-content">
+                        <AlertCircle size={16} className="sa-error-icon" aria-hidden="true" />
+                        <span className="sa-error-text">{errorMessage}</span>
                     </div>
                     <button
                         type="button"
                         onClick={() => setErrorMessage(null)}
                         aria-label={tr("Dismiss")}
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
+                        title={tr("Dismiss")}
+                        className="sa-dismiss-btn"
                     >
-                        <X size={16} />
+                        <X size={16} aria-hidden="true" />
                     </button>
                 </div>
             )}
 
-            {/* Newly Created Token Display */}
+            {/* Newly Created Token Callout Card */}
             {createdToken && (
-                <div className={`p-4 md:p-5 rounded-2xl border transition-all ${
-                    L
-                        ? 'bg-blue-50/80 border-blue-200 text-black'
-                        : 'bg-blue-950/40 border-blue-500/40 text-white'
-                }`}>
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-2">
-                            <Shield size={18} className="text-blue-400 shrink-0" />
-                            <span className="text-xs font-black uppercase tracking-wider text-blue-400">
-                                {tr("New Token Created")}
-                            </span>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setCreatedToken(null)}
-                            aria-label={tr("Dismiss")}
-                            className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                L ? 'text-black/50 hover:text-black hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/10'
-                            }`}
-                        >
-                            <X size={18} />
-                        </button>
+                <div role="status" className="sa-callout">
+                    <div className="sa-callout-header">
+                        <h3 className="sa-callout-title">
+                            {tr("Copy your token now")}
+                        </h3>
+                        <p className="sa-callout-desc">
+                            {tr("It is shown only once")}
+                        </p>
                     </div>
-                    <p className={`text-xs mb-3 ${L ? 'text-black/80' : 'text-white/80'}`}>
-                        {tr("This token is shown only now. Paste it into your Shortcut.")}
-                    </p>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                        <div className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl border font-mono text-xs md:text-sm select-all break-all flex items-center ${
-                            L ? 'bg-white border-black/10 text-black' : 'bg-black/40 border-white/15 text-blue-200'
-                        }`}>
-                            {createdToken}
-                        </div>
+                    <div className="sa-callout-code">
+                        {createdToken}
+                    </div>
+                    <div className="sa-callout-actions">
                         <button
                             type="button"
                             onClick={handleCopyToken}
-                            className="min-h-[44px] px-5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-black uppercase tracking-wider transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 shrink-0"
+                            className="sa-btn-secondary"
                         >
-                            {copied ? tr("Copied") : tr("Copy")}
+                            {copied ? (
+                                <>
+                                    <Check size={16} aria-hidden="true" />
+                                    <span>{tr("Copied")}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy size={16} aria-hidden="true" />
+                                    <span>{tr("Copy")}</span>
+                                </>
+                            )}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setCreatedToken(null)}
+                            className="sa-btn-plain"
+                        >
+                            {tr("Done")}
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Creation Form */}
-            <form onSubmit={handleCreate} className={`p-4 md:p-6 rounded-2xl border ${L ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
-                    <div className="flex-1 flex flex-col">
-                        <label htmlFor="siri-token-label" className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 ${L ? 'text-black/70' : 'text-white/70'}`}>
-                            {tr("Token Label")}
-                        </label>
+            {/* Creation Row Card */}
+            <div className="sa-card">
+                <form onSubmit={handleCreate} className="sa-create-form">
+                    <div className="sa-field-wrap">
                         <input
                             id="siri-token-label"
                             type="text"
                             maxLength={40}
+                            placeholder="iPhone"
+                            aria-label={tr("Token Label")}
                             value={label}
                             onChange={(e) => setLabel(e.target.value)}
                             disabled={isBusy}
-                            className={`min-h-[44px] px-4 rounded-xl border text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 ${
-                                L
-                                    ? 'bg-white border-black/15 text-black placeholder:text-black/40'
-                                    : 'bg-black/30 border-white/15 text-white placeholder:text-white/40'
-                            }`}
+                            className="sa-input"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={isBusy || !label.trim()}
-                        className="min-h-[44px] px-6 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-black uppercase tracking-wider transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 shrink-0"
+                        className="sa-btn-primary"
                     >
-                        {isCreating ? tr("Creating...") : tr("Create")}
+                        {isCreating ? (
+                            <>
+                                <Loader2 size={16} className="sa-spinner" aria-hidden="true" />
+                                <span>{tr("Creating...")}</span>
+                            </>
+                        ) : (
+                            <span>{tr("Create token")}</span>
+                        )}
                     </button>
-                </div>
-            </form>
+                </form>
+            </div>
 
-            {/* Token List */}
-            <div className="space-y-3">
-                <div className="flex items-center justify-between pb-2">
-                    <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${L ? 'text-black/70' : 'text-white/70'}`}>
-                        {tr("Personal Tokens")}
-                    </h3>
+            {/* Token List Section */}
+            <div className="sa-section">
+                <div className="sa-section-caption">
+                    {tr("Personal Tokens")}
                 </div>
-
-                {isLoading && tokens.length === 0 ? (
-                    <div className={`p-8 text-center text-xs font-black uppercase tracking-wider ${L ? 'text-black/40' : 'text-white/40'}`}>
-                        {tr("Loading tokens...")}
-                    </div>
-                ) : tokens.length === 0 ? (
-                    <div className={`p-8 text-center text-xs rounded-2xl border ${L ? 'border-black/10 text-black/40 bg-black/5' : 'border-white/10 text-white/40 bg-white/5'}`}>
-                        {tr("No Siri tokens created yet.")}
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {tokens.map((token) => {
+                <div className="sa-card">
+                    {isLoading && tokens.length === 0 ? (
+                        <div className="sa-empty-row">
+                            {tr("Loading tokens...")}
+                        </div>
+                    ) : tokens.length === 0 ? (
+                        <div className="sa-empty-row">
+                            {tr("No Siri tokens created yet.")}
+                        </div>
+                    ) : (
+                        tokens.map((token) => {
                             const isRevoked = Boolean(token.revoked_at);
                             const isExpired = !isRevoked && Boolean(token.expires_at) && new Date(token.expires_at).getTime() <= Date.now();
-                            const isInactive = isRevoked || isExpired;
+                            const isActive = !isRevoked && !isExpired;
+
+                            if (confirmRevokeId === token.id) {
+                                return (
+                                    <div key={token.id} className="sa-token-row sa-confirm-mode">
+                                        <span className="sa-confirm-text">
+                                            {tr("Revoke this token?")}
+                                        </span>
+                                        <div className="sa-confirm-actions">
+                                            <button
+                                                type="button"
+                                                disabled={isBusy}
+                                                onClick={() => setConfirmRevokeId(null)}
+                                                className="sa-btn-cancel"
+                                            >
+                                                {tr("Cancel")}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={isBusy}
+                                                onClick={() => handleRevoke(token.id)}
+                                                className="sa-btn-danger"
+                                            >
+                                                {revokingId === token.id ? (
+                                                    <Loader2 size={14} className="sa-spinner" aria-hidden="true" />
+                                                ) : (
+                                                    tr("Revoke")
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            }
 
                             return (
-                                <div
-                                    key={token.id}
-                                    className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-opacity ${
-                                        isInactive ? 'opacity-50' : 'opacity-100'
-                                    } ${
-                                        L ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'
-                                    }`}
-                                >
-                                    <div className="space-y-1.5 min-w-0">
-                                        <div className="flex items-center gap-2.5 flex-wrap">
-                                            <span className={`text-sm font-black uppercase tracking-wide truncate ${L ? 'text-black' : 'text-white'}`}>
-                                                {token.label}
-                                            </span>
-                                            <span className={`font-mono text-xs px-2 py-0.5 rounded-md border ${
-                                                L ? 'bg-black/10 border-black/20 text-black/80' : 'bg-white/10 border-white/20 text-white/80'
-                                            }`}>
+                                <div key={token.id} className="sa-token-row">
+                                    <div className="sa-token-info">
+                                        <div className="sa-token-label-row">
+                                            <span className="sa-token-label">{token.label}</span>
+                                            <span className={`sa-token-prefix ${isRevoked ? 'sa-revoked-dim' : ''}`}>
                                                 {token.prefix}
                                             </span>
                                         </div>
-                                        <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] ${L ? 'text-black/60' : 'text-white/60'}`}>
-                                            <span>
-                                                <strong className={L ? 'text-black/80' : 'text-white/80'}>{tr("Created")}:</strong>{' '}
-                                                {formatDate(token.created_at)}
-                                            </span>
-                                            <span>
-                                                <strong className={L ? 'text-black/80' : 'text-white/80'}>{tr("Last used")}:</strong>{' '}
-                                                {token.last_used_at ? formatDate(token.last_used_at) : tr("never")}
-                                            </span>
-                                            <span>
-                                                <strong className={L ? 'text-black/80' : 'text-white/80'}>{tr("Expires")}:</strong>{' '}
-                                                {formatDate(token.expires_at)}
-                                            </span>
+                                        <div className="sa-token-meta">
+                                            <span>{tr("Created")}: {formatDate(token.created_at)}</span>
+                                            <span className="sa-meta-sep" aria-hidden="true">·</span>
+                                            <span>{tr("Last used")}: {token.last_used_at ? formatDate(token.last_used_at) : tr("never")}</span>
+                                            <span className="sa-meta-sep" aria-hidden="true">·</span>
+                                            <span>{tr("Expires")}: {formatDate(token.expires_at)}</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-end shrink-0">
-                                        {isInactive ? (
-                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border ${
-                                                isRevoked
-                                                    ? 'text-red-400 border-red-500/30 bg-red-500/10'
-                                                    : 'text-amber-400 border-amber-500/30 bg-amber-500/10'
-                                            }`}>
-                                                {isRevoked ? tr("Revoked") : tr("Expired")}
-                                            </span>
-                                        ) : confirmRevokeId === token.id ? (
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    disabled={isBusy}
-                                                    onClick={() => handleRevoke(token.id)}
-                                                    className="min-h-[44px] px-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider transition-all focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
-                                                >
-                                                    {tr("Confirm revoke")}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    disabled={isBusy}
-                                                    onClick={() => setConfirmRevokeId(null)}
-                                                    className={`min-h-[44px] px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all focus:outline-none focus:ring-2 focus:ring-white/40 disabled:opacity-50 ${
-                                                        L ? 'bg-black/10 hover:bg-black/20 text-black/70' : 'bg-white/10 hover:bg-white/20 text-white/70'
-                                                    }`}
-                                                >
-                                                    {tr("Cancel")}
-                                                </button>
-                                            </div>
-                                        ) : (
+                                    <div className="sa-token-actions">
+                                        <span className={`sa-status-badge ${isActive ? 'sa-status-active' : isExpired ? 'sa-status-warn' : 'sa-status-revoked'} ${isRevoked ? 'sa-revoked-dim' : ''}`}>
+                                            {isActive && <Check size={12} className="sa-status-icon" aria-hidden="true" />}
+                                            {isExpired && <AlertCircle size={12} className="sa-status-icon" aria-hidden="true" />}
+                                            {isRevoked && <X size={12} className="sa-status-icon" aria-hidden="true" />}
+                                            <span>{isActive ? tr("Active") : isExpired ? tr("Expired") : tr("Revoked")}</span>
+                                        </span>
+
+                                        {isActive && (
                                             <button
                                                 type="button"
                                                 disabled={isBusy}
                                                 onClick={() => setConfirmRevokeId(token.id)}
-                                                className="min-h-[44px] px-3.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-black uppercase tracking-wider transition-all focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
+                                                className="sa-btn-revoke"
                                             >
                                                 {tr("Revoke")}
                                             </button>
@@ -392,9 +391,9 @@ export const SiriAccessPanel: React.FC = () => {
                                     </div>
                                 </div>
                             );
-                        })}
-                    </div>
-                )}
+                        })
+                    )}
+                </div>
             </div>
         </div>
     );

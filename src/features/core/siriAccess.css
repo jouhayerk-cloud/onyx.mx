@@ -1,0 +1,906 @@
+/* Aqua theme fallback values when rendered outside .ss-sheet */
+html.theme-aqua {
+    --ss-fg: rgba(0, 0, 0, 0.88);
+    --ss-fg2: rgba(0, 0, 0, 0.64);
+    --ss-fg3: rgba(0, 0, 0, 0.50);
+    --ss-sep: rgba(0, 0, 0, 0.12);
+    --ss-fill: rgba(255, 255, 255, 0.62);
+    --ss-fill-hover: rgba(255, 255, 255, 0.80);
+    --ss-field: rgba(0, 0, 0, 0.06);
+    --ss-danger: #c62828;
+    --ss-ok: #1b7f3b;
+    --ss-warn: #8a5a00;
+}
+
+/* Panel root container */
+.sa-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+}
+
+html:root:root:root .ss-sheet .sa-panel {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+/* Section headers & captions (12px secondary, sentence case) */
+.sa-section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sa-section-caption {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.33;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 0 4px;
+}
+
+html:root:root:root .ss-sheet .sa-section-caption {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+.sa-section-desc {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.38;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    margin: 0;
+    padding: 0 4px;
+}
+
+html:root:root:root .ss-sheet .sa-section-desc {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+/* Section wrapper */
+.sa-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Cards (inset grouped card) */
+.sa-card {
+    border-radius: var(--ss-radius, 14px);
+    background: var(--ss-fill, rgba(255, 255, 255, 0.07));
+    overflow: hidden;
+    box-shadow: none;
+}
+
+html:root:root:root .ss-sheet .sa-card {
+    border-radius: var(--ss-radius, 14px) !important;
+    background: var(--ss-fill, rgba(255, 255, 255, 0.07)) !important;
+    box-shadow: none !important;
+}
+
+/* Creation form */
+.sa-create-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    box-sizing: border-box;
+}
+
+.sa-field-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.sa-input {
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 44px;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    background: var(--ss-field, rgba(0, 0, 0, 0.28));
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12));
+    border-radius: 10px;
+    padding: 0 14px;
+    box-sizing: border-box;
+    box-shadow: none;
+    outline: none;
+    transition: border-color 150ms ease;
+}
+
+html:root:root:root .ss-sheet .sa-input {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+    background: var(--ss-field, rgba(0, 0, 0, 0.28)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+    box-shadow: none !important;
+}
+
+.sa-input::placeholder {
+    color: var(--ss-fg3, rgba(255, 255, 255, 0.50));
+}
+
+html:root:root:root .ss-sheet .sa-input::placeholder {
+    color: var(--ss-fg3, rgba(255, 255, 255, 0.50)) !important;
+}
+
+.sa-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+html:root:root:root .ss-sheet .sa-input:disabled {
+    opacity: 0.5 !important;
+}
+
+/* Primary Filled Accent Button */
+.sa-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ss-on-accent, #ffffff);
+    background: var(--ss-accent, var(--main-color, #00aeef));
+    border: 1px solid transparent;
+    border-radius: 10px;
+    box-shadow: none;
+    text-shadow: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 150ms ease, transform 100ms ease;
+}
+
+html:root:root:root .ss-sheet .sa-btn-primary {
+    color: var(--ss-on-accent, #ffffff) !important;
+    background: var(--ss-accent, var(--main-color, #00aeef)) !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.sa-btn-primary:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+html:root:root:root .ss-sheet .sa-btn-primary:hover:not(:disabled) {
+    opacity: 0.9 !important;
+}
+
+.sa-btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.sa-btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+html:root:root:root .ss-sheet .sa-btn-primary:disabled {
+    opacity: 0.45 !important;
+}
+
+/* Callout card for newly created token */
+.sa-callout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--ss-radius, 14px);
+    background: var(--ss-fill, rgba(255, 255, 255, 0.07));
+    border: 1px solid rgba(94, 224, 138, 0.4);
+    border-color: color-mix(in srgb, var(--ss-ok, #5ee08a) 40%, transparent);
+    box-shadow: none;
+}
+
+html:root:root:root .ss-sheet .sa-callout {
+    border-radius: var(--ss-radius, 14px) !important;
+    background: var(--ss-fill, rgba(255, 255, 255, 0.07)) !important;
+    border: 1px solid rgba(94, 224, 138, 0.4) !important;
+    border-color: color-mix(in srgb, var(--ss-ok, #5ee08a) 40%, transparent) !important;
+    box-shadow: none !important;
+}
+
+.sa-callout-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sa-callout-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.33;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    margin: 0;
+}
+
+html:root:root:root .ss-sheet .sa-callout-title {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+.sa-callout-desc {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.38;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    margin: 0;
+}
+
+html:root:root:root .ss-sheet .sa-callout-desc {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+.sa-callout-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    background: var(--ss-field, rgba(0, 0, 0, 0.28));
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    padding: 10px 12px;
+    user-select: all;
+    -webkit-user-select: all;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    box-shadow: none;
+}
+
+html:root:root:root .ss-sheet .sa-callout-code {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+    background: var(--ss-field, rgba(0, 0, 0, 0.28)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+    box-shadow: none !important;
+}
+
+.sa-callout-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Secondary Button (Copy) */
+.sa-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.11));
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    box-shadow: none;
+    text-shadow: none;
+    cursor: pointer;
+    transition: background 150ms ease, transform 100ms ease;
+}
+
+html:root:root:root .ss-sheet .sa-btn-secondary {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.11)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.sa-btn-secondary:hover:not(:disabled) {
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.16));
+}
+
+.sa-btn-secondary:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+/* Plain Button (Done) */
+.sa-btn-plain {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    box-shadow: none;
+    text-shadow: none;
+    cursor: pointer;
+    transition: color 150ms ease;
+}
+
+html:root:root:root .ss-sheet .sa-btn-plain {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.sa-btn-plain:hover {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+}
+
+html:root:root:root .ss-sheet .sa-btn-plain:hover {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+/* Token list row */
+.sa-token-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    min-height: 56px;
+    box-sizing: border-box;
+}
+
+.sa-token-row + .sa-token-row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 0;
+    height: 1px;
+    background-color: var(--ss-sep, rgba(255, 255, 255, 0.12));
+}
+
+.sa-token-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+}
+
+.sa-token-label-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sa-token-label {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.33;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+html:root:root:root .ss-sheet .sa-token-label {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+.sa-token-prefix {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    background: var(--ss-field, rgba(0, 0, 0, 0.28));
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12));
+}
+
+html:root:root:root .ss-sheet .sa-token-prefix {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+    background: var(--ss-field, rgba(0, 0, 0, 0.28)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+}
+
+.sa-token-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.33;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+}
+
+html:root:root:root .ss-sheet .sa-token-meta {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+.sa-meta-sep {
+    opacity: 0.5;
+}
+
+.sa-token-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* Status Badges */
+.sa-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.sa-status-icon {
+    flex-shrink: 0;
+}
+
+.sa-status-active {
+    color: var(--ss-ok, #5ee08a);
+}
+
+html:root:root:root .ss-sheet .sa-status-active {
+    color: var(--ss-ok, #5ee08a) !important;
+}
+
+.sa-status-warn {
+    color: var(--ss-warn, #ffc857);
+}
+
+html:root:root:root .ss-sheet .sa-status-warn {
+    color: var(--ss-warn, #ffc857) !important;
+}
+
+.sa-status-revoked {
+    color: var(--ss-fg3, rgba(255, 255, 255, 0.50));
+}
+
+html:root:root:root .ss-sheet .sa-status-revoked {
+    color: var(--ss-fg3, rgba(255, 255, 255, 0.50)) !important;
+}
+
+.sa-revoked-dim {
+    opacity: 0.6;
+}
+
+/* Revoke Text Button */
+.sa-btn-revoke {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 8px;
+    min-height: 28px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ss-danger, #ff7a7a);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    box-shadow: none;
+    text-shadow: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 150ms ease;
+}
+
+html:root:root:root .ss-sheet .sa-btn-revoke {
+    color: var(--ss-danger, #ff7a7a) !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.sa-btn-revoke:hover:not(:disabled) {
+    opacity: 0.75;
+    text-decoration: underline;
+}
+
+html:root:root:root .ss-sheet .sa-btn-revoke:hover:not(:disabled) {
+    opacity: 0.75 !important;
+}
+
+.sa-btn-revoke:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Inline Confirm Row */
+.sa-confirm-mode {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sa-confirm-text {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+}
+
+html:root:root:root .ss-sheet .sa-confirm-text {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+.sa-confirm-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.sa-btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 4px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    background: transparent;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    box-shadow: none;
+    text-shadow: none;
+    cursor: pointer;
+    transition: background 150ms ease;
+}
+
+html:root:root:root .ss-sheet .sa-btn-cancel {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+    background: transparent !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.sa-btn-cancel:hover:not(:disabled) {
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.11));
+}
+
+html:root:root:root .ss-sheet .sa-btn-cancel:hover:not(:disabled) {
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.11)) !important;
+}
+
+.sa-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 4px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ss-danger, #ff7a7a);
+    background: transparent;
+    border: 1px solid var(--ss-danger, #ff7a7a);
+    border-radius: 8px;
+    box-shadow: none;
+    text-shadow: none;
+    cursor: pointer;
+    transition: background 150ms ease;
+}
+
+html:root:root:root .ss-sheet .sa-btn-danger {
+    color: var(--ss-danger, #ff7a7a) !important;
+    background: transparent !important;
+    border: 1px solid var(--ss-danger, #ff7a7a) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.sa-btn-danger:hover:not(:disabled) {
+    background: rgba(255, 122, 122, 0.12);
+}
+
+html:root:root:root .ss-sheet .sa-btn-danger:hover:not(:disabled) {
+    background: rgba(255, 122, 122, 0.12) !important;
+}
+
+.sa-btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Empty row */
+.sa-empty-row {
+    padding: 20px 16px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+}
+
+html:root:root:root .ss-sheet .sa-empty-row {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+/* Error Banner */
+.sa-error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--ss-radius, 14px);
+    background: var(--ss-fill, rgba(255, 255, 255, 0.07));
+    border: 1px solid var(--ss-danger, #ff7a7a);
+    box-shadow: none;
+}
+
+html:root:root:root .ss-sheet .sa-error-banner {
+    border-radius: var(--ss-radius, 14px) !important;
+    background: var(--ss-fill, rgba(255, 255, 255, 0.07)) !important;
+    border: 1px solid var(--ss-danger, #ff7a7a) !important;
+    box-shadow: none !important;
+}
+
+.sa-error-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.sa-error-icon {
+    color: var(--ss-danger, #ff7a7a);
+    flex-shrink: 0;
+}
+
+html:root:root:root .ss-sheet .sa-error-icon {
+    color: var(--ss-danger, #ff7a7a) !important;
+}
+
+.sa-error-text {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--ss-danger, #ff7a7a);
+}
+
+html:root:root:root .ss-sheet .sa-error-text {
+    color: var(--ss-danger, #ff7a7a) !important;
+}
+
+.sa-dismiss-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--ss-danger, #ff7a7a);
+    box-shadow: none;
+    text-shadow: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 150ms ease;
+}
+
+html:root:root:root .ss-sheet .sa-dismiss-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--ss-danger, #ff7a7a) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.sa-dismiss-btn:hover {
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.11));
+}
+
+html:root:root:root .ss-sheet .sa-dismiss-btn:hover {
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.11)) !important;
+}
+
+/* Spinner Animation */
+@keyframes sa-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.sa-spinner {
+    animation: sa-spin 1s linear infinite;
+    flex-shrink: 0;
+}
+
+/* Accessible focus ring */
+.sa-input:focus-visible,
+.sa-btn-primary:focus-visible,
+.sa-btn-secondary:focus-visible,
+.sa-btn-plain:focus-visible,
+.sa-btn-revoke:focus-visible,
+.sa-btn-cancel:focus-visible,
+.sa-btn-danger:focus-visible,
+.sa-dismiss-btn:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+html:root:root:root .ss-sheet .sa-input:focus-visible,
+html:root:root:root .ss-sheet .sa-btn-primary:focus-visible,
+html:root:root:root .ss-sheet .sa-btn-secondary:focus-visible,
+html:root:root:root .ss-sheet .sa-btn-plain:focus-visible,
+html:root:root:root .ss-sheet .sa-btn-revoke:focus-visible,
+html:root:root:root .ss-sheet .sa-btn-cancel:focus-visible,
+html:root:root:root .ss-sheet .sa-btn-danger:focus-visible,
+html:root:root:root .ss-sheet .sa-dismiss-btn:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+/* Touch screens (coarse pointer) minimum target size (44px) */
+@media (pointer: coarse) {
+    .sa-btn-revoke,
+    .sa-btn-cancel,
+    .sa-btn-danger,
+    .sa-btn-secondary,
+    .sa-btn-plain,
+    .sa-dismiss-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    html:root:root:root .ss-sheet .sa-btn-revoke,
+    html:root:root:root .ss-sheet .sa-btn-cancel,
+    html:root:root:root .ss-sheet .sa-btn-danger,
+    html:root:root:root .ss-sheet .sa-btn-secondary,
+    html:root:root:root .ss-sheet .sa-btn-plain,
+    html:root:root:root .ss-sheet .sa-dismiss-btn {
+        min-height: 44px !important;
+        min-width: 44px !important;
+    }
+}
+
+/* Phone layout (stack below 480px) */
+@media (max-width: 480px) {
+    .sa-create-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sa-field-wrap {
+        width: 100%;
+    }
+
+    .sa-btn-primary {
+        width: 100%;
+    }
+
+    html:root:root:root .ss-sheet .sa-btn-primary {
+        width: 100% !important;
+    }
+
+    .sa-token-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .sa-token-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .sa-confirm-mode {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .sa-confirm-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .sa-btn-revoke,
+    .sa-btn-cancel,
+    .sa-btn-danger,
+    .sa-btn-secondary,
+    .sa-btn-plain,
+    .sa-dismiss-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    html:root:root:root .ss-sheet .sa-btn-revoke,
+    html:root:root:root .ss-sheet .sa-btn-cancel,
+    html:root:root:root .ss-sheet .sa-btn-danger,
+    html:root:root:root .ss-sheet .sa-btn-secondary,
+    html:root:root:root .ss-sheet .sa-btn-plain,
+    html:root:root:root .ss-sheet .sa-dismiss-btn {
+        min-height: 44px !important;
+        min-width: 44px !important;
+    }
+}
+
+/* Prefers-reduced-motion: remove animations and transitions */
+@media (prefers-reduced-motion: reduce) {
+    .sa-panel *,
+    .sa-panel *::before,
+    .sa-panel *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0ms !important;
+    }
+
+    html:root:root:root .ss-sheet .sa-panel *,
+    html:root:root:root .ss-sheet .sa-panel *::before,
+    html:root:root:root .ss-sheet .sa-panel *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0ms !important;
+    }
+}
+
+/* Prefers-reduced-transparency: opaque surfaces */
+@media (prefers-reduced-transparency: reduce) {
+    .sa-card,
+    .sa-callout,
+    .sa-error-banner {
+        background: #1c1c1e;
+    }
+
+    .sa-input,
+    .sa-callout-code {
+        background: #000000;
+    }
+
+    html:root:root:root .ss-sheet .sa-card,
+    html:root:root:root .ss-sheet .sa-callout,
+    html:root:root:root .ss-sheet .sa-error-banner {
+        background: #1c1c1e !important;
+    }
+
+    html:root:root:root .ss-sheet .sa-input,
+    html:root:root:root .ss-sheet .sa-callout-code {
+        background: #000000 !important;
+    }
+
+    html.theme-aqua .sa-card,
+    html.theme-aqua .sa-callout,
+    html.theme-aqua .sa-error-banner {
+        background: #f2f2f7;
+    }
+
+    html.theme-aqua .sa-input,
+    html.theme-aqua .sa-callout-code {
+        background: #ffffff;
+    }
+
+    html.theme-aqua html:root:root:root .ss-sheet .sa-card,
+    html.theme-aqua html:root:root:root .ss-sheet .sa-callout,
+    html.theme-aqua html:root:root:root .ss-sheet .sa-error-banner {
+        background: #f2f2f7 !important;
+    }
+
+    html.theme-aqua html:root:root:root .ss-sheet .sa-input,
+    html.theme-aqua html:root:root:root .ss-sheet .sa-callout-code {
+        background: #ffffff !important;
+    }
+}

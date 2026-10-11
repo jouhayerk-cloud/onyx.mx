@@ -1,0 +1,19 @@
+[
+  ["Appearance", "Apariencia"],
+  ["General", "General"],
+  ["Language", "Idioma"],
+  ["Performance", "Rendimiento"],
+  ["Maximum", "Máximo"],
+  ["Standard", "Estándar"],
+  ["Offline mode", "Modo sin conexión"],
+  ["Online", "En línea"],
+  ["Offline", "Sin conexión"],
+  ["Color tokens", "Tokens de color"],
+  ["Dark", "Oscuro"],
+  ["Light", "Claro"],
+  ["Interface style", "Estilo de interfaz"],
+  ["Sign out", "Cerrar sesión"],
+  ["Close", "Cerrar"],
+  ["Show older versions", "Mostrar versiones anteriores"],
+  ["System logs", "Registros del sistema"]
+]
