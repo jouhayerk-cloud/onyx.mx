@@ -30,6 +30,7 @@ import {
     isBotOrbOpenAtom,
     UserRole
 } from '../../lib/atoms';
+import { viewAllowed, homeViewFor } from '../../lib/navAccess';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers, ShoppingBag,
@@ -222,6 +223,13 @@ export function MainAppView() {
         }
     }, [user, activeView, setIsDummyMode]);
 
+    // Onyx-mx v2: a role only opens the views it has in the sidebar (lib/navAccess.ts). A stored view the role cannot see
+    // (a vendor who last left Finances open, a client boss with no Home) lands on the role's own first entry.
+    useEffect(() => {
+        const role = user?.role;
+        if (role && !viewAllowed(role, activeView as string)) setActiveView(homeViewFor(role) as any);
+    }, [user?.role, activeView, setActiveView]);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p' || e.key === 'O' || e.key === 'o')) {
@@ -254,7 +262,7 @@ export function MainAppView() {
         // show the ViewSkeleton while the JS is loading.
         switch (activeView as string) {
             case 'control': return <ControlView />;
-            case 'dashboard': return (user?.role === 'Developer' || user?.role === 'Admin') ? <AdminDashboard /> : <InventoryView />;
+            case 'dashboard': return (user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting') ? <AdminDashboard /> : <InventoryView />;
             // Overview summarises finances and inventory: Admin and Developer only (never vendors or client roles).
             case 'overview': return (user?.role === 'Developer' || user?.role === 'Admin') ? <AdminDashboard /> : <InventoryView />;
             // Workbook holds the 326 book and the ARCHIVE 825 tab (finance, production, logistics tabs inside): Admin and Developer only.

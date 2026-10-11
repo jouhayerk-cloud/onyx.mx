@@ -255,8 +255,8 @@ export const esCatalog: Record<string, string> = {
 
   // ── Core shell: header, sidebar, tool bar, settings ───────────────────────
   'Welcome': 'Bienvenido',
-  'Onyx.mx Menu': 'Menú de Onyx.mx',
-  'Onyx.mx Studio': 'Estudio de Onyx.mx',
+  'Onyx-mx Menu': 'Menú de Onyx-mx',
+  'Onyx-mx Studio': 'Estudio de Onyx-mx',
   'Navigation': 'Navegación',
   'Tools': 'Herramientas',
   'Filter': 'Filtro',
@@ -410,8 +410,8 @@ export const esCatalog: Record<string, string> = {
   'Activate Link': 'Activar Enlace',
   'Need access? Contact your administrator.':
     '¿Necesitas acceso? Contacta a tu administrador.',
-  'Your email is not registered for Onyx.mx access. Contact your system administrator.':
-    'Tu correo no está registrado para acceder a Onyx.mx. Contacta al administrador del sistema.',
+  'Your email is not registered for Onyx-mx access. Contact your system administrator.':
+    'Tu correo no está registrado para acceder a Onyx-mx. Contacta al administrador del sistema.',
   'Welcome to Onyx. Access your inventory, manage operations, and explore your workspace.':
     'Bienvenido a Onyx. Accede a tu inventario, gestiona operaciones y explora tu espacio de trabajo.',
 
@@ -1211,7 +1211,7 @@ export const esCatalog: Record<string, string> = {
   // AI status
   'AI Classification:': 'Clasificación por IA:',
   'AI Metadata Verified:': 'Metadatos de IA verificados:',
-  'Onyx.mx AI Engine': 'Motor de IA de Onyx.mx',
+  'Onyx-mx AI Engine': 'Motor de IA de Onyx-mx',
   'WebP Background Removed': 'Fondo eliminado en WebP',
   'Generated': 'Generado',
   '100% AI Ready': '100% Listo con IA',
@@ -3501,4 +3501,7 @@ export const esCatalog: Record<string, string> = {
   'Batch': 'Lote',
   'Add one item': 'Agregar un artículo',
   'Add many items from a vendor XLSX': 'Agregar varios artículos desde un XLSX del proveedor',
+  'Add entry': 'Agregar entrada',
+  'Developer': 'Desarrollador',
+  'Admin Control Center': 'Centro de control de administración',
 };

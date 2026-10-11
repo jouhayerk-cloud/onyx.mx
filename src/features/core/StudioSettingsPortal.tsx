@@ -32,7 +32,7 @@ import { tr } from '../../lib/i18n';
 import { TactileSwitch } from '../../components/TactileSwitch';
 import './studioSettings.css';
 
-declare const __APP_VERSION__: string;
+import { APP_VERSION_LABEL } from '../../lib/appVersion';
 
 const STYLE_META: Record<AppStyle, { label: string; icon: LucideIcon }> = {
     rock: { label: 'ROCK', icon: Layers },
@@ -221,7 +221,7 @@ export const StudioSettingsPortal: React.FC = () => {
                         <span id="ss-title" className="text-[20px] font-[600] text-(--ss-fg) leading-tight">
                             {viewMode === 'settings' ? tr("Settings") : tr("System logs")}
                         </span>
-                        <span className="text-[11px] text-(--ss-fg2)">V{__APP_VERSION__}</span>
+                        <span className="text-[11px] text-(--ss-fg2)">V{APP_VERSION_LABEL}</span>
                     </div>
                     <button aria-label={tr("Close")} onClick={handleClose} className="ss-icon-btn w-[44px] h-[44px]">
                         <X size={24} className="text-(--ss-fg)" />
@@ -241,8 +241,8 @@ export const StudioSettingsPortal: React.FC = () => {
                         <div className="ss-brand-mark">
                             <OnyxLogo className="ss-brand-logo" />
                         </div>
-                        <span className="ss-brand-name">Onyx.mx</span>
-                        <span className="ss-brand-version">V{__APP_VERSION__}</span>
+                        <span className="ss-brand-name">Onyx-mx</span>
+                        <span className="ss-brand-version">V{APP_VERSION_LABEL}</span>
                     </aside>
                     <div className="ss-scroll overflow-y-auto px-4 py-6 custom-scrollbar">
                         <div className="max-w-[500px] mx-auto space-y-8 pb-12">

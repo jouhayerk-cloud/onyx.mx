@@ -44,10 +44,11 @@ const Tile: React.FC<TileProps> = ({ area, title, sub, onOpen, figure, ownClicks
     );
 };
 
+/** Same table as the sidebar (lib/navAccess.ts). */
 const ROLES = {
-    inventory: ['Developer', 'Admin', 'ClientBoss', 'ClientViewer', 'Vendor'],
+    inventory: ['Developer', 'Admin', 'ClientBoss', 'ClientAccounting', 'ClientViewer', 'Client', 'Vendor'],
     finance: ['Developer', 'Admin', 'ClientBoss', 'ClientAccounting'],
-    logistics: ['Developer', 'Admin', 'ClientBoss'],
+    logistics: ['Developer', 'Admin'],
 } as const;
 
 /** Welcome page with tiles for inventory, finance, logistics and shop, each shown by role. */

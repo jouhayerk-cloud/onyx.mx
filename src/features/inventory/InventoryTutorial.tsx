@@ -46,7 +46,7 @@ export function InventoryTutorial({ onClose }: { onClose: () => void }) {
                     <div className="flex items-center gap-6 md:gap-8">
                         <div className="flex flex-col">
                             <div className="flex items-center gap-3 mb-1">
-                                <h1 className="text-lg md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">Onyx.mx</h1>
+                                <h1 className="text-lg md:text-3xl font-black uppercase tracking-[0.4em] leading-none text-white">Onyx-mx</h1>
                                 <span className="h-[1px] w-8 bg-white/40" />
                                 <span className="text-[9px] font-black text-(--main-color) tracking-[0.3em] uppercase">{tr("Tutorial")}</span>
                             </div>

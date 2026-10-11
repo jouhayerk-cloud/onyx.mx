@@ -48,7 +48,7 @@ export function WelcomePage({ onComplete }: { onComplete: () => void }) {
                 </h1>
 
                 <p className="welcome-animate text-white/50 text-lg mb-12 leading-relaxed">
-                    Your secure enterprise account has been verified. Welcome to the <span className="text-white font-bold">Onyx.mx</span> {tr("network.")}
+                    Your secure enterprise account has been verified. Welcome to the <span className="text-white font-bold">Onyx-mx</span> {tr("network.")}
                 </p>
 
                 <div className="welcome-animate p-6 rounded-3xl bg-white/5 border border-white/10 mb-8 flex items-center justify-between">

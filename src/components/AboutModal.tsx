@@ -13,7 +13,7 @@ interface AboutModalProps {
     onClose: () => void;
 }
 
-declare const __APP_VERSION__: string;
+import { APP_VERSION_LABEL } from '../lib/appVersion';
 
 export function AboutModal({ isOpen, onClose }: AboutModalProps) {
     if (!isOpen) return null;
@@ -108,9 +108,9 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             <OnyxMiniLogo className="w-12 h-12 transition-all group-hover:rotate-12 drop-shadow-[0_0_15px_rgba(255,255,255,0.15)]" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black uppercase tracking-[0.25em] text-white leading-none mb-1 shadow-sm">{tr("Onyx.mx Studio")}</h1>
+                            <h1 className="text-2xl font-black uppercase tracking-[0.25em] text-white leading-none mb-1 shadow-sm">{tr("Onyx-mx Studio")}</h1>
                             <div className="flex items-center gap-3">
-                                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-[10px] font-black text-blue-300 uppercase tracking-widest">{tr("Version v")}{__APP_VERSION__}</span>
+                                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-[10px] font-black text-blue-300 uppercase tracking-widest">{tr("Version v")}{APP_VERSION_LABEL}</span>
                                 <span className="text-[10px] text-white/40 font-bold tracking-widest uppercase">{tr("System Log")}</span>
                             </div>
                         </div>

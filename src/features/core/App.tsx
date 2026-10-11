@@ -321,7 +321,7 @@ export default function App() {
                 </div>
                 <h2 className="text-xl font-bold text-white mb-2">{tr("Access Denied")}</h2>
                 <p className="text-sm text-(--text-color-secondary) mb-6">
-                  {tr("Your email is not registered for Onyx.mx access. Contact your system administrator.")}
+                  {tr("Your email is not registered for Onyx-mx access. Contact your system administrator.")}
                 </p>
                 <button
                   onClick={async () => {

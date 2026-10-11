@@ -581,7 +581,7 @@ export const RegStorePreview: React.FC = () => {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="text-white font-bold uppercase tracking-wider mb-3 text-sm">{tr("Onyx.mx AI Engine")}</h4>
+                        <h4 className="text-white font-bold uppercase tracking-wider mb-3 text-sm">{tr("Onyx-mx AI Engine")}</h4>
                         <p className="leading-relaxed">
                             {tr("Powered by Google DeepMind Advanced Agentic Coding. Generating automated spatial masks, background removal, and marketing copy for natural stone artifacts.")}
                         </p>

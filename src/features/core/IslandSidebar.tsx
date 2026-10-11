@@ -15,11 +15,12 @@ import {
     Shield, CreditCard, Truck, Package, MapPin,
     ChevronRight, Zap, BarChart3, LayoutDashboard, Pipette, Layers,
     Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Album, Shell, Printer,
-    ChevronsLeft, ChevronsRight
+    ChevronsLeft, ChevronsRight, House, FilePlus2
 } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { tr } from '../../lib/i18n';
+import { canSee } from '../../lib/navAccess';
 import './islandSidebar.css';
 import './islandSidebarRail.css';
 import './islandSidebarDrawer.css';
@@ -38,7 +39,11 @@ const ICON_MAP: Record<string, React.FC<any>> = {
     'rotate-3d': Rotate3d,
     'bar-chart-3': BarChart3,
     'layout-dashboard': LayoutDashboard,
-    'credit-card': CreditCard
+    'credit-card': CreditCard,
+    'file-plus': FilePlus2,
+    printer: Printer,
+    home: House,
+    album: Album
 };
 
 interface NavItemProps {
@@ -109,19 +114,30 @@ interface NavItemWithSubmenuProps {
     isRail: boolean;
     isHoverPeek: boolean;
     onHideSidebarMobile: () => void;
+    /** When given, a click on the parent opens its own view (and unfolds the sub items) instead of only folding them. */
+    onParentClick?: () => void;
+    /** Overrides "the active view is this entry's viewId". */
+    parentActive?: boolean;
 }
 
-const NavItemWithSubmenuComponent: React.FC<NavItemWithSubmenuProps> = React.memo(({ viewId, label, icon, subItems, isCompact, isRail, isHoverPeek, onHideSidebarMobile }) => {
+const NavItemWithSubmenuComponent: React.FC<NavItemWithSubmenuProps> = React.memo(({ viewId, label, icon, subItems, isCompact, isRail, isHoverPeek, onHideSidebarMobile, onParentClick, parentActive }) => {
     const [activeView] = useAtom(activeViewAtom);
     const [activeSubMenu, setActiveSubMenu] = useAtom(activeSubMenuAtom);
     
     const [isHovered, setIsHovered] = useState(false);
     const isOpen = activeSubMenu === viewId;
-    const isParentActive = activeView === viewId;
+    const isParentActive = parentActive ?? activeView === viewId;
 
     const NavIcon = ICON_MAP[icon] || Truck;
 
     const handleToggle = () => {
+        if (onParentClick) {
+            // Opens the entry's own view and unfolds its sub items; a second click on the lit entry folds them.
+            if (isOpen && isParentActive) { setActiveSubMenu(null); return; }
+            onParentClick();
+            setActiveSubMenu(viewId);
+            return;
+        }
         setActiveSubMenu(isOpen ? null : viewId);
     };
 
@@ -230,12 +246,12 @@ const SidebarSection: React.FC<{ title: string, show: boolean, isCompact: boolea
 
     return (
         <div className="isb-section">
-            <div 
-                className={`isb-section-title ${showExpanded ? 'isb-label-expanded' : showRail ? 'isb-label-rail' : 'isb-label-compact'}`}
-                title={showRail ? title : undefined}
-            >
-                {title}
-            </div>
+            {title && (
+                <div className={`isb-section-title ${showExpanded ? 'isb-label-expanded' : showRail ? 'isb-label-rail' : 'isb-label-compact'}`}
+                    title={showRail ? title : undefined}>
+                    {title}
+                </div>
+            )}
             <div className="isb-section-items">
                 {children}
             </div>
@@ -495,9 +511,9 @@ export const IslandSidebar: React.FC = () => {
         dragStartRef.current = null;
     }, []);
 
-    const showManagement = user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting';
-    const showLogistics = user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor';
-    const showTools = user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor';
+    // Onyx-mx v2: what each role sees is one table (lib/navAccess.ts), shared with Home and the view guard.
+    const role = user?.role;
+    const see = (id: Parameters<typeof canSee>[1]) => canSee(role, id);
 
     const panelStyle: React.CSSProperties = {
         width: isPhone ? 'min(280px, 85vw)' : (isHoverPeek ? '240px' : 'calc(var(--sidebar-width) - 24px)'),
@@ -518,7 +534,7 @@ export const IslandSidebar: React.FC = () => {
                 className={`isb-toggle-circle${toggleOpening ? ' is-opening' : ''}`}
                 onClick={handleToggleOpen}
                 aria-label={tr("Show sidebar")}
-                title={tr("Onyx.mx Menu")}
+                title={tr("Onyx-mx Menu")}
             >
                 <OnyxMiniLogo className="isb-toggle-logo" />
             </button>
@@ -555,7 +571,7 @@ export const IslandSidebar: React.FC = () => {
                     {showExpanded ? (
                         <>
                             <OnyxLogo className="w-16 h-16 transition-transform duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:scale-105 active:scale-95" />
-                            <div className="isb-logo-text isb-height-aware mt-1 text-white opacity-80 font-bold tracking-widest text-sm">Onyx.mx</div>
+                            <div className="isb-logo-text isb-height-aware mt-1 text-white opacity-80 font-bold tracking-widest text-sm">Onyx-mx</div>
                         </>
                     ) : (
                         <OnyxMiniLogo className="w-10 h-10 transition-transform duration-300 hover:scale-105 active:scale-95 mt-2" />
@@ -575,148 +591,150 @@ export const IslandSidebar: React.FC = () => {
                 onScroll={handleScroll}
                 className={`isb-list isb-list--scrollable ${scrollState.top ? 'isb-list--more-top' : ''} ${scrollState.bottom ? 'isb-list--more-bottom' : ''}`}
             >
-                {showManagement && (
-                    <SidebarSection title={tr("Management")} show={true} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
-                        {user?.role === 'Developer' && (
-                            <NavItemWithSubmenuComponent
-                                viewId="admin"
-                                label={tr("Admin")}
-                                icon="shield"
-                                subItems={[
-                                    { id: 'control', label: tr("Control Center"), icon: 'shield', action: () => { setActiveView('control'); handleMobileHide(); }, isActive: activeView === 'control' }
-                                ]}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                                onHideSidebarMobile={handleMobileHide}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItem
-                                icon={LayoutDashboard}
-                                label={tr("Dashboard")}
-                                isActive={activeView === 'dashboard'}
-                                action={() => { setActiveView('dashboard'); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItem
-                                icon={Layers}
-                                label={tr("Archived")}
-                                isActive={activeView === 'workbook'}
-                                action={() => { setActiveView('workbook'); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting') && (
-                            <NavItem
-                                icon={BadgeDollarSign}
-                                label={tr("Finances")}
-                                isActive={activeView === 'finance'}
-                                action={() => { setActiveView('finance'); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItem
-                                icon={Cpu}
-                                label={tr("Devices")}
-                                isActive={activeView === 'devices'}
-                                action={() => { setActiveView('devices'); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                    </SidebarSection>
-                )}
+                <SidebarSection title="" show={true} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
+                    {see('home') && (
+                        <NavItem
+                            icon={House}
+                            label={tr("Home")}
+                            isActive={activeView === 'welcome'}
+                            action={() => { setActiveView('welcome'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {see('dashboard') && (
+                        <NavItem
+                            icon={LayoutDashboard}
+                            label={tr("Dashboard")}
+                            isActive={activeView === 'dashboard' || activeView === 'overview'}
+                            action={() => { setActiveView('dashboard'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {see('finance') && (
+                        <NavItem
+                            icon={BadgeDollarSign}
+                            label={tr("Finances")}
+                            isActive={activeView === 'finance'}
+                            action={() => { setActiveView('finance'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {/* Vendors enter stock but have no Print Center: Add entry sits beside Inventory. */}
+                    {see('add-entry') && !see('print-center') && (
+                        <NavItem
+                            icon={FilePlus2}
+                            label={tr("Add entry")}
+                            isActive={activeView === 'upload'}
+                            action={() => { setActiveView('upload'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {see('inventory') && (see('add-entry') && see('print-center') ? (
+                        <NavItemWithSubmenuComponent
+                            viewId="inventory"
+                            label={tr("Inventory")}
+                            icon="album"
+                            subItems={[
+                                { id: 'add-entry', label: tr("Add entry"), icon: 'file-plus', action: () => { setActiveView('upload'); handleMobileHide(); }, isActive: activeView === 'upload' },
+                                { id: 'print-center', label: tr("Print Center"), icon: 'printer', action: () => { setIsPrintCenterOpen(open => !open); handleMobileHide(); }, isActive: isPrintCenterOpen }
+                            ]}
+                            parentActive={activeView === 'inventory'}
+                            onParentClick={() => { setActiveView('inventory'); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                            onHideSidebarMobile={handleMobileHide}
+                        />
+                    ) : (
+                        <NavItem
+                            icon={Album}
+                            label={tr("Inventory")}
+                            isActive={activeView === 'inventory'}
+                            action={() => { setActiveView('inventory'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    ))}
+                    {see('warehouse') && (
+                        <NavItem
+                            icon={Package}
+                            label={tr("Warehouse")}
+                            isActive={activeView === 'warehouse'}
+                            action={() => { setActiveView('warehouse'); setLogisticsSubTab('empty'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {see('trucking') && (
+                        <NavItem
+                            icon={Truck}
+                            label={tr("Trucking")}
+                            isActive={activeView === 'trucking'}
+                            action={() => { setActiveView('trucking'); setLogisticsSubTab('shipping'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {see('viewer') && (
+                        <NavItem
+                            icon={Shell}
+                            label={tr("Viewer")}
+                            isActive={activeView === 'viewer'}
+                            action={() => { setActiveView('viewer'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                </SidebarSection>
 
-                {showLogistics && (
-                    <SidebarSection title={tr("Logistics")} show={true} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
-                            <NavItem
-                                icon={Album}
-                                label={tr("Inventory")}
-                                isActive={activeView === 'inventory'}
-                                action={() => { setActiveView('inventory'); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
-                            <NavItem
-                                icon={Package}
-                                label={tr("Warehouse")}
-                                isActive={activeView === 'warehouse'}
-                                action={() => { setActiveView('warehouse'); setLogisticsSubTab('empty'); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
-                            <NavItem
-                                icon={Truck}
-                                label={tr("Trucking")}
-                                isActive={activeView === 'trucking'}
-                                action={() => { setActiveView('trucking'); setLogisticsSubTab('shipping'); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                    </SidebarSection>
-                )}
-
-                {showTools && (
-                    <SidebarSection title={tr("Tools")} show={true} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
-                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItemWithSubmenuComponent
-                                viewId="labs"
-                                label={tr("Labs")}
-                                icon="layers"
-                                subItems={[
-                                    { id: 'process', label: tr("Process"), icon: 'pipette', action: () => { setActiveView('process'); handleMobileHide(); }, isActive: activeView === 'process' },
-                                    { id: 'threed', label: tr("3D and AR"), icon: 'rotate-3d', action: () => { setActiveView('threed'); handleMobileHide(); }, isActive: activeView === 'threed' }
-                                ]}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                                onHideSidebarMobile={handleMobileHide}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
-                            <NavItem
-                                icon={Printer}
-                                label={tr("Print Center")}
-                                isActive={isPrintCenterOpen}
-                                action={() => { setIsPrintCenterOpen(open => !open); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
-                            <NavItem
-                                icon={Shell}
-                                label={tr("Viewer")}
-                                isActive={activeView === 'viewer'}
-                                action={() => { setActiveView('viewer'); handleMobileHide(); }}
-                                isCompact={isCompact}
-                                isRail={isRail}
-                                isHoverPeek={isHoverPeek}
-                            />
-                        )}
-                    </SidebarSection>
-                )}
+                {/* Developer only. Labs (Process, 3D and AR) is hidden: those views stay in the code as legacy examples. */}
+                <SidebarSection title={tr("Developer")} show={see('control') || see('archived') || see('devices')} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
+                    {see('control') && (
+                        <NavItem
+                            icon={Shield}
+                            label={tr("Admin Control Center")}
+                            isActive={activeView === 'control'}
+                            action={() => { setActiveView('control'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {see('archived') && (
+                        <NavItem
+                            icon={Layers}
+                            label={tr("Archived")}
+                            isActive={activeView === 'workbook'}
+                            action={() => { setActiveView('workbook'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {see('devices') && (
+                        <NavItem
+                            icon={Cpu}
+                            label={tr("Devices")}
+                            isActive={activeView === 'devices'}
+                            action={() => { setActiveView('devices'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                </SidebarSection>
             </div>
 
             <div 
