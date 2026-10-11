@@ -3396,4 +3396,9 @@ export const esCatalog: Record<string, string> = {
   'Copy your token now': 'Copia tu token ahora',
   'It is shown only once': 'Solo se muestra una vez',
   'Revoke this token?': '¿Revocar este token?',
+  'Set up the shortcuts': 'Configurar los atajos',
+  'Paste it into Shortcuts: New Shortcut, Describe a Shortcut.': 'Pégalo en Atajos: Nuevo atajo, Describe un atajo.',
+  'Copy Siri setup prompt': 'Copiar prompt de configuración de Siri',
+  'The prompt never contains your token. Type the token into the shortcut yourself.': 'El prompt nunca contiene tu token. Escribe el token en el atajo tú mismo.',
+  'Siri setup prompt': 'Prompt de configuración de Siri',
 };
