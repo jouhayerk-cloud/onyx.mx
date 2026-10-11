@@ -3,7 +3,7 @@
 // =============================================================================
 // Implements:
 //   - audit_trail_recent_calls: Developer & Admin audit inspection
-//   - document_jobs_check_status: All-staff document generation/print tracking
+//   - document_jobs_check_status: finance roles only (DOC_JOB_ROLES) document generation/print tracking
 //
 // Deno-importable and dependency-free — loadable from edge runtime and Node.
 // =============================================================================

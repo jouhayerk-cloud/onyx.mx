@@ -1,5 +1,5 @@
 -- =============================================================================
--- PENDING APPROVAL — not yet applied.
+-- APPLIED (live as 20260831002448). The device functions were hardened by 20261011150000_device_functions_null_role_guard.sql.
 -- =============================================================================
 -- Per-device credentials for OnyxChan hardware.
 --

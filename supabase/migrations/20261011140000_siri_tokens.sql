@@ -1,4 +1,4 @@
--- DRAFT: NOT APPLIED. Ramses applies this by hand after review.
+-- APPLIED 2026-10-10 with Ramses approval (also used for personal MCP tokens: the prefix mcp_ marks them; no schema change).
 -- 2026-10-11 - siri_tokens table for iPhone Shortcut tokens. Additive only.
 begin;
 

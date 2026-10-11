@@ -1,8 +1,8 @@
 // =============================================================================
-// DRAFT — Supabase Edge Function: siri-inventory
+// Supabase Edge Function: siri-inventory
 // =============================================================================
-// Status: DRAFT — deployed by Ramses only.
-// Configuration: verify_jwt = true (see supabase/config.toml)
+// Status: LIVE (deployed 2026-10-10); redeploy only with Ramses approval.
+// Configuration: verify_jwt = false; this function verifies a Supabase JWT or a siri_ token itself (see supabase/config.toml)
 // Date: 2026-10-10
 //
 // Description:
