@@ -170,11 +170,32 @@ The adapter reuses this constant, so the app and Siri cannot drift apart. Every 
 3. **Explicit Pricing Gate:** If a caller outside `FINANCE_ROLES` asks Siri for cost, acquisition, or pricing, Siri must respond with an authorization refusal rather than passing the query to `inventory_get_pricing`.
 4. **Never Trust Client Parameters:** The role check must always be derived from the verified Supabase JWT via `app_users`, never from request parameters.
 
+### 5.4 Supported Siri Voice Intents
+
+The `siri-inventory` edge function adapter exposes exactly four read-only voice intents over `POST` with payload `{ intent, query, lang }`:
+
+| Intent | Purpose | Underlying Tool | Roles Allowed | Spoken Response Format (EN / ES) |
+| :--- | :--- | :--- | :--- | :--- |
+| `search` | Full-text inventory search and matching overview | `inventory_search` | `ALL_STAFF` | Concisely lists up to 5 matching item IDs and summarizes remaining matches. Costs redacted for non-finance roles. |
+| `count` | General inventory aggregates or search-filtered counts | `inventory_count_by_status`, `inventory_search` | `ALL_STAFF` | General: *"Total inventory: X items across Y units."* / *"Total en inventario: X artículos en Y unidades."* Filtered: *"Found X items for 'query'."* |
+| `item` | Single item details or barcode tag resolution | `inventory_get_item`, `inventory_get_by_barcode` | `ALL_STAFF` | *"ITEM-ID: Status. Dimensions: ... Material: ..."* Pricing disclosed only to `FINANCE_ROLES`. Not found: *"Item X was not found."* / *"No se encontró el artículo X."* |
+| `vendor` | Voice aggregate piece count for a specific vendor prefix | `inventory_count_by_vendor` | `INTERNAL_STAFF` | Singular: *"Vendor EM has 1 piece."* / *"El proveedor EM tiene 1 pieza."* Plural: *"Vendor EM has 163 pieces."* / *"El proveedor EM tiene 163 piezas."* Not found: *"Vendor EM was not found."* / *"No se encontró el proveedor EM."* |
+
+#### 5.4.1 `vendor` Intent Specification
+- **Intent Name:** `vendor`
+- **Purpose:** Read-only piece count lookup for two-letter vendor codes (e.g. `EM`, `JM`, `SU`, `RF`, `ML`, `GE`, `AM`, `TE`).
+- **Query Parsing:** Evaluated via `parseVendorQuery(query)`. Strips conversational filler words ("how many pieces from", "cuántas piezas del", "piezas de", etc.) and punctuation, extracting the 2-letter uppercase vendor code.
+- **Spoken Text:**
+  - English: `"Vendor <CODE> has <N> pieces."` (singular: `"Vendor <CODE> has 1 piece."`)
+  - Spanish: `"El proveedor <CODE> tiene <N> piezas."` (singular: `"El proveedor <CODE> tiene 1 pieza."`)
+  - Not Found / Zero Count: Returns a polite not-found sentence matching `item` style with `ok: false`: `"Vendor <CODE> was not found."` / `"No se encontró el proveedor <CODE>."`
+- **Zero Financial Data:** Count queries contain purely item counts and piece volume (`quantity` / `items`); no monetary values, costs, margins, or cypher codes are exposed or spoken.
+
 ---
 
 ## 6. Deno Automated Test Cases
 
-The following 5 test cases validate RBAC, cost redaction, and tenant scoping across the inventory tools:
+The following 6 test cases validate RBAC, cost redaction, and tenant scoping across the inventory tools:
 
 ### Test Case 1: `inventory_get_item` Cost Redaction for `Vendor` Role
 - **Caller Role:** `Vendor` (`vendorPrefix: "EM"`)
@@ -219,4 +240,15 @@ The following 5 test cases validate RBAC, cost redaction, and tenant scoping acr
 - **Expected Shape / Verification:**
   - `ok: true`, `spoken_text` is the polite refusal (finance roles only), `fields` is empty, no amount appears anywhere in the response.
   - The same request from `ClientBoss` or `ClientAccounting` returns the price (same access as `Admin`).
+
+### Test Case 6: Siri `vendor` Intent Piece Count and Localization
+- **Caller Role:** `INTERNAL_STAFF` (`Admin`, `Developer`, `ClientBoss`, `ClientAccounting`, `ClientViewer`)
+- **Tool / Adapter:** Siri Inventory Adapter
+- **Input:** `{ "intent": "vendor", "query": "how many pieces from vendor EM", "lang": "en" }`
+- **Expected Shape / Verification:**
+  - `status: 200`, `ok: true`.
+  - `spoken_text`: `"Vendor EM has 163 pieces."` (for 1 piece: `"Vendor EM has 1 piece."`).
+  - Spanish variant (`lang: "es"`, query `"cuantas piezas del proveedor JM"`): `"El proveedor JM tiene 163 piezas."` (for 1 piece: `"El proveedor JM tiene 1 pieza."`).
+  - Unknown vendor or 0 pieces (`query: "vendor XX"`): `status: 200`, `ok: false`, `spoken_text`: `"Vendor XX was not found."` / `"No se encontró el proveedor XX."`.
+  - Zero financial data (`price_mxn`, `book_acquisition`, `book_landed`) included or spoken.
 

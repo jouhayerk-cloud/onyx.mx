@@ -27,12 +27,15 @@ import {
   isFinancialQuery,
   parseRequestPayload,
   isValidIntent,
+  parseVendorQuery,
   buildFinancialRefusalResponse,
   buildItemNotFoundResponse,
   buildItemResponse,
   buildGeneralCountResponse,
   buildFilteredCountResponse,
   buildSearchResponse,
+  buildVendorCountResponse,
+  buildVendorNotFoundResponse,
   buildSystemErrorResponse,
 } from "./helpers.ts";
 
@@ -311,7 +314,7 @@ export async function handleSiriInventory(req: Request): Promise<Response> {
     return new Response(
       JSON.stringify({
         ok: false,
-        error: `Bad Request: Unknown or missing intent '${intent}'. Expected 'search', 'count', or 'item'.`,
+        error: `Bad Request: Unknown or missing intent '${intent}'. Expected 'search', 'count', 'item', or 'vendor'.`,
       }),
       {
         status: 400,
@@ -445,6 +448,59 @@ export async function handleSiriInventory(req: Request): Promise<Response> {
       const items = (searchData.items ?? []) as Array<Record<string, unknown>>;
 
       const responsePayload = buildSearchResponse(query, totalCount, items, canSeeMoney, isEs);
+
+      return new Response(JSON.stringify(responsePayload), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Intent: "vendor" ──────────────────────────────────────────────────────
+    if (intent === "vendor") {
+      const vendorCode = parseVendorQuery(query);
+
+      if (!vendorCode) {
+        const notFoundResponse = buildVendorNotFoundResponse(
+          query || (isEs ? "desconocido" : "unknown"),
+          isEs
+        );
+        return new Response(JSON.stringify(notFoundResponse), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // A Vendor caller may only ask about their own vendor code (the count tool itself is not scoped).
+      if (caller.role === "Vendor" && String(caller.vendorPrefix ?? "").toUpperCase() !== vendorCode.toUpperCase()) {
+        return new Response(JSON.stringify(buildVendorNotFoundResponse(vendorCode, isEs)), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const vendorResult = await executeOnyxDataTool(
+        supabase,
+        "inventory_count_by_vendor",
+        {},
+        caller
+      );
+
+      const vendorData = vendorResult.structuredContent ?? {};
+      const byVendor = (vendorData.by_vendor ?? {}) as Record<string, { items: number; quantity: number }>;
+      const stats = byVendor[vendorCode] || byVendor[vendorCode.toLowerCase()] || byVendor[vendorCode.toUpperCase()];
+
+      const quantity = Number(stats?.quantity ?? stats?.items ?? 0);
+      const items = Number(stats?.items ?? 0);
+
+      if (!stats || (quantity <= 0 && items <= 0)) {
+        const notFoundResponse = buildVendorNotFoundResponse(vendorCode, isEs);
+        return new Response(JSON.stringify(notFoundResponse), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const responsePayload = buildVendorCountResponse(vendorCode, quantity, isEs, items);
 
       return new Response(JSON.stringify(responsePayload), {
         status: 200,

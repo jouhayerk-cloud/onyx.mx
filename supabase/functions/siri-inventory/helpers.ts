@@ -113,7 +113,54 @@ export function parseRequestPayload(body: unknown): ParsedRequest {
 }
 
 export function isValidIntent(intent: string): boolean {
-  return intent === "search" || intent === "count" || intent === "item";
+  return intent === "search" || intent === "count" || intent === "item" || intent === "vendor";
+}
+
+// ── Vendor Query Parsing ──────────────────────────────────────────────────────
+export const VENDOR_KEYWORD_PATTERN =
+  /(?:vendor|proveedor)\s*(?:id|code|código|de|of)?[:\s#]+([a-zA-Z]{2})\b/i;
+
+export const VENDOR_FILLER_WORDS = new Set([
+  // English
+  "how", "many", "pieces", "piece", "items", "item", "units", "unit",
+  "from", "for", "does", "do", "have", "has", "of", "in", "the", "a", "an",
+  "inventory", "stock", "vendor", "vendors", "code", "id", "please",
+  "total", "all", "is", "it", "to", "at", "by", "with", "no", "not",
+  // Spanish
+  "cuantas", "cuántas", "cuantos", "cuántos", "piezas", "pieza",
+  "articulos", "artículos", "articulo", "artículo", "unidades", "unidad",
+  "del", "de", "la", "el", "los", "las", "tiene", "tienen", "hay", "en",
+  "inventario", "stock", "proveedor", "proveedores", "codigo", "código",
+  "por", "favor", "total", "todos", "todas", "un", "una", "si", "sí", "con",
+]);
+
+/**
+ * Extracts a 2-letter vendor code from user spoken phrases in English or Spanish,
+ * stripping filler words and punctuation and returning the uppercase code.
+ */
+export function parseVendorQuery(query: string): string {
+  if (!query || typeof query !== "string") return "";
+
+  const trimmed = query.trim();
+
+  // 1. Direct keyword match (e.g. "vendor em", "proveedor JM", "how many pieces from vendor EM")
+  const match = trimmed.match(VENDOR_KEYWORD_PATTERN);
+  if (match) {
+    return match[1].toUpperCase();
+  }
+
+  // 2. Strip punctuation and filler words, then find 2-letter vendor code
+  const cleaned = trimmed.replace(/[¿?¡!.,:;'"()\[\]{}#\-_\\/]/g, " ").trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  const remaining = tokens.filter((t) => !VENDOR_FILLER_WORDS.has(t.toLowerCase()));
+
+  for (const token of remaining) {
+    if (/^[a-zA-Z]{2}$/.test(token)) {
+      return token.toUpperCase();
+    }
+  }
+
+  return "";
 }
 
 // ── Spoken Text & Response Builders ──────────────────────────────────────────
@@ -348,6 +395,62 @@ export function buildSearchResponse(
     fields,
     image_url: extractImageUrl(displayedItems[0]),
     truncated: isTruncated,
+  };
+}
+
+export function buildVendorNotFoundSpokenText(vendor: string, isEs: boolean): string {
+  return isEs
+    ? `No se encontró el proveedor ${vendor}.`
+    : `Vendor ${vendor} was not found.`;
+}
+
+export function buildVendorNotFoundResponse(vendor: string, isEs: boolean): SiriResponse {
+  return {
+    ok: false,
+    spoken_text: buildVendorNotFoundSpokenText(vendor, isEs),
+    title: isEs ? "Proveedor no encontrado" : "Vendor Not Found",
+    fields: [],
+    image_url: null,
+    truncated: false,
+  };
+}
+
+export function buildVendorCountSpokenText(
+  vendor: string,
+  count: number,
+  isEs: boolean
+): string {
+  if (isEs) {
+    return count === 1
+      ? `El proveedor ${vendor} tiene 1 pieza.`
+      : `El proveedor ${vendor} tiene ${count} piezas.`;
+  }
+  return count === 1
+    ? `Vendor ${vendor} has 1 piece.`
+    : `Vendor ${vendor} has ${count} pieces.`;
+}
+
+export function buildVendorCountResponse(
+  vendor: string,
+  count: number,
+  isEs: boolean,
+  itemsCount?: number
+): SiriResponse {
+  const fields: Array<{ label: string; value: string }> = [
+    { label: "Vendor", value: vendor },
+    { label: isEs ? "Piezas" : "Pieces", value: String(count) },
+  ];
+  if (itemsCount !== undefined && itemsCount > 0) {
+    fields.push({ label: isEs ? "Artículos" : "Items", value: String(itemsCount) });
+  }
+
+  return {
+    ok: true,
+    spoken_text: buildVendorCountSpokenText(vendor, count, isEs),
+    title: isEs ? `Proveedor: ${vendor}` : `Vendor: ${vendor}`,
+    fields,
+    image_url: null,
+    truncated: false,
   };
 }
 

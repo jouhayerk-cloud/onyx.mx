@@ -81,7 +81,7 @@ Every voice shortcut uses this token directly without needing to read files from
 
 ---
 
-## 3. Step-by-Step Build: 3 Voice Shortcuts
+## 3. Step-by-Step Build: 4 Voice Shortcuts
 
 Below are the exact action-by-action steps to build each intent shortcut directly in the iOS Shortcuts app.
 
@@ -233,6 +233,54 @@ Below are the exact action-by-action steps to build each intent shortcut directl
     - Action name: **Get Contents of URL** `[Dictionary Value (image_url)]`
     - Action name: **Show Result** `[Contents of URL]` (`VERIFY ON IPHONE: Quick Look / Show Result photo rendering`)
   - Action name: **End If**
+
+---
+
+### Shortcut 4: Vendor Count (`intent: "vendor"`)
+
+* **Siri Voice Phrases:**
+  - English: *"Vendor count"* / *"Pieces from vendor"* / *"How many pieces from vendor EM"*
+  - Spanish: *"Conteo por proveedor"* / *"Piezas por proveedor"* / *"Cuántas piezas del proveedor JM"*
+* **Function Payload:** `{"intent": "vendor", "query": "<vendor-code-or-phrase>", "lang": "en" | "es"}`
+
+#### Step-by-Step Actions:
+- [ ] **1. Create New Shortcut:** Tap the **+** button in the Shortcuts app.
+- [ ] **2. Rename Shortcut:** Name it `Vendor count` (or `Conteo por proveedor`).
+- [ ] **3. Define Siri Token:**
+  - Action name: **Text**
+  - Content: Paste your personal Siri token (`siri_...`)
+  - Action name: **Set Variable**
+  - Variable Name: `Siri token`
+  - Value: `[Text]`
+- [ ] **4. Ask for Input:**
+  - Action name: **Ask for Input**
+  - Prompt: *"Which vendor code? (e.g. EM, JM, SU):"* (or *"¿Cuál código de proveedor? (ej. EM, JM, SU):"*)
+  - Input Type: `Text`
+- [ ] **5. Set Variable:**
+  - Action name: **Set Variable**
+  - Variable Name: `VendorQuery`
+  - Value: `[Provided Input]`
+- [ ] **6. HTTP Request:**
+  - Action name: **Get Contents of URL**
+  - URL: `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-inventory`
+  - Method: `POST`
+  - **Headers:**
+    - `Authorization`: `Bearer [Siri token]`
+    - `Content-Type`: `application/json`
+  - **Request Body:** Select `JSON`
+    - Key `intent` (Type: `Text`): `vendor`
+    - Key `query` (Type: `Text`): `[VendorQuery]`
+    - Key `lang` (Type: `Text`): `en` (or `es`)
+- [ ] **7. Extract Response Text:**
+  - Action name: **Get Dictionary Value**
+  - Key: `spoken_text`
+  - From: `[Contents of URL]`
+- [ ] **8. Speak Response:**
+  - Action name: **Speak Text**
+  - Text: `[Dictionary Value]`
+- [ ] **9. Show Notification / Summary:**
+  - Action name: **Show Result**
+  - Text: `[Dictionary Value]`
 
 ---
 

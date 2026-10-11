@@ -18,12 +18,17 @@ import {
   extractImageUrl,
   parseRequestPayload,
   isValidIntent,
+  parseVendorQuery,
   buildFinancialRefusalResponse,
   buildItemFields,
   buildItemResponse,
   buildGeneralCountResponse,
   buildFilteredCountResponse,
   buildSearchResponse,
+  buildVendorCountSpokenText,
+  buildVendorCountResponse,
+  buildVendorNotFoundSpokenText,
+  buildVendorNotFoundResponse,
 } from "./helpers.ts";
 
 // ── Test 1: stripMoneyFields removes every key in COST_COLUMNS ────────────────
@@ -364,8 +369,10 @@ Deno.test("isValidIntent validates allowed intents", () => {
   assert(isValidIntent("item"));
   assert(isValidIntent("count"));
   assert(isValidIntent("search"));
+  assert(isValidIntent("vendor"));
   assert(!isValidIntent("delete"));
   assert(!isValidIntent("pricing"));
+  assert(!isValidIntent("crate"));
   assert(!isValidIntent(""));
 });
 
@@ -475,4 +482,115 @@ Deno.test("buildGeneralCountResponse and buildFilteredCountResponse format inven
   const filtered = buildFilteredCountResponse("travertine", 8, [], false, false);
   assertEquals(filtered.ok, true);
   assertEquals(filtered.spoken_text, 'Found 8 items for "travertine".');
+});
+
+// ── Test 20: parseVendorQuery English phrases ─────────────────────────────────
+Deno.test("parseVendorQuery extracts vendor code from English spoken phrases", () => {
+  const cases: Array<[string, string]> = [
+    ["how many pieces from vendor EM", "EM"],
+    ["how many pieces from vendor SU?", "SU"],
+    ["vendor em", "EM"],
+    ["vendor: rf", "RF"],
+    ["how many pieces does vendor ML have", "ML"],
+    ["how many pieces for vendor GE", "GE"],
+    ["vendor: AM.", "AM"],
+    ["how many pieces from vendor TE?", "TE"],
+    ["vendor jm", "JM"],
+    ["pieces from vendor EM", "EM"],
+  ];
+  for (const [phrase, expected] of cases) {
+    assertEquals(
+      parseVendorQuery(phrase),
+      expected,
+      `Expected "${phrase}" to parse to "${expected}"`
+    );
+  }
+});
+
+// ── Test 21: parseVendorQuery Spanish phrases ─────────────────────────────────
+Deno.test("parseVendorQuery extracts vendor code from Spanish spoken phrases", () => {
+  const cases: Array<[string, string]> = [
+    ["cuantas piezas del proveedor JM", "JM"],
+    ["cuántas piezas del proveedor JM", "JM"],
+    ["proveedor TE", "TE"],
+    ["¿cuántas piezas del proveedor JM?", "JM"],
+    ["proveedor: te", "TE"],
+    ["cuantas piezas tiene el proveedor SU?", "SU"],
+    ["del proveedor RF", "RF"],
+    ["proveedor ml.", "ML"],
+    ["cuántas piezas del proveedor GE", "GE"],
+    ["piezas del proveedor am", "AM"],
+  ];
+  for (const [phrase, expected] of cases) {
+    assertEquals(
+      parseVendorQuery(phrase),
+      expected,
+      `Expected "${phrase}" to parse to "${expected}"`
+    );
+  }
+});
+
+// ── Test 22: parseVendorQuery direct codes, punctuation, whitespace, invalid ───
+Deno.test("parseVendorQuery handles direct codes, punctuation, whitespace, and invalid inputs", () => {
+  assertEquals(parseVendorQuery("EM"), "EM");
+  assertEquals(parseVendorQuery("em"), "EM");
+  assertEquals(parseVendorQuery("  JM  "), "JM");
+  assertEquals(parseVendorQuery("TE."), "TE");
+  assertEquals(parseVendorQuery("¿su?"), "SU");
+  assertEquals(parseVendorQuery(""), "");
+  assertEquals(parseVendorQuery("how many pieces in total"), "");
+  assertEquals(parseVendorQuery("cuantas piezas hay"), "");
+  assertEquals(parseVendorQuery("unknown text with no vendor code"), "");
+});
+
+// ── Test 23: buildVendorCountSpokenText singular & plural (EN & ES) ───────────
+Deno.test("buildVendorCountSpokenText formats singular and plural in EN and ES", () => {
+  // English
+  assertEquals(buildVendorCountSpokenText("EM", 163, false), "Vendor EM has 163 pieces.");
+  assertEquals(buildVendorCountSpokenText("EM", 1, false), "Vendor EM has 1 piece.");
+
+  // Spanish
+  assertEquals(buildVendorCountSpokenText("EM", 163, true), "El proveedor EM tiene 163 piezas.");
+  assertEquals(buildVendorCountSpokenText("EM", 1, true), "El proveedor EM tiene 1 pieza.");
+});
+
+// ── Test 24: buildVendorNotFoundSpokenText & buildVendorNotFoundResponse ──────
+Deno.test("buildVendorNotFoundSpokenText and buildVendorNotFoundResponse format not-found states", () => {
+  assertEquals(buildVendorNotFoundSpokenText("EM", false), "Vendor EM was not found.");
+  assertEquals(buildVendorNotFoundSpokenText("EM", true), "No se encontró el proveedor EM.");
+
+  const resEn = buildVendorNotFoundResponse("EM", false);
+  assertEquals(resEn.ok, false);
+  assertEquals(resEn.title, "Vendor Not Found");
+  assertEquals(resEn.spoken_text, "Vendor EM was not found.");
+  assertEquals(resEn.fields.length, 0);
+
+  const resEs = buildVendorNotFoundResponse("EM", true);
+  assertEquals(resEs.ok, false);
+  assertEquals(resEs.title, "Proveedor no encontrado");
+  assertEquals(resEs.spoken_text, "No se encontró el proveedor EM.");
+  assertEquals(resEs.fields.length, 0);
+});
+
+// ── Test 25: buildVendorCountResponse payload structure ───────────────────────
+Deno.test("buildVendorCountResponse builds complete SiriResponse in EN and ES", () => {
+  const resEn = buildVendorCountResponse("EM", 163, false, 45);
+  assertEquals(resEn.ok, true);
+  assertEquals(resEn.title, "Vendor: EM");
+  assertEquals(resEn.spoken_text, "Vendor EM has 163 pieces.");
+  assertEquals(resEn.fields.length, 3);
+  assertEquals(resEn.fields[0], { label: "Vendor", value: "EM" });
+  assertEquals(resEn.fields[1], { label: "Pieces", value: "163" });
+  assertEquals(resEn.fields[2], { label: "Items", value: "45" });
+  assertEquals(resEn.image_url, null);
+  assertEquals(resEn.truncated, false);
+
+  const resEs = buildVendorCountResponse("JM", 1, true, 1);
+  assertEquals(resEs.ok, true);
+  assertEquals(resEs.title, "Proveedor: JM");
+  assertEquals(resEs.spoken_text, "El proveedor JM tiene 1 pieza.");
+  assertEquals(resEs.fields.length, 3);
+  assertEquals(resEs.fields[0], { label: "Vendor", value: "JM" });
+  assertEquals(resEs.fields[1], { label: "Piezas", value: "1" });
+  assertEquals(resEs.fields[2], { label: "Artículos", value: "1" });
 });
