@@ -8,18 +8,19 @@ import {
     rectY,
     rectX,
 } from '../../../welcome/hairline/engine';
+import { resolveVariant } from '../variantOptions';
 
-export type LampId = 'pendant' | 'table-lamp' | 'floor-lamp' | 'tower-lamp' | 'luminary';
+export type LampId = 'pendant' | 'table-lamp' | 'floor-lamp';
 
 export const LAMP_FIGURE_IDS: readonly string[] = [
     'pendant',
     'table-lamp',
     'floor-lamp',
-    'tower-lamp',
-    'luminary',
 ];
 
-export type LampVariant = 'cylinder' | 'squared';
+export type LampVariant = 'cylinder' | 'squared' | 'cube' | 'rectangular';
+
+export type LampTop = 'open' | 'closed';
 
 const CYLINDER_WORDS = new Set([
     'cylinder',
@@ -32,14 +33,23 @@ const CYLINDER_WORDS = new Set([
     'redonda',
 ]);
 
-const SQUARED_WORDS = new Set([
-    'squared',
-    'square',
+const CUBE_WORDS = new Set([
     'cube',
     'cubed',
     'cubo',
+]);
+
+const RECTANGULAR_WORDS = new Set([
     'rectangular',
     'rectangle',
+    'rectangulo',
+    'slab',
+]);
+
+const SQUARED_WORDS = new Set([
+    'squared',
+    'square',
+    'squares',
     'cuadrado',
     'cuadrada',
     'tower',
@@ -54,50 +64,75 @@ function cleanWord(str: string): string {
 }
 
 /**
- * Classify a shape descriptor or optional type id into 'cylinder' or 'squared'.
- * Case- and accent-insensitive. Defaults to 'cylinder'.
+ * Classify a shape descriptor or optional type id into one of the lamp variants:
+ * 'cylinder' | 'squared' | 'cube' | 'rectangular'.
+ * Case- and accent-insensitive. Defaults according to Type id or 'cylinder'.
  */
 export function lampVariantOf(shape: string | null | undefined, id?: string): LampVariant {
-    const check = (raw: string | null | undefined): LampVariant | null => {
-        if (!raw) return null;
-        const s = cleanWord(raw);
-        if (!s) return null;
-        if (SQUARED_WORDS.has(s)) return 'squared';
-        if (CYLINDER_WORDS.has(s)) return 'cylinder';
+    const raw = cleanWord(shape ?? '');
+    if (raw) {
+        if (CUBE_WORDS.has(raw)) return 'cube';
+        if (RECTANGULAR_WORDS.has(raw)) return 'rectangular';
+        if (CYLINDER_WORDS.has(raw)) return 'cylinder';
+        if (SQUARED_WORDS.has(raw)) return 'squared';
 
-        const tokens = s.split(/[\s_\-/]+/);
+        const tokens = raw.split(/[\s_\-/]+/);
         for (const t of tokens) {
-            if (SQUARED_WORDS.has(t)) return 'squared';
+            if (CUBE_WORDS.has(t)) return 'cube';
+            if (RECTANGULAR_WORDS.has(t)) return 'rectangular';
             if (CYLINDER_WORDS.has(t)) return 'cylinder';
+            if (SQUARED_WORDS.has(t)) return 'squared';
         }
-        return null;
-    };
+    }
 
-    return check(shape) ?? check(id) ?? 'cylinder';
+    if (id === 'pendant') return 'cylinder';
+    if (id === 'table-lamp' || id === 'floor-lamp') return 'squared';
+    return 'cylinder';
 }
 
 /**
- * Sensible default dimensions per lamp canonical Type in cm.
- * Scaled by normalizeDims so the longest side is FIGURE_SIZE (30 world units).
+ * Normalise top selection to 'open' or 'closed'. Null or unspecified defaults to 'closed'.
+ */
+export function lampTopOf(top: string | null | undefined): LampTop {
+    if (!top) return 'closed';
+    const s = cleanWord(top);
+    if (s.includes('open') || s.includes('abiert')) return 'open';
+    return 'closed';
+}
+
+/**
+ * Default dimensions per lamp canonical Type in cm (w, h, d).
  */
 export const DEFAULTS: Record<LampId, Dims> = {
     'pendant':    { w: 10, h: 32, d: 10 },
     'table-lamp': { w: 15, h: 42, d: 15 },
-    'floor-lamp': { w: 30, h: 180, d: 30 },
-    'tower-lamp': { w: 30, h: 100, d: 30 },
-    'luminary':   { w: 58, h: 180, d: 10 },
+    'floor-lamp': { w: 28, h: 145, d: 28 },
 };
 
-export const VARIANT_DEFAULTS: Record<'pendant' | 'table-lamp', Record<LampVariant, Dims>> = {
+/**
+ * Fallback dimensions per lamp Type and form variant in cm (w, h, d).
+ * Informs the silhouette when dimensions are null/unknown.
+ */
+export const VARIANT_DEFAULTS: Record<LampId, Record<string, Dims>> = {
     'pendant': {
         cylinder: { w: 10, h: 32, d: 10 },
         squared:  { w: 12, h: 30, d: 12 },
     },
     'table-lamp': {
-        cylinder: { w: 15, h: 42, d: 15 },
-        squared:  { w: 15, h: 40, d: 15 },
+        squared:     { w: 15, h: 42, d: 15 },
+        cylinder:    { w: 14, h: 38, d: 14 },
+        cube:        { w: 22, h: 22, d: 22 },
+        rectangular: { w: 26, h: 40, d: 14 },
+    },
+    'floor-lamp': {
+        squared:     { w: 28, h: 145, d: 28 },
+        rectangular: { w: 42, h: 140, d: 18 },
     },
 };
+
+function defaultDimsFor(key: LampId, variant: LampVariant): Dims {
+    return VARIANT_DEFAULTS[key]?.[variant] ?? DEFAULTS[key];
+}
 
 // ── local geometric helpers ───────────────────────────────────────────────────
 
@@ -141,141 +176,6 @@ function buildPendant(cam: Cam, dims: Dims): FigurePart[] {
         ...solidParts(shade),
         { d: slot, kind: 'slot' },
         { d: lit, kind: 'bright' },
-    ];
-}
-
-function buildTableLamp(cam: Cam, dims: Dims): FigurePart[] {
-    const { w, h, d } = dims;
-    const cx = w / 2;
-    const cy = d / 2;
-
-    const baseH = Math.max(1.0, h * 0.07);
-    const bw = w * 0.65;
-    const bd = d * 0.65;
-    const base = prism(cam, cx - bw / 2, cy - bd / 2, 0, bw, bd, baseH, Math.min(bw, bd) * 0.3);
-
-    const shadeZ0 = h * 0.36;
-    const stemW = Math.max(1.6, w * 0.12);
-    const stemD = Math.max(1.6, d * 0.12);
-    const stem = prism(cam, cx - stemW / 2, cy - stemD / 2, baseH, stemW, stemD, shadeZ0 - baseH, Math.min(stemW, stemD) / 2);
-
-    const sw = w * 0.85;
-    const sd = d * 0.85;
-    const shadeH = h - shadeZ0;
-    const shade = prism(cam, cx - sw / 2, cy - sd / 2, shadeZ0, sw, sd, shadeH, Math.min(sw, sd) * 0.35);
-
-    const slotW = sw * 0.26;
-    const sz0 = shadeZ0 + shadeH * 0.18;
-    const sz1 = shadeZ0 + shadeH * 0.82;
-    const slot = rectY(cam, cy + sd / 2, cx - slotW / 2, cx + slotW / 2, sz0, sz1);
-    const litW = slotW * 0.45;
-    const lit = rectY(cam, cy + sd / 2, cx - litW / 2, cx + litW / 2, sz0 + 0.5, sz1 - 0.5);
-
-    return [
-        ...solidParts(base),
-        ...solidParts(stem),
-        ...solidParts(shade),
-        { d: slot, kind: 'slot' },
-        { d: lit, kind: 'bright' },
-    ];
-}
-
-function buildFloorLamp(cam: Cam, dims: Dims): FigurePart[] {
-    const { w, h, d } = dims;
-    const cx = w / 2;
-    const cy = d / 2;
-
-    const baseH = Math.max(0.7, h * 0.02);
-    const base = prism(cam, cx - w / 2, cy - d / 2, 0, w, d, baseH, 0.3);
-
-    const headH = h * 0.16;
-    const headZ0 = h - headH;
-    const colW = w * 0.62;
-    const colD = d * 0.62;
-    const column = prism(cam, cx - colW / 2, cy - colD / 2, baseH, colW, colD, headZ0 - baseH, 0.25);
-
-    const hw = w * 0.88;
-    const hd = d * 0.88;
-    const head = prism(cam, cx - hw / 2, cy - hd / 2, headZ0, hw, hd, headH, 0.35);
-
-    const slotW = hw * 0.28;
-    const sz0 = headZ0 + headH * 0.14;
-    const sz1 = headZ0 + headH * 0.86;
-    const slot = rectY(cam, cy + hd / 2, cx - slotW / 2, cx + slotW / 2, sz0, sz1);
-    const litW = slotW * 0.45;
-    const lit = rectY(cam, cy + hd / 2, cx - litW / 2, cx + litW / 2, sz0 + 0.3, sz1 - 0.3);
-
-    return [
-        ...solidParts(base),
-        ...solidParts(column),
-        ...solidParts(head),
-        { d: slot, kind: 'slot' },
-        { d: lit, kind: 'bright' },
-    ];
-}
-
-function buildTowerLamp(cam: Cam, dims: Dims): FigurePart[] {
-    const { w, h, d } = dims;
-    const cx = w / 2;
-    const cy = d / 2;
-
-    const plinthH = Math.max(1.0, h * 0.04);
-    const plinth = prism(cam, cx - w / 2, cy - d / 2, 0, w, d, plinthH, 0.4);
-
-    const tw = w * 0.82;
-    const td = d * 0.82;
-    const tx0 = cx - tw / 2;
-    const tx1 = cx + tw / 2;
-    const ty0 = cy - td / 2;
-    const ty1 = cy + td / 2;
-    const tower = prism(cam, tx0, ty0, plinthH, tw, td, h - plinthH, 0.4);
-
-    const sz0 = plinthH + (h - plinthH) * 0.10;
-    const sz1 = plinthH + (h - plinthH) * 0.90;
-    const slitW = Math.max(1.0, tw * 0.20);
-    const slitLitW = slitW * 0.45;
-
-    const slotX = rectX(cam, tx1, cy - slitW / 2, cy + slitW / 2, sz0, sz1);
-    const litX = rectX(cam, tx1, cy - slitLitW / 2, cy + slitLitW / 2, sz0 + 0.4, sz1 - 0.4);
-
-    const slotY = rectY(cam, ty1, cx - slitW / 2, cx + slitW / 2, sz0, sz1);
-    const litY = rectY(cam, ty1, cx - slitLitW / 2, cx + slitLitW / 2, sz0 + 0.4, sz1 - 0.4);
-
-    return [
-        ...solidParts(plinth),
-        ...solidParts(tower),
-        { d: slotX, kind: 'slot' },
-        { d: litX, kind: 'mark' },
-        { d: slotY, kind: 'slot' },
-        { d: litY, kind: 'bright' },
-    ];
-}
-
-function buildLuminary(cam: Cam, dims: Dims): FigurePart[] {
-    const { w, h, d } = dims;
-
-    const slab = prism(cam, 0, 0, 0, w, d, h, 0.5);
-
-    const frameX = w * 0.08;
-    const frameZ = h * 0.05;
-    const face = rectY(cam, d, frameX, w - frameX, frameZ, h - frameZ);
-
-    const bandX0 = w * 0.22;
-    const bandX1 = w * 0.78;
-    const bandZ0 = h * 0.10;
-    const bandZ1 = h * 0.90;
-    const slot = rectY(cam, d, bandX0, bandX1, bandZ0, bandZ1);
-    const band = rectY(cam, d, bandX0 + 0.35, bandX1 - 0.35, bandZ0 + 0.35, bandZ1 - 0.35);
-
-    const coreW = (bandX1 - bandX0) * 0.28;
-    const core = rectY(cam, d, w / 2 - coreW / 2, w / 2 + coreW / 2, bandZ0 + 1.2, bandZ1 - 1.2);
-
-    return [
-        ...solidParts(slab),
-        { d: face, kind: 'face' },
-        { d: slot, kind: 'slot' },
-        { d: band, kind: 'mark' },
-        { d: core, kind: 'bright' },
     ];
 }
 
@@ -371,115 +271,601 @@ function buildPendantSquared(cam: Cam, dims: Dims): FigurePart[] {
     ];
 }
 
-function buildTableLampSquared(cam: Cam, dims: Dims): FigurePart[] {
+function buildTableLampCylinder(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
     const cx = w / 2;
     const cy = d / 2;
 
-    const maxDim = Math.max(w, h, d);
-    const minDim = Math.min(w, h, d);
-    const isCube = (maxDim - minDim) / maxDim <= 0.25;
+    const baseH = Math.max(1.0, h * 0.07);
+    const bw = w * 0.72;
+    const bd = d * 0.72;
+    const base = prism(cam, cx - bw / 2, cy - bd / 2, 0, bw, bd, baseH, Math.min(bw, bd) / 2);
 
-    const bw = isCube ? Math.min(w, d) * 0.85 : w * 0.82;
-    const bd = isCube ? bw : d * 0.82;
-    const bh = isCube ? bw : h;
+    const cw = w * 0.58;
+    const cd = d * 0.58;
+    const ch = h - baseH;
+    const drum = prism(cam, cx - cw / 2, cy - cd / 2, baseH, cw, cd, ch, Math.min(cw, cd) / 2);
 
+    const cord = pathOf([
+        proj(cam, cx + bw * 0.35, cy - bd * 0.1, 0),
+        proj(cam, cx + (w - cx) * 0.55, cy - bd * 0.25, 0),
+        proj(cam, cx + (w - cx) * 0.85, cy - bd * 0.35, 0),
+    ], false);
+
+    // Front vertical slot
+    const slotW = cw * 0.22;
+    const sz0 = baseH + ch * 0.18;
+    const sz1 = baseH + ch * 0.82;
+    const slot = rectY(cam, cy + cd / 2, cx - slotW / 2, cx + slotW / 2, sz0, sz1);
+    const litW = slotW * 0.45;
+    const lit = rectY(cam, cy + cd / 2, cx - litW / 2, cx + litW / 2, sz0 + 0.4, sz1 - 0.4);
+
+    // Two horizontal curved strata creases across the cylinder body front
+    const r = cw / 2;
+    const arcZ1 = baseH + ch * 0.42;
+    const arcZ2 = baseH + ch * 0.68;
+    const arcPts1: [number, number][] = [];
+    const arcPts2: [number, number][] = [];
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+        const a = -Math.PI / 4 + (i / steps) * Math.PI;
+        const px = cx + r * Math.cos(a);
+        const py = cy + (cd / 2) * Math.sin(a);
+        arcPts1.push(proj(cam, px, py, arcZ1));
+        arcPts2.push(proj(cam, px, py, arcZ2));
+    }
+    const str1 = pathOf(arcPts1, false);
+    const str2 = pathOf(arcPts2, false);
+
+    return [
+        { d: cord, kind: 'crease' },
+        ...solidParts(base),
+        ...solidParts(drum),
+        { d: str1, kind: 'crease' },
+        { d: str2, kind: 'crease' },
+        { d: slot, kind: 'slot' },
+        { d: lit, kind: 'bright' },
+    ];
+}
+
+function buildTableLampSquared(cam: Cam, dims: Dims, top: LampTop): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cy = d / 2;
+
+    const baseH = Math.max(1.0, h * 0.06);
+    const bw = w * 0.72;
+    const bd = d * 0.72;
+    const base = prism(cam, cx - bw / 2, cy - bd / 2, 0, bw, bd, baseH, 0.35);
+
+    const colW = w * 0.58;
+    const colD = d * 0.58;
+    const colH = h - baseH;
+    const bx0 = cx - colW / 2;
+    const by0 = cy - colD / 2;
+    const bx1 = cx + colW / 2;
+    const by1 = cy + colD / 2;
+    const post = prism(cam, bx0, by0, baseH, colW, colD, colH, 0.3);
+
+    const cord = pathOf([
+        proj(cam, bx1 - 0.2, by0 + colD * 0.25, 0),
+        proj(cam, bx1 + (w - bx1) * 0.45, by0 + colD * 0.12, 0),
+        proj(cam, bx1 + (w - bx1) * 0.85, by0, 0),
+    ], false);
+
+    // Veins on visible front faces (+y and +x)
+    const v1 = pathOf([
+        proj(cam, bx0 + colW * 0.28, by1, baseH + colH * 0.84),
+        proj(cam, bx0 + colW * 0.42, by1, baseH + colH * 0.60),
+        proj(cam, bx0 + colW * 0.30, by1, baseH + colH * 0.38),
+        proj(cam, bx0 + colW * 0.46, by1, baseH + colH * 0.16),
+    ], false);
+
+    const v2 = pathOf([
+        proj(cam, bx1, by0 + colD * 0.36, baseH + colH * 0.80),
+        proj(cam, bx1, by0 + colD * 0.22, baseH + colH * 0.54),
+        proj(cam, bx1, by0 + colD * 0.38, baseH + colH * 0.30),
+        proj(cam, bx1, by0 + colD * 0.24, baseH + colH * 0.12),
+    ], false);
+
+    // Front vertical slit
+    const slitW = colW * 0.22;
+    const sz0 = baseH + colH * 0.18;
+    const sz1 = baseH + colH * 0.82;
+    const frontSlot = rectY(cam, by1, cx - slitW / 2, cx + slitW / 2, sz0, sz1);
+
+    if (top === 'open') {
+        const rim = Math.min(colW, colD) * 0.18;
+        const mx0 = bx0 + rim;
+        const mx1 = bx1 - rim;
+        const my0 = by0 + rim;
+        const my1 = by1 - rim;
+        const wellDepth = Math.min(colH * 0.22, 3.5);
+        const zFloor = h - wellDepth;
+
+        const mouth = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx1, my0, h),
+            proj(cam, mx1, my1, h),
+            proj(cam, mx0, my1, h),
+        ], true);
+
+        const innerWallRight = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx1, my0, h),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const innerWallLeft = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx0, my1, h),
+            proj(cam, mx0, my1, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const litFloor = pathOf([
+            proj(cam, mx0, my0, zFloor),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx1, my1, zFloor),
+            proj(cam, mx0, my1, zFloor),
+        ], true);
+
+        return [
+            { d: cord, kind: 'crease' },
+            ...solidParts(base),
+            ...solidParts(post),
+            { d: frontSlot, kind: 'slot' },
+            { d: mouth, kind: 'slot' },
+            { d: innerWallRight, kind: 'face' },
+            { d: innerWallLeft, kind: 'face' },
+            { d: litFloor, kind: 'bright' },
+            { d: v1, kind: 'crease' },
+            { d: v2, kind: 'crease' },
+        ];
+    }
+
+    // Closed top
+    const litW = slitW * 0.45;
+    const lit = rectY(cam, by1, cx - litW / 2, cx + litW / 2, sz0 + 0.4, sz1 - 0.4);
+
+    return [
+        { d: cord, kind: 'crease' },
+        ...solidParts(base),
+        ...solidParts(post),
+        { d: frontSlot, kind: 'slot' },
+        { d: lit, kind: 'bright' },
+        { d: v1, kind: 'crease' },
+        { d: v2, kind: 'crease' },
+    ];
+}
+
+function buildTableLampCube(cam: Cam, dims: Dims, top: LampTop): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cy = d / 2;
+
+    const bw = w * 0.82;
+    const bd = d * 0.82;
+    const bh = h * 0.82;
     const bx0 = cx - bw / 2;
     const by0 = cy - bd / 2;
     const bx1 = cx + bw / 2;
     const by1 = cy + bd / 2;
 
-    // Thin power cord leaving the foot on table plane z = 0
+    const post = prism(cam, bx0, by0, 0, bw, bd, bh, 0.4);
+
     const cord = pathOf([
-        proj(cam, bx1 - 0.5, by0 + bd * 0.25, 0),
-        proj(cam, bx1 + 3.0, by0 - 1.5, 0),
-        proj(cam, bx1 + 6.0, by0 - 0.5, 0),
-        proj(cam, bx1 + 9.0, by0 - 2.0, 0),
+        proj(cam, bx1 - 0.2, by0 + bd * 0.25, 0),
+        proj(cam, bx1 + (w - bx1) * 0.45, by0 + bd * 0.12, 0),
+        proj(cam, bx1 + (w - bx1) * 0.85, by0, 0),
     ], false);
 
-    const post = prism(cam, bx0, by0, 0, bw, bd, bh, 0.35);
-
-    // Open top with an inset square opening and the bright glow mark inside
-    const inset = Math.min(bw, bd) * 0.20;
-    const tox0 = bx0 + inset;
-    const tox1 = bx1 - inset;
-    const toy0 = by0 + inset;
-    const toy1 = by1 - inset;
-    const topSlot = pathOf([
-        proj(cam, tox0, toy0, bh),
-        proj(cam, tox1, toy0, bh),
-        proj(cam, tox1, toy1, bh),
-        proj(cam, tox0, toy1, bh),
-    ], true);
-
-    const glowInset = inset + Math.min(bw, bd) * 0.12;
-    const gx0 = bx0 + glowInset;
-    const gx1 = bx1 - glowInset;
-    const gy0 = by0 + glowInset;
-    const gy1 = by1 - glowInset;
-    const lit = pathOf([
-        proj(cam, gx0, gy0, bh),
-        proj(cam, gx1, gy0, bh),
-        proj(cam, gx1, gy1, bh),
-        proj(cam, gx0, gy1, bh),
-    ], true);
-
-    // Veins as 3 irregular zig zag crease paths on the two visible faces (+y and +x)
+    // Natural stone veins
     const v1 = pathOf([
-        proj(cam, bx0 + bw * 0.28, by1, bh * 0.86),
-        proj(cam, bx0 + bw * 0.44, by1, bh * 0.62),
-        proj(cam, bx0 + bw * 0.32, by1, bh * 0.40),
-        proj(cam, bx0 + bw * 0.50, by1, bh * 0.16),
+        proj(cam, bx0 + bw * 0.26, by1, bh * 0.84),
+        proj(cam, bx0 + bw * 0.46, by1, bh * 0.58),
+        proj(cam, bx0 + bw * 0.32, by1, bh * 0.34),
+        proj(cam, bx0 + bw * 0.52, by1, bh * 0.12),
     ], false);
 
     const v2 = pathOf([
-        proj(cam, bx1, by0 + bd * 0.36, bh * 0.82),
-        proj(cam, bx1, by0 + bd * 0.20, bh * 0.56),
-        proj(cam, bx1, by0 + bd * 0.38, bh * 0.34),
-        proj(cam, bx1, by0 + bd * 0.24, bh * 0.12),
+        proj(cam, bx1, by0 + bd * 0.32, bh * 0.78),
+        proj(cam, bx1, by0 + bd * 0.20, bh * 0.52),
+        proj(cam, bx1, by0 + bd * 0.36, bh * 0.28),
     ], false);
 
-    const v3 = pathOf([
-        proj(cam, bx0 + bw * 0.70, by1, bh * 0.78),
-        proj(cam, bx0 + bw * 0.82, by1, bh * 0.52),
-        proj(cam, bx0 + bw * 0.66, by1, bh * 0.30),
-        proj(cam, bx0 + bw * 0.76, by1, bh * 0.10),
-    ], false);
+    const slitW = bw * 0.20;
+    const sz0 = bh * 0.20;
+    const sz1 = bh * 0.80;
+    const frontSlot = rectY(cam, by1, cx - slitW / 2, cx + slitW / 2, sz0, sz1);
 
-    // Strata bands as faint horizontal creases wrapping around corner (bx1, by1)
-    const str1 = pathOf([
-        proj(cam, bx0 + bw * 0.08, by1, bh * 0.36),
-        proj(cam, bx1, by1, bh * 0.36),
-        proj(cam, bx1, by0 + bd * 0.10, bh * 0.36),
-    ], false);
+    if (top === 'open') {
+        const rim = Math.min(bw, bd) * 0.18;
+        const mx0 = bx0 + rim;
+        const mx1 = bx1 - rim;
+        const my0 = by0 + rim;
+        const my1 = by1 - rim;
+        const wellDepth = bh * 0.24;
+        const zFloor = bh - wellDepth;
 
-    const str2 = pathOf([
-        proj(cam, bx0 + bw * 0.12, by1, bh * 0.68),
-        proj(cam, bx1, by1, bh * 0.68),
-        proj(cam, bx1, by0 + bd * 0.08, bh * 0.68),
-    ], false);
+        const mouth = pathOf([
+            proj(cam, mx0, my0, bh),
+            proj(cam, mx1, my0, bh),
+            proj(cam, mx1, my1, bh),
+            proj(cam, mx0, my1, bh),
+        ], true);
+
+        const innerWallRight = pathOf([
+            proj(cam, mx0, my0, bh),
+            proj(cam, mx1, my0, bh),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const innerWallLeft = pathOf([
+            proj(cam, mx0, my0, bh),
+            proj(cam, mx0, my1, bh),
+            proj(cam, mx0, my1, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const litFloor = pathOf([
+            proj(cam, mx0, my0, zFloor),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx1, my1, zFloor),
+            proj(cam, mx0, my1, zFloor),
+        ], true);
+
+        return [
+            { d: cord, kind: 'crease' },
+            ...solidParts(post),
+            { d: frontSlot, kind: 'slot' },
+            { d: mouth, kind: 'slot' },
+            { d: innerWallRight, kind: 'face' },
+            { d: innerWallLeft, kind: 'face' },
+            { d: litFloor, kind: 'bright' },
+            { d: v1, kind: 'crease' },
+            { d: v2, kind: 'crease' },
+        ];
+    }
+
+    // Closed top
+    const litW = slitW * 0.45;
+    const lit = rectY(cam, by1, cx - litW / 2, cx + litW / 2, sz0 + 0.4, sz1 - 0.4);
 
     return [
         { d: cord, kind: 'crease' },
         ...solidParts(post),
-        { d: topSlot, kind: 'slot' },
+        { d: frontSlot, kind: 'slot' },
         { d: lit, kind: 'bright' },
         { d: v1, kind: 'crease' },
         { d: v2, kind: 'crease' },
-        { d: v3, kind: 'crease' },
+    ];
+}
+
+function buildTableLampRectangular(cam: Cam, dims: Dims, top: LampTop): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cy = d / 2;
+
+    const baseH = Math.max(1.0, h * 0.06);
+    const bw = w * 0.85;
+    const bd = d * 0.85;
+    const base = prism(cam, cx - bw / 2, cy - bd / 2, 0, bw, bd, baseH, 0.35);
+
+    const slabW = w * 0.74;
+    const slabD = d * 0.55;
+    const slabH = h - baseH;
+    const sx0 = cx - slabW / 2;
+    const sy0 = cy - slabD / 2;
+    const sx1 = cx + slabW / 2;
+    const sy1 = cy + slabD / 2;
+    const slab = prism(cam, sx0, sy0, baseH, slabW, slabD, slabH, 0.3);
+
+    const cord = pathOf([
+        proj(cam, sx1 - 0.2, sy0 + slabD * 0.25, 0),
+        proj(cam, sx1 + (w - sx1) * 0.45, sy0 + slabD * 0.12, 0),
+        proj(cam, sx1 + (w - sx1) * 0.85, sy0, 0),
+    ], false);
+
+    // Strata bands across wide slab face
+    const str1 = pathOf([
+        proj(cam, sx0 + slabW * 0.10, sy1, baseH + slabH * 0.35),
+        proj(cam, sx1 - slabW * 0.10, sy1, baseH + slabH * 0.35),
+    ], false);
+
+    const str2 = pathOf([
+        proj(cam, sx0 + slabW * 0.15, sy1, baseH + slabH * 0.70),
+        proj(cam, sx1 - slabW * 0.15, sy1, baseH + slabH * 0.70),
+    ], false);
+
+    const slitW = slabW * 0.16;
+    const sz0 = baseH + slabH * 0.16;
+    const sz1 = baseH + slabH * 0.84;
+    const frontSlot = rectY(cam, sy1, cx - slitW / 2, cx + slitW / 2, sz0, sz1);
+
+    if (top === 'open') {
+        const rimX = slabW * 0.16;
+        const rimY = slabD * 0.22;
+        const mx0 = sx0 + rimX;
+        const mx1 = sx1 - rimX;
+        const my0 = sy0 + rimY;
+        const my1 = sy1 - rimY;
+        const wellDepth = Math.min(slabH * 0.22, 3.5);
+        const zFloor = h - wellDepth;
+
+        const mouth = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx1, my0, h),
+            proj(cam, mx1, my1, h),
+            proj(cam, mx0, my1, h),
+        ], true);
+
+        const innerWallRight = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx1, my0, h),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const innerWallLeft = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx0, my1, h),
+            proj(cam, mx0, my1, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const litFloor = pathOf([
+            proj(cam, mx0, my0, zFloor),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx1, my1, zFloor),
+            proj(cam, mx0, my1, zFloor),
+        ], true);
+
+        return [
+            { d: cord, kind: 'crease' },
+            ...solidParts(base),
+            ...solidParts(slab),
+            { d: frontSlot, kind: 'slot' },
+            { d: mouth, kind: 'slot' },
+            { d: innerWallRight, kind: 'face' },
+            { d: innerWallLeft, kind: 'face' },
+            { d: litFloor, kind: 'bright' },
+            { d: str1, kind: 'crease' },
+            { d: str2, kind: 'crease' },
+        ];
+    }
+
+    // Closed top
+    const litW = slitW * 0.45;
+    const lit = rectY(cam, sy1, cx - litW / 2, cx + litW / 2, sz0 + 0.4, sz1 - 0.4);
+
+    return [
+        { d: cord, kind: 'crease' },
+        ...solidParts(base),
+        ...solidParts(slab),
+        { d: frontSlot, kind: 'slot' },
+        { d: lit, kind: 'bright' },
         { d: str1, kind: 'crease' },
         { d: str2, kind: 'crease' },
     ];
 }
 
-function defaultDimsFor(key: LampId, variant: LampVariant): Dims {
-    if (key === 'pendant') {
-        return variant === 'squared' ? { w: 12, h: 30, d: 12 } : { w: 10, h: 32, d: 10 };
+function buildFloorLampSquared(cam: Cam, dims: Dims, top: LampTop): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cy = d / 2;
+
+    const baseH = Math.max(1.0, h * 0.035);
+    const pw = w * 0.88;
+    const pd = d * 0.88;
+    const plinth = prism(cam, cx - pw / 2, cy - pd / 2, 0, pw, pd, baseH, 0.4);
+
+    const cw = w * 0.74;
+    const cd = d * 0.74;
+    const ch = h - baseH;
+    const cx0 = cx - cw / 2;
+    const cy0 = cy - cd / 2;
+    const cx1 = cx + cw / 2;
+    const cy1 = cy + cd / 2;
+    const tower = prism(cam, cx0, cy0, baseH, cw, cd, ch, 0.35);
+
+    const str1 = pathOf([
+        proj(cam, cx0 + cw * 0.10, cy1, baseH + ch * 0.32),
+        proj(cam, cx1, cy1, baseH + ch * 0.32),
+        proj(cam, cx1, cy0 + cd * 0.10, baseH + ch * 0.32),
+    ], false);
+
+    const str2 = pathOf([
+        proj(cam, cx0 + cw * 0.15, cy1, baseH + ch * 0.68),
+        proj(cam, cx1, cy1, baseH + ch * 0.68),
+        proj(cam, cx1, cy0 + cd * 0.15, baseH + ch * 0.68),
+    ], false);
+
+    const slitW = cw * 0.20;
+    const sz0 = baseH + ch * 0.10;
+    const sz1 = baseH + ch * 0.90;
+
+    const slotX = rectX(cam, cx1, cy - slitW / 2, cy + slitW / 2, sz0, sz1);
+    const slotY = rectY(cam, cy1, cx - slitW / 2, cx + slitW / 2, sz0, sz1);
+
+    if (top === 'open') {
+        const rim = Math.min(cw, cd) * 0.18;
+        const mx0 = cx0 + rim;
+        const mx1 = cx1 - rim;
+        const my0 = cy0 + rim;
+        const my1 = cy1 - rim;
+        const wellDepth = Math.min(ch * 0.18, 4.5);
+        const zFloor = h - wellDepth;
+
+        const mouth = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx1, my0, h),
+            proj(cam, mx1, my1, h),
+            proj(cam, mx0, my1, h),
+        ], true);
+
+        const innerWallRight = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx1, my0, h),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const innerWallLeft = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx0, my1, h),
+            proj(cam, mx0, my1, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const litFloor = pathOf([
+            proj(cam, mx0, my0, zFloor),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx1, my1, zFloor),
+            proj(cam, mx0, my1, zFloor),
+        ], true);
+
+        const litW = slitW * 0.45;
+        const markY = rectY(cam, cy1, cx - litW / 2, cx + litW / 2, sz0 + 0.4, sz1 - 0.4);
+
+        return [
+            ...solidParts(plinth),
+            ...solidParts(tower),
+            { d: slotX, kind: 'slot' },
+            { d: slotY, kind: 'slot' },
+            { d: markY, kind: 'mark' },
+            { d: mouth, kind: 'slot' },
+            { d: innerWallRight, kind: 'face' },
+            { d: innerWallLeft, kind: 'face' },
+            { d: litFloor, kind: 'bright' },
+            { d: str1, kind: 'crease' },
+            { d: str2, kind: 'crease' },
+        ];
     }
-    if (key === 'table-lamp') {
-        return variant === 'squared' ? { w: 15, h: 40, d: 15 } : { w: 15, h: 42, d: 15 };
+
+    // Closed top
+    const litW = slitW * 0.45;
+    const litX = rectX(cam, cx1, cy - litW / 2, cy + litW / 2, sz0 + 0.4, sz1 - 0.4);
+    const litY = rectY(cam, cy1, cx - litW / 2, cx + litW / 2, sz0 + 0.4, sz1 - 0.4);
+
+    return [
+        ...solidParts(plinth),
+        ...solidParts(tower),
+        { d: slotX, kind: 'slot' },
+        { d: litX, kind: 'mark' },
+        { d: slotY, kind: 'slot' },
+        { d: litY, kind: 'bright' },
+        { d: str1, kind: 'crease' },
+        { d: str2, kind: 'crease' },
+    ];
+}
+
+function buildFloorLampRectangular(cam: Cam, dims: Dims, top: LampTop): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cy = d / 2;
+
+    const baseH = Math.max(1.0, h * 0.035);
+    const pw = w * 0.90;
+    const pd = d * 0.90;
+    const plinth = prism(cam, cx - pw / 2, cy - pd / 2, 0, pw, pd, baseH, 0.4);
+
+    const sw = w * 0.78;
+    const sd = d * 0.60;
+    const sh = h - baseH;
+    const sx0 = cx - sw / 2;
+    const sy0 = cy - sd / 2;
+    const sx1 = cx + sw / 2;
+    const sy1 = cy + sd / 2;
+    const slab = prism(cam, sx0, sy0, baseH, sw, sd, sh, 0.35);
+
+    const str1 = pathOf([
+        proj(cam, sx0 + sw * 0.08, sy1, baseH + sh * 0.28),
+        proj(cam, sx1 - sw * 0.08, sy1, baseH + sh * 0.28),
+    ], false);
+
+    const str2 = pathOf([
+        proj(cam, sx0 + sw * 0.12, sy1, baseH + sh * 0.58),
+        proj(cam, sx1 - sw * 0.12, sy1, baseH + sh * 0.58),
+    ], false);
+
+    const str3 = pathOf([
+        proj(cam, sx0 + sw * 0.10, sy1, baseH + sh * 0.82),
+        proj(cam, sx1 - sw * 0.10, sy1, baseH + sh * 0.82),
+    ], false);
+
+    const slitW = sw * 0.15;
+    const sz0 = baseH + sh * 0.10;
+    const sz1 = baseH + sh * 0.90;
+    const slot = rectY(cam, sy1, cx - slitW / 2, cx + slitW / 2, sz0, sz1);
+
+    if (top === 'open') {
+        const rimX = sw * 0.16;
+        const rimY = sd * 0.22;
+        const mx0 = sx0 + rimX;
+        const mx1 = sx1 - rimX;
+        const my0 = sy0 + rimY;
+        const my1 = sy1 - rimY;
+        const wellDepth = Math.min(sh * 0.18, 4.0);
+        const zFloor = h - wellDepth;
+
+        const mouth = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx1, my0, h),
+            proj(cam, mx1, my1, h),
+            proj(cam, mx0, my1, h),
+        ], true);
+
+        const innerWallRight = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx1, my0, h),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const innerWallLeft = pathOf([
+            proj(cam, mx0, my0, h),
+            proj(cam, mx0, my1, h),
+            proj(cam, mx0, my1, zFloor),
+            proj(cam, mx0, my0, zFloor),
+        ], true);
+
+        const litFloor = pathOf([
+            proj(cam, mx0, my0, zFloor),
+            proj(cam, mx1, my0, zFloor),
+            proj(cam, mx1, my1, zFloor),
+            proj(cam, mx0, my1, zFloor),
+        ], true);
+
+        return [
+            ...solidParts(plinth),
+            ...solidParts(slab),
+            { d: slot, kind: 'slot' },
+            { d: mouth, kind: 'slot' },
+            { d: innerWallRight, kind: 'face' },
+            { d: innerWallLeft, kind: 'face' },
+            { d: litFloor, kind: 'bright' },
+            { d: str1, kind: 'crease' },
+            { d: str2, kind: 'crease' },
+            { d: str3, kind: 'crease' },
+        ];
     }
-    return DEFAULTS[key];
+
+    // Closed top
+    const litW = slitW * 0.45;
+    const lit = rectY(cam, sy1, cx - litW / 2, cx + litW / 2, sz0 + 0.4, sz1 - 0.4);
+
+    return [
+        ...solidParts(plinth),
+        ...solidParts(slab),
+        { d: slot, kind: 'slot' },
+        { d: lit, kind: 'bright' },
+        { d: str1, kind: 'crease' },
+        { d: str2, kind: 'crease' },
+        { d: str3, kind: 'crease' },
+    ];
 }
 
 // ── public entry point ────────────────────────────────────────────────────────
@@ -493,11 +879,12 @@ export function buildLampFigure(
     rawDims: Dims | null,
     _holes?: number,
     variant?: string | null,
-    _top?: string | null,
+    top?: string | null,
 ): FigurePart[] | null {
     if (!id || !LAMP_FIGURE_IDS.includes(id)) return null;
     const key = id as LampId;
-    const resolvedVariant = lampVariantOf(variant);
+    const resolvedVariant = (resolveVariant(key, variant) ?? lampVariantOf(variant, key)) as LampVariant;
+    const resolvedTop = lampTopOf(top);
     const dims = normalizeDims(rawDims, defaultDimsFor(key, resolvedVariant));
     const cam = centeredCam(dims);
 
@@ -507,15 +894,25 @@ export function buildLampFigure(
                 ? buildPendantSquared(cam, dims)
                 : buildPendant(cam, dims);
         case 'table-lamp':
-            return resolvedVariant === 'squared'
-                ? buildTableLampSquared(cam, dims)
-                : buildTableLamp(cam, dims);
+            switch (resolvedVariant) {
+                case 'cylinder':
+                    return buildTableLampCylinder(cam, dims);
+                case 'cube':
+                    return buildTableLampCube(cam, dims, resolvedTop);
+                case 'rectangular':
+                    return buildTableLampRectangular(cam, dims, resolvedTop);
+                case 'squared':
+                default:
+                    return buildTableLampSquared(cam, dims, resolvedTop);
+            }
         case 'floor-lamp':
-            return buildFloorLamp(cam, dims);
-        case 'tower-lamp':
-            return buildTowerLamp(cam, dims);
-        case 'luminary':
-            return buildLuminary(cam, dims);
+            switch (resolvedVariant) {
+                case 'rectangular':
+                    return buildFloorLampRectangular(cam, dims, resolvedTop);
+                case 'squared':
+                default:
+                    return buildFloorLampSquared(cam, dims, resolvedTop);
+            }
         default:
             return null;
     }

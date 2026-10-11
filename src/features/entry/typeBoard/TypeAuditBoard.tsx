@@ -108,6 +108,7 @@ const VARIANT_NAMES: Record<VariantKey, string> = {
     squared: 'Squared',
     rectangular: 'Rectangular',
     cylinder: 'Cylinder',
+    cube: 'Cube',
 };
 
 const text = (v: unknown): string => (v == null ? '' : String(v).trim());

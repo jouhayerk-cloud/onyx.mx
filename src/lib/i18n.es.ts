@@ -3489,4 +3489,7 @@ export const esCatalog: Record<string, string> = {
   'No photos': 'Sin fotos',
   'Collapse section': 'Contraer sección',
   'Expand section': 'Expandir sección',
+  'Top': 'Tapa',
+  'Open Top': 'Tapa abierta',
+  'Closed Top': 'Tapa cerrada',
 };

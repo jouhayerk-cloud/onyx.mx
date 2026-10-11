@@ -388,3 +388,14 @@ The following 8 specific ambiguities require an authoritative decision from the 
 8. **`Italian Chess` / `Table Set` (1 row, Workbook `v326`)**:
    - *Row details*: `Orange, Black`, `Board Games > Chess Sets`, `Onyx`, `1`, `Italian Chess`, `Table Set`, `Orange` (combinations.csv line 175).
    - *Question*: AI classified this as `Board Games > Chess Sets`. Does the owner confirm that stone chess tables belong under `chess-set` rather than `table-set`?
+
+---
+
+## 6. Owner decisions of 11 October 2026 (they override sections 3 to 5 where they differ)
+
+1. **Tower Lamp is a Floor Lamp.** One canonical Type, `floor-lamp` (Floor Lamp, 66 items); tower lamp, tower lamps and lampara torre are aliases.
+2. **Luminary is a Wall Panel.** Every wall panel is lit; the vendors split one product in two. One canonical Type, `wall-panel`; luminary, luminaries and wall luminary are aliases. Painted Wall Panel stays a separate Type for now.
+3. **A floor lamp is one four-sided column.** Squared and rectangular are one form (`squared`); the width and depth decide the section.
+4. **Open top or Closed top.** Table lamps and floor lamps in their squared, rectangular and cube forms have a second choice, written in the Shape text ("Squared Open Top"). No database column: `parseShapeText` and `composeShapeText` in `src/features/entry/hairline/variantOptions.ts` read and write it.
+5. **One hairline for every painted wall panel and one for every sculpture.** No animal or figure sub-shape.
+6. **Canoes are always Decorative Trays** (standing owner rule).
