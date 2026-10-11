@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAtom } from 'jotai';
-import { themeAtom } from '../../lib/atoms';
+import { themeAtom, languageAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { tr } from '../../lib/i18n';
 import { AlertCircle, X, Check, Copy, Loader2 } from 'lucide-react';
+import { buildSiriSetupPrompt, resolveSiriEndpoint } from './siriPrompt';
 import './siriAccess.css';
 
 interface SiriTokenItem {
@@ -29,6 +30,10 @@ export const SiriAccessPanel: React.FC = () => {
     const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [copied, setCopied] = useState<boolean>(false);
+    const [language] = useAtom(languageAtom);
+    const [promptCopied, setPromptCopied] = useState<boolean>(false);
+    const [showPromptFallback, setShowPromptFallback] = useState<boolean>(false);
+    const fallbackTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const isBusy = isLoading || isCreating || revokingId !== null;
 
@@ -178,6 +183,33 @@ export const SiriAccessPanel: React.FC = () => {
         }
     };
 
+    const promptText = buildSiriSetupPrompt({
+        endpoint: resolveSiriEndpoint(import.meta.env.VITE_SUPABASE_URL),
+        lang: language,
+    });
+
+    useEffect(() => {
+        if (showPromptFallback && fallbackTextareaRef.current) {
+            fallbackTextareaRef.current.focus();
+            fallbackTextareaRef.current.select();
+        }
+    }, [showPromptFallback]);
+
+    const handleCopyPrompt = async () => {
+        try {
+            await navigator.clipboard.writeText(promptText);
+            setPromptCopied(true);
+            setShowPromptFallback(false);
+            setTimeout(() => setPromptCopied(false), 2000);
+        } catch {
+            setShowPromptFallback(true);
+            if (fallbackTextareaRef.current) {
+                fallbackTextareaRef.current.focus();
+                fallbackTextareaRef.current.select();
+            }
+        }
+    };
+
     const formatDate = (isoString?: string | null): string => {
         if (!isoString) return tr("never");
         try {
@@ -298,6 +330,54 @@ export const SiriAccessPanel: React.FC = () => {
                         )}
                     </button>
                 </form>
+            </div>
+
+            {/* Setup Shortcuts Section */}
+            <div className="sa-section">
+                <div className="sa-section-caption">
+                    {tr("Set up the shortcuts")}
+                </div>
+                <div className="sa-card sa-prompt-card">
+                    <p className="sa-prompt-hint">
+                        {tr("Paste it into Shortcuts: New Shortcut, Describe a Shortcut.")}
+                    </p>
+                    <div className="sa-prompt-actions">
+                        <button
+                            type="button"
+                            onClick={handleCopyPrompt}
+                            className="sa-btn-secondary"
+                            aria-live="polite"
+                        >
+                            {promptCopied ? (
+                                <>
+                                    <Check size={16} aria-hidden="true" />
+                                    <span>{tr("Copied")}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy size={16} aria-hidden="true" />
+                                    <span>{tr("Copy Siri setup prompt")}</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    {showPromptFallback && (
+                        <div className="sa-prompt-fallback">
+                            <textarea
+                                ref={fallbackTextareaRef}
+                                readOnly
+                                value={promptText}
+                                className="sa-prompt-textarea"
+                                rows={8}
+                                aria-label={tr("Siri setup prompt")}
+                                onFocus={(e) => e.currentTarget.select()}
+                            />
+                        </div>
+                    )}
+                    <p className="sa-prompt-note">
+                        {tr("The prompt never contains your token. Type the token into the shortcut yourself.")}
+                    </p>
+                </div>
             </div>
 
             {/* Token List Section */}

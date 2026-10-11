@@ -904,3 +904,99 @@ html:root:root:root .ss-sheet .sa-dismiss-btn:focus-visible {
         background: #ffffff !important;
     }
 }
+
+/* Siri setup prompt section */
+.sa-prompt-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.sa-prompt-hint {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.38;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    margin: 0;
+}
+
+html:root:root:root .ss-sheet .sa-prompt-hint {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+.sa-prompt-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sa-prompt-note {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.33;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    margin: 0;
+}
+
+html:root:root:root .ss-sheet .sa-prompt-note {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+.sa-prompt-fallback {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sa-prompt-textarea {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    background: var(--ss-field, rgba(0, 0, 0, 0.28));
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    resize: vertical;
+    outline: none;
+    user-select: all;
+    -webkit-user-select: all;
+}
+
+html:root:root:root .ss-sheet .sa-prompt-textarea {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+    background: var(--ss-field, rgba(0, 0, 0, 0.28)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+}
+
+.sa-prompt-textarea:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+html:root:root:root .ss-sheet .sa-prompt-textarea:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .sa-prompt-textarea {
+        background: #000000;
+    }
+
+    html:root:root:root .ss-sheet .sa-prompt-textarea {
+        background: #000000 !important;
+    }
+
+    html.theme-aqua .sa-prompt-textarea {
+        background: #ffffff;
+    }
+
+    html.theme-aqua html:root:root:root .ss-sheet .sa-prompt-textarea {
+        background: #ffffff !important;
+    }
+}
+

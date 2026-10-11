@@ -61,6 +61,9 @@ export const INTERNAL_STAFF: string[] = [
   "ClientViewer",
 ];
 
+/** Roles that may read robot telemetry: staff roles without ClientViewer (kept separate so INTERNAL_STAFF is not changed for other tools). */
+export const DEVICE_TELEMETRY_ROLES: string[] = ["Developer", "Admin", "ClientBoss", "ClientAccounting"];
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 export const MAX_LIMIT = 200;
 
@@ -752,4 +755,161 @@ export const ONYX_DATA_TOOLS: OnyxDataTool[] = [
     requiredRoles: ALL_STAFF,
     vendorScoped: true,
   },
+
+  // ── Device Tools (1) ────────────────────────────────────────────────────────
+  {
+    name: "devices_onyxchan_telemetry",
+    description: "Retrieve battery, RSSI, and online status of OnyxChan robots from onyxchan_devices table. Accessible only to internal staff.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        device_id: {
+          type: "string",
+          description: "Optional specific OnyxChan device identifier (max 50 chars).",
+          maxLength: 50,
+        },
+        limit: {
+          type: "integer",
+          description: "Maximum records to return (1-100, default 20).",
+          default: 20,
+          minimum: 1,
+          maximum: 100,
+        },
+      },
+    },
+    requiredRoles: DEVICE_TELEMETRY_ROLES,
+  },
 ];
+
+// ── Pure Telemetry Functions & Helpers ───────────────────────────────────────
+
+export const TELEMETRY_SELECT_COLUMNS = "device_id,device_name,status,battery_level,rssi" as const;
+
+export interface ValidatedTelemetryParams {
+  device_id?: string;
+  limit: number;
+}
+
+export type TelemetryValidationResult =
+  | { ok: true; params: ValidatedTelemetryParams }
+  | { ok: false; error: string };
+
+export interface OnyxChanTelemetryRow {
+  device_id: string;
+  device_name: string;
+  status: string;
+  battery_level: number | null;
+  rssi: number | null;
+}
+
+export interface OnyxChanTelemetryResult {
+  devices: OnyxChanTelemetryRow[];
+}
+
+/**
+ * Evaluates whether a caller's application role is present in an authorized role list.
+ */
+export function isRoleAllowed(role: string, allowedRoles: string[]): boolean {
+  return allowedRoles.includes(role);
+}
+
+/**
+ * Evaluates role authorization specifically for devices_onyxchan_telemetry (DEVICE_TELEMETRY_ROLES).
+ */
+export function authorizeTelemetryRole(role: string): {
+  allowed: boolean;
+  status?: number;
+  error?: string;
+} {
+  if (!isRoleAllowed(role, DEVICE_TELEMETRY_ROLES)) {
+    return {
+      allowed: false,
+      status: 403,
+      error: `Forbidden: role '${role}' is not authorized to access devices_onyxchan_telemetry (requires a staff role other than ClientViewer)`,
+    };
+  }
+  return { allowed: true };
+}
+
+/**
+ * Validates input arguments for devices_onyxchan_telemetry.
+ * Enforces:
+ * - device_id: optional string, max 50 characters
+ * - limit: optional integer, 1 to 100 inclusive, defaults to 20
+ */
+export function validateTelemetryArgs(rawArgs: unknown): TelemetryValidationResult {
+  if (typeof rawArgs !== "object" || rawArgs === null || Array.isArray(rawArgs)) {
+    return { ok: false, error: "Arguments must be an object" };
+  }
+
+  const args = rawArgs as Record<string, unknown>;
+
+  let device_id: string | undefined = undefined;
+  if (args.device_id !== undefined && args.device_id !== null) {
+    if (typeof args.device_id !== "string") {
+      return { ok: false, error: "device_id must be a string" };
+    }
+    if (args.device_id.length > 50) {
+      return { ok: false, error: "device_id must not exceed 50 characters" };
+    }
+    device_id = args.device_id;
+  }
+
+  let limit = 20;
+  if (args.limit !== undefined && args.limit !== null) {
+    if (typeof args.limit !== "number" || !Number.isInteger(args.limit)) {
+      return { ok: false, error: "limit must be an integer" };
+    }
+    if (args.limit < 1 || args.limit > 100) {
+      return { ok: false, error: "limit must be between 1 and 100" };
+    }
+    limit = args.limit;
+  }
+
+  return {
+    ok: true,
+    params: {
+      ...(device_id !== undefined ? { device_id } : {}),
+      limit,
+    },
+  };
+}
+
+/**
+ * Shapes a single raw database row into the exact telemetry answer shape.
+ * Picks only device_id, device_name, status, battery_level, rssi.
+ * Never outputs token_hash or any secret / internal columns.
+ */
+export function shapeTelemetryRow(raw: Record<string, unknown>): OnyxChanTelemetryRow {
+  return {
+    device_id: typeof raw.device_id === "string" ? raw.device_id : String(raw.device_id ?? ""),
+    device_name: typeof raw.device_name === "string" ? raw.device_name : String(raw.device_name ?? ""),
+    status: typeof raw.status === "string" ? raw.status : String(raw.status ?? "offline"),
+    battery_level: typeof raw.battery_level === "number" ? raw.battery_level : null,
+    rssi: typeof raw.rssi === "number" ? raw.rssi : null,
+  };
+}
+
+/**
+ * Shapes an array of raw database rows into the final devices_onyxchan_telemetry response object.
+ */
+export function shapeTelemetryResult(rows: Record<string, unknown>[]): OnyxChanTelemetryResult {
+  return {
+    devices: rows.map(shapeTelemetryRow),
+  };
+}
+
+/**
+ * Strips sensitive cost/pricing columns if caller does not possess a finance role.
+ */
+export function redactCostColumns<T extends Record<string, unknown>>(row: T, callerRole: string): Partial<T> {
+  if (FINANCE_ROLES.includes(callerRole)) {
+    return row;
+  }
+  const clean = { ...row };
+  for (const col of COST_COLUMNS) {
+    delete (clean as Record<string, unknown>)[col];
+  }
+  return clean;
+}
+
