@@ -9,19 +9,23 @@
    ========================================================================== */
 
 .stp {
-    --stp-ink: #eef1f5;
-    --stp-ink-2: #aeb7c3;
-    --stp-line: rgba(255, 255, 255, 0.16);
-    --stp-tile: #14171c;
-    --stp-accent: #4fb3ff;
-    --stp-focus: #4fb3ff;
-    --stp-edge: #00aeef;
-    --stp-hi: #9fdcff;
-    --stp-mid: #2f7fa8;
-    --stp-lo: #1f4f66;
-    --stp-lo-fill: #0c2632;
+    /* Every colour comes from the theme tokens (styles/ui.css), so the selector follows Rock, Talan and Aqua instead of a fixed blue.
+       The tiles are translucent (the form's own surface shows through); the figure plates are almost the ground colour so hidden
+       edges stay faint; the outline is the theme's ink and the one bright mark is the theme's accent. */
+    --stp-ink: var(--ui-ink, #eef1f5);
+    --stp-ink-2: var(--ui-dim, #aeb7c3);
+    --stp-line: var(--ui-edge-hi, rgba(255, 255, 255, 0.16));
+    --stp-tile: var(--ui-raise, rgba(255, 255, 255, 0.05));
+    --stp-plate: color-mix(in srgb, var(--ui-ground, #0a0a0f) 72%, transparent);
+    --stp-accent: var(--ui-accent, #4fb3ff);
+    --stp-focus: var(--ui-focus, var(--stp-accent));
+    --stp-edge: color-mix(in srgb, var(--stp-ink) 80%, transparent);
+    --stp-hi: var(--stp-accent);
+    --stp-mid: color-mix(in srgb, var(--stp-ink) 48%, transparent);
+    --stp-lo: color-mix(in srgb, var(--stp-ink) 28%, transparent);
+    --stp-lo-fill: color-mix(in srgb, var(--stp-ink) 8%, transparent);
 
-    --hl-plate: var(--stp-tile);
+    --hl-plate: var(--stp-plate);
     --hl-edge: var(--stp-edge);
     --hl-hi: var(--stp-hi);
     --hl-mid: var(--stp-mid);
@@ -42,19 +46,7 @@
     color: var(--stp-ink);
 }
 
-html.theme-aqua .stp {
-    --stp-ink: #1b1e22;
-    --stp-ink-2: #4a5059;
-    --stp-line: rgba(0, 0, 0, 0.16);
-    --stp-tile: #f6f1e6;
-    --stp-accent: #0a6fb5;
-    --stp-focus: #0a6fb5;
-    --stp-edge: #0a7fb8;
-    --stp-hi: #074f80;
-    --stp-mid: #3b8fb8;
-    --stp-lo: #8fb9cc;
-    --stp-lo-fill: #e3ebe9;
-}
+/* html.theme-aqua needs no override: the tokens above change with the theme. */
 
 /* ── header: title and search ───────────────────────────────────────────── */
 .stp-head {
