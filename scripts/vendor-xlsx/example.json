@@ -1,0 +1,76 @@
+{
+  "vendor": "EM",
+  "book": "826",
+  "items": [
+    {
+      "itemNumber": 1,
+      "quantity": 1,
+      "shape": "Large",
+      "itemType": "Bowl",
+      "color": "Blue Argentina",
+      "material": "Onyx",
+      "widthCm": 32,
+      "heightCm": 12,
+      "lengthCm": 32,
+      "weightKg": 4.2,
+      "price": 2850,
+      "description": "Hand carved, one piece"
+    },
+    {
+      "itemNumber": 2,
+      "quantity": 2,
+      "shape": "Round",
+      "itemType": "Table lamp",
+      "color": "Honey",
+      "material": "Onyx",
+      "widthCm": 18,
+      "heightCm": 34,
+      "lengthCm": 18,
+      "weightKg": 2.6,
+      "price": 3900,
+      "description": "Pair, same veining"
+    },
+    {
+      "itemNumber": 3,
+      "quantity": 1,
+      "shape": "Oval",
+      "itemType": "Mirror",
+      "color": "Green Mexican",
+      "material": "Marble",
+      "widthCm": 60,
+      "heightCm": 90,
+      "lengthCm": 3,
+      "weightKg": 14,
+      "price": 6400,
+      "description": "Frame in one piece"
+    },
+    {
+      "itemNumber": 4,
+      "quantity": 1,
+      "shape": "Long",
+      "itemType": "Canoe",
+      "color": "Black",
+      "material": "Wood",
+      "widthCm": 40,
+      "heightCm": 25,
+      "lengthCm": 180,
+      "weightKg": 70,
+      "price": 48000,
+      "description": "Decorative, not for water"
+    },
+    {
+      "itemNumber": 5,
+      "quantity": 1,
+      "shape": "Square",
+      "itemType": "Wine rack",
+      "color": "Natural",
+      "material": "Mahogany",
+      "widthCm": 45,
+      "heightCm": 90,
+      "lengthCm": 30,
+      "weightKg": 22,
+      "price": 4200,
+      "description": "Holds 12 bottles"
+    }
+  ]
+}
