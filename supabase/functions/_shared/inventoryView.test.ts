@@ -2,6 +2,7 @@ import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asse
 import {
   COMPACT_COLUMNS,
   KNOWN_COLUMNS,
+  VENDOR_DENY,
   selectColumns,
   capPayload,
 } from "./inventoryView.ts";
@@ -75,6 +76,101 @@ Deno.test("selectColumns finance caller gets price_mxn and book_retail but never
   // Must match COMPACT_COLUMNS + price_mxn + book_retail
   const expected = [...COMPACT_COLUMNS, "price_mxn", "book_retail"].join(",");
   assertEquals(financeCompact, expected);
+});
+
+Deno.test("selectColumns vendor with fields containing denied names (drops denied and cost columns)", () => {
+  // Vendor requests a mix of allowed, denied, and cost columns
+  const fields = [
+    "id",
+    "vendor_notes",
+    "shape",
+    "is_hidden",
+    "hidden_reason",
+    "price_mxn",
+    "book_retail",
+    "material",
+    "payment_status",
+  ];
+  const result = selectColumns("compact", fields, false, true);
+
+  // Denied columns and cost columns must be omitted, allowed retained
+  assertEquals(result, "id,shape,material");
+
+  const cols = result.split(",");
+  for (const deniedCol of VENDOR_DENY) {
+    assert(!cols.includes(deniedCol), `Vendor fields view must not include denied column: ${deniedCol}`);
+  }
+  for (const costCol of COST_COLUMNS) {
+    assert(!cols.includes(costCol), `Vendor fields view must not include cost column: ${costCol}`);
+  }
+
+  // If vendor requests ONLY denied columns, falls back to compact view without cost or denied columns
+  const onlyDeniedFields = ["vendor_notes", "is_hidden", "ocr_raw_text", "payment_ids"];
+  const fallbackResult = selectColumns("compact", onlyDeniedFields, false, true);
+  assertEquals(fallbackResult, COMPACT_COLUMNS.join(","));
+});
+
+Deno.test("selectColumns vendor full view: returns explicit column list without '*' or denied or cost columns", () => {
+  const result = selectColumns("full", undefined, false, true);
+
+  // Must not be wildcard "*"
+  assert(result !== "*", "Vendor full view must not return wildcard '*'");
+
+  const cols = result.split(",");
+
+  // Must not include any denied column
+  for (const deniedCol of VENDOR_DENY) {
+    assert(!cols.includes(deniedCol), `Vendor full view must not include denied column: ${deniedCol}`);
+  }
+
+  // Must not include any cost column
+  for (const costCol of COST_COLUMNS) {
+    assert(!cols.includes(costCol), `Vendor full view must not include cost column: ${costCol}`);
+  }
+
+  // Expected is every KNOWN_COLUMNS except VENDOR_DENY and COST_COLUMNS
+  const expected = KNOWN_COLUMNS.filter(
+    (col) => !VENDOR_DENY.includes(col) && !COST_COLUMNS.includes(col)
+  ).join(",");
+  assertEquals(result, expected);
+
+  // Even if isFinance is somehow passed true, vendor full view strictly excludes COST_COLUMNS
+  const resultWithFinanceFlag = selectColumns("full", undefined, true, true);
+  assertEquals(resultWithFinanceFlag, expected);
+});
+
+Deno.test("selectColumns proves non-vendor result is unchanged for compact, full, and fields", () => {
+  // 1. Compact: explicit isVendor=false matches isVendor=undefined (omitted)
+  assertEquals(
+    selectColumns("compact", undefined, false, false),
+    selectColumns("compact", undefined, false)
+  );
+  assertEquals(
+    selectColumns("compact", undefined, true, false),
+    selectColumns("compact", undefined, true)
+  );
+  assertEquals(selectColumns("compact", undefined, false, false), COMPACT_COLUMNS.join(","));
+
+  // 2. Full: non-vendor caller receives wildcard "*"
+  assertEquals(selectColumns("full", undefined, false, false), "*");
+  assertEquals(selectColumns("full", undefined, true, false), "*");
+  assertEquals(
+    selectColumns("full", undefined, false, false),
+    selectColumns("full", undefined, false)
+  );
+
+  // 3. Fields: non-vendor caller can request columns that would be denied to a vendor
+  const fieldsWithDenied = ["id", "vendor_notes", "created_by", "shape"];
+  const nonVendorResult = selectColumns("compact", fieldsWithDenied, false, false);
+  assertEquals(nonVendorResult, "id,vendor_notes,created_by,shape");
+  assertEquals(
+    nonVendorResult,
+    selectColumns("compact", fieldsWithDenied, false)
+  );
+
+  // Contrast with vendor where denied columns are stripped
+  const vendorResult = selectColumns("compact", fieldsWithDenied, false, true);
+  assertEquals(vendorResult, "id,shape");
 });
 
 // ── capPayload Tests ─────────────────────────────────────────────────────────

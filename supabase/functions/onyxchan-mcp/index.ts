@@ -6,6 +6,7 @@ import { SSEServerTransport } from "npm:@modelcontextprotocol/sdk/server/sse.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "npm:@modelcontextprotocol/sdk/types.js";
 import { createClient } from "npm:@supabase/supabase-js";
 import { ONYXCHAN_TOOLS } from "../_shared/onyxchanTools.ts";
+import { dispatchOnyxchanTool, listOnyxchanTools } from "../_shared/onyxchanDispatch.ts";
 import { escapeLikeValue } from "../_shared/likeEscape.ts";
 
 // Initialize Supabase Client (Edge Functions inject these environment variables)
@@ -435,13 +436,22 @@ Deno.serve(async (req) => {
     try {
       const body = await req.json();
 
+      const dispatchCtx = {
+        caller: caller ?? undefined,
+        kind: caller?.kind ?? "staff",
+        role: caller?.kind === "staff" ? caller.role : (caller?.kind === "device" ? "device" : undefined),
+        deviceId: caller?.kind === "device" ? caller.deviceId : undefined,
+        client: supabase,
+      };
+
       // If it's a direct tool execution request { tool: "speak", args: { ... } }
       if (body.tool) {
         const blocked = guardToolForCaller(String(body.tool));
         if (blocked) return blocked;
-        const handlerRes = await server.request(
-          { method: "tools/call", params: { name: body.tool, arguments: body.args || {} } },
-          CallToolRequestSchema
+        const handlerRes = await dispatchOnyxchanTool(
+          String(body.tool),
+          body.args || {},
+          dispatchCtx
         );
         return new Response(JSON.stringify(handlerRes), {
           status: 200,
@@ -452,12 +462,8 @@ Deno.serve(async (req) => {
       // If it's standard JSON-RPC 2.0
       if (body.jsonrpc === "2.0") {
         if (body.method === "tools/list") {
-          const tools: any = await server.request({ method: "tools/list", params: {} }, ListToolsRequestSchema);
-          // A device is shown only what it may call, so its client does not
-          // advertise tools it would be refused.
-          const visible = caller?.kind === "device"
-            ? { ...tools, tools: (tools.tools || []).filter((t: any) => DEVICE_TOOLS.has(t.name)) }
-            : tools;
+          const role = caller?.kind === "device" ? "device" : (caller?.role ?? "staff");
+          const visible = listOnyxchanTools(role);
           return new Response(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: visible }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -466,10 +472,17 @@ Deno.serve(async (req) => {
         if (body.method === "tools/call") {
           const blocked = guardToolForCaller(String(body.params?.name ?? ""));
           if (blocked) return blocked;
-          const callRes = await server.request(
-            { method: "tools/call", params: body.params },
-            CallToolRequestSchema
+          const callRes = await dispatchOnyxchanTool(
+            String(body.params?.name ?? ""),
+            body.params?.arguments || {},
+            dispatchCtx
           );
+          if ("error" in callRes && callRes.error) {
+            return new Response(JSON.stringify({ jsonrpc: "2.0", id: body.id, error: callRes.error }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           return new Response(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: callRes }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },

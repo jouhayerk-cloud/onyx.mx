@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { ONYX_DATA_TOOLS, OnyxDataTool } from "../../supabase/functions/_shared/onyxDataTools.ts";
+import { ALL_ONYX_TOOLS } from "../../supabase/functions/_shared/allTools.ts";
 import { executeOnyxDataTool, CallerContext } from "../../supabase/functions/_shared/onyxDataHandlers.ts";
 
 /**
@@ -33,7 +33,9 @@ function jsonSchemaToZodShape(schema: Record<string, unknown>): Record<string, z
     } else if (prop.type === "boolean") {
       zodType = z.boolean();
     } else if (prop.type === "array") {
-      zodType = z.array(z.string());
+      let arr = z.array(z.string());
+      if (typeof prop.maxItems === "number") arr = arr.max(prop.maxItems);
+      zodType = arr;
     } else {
       zodType = z.any();
     }
@@ -66,7 +68,7 @@ function humanizeToolName(name: string): string {
 }
 
 /**
- * Registers all 33 Onyx.mx data tools onto the McpServer instance.
+ * Registers all Onyx.mx data tools from ALL_ONYX_TOOLS onto the McpServer instance.
  */
 export function registerTools(server: McpServer, supabase: SupabaseClient): void {
   // Local MCP server executes in a trusted developer environment for the AI agent
@@ -75,7 +77,7 @@ export function registerTools(server: McpServer, supabase: SupabaseClient): void
     isServiceRole: true,
   };
 
-  for (const tool of ONYX_DATA_TOOLS) {
+  for (const tool of ALL_ONYX_TOOLS) {
     const inputSchema = jsonSchemaToZodShape(tool.inputSchema);
     const title = humanizeToolName(tool.name);
 
@@ -93,6 +95,19 @@ export function registerTools(server: McpServer, supabase: SupabaseClient): void
       },
       async (args: any) => {
         try {
+          const toolDef = ALL_ONYX_TOOLS.find((t) => t.name === tool.name);
+          if (!toolDef || !toolDef.requiredRoles.includes(trustedCaller.role)) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `Forbidden: role '${trustedCaller.role}' not permitted for tool '${tool.name}'. Requires one of: ${toolDef ? toolDef.requiredRoles.join(", ") : "none"}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
           const result = await executeOnyxDataTool(
             supabase,
             tool.name,

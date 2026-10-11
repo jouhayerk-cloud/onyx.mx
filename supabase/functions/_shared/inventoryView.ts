@@ -87,6 +87,31 @@ export const KNOWN_COLUMNS: readonly string[] = [
 ];
 
 /**
+ * Sensitive columns blocked from Vendor callers in inventory tools.
+ */
+export const VENDOR_DENY: readonly string[] = [
+  "vendor_notes",
+  "is_hidden",
+  "hidden_reason",
+  "created_by",
+  "marked_by",
+  "acquired_by",
+  "ocr_raw_text",
+  "print_job_checksum",
+  "print_job_id",
+  "print_job_count",
+  "labels_printed_total",
+  "payment_ids",
+  "payment_status",
+  "payment_requested_at",
+  "pay_req",
+  "pay_date",
+  "invoice_id",
+  "sent_notes",
+  "sent_manifest_id",
+];
+
+/**
  * Curated compact columns (~20 core columns identifying and describing a piece).
  * Excludes media, spatial_*, ocr, translation, print_job, and axo columns.
  */
@@ -133,9 +158,11 @@ function getCompactSelect(isFinance?: boolean): string {
  * Rules:
  * - When fields is provided: intersected with KNOWN_COLUMNS and has COST_COLUMNS
  *   removed for non-finance callers. Unknown columns are dropped.
+ *   For Vendor callers, VENDOR_DENY columns are also dropped.
  *   If the resulting list is empty, falls back to compact view.
  * - When fields is omitted or empty:
- *   - view === "full" returns "*".
+ *   - view === "full" returns "*" for non-vendors; for Vendor callers returns an
+ *     explicit column list of all KNOWN_COLUMNS excluding VENDOR_DENY and COST_COLUMNS.
  *   - view === "compact" (or default) returns compact columns.
  * - Finance callers get price_mxn and book_retail added to compact view;
  *   never book_landed, book_acquisition, or cypher codes.
@@ -143,18 +170,22 @@ function getCompactSelect(isFinance?: boolean): string {
 export function selectColumns(
   view?: string | null,
   fields?: string[] | null,
-  isFinance?: boolean
+  isFinance?: boolean,
+  isVendor?: boolean
 ): string {
+  const vendorDenySet = new Set(VENDOR_DENY);
+  const costSet = new Set(COST_COLUMNS);
+
   if (fields && Array.isArray(fields) && fields.length > 0) {
     const knownSet = new Set(KNOWN_COLUMNS);
-    const costSet = new Set(COST_COLUMNS);
     const selected: string[] = [];
 
     for (const f of fields.slice(0, 30)) {
       if (typeof f !== "string") continue;
       const clean = f.trim();
       if (!knownSet.has(clean)) continue;
-      if (!isFinance && costSet.has(clean)) continue;
+      if (isVendor && vendorDenySet.has(clean)) continue;
+      if ((!isFinance || isVendor) && costSet.has(clean)) continue;
       if (!selected.includes(clean)) {
         selected.push(clean);
       }
@@ -169,6 +200,11 @@ export function selectColumns(
   }
 
   if (view === "full") {
+    if (isVendor) {
+      return KNOWN_COLUMNS.filter(
+        (col) => !vendorDenySet.has(col) && !costSet.has(col)
+      ).join(",");
+    }
     return "*";
   }
 

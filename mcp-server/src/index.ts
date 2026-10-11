@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createClient } from "@supabase/supabase-js";
+import { ALL_ONYX_TOOLS } from "../../supabase/functions/_shared/allTools.ts";
 import { registerResources } from "./resources.ts";
 import { registerPrompts } from "./prompts.ts";
 import { registerTools } from "./tools.ts";
@@ -76,7 +77,7 @@ async function main() {
   // Status and diagnostic logs MUST ALWAYS go to stderr (stdout is strictly reserved for JSON-RPC)
   console.error("[onyx-mx-mcp-server] MCP Server connected via stdio transport.");
   console.error(`[onyx-mx-mcp-server] Supabase endpoint: ${new URL(supabaseUrl!).hostname}`);
-  console.error("[onyx-mx-mcp-server] Registered 8 resources, 4 prompts, and 33 data tools.");
+  console.error(`[onyx-mx-mcp-server] Registered 8 resources, 4 prompts, and ${ALL_ONYX_TOOLS.length} data tools.`);
 }
 
 main().catch((err) => {

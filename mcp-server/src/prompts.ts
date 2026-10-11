@@ -29,7 +29,7 @@ Follow this operational checklist:
 
 1. **Inventory Volume & Status Breakdown**:
    - Call \`inventory_count_by_status\` with \`vendor_id: "${vendor_id}"\` to get the volume of items across each status (Inventory, Sold, Reserved, Shipped, Pending Payment).
-   - Call \`inventory_list_by_vendor\` with \`vendor_id: "${vendor_id}"\` to sample the vendor's items, materials, and product shapes.
+   - Call \`inventory_list_by_vendor\` with \`vendor_id: "${vendor_id}"\` to sample the vendor's items, materials, and product shapes. Results are compact by default, use \`fields\` or \`view: "full"\` for more, and when \`truncated\` is true continue with \`offset\` = \`next_offset\`.
 
 2. **Financial Position & Obligations**:
    - Call \`finance_vendor_summary\` with \`vendor_id: "${vendor_id}"\` to calculate total disbursements paid, pending payments, and commissions.

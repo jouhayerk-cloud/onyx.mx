@@ -196,7 +196,7 @@ export async function executeOnyxDataTool(
       const { limit, offset } = clampPagination(args, 20);
       let q = supabase
         .from("inventory")
-        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance), {
+        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance, isVendor), {
           count: "exact",
         });
 
@@ -344,7 +344,7 @@ export async function executeOnyxDataTool(
       const { limit, offset } = clampPagination(args, 50);
       let q = supabase
         .from("inventory")
-        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance), {
+        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance, isVendor), {
           count: "exact",
         })
         .eq("crate_id", crateId);
@@ -400,7 +400,7 @@ export async function executeOnyxDataTool(
       const { limit, offset } = clampPagination(args, 50);
       let q = supabase
         .from("inventory")
-        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance), {
+        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance, isVendor), {
           count: "exact",
         })
         .eq("vendor_id", vendorId);
