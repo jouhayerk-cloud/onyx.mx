@@ -32,6 +32,22 @@ for (const [id, info] of Object.entries(SUB_SHAPES)) {
         if (!bad) sigs.set(v, parts.map(p => p.kind + p.d).join('|'));
         sheet.push({ id, v, parts, kind: info.kind });
     }
+    // second axes (Open or Closed top): every primary option the axis applies to must draw each extra option differently (the drawing with no extra chosen may equal one of them)
+    for (const axis of info.extra || []) {
+        for (const v of options) {
+            if (axis.whenPrimary && !axis.whenPrimary.includes(v)) continue;
+            const seen = new Set();
+            for (const o of axis.options) {
+                const parts = buildTypeFigure(id, null, undefined, v, o.value);
+                figures++;
+                if (!parts || !parts.length) { fail(`${id}/${v}/${o.value}: no figure`); continue; }
+                const sig = parts.map(p => p.kind + p.d).join('|');
+                if (seen.has(sig)) fail(`${id}/${v}: ${axis.kind} "${o.value}" draws the same as another ${axis.kind} option`);
+                seen.add(sig);
+                sheet.push({ id, v: v + ' + ' + o.value, parts, kind: axis.kind });
+            }
+        }
+    }
     const distinct = new Set(sigs.values()).size;
     if (options.length > 1 && distinct < options.length) {
         const same = [...sigs.entries()].filter(([, s], i, arr) => arr.findIndex(([, t]) => t === s) !== i).map(([k]) => k);

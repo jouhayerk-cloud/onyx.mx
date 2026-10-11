@@ -11,6 +11,11 @@ import {
     rectX,
     discY,
 } from '../../../welcome/hairline/engine';
+import { resolveVariant } from '../variantOptions';
+import {
+    buildSubjectSilhouette,
+    PAINTED_PANEL_DEFAULTS,
+} from './subjects';
 
 /** Sensible median inventory dimensions in cm per canonical Type. */
 export const DEFAULTS: Record<string, Dims> = {
@@ -36,6 +41,22 @@ export const DEFAULTS: Record<string, Dims> = {
     'table':              { w: 96, h: 50, d: 96 },
     'couch':              { w: 210, h: 75, d: 210 },
     'bar':                { w: 180, h: 105, d: 140 },
+};
+
+/** Fallback dimensions in cm per wall panel sub-shape option. */
+export const WALL_PANEL_DEFAULTS: Record<string, Dims> = {
+    'rectangular': { w: 140, h: 250, d: 10 },
+    'irregular':   { w: 125, h: 220, d: 10 },
+    'free-form':   { w: 115, h: 200, d: 10 },
+    'pair':        { w: 160, h: 210, d: 10 },
+};
+
+/** Fallback dimensions in cm per table sub-shape option. */
+export const TABLE_DEFAULTS: Record<string, Dims> = {
+    'diamond':     { w: 96, h: 50, d: 96 },
+    'round':       { w: 90, h: 50, d: 90 },
+    'free-form':   { w: 125, h: 46, d: 85 },
+    'rectangular': { w: 140, h: 50, d: 80 },
 };
 
 /** Canonical Type ids handled by the furniture hairline figure renderer. */
@@ -427,7 +448,7 @@ function buildFountain(cam: Cam, dims: Dims): FigurePart[] {
 
     const w3 = w * 0.42;
     const d3 = d * 0.42;
-    const p3 = prism(cam, cx - w3 / 2, cy - d3 / 2, c2Top, w3, d3, t3H, Math.min(w3, d3) * 0.35);
+    const p3 = prism(cam, cx - w3 / 2, cy - cd3 / 2, c2Top, w3, d3, t3H, Math.min(w3, d3) * 0.35);
 
     const spoutPts = [
         proj(cam, cx, cy, h),
@@ -607,7 +628,9 @@ function buildBag(cam: Cam, dims: Dims): FigurePart[] {
     ];
 }
 
-function buildWallPanel(cam: Cam, dims: Dims): FigurePart[] {
+// ── wall panels (rectangular, irregular, free-form, pair) ───────────────────
+
+function buildWallPanelRectangular(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
     const slab = prism(cam, 0, 0, 0, w, d, h, 0.6);
 
@@ -632,32 +655,158 @@ function buildWallPanel(cam: Cam, dims: Dims): FigurePart[] {
     ];
 }
 
-function buildPaintedWallPanel(cam: Cam, dims: Dims): FigurePart[] {
+function buildWallPanelIrregular(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const ptsXZ: [number, number][] = [
+        [w * 0.06, h * 0.02],
+        [w * 0.90, 0],
+        [w * 0.98, h * 0.38],
+        [w * 0.92, h * 0.76],
+        [w * 0.82, h * 0.98],
+        [w * 0.35, h * 0.96],
+        [w * 0.02, h * 0.72],
+        [w * 0.05, h * 0.28],
+    ];
+
+    const backPts = ptsXZ.map(([x, z]) => proj(cam, x, 0, z));
+    const frontPts = ptsXZ.map(([x, z]) => proj(cam, x, d, z));
+    const body = pathOf(hull([...backPts, ...frontPts]));
+    const rim = pathOf(frontPts, true);
+
+    const innerPts = ptsXZ.map(([x, z]) => {
+        const ix = w * 0.5 + (x - w * 0.5) * 0.82;
+        const iz = h * 0.5 + (z - h * 0.5) * 0.85;
+        return proj(cam, ix, d, iz);
+    });
+    const face = pathOf(innerPts, true);
+
+    const crease1 = pathOf([
+        proj(cam, w * 0.35, d, h * 0.96),
+        proj(cam, w * 0.45, d, h * 0.5),
+        proj(cam, w * 0.9, d, 0),
+    ], false);
+    const crease2 = pathOf([
+        proj(cam, w * 0.02, d, h * 0.72),
+        proj(cam, w * 0.45, d, h * 0.5),
+    ], false);
+    const bright = discY(cam, w * 0.75, d, h * 0.85, Math.min(w, h) * 0.02, 10);
+
+    return [
+        { d: body, kind: 'plate' },
+        { d: rim, kind: 'crease' },
+        { d: face, kind: 'face' },
+        { d: crease1, kind: 'crease' },
+        { d: crease2, kind: 'crease' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+function buildWallPanelFreeForm(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cz = h / 2;
+    const rx = w * 0.46;
+    const rz = h * 0.46;
+    const n = 32;
+
+    const backPts: P2[] = [];
+    const frontPts: P2[] = [];
+    const innerPts: P2[] = [];
+
+    for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const wave = 1 + Math.sin(a * 4) * 0.07 + Math.cos(a * 7 + 0.6) * 0.04;
+        const x = cx + rx * Math.cos(a) * wave;
+        const z = cz + rz * Math.sin(a) * wave;
+        backPts.push(proj(cam, x, 0, z));
+        frontPts.push(proj(cam, x, d, z));
+
+        const ix = cx + rx * 0.82 * Math.cos(a) * wave;
+        const iz = cz + rz * 0.82 * Math.sin(a) * wave;
+        innerPts.push(proj(cam, ix, d, iz));
+    }
+
+    const body = pathOf(hull([...backPts, ...frontPts]));
+    const rim = pathOf(frontPts, true);
+    const face = pathOf(innerPts, true);
+
+    const veinPts: P2[] = [];
+    for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const vx = cx - rx * 0.65 + rx * 1.3 * t;
+        const vz = cz + Math.sin(t * Math.PI * 1.5) * (rz * 0.4);
+        veinPts.push(proj(cam, vx, d, vz));
+    }
+    const vein = pathOf(veinPts, false);
+
+    const bright = discY(cam, cx + rx * 0.4, d, cz + rz * 0.5, Math.min(w, h) * 0.018, 10);
+
+    return [
+        { d: body, kind: 'plate' },
+        { d: rim, kind: 'crease' },
+        { d: face, kind: 'face' },
+        { d: vein, kind: 'crease' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+function buildWallPanelPair(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const gap = Math.max(2, w * 0.08);
+    const sw = (w - gap) / 2;
+
+    const slabL = prism(cam, 0, 0, 0, sw, d, h, 0.5);
+    const slabR = prism(cam, sw + gap, 0, 0, sw, d, h, 0.5);
+
+    const borderX = Math.max(1.2, sw * 0.12);
+    const borderZ = Math.max(1.8, h * 0.08);
+    const faceL = rectY(cam, d, borderX, sw - borderX, borderZ, h - borderZ);
+    const faceR = rectY(cam, d, sw + gap + borderX, w - borderX, borderZ, h - borderZ);
+
+    const gL = pathOf([proj(cam, sw * 0.5, d, borderZ), proj(cam, sw * 0.5, d, h - borderZ)], false);
+    const gR = pathOf([proj(cam, sw + gap + sw * 0.5, d, borderZ), proj(cam, sw + gap + sw * 0.5, d, h - borderZ)], false);
+
+    const bright = rectY(cam, d, sw + gap + sw * 0.5 - 1.0, sw + gap + sw * 0.5 + 1.0, h - borderZ * 0.8, h - borderZ * 0.2);
+
+    return [
+        ...solidParts(slabL),
+        ...solidParts(slabR),
+        { d: faceL, kind: 'face' },
+        { d: faceR, kind: 'face' },
+        { d: gL, kind: 'crease' },
+        { d: gR, kind: 'crease' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+function buildWallPanel(cam: Cam, dims: Dims, variant?: string | null): FigurePart[] {
+    switch (variant) {
+        case 'irregular':
+            return buildWallPanelIrregular(cam, dims);
+        case 'free-form':
+            return buildWallPanelFreeForm(cam, dims);
+        case 'pair':
+            return buildWallPanelPair(cam, dims);
+        case 'rectangular':
+        default:
+            return buildWallPanelRectangular(cam, dims);
+    }
+}
+
+// ── painted wall panel (horse, elk, deer, moose, bear, bobcat, climbers) ────
+
+function buildPaintedWallPanel(cam: Cam, dims: Dims, variant?: string | null): FigurePart[] {
     const { w, h, d } = dims;
     const slab = prism(cam, 0, 0, 0, w, d, h, 0.6);
     const borderX = Math.max(1.8, w * 0.06);
     const borderZ = Math.max(1.5, h * 0.12);
     const face = rectY(cam, d, borderX, w - borderX, borderZ, h - borderZ);
-
-    const hz = borderZ + (h - 2 * borderZ) * 0.42;
-    const wavePts: P2[] = [];
-    const n = 10;
-    for (let i = 0; i <= n; i++) {
-        const t = i / n;
-        const x = borderX + (w - 2 * borderX) * t;
-        const z = hz + Math.sin(t * Math.PI * 2) * (h * 0.12) - Math.cos(t * Math.PI) * (h * 0.06);
-        wavePts.push(proj(cam, x, d, z));
-    }
-    const horizon = pathOf(wavePts, false);
-
-    const sunR = Math.min(1.4, h * 0.1);
-    const sun = discY(cam, borderX + (w - 2 * borderX) * 0.75, d, h - borderZ - sunR * 1.8, sunR, 12);
+    const subjectParts = buildSubjectSilhouette(variant, cam, w, h, d);
 
     return [
         ...solidParts(slab),
         { d: face, kind: 'face' },
-        { d: horizon, kind: 'crease' },
-        { d: sun, kind: 'bright' },
+        ...subjectParts,
     ];
 }
 
@@ -683,10 +832,16 @@ function buildMirror(cam: Cam, dims: Dims): FigurePart[] {
     ];
 }
 
-function buildWineRack(cam: Cam, dims: Dims, holes?: number): FigurePart[] {
+// ── wine rack (holes grid from 2 up to 21 holes) ────────────────────────────
+
+function buildWineRack(cam: Cam, dims: Dims, holes?: number, variant?: string | null): FigurePart[] {
     const { w, h, d } = dims;
     const box = prism(cam, 0, 0, 0, w, d, h, 0.8);
-    const count = Math.min(21, Math.max(2, holes ?? 6));
+    let count = typeof holes === 'number' && !Number.isNaN(holes) && holes >= 2
+        ? holes
+        : (variant ? parseInt(variant, 10) : 6);
+    if (Number.isNaN(count) || count < 2) count = 6;
+    count = Math.min(21, Math.max(2, count));
 
     let cols = 3;
     if (count <= 2) cols = count;
@@ -708,9 +863,9 @@ function buildWineRack(cam: Cam, dims: Dims, holes?: number): FigurePart[] {
         const c = i % cols;
         const hx = (c + 0.5) * cellW;
         const hz = h - (r + 0.5) * cellH;
-        slotHoles.push(discY(cam, hx, d, hz, rHole, 16));
+        slotHoles.push(discY(cam, hx, d, hz, rHole, 14));
         if (i === 0) {
-            brightPart = { d: discY(cam, hx, d, hz, rHole * 0.52, 12), kind: 'bright' };
+            brightPart = { d: discY(cam, hx, d, hz, rHole * 0.52, 10), kind: 'bright' };
         }
     }
 
@@ -721,7 +876,139 @@ function buildWineRack(cam: Cam, dims: Dims, holes?: number): FigurePart[] {
     ];
 }
 
-function buildTable(cam: Cam, dims: Dims): FigurePart[] {
+// ── tables (diamond, round, free-form, rectangular) ─────────────────────────
+
+function buildTableDiamond(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const slabH = Math.max(1.8, h * 0.14);
+    const legH = h - slabH;
+    const cx = w / 2;
+    const cy = d / 2;
+
+    // Pedestal base (faceted loft)
+    const bw = w * 0.44;
+    const bd = d * 0.44;
+    const bRing: P2[] = [
+        [cx, cy - bd / 2],
+        [cx + bw / 2, cy],
+        [cx, cy + bd / 2],
+        [cx - bw / 2, cy],
+    ];
+    const tw = w * 0.28;
+    const td = d * 0.28;
+    const tRing: P2[] = [
+        [cx, cy - td / 2],
+        [cx + tw / 2, cy],
+        [cx, cy + td / 2],
+        [cx - tw / 2, cy],
+    ];
+    const pedestal = loft(cam, bRing, 0, tRing, legH);
+    const pCrease = pathOf([proj(cam, cx, cy + bd / 2, 0), proj(cam, cx, cy + td / 2, legH)], false);
+
+    // Diamond top slab
+    const cr = Math.min(w, d) * 0.05;
+    const topRing: P2[] = [
+        [cx - cr, cr * 0.5],
+        [cx + cr, cr * 0.5],
+        [w - cr * 0.5, cy - cr],
+        [w - cr * 0.5, cy + cr],
+        [cx + cr, d - cr * 0.5],
+        [cx - cr, d - cr * 0.5],
+        [cr * 0.5, cy + cr],
+        [cr * 0.5, cy - cr],
+    ];
+    const topSlab = loft(cam, topRing, legH, topRing, h);
+
+    const sheen = pathOf([proj(cam, cr * 0.5, cy, h), proj(cam, w - cr * 0.5, cy, h)], false);
+    const bright = discY(cam, cx, cy + bd / 2, legH * 0.2, Math.min(w, d) * 0.025, 8);
+
+    return [
+        ...solidParts(pedestal),
+        { d: pCrease, kind: 'crease' },
+        ...solidParts(topSlab),
+        { d: sheen, kind: 'crease' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+function buildTableRound(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const slabH = Math.max(1.8, h * 0.14);
+    const legH = h - slabH;
+    const cx = w / 2;
+    const cy = d / 2;
+    const r = Math.min(w, d) / 2;
+
+    const topRing: P2[] = [];
+    for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2;
+        topRing.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+    const topSlab = loft(cam, topRing, legH, topRing, h);
+
+    const legR = r * 0.62;
+    const lw = Math.max(1.8, w * 0.07);
+    const ld = Math.max(1.8, d * 0.07);
+
+    const bl = prism(cam, cx - legR * 0.7 - lw / 2, cy - legR * 0.7 - ld / 2, 0, lw, ld, legH, 0.4);
+    const br = prism(cam, cx + legR * 0.7 - lw / 2, cy - legR * 0.7 - ld / 2, 0, lw, ld, legH, 0.4);
+    const fl = prism(cam, cx - legR * 0.7 - lw / 2, cy + legR * 0.7 - ld / 2, 0, lw, ld, legH, 0.4);
+    const frX = cx + legR * 0.7 - lw / 2;
+    const frY = cy + legR * 0.7 - ld / 2;
+    const fr = prism(cam, frX, frY, 0, lw, ld, legH, 0.4);
+
+    const ferrule = prism(cam, frX, frY, 0, lw, ld, Math.min(2, legH * 0.18), 0.4);
+
+    return [
+        { d: bl.body, kind: 'plate' },
+        { d: br.body, kind: 'plate' },
+        ...solidParts(topSlab),
+        ...solidParts(fl),
+        ...solidParts(fr),
+        { d: ferrule.body, kind: 'bright' },
+    ];
+}
+
+function buildTableFreeForm(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const slabH = Math.max(1.8, h * 0.14);
+    const legH = h - slabH;
+    const cx = w / 2;
+    const cy = d / 2;
+    const rx = w * 0.46;
+    const ry = d * 0.44;
+
+    const topRing: P2[] = [];
+    for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2;
+        const wave = 1 + Math.sin(a * 3) * 0.08 + Math.cos(a * 5) * 0.05;
+        topRing.push([cx + rx * Math.cos(a) * wave, cy + ry * Math.sin(a) * wave]);
+    }
+    const topSlab = loft(cam, topRing, legH, topRing, h);
+
+    const lw = Math.max(1.8, w * 0.07);
+    const ld = Math.max(1.8, d * 0.07);
+
+    const l1 = prism(cam, cx - lw / 2, cy - ry * 0.55 - ld / 2, 0, lw, ld, legH, 0.4);
+    const l2 = prism(cam, cx - rx * 0.55 - lw / 2, cy + ry * 0.45 - ld / 2, 0, lw, ld, legH, 0.4);
+    const l3X = cx + rx * 0.5 - lw / 2;
+    const l3Y = cy + ry * 0.35 - ld / 2;
+    const l3 = prism(cam, l3X, l3Y, 0, lw, ld, legH, 0.4);
+
+    const vein = pathOf([proj(cam, cx - rx * 0.3, cy - ry * 0.2, h), proj(cam, cx + rx * 0.3, cy + ry * 0.2, h)], false);
+    const ferrule = prism(cam, l3X, l3Y, 0, lw, ld, Math.min(2, legH * 0.18), 0.4);
+
+    return [
+        { d: l1.body, kind: 'plate' },
+        ...solidParts(topSlab),
+        ...solidParts(l2),
+        ...solidParts(l3),
+        { d: vein, kind: 'crease' },
+        { d: ferrule.body, kind: 'bright' },
+    ];
+}
+
+function buildTableRectangular(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
     const slabH = Math.max(1.8, h * 0.14);
     const legH = h - slabH;
@@ -748,6 +1035,22 @@ function buildTable(cam: Cam, dims: Dims): FigurePart[] {
         { d: ferrule.body, kind: 'bright' },
     ];
 }
+
+function buildTable(cam: Cam, dims: Dims, variant?: string | null): FigurePart[] {
+    switch (variant) {
+        case 'round':
+            return buildTableRound(cam, dims);
+        case 'free-form':
+            return buildTableFreeForm(cam, dims);
+        case 'rectangular':
+            return buildTableRectangular(cam, dims);
+        case 'diamond':
+        default:
+            return buildTableDiamond(cam, dims);
+    }
+}
+
+// ── couch (v-shaped) ────────────────────────────────────────────────────────
 
 function buildCouch(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
@@ -780,6 +1083,8 @@ function buildCouch(cam: Cam, dims: Dims): FigurePart[] {
         { d: pillow.body, kind: 'bright' },
     ];
 }
+
+// ── bar (l-shaped) ──────────────────────────────────────────────────────────
 
 function buildBar(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
@@ -821,19 +1126,51 @@ function buildBar(cam: Cam, dims: Dims): FigurePart[] {
 
 /**
  * Draw the hairline figure parts for one of the 22 canonical Add Entry furniture/inventory Types.
+ * Honours the sub-shape variant (form, subject, holes grid).
  * Returns null for any unknown type id.
  */
 export function buildFurnitureFigure(
     id: string,
     rawDims: Dims | null,
     holes?: number,
-    _variant?: string | null,
+    variant?: string | null,
 ): FigurePart[] | null {
-    if (!id || !(id in DEFAULTS)) return null;
-    const dims = normalizeDims(rawDims, DEFAULTS[id]);
+    if (!id) return null;
+    const effectiveId = id === 'panel-pair' ? 'wall-panel' : id;
+    if (!(effectiveId in DEFAULTS)) return null;
+
+    const v = resolveVariant(effectiveId, variant ?? (id === 'panel-pair' ? 'pair' : undefined));
+
+    let fallback = DEFAULTS[effectiveId];
+    if (effectiveId === 'wall-panel' && v && v in WALL_PANEL_DEFAULTS) {
+        fallback = WALL_PANEL_DEFAULTS[v];
+    } else if (effectiveId === 'painted-wall-panel' && v && v in PAINTED_PANEL_DEFAULTS) {
+        fallback = PAINTED_PANEL_DEFAULTS[v];
+    } else if (effectiveId === 'table' && v && v in TABLE_DEFAULTS) {
+        fallback = TABLE_DEFAULTS[v];
+    } else if (effectiveId === 'wine-rack') {
+        const count = typeof holes === 'number' && !Number.isNaN(holes) && holes >= 2
+            ? holes
+            : (v ? parseInt(v, 10) : 6);
+        const safeCount = Number.isNaN(count) || count < 2 ? 6 : Math.min(21, count);
+        let cols = 3;
+        if (safeCount <= 2) cols = safeCount;
+        else if (safeCount <= 4) cols = 2;
+        else if (safeCount <= 6) cols = 3;
+        else if (safeCount <= 8) cols = 4;
+        else cols = 5;
+        const rows = Math.ceil(safeCount / cols);
+        fallback = {
+            w: Math.max(20, cols * 10),
+            h: Math.max(18, rows * 10),
+            d: 15,
+        };
+    }
+
+    const dims = normalizeDims(rawDims, fallback);
     const cam = centeredCam(dims);
 
-    switch (id) {
+    switch (effectiveId) {
         case 'pendant':
             return buildPendant(cam, dims);
         case 'table-lamp':
@@ -865,15 +1202,15 @@ export function buildFurnitureFigure(
         case 'bag':
             return buildBag(cam, dims);
         case 'wall-panel':
-            return buildWallPanel(cam, dims);
+            return buildWallPanel(cam, dims, v);
         case 'painted-wall-panel':
-            return buildPaintedWallPanel(cam, dims);
+            return buildPaintedWallPanel(cam, dims, v);
         case 'mirror':
             return buildMirror(cam, dims);
         case 'wine-rack':
-            return buildWineRack(cam, dims, holes);
+            return buildWineRack(cam, dims, holes, v);
         case 'table':
-            return buildTable(cam, dims);
+            return buildTable(cam, dims, v);
         case 'couch':
             return buildCouch(cam, dims);
         case 'bar':

@@ -51,6 +51,7 @@ import { uploadEntryPhotos } from './entryMedia';
 import { EntryForm, type EntryLocks, type EntryNumberState } from './EntryForm';
 import { ENTRY_PROCESSES, GeneratePanel } from './GeneratePanel';
 import './entry.css';
+import './generatePanel.css';
 import { useWorkGuard } from '../../lib/useWorkGuard';
 
 export interface EntryScreenProps {
@@ -658,6 +659,17 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
         ? tr('The first photo changed: run Clean PNG and Mask again so the stored cutouts match it.')
         : undefined;
 
+    const hasActiveRun = runBusy || preparing;
+    const hasResult = !!runItem && (
+        !!runItem.text.title ||
+        !!runItem.text.html ||
+        ((runItem.text.colors?.length || 0) > 0) ||
+        !!runItem.text.genType ||
+        (runItem.photos?.some(p => p.cleanedUrl || p.cutoutUrl || p.matteUrl || p.svgUrl) ?? false) ||
+        (mode === 'edit' && !!(existing?.detailed_description || existing?.generated_description || existing?.generated_color || existing?.generated_type || existing?.generated_png_url || existing?.spatial_masks))
+    );
+    const hasGenContent = hasActiveRun || hasResult;
+
     return (
         <div ref={rootRef} className={cx('ui-root entry', `entry--${variant}`)} role={variant === 'modal' ? 'dialog' : 'region'}
             aria-modal={variant === 'modal' ? true : undefined} aria-labelledby={titleId}
@@ -686,7 +698,7 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
                 </p>
             )}
 
-            <div className="entry-body">
+            <div className={cx('entry-body', hasGenContent ? 'entry-body--has-gen' : 'entry-body--no-gen')}>
                 <div className="entry-main">
                     <EntryForm
                         value={form}
@@ -725,6 +737,7 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
                     keyMissing={keyMissing || run.runError?.code === 'key_missing'}
                     onKeySaved={() => { run.clearRunError(); setKeyMissing(false); void handleGenerate(); }}
                     mode={mode}
+                    hasContent={hasGenContent}
                 />
             </div>
 

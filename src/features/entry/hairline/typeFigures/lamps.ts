@@ -493,6 +493,7 @@ export function buildLampFigure(
     rawDims: Dims | null,
     _holes?: number,
     variant?: string | null,
+    _top?: string | null,
 ): FigurePart[] | null {
     if (!id || !LAMP_FIGURE_IDS.includes(id)) return null;
     const key = id as LampId;

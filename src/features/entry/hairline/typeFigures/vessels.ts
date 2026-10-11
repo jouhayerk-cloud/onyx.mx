@@ -1,5 +1,6 @@
 import type { Dims, FigurePart } from '../types';
 import { normalizeDims, centeredCam } from '../types';
+import { resolveVariant } from '../variantOptions';
 import {
     type Cam,
     type P2,
@@ -24,129 +25,258 @@ export const VESSEL_FIGURE_IDS: readonly string[] = [
  * Scaled by normalizeDims so the longest side is FIGURE_SIZE (30 world units).
  */
 export const DEFAULTS: Record<string, Dims> = {
-    'bowl':  { w: 50, h: 36, d: 50 },
+    'bowl':  { w: 36, h: 15, d: 24 },
     'canoe': { w: 100, h: 10, d: 23 },
-    'plate': { w: 55, h: 3,  d: 55 },
+    'plate': { w: 55, h: 3.5, d: 55 },
     'basin': { w: 42, h: 14, d: 42 },
+};
+
+/** Option-specific fallback dimensions when rawDims is null. */
+const BOWL_FALLBACKS: Record<string, Dims> = {
+    'mini':   { w: 12, h: 10, d: 12 },
+    'small':  { w: 25, h: 12, d: 20 },
+    'medium': { w: 36, h: 15, d: 24 },
+    'large':  { w: 48, h: 18, d: 32 },
+};
+
+const CANOE_FALLBACKS: Record<string, Dims> = {
+    'small':  { w: 70,  h: 9,  d: 20 },
+    'medium': { w: 100, h: 10, d: 23 },
+    'large':  { w: 140, h: 11, d: 26 },
+};
+
+const PLATE_FALLBACKS: Record<string, Dims> = {
+    'small':  { w: 28, h: 2.5, d: 28 },
+    'medium': { w: 40, h: 3.0, d: 40 },
+    'large':  { w: 55, h: 3.5, d: 55 },
 };
 
 // ── vessel builders (back to front, 1 bright mark, <= 14 paths) ─────────────
 
 /**
- * Wide bowl (~50 cm wide, 36 cm tall):
- * Hull of a small bottom ring and a large top ring, visible inner rim crease.
+ * Bowls with size variants (mini, small, medium, large):
+ * - Mini: small tall cup-like bowl (~12 cm wide), deeper and rounder, subtle 4-wave rim.
+ * - Small: rounder bowl (~25 cm wide), moderately deep, 5-wave rim.
+ * - Medium: wide shallow bowl (~36 cm wide, 15 cm tall, 24 cm deep), organic 6-wave rim.
+ * - Large: wide platter bowl (~48 cm wide), shallow base, dramatic 7-wave rim.
  */
-function buildBowl(cam: Cam, dims: Dims): FigurePart[] {
-    const bw = dims.w * 0.48;
-    const bd = dims.d * 0.48;
+function buildBowl(cam: Cam, dims: Dims, size: string): FigurePart[] {
+    const cx = dims.w / 2;
+    const cy = dims.d / 2;
+
+    // Proportions and silhouette parameters per size variant
+    let baseRatio = 0.46;
+    let waveAmp = 0.05;
+    let waveCount = 6;
+    let innerRatio = 0.82;
+    let floorDepth = 0.25;
+
+    if (size === 'mini') {
+        baseRatio = 0.58;
+        waveAmp = 0.02;
+        waveCount = 4;
+        innerRatio = 0.86;
+        floorDepth = 0.45;
+    } else if (size === 'small') {
+        baseRatio = 0.52;
+        waveAmp = 0.035;
+        waveCount = 5;
+        innerRatio = 0.84;
+        floorDepth = 0.35;
+    } else if (size === 'large') {
+        baseRatio = 0.40;
+        waveAmp = 0.065;
+        waveCount = 7;
+        innerRatio = 0.80;
+        floorDepth = 0.18;
+    }
+
+    // Base ring at z = 0
+    const bw = dims.w * baseRatio;
+    const bd = dims.d * baseRatio;
     const bx0 = (dims.w - bw) / 2;
     const by0 = (dims.d - bd) / 2;
     const br = Math.min(bw, bd) / 2;
     const botRing = ring(bx0, by0, bw, bd, br, 8);
     const botPts = botRing.map(([x, y]) => proj(cam, x, y, 0));
 
-    const tr = Math.min(dims.w, dims.d) / 2;
-    const topRing = ring(0, 0, dims.w, dims.d, tr, 8);
-    const topPts = topRing.map(([x, y]) => proj(cam, x, y, dims.h));
+    // Wavy organic top rim at z = dims.h
+    const steps = 28;
+    const topPts: P2[] = [];
+    const rxMax = (dims.w / 2) / (1 + waveAmp);
+    const ryMax = (dims.d / 2) / (1 + waveAmp);
+    for (let i = 0; i < steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const wave = 1 + waveAmp * Math.sin(waveCount * a);
+        const x = cx + rxMax * wave * Math.cos(a);
+        const y = cy + ryMax * wave * Math.sin(a);
+        topPts.push(proj(cam, x, y, dims.h));
+    }
 
-    const iw = dims.w * 0.82;
-    const id = dims.d * 0.82;
-    const ix0 = (dims.w - iw) / 2;
-    const iy0 = (dims.d - id) / 2;
-    const ir = Math.min(iw, id) / 2;
-    const innerRing = ring(ix0, iy0, iw, id, ir, 8);
-    const innerPts = innerRing.map(([x, y]) => proj(cam, x, y, dims.h));
+    // Inner rim crease (inset opening)
+    const innerPts: P2[] = [];
+    const irxMax = rxMax * innerRatio;
+    const iryMax = ryMax * innerRatio;
+    for (let i = 0; i < steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const wave = 1 + waveAmp * Math.sin(waveCount * a);
+        const x = cx + irxMax * wave * Math.cos(a);
+        const y = cy + iryMax * wave * Math.sin(a);
+        innerPts.push(proj(cam, x, y, dims.h));
+    }
 
-    const bright = discY(cam, dims.w / 2, dims.d, dims.h - 0.6, 0.6, 10);
+    // Interior floor crease at floorDepth * dims.h
+    const floorZ = dims.h * floorDepth;
+    const fw = bw * 0.90;
+    const fd = bd * 0.90;
+    const fx0 = (dims.w - fw) / 2;
+    const fy0 = (dims.d - fd) / 2;
+    const fr = Math.min(fw, fd) / 2;
+    const floorPts = ring(fx0, fy0, fw, fd, fr, 8).map(([x, y]) => proj(cam, x, y, floorZ));
+
+    // Bright accent mark on the inside rim
+    const bright = discY(cam, dims.w / 2, dims.d * 0.85, dims.h - 0.6, 0.6, 8);
 
     return [
         { d: pathOf(hull([...botPts, ...topPts])), kind: 'plate' },
         { d: pathOf(topPts), kind: 'crease' },
         { d: pathOf(innerPts), kind: 'crease' },
+        { d: pathOf(floorPts), kind: 'crease' },
         { d: bright, kind: 'bright' },
     ];
 }
 
 /**
- * Canoe shaped vessel (~100 cm long, 10 cm tall, 23 cm wide):
- * Long, low, shallow oval trough of pale translucent banded onyx.
- * Hull of two rounded stadium rings (r = d/2), top face inner stadium crease,
- * floor crease, wavy horizontal band crease, and a tiny bright glint inside the hollow.
+ * Canoe shaped vessel with size variants (large, medium, small):
+ * - Long shallow boat shape with pointed ends (prow and stern).
+ * - Median ~100 x 23 x 10 cm, large ~140 cm, small ~70 cm.
+ * - Pointed boat silhouette, inner hollow trough crease, floor crease,
+ *   wavy exterior stone banding with wave frequency scaling by size, and a bright mark.
  */
-function buildCanoe(cam: Cam, dims: Dims): FigurePart[] {
-    // Top ring: length w, width d, radius d / 2 (stadium footprint) at height h
-    const tr = dims.d / 2;
-    const topRing = ring(0, 0, dims.w, dims.d, tr, 8);
-    const topPts = topRing.map(([x, y]) => proj(cam, x, y, dims.h));
+function buildCanoe(cam: Cam, dims: Dims, size: string): FigurePart[] {
+    const cy = dims.d / 2;
 
-    // Base ring: top ring is about 4% larger than base ring
-    const bw = dims.w / 1.04;
-    const bd = dims.d / 1.04;
-    const bx0 = (dims.w - bw) / 2;
-    const by0 = (dims.d - bd) / 2;
-    const br = bd / 2;
-    const botRing = ring(bx0, by0, bw, bd, br, 8);
-    const botPts = botRing.map(([x, y]) => proj(cam, x, y, 0));
+    let waveBands = 4;
+    let insetRatio = 0.12;
+    let floorRatio = 0.78;
 
-    // Silhouette body: hull of bottom and top rounded stadium rings
+    if (size === 'small') {
+        waveBands = 2;
+        insetRatio = 0.14;
+        floorRatio = 0.72;
+    } else if (size === 'large') {
+        waveBands = 6;
+        insetRatio = 0.10;
+        floorRatio = 0.84;
+    }
+
+    // Pointed top rim outline (boat shape with sharp pointed prow and stern)
+    const rimSteps = 28;
+    const topPts3d: [number, number, number][] = [];
+    const ryTop = dims.d / 2;
+
+    for (let i = 0; i <= rimSteps; i++) {
+        const u = i / rimSteps;
+        const x = u * dims.w;
+        const profile = Math.sin(Math.PI * u);
+        const y = cy + ryTop * profile;
+        topPts3d.push([x, y, dims.h]);
+    }
+    for (let i = rimSteps; i >= 0; i--) {
+        const u = i / rimSteps;
+        const x = u * dims.w;
+        const profile = Math.sin(Math.PI * u);
+        const y = cy - ryTop * profile;
+        topPts3d.push([x, y, dims.h]);
+    }
+    const topPts = topPts3d.map(([x, y, z]) => proj(cam, x, y, z));
+
+    // Base ring (smaller pointed boat footprint at z = 0)
+    const baseScaleX = 0.88;
+    const baseScaleY = 0.80;
+    const bx0 = (dims.w * (1 - baseScaleX)) / 2;
+    const bw = dims.w * baseScaleX;
+    const ryBot = (dims.d / 2) * baseScaleY;
+    const botPts3d: [number, number, number][] = [];
+
+    for (let i = 0; i <= rimSteps; i++) {
+        const u = i / rimSteps;
+        const x = bx0 + u * bw;
+        const profile = Math.sin(Math.PI * u);
+        const y = cy + ryBot * profile;
+        botPts3d.push([x, y, 0]);
+    }
+    for (let i = rimSteps; i >= 0; i--) {
+        const u = i / rimSteps;
+        const x = bx0 + u * bw;
+        const profile = Math.sin(Math.PI * u);
+        const y = cy - ryBot * profile;
+        botPts3d.push([x, y, 0]);
+    }
+    const botPts = botPts3d.map(([x, y, z]) => proj(cam, x, y, z));
+
+    // Silhouette body
     const bodyPath = pathOf(hull([...botPts, ...topPts]));
-
-    // Top rim crease
     const topCrease = pathOf(topPts);
 
-    // Inner stadium ring crease on the top face (inset ~12% of d)
-    const topInset = dims.d * 0.12;
-    const iw = dims.w - 2 * topInset;
-    const id = dims.d - 2 * topInset;
-    const ir = id / 2;
-    const innerRing = ring(topInset, topInset, iw, id, ir, 8);
-    const innerPts = innerRing.map(([x, y]) => proj(cam, x, y, dims.h));
-    const innerCrease = pathOf(innerPts);
+    // Inner rim crease (carved hollow opening at z = dims.h)
+    const innerPts3d: [number, number, number][] = [];
+    const ix0 = dims.w * insetRatio;
+    const iw = dims.w * (1 - 2 * insetRatio);
+    const ryInner = ryTop * (1 - 2 * insetRatio);
+    for (let i = 0; i <= rimSteps; i++) {
+        const u = i / rimSteps;
+        const x = ix0 + u * iw;
+        const profile = Math.sin(Math.PI * u);
+        innerPts3d.push([x, cy + ryInner * profile, dims.h]);
+    }
+    for (let i = rimSteps; i >= 0; i--) {
+        const u = i / rimSteps;
+        const x = ix0 + u * iw;
+        const profile = Math.sin(Math.PI * u);
+        innerPts3d.push([x, cy - ryInner * profile, dims.h]);
+    }
+    const innerCrease = pathOf(innerPts3d.map(([x, y, z]) => proj(cam, x, y, z)));
 
-    // Floor crease: smaller inner stadium ring inside the hollow
-    const floorZ = dims.h * 0.85;
-    const fw = dims.w * 0.78;
-    const fd = dims.d * 0.42;
-    const fx0 = (dims.w - fw) / 2;
-    const fy0 = (dims.d - fd) / 2;
-    const fr = fd / 2;
-    const floorRing = ring(fx0, fy0, fw, fd, fr, 8);
-    const floorPts = floorRing.map(([x, y]) => proj(cam, x, y, floorZ));
-    const floorCrease = pathOf(floorPts);
+    // Floor crease inside the shallow trough at z = dims.h * 0.75
+    const floorZ = dims.h * 0.75;
+    const fx0 = (dims.w * (1 - floorRatio)) / 2;
+    const fw = dims.w * floorRatio;
+    const ryFloor = ryTop * 0.42;
+    const floorPts3d: [number, number, number][] = [];
+    for (let i = 0; i <= rimSteps; i++) {
+        const u = i / rimSteps;
+        const x = fx0 + u * fw;
+        const profile = Math.sin(Math.PI * u);
+        floorPts3d.push([x, cy + ryFloor * profile, floorZ]);
+    }
+    for (let i = rimSteps; i >= 0; i--) {
+        const u = i / rimSteps;
+        const x = fx0 + u * fw;
+        const profile = Math.sin(Math.PI * u);
+        floorPts3d.push([x, cy - ryFloor * profile, floorZ]);
+    }
+    const floorCrease = pathOf(floorPts3d.map(([x, y, z]) => proj(cam, x, y, z)));
 
-    // Wavy band crease along the outside wall (soft horizontal onyx banding with gentle sine wave)
+    // Wavy horizontal stone band crease along the outside wall
     const wavyPts: P2[] = [];
-    const waveSteps = 28;
+    const waveSteps = 24;
     const zMid = dims.h * 0.45;
-    const amp = dims.h * 0.1;
-    // Interpolate outside wall at zMid between base and top rings
-    const tz = 0.45;
-    const wMid = bw + tz * (dims.w - bw);
-    const dMid = bd + tz * (dims.d - bd);
-    const x0Mid = bx0 + tz * (0 - bx0);
-    const y0Mid = by0 + tz * (0 - by0);
-    const rMid = dMid / 2;
-    const xStart = x0Mid + rMid * 0.25;
-    const xEnd = x0Mid + wMid - rMid * 0.25;
+    const amp = dims.h * 0.10;
+    const xStart = dims.w * 0.15;
+    const xEnd = dims.w * 0.85;
     for (let i = 0; i <= waveSteps; i++) {
         const u = i / waveSteps;
         const x = xStart + u * (xEnd - xStart);
-        let dy = rMid;
-        if (x < x0Mid + rMid) {
-            const dx = x - (x0Mid + rMid);
-            dy = Math.sqrt(Math.max(0, rMid * rMid - dx * dx));
-        } else if (x > x0Mid + wMid - rMid) {
-            const dx = x - (x0Mid + wMid - rMid);
-            dy = Math.sqrt(Math.max(0, rMid * rMid - dx * dx));
-        }
-        const y = y0Mid + rMid + dy;
-        const z = zMid + amp * Math.sin(u * Math.PI * 4);
+        const normU = (x / dims.w);
+        const y = cy + (ryTop * 0.90) * Math.sin(Math.PI * normU);
+        const z = zMid + amp * Math.sin(u * Math.PI * waveBands);
         wavyPts.push(proj(cam, x, y, z));
     }
     const wavyCrease = pathOf(wavyPts, false);
 
     // Tiny bright mark inside the hollow
-    const [gx, gy] = proj(cam, dims.w * 0.54, dims.d * 0.5, floorZ);
+    const [gx, gy] = proj(cam, dims.w * 0.54, cy, floorZ);
     const bright = pathOf([
         [gx - 1.4, gy],
         [gx, gy - 1.2],
@@ -165,27 +295,52 @@ function buildCanoe(cam: Cam, dims: Dims): FigurePart[] {
 }
 
 /**
- * Plate or charger (~55 cm across, almost flat):
- * Very low round prism with an inner ring crease.
+ * Plate or charger with size variants (large, medium, small):
+ * - Very flat round disc (~55 cm wide for large).
+ * - Small: compact rim flange and delicate cavetto ring.
+ * - Medium: classic dinner plate with distinct marli groove and center well.
+ * - Large: broad service charger with stepped rim levels.
  */
-function buildPlate(cam: Cam, dims: Dims): FigurePart[] {
+function buildPlate(cam: Cam, dims: Dims, size: string): FigurePart[] {
     const r = Math.min(dims.w, dims.d) / 2;
     const p = prism(cam, 0, 0, 0, dims.w, dims.d, dims.h, r);
 
-    const iw = dims.w * 0.74;
-    const id = dims.d * 0.74;
-    const ix0 = (dims.w - iw) / 2;
-    const iy0 = (dims.d - id) / 2;
-    const ir = Math.min(iw, id) / 2;
-    const innerRing = ring(ix0, iy0, iw, id, ir, 8);
-    const innerPts = innerRing.map(([x, y]) => proj(cam, x, y, dims.h));
+    let rimRatio = 0.70;
+    let wellRatio = 0.45;
+    if (size === 'small') {
+        rimRatio = 0.82;
+        wellRatio = 0.55;
+    } else if (size === 'medium') {
+        rimRatio = 0.76;
+        wellRatio = 0.50;
+    }
 
-    const bright = discY(cam, dims.w / 2, dims.d, dims.h - 0.4, 0.5, 10);
+    // Outer rim crease (cavetto)
+    const rw = dims.w * rimRatio;
+    const rd = dims.d * rimRatio;
+    const rx0 = (dims.w - rw) / 2;
+    const ry0 = (dims.d - rd) / 2;
+    const rr = Math.min(rw, rd) / 2;
+    const rimRing = ring(rx0, ry0, rw, rd, rr, 8);
+    const rimPts = rimRing.map(([x, y]) => proj(cam, x, y, dims.h));
+
+    // Center depression well crease
+    const ww = dims.w * wellRatio;
+    const wd = dims.d * wellRatio;
+    const wx0 = (dims.w - ww) / 2;
+    const wy0 = (dims.d - wd) / 2;
+    const wr = Math.min(ww, wd) / 2;
+    const wellRing = ring(wx0, wy0, ww, wd, wr, 8);
+    const wellPts = wellRing.map(([x, y]) => proj(cam, x, y, dims.h));
+
+    // Accent mark on rim
+    const bright = discY(cam, dims.w / 2, dims.d * 0.92, dims.h - 0.3, 0.5, 8);
 
     return [
         { d: p.body, kind: 'plate' },
         { d: p.crease, kind: 'crease' },
-        { d: pathOf(innerPts), kind: 'crease' },
+        { d: pathOf(rimPts), kind: 'crease' },
+        { d: pathOf(wellPts), kind: 'crease' },
         { d: bright, kind: 'bright' },
     ];
 }
@@ -249,19 +404,28 @@ export function buildVesselFigure(
     variant?: string | null,
 ): FigurePart[] | null {
     void holes;
-    void variant;
-    const fallback = DEFAULTS[id];
-    if (!fallback) return null;
+    if (!VESSEL_FIGURE_IDS.includes(id)) return null;
+    const opt = resolveVariant(id, variant);
+
+    let fallback = DEFAULTS[id];
+    if (id === 'bowl') {
+        fallback = BOWL_FALLBACKS[opt ?? 'medium'] ?? DEFAULTS['bowl'];
+    } else if (id === 'canoe') {
+        fallback = CANOE_FALLBACKS[opt ?? 'medium'] ?? DEFAULTS['canoe'];
+    } else if (id === 'plate') {
+        fallback = PLATE_FALLBACKS[opt ?? 'large'] ?? DEFAULTS['plate'];
+    }
+
     const dims = normalizeDims(rawDims, fallback);
     const cam = centeredCam(dims);
 
     switch (id) {
         case 'bowl':
-            return buildBowl(cam, dims);
+            return buildBowl(cam, dims, opt ?? 'medium');
         case 'canoe':
-            return buildCanoe(cam, dims);
+            return buildCanoe(cam, dims, opt ?? 'medium');
         case 'plate':
-            return buildPlate(cam, dims);
+            return buildPlate(cam, dims, opt ?? 'large');
         case 'basin':
             return buildBasin(cam, dims);
         default:
