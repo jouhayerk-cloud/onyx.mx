@@ -71,6 +71,7 @@ export const COST_COLUMNS: string[] = [
   "price_mxn",
   "book_acquisition",
   "book_landed",
+  "book_retail",
   "book_aq_code",
   "book_land_code",
 ];
