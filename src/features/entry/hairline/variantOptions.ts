@@ -1,17 +1,21 @@
 /**
  * The sub-shapes of each canonical Type: the single registry behind the dynamic hairline selector, the figure builders and the
- * Shape field of Add Entry. A Type has ONE kind of sub-shape that matters (the live inventory, 11 Oct 2026):
+ * Shape field of Add Entry. A Type has ONE primary choice that matters (the live inventory, 11 Oct 2026):
  *   form    lamps, mirrors, wall panels, tables, rocks and fountains (Cylinder, Squared, Round, Diamond ...)
  *   size    bowls, canoes, plates (Mini, Small, Medium, Large: the proportions change)
  *   subject the animal or figure painted on a panel or carved (Horse, Elk, Deer ...)
  *   holes   wine racks (the N in "N Holes")
  *   none    nothing to choose
- * Option values are kebab-case ids. A builder receives the option VALUE as its `variant` argument and must also accept the legacy
- * Shape text ("SQUARED", "Squares", "Large "): run it through resolveVariant first.
+ * and, for some Types, extra axes that apply on top of the primary one: table and floor lamps are Open top or Closed top in their
+ * squared, rectangular and cube forms (kind "top").
+ * Option values are kebab-case ids. A builder receives the primary option VALUE as its `variant` argument and must also accept the legacy
+ * Shape text ("SQUARED", "Squares", "Large "): run it through resolveVariant first. Extra axes are read with parseShapeText.
+ * The Shape field keeps ONE text per item ("Squared Open Top"): composeShapeText builds it and parseShapeText reads it back, so no schema change.
+ * Unified Types (owner decision, 11 Oct 2026): Luminary is a Wall Panel (every wall panel is lit), Tower Lamp is a Floor Lamp.
  * Pure: no React, no I/O, no app imports.
  */
 
-export type SubShapeKind = 'form' | 'size' | 'subject' | 'holes' | 'none';
+export type SubShapeKind = 'form' | 'size' | 'subject' | 'holes' | 'top' | 'none';
 
 export interface SubShapeOption {
     /** kebab-case id passed to the figure builders as `variant`. */
@@ -22,14 +26,28 @@ export interface SubShapeOption {
     readonly aliases?: readonly string[];
 }
 
+/** An extra choice that applies on top of the primary one. */
+export interface SubShapeAxis {
+    readonly kind: SubShapeKind;
+    /** English name of the choice, for the row label: "Top". */
+    readonly label: string;
+    readonly options: readonly SubShapeOption[];
+    /** null: no option is drawn until one is chosen. */
+    readonly defaultValue: string | null;
+    /** The axis shows only when the primary option is one of these (null: always). */
+    readonly whenPrimary: readonly string[] | null;
+}
+
 export interface TypeSubShapes {
     readonly typeId: string;
     readonly kind: SubShapeKind;
-    /** English name of the choice, for the selector's row label: "Form", "Size", "Subject", "Holes". */
+    /** English name of the primary choice, for the selector's row label: "Form", "Size", "Subject", "Holes". */
     readonly label: string;
     readonly options: readonly SubShapeOption[];
     /** The option drawn before anything is chosen; null when kind is none. */
     readonly defaultValue: string | null;
+    /** Extra axes, in the order they are shown and written in the Shape text. */
+    readonly extra?: readonly SubShapeAxis[];
 }
 
 const opt = (value: string, label: string, aliases: readonly string[] = []): SubShapeOption => ({ value, label, aliases });
@@ -54,16 +72,26 @@ const ANIMALS = [
     opt('climbers', 'Climbers', ['climber', 'escaladores']),
 ];
 
-const ids = (typeId: string, kind: SubShapeKind, label: string, options: readonly SubShapeOption[], defaultValue: string | null): TypeSubShapes => ({ typeId, kind, label, options, defaultValue });
+/** Open top or Closed top: a lamp body with an open mouth (the light shows) or a capped top. */
+const TOP_AXIS: SubShapeAxis = {
+    kind: 'top',
+    label: 'Top',
+    options: [opt('open', 'Open Top', ['open', 'open top', 'abierto', 'abierta']), opt('closed', 'Closed Top', ['closed', 'closed top', 'cerrado', 'cerrada'])],
+    defaultValue: null,
+    whenPrimary: ['squared', 'rectangular', 'cube'],
+};
+
+const ids = (typeId: string, kind: SubShapeKind, label: string, options: readonly SubShapeOption[], defaultValue: string | null, extra?: readonly SubShapeAxis[]): TypeSubShapes => ({ typeId, kind, label, options, defaultValue, extra });
 const none = (typeId: string): TypeSubShapes => ids(typeId, 'none', '', [], null);
 
-/** Counts are the live items per option (11 Oct 2026) and only order the options; the drawing never depends on them. */
+/** Types that were unified into another one; their old ids still resolve. */
+export const UNIFIED_TYPE_IDS: Readonly<Record<string, string>> = { 'luminary': 'wall-panel', 'tower-lamp': 'floor-lamp' };
+
+/** Options are ordered by how often the live inventory uses them; the drawing never depends on the order. */
 export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
     'pendant': ids('pendant', 'form', 'Form', [FORM_CYLINDER, FORM_SQUARED], 'cylinder'),
-    'table-lamp': ids('table-lamp', 'form', 'Form', [FORM_SQUARED, FORM_CYLINDER, FORM_CUBE, FORM_RECT], 'squared'),
-    'floor-lamp': ids('floor-lamp', 'form', 'Form', [FORM_SQUARED, FORM_CYLINDER], 'squared'),
-    'tower-lamp': ids('tower-lamp', 'form', 'Form', [FORM_SQUARED, FORM_CYLINDER], 'squared'),
-    'luminary': ids('luminary', 'form', 'Form', [FORM_RECT, FORM_IRREGULAR], 'rectangular'),
+    'table-lamp': ids('table-lamp', 'form', 'Form', [FORM_SQUARED, FORM_CYLINDER, FORM_CUBE, FORM_RECT], 'squared', [TOP_AXIS]),
+    'floor-lamp': ids('floor-lamp', 'form', 'Form', [FORM_SQUARED, FORM_RECT], 'squared', [TOP_AXIS]),
     'bowl': ids('bowl', 'size', 'Size', SIZES_ALL, 'medium'),
     'canoe': ids('canoe', 'size', 'Size', SIZES_ALL.slice(0, 3), 'medium'),
     'plate': ids('plate', 'size', 'Size', SIZES_ALL.slice(0, 3), 'large'),
@@ -85,36 +113,46 @@ export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
 
 const NONE: TypeSubShapes = none('');
 
-/** The sub-shape choice of a Type; an unknown Type has none. */
-export function subShapesFor(typeId: string | null | undefined): TypeSubShapes {
-    return (typeId && SUB_SHAPES[typeId]) || NONE;
+/** The id a Type is known by today: a unified Type's old id gives the surviving one. */
+export function currentTypeId(typeId: string | null | undefined): string | null {
+    if (!typeId) return null;
+    return UNIFIED_TYPE_IDS[typeId] ?? typeId;
 }
 
-/** Lower case, no accents, single spaces, no trailing plural "s" on words longer than 3 letters ("Horses" -> "horse"). */
+/** The sub-shape choice of a Type; an unknown Type has none. */
+export function subShapesFor(typeId: string | null | undefined): TypeSubShapes {
+    const id = currentTypeId(typeId);
+    return (id && SUB_SHAPES[id]) || NONE;
+}
+
+/** Lower case, no accents, single spaces. */
 export function foldVariant(raw: unknown): string {
-    const s = String(raw ?? '')
+    return String(raw ?? '')
         .normalize('NFD')
         .replace(new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g'), '')
         .toLowerCase()
         .replace(/\s+/g, ' ')
         .trim();
-    return s;
 }
 
-/**
- * The option VALUE for an option value or a legacy Shape text, or null when the text names no option of this Type.
- * Accepts "Squared", "SQUARE", "squares", "Free Form", "Horses", "6 holes".
- */
-export function optionValueFor(typeId: string | null | undefined, raw: unknown): string | null {
-    const info = subShapesFor(typeId);
+function matchOption(options: readonly SubShapeOption[], raw: unknown): string | null {
     const s = foldVariant(raw);
-    if (!s || !info.options.length) return null;
+    if (!s || !options.length) return null;
     const stripped = s.length > 3 && s.endsWith('s') ? s.slice(0, -1) : s;
-    for (const o of info.options) {
+    for (const o of options) {
         const names = [o.value, foldVariant(o.label), ...(o.aliases ?? [])];
         if (names.includes(s) || names.includes(stripped)) return o.value;
     }
     return null;
+}
+
+/**
+ * The primary option VALUE for an option value or a legacy Shape text, or null when the text names no option of this Type.
+ * Accepts "Squared", "SQUARE", "squares", "Free Form", "Horses", "6 holes". Text that also names an extra option ("Squared Open Top")
+ * is read through parseShapeText, not here.
+ */
+export function optionValueFor(typeId: string | null | undefined, raw: unknown): string | null {
+    return matchOption(subShapesFor(typeId).options, raw);
 }
 
 /** What a builder draws: the option for `raw`, else the Type's default. null for a Type without sub-shapes. */
@@ -123,9 +161,54 @@ export function resolveVariant(typeId: string | null | undefined, raw: unknown):
     return optionValueFor(typeId, raw) ?? info.defaultValue;
 }
 
-/** The text the form's Shape field receives when an option is chosen: the label, except wine racks (always "Rustic Wine Rack"). */
+/** The extra axes of a Type that apply for this primary option. */
+export function extraAxesFor(typeId: string | null | undefined, primary: string | null | undefined): readonly SubShapeAxis[] {
+    const axes = subShapesFor(typeId).extra ?? [];
+    return axes.filter(a => !a.whenPrimary || (primary != null && a.whenPrimary.includes(primary)));
+}
+
+export interface ParsedShape {
+    /** The primary option value, or null when the text names none. */
+    readonly primary: string | null;
+    /** Extra option values by axis kind, e.g. { top: "open" }. */
+    readonly extra: Readonly<Record<string, string>>;
+}
+
+const hasPhrase = (folded: string, phrase: string) => new RegExp('(^|[^a-z0-9])' + phrase + '($|[^a-z0-9])').test(folded);
+
+/** Reads a Shape text into its primary option and extra options: "Squared Open Top" gives { primary: "squared", extra: { top: "open" } }. */
+export function parseShapeText(typeId: string | null | undefined, raw: unknown): ParsedShape {
+    const info = subShapesFor(typeId);
+    const text = foldVariant(raw);
+    if (!text) return { primary: null, extra: {} };
+    const extra: Record<string, string> = {};
+    let rest = text;
+    // Longest phrases first so "open top" is taken before "open".
+    for (const axis of info.extra ?? []) {
+        const names: Array<[string, string]> = [];
+        for (const o of axis.options) for (const n of [foldVariant(o.label), ...(o.aliases ?? [])]) names.push([n, o.value]);
+        names.sort((a, b) => b[0].length - a[0].length);
+        for (const [n, v] of names) {
+            if (hasPhrase(rest, n)) { extra[axis.kind] = v; rest = rest.replace(new RegExp('(^|[^a-z0-9])' + n + '($|[^a-z0-9])'), ' ').replace(/\s+/g, ' ').trim(); break; }
+        }
+    }
+    return { primary: matchOption(info.options, rest) ?? matchOption(info.options, text), extra };
+}
+
+/** The Shape text for a primary option and extra options: label of each, in axis order, "Squared Open Top". Wine racks are always "Rustic Wine Rack". */
+export function composeShapeText(typeId: string | null | undefined, primary: string | null | undefined, extra: Readonly<Record<string, string>> = {}): string {
+    if (currentTypeId(typeId) === 'wine-rack') return 'Rustic Wine Rack';
+    const info = subShapesFor(typeId);
+    const main = info.options.find(x => x.value === primary);
+    const parts: string[] = main ? [main.label] : [];
+    for (const axis of extraAxesFor(typeId, primary)) {
+        const o = axis.options.find(x => x.value === extra[axis.kind]);
+        if (o) parts.push(o.label);
+    }
+    return parts.join(' ');
+}
+
+/** The text the form's Shape field receives when a primary option is chosen with no extras: the label, except wine racks. */
 export function shapeTextFor(typeId: string | null | undefined, value: string | null | undefined): string {
-    if (typeId === 'wine-rack') return 'Rustic Wine Rack';
-    const o = subShapesFor(typeId).options.find(x => x.value === value);
-    return o ? o.label : '';
+    return composeShapeText(typeId, value);
 }

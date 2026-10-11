@@ -14,8 +14,6 @@ export type CanonicalTypeId =
     | 'pendant'
     | 'table-lamp'
     | 'floor-lamp'
-    | 'tower-lamp'
-    | 'luminary'
     | 'bowl'
     | 'canoe'
     | 'plate'
@@ -41,8 +39,6 @@ export const CANONICAL_TYPES: readonly CanonicalTypeInfo[] = [
     { id: 'pendant', label: 'Pendant' },
     { id: 'table-lamp', label: 'Table Lamp' },
     { id: 'floor-lamp', label: 'Floor Lamp' },
-    { id: 'tower-lamp', label: 'Tower Lamp' },
-    { id: 'luminary', label: 'Luminary' },
     { id: 'bowl', label: 'Bowl' },
     { id: 'canoe', label: 'Canoe' },
     { id: 'plate', label: 'Plate' },
@@ -68,9 +64,8 @@ export interface CanonicalResult { id: CanonicalTypeId | null; label: string; ho
 const ALIASES: ReadonlyArray<readonly [CanonicalTypeId, readonly string[]]> = [
     ['pendant', ['pendant', 'pendant lamp', 'pendant lamps', 'pendants']],
     ['table-lamp', ['table lamp', 'table lamps', 'lamp', 'lamps']],
-    ['floor-lamp', ['floor lamp']],
-    ['tower-lamp', ['tower lamp']],
-    ['luminary', ['luminary']],
+    // A tower lamp is a floor lamp (owner decision, 11 Oct 2026): the staff used two names for one product.
+    ['floor-lamp', ['floor lamp', 'floor lamps', 'tower lamp', 'tower lamps']],
     ['bowl', ['bowl', 'bowls']],
     ['canoe', ['canoe', 'canoa']],
     ['plate', ['plate', 'plato', 'tray']],
@@ -81,7 +76,8 @@ const ALIASES: ReadonlyArray<readonly [CanonicalTypeId, readonly string[]]> = [
     ['pillar', ['pillar']],
     ['ball', ['ball']],
     ['bag', ['bag']],
-    ['wall-panel', ['wall panel', 'wall panels', 'panel pair', 'wall panel pair']],
+    // Every wall panel is also a luminary (it is lit): the vendors split one product into two Types, so both names are one Type.
+    ['wall-panel', ['wall panel', 'wall panels', 'panel pair', 'wall panel pair', 'luminary', 'luminaries', 'wall luminary', 'luminary panel']],
     ['painted-wall-panel', ['painted wall panel']],
     ['mirror', ['mirror']],
     ['table', ['table', 'coffee table', 'cofee table', 'table set']],

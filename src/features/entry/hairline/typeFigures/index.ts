@@ -4,14 +4,16 @@ import { buildVesselFigure } from './vessels';
 import { buildStoneFigure } from './stone';
 import { buildFurnitureFigure } from './furniture';
 import { buildMirrorFigure, mirrorVariantOf } from './mirrors';
-import { resolveVariant } from '../variantOptions';
+import { currentTypeId, resolveVariant } from '../variantOptions';
 
 /**
  * One hairline figure per canonical Type (src/lib/canonicalType.ts ids). Each group builder returns null for ids that
  * are not its own, so the first one that answers wins. null for an unknown id: the caller falls back to the family figure.
  */
-export function buildTypeFigure(id: string | null | undefined, dims: Dims | null, holes?: number, variant?: string | null): FigurePart[] | null {
-    if (!id) return null;
+export function buildTypeFigure(rawId: string | null | undefined, dims: Dims | null, holes?: number, variant?: string | null): FigurePart[] | null {
+    if (!rawId) return null;
+    // Unified Types (variantOptions UNIFIED_TYPE_IDS): a luminary is a wall panel (every wall panel is lit), a tower lamp is a floor lamp.
+    const id = currentTypeId(rawId) ?? rawId;
     // Mirrors have one drawing per shape (round, squared, rectangular); the variant is the Shape text.
     if (id === 'mirror') return buildMirrorFigure(mirrorVariantOf(variant), dims);
     // The sub-shape: an option value or the legacy Shape text, resolved against the Type's options (variantOptions.ts); every builder gets the option VALUE.
