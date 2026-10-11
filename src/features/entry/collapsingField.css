@@ -1,0 +1,165 @@
+/* ==========================================================================
+   COLLAPSING FIELDS — Add Entry dynamic tag-collapse layout
+   --------------------------------------------------------------------------
+   In the Details section (when shapeLibrary is true), filled fields collapse
+   into compact tags (~36px high). Clicking or keyboard-activating a tag
+   re-deploys the input. Tags are content-sized and wrap with other tags.
+   Open fields take flex: 1 1 220px (min 180px); dimensions group takes min 320px.
+   Suggestions take full row width under the open field.
+   ========================================================================== */
+
+.entry .entry-details-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px 12px;
+    min-width: 0;
+    width: 100%;
+}
+
+/* Open collapsing field wrapper */
+.entry .entry-collapsing-field {
+    min-width: 0;
+}
+
+.entry .entry-collapsing-field--open {
+    display: contents;
+}
+
+.entry .entry-collapsing-field--open > .ui-field {
+    flex: 1 1 220px;
+    min-width: 180px;
+}
+
+/* A text field and its tags or list: one column, the suggestions UNDER their own input (owner, 11 Oct 2026). */
+.entry .entry-collapsing-field--open > .entry-field-cell {
+    flex: 1 1 260px;
+    min-width: 200px;
+}
+
+/* Dimensions group open */
+.entry .entry-dims-group {
+    flex: 1 1 320px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.entry .entry-dims-inputs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+}
+
+/* Suggestions sit under their own input, in the width of that input */
+.entry .entry-field-suggestions {
+    width: 100%;
+    min-width: 0;
+}
+
+.entry .entry-field-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+/* FieldTag button */
+.entry .entry-field-tag {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 0 12px;
+    margin: 0;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-pill);
+    background-color: var(--ui-well);
+    color: var(--ui-ink);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.entry .entry-field-tag:not(:disabled):hover {
+    background-color: var(--ui-hover);
+    border-color: var(--ui-accent);
+    color: var(--ui-ink);
+}
+
+.entry .entry-field-tag:focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: 2px;
+}
+
+.entry .entry-field-tag:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.entry .entry-field-tag__body {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.entry .entry-field-tag__label {
+    font: 700 12px/1 var(--ui-font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ui-faint);
+}
+
+.entry .entry-field-tag__value {
+    font: 600 12.5px/1 var(--ui-font-display);
+    letter-spacing: 0.02em;
+    color: var(--ui-ink);
+}
+
+.entry .entry-field-tag__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    color: var(--ui-faint);
+    transition: color 140ms ease;
+}
+
+.entry .entry-field-tag:not(:disabled):hover .entry-field-tag__icon {
+    color: var(--ui-accent);
+}
+
+/* Touch targets on mobile / coarse pointer devices */
+@media (max-width: 720px), (pointer: coarse) {
+    .entry .entry-field-tag {
+        height: 44px;
+        min-height: 44px;
+        max-height: 44px;
+        padding: 0 14px;
+    }
+    .entry .entry-field-tag__label {
+        font-size: 12px;
+    }
+    .entry .entry-field-tag__value {
+        font-size: 13px;
+    }
+    .entry .entry-dims-group {
+        min-width: 100%;
+        flex: 1 1 100%;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .entry .entry-field-tag,
+    .entry .entry-field-tag__icon {
+        transition: none !important;
+    }
+}

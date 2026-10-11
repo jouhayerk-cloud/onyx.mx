@@ -27,7 +27,9 @@ import { SizeRow, TagRow } from './TagRow';
 import { SuggestionList } from './SuggestionList';
 import { EntrySection } from './EntrySection';
 import { useCoarseLayout } from './hairline/useCoarseLayout';
+import { CollapsingField } from './CollapsingField';
 import './entrySections.css';
+import './collapsingField.css';
 
 export type EntryLocks = Partial<Record<'vendorId' | 'workbook' | 'itemNumber', string>>;
 
@@ -104,6 +106,16 @@ function dimsFor(value: EntryState): { w: number; h: number; d: number } | null 
         return { w, h, d };
     }
     return null;
+}
+
+function formatPriceDisplay(price: string): string {
+    const trimmed = price.trim();
+    if (!trimmed) return '';
+    const num = parseFloat(trimmed);
+    if (Number.isFinite(num)) {
+        return `$${num.toLocaleString('en-US')} MXN`;
+    }
+    return `$${trimmed} MXN`;
 }
 
 export function EntryForm({
@@ -201,6 +213,16 @@ export function EntryForm({
         return list.map(s => ({ value: s, label: String(el(s)) }));
     }, [value.status]);
 
+    const statusDisplay = statusOptions.find(o => o.value === value.status)?.label || (value.status ? String(el(value.status)) : '');
+
+    const dimsFilled = Boolean(
+        value.widthCm.trim() &&
+        value.heightCm.trim() &&
+        value.lengthCm.trim()
+    );
+    const dimsValue = dimsFilled ? `${value.widthCm}×${value.heightCm}×${value.lengthCm}` : '';
+    const dimsDisplay = dimsFilled ? `${value.widthCm} × ${value.heightCm} × ${value.lengthCm} cm` : '';
+
     const lockAside = (reason?: string) => reason
         ? <span title={reason} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Lock size={10} aria-hidden="true" />{tr('fixed')}</span>
         : undefined;
@@ -211,7 +233,7 @@ export function EntryForm({
             : numberState?.next && String(numberState.next) !== value.itemNumber ? trf('next {n}', { n: numberState.next })
                 : undefined;
 
-    const textField = (f: SuggestField, label: string, span: string) => (
+    const textField = (f: SuggestField, label: string, span = '') => (
         <Field label={label} className={span}>
             <Input
                 value={value[f]}
@@ -229,7 +251,7 @@ export function EntryForm({
         if (e.key !== 'Escape') return;
         e.preventDefault();
         e.stopPropagation();
-        e.currentTarget.closest('.entry-grid')?.querySelector<HTMLInputElement>(`input[data-field="${f}"]`)?.focus();
+        e.currentTarget.closest('.entry-field-cell, .entry-grid, .entry-details-flow, .entry-collapsing-field')?.querySelector<HTMLInputElement>(`input[data-field="${f}"]`)?.focus();
     };
 
     /** Mirrors, table lamps and pendants come in shapes (Round, Squared, Rectangular; Cylinder, Squared): their Shape tags show the drawing of each. */
@@ -239,6 +261,14 @@ export function EntryForm({
             typeId={variantTypeId} variant={tag} dims={null} className="tag-fig" />
         : undefined;
 
+    /** A text field and its suggestions in ONE cell: the tags or list render UNDER their own input, never at the start of the line. */
+    const suggestField = (f: SuggestField, label: string, tagsLabel: string, span = '') => (
+        <div className={cx('entry-field-cell', span)}>
+            {textField(f, label)}
+            {suggestionRow(f, tagsLabel)}
+        </div>
+    );
+
     /**
      * Single suggestion mechanism per device:
      * Mobile shows SuggestionList (44px rows with count). Desktop shows TagRow (chips). Never both.
@@ -247,7 +277,7 @@ export function EntryForm({
         if (activeField !== f || suggestions[f].length === 0) return null;
         if (isMobile) {
             return (
-                <div className="s6 entry-suggestions-mobile" onKeyDownCapture={e => backToField(e, f)}>
+                <div className="entry-suggestions-mobile entry-field-suggestions" onKeyDownCapture={e => backToField(e, f)}>
                     <SuggestionList
                         label={label}
                         suggestions={suggestions[f]}
@@ -264,7 +294,7 @@ export function EntryForm({
             );
         }
         return (
-            <div className="s6 entry-tags-row" onKeyDownCapture={e => backToField(e, f)}>
+            <div className="entry-tags-row entry-field-suggestions" onKeyDownCapture={e => backToField(e, f)}>
                 <TagRow
                     label={label}
                     tags={suggestions[f]}
@@ -279,7 +309,7 @@ export function EntryForm({
     const numField = (f: keyof EntryState, label: string, span = '', opts: { step?: string; min?: string; onFocus?: () => void } = {}) => (
         <Field label={label} className={span}>
             <Input type="number" inputMode="decimal" min={opts.min ?? '0'} step={opts.step ?? 'any'} className="ui-tnum"
-                value={value[f]} onChange={set(f)} onFocus={opts.onFocus} disabled={disabled} />
+                value={value[f]} onChange={set(f)} onFocus={opts.onFocus} disabled={disabled} data-field={String(f)} />
         </Field>
     );
 
@@ -396,33 +426,83 @@ export function EntryForm({
                 isFilled={detailsFilled}
                 autoCollapse={autoCollapse}
             >
-                <div className="entry-grid">
-                    {textField('shape', tr('Shape'), 's2')}
-                    {textField('type', tr('Type'), 's2')}
-                    {textField('material', tr('Material'), 's2')}
-                    {suggestionRow('shape', tr('Shape tags'))}
-                    {suggestionRow('type', tr('Type tags'))}
-                    {suggestionRow('material', tr('Material tags'))}
-                    {textField('color', tr('Vendor colour'), 's3')}
+                {shapeLibrary ? (
+                    <div className="entry-details-flow">
+                        <CollapsingField label={tr('Shape')} value={value.shape}>
+                            {suggestField('shape', tr('Shape'), tr('Shape tags'))}
+                        </CollapsingField>
 
-                    <Field label={tr('Status')} className="s3">
-                        <Select value={value.status} onChange={set('status')} options={statusOptions} disabled={disabled} />
-                    </Field>
-                    {suggestionRow('color', tr('Colour tags'))}
+                        <CollapsingField label={tr('Type')} value={value.type}>
+                            {suggestField('type', tr('Type'), tr('Type tags'))}
+                        </CollapsingField>
 
-                    <div className="entry-dims">
-                        {numField('widthCm', tr('W cm'), '', { onFocus: focusDims })}
-                        {numField('heightCm', tr('H cm'), '', { onFocus: focusDims })}
-                        {numField('lengthCm', tr('D cm'), '', { onFocus: focusDims })}
-                        {activeField === 'dims' && suggestions.sizes.length > 0 && (
-                            <div className="s6">
-                                <SizeRow sizes={suggestions.sizes} onPick={pickSize} />
+                        <CollapsingField label={tr('Material')} value={value.material}>
+                            {suggestField('material', tr('Material'), tr('Material tags'))}
+                        </CollapsingField>
+
+                        <CollapsingField label={tr('Vendor colour')} value={value.color}>
+                            {suggestField('color', tr('Vendor colour'), tr('Colour tags'))}
+                        </CollapsingField>
+
+                        <CollapsingField label={tr('Status')} value={value.status} display={statusDisplay}>
+                            <Field label={tr('Status')}>
+                                <Select value={value.status} onChange={set('status')} options={statusOptions} disabled={disabled} />
+                            </Field>
+                        </CollapsingField>
+
+                        <CollapsingField
+                            label={tr('Dimensions')}
+                            value={dimsValue}
+                            display={dimsDisplay}
+                            className="entry-collapsing-field--dims"
+                        >
+                            <div className="entry-dims-group">
+                                <div className="entry-dims entry-dims-inputs">
+                                    {numField('widthCm', tr('W cm'), '', { onFocus: focusDims })}
+                                    {numField('heightCm', tr('H cm'), '', { onFocus: focusDims })}
+                                    {numField('lengthCm', tr('D cm'), '', { onFocus: focusDims })}
+                                </div>
+                                {activeField === 'dims' && suggestions.sizes.length > 0 && (
+                                    <div className="entry-field-suggestions">
+                                        <SizeRow sizes={suggestions.sizes} onPick={pickSize} />
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </CollapsingField>
+
+                        <CollapsingField label={tr('Kg')} value={value.weightKg} display={value.weightKg.trim() ? `${value.weightKg} kg` : ''}>
+                            {numField('weightKg', tr('Kg'))}
+                        </CollapsingField>
+
+                        <CollapsingField label={tr('Price MXN')} value={value.price} display={formatPriceDisplay(value.price)}>
+                            {numField('price', tr('Price MXN'))}
+                        </CollapsingField>
                     </div>
-                    {numField('weightKg', tr('Kg'))}
-                    {numField('price', tr('Price MXN'), 's2')}
-                </div>
+                ) : (
+                    <div className="entry-grid">
+                        {suggestField('shape', tr('Shape'), tr('Shape tags'), 's2')}
+                        {suggestField('type', tr('Type'), tr('Type tags'), 's2')}
+                        {suggestField('material', tr('Material'), tr('Material tags'), 's2')}
+                        {suggestField('color', tr('Vendor colour'), tr('Colour tags'), 's3')}
+
+                        <Field label={tr('Status')} className="s3">
+                            <Select value={value.status} onChange={set('status')} options={statusOptions} disabled={disabled} />
+                        </Field>
+
+                        <div className="entry-dims">
+                            {numField('widthCm', tr('W cm'), '', { onFocus: focusDims })}
+                            {numField('heightCm', tr('H cm'), '', { onFocus: focusDims })}
+                            {numField('lengthCm', tr('D cm'), '', { onFocus: focusDims })}
+                            {activeField === 'dims' && suggestions.sizes.length > 0 && (
+                                <div className="s6">
+                                    <SizeRow sizes={suggestions.sizes} onPick={pickSize} />
+                                </div>
+                            )}
+                        </div>
+                        {numField('weightKg', tr('Kg'))}
+                        {numField('price', tr('Price MXN'), 's2')}
+                    </div>
+                )}
             </EntrySection>
 
             {/* Notes and photos Section: vendor note, photos */}
