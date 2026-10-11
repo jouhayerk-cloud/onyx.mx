@@ -10,7 +10,8 @@ import JSZip from 'jszip';
  */
 export const sanitizeExcelValue = (val: any): any => {
     if (val === null || val === undefined) return '';
-    if (typeof val === 'number' || typeof val === 'boolean') return val;
+    if (typeof val === 'number') return Number.isFinite(val) ? val : '';   // NaN and Infinity are written as <v>NaN</v> and make Excel offer a repair
+    if (typeof val === 'boolean') return val;
     let str = String(val);
     str = str.replace(/[\v\f\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\uFFFD\u200B-\u200F\u2028-\u202F\uFEFF]/g, '');
     if (str.length > 32767) {

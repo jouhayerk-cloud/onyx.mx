@@ -126,6 +126,7 @@ import { CameraView } from '../../lib/Types';
 import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
+import { sanitizeWorkbookForExcel, XLSX_MIME } from '../../lib/excelSafe';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import toast from '../onyxIsland/notify/toast';
 import userIcons from '../../components/userIcons';
@@ -1654,9 +1655,10 @@ export function MainHeader() {
                 if (iIdx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
             });
 
+            { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveExportFile(new Blob([buffer]), `Onyx-mx_Selected_Items_${dateStr}.xlsx`);
+            saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Onyx-mx_Selected_Items_${dateStr}.xlsx`);
             toast.success(tr("Selected Items WorkBook Ready"), { icon: '📦' });
         } catch (error) {
             console.error('Selected export failed:', error);
@@ -2762,9 +2764,10 @@ export function MainHeader() {
                 });
             });
 
+            { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveExportFile(new Blob([buffer]), `Onyx-mx_Book-326_${dateStr}.xlsx`);
+            saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Onyx-mx_Book-326_${dateStr}.xlsx`);
             toast.success(tr("WorkBook Ready"), { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
@@ -3582,9 +3585,10 @@ export function MainHeader() {
                 console.error('Error adding Finance Ledger to V2:', e);
             }
 
+            { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveExportFile(new Blob([buffer]), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
+            saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
             toast.success(tr("Workbook V2 Ready"), { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
@@ -4338,9 +4342,10 @@ export function MainHeader() {
                 }));
             });
 
+            { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveExportFile(new Blob([buffer]), `Shopify_Export_${dateStr}.xlsx`);
+            saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Shopify_Export_${dateStr}.xlsx`);
             toast.success(`Shopify Export Ready — ${readyItems.length} ready, ${notReadyItems.length} to V2`, { icon: '🛍️' });
         } catch (error) {
             console.error('Shopify Export failed:', error);
