@@ -1,4 +1,4 @@
--- DRAFT: NOT APPLIED. Ramses applies migrations.
+-- APPLIED 2026-10-10 with Ramses approval (rolled-back dry run first). Verified live: RLS on, 2 policies per table, append-only trigger present. Note: anon keeps default table grants but has no policy, so RLS denies it.
 -- 2026-10-04 - document_jobs ledger. Additive only. No existing object is altered or dropped.
 begin;
 

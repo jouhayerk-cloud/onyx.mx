@@ -1,4 +1,4 @@
--- DRAFT: NOT APPLIED. Ramses applies this by hand after review.
+-- APPLIED 2026-10-10 with Ramses approval (rolled-back dry run first). Verified live: RLS on, 2 policies per table, append-only trigger present. Note: anon keeps default table grants but has no policy, so RLS denies it.
 -- 2026-10-10 - onyxchan_audit ledger for MCP bridge invocations. Additive only.
 -- Retention: none, rows are kept forever.
 begin;
