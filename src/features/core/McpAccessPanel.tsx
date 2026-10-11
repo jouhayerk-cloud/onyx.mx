@@ -40,11 +40,13 @@ export const McpAccessPanel: React.FC = () => {
     const [copiedCommand, setCopiedCommand] = useState<boolean>(false);
     const [copiedHelpCommand, setCopiedHelpCommand] = useState<boolean>(false);
     const [copiedPsVariant, setCopiedPsVariant] = useState<boolean>(false);
+    const [copiedMacCommand, setCopiedMacCommand] = useState<boolean>(false);
 
     const [showTokenFallback, setShowTokenFallback] = useState<boolean>(false);
     const [showCommandFallback, setShowCommandFallback] = useState<boolean>(false);
     const [showHelpFallback, setShowHelpFallback] = useState<boolean>(false);
     const [showPsFallback, setShowPsFallback] = useState<boolean>(false);
+    const [showMacFallback, setShowMacFallback] = useState<boolean>(false);
 
     const [isHistoryDisclosureOpen, setIsHistoryDisclosureOpen] = useState<boolean>(false);
 
@@ -52,11 +54,13 @@ export const McpAccessPanel: React.FC = () => {
     const commandFallbackRef = useRef<HTMLTextAreaElement>(null);
     const helpFallbackRef = useRef<HTMLTextAreaElement>(null);
     const psFallbackRef = useRef<HTMLTextAreaElement>(null);
+    const macFallbackRef = useRef<HTMLTextAreaElement>(null);
 
     const copyTokenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const copyCommandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const copyHelpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const copyPsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const copyMacTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const isBusy = isLoading || isCreating || revokingId !== null;
 
@@ -138,6 +142,7 @@ export const McpAccessPanel: React.FC = () => {
             if (copyCommandTimerRef.current) clearTimeout(copyCommandTimerRef.current);
             if (copyHelpTimerRef.current) clearTimeout(copyHelpTimerRef.current);
             if (copyPsTimerRef.current) clearTimeout(copyPsTimerRef.current);
+            if (copyMacTimerRef.current) clearTimeout(copyMacTimerRef.current);
         };
     }, [setTokenPending]);
 
@@ -285,79 +290,61 @@ export const McpAccessPanel: React.FC = () => {
 
     const mcpEndpoint = resolveMcpEndpoint(import.meta.env.VITE_SUPABASE_URL);
 
-    const readyCommand = createdToken
-        ? `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header "Authorization: Bearer ${createdToken}"`
-        : '';
+    // The token is never put in a command. Each command reads it from the clipboard when it runs,
+    // so the order is: paste the command, click Copy token, press Enter.
+    const clipboardCheck = "if ($t -notmatch '^mcp_[A-Za-z0-9_-]{43}$')";
+    const clipboardError = "{ Write-Host 'The clipboard does not hold an MCP token. Click Copy token in the app, then run this again.' -ForegroundColor Red }";
+    const envRef = '${ONYX_MCP_TOKEN}';
+
+    const readyCommand = [
+        '$t = (Get-Clipboard).Trim();',
+        clipboardCheck,
+        clipboardError,
+        'else { claude mcp remove onyx --scope user 2>$null; claude mcp remove onyx --scope local 2>$null;',
+        `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header "Authorization: Bearer $t";`,
+        "Set-Clipboard ' '; Remove-Variable t; claude mcp get onyx }"
+    ].join(' ');
 
     const psVariantCommand = [
-        '$t = Read-Host "MCP token" -AsSecureString',
-        "[Environment]::SetEnvironmentVariable('ONYX_MCP_TOKEN', [System.Net.NetworkCredential]::new('', $t).Password, 'User')",
-        `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header 'Authorization: Bearer \${ONYX_MCP_TOKEN}'`
-    ].join('\n');
+        '$t = (Get-Clipboard).Trim();',
+        clipboardCheck,
+        clipboardError,
+        "else { [Environment]::SetEnvironmentVariable('ONYX_MCP_TOKEN', $t, 'User');",
+        'claude mcp remove onyx --scope user 2>$null; claude mcp remove onyx --scope local 2>$null;',
+        `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header 'Authorization: Bearer ` + envRef + "';",
+        "Set-Clipboard ' '; Remove-Variable t; Write-Host 'Open a NEW terminal, then run: claude mcp get onyx' }"
+    ].join(' ');
 
-    const handleCopyCommand = async () => {
-        if (!readyCommand) return;
+    const macCommand =
+        `claude mcp remove onyx --scope user 2>/dev/null; claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header "Authorization: Bearer $(pbpaste)" && claude mcp get onyx`;
+
+    const helpCommand = readyCommand;
+
+    const copyWith = async (
+        text: string,
+        setDone: (v: boolean) => void,
+        setFallback: (v: boolean) => void,
+        timerRef: { current: ReturnType<typeof setTimeout> | null }
+    ) => {
+        const done = () => {
+            setDone(true);
+            setFallback(false);
+            if (timerRef.current) clearTimeout(timerRef.current);
+            timerRef.current = setTimeout(() => setDone(false), 2000);
+        };
         try {
-            await navigator.clipboard.writeText(readyCommand);
-            setCopiedCommand(true);
-            setShowCommandFallback(false);
-            if (copyCommandTimerRef.current) clearTimeout(copyCommandTimerRef.current);
-            copyCommandTimerRef.current = setTimeout(() => setCopiedCommand(false), 2000);
+            await navigator.clipboard.writeText(text);
+            done();
         } catch {
-            const ok = copyFallback(readyCommand);
-            if (ok) {
-                setCopiedCommand(true);
-                setShowCommandFallback(false);
-                if (copyCommandTimerRef.current) clearTimeout(copyCommandTimerRef.current);
-                copyCommandTimerRef.current = setTimeout(() => setCopiedCommand(false), 2000);
-            } else {
-                setShowCommandFallback(true);
-            }
+            if (copyFallback(text)) done();
+            else setFallback(true);
         }
     };
 
-    const handleCopyPsVariant = async () => {
-        try {
-            await navigator.clipboard.writeText(psVariantCommand);
-            setCopiedPsVariant(true);
-            setShowPsFallback(false);
-            if (copyPsTimerRef.current) clearTimeout(copyPsTimerRef.current);
-            copyPsTimerRef.current = setTimeout(() => setCopiedPsVariant(false), 2000);
-        } catch {
-            const ok = copyFallback(psVariantCommand);
-            if (ok) {
-                setCopiedPsVariant(true);
-                setShowPsFallback(false);
-                if (copyPsTimerRef.current) clearTimeout(copyPsTimerRef.current);
-                copyPsTimerRef.current = setTimeout(() => setCopiedPsVariant(false), 2000);
-            } else {
-                setShowPsFallback(true);
-            }
-        }
-    };
-
-    const helpCommand =
-        `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header "Authorization: Bearer <your MCP token>"`;
-
-    const handleCopyHelpCommand = async () => {
-        try {
-            await navigator.clipboard.writeText(helpCommand);
-            setCopiedHelpCommand(true);
-            setShowHelpFallback(false);
-            if (copyHelpTimerRef.current) clearTimeout(copyHelpTimerRef.current);
-            copyHelpTimerRef.current = setTimeout(() => setCopiedHelpCommand(false), 2000);
-        } catch {
-            const ok = copyFallback(helpCommand);
-            if (ok) {
-                setCopiedHelpCommand(true);
-                setShowHelpFallback(false);
-                if (copyHelpTimerRef.current) clearTimeout(copyHelpTimerRef.current);
-                copyHelpTimerRef.current = setTimeout(() => setCopiedHelpCommand(false), 2000);
-            } else {
-                setShowHelpFallback(true);
-            }
-        }
-    };
+    const handleCopyCommand = () => copyWith(readyCommand, setCopiedCommand, setShowCommandFallback, copyCommandTimerRef);
+    const handleCopyPsVariant = () => copyWith(psVariantCommand, setCopiedPsVariant, setShowPsFallback, copyPsTimerRef);
+    const handleCopyMacCommand = () => copyWith(macCommand, setCopiedMacCommand, setShowMacFallback, copyMacTimerRef);
+    const handleCopyHelpCommand = () => copyWith(helpCommand, setCopiedHelpCommand, setShowHelpFallback, copyHelpTimerRef);
 
     const formatDate = (isoString?: string | null): string => {
         if (!isoString) return tr("never");
@@ -488,6 +475,7 @@ export const McpAccessPanel: React.FC = () => {
                                 setShowTokenFallback(false);
                                 setShowCommandFallback(false);
                                 setShowPsFallback(false);
+                                setShowMacFallback(false);
                                 setIsHistoryDisclosureOpen(false);
                             }}
                             className="sa-btn-plain"
@@ -495,6 +483,10 @@ export const McpAccessPanel: React.FC = () => {
                             {tr("Done")}
                         </button>
                     </div>
+
+                    <p className="sa-prompt-note ma-callout-note">
+                        {tr("Paste the command into PowerShell without pressing Enter, click Copy token, then press Enter. The command reads the token from your clipboard.")}
+                    </p>
 
                     {showCommandFallback && (
                         <div className="ma-fallback-wrap">
@@ -510,7 +502,7 @@ export const McpAccessPanel: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Disclosure: Keep token out of command history (P1) */}
+                    {/* Disclosure: other ways to connect (environment variable, macOS or Linux) */}
                     <div className="ma-disclosure-wrap">
                         <button
                             type="button"
@@ -524,14 +516,17 @@ export const McpAccessPanel: React.FC = () => {
                                 className={isHistoryDisclosureOpen ? 'ma-disclosure-icon-open' : 'ma-disclosure-icon'}
                                 aria-hidden="true"
                             />
-                            <span>{tr("Keep the token out of your command history")}</span>
+                            <span>{tr("Other ways to connect")}</span>
                         </button>
 
                         {isHistoryDisclosureOpen && (
                             <div id="mcp-history-disclosure-body" className="ma-disclosure-body">
-                                <pre className="sa-callout-code ma-code-block ma-code-multiline">
+                                <p className="sa-prompt-note ma-callout-note">
+                                    {tr("Keep the token out of your Claude config file: store it in an environment variable (PowerShell).")}
+                                </p>
+                                <div className="sa-callout-code ma-code-block">
                                     {psVariantCommand}
-                                </pre>
+                                </div>
 
                                 <div className="sa-callout-actions">
                                     <button
@@ -571,12 +566,52 @@ export const McpAccessPanel: React.FC = () => {
                                 <p className="sa-prompt-note ma-callout-note">
                                     {tr("Open a new terminal before starting Claude Code.")}
                                 </p>
+
+                                <p className="sa-prompt-note ma-callout-note">
+                                    {tr("macOS or Linux (on Linux use xclip -o -selection clipboard instead of pbpaste):")}
+                                </p>
+                                <div className="sa-callout-code ma-code-block">
+                                    {macCommand}
+                                </div>
+                                <div className="sa-callout-actions">
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyMacCommand}
+                                        className="sa-btn-secondary"
+                                        aria-live="polite"
+                                    >
+                                        {copiedMacCommand ? (
+                                            <>
+                                                <Check size={16} aria-hidden="true" />
+                                                <span>{tr("Copied")}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Copy size={16} aria-hidden="true" />
+                                                <span>{tr("Copy command")}</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                                {showMacFallback && (
+                                    <div className="ma-fallback-wrap">
+                                        <textarea
+                                            ref={macFallbackRef}
+                                            readOnly
+                                            value={macCommand}
+                                            className="ma-fallback-textarea"
+                                            rows={4}
+                                            aria-label={tr("Copy command")}
+                                            onFocus={(e) => e.currentTarget.select()}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
 
                     <p className="sa-prompt-note ma-callout-note">
-                        {tr("If onyx is already added, run: claude mcp remove onyx --scope user first. Then start a new Claude Code session.")}
+                        {tr("The command replaces an existing onyx entry. Then start a new Claude Code session.")}
                     </p>
                     <p className="sa-prompt-note ma-callout-note">
                         {tr("Check with: claude mcp get onyx")}

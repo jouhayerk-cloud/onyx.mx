@@ -3425,4 +3425,9 @@ export const esCatalog: Record<string, string> = {
   'Check with: claude mcp get onyx': 'Verifica con: claude mcp get onyx',
   'Revoking a token stops it working. Also run: claude mcp remove onyx --scope user': 'Revocar un token hace que deje de funcionar. También ejecuta: claude mcp remove onyx --scope user',
   'Nothing to export: no sheets were created. Check your filters and selection.': 'Nada que exportar: no se creó ninguna hoja. Revisa tus filtros y la selección.',
+  'Other ways to connect': 'Otras formas de conectar',
+  'Paste the command into PowerShell without pressing Enter, click Copy token, then press Enter. The command reads the token from your clipboard.': 'Pega el comando en PowerShell sin presionar Enter, haz clic en Copiar token y luego presiona Enter. El comando lee el token de tu portapapeles.',
+  'Keep the token out of your Claude config file: store it in an environment variable (PowerShell).': 'Mantén el token fuera del archivo de configuración de Claude: guárdalo en una variable de entorno (PowerShell).',
+  'macOS or Linux (on Linux use xclip -o -selection clipboard instead of pbpaste):': 'macOS o Linux (en Linux usa xclip -o -selection clipboard en lugar de pbpaste):',
+  'The command replaces an existing onyx entry. Then start a new Claude Code session.': 'El comando reemplaza una entrada onyx existente. Luego inicia una nueva sesión de Claude Code.',
 };
