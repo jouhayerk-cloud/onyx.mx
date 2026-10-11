@@ -862,6 +862,24 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [sheetOpen, showViewer, onToggleExpand]);
+    // A phone has no Escape and no scrim to tap (the sheet is the whole screen), so the sheet can always be closed
+    // three ways: the Close key in its bar, the Close key at the foot of the body, and a swipe down on the bar.
+    // The page behind stays still while it is open.
+    const barSwipeY = useRef<number | null>(null);
+    const barSwipe = {
+        onTouchStart: (e: React.TouchEvent) => { barSwipeY.current = e.touches[0]?.clientY ?? null; },
+        onTouchEnd: (e: React.TouchEvent) => {
+            const from = barSwipeY.current;
+            barSwipeY.current = null;
+            if (from != null && (e.changedTouches[0]?.clientY ?? from) - from > 64) onToggleExpand();
+        },
+    };
+    useEffect(() => {
+        if (!sheetOpen) return;
+        const root = document.documentElement;
+        root.classList.add('inv-sheet-open');
+        return () => { root.classList.remove('inv-sheet-open'); };
+    }, [sheetOpen]);
 
     if (viewMode === 'list') {
         return (
@@ -1200,7 +1218,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const FullscreenModal = sheetOpen && createPortal(
         <div className="inv-sheet-scrim" onClick={() => onToggleExpand()}>
             <div className="inv-sheet" role="dialog" aria-modal="true" aria-labelledby={sheetTitleId} onClick={e => e.stopPropagation()}>
-                <header className="inv-sheet-bar">
+                <header className="inv-sheet-bar" {...barSwipe}>
+                    <div className="inv-sheet-grab" aria-hidden="true" />
                     <div className="inv-sheet-id">
                         {tagKey}
                         {qtyChip}
@@ -1245,6 +1264,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     </div>
 
                     <div className="inv-panel-pay">{renderPaymentHistory()}</div>
+                    <button type="button" className="inv-sheet-done" onClick={() => onToggleExpand()}>{tr("Close")}</button>
                 </div>
             </div>
         </div>, document.body

@@ -676,9 +676,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
-    background-color: rgb(0 0 0 / 0.62);
-    backdrop-filter: blur(6px);
+    padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    /* No dark tint behind the panel (owner, 11 Oct 2026): the page is only blurred. */
+    background-color: transparent;
+    backdrop-filter: blur(14px);
     animation: inv-sheet-fade 0.18s ease-out;
 }
 
@@ -694,7 +695,7 @@
     border: 1px solid var(--border-color);
     background-color: var(--app-bg-solid, #0a0a0f);
     color: var(--text-color);
-    box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
+    box-shadow: none;
     animation: inv-sheet-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -702,6 +703,7 @@
 @keyframes inv-sheet-rise { from { opacity: 0; transform: translateY(10px) scale(0.99); } }
 
 .inv-sheet-bar {
+    position: relative;
     flex: none;
     display: flex;
     flex-wrap: wrap;
@@ -849,6 +851,88 @@
         max-height: none;
         border: 0;
         border-radius: 0;
+    }
+}
+
+/* ── Phone sheet: reachable, always closable (owner report, 11 Oct 2026) ──
+   The sheet is the whole screen on a phone. Its first line (tag, status and
+   Close) used to start at y = 0, under the status bar of a home-screen app,
+   so Close could not be tapped and the app stayed stuck behind the sheet.
+   Now: the bar starts below the safe area; Close is a 44 px key pinned to the
+   bar's top right; a grabber says the bar can be swiped down; a second Close
+   ends the body; the body leaves room for the island at the foot. */
+.inv-sheet-grab,
+.inv-sheet-done {
+    display: none;
+}
+
+@container invsheet (max-width: 640px) {
+    .inv-sheet-bar {
+        padding: calc(env(safe-area-inset-top, 0px) + 16px) 12px 10px 14px;
+        gap: 8px 10px;
+    }
+    .inv-sheet-grab {
+        display: block;
+        position: absolute;
+        top: calc(env(safe-area-inset-top, 0px) + 6px);
+        left: 50%;
+        width: 40px;
+        height: 4px;
+        margin-left: -20px;
+        border-radius: 99px;
+        background: color-mix(in srgb, var(--text-color) 30%, transparent);
+    }
+    .inv-sheet-id {
+        padding-right: 54px;
+    }
+    .inv-sheet-close {
+        position: absolute;
+        top: calc(env(safe-area-inset-top, 0px) + 12px);
+        right: 10px;
+        z-index: 2;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+    }
+    .inv-sheet-body {
+        padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+    }
+    .inv-sheet-done {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 48px;
+        margin-top: 4px;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        background: transparent;
+        color: var(--text-color);
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+}
+
+/* ── The sheet is read ON, not through: stronger labels ──
+   The old labels were 45 to 50 per cent ink on a see-through panel and
+   dropped below legible; over a solid surface they only need a little help. */
+.inv-sheet .inv-cluster-t {
+    color: color-mix(in srgb, var(--text-color) 92%, transparent);
+}
+.inv-sheet .inv-spec-l,
+.inv-sheet .inv-stat-l,
+.inv-sheet .inv-ai-empty,
+.inv-sheet .inv-pay-empty {
+    color: color-mix(in srgb, var(--text-color) 72%, transparent);
+}
+@media (hover: none) {
+    /* Touch: the photo keys are always visible (there is no hover to reveal them). */
+    .inv-sheet .inv-gal-hero > .inv-card-nav,
+    .inv-sheet .inv-gal-hero > .inv-card-zoom {
+        opacity: 1;
     }
 }
 

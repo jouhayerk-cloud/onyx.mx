@@ -950,4 +950,32 @@ html.style-slab #threed .threed-ar-dock:has(.threed-ar--empty) {
     backdrop-filter: none !important;
 }
 
-
+/* ── The item sheet (Grid and Gallery details) ───────────────────────────
+   Owner direction, 11 Oct 2026: no shadow or dark tint on the back of the
+   panel, and more transparency. So: the scrim is only a blur of the page (no
+   black wash), the panel loses its bevel glow and drop shadow, and its
+   material is glass at --inv-sheet-glass (60 per cent slab) over a strong
+   blur, which keeps the specs legible without a dark wash. Raise the number
+   for a denser panel, lower it for a clearer one. Stated last so it outranks
+   the glass sweeps above. */
+html.style-slab {
+    --inv-sheet-glass: 60%;
+}
+html.style-slab .inv-sheet-scrim {
+    background-color: transparent !important;
+    backdrop-filter: blur(16px) saturate(1.05) !important;
+}
+html.style-slab .inv-sheet {
+    background-color: color-mix(in srgb, var(--slab) var(--inv-sheet-glass), transparent) !important;
+    backdrop-filter: blur(44px) saturate(1.4) !important;
+    background-image: none !important;   /* no mesh veil or sheen tint layers either */
+    border: 1px solid var(--slab-edge);
+    box-shadow: none !important;
+}
+html.style-slab .inv-sheet-bar {
+    background-color: color-mix(in srgb, var(--slab-hi) 8%, transparent) !important;
+    backdrop-filter: none !important;
+}
+html.style-slab .inv-sheet .inv-readout {
+    background-color: color-mix(in srgb, var(--slab-sh) 12%, transparent) !important;
+}
