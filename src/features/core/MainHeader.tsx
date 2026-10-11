@@ -126,7 +126,7 @@ import { CameraView } from '../../lib/Types';
 import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
-import { sanitizeWorkbookForExcel, XLSX_MIME } from '../../lib/excelSafe';
+import { sanitizeWorkbookForExcel, cleanExcelUrl, XLSX_MIME } from '../../lib/excelSafe';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import toast from '../onyxIsland/notify/toast';
 import userIcons from '../../components/userIcons';
@@ -874,6 +874,40 @@ const SheetsUploadButton: React.FC = () => {
     );
 };
 
+/**
+ * The column set of a vendor sheet in Workbook V2, in order. The Selected Items export uses the same list, so the two always match.
+ * Quantity is column E, Total in Pesos column O and Total in US$ column Q: the totals formulas depend on those letters.
+ */
+const vendorSheetColumns = (maxImages: number): Array<{ header: string; key: string; width: number; style?: any }> => {
+    const cols: Array<{ header: string; key: string; width: number; style?: any }> = [
+        { header: 'Date', key: 'date', width: 12 },
+        { header: 'Shape Type', key: 'shape_type', width: 20 },
+        { header: 'Colo Material', key: 'color_material', width: 20 },
+        { header: 'Tag - ID with LC', key: 'tag_id', width: 22 },
+        { header: 'Quantity', key: 'quantity', width: 10 },
+        { header: 'Weight', key: 'weight', width: 10 },
+        { header: 'H Cm', key: 'height_cm', width: 12 },
+        { header: 'W cm', key: 'width_cm', width: 12 },
+        { header: 'D cm', key: 'depth_cm', width: 12 },
+        { header: 'Pounds', key: 'pounds', width: 10 },
+        { header: 'L inch', key: 'height_in', width: 12 },
+        { header: 'W Inch', key: 'width_in', width: 12 },
+        { header: 'D Inch', key: 'depth_in', width: 12 },
+        { header: 'Per Piece Pesos', key: 'price_mxn', width: 18, style: { numFmt: '#,##0' } },
+        { header: 'Total in Pesos', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
+        { header: 'Per Piece US$', key: 'price_usd', width: 18, style: { numFmt: '#,##0.00' } },
+        { header: 'Total in US$ Dollars', key: 'total_usd', width: 20, style: { numFmt: '#,##0.00' } },
+        { header: 'ACQ Code', key: 'acq_code', width: 12 },
+        { header: 'LND Code', key: 'landed_code', width: 12 },
+        { header: 'RETAIL', key: 'retail', width: 15, style: { numFmt: '#,##0.00' } },
+        { header: 'TRK', key: 'trk', width: 15 }
+    ];
+    for (let k = 1; k <= maxImages; k++) {
+        cols.push({ header: `Image ${k}`, key: `image_${k}`, width: 15 });
+    }
+    return cols;
+};
+
 /** Headless: lets the island Actions row (Sheets next to Export) start the upload from anywhere. */
 const SheetsUploadBridge: React.FC = () => {
     const { upload, allowed } = useSheetsUpload();
@@ -1492,168 +1526,229 @@ export function MainHeader() {
             workbook.lastModifiedBy = 'Onyx.mx Studio';
             workbook.created = new Date();
 
-            const partialPayIds = new Set(statusSets.partialPayIds);
-            const fullPayIds = new Set(statusSets.fullPayIds);
-            const requestedAcqIds = new Set(statusSets.requestedAcqIds);
-            const paymentDateMap = new Map<string, string>();
-            const paidMap = new Map<string, number>();
-            const requestedMap = new Map<string, number>();
+            const bookRate = exchangeRate || DEFAULT_EXCHANGE_RATE;
 
+            const exportItems = inventory.filter(item => selectedIds.includes(item.row));
+
+            // Payment state of each item: the same sets, built the same way, as the vendor sheets of Workbook V2 (they colour the Tag cell).
+            const paidItemsSet = new Set<string>();
+            const pendingItemsSet = new Set<string>();
             financeDocs.forEach(d => {
                 const rel = d.related_ids || d.related_inventory_ids || '';
                 let ids: string[] = [];
                 if (Array.isArray(rel)) ids = rel.map((id: any) => String(id));
                 else if (typeof rel === 'string') ids = rel.split(',').map(s => s.trim()).filter(Boolean);
-                const amount = Number(d.amount || 0);
-                if (amount <= 0) return;
                 if (d.status === 'Paid') {
-                    ids.forEach(id => paidMap.set(id, (paidMap.get(id) || 0) + amount));
-                    const pDate = d.date || d.pay_date || d.created_at;
-                    if (pDate) ids.forEach(id => paymentDateMap.set(id, pDate));
-                } else if (d.status === 'Requested') {
-                    ids.forEach(id => requestedMap.set(id, (requestedMap.get(id) || 0) + amount));
+                    ids.forEach(id => paidItemsSet.add(id));
+                } else if (d.status === 'Pending' || d.status === 'Requested' || d.status === 'Draft' || !d.status) {
+                    ids.forEach(id => pendingItemsSet.add(id));
                 }
             });
 
-            const bookRate = exchangeRate || DEFAULT_EXCHANGE_RATE;
+            // TRK column: the shipment each item travelled in (same lookup as Workbook V2).
+            const itemTrkMap = new Map<string, string>();
+            try {
+                const shipRes = await supabase.from('shipments').select('*').order('timestamp', { ascending: true });
+                const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                for (const ship of (shipRes.data || [])) {
+                    const p = typeof ship.payload === 'string' ? JSON.parse(ship.payload) : ship.payload;
+                    if (!p || !p.crates || p.crates.length === 0) continue;
+                    const date = new Date(ship.timestamp || ship.updated_at || Date.now());
+                    const trkDateName = `TRK-${monthsShort[date.getMonth()]}${date.getDate()}`;
+                    p.crates.forEach((crate: any) => {
+                        (crate.items || []).forEach((cItem: any) => {
+                            if (cItem.row) itemTrkMap.set(String(cItem.row), trkDateName);
+                            if (cItem.itemId) itemTrkMap.set(String(cItem.itemId).toUpperCase(), trkDateName);
+                        });
+                    });
+                }
+            } catch (e) {
+                console.error('Shipments lookup failed for the Selected Items export (TRK column stays empty):', e);
+            }
 
-            const exportItems = inventory.filter(item => selectedIds.includes(item.row));
+            const imageUrlsOf = (itemData: any): string[] => {
+                let allUrls: string[] = [];
+                if (itemData.generatedPngUrl) allUrls.push(itemData.generatedPngUrl);
+                if (itemData.generated_png_url) allUrls.push(itemData.generated_png_url);
+                if (itemData.image_url) allUrls.push(itemData.image_url);
+                if (itemData.item_image) allUrls.push(itemData.item_image);
+                if (itemData.mediaUrls) {
+                    const arr = String(itemData.mediaUrls).split(',').map(s => s.trim()).filter(Boolean);
+                    allUrls.push(...arr);
+                }
+                return Array.from(new Set(allUrls)).map(u => getCleanImageUrl(u));
+            };
 
-            // Build vendorGroups for selected items
-            const vendorGroups: Record<string, any[]> = {};
-            exportItems.forEach(item => {
-                const d = item.data as any;
-                const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
-                const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
-                const vid = prefixId || 'Unknown';
-                if (!vendorGroups[vid]) vendorGroups[vid] = [];
-                vendorGroups[vid].push(item);
+            // Order: by vendor, then the vendor sheet order (workbook 825 first, then 326, tag id descending with natural sort).
+            const sortKey = (it: any) => {
+                const d = it.data || {};
+                const n = normalizeInventoryData(d);
+                const calc = calculateCodesAndPrices(n, bookRate, '326');
+                const tag = (calc.bookBarcode || d.book_barcode || d.itemId || d.item_id || it.label || '').toUpperCase();
+                let wb = d.workbook ? parseInt(d.workbook, 10) : 0;
+                if (!wb) {
+                    const match = tag.match(/^[A-Z]+(\d{3})/);
+                    if (match) wb = parseInt(match[1], 10) || 0;
+                }
+                const rawId = d.vendor_id || d.vendorId || it.label || d.itemId || d.item_id || d.tag_id || '';
+                const vid = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : 'Unknown';
+                const wbScore = wb === 825 ? 2 : (wb === 326 ? 1 : 0);
+                return { vid, wbScore, wb, tag };
+            };
+            const sortedItems = [...exportItems].sort((a: any, b: any) => {
+                const ka = sortKey(a);
+                const kb = sortKey(b);
+                if (ka.vid !== kb.vid) return ka.vid.localeCompare(kb.vid);
+                if (ka.wbScore !== kb.wbScore) return kb.wbScore - ka.wbScore;
+                if (ka.wb !== kb.wb) return kb.wb - ka.wb;
+                return kb.tag.localeCompare(ka.tag, undefined, { numeric: true, sensitivity: 'base' });
             });
 
-            const sheetName = 'Selected Items';
-            const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: 'FF4F46E5' } } });
+            let maxImages = 1;
+            sortedItems.forEach((it: any) => { maxImages = Math.max(maxImages, imageUrlsOf(it.data || {}).length); });
+            if (maxImages > 10) maxImages = 10;
 
-            vSheet.columns = [
-                { header: 'VENDOR', key: 'vendor', width: 15 },
-                { header: '#', key: 'item_number', width: 8 },
-                { header: 'PAY DATE', key: 'pay_date', width: 12 },
-                { header: 'BOOK BARCODE', key: 'tag_id', width: 22 },
-                { header: 'AQ CODE', key: 'aq_code', width: 12 },
-                { header: 'LD CODE', key: 'ld_code', width: 12 },
-                { header: 'DESCRIPTION', key: 'description', width: 45 },
-                { header: 'COLOR + MATERIAL', key: 'color_material', width: 35 },
-                { header: 'SIZES (CM)', key: 'sizes_metric', width: 20 },
-                { header: 'SIZES (IN)', key: 'sizes_imperial', width: 20 },
-                { header: 'WEIGHT (KG)', key: 'weight_metric', width: 15 },
-                { header: 'WEIGHT (LB)', key: 'weight_imperial', width: 15 },
-                { header: 'QTY', key: 'quantity', width: 8 },
-                { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0' } },
-                { header: 'ACQ $ (USD)', key: 'acq_usd', width: 18, style: { numFmt: '#,##0' } },
-                { header: 'TOTAL MXN', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
-                { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0' } },
-                { header: 'LD $ (USD)', key: 'ld_usd', width: 18, style: { numFmt: '#,##0' } },
-                { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0' } },
-                { header: 'PAY STATUS', key: 'pay_status', width: 18 }
-            ];
+            const headerColor = 'FF4F46E5';
+            const vSheet = workbook.addWorksheet('Selected Items', { properties: { tabColor: { argb: headerColor } } });
 
-            vSheet.getRow(1).eachCell(cell => {
-                cell.font = EXCEL_STYLES.fonts.header;
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
-                cell.font = { ...EXCEL_STYLES.fonts.header, color: { argb: 'FFFFFFFF' } };
+            // The same columns, in the same order, as the vendor sheets of Workbook V2.
+            const baseCols = vendorSheetColumns(maxImages);
+            vSheet.columns = baseCols;
+            const totalCols = baseCols.length;
+            const getColLetter = (c: number) => { let s = '', t; while (c > 0) { t = (c - 1) % 26; s = String.fromCharCode(65 + t) + s; c = (c - t) / 26 | 0; } return s || 'A'; };
+
+            const headers = vSheet.getRow(1).values;   // the header written by `columns`, moved to row 5 below
+            vSheet.getRow(1).values = [];
+
+            // Top band, rows 1 to 4, like a vendor sheet.
+            for (let i = 1; i <= 4; i++) {
+                const row = vSheet.getRow(i);
+                for (let col = 1; col <= totalCols; col++) {
+                    const accent = col <= 2 && (i === 1 || i === 2);
+                    row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: accent ? headerColor : 'FFA6A6A6' } };
+                }
+            }
+            vSheet.getRow(1).getCell(1).value = 'Selected Items';
+            vSheet.getRow(1).getCell(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            vSheet.getRow(2).getCell(1).value = `${sortedItems.length} items`;
+            vSheet.getRow(2).getCell(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            vSheet.getRow(3).getCell(1).value = new Date().toLocaleDateString('en-US');
+            vSheet.getRow(3).getCell(1).font = { italic: true };
+
+            // Row 5: headers
+            vSheet.getRow(5).values = headers;
+            vSheet.getRow(5).eachCell(cell => {
+                cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerColor } };
                 cell.alignment = { horizontal: 'center' };
+                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
             });
+            vSheet.autoFilter = { from: 'A5', to: `${getColLetter(totalCols)}5` };
 
-            const allSelectedItems: { vid: string, item: any }[] = [];
-            Object.entries(vendorGroups).forEach(([vid, items]) => {
-                items.forEach(item => allSelectedItems.push({ vid, item }));
-            });
-            allSelectedItems.sort((a, b) => {
-                if (a.vid !== b.vid) return a.vid.localeCompare(b.vid);
-                const numA = parseInt(a.item.data?.itemNumber || a.item.data?.item_number || '0', 10);
-                const numB = parseInt(b.item.data?.itemNumber || b.item.data?.item_number || '0', 10);
-                return numA - numB;
-            });
+            const cmToIn = (cm: any) => {
+                const val = parseFloat(cm);
+                return isNaN(val) ? '' : (val / 2.54).toFixed(2);
+            };
+            const kgToLbs = (kg: any) => {
+                const val = parseFloat(kg);
+                return isNaN(val) ? '' : (val * 2.20462).toFixed(2);
+            };
 
-            allSelectedItems.forEach(({ vid, item }, iIdx: number) => {
-                const itemData = item.data;
-                const qty = parseInt(itemData.quantity || '1', 10) || 1;
-                const costMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
-
-                const onyxRound = (n: number) => {
-                    const floor = Math.floor(n);
-                    return (n - floor >= 0.4) ? floor + 1 : floor;
-                };
-
-                const costUsd = onyxRound(costMxn / bookRate);
-                const totalMxn = Math.round(costMxn * qty);
-                const landedUsd = onyxRound((costMxn / bookRate) * 1.4);
-                const landedMxn = Math.round(costMxn * 1.4);
-                const retailUsd = onyxRound(landedUsd * 12);
-
+            let rowNo = 6;
+            let sumQty = 0;
+            let sumMxn = 0;
+            let sumUsd = 0;
+            sortedItems.forEach((item: any) => {
+                const itemData = item.data || {};
                 const norm = normalizeInventoryData(itemData);
                 const calculated = calculateCodesAndPrices(norm, bookRate, '326');
-                const payStatusClass = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
+                const tag = (calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '').toUpperCase();
+                const wbMatch = tag.match(/^[A-Z]+(\d{3})/);
+                const is825 = (wbMatch ? parseInt(wbMatch[1], 10) : 0) === 825;
 
-                const isProd = String(norm.status || item.status || '').toLowerCase().includes('production');
-                const payStatusText = payStatusClass === 'GREEN' ? 'PAID' :
-                                     payStatusClass === 'YELLOW' ? 'REQUESTED' :
-                                     payStatusClass === 'RED' ? (isProd ? 'ADVANCE' : 'PARTIAL') : 'NEW';
-                const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' :
-                                      payStatusClass === 'YELLOW' ? 'FFFACC15' :
-                                      payStatusClass === 'RED' ? 'FFEF4444' : 'FF38BDF8';
+                const qty = parseInt(itemData.quantity || '1', 10) || 1;
+                const priceMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
+                const totalMxn = Math.round(priceMxn * qty);
+                const priceUsd = priceMxn / bookRate;
+                const totalUsd = totalMxn / bookRate;
+                sumQty += qty;
+                sumMxn += totalMxn;
+                sumUsd += totalUsd;
 
-                let formattedPayDate = 'N/A';
-                try {
-                    const pDateVal = paymentDateMap.get(String(itemData.id)) || itemData.pay_date || itemData.payDate;
-                    if (pDateVal) {
-                        const d = new Date(pDateVal);
-                        if (!isNaN(d.getTime())) formattedPayDate = d.toISOString().split('T')[0];
-                    }
-                } catch (e) { console.error('Date error:', e); }
+                const rawDateVal = itemData.created_at || itemData.createdAt || item.created_at || item.createdAt || Date.now();
+                const formattedDate = new Date(rawDateVal).toLocaleDateString('en-US');
+                const urls = imageUrlsOf(itemData);
 
-                const itemNum = itemData.itemNumber || itemData.item_number || iIdx + 1;
-
-                const row = vSheet.addRow({
-                    vendor: (vendors as any)[vid]?.name || vid,
-                    item_number: itemNum,
-                    pay_date: formattedPayDate,
-                    tag_id: calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || itemData.tag_id || item.label || '',
-                    aq_code: calculated.bookAqCode || '-',
-                    ld_code: calculated.bookLandCode || '-',
-                    description: `${itemData.shape || ''} ${itemData.shortDescription || itemData.description || ''}`.trim(),
-                    color_material: `${itemData.color || ''} ${itemData.material || ''}`.trim(),
-                    sizes_metric: formatDimensionsMetricOnly(itemData.widthCm || itemData.width_cm, itemData.heightCm || itemData.height_cm, itemData.lengthCm || itemData.length_cm),
-                    sizes_imperial: formatDimensionsImperialOnly(itemData.widthCm || itemData.width_cm, itemData.heightCm || itemData.height_cm, itemData.lengthCm || itemData.length_cm),
-                    weight_metric: formatWeightMetricOnly(itemData.weightKg || itemData.weight_kg),
-                    weight_imperial: formatWeightImperialOnly(itemData.weightKg || itemData.weight_kg),
+                const rowData: any = {
+                    date: formattedDate,
+                    shape_type: ((itemData.shape || '') + ' ' + (itemData.type || itemData.shortDescription || '')).trim().toUpperCase(),
+                    color_material: ((itemData.color || '') + ' ' + (itemData.material || '')).trim().toUpperCase(),
+                    tag_id: calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || item.label || '',
                     quantity: qty,
-                    cost_mxn: costMxn,
-                    acq_usd: costUsd,
+                    weight: itemData.WEIGHT || itemData.weightKg || itemData.weight_kg || itemData.weight || '',
+                    height_cm: itemData.Height || itemData.height || itemData.heightCm || itemData.height_cm || '',
+                    width_cm: itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm || '',
+                    depth_cm: itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || itemData.Length || itemData.length || '',
+                    pounds: itemData.weightLbs || itemData.weight_lbs || kgToLbs(itemData.WEIGHT || itemData.weightKg || itemData.weight_kg || itemData.weight),
+                    height_in: itemData.heightIn || itemData.height_in || cmToIn(itemData.Height || itemData.height || itemData.heightCm || itemData.height_cm),
+                    width_in: itemData.widthIn || itemData.width_in || cmToIn(itemData.Width || itemData.width || itemData.widthCm || itemData.width_cm),
+                    depth_in: itemData.depthIn || itemData.depth_in || cmToIn(itemData.depth || itemData.Depth || itemData.depthCm || itemData.depth_cm || itemData.lengthCm || itemData.length_cm || itemData.Length || itemData.length),
+                    price_mxn: priceMxn,
                     total_mxn: totalMxn,
-                    landed_mxn: landedMxn,
-                    ld_usd: landedUsd,
-                    retail_usd: retailUsd,
-                    pay_status: payStatusText
+                    price_usd: priceUsd,
+                    total_usd: totalUsd,
+                    acq_code: calculated.bookAqCode || '-',
+                    landed_code: calculated.bookLandCode || '-',
+                    retail: calculated.bookRetail || 0,
+                    trk: itemTrkMap.get(String(item.row)) || itemTrkMap.get(String(itemData.itemId || itemData.item_id || itemData.tag_id || '').toUpperCase()) || ''
+                };
+                for (let k = 0; k < maxImages; k++) {
+                    const url = k < urls.length ? cleanExcelUrl(urls[k]) : '';
+                    // A hyperlink value, not a HYPERLINK() formula: a quote or a long URL in a formula corrupts the sheet.
+                    rowData[`image_${k + 1}`] = url ? { text: `View Image ${k + 1}`, hyperlink: url } : '';
+                }
+
+                const row = vSheet.addRow(rowData);
+
+                const isOdd = rowNo % 2 !== 0;
+                const itemDbId = String(itemData.id || item.id);
+                const isPaidItem = paidItemsSet.has(itemDbId);
+                const isPendingItem = pendingItemsSet.has(itemDbId);
+                const zebra = isOdd ? 'FFD1D5DB' : 'FFFFFFFF';
+
+                row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                    if (colNum > totalCols) return;
+                    let fill = zebra;
+                    if (colNum === 4) {   // Tag column: blue = 825 (prepaid), green = paid, yellow = payment pending
+                        if (is825) fill = 'FF38BDF8';
+                        else if (isPaidItem) fill = 'FF92D050';
+                        else if (isPendingItem) fill = 'FFFFFF00';
+                    }
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+                    cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                    if (colNum > 21) cell.alignment = { horizontal: 'center', vertical: 'middle' };   // image columns
                 });
-
-                const tagIdVal = calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || itemData.tag_id || item.label || '';
-                const vColorRow = getVendorColor(tagIdVal);
-                const contrastColorRow = getContrastColor(vColorRow);
-
-                const vendorCell = row.getCell('vendor');
-                vendorCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColorRow } };
-                vendorCell.font = { bold: true, color: { argb: contrastColorRow } };
-
-                const tagCell = row.getCell('tag_id');
-                tagCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColorRow } };
-                tagCell.font = { bold: true, color: { argb: contrastColorRow } };
-
-                const payCell = row.getCell('pay_status');
-                payCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: payStatusColor } };
-                payCell.font = { bold: true, color: { argb: getContrastColor(payStatusColor) } };
-
-                if (iIdx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
+                rowNo++;
             });
+
+            // Totals at the bottom: SUM formulas over the item rows, with the computed value stored as the cached result so a viewer that does not recalculate (iPhone preview) still shows the figures.
+            const lastItemRow = rowNo - 1;
+            const hasRows = lastItemRow >= 6;
+            const totalRow = vSheet.addRow({
+                tag_id: `TOTAL (${sortedItems.length} items)`,
+                quantity: hasRows ? { formula: `SUM(E6:E${lastItemRow})`, result: sumQty } : 0,
+                total_mxn: hasRows ? { formula: `SUM(O6:O${lastItemRow})`, result: sumMxn } : 0,
+                total_usd: hasRows ? { formula: `SUM(Q6:Q${lastItemRow})`, result: sumUsd } : 0
+            });
+            totalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+                if (colNum > totalCols) return;
+                cell.font = { bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } };
+                cell.border = { top: { style: 'medium' }, left: { style: 'thin' }, bottom: { style: 'medium' }, right: { style: 'thin' } };
+            });
+            const noteRow = vSheet.addRow({ tag_id: `USD at ${bookRate} MXN per USD` });
+            noteRow.getCell('tag_id').font = { italic: true, color: { argb: 'FF6B7280' } };
+            vSheet.views = [{ state: 'frozen', ySplit: 5 }];
 
             { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
             if (workbook.worksheets.length === 0) { toast.error(tr("Nothing to export: no sheets were created. Check your filters and selection.")); return; }
@@ -2904,32 +2999,7 @@ export function MainHeader() {
 
                 const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: vendorColor } } });
 
-                const baseCols = [
-                    { header: 'Date', key: 'date', width: 12 },
-                    { header: 'Shape Type', key: 'shape_type', width: 20 },
-                    { header: 'Colo Material', key: 'color_material', width: 20 },
-                    { header: 'Tag - ID with LC', key: 'tag_id', width: 22 },
-                    { header: 'Quantity', key: 'quantity', width: 10 },
-                    { header: 'Weight', key: 'weight', width: 10 },
-                    { header: 'H Cm', key: 'height_cm', width: 12 },
-                    { header: 'W cm', key: 'width_cm', width: 12 },
-                    { header: 'D cm', key: 'depth_cm', width: 12 },
-                    { header: 'Pounds', key: 'pounds', width: 10 },
-                    { header: 'L inch', key: 'height_in', width: 12 },
-                    { header: 'W Inch', key: 'width_in', width: 12 },
-                    { header: 'D Inch', key: 'depth_in', width: 12 },
-                    { header: 'Per Piece Pesos', key: 'price_mxn', width: 18, style: { numFmt: '#,##0' } },
-                    { header: 'Total in Pesos', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
-                    { header: 'Per Piece US$', key: 'price_usd', width: 18, style: { numFmt: '#,##0.00' } },
-                    { header: 'Total in US$ Dollars', key: 'total_usd', width: 20, style: { numFmt: '#,##0.00' } },
-                    { header: 'ACQ Code', key: 'acq_code', width: 12 },
-                    { header: 'LND Code', key: 'landed_code', width: 12 },
-                    { header: 'RETAIL', key: 'retail', width: 15, style: { numFmt: '#,##0.00' } },
-                    { header: 'TRK', key: 'trk', width: 15 }
-                ];
-                for (let k = 1; k <= maxImages; k++) {
-                    baseCols.push({ header: `Image ${k}`, key: `image_${k}`, width: 15 });
-                }
+                const baseCols = vendorSheetColumns(maxImages);
                 vSheet.columns = baseCols;
                 const totalCols = baseCols.length; // 19 + maxImages
 
