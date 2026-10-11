@@ -10,6 +10,7 @@ import {
   executeOnyxDataTool,
   CallerContext,
 } from "../_shared/onyxDataHandlers.ts";
+import { escapeLikeValue } from "../_shared/likeEscape.ts";
 
 // ── Supabase Client Setup ────────────────────────────────────────────────────
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -89,7 +90,7 @@ async function authenticateCaller(req: Request): Promise<AuthResult> {
     const { data: userByEmail } = await supabase
       .from("app_users")
       .select("*")
-      .ilike("email", user.email)
+      .ilike("email", escapeLikeValue(user.email))
       .maybeSingle();
     if (userByEmail) {
       appUser = userByEmail;
@@ -279,8 +280,9 @@ serve(async (req: Request): Promise<Response> => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } catch (err: any) {
+        console.error("onyx-mcp execution error", err?.message || String(err));
         return new Response(
-          JSON.stringify({ error: err.message || "Internal execution error" }),
+          JSON.stringify({ error: "Internal execution error" }),
           {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -343,10 +345,11 @@ serve(async (req: Request): Promise<Response> => {
           );
           return jsonRpcSuccess(id, toolResult);
         } catch (err: any) {
+          console.error("onyx-mcp execution error", err?.message || String(err));
           return jsonRpcError(
             id,
             -32000,
-            `Execution error: ${err.message || String(err)}`
+            "Execution error"
           );
         }
       }

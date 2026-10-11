@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { generateSiriToken, hashSiriToken, bearerFrom } from "../_shared/siriToken.ts";
+import { escapeLikeValue } from "../_shared/likeEscape.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -71,7 +72,7 @@ export async function handleSiriTokenApi(req: Request): Promise<Response> {
     if (userById) {
         appUser = userById;
     } else if (user.email) {
-        const { data: userByEmail } = await supabase.from("app_users").select("*").ilike("email", user.email).maybeSingle();
+        const { data: userByEmail } = await supabase.from("app_users").select("*").ilike("email", escapeLikeValue(user.email)).maybeSingle();
         if (userByEmail) {
             appUser = userByEmail;
         }

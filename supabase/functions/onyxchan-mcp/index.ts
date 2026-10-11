@@ -6,6 +6,7 @@ import { SSEServerTransport } from "npm:@modelcontextprotocol/sdk/server/sse.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "npm:@modelcontextprotocol/sdk/types.js";
 import { createClient } from "npm:@supabase/supabase-js";
 import { ONYXCHAN_TOOLS } from "../_shared/onyxchanTools.ts";
+import { escapeLikeValue } from "../_shared/likeEscape.ts";
 
 // Initialize Supabase Client (Edge Functions inject these environment variables)
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -56,7 +57,7 @@ async function authenticate(req: Request): Promise<Caller | Response> {
   const { data: row } = await supabase
     .from("app_users")
     .select("role")
-    .ilike("email", user.email)
+    .ilike("email", escapeLikeValue(user.email))
     .maybeSingle();
 
   if (!row?.role) return jsonError(403, "No application role assigned");

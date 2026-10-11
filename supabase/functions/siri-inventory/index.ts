@@ -94,6 +94,7 @@ interface AuthFailure {
 type AuthResult = AuthSuccess | AuthFailure;
 
 import { isSiriToken, hashSiriToken } from "../_shared/siriToken.ts";
+import { escapeLikeValue } from "../_shared/likeEscape.ts";
 
 const tokenUsageCache = new Map<string, number>();
 
@@ -192,7 +193,7 @@ async function authenticateCaller(req: Request): Promise<AuthResult> {
     const { data: userByEmail } = await supabase
       .from("app_users")
       .select("*")
-      .ilike("email", user.email)
+      .ilike("email", escapeLikeValue(user.email))
       .maybeSingle();
     if (userByEmail) {
       appUser = userByEmail;
