@@ -23,7 +23,7 @@ export const TagRow: React.FC<{
     label: string; tags: readonly string[]; onPick: (tag: string) => void; max?: number;
     renderLead?: (tag: string) => React.ReactNode;
 }> = ({
-    label, tags, onPick, max = 8, renderLead,
+    label, tags, onPick, max = 10, renderLead,
 }) => (
     <div role="group" aria-label={label} className="entry-tags" onKeyDown={backToInput}>
         {tags.slice(0, max).map(tag => {

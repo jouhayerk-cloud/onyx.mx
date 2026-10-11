@@ -3,8 +3,8 @@
    --------------------------------------------------------------------------
    TagRow.tsx: Shape, Type, Colour and Material show their tags under the
    input while it has the focus; SizeRow shows the known sizes under the
-   dimensions. Chips are 28px high with 11px text, and every colour is a
-   --ui-* token, so Aqua and dark follow the theme.
+   dimensions. Chips are 28px high with 11px text (44px on coarse pointers),
+   and every colour is a --ui-* token, so Aqua and dark follow the theme.
    ========================================================================== */
 
 /* The full width row a field's tags sit in: a grid child (s6), so its chips wrap inside the form's width. */
@@ -82,4 +82,13 @@
    box of its own: the W / H / D fields stay cells of the entry grid. */
 .entry .entry-dims {
     display: contents;
+}
+
+/* Touch targets on mobile / coarse pointer devices */
+@media (max-width: 720px), (pointer: coarse) {
+    .entry .entry-tag {
+        min-height: 44px;
+        padding: 0 14px;
+        font-size: 12px;
+    }
 }

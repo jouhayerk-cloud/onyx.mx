@@ -1,14 +1,11 @@
 /**
- * The entry fields, one dense grid for Add Entry and Edit Entry alike:
- * vendor, book, number, quantity, shape, Type, material, vendor colour,
- * status, W/H/D, weight, price, the vendor's note, then the photos.
+ * The entry fields, organized into interactive collapsible sections:
+ * Identity, Type, Details, Notes and photos.
  *
- * It replaces three forms: Create Item's (no status, weight or note; W/L/H),
- * the wizard's (4-5xl ghost placeholders cycling random catalogue values,
- * suggestion popovers for prices and dimensions) and the dead UploadEntryForm.
- * Suggestions are a plain datalist per categorical field, cross-filtered by
- * the others. The focused field also shows its values as tags (TagRow), and
- * the dimensions show the known sizes (SizeRow).
+ * Each field provides one suggestion mechanism per device: desktop displays
+ * TagRow buttons (chips), while mobile (coarse layout) presents an in-flow
+ * SuggestionList. Datalist dropdowns have been removed. Sections auto-collapse
+ * 400 ms after their required fields are filled and focus leaves them.
  */
 import React, { useId, useMemo, useRef, useState } from 'react';
 import { Link2, Lock, Star, Upload, X } from 'lucide-react';
@@ -17,8 +14,9 @@ import { getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { tr, trf } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
 import { buildAttributeSuggestions, buildSizeSuggestions, type SizeSuggestion } from '../../lib/attributeSuggestions';
+import { cleanSuggestions, type SuggestField } from '../../lib/entrySuggestions';
 import { useTypeLibrary } from '../../lib/typeLibraryStore';
-import { ENTRY_BOOKS, ENTRY_STATUSES, normalizeWorkbook } from '../../lib/inventoryCreate';
+import { DEFAULT_ENTRY_STATUS, ENTRY_BOOKS, ENTRY_STATUSES, normalizeWorkbook } from '../../lib/inventoryCreate';
 import { Field, Input, Key, Segmented, Select, VendorPicker, cx } from '../../components/ui';
 import { VENDOR_CODES, photoKey, type EntryPhoto, type EntryState } from './entryModel';
 import { readPickedFiles } from './entryMedia';
@@ -26,6 +24,10 @@ import { canonicalType } from '../../lib/canonicalType';
 import { ShapeLibraryField } from './ShapeLibraryField';
 import { ShapeFigure } from './hairline/ShapeFigure';
 import { SizeRow, TagRow } from './TagRow';
+import { SuggestionList } from './SuggestionList';
+import { EntrySection } from './EntrySection';
+import { useCoarseLayout } from './hairline/useCoarseLayout';
+import './entrySections.css';
 
 export type EntryLocks = Partial<Record<'vendorId' | 'workbook' | 'itemNumber', string>>;
 
@@ -55,8 +57,6 @@ export interface EntryFormProps {
     disabled?: boolean;
 }
 
-type SuggestField = 'shape' | 'type' | 'color' | 'material';
-
 /**
  * The manual columns only: what people typed for Shape, Type, Material, Colour
  * and the dimensions, and is_hidden for the Type library. The rows are reduced
@@ -84,9 +84,11 @@ function useSuggestions(manual: any[], value: EntryState, hidden?: ReadonlySet<s
         const s = buildAttributeSuggestions(manual, {
             shape: value.shape, material: value.material, color: value.color, type: value.type,
         }, undefined, { hidden });
-        const cap = (l?: string[]) => (l || []).slice(0, 40);
         return {
-            shape: cap(s.shape), type: cap(s.type), color: cap(s.color), material: cap(s.material),
+            shape: cleanSuggestions('shape', s.shape || []),
+            type: cleanSuggestions('type', s.type || []),
+            material: cleanSuggestions('material', s.material || []),
+            color: cleanSuggestions('color', s.color || []),
             sizes: buildSizeSuggestions(manual, { shape: value.shape, type: value.type }),
         };
     }, [manual, hidden, value.shape, value.material, value.color, value.type]);
@@ -94,12 +96,24 @@ function useSuggestions(manual: any[], value: EntryState, hidden?: ReadonlySet<s
 
 const BOOK_OPTIONS = ENTRY_BOOKS.map(b => ({ value: b, label: b.slice(1) }));
 
+function dimsFor(value: EntryState): { w: number; h: number; d: number } | null {
+    const w = parseFloat(value.widthCm);
+    const h = parseFloat(value.heightCm);
+    const d = parseFloat(value.lengthCm);
+    if (Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0 && Number.isFinite(d) && d > 0) {
+        return { w, h, d };
+    }
+    return null;
+}
+
 export function EntryForm({
     value, onChange, photos, onPhotosChange, locks = {}, numberState,
     suggestionRows, hiddenValues, shapeLibrary = false, photoNote, disabled = false,
 }: EntryFormProps) {
     const uid = useId();
+    const isMobile = useCoarseLayout();
     const manual = useMemo(() => manualRows(suggestionRows), [suggestionRows]);
+
     // shapeLibrary is fixed for a mounted form (Add Entry or Edit Entry), so the hook keeps its place in every render.
     // Edit Entry passes shapeLibrary false: the hook then makes no request for the Type library.
     const typeLib = useTypeLibrary(manual, shapeLibrary);
@@ -108,18 +122,66 @@ export function EntryForm({
         typeHidden ? new Set([...(hiddenValues ?? []), ...typeHidden]) : hiddenValues
     ), [hiddenValues, typeHidden]);
     const suggestions = useSuggestions(manual, value, hidden);
+
+    const fieldCounts = useMemo(() => {
+        const counts: Record<SuggestField, Map<string, number>> = {
+            shape: new Map(),
+            type: new Map(),
+            material: new Map(),
+            color: new Map(),
+        };
+        for (const r of manual) {
+            const s = (r.shape || '').trim().toLowerCase();
+            if (s) counts.shape.set(s, (counts.shape.get(s) ?? 0) + 1);
+            const t = (r.short_description || '').trim().toLowerCase();
+            if (t) counts.type.set(t, (counts.type.get(t) ?? 0) + 1);
+            const m = (r.material || '').trim().toLowerCase();
+            if (m) counts.material.set(m, (counts.material.get(m) ?? 0) + 1);
+            const c = (r.color || '').trim().toLowerCase();
+            if (c) counts.color.set(c, (counts.color.get(c) ?? 0) + 1);
+        }
+        return counts;
+    }, [manual]);
+
+    // Section collapse state: Editing an existing entry (shapeLibrary false) starts with every section OPEN and does not auto-collapse.
+    const [identityOpen, setIdentityOpen] = useState(true);
+    const [detailsOpen, setDetailsOpen] = useState(true);
+    const [notesOpen, setNotesOpen] = useState(true);
+
+    const autoCollapse = shapeLibrary;
+
+    const identityFilled = Boolean(
+        value.vendorId.trim() &&
+        normalizeWorkbook(value.workbook) &&
+        value.itemNumber.trim() &&
+        value.quantity.trim() &&
+        Number(value.itemNumber) > 0 &&
+        Number(value.quantity) > 0
+    );
+
+    const detailsFilled = Boolean(
+        (value.shape.trim() || value.type.trim()) &&
+        value.widthCm.trim() &&
+        value.heightCm.trim() &&
+        value.lengthCm.trim() &&
+        Number(value.widthCm) > 0 &&
+        Number(value.heightCm) > 0 &&
+        Number(value.lengthCm) > 0
+    );
+
     /** The field whose tags show: a suggested field, or the dimensions. */
     const [activeField, setActiveField] = useState<SuggestField | 'dims' | null>(null);
     const set = <K extends keyof EntryState>(k: K) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         onChange({ [k]: e.target.value } as Partial<EntryState>);
 
-    /** Focus left a field (or the dimensions): its tags go, unless focus went into the same field's tags. */
+    /** Focus left a field (or the dimensions): its tags go, unless focus went into the same field's tags or list. */
     const leaveField = (e: React.FocusEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
         const next = e.relatedTarget as HTMLElement | null;
         const box = target.closest('.entry-dims') ?? target.closest('.ui-field');
-        // A tag row sits outside its field's box, so focus that moves into one stays in the field.
-        if (!box?.contains(next) && !next?.closest('.entry-tags-row')) setActiveField(null);
+        if (!box?.contains(next) && !next?.closest('.entry-tags-row') && !next?.closest('.entry-suggestions-mobile')) {
+            setActiveField(null);
+        }
     };
 
     const pickSize = (s: SizeSuggestion) => onChange({
@@ -149,22 +211,25 @@ export function EntryForm({
             : numberState?.next && String(numberState.next) !== value.itemNumber ? trf('next {n}', { n: numberState.next })
                 : undefined;
 
-    const listId = (f: SuggestField) => `${uid}-${f}`;
     const textField = (f: SuggestField, label: string, span: string) => (
         <Field label={label} className={span}>
-            <Input value={value[f]} onChange={set(f)} onFocus={() => setActiveField(f)} list={listId(f)} autoComplete="off" disabled={disabled} />
-            <datalist id={listId(f)}>
-                {suggestions[f].map(s => <option key={s} value={s} />)}
-            </datalist>
+            <Input
+                value={value[f]}
+                onChange={set(f)}
+                onFocus={() => setActiveField(f)}
+                autoComplete="off"
+                disabled={disabled}
+                data-field={f}
+            />
         </Field>
     );
 
-    /** Escape in a field's tag row gives the focus back to the field's input. */
+    /** Escape in a field's tag row or suggestion list gives focus back to the field's input. */
     const backToField = (e: React.KeyboardEvent<HTMLDivElement>, f: SuggestField) => {
         if (e.key !== 'Escape') return;
         e.preventDefault();
         e.stopPropagation();
-        e.currentTarget.closest('.entry-grid')?.querySelector<HTMLInputElement>(`input[list="${listId(f)}"]`)?.focus();
+        e.currentTarget.closest('.entry-grid')?.querySelector<HTMLInputElement>(`input[data-field="${f}"]`)?.focus();
     };
 
     /** Mirrors, table lamps and pendants come in shapes (Round, Squared, Rectangular; Cylinder, Squared): their Shape tags show the drawing of each. */
@@ -174,13 +239,42 @@ export function EntryForm({
             typeId={variantTypeId} variant={tag} dims={null} className="tag-fig" />
         : undefined;
 
-    /** The tags of a suggested field: a full width row, placed after the row of fields it belongs to, shown while it has focus. */
-    const tagRow = (f: SuggestField, label: string) => activeField === f && suggestions[f].length > 0 && (
-        <div className="s6 entry-tags-row" onKeyDownCapture={e => backToField(e, f)}>
-            <TagRow label={label} tags={suggestions[f]} onPick={tag => onChange({ [f]: tag } as Partial<EntryState>)}
-                renderLead={f === 'shape' ? shapeLead : undefined} />
-        </div>
-    );
+    /**
+     * Single suggestion mechanism per device:
+     * Mobile shows SuggestionList (44px rows with count). Desktop shows TagRow (chips). Never both.
+     */
+    const suggestionRow = (f: SuggestField, label: string) => {
+        if (activeField !== f || suggestions[f].length === 0) return null;
+        if (isMobile) {
+            return (
+                <div className="s6 entry-suggestions-mobile" onKeyDownCapture={e => backToField(e, f)}>
+                    <SuggestionList
+                        label={label}
+                        suggestions={suggestions[f]}
+                        max={12}
+                        getCount={val => fieldCounts[f].get(val.trim().toLowerCase())}
+                        onPick={tag => {
+                            onChange({ [f]: tag } as Partial<EntryState>);
+                            setActiveField(null);
+                        }}
+                        onClose={() => setActiveField(null)}
+                        renderLead={f === 'shape' ? shapeLead : undefined}
+                    />
+                </div>
+            );
+        }
+        return (
+            <div className="s6 entry-tags-row" onKeyDownCapture={e => backToField(e, f)}>
+                <TagRow
+                    label={label}
+                    tags={suggestions[f]}
+                    max={10}
+                    onPick={tag => onChange({ [f]: tag } as Partial<EntryState>)}
+                    renderLead={f === 'shape' ? shapeLead : undefined}
+                />
+            </div>
+        );
+    };
 
     const numField = (f: keyof EntryState, label: string, span = '', opts: { step?: string; min?: string; onFocus?: () => void } = {}) => (
         <Field label={label} className={span}>
@@ -191,80 +285,163 @@ export function EntryForm({
 
     const focusDims = () => setActiveField('dims');
 
+    const identitySummary = useMemo(() => [
+        value.vendorId,
+        value.workbook ? normalizeWorkbook(value.workbook).slice(1) : '',
+        value.itemNumber ? `#${value.itemNumber}` : '',
+        value.quantity ? `${value.quantity} ${tr('Qty')}` : '',
+    ].filter(Boolean), [value.vendorId, value.workbook, value.itemNumber, value.quantity]);
+
+    const detailsSummary = useMemo(() => {
+        const list: string[] = [];
+        if (value.shape) list.push(value.shape);
+        if (value.type && value.type !== value.shape) list.push(value.type);
+        if (value.material) list.push(value.material);
+        if (value.color) list.push(value.color);
+        if (value.status && value.status !== DEFAULT_ENTRY_STATUS) list.push(String(el(value.status)));
+        const dims = [value.widthCm, value.heightCm, value.lengthCm].filter(Boolean).join('×');
+        if (dims) list.push(`${dims} cm`);
+        if (value.weightKg) list.push(`${value.weightKg} kg`);
+        if (value.price) list.push(`$${value.price} MXN`);
+        return list;
+    }, [value.shape, value.type, value.material, value.color, value.status, value.widthCm, value.heightCm, value.lengthCm, value.weightKg, value.price]);
+
+    const notesSummary = useMemo(() => {
+        const list: string[] = [];
+        if (value.description.trim()) {
+            const desc = value.description.trim();
+            list.push(desc.length > 24 ? `${desc.slice(0, 24)}…` : desc);
+        }
+        if (photos.length > 0) {
+            list.push(trf('{n} photos', { n: photos.length }));
+        }
+        return list;
+    }, [value.description, photos.length]);
+
     return (
-        <div className="entry-form">
-            <div className="entry-grid" onBlur={leaveField}>
-                <Field label={tr('Vendor')} className="s6" group>
-                    <VendorPicker codes={vendorCodes} value={value.vendorId}
-                        onChange={(code) => onChange({ vendorId: code })}
-                        book={String(value.workbook || '').replace(/v/gi, '')}
-                        disabled={disabled} lockedReason={locks.vendorId} />
-                </Field>
+        <div className="entry-form" onBlur={leaveField}>
+            {/* Identity Section: vendor, book, number, quantity */}
+            <EntrySection
+                id={`${uid}-identity`}
+                title={tr('Identity')}
+                open={identityOpen}
+                onToggle={() => setIdentityOpen(prev => !prev)}
+                onOpen={() => setIdentityOpen(true)}
+                onCollapse={() => setIdentityOpen(false)}
+                summary={identitySummary}
+                isFilled={identityFilled}
+                autoCollapse={autoCollapse}
+            >
+                <div className="entry-grid">
+                    <Field label={tr('Vendor')} className="s6" group>
+                        <VendorPicker codes={vendorCodes} value={value.vendorId}
+                            onChange={(code) => onChange({ vendorId: code })}
+                            book={String(value.workbook || '').replace(/v/gi, '')}
+                            disabled={disabled} lockedReason={locks.vendorId} />
+                    </Field>
 
-                <Field label={tr('Book')} className="s2" group={!locks.workbook} aside={lockAside(locks.workbook)}>
-                    {locks.workbook
-                        ? <Input readOnly value={normalizeWorkbook(value.workbook).slice(1)} title={locks.workbook} className="ui-tnum" />
-                        : <Segmented label={tr('Book')} value={normalizeWorkbook(value.workbook) as typeof ENTRY_BOOKS[number]}
-                            options={BOOK_OPTIONS} disabled={disabled}
-                            onChange={(wb) => onChange({ workbook: wb })} />}
-                </Field>
+                    <Field label={tr('Book')} className="s2" group={!locks.workbook} aside={lockAside(locks.workbook)}>
+                        {locks.workbook
+                            ? <Input readOnly value={normalizeWorkbook(value.workbook).slice(1)} title={locks.workbook} className="ui-tnum" />
+                            : <Segmented label={tr('Book')} value={normalizeWorkbook(value.workbook) as typeof ENTRY_BOOKS[number]}
+                                options={BOOK_OPTIONS} disabled={disabled}
+                                onChange={(wb) => onChange({ workbook: wb })} />}
+                    </Field>
 
-                <Field label="#" aside={numberAside}
-                    error={numberState?.duplicate ? trf('{id} is taken in this book', {
-                        id: `${value.vendorId}-${String(value.itemNumber).padStart(3, '0')}`,
-                    }) : undefined}>
-                    <Input type="number" inputMode="numeric" min="1" step="1" className="ui-tnum" value={value.itemNumber}
-                        onChange={set('itemNumber')} readOnly={!!locks.itemNumber} title={locks.itemNumber}
-                        disabled={disabled} />
-                </Field>
+                    <Field label="#" aside={numberAside}
+                        error={numberState?.duplicate ? trf('{id} is taken in this book', {
+                            id: `${value.vendorId}-${String(value.itemNumber).padStart(3, '0')}`,
+                        }) : undefined}>
+                        <Input type="number" inputMode="numeric" min="1" step="1" className="ui-tnum" value={value.itemNumber}
+                            onChange={set('itemNumber')} readOnly={!!locks.itemNumber} title={locks.itemNumber}
+                            disabled={disabled} />
+                    </Field>
 
-                {numField('quantity', tr('Qty'), '', { min: '1', step: '1' })}
+                    {numField('quantity', tr('Qty'), '', { min: '1', step: '1' })}
+                </div>
+            </EntrySection>
 
-                {shapeLibrary && (
+            {/* Type Section: Hairline Type picker (not collapsible, no header) */}
+            {shapeLibrary && (
+                <EntrySection
+                    id={`${uid}-type`}
+                    title={tr('Type')}
+                    open={true}
+                    onToggle={() => {}}
+                    collapsible={false}
+                >
                     <Field label={tr('Types')} className="s6" group hint={tr('Pick a Type, or type below. Both stay in step.')}>
                         <ShapeLibraryField
-                            value={{ type: value.type }}
-                            onChange={patch => onChange({ type: patch.type })}
+                            value={{ type: value.type, shape: value.shape }}
+                            onChange={patch => onChange(patch)}
+                            dims={dimsFor(value)}
                             library={typeLib.library}
                             loading={typeLib.loading}
                             onSave={typeLib.save}
                             disabled={disabled}
                         />
                     </Field>
-                )}
+                </EntrySection>
+            )}
 
-                {textField('shape', tr('Shape'), 's2')}
-                {textField('type', tr('Type'), 's2')}
-                {textField('material', tr('Material'), 's2')}
-                {tagRow('shape', tr('Shape tags'))}
-                {tagRow('type', tr('Type tags'))}
-                {tagRow('material', tr('Material tags'))}
-                {textField('color', tr('Vendor colour'), 's3')}
+            {/* Details Section: shape, type, material, color, status, dims, weight, price */}
+            <EntrySection
+                id={`${uid}-details`}
+                title={tr('Details')}
+                open={detailsOpen}
+                onToggle={() => setDetailsOpen(prev => !prev)}
+                onOpen={() => setDetailsOpen(true)}
+                onCollapse={() => setDetailsOpen(false)}
+                summary={detailsSummary}
+                isFilled={detailsFilled}
+                autoCollapse={autoCollapse}
+            >
+                <div className="entry-grid">
+                    {textField('shape', tr('Shape'), 's2')}
+                    {textField('type', tr('Type'), 's2')}
+                    {textField('material', tr('Material'), 's2')}
+                    {suggestionRow('shape', tr('Shape tags'))}
+                    {suggestionRow('type', tr('Type tags'))}
+                    {suggestionRow('material', tr('Material tags'))}
+                    {textField('color', tr('Vendor colour'), 's3')}
 
-                <Field label={tr('Status')} className="s3">
-                    <Select value={value.status} onChange={set('status')} options={statusOptions} disabled={disabled} />
-                </Field>
-                {tagRow('color', tr('Colour tags'))}
+                    <Field label={tr('Status')} className="s3">
+                        <Select value={value.status} onChange={set('status')} options={statusOptions} disabled={disabled} />
+                    </Field>
+                    {suggestionRow('color', tr('Colour tags'))}
 
-                <div className="entry-dims">
-                    {numField('widthCm', tr('W cm'), '', { onFocus: focusDims })}
-                    {numField('heightCm', tr('H cm'), '', { onFocus: focusDims })}
-                    {numField('lengthCm', tr('D cm'), '', { onFocus: focusDims })}
-                    {(activeField === 'shape' || activeField === 'type' || activeField === 'dims') && suggestions.sizes.length > 0 && (
-                        <div className="s6">
-                            <SizeRow sizes={suggestions.sizes} onPick={pickSize} />
-                        </div>
-                    )}
+                    <div className="entry-dims">
+                        {numField('widthCm', tr('W cm'), '', { onFocus: focusDims })}
+                        {numField('heightCm', tr('H cm'), '', { onFocus: focusDims })}
+                        {numField('lengthCm', tr('D cm'), '', { onFocus: focusDims })}
+                        {activeField === 'dims' && suggestions.sizes.length > 0 && (
+                            <div className="s6">
+                                <SizeRow sizes={suggestions.sizes} onPick={pickSize} />
+                            </div>
+                        )}
+                    </div>
+                    {numField('weightKg', tr('Kg'))}
+                    {numField('price', tr('Price MXN'), 's2')}
                 </div>
-                {numField('weightKg', tr('Kg'))}
-                {numField('price', tr('Price MXN'), 's2')}
+            </EntrySection>
 
-                <Field label={tr('Vendor note')} className="s6" hint={tr('The vendor’s own word for it. The AI never writes here.')}>
-                    <Input value={value.description} onChange={set('description')} disabled={disabled} />
-                </Field>
-            </div>
-
-            <PhotosField photos={photos} onChange={onPhotosChange} note={photoNote} disabled={disabled} />
+            {/* Notes and photos Section: vendor note, photos */}
+            <EntrySection
+                id={`${uid}-notes`}
+                title={tr('Notes and photos')}
+                open={notesOpen}
+                onToggle={() => setNotesOpen(prev => !prev)}
+                onOpen={() => setNotesOpen(true)}
+                onCollapse={() => setNotesOpen(false)}
+                summary={notesSummary}
+            >
+                <div className="entry-grid">
+                    <Field label={tr('Vendor note')} className="s6" hint={tr('The vendor’s own word for it. The AI never writes here.')}>
+                        <Input value={value.description} onChange={set('description')} disabled={disabled} />
+                    </Field>
+                </div>
+                <PhotosField photos={photos} onChange={onPhotosChange} note={photoNote} disabled={disabled} />
+            </EntrySection>
         </div>
     );
 }

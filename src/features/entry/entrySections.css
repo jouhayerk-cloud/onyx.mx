@@ -1,0 +1,248 @@
+/* ==========================================================================
+   ENTRY SECTIONS — Collapsible disclosure groups for Add Entry & Edit Entry
+   --------------------------------------------------------------------------
+   Quiet rows with small caps title, chevron, hairline separator, and one-line
+   summary chips when collapsed. Reuses existing --ui-* tokens.
+   ========================================================================== */
+
+.entry .entry-section {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-top: 1px solid var(--ui-edge);
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
+.entry .entry-section:first-child {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+}
+
+/* Section without a header (e.g. Type picker section) */
+.entry .entry-section--bare {
+    border-top: 1px solid var(--ui-edge);
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
+.entry .entry-section__header {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 38px;
+    padding: 6px 4px;
+    margin: 0;
+    border: none;
+    background: transparent;
+    color: var(--ui-ink);
+    cursor: pointer;
+    text-align: left;
+    border-radius: var(--ui-r-sm);
+    transition: background-color var(--ui-ease), color var(--ui-ease);
+}
+
+@media (max-width: 720px), (pointer: coarse) {
+    .entry .entry-section__header {
+        min-height: 44px;
+        padding: 8px 6px;
+    }
+}
+
+.entry .entry-section__header:hover {
+    background-color: var(--ui-well);
+}
+
+.entry .entry-section__header:focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: 2px;
+}
+
+.entry .entry-section__header-left {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.entry .entry-section__title {
+    font: 700 11px/1.2 var(--ui-font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ui-dim);
+}
+
+.entry .entry-section__summary {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+.entry .entry-section__chip {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--ui-edge-hi);
+    border-radius: var(--ui-r-pill);
+    background-color: var(--ui-well);
+    color: var(--ui-ink);
+    font: 600 11px/1 var(--ui-font-display);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+}
+
+.entry .entry-section__chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    margin-left: 8px;
+    color: var(--ui-faint);
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), color var(--ui-ease);
+}
+
+.entry .entry-section__chevron--open {
+    transform: rotate(180deg);
+    color: var(--ui-dim);
+}
+
+.entry .entry-section__body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    margin-top: 6px;
+}
+
+.entry .entry-section__body[hidden] {
+    display: none;
+}
+
+/* ==========================================================================
+   SUGGESTION LIST — In-flow 44px rows on mobile
+   ========================================================================== */
+
+.entry .entry-suggestions-mobile {
+    min-width: 0;
+    width: 100%;
+}
+
+.entry .suggestion-list {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    margin-top: 4px;
+    margin-bottom: 6px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-md);
+    background-color: var(--ui-well);
+    backdrop-filter: var(--ui-blur);
+    overflow: hidden;
+}
+
+.entry .suggestion-list__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ui-edge);
+    background-color: var(--ui-surface);
+}
+
+.entry .suggestion-list__label {
+    font: 700 10.5px/1.2 var(--ui-font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ui-faint);
+}
+
+.entry .suggestion-list__items {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-height: 280px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.entry .suggestion-list__row {
+    display: flex;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.entry .suggestion-list__item {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border: none;
+    border-bottom: 1px solid var(--ui-edge);
+    background: transparent;
+    color: var(--ui-ink);
+    font: 600 13px/1.3 var(--ui-font-display);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--ui-ease), color var(--ui-ease);
+}
+
+.entry .suggestion-list__row:last-child .suggestion-list__item {
+    border-bottom: none;
+}
+
+.entry .suggestion-list__item:hover {
+    background-color: var(--ui-hover);
+    color: var(--ui-ink);
+}
+
+.entry .suggestion-list__item:focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: -2px;
+    background-color: var(--ui-hover);
+}
+
+.entry .suggestion-list__value {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.entry .suggestion-list__count {
+    flex: none;
+    margin-left: 8px;
+    padding: 2px 7px;
+    border-radius: var(--ui-r-pill);
+    background-color: var(--ui-surface);
+    color: var(--ui-faint);
+    font: 500 11px/1 var(--ui-font-body);
+}
+
+.entry .suggestion-list__lead {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    margin-right: 10px;
+}

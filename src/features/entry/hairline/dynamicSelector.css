@@ -1,0 +1,442 @@
+/* ==========================================================================
+   DYNAMIC HAIRLINE SELECTOR — styles for compact Type, Sub-Shapes, and Live Preview
+   --------------------------------------------------------------------------
+   Tokens are inherited from .stp (shapeTypePicker.css).
+   Supports desktop chip buttons and mobile in-flow list with 44px touch targets.
+   ========================================================================== */
+
+/* ── Collapsed Summary Row ───────────────────────────────────────────────── */
+.stp-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 6px 12px;
+    border: 1px solid var(--stp-line);
+    border-radius: 12px;
+    background: var(--stp-tile);
+    color: var(--stp-ink);
+}
+
+.stp-summary-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.stp-summary-fig {
+    display: block;
+    width: 36px;
+    height: 29px;
+    aspect-ratio: 5 / 4;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--stp-tile);
+    flex: none;
+}
+
+.stp-summary-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.stp-summary-text {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 8px;
+    min-width: 0;
+}
+
+.stp-summary-label {
+    font: 700 13px/1.3 var(--ui-font-display);
+    color: var(--stp-ink);
+    letter-spacing: 0.02em;
+}
+
+.stp-summary-count {
+    font: 500 11px/1.2 var(--ui-font-body);
+    color: var(--stp-ink-2);
+}
+
+.stp-summary-change {
+    flex: none;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--stp-line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--stp-accent);
+    font: 700 12px/1 var(--ui-font-display);
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.stp-summary-change:hover {
+    border-color: var(--stp-accent);
+    background: color-mix(in srgb, var(--stp-accent) 12%, transparent);
+}
+
+.stp-summary-change:focus-visible {
+    outline: 2px solid var(--stp-focus);
+    outline-offset: 2px;
+}
+
+.stp-summary-change:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* ── Header Done Button ─────────────────────────────────────────────────── */
+.stp-done {
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--stp-line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--stp-accent);
+    font: 700 11.5px/1 var(--ui-font-display);
+    cursor: pointer;
+}
+
+.stp-done:hover {
+    border-color: var(--stp-accent);
+    background: color-mix(in srgb, var(--stp-accent) 12%, transparent);
+}
+
+.stp-done:focus-visible {
+    outline: 2px solid var(--stp-focus);
+    outline-offset: 2px;
+}
+
+/* ── Desktop: Type Chip Buttons ─────────────────────────────────────────── */
+.stp-type-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.stp-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 4px 12px 4px 6px;
+    margin: 0;
+    border: 1px solid var(--stp-line);
+    border-radius: 20px;
+    background: var(--stp-tile);
+    color: var(--stp-ink);
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.stp-type-chip:hover {
+    border-color: var(--stp-accent);
+}
+
+.stp-type-chip.is-active,
+.stp-type-chip[aria-pressed="true"] {
+    border-color: var(--stp-accent);
+    background: color-mix(in srgb, var(--stp-accent) 14%, var(--stp-tile));
+}
+
+.stp-type-chip:focus-visible {
+    outline: 2px solid var(--stp-focus);
+    outline-offset: 2px;
+}
+
+.stp-type-chip:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.stp-type-chip-fig {
+    display: block;
+    width: 28px;
+    height: 22px;
+    aspect-ratio: 5 / 4;
+    overflow: hidden;
+    border-radius: 4px;
+    flex: none;
+}
+
+.stp-type-chip-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.stp-type-chip-cap {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.stp-type-chip-label {
+    font: 700 12px/1.2 var(--ui-font-display);
+    color: var(--stp-ink);
+    white-space: nowrap;
+}
+
+.stp-type-chip-count {
+    font: 500 10.5px/1 var(--ui-font-body);
+    color: var(--stp-ink-2);
+    white-space: nowrap;
+}
+
+/* ── Mobile: In-Flow List ───────────────────────────────────────────────── */
+.stp-type-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.stp-type-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 8px 12px;
+    margin: 0;
+    border: 1px solid var(--stp-line);
+    border-radius: 10px;
+    background: var(--stp-tile);
+    color: var(--stp-ink);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.stp-type-row:hover {
+    border-color: var(--stp-accent);
+}
+
+.stp-type-row.is-active,
+.stp-type-row[aria-pressed="true"] {
+    border-color: var(--stp-accent);
+    background: color-mix(in srgb, var(--stp-accent) 14%, var(--stp-tile));
+}
+
+.stp-type-row:focus-visible {
+    outline: 2px solid var(--stp-focus);
+    outline-offset: 2px;
+}
+
+.stp-type-row:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.stp-type-row-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.stp-type-row-fig {
+    display: block;
+    width: 32px;
+    height: 26px;
+    aspect-ratio: 5 / 4;
+    overflow: hidden;
+    border-radius: 4px;
+    flex: none;
+}
+
+.stp-type-row-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.stp-type-row-label {
+    font: 700 13px/1.25 var(--ui-font-display);
+    color: var(--stp-ink);
+}
+
+.stp-type-row-count {
+    font: 500 11px/1 var(--ui-font-body);
+    color: var(--stp-ink-2);
+    flex: none;
+}
+
+/* ── STEP 2: Sub-Shape Row ──────────────────────────────────────────────── */
+.ssr-root {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    margin-top: 4px;
+    border: 1px solid var(--stp-line);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--stp-tile) 80%, transparent);
+}
+
+.ssr-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ssr-label {
+    font: 800 11px/1.2 var(--ui-font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stp-ink-2);
+}
+
+.ssr-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.ssr-mobile-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 0 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.ssr-mobile-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.ssr-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 2px 10px 2px 4px;
+    margin: 0;
+    border: 1px solid var(--stp-line);
+    border-radius: 16px;
+    background: var(--stp-tile);
+    color: var(--stp-ink);
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+    flex: none;
+}
+
+.ssr-root--coarse .ssr-chip {
+    min-height: 44px;
+    padding: 4px 14px 4px 8px;
+}
+
+.ssr-chip:hover {
+    border-color: var(--stp-accent);
+}
+
+.ssr-chip.is-active,
+.ssr-chip[aria-pressed="true"] {
+    border-color: var(--stp-accent);
+    background: color-mix(in srgb, var(--stp-accent) 16%, var(--stp-tile));
+}
+
+.ssr-chip.is-default {
+    border-style: dashed;
+    border-color: color-mix(in srgb, var(--stp-accent) 60%, var(--stp-line));
+}
+
+.ssr-chip--free {
+    padding: 2px 12px;
+    color: var(--stp-ink-2);
+}
+
+.ssr-root--coarse .ssr-chip--free {
+    min-height: 44px;
+    padding: 4px 14px;
+}
+
+.ssr-chip:focus-visible {
+    outline: 2px solid var(--stp-focus);
+    outline-offset: 2px;
+}
+
+.ssr-chip:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.ssr-chip-fig {
+    display: block;
+    width: 28px;
+    height: 22px;
+    aspect-ratio: 5 / 4;
+    overflow: hidden;
+    border-radius: 4px;
+    flex: none;
+}
+
+.ssr-root--coarse .ssr-chip-fig {
+    width: 32px;
+    height: 26px;
+}
+
+.ssr-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.ssr-chip-text {
+    font: 700 11.5px/1.2 var(--ui-font-display);
+    color: var(--stp-ink);
+    white-space: nowrap;
+}
+
+/* ── STEP 3: Live Preview Drawing (~180px) ──────────────────────────────── */
+.stp-live-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    margin-top: 6px;
+    border: 1px solid var(--stp-line);
+    border-radius: 12px;
+    background: var(--stp-tile);
+}
+
+.stp-preview-box {
+    width: 180px;
+    max-width: 100%;
+    aspect-ratio: 5 / 4;
+    overflow: visible;
+}
+
+.stp-live-figure {
+    width: 100%;
+    height: 100%;
+    display: block;
+    animation: stp-crossfade 160ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes stp-crossfade {
+    from {
+        opacity: 0;
+        transform: scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stp-live-figure {
+        animation: none;
+        transition: none;
+    }
+}
