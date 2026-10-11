@@ -20,10 +20,11 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.onyx-mcp]
-# Data MCP server for agents and the web app. JWT-only authentication.
-# All callers must provide a valid Supabase JWT. The function then checks
-# the caller's role in app_users before granting access to tools.
-verify_jwt = true
+# Data MCP server for agents and the web app.
+# verify_jwt is false because the function accepts two kinds of bearer token and checks them itself:
+# a Supabase JWT (verified with auth.getUser) or a personal MCP token (mcp_..., verified against siri_tokens).
+# Anything else gets 401. The function then checks the caller's role in app_users before granting access to tools.
+verify_jwt = false
 
 [functions.siri-inventory]
 # Read-only Siri and Apple Shortcut voice adapter for warehouse inventory queries.

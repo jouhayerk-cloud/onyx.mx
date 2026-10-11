@@ -100,6 +100,31 @@ if ($siri) {
     Record $false "siri-inventory tests with a real token" "skipped: no token was created"
 }
 
+Write-Host "`n== personal MCP token (kind mcp) ==" -ForegroundColor Cyan
+$r = Call "POST" "$base/siri-token" $jwt @{ action = "create"; kind = "mcp"; label = "smoke-test-mcp" }
+$mcp = $null; $mcpId = $null
+if ($r.Code -eq 200 -and $r.Json -and $r.Json.ok -eq $true) { $mcp = $r.Json.token; $mcpId = $r.Json.id }
+Record ($null -ne $mcp -and $mcp.StartsWith("mcp_") -and $mcp.Length -eq 47) "siri-token create (kind mcp)" ("HTTP {0}, prefix {1}" -f $r.Code, $(if ($mcp) { $mcp.Substring(0, 8) } else { "none" }))
+$r = Call "POST" "$base/onyx-mcp" ("siri_" + ("A" * 43)) @{ jsonrpc = "2.0"; id = 20; method = "tools/list" }
+Record ($r.Code -eq 401) "onyx-mcp refuses a Siri token" ("HTTP {0}" -f $r.Code)
+if ($mcp) {
+    $r = Call "POST" "$base/onyx-mcp" $mcp @{ jsonrpc = "2.0"; id = 21; method = "tools/list" }
+    $n2 = 0; if ($r.Json -and $r.Json.PSObject.Properties['result'] -and $r.Json.result.tools) { $n2 = @($r.Json.result.tools).Count }
+    Record ($r.Code -eq 200 -and $n2 -gt 0) "onyx-mcp tools/list with the MCP token" ("HTTP {0}, {1} tools" -f $r.Code, $n2)
+    $r = Call "POST" "$base/siri-inventory" $mcp @{ intent = "count"; query = ""; lang = "en" }
+    Record ($r.Code -eq 401) "siri-inventory refuses an MCP token" ("HTTP {0}" -f $r.Code)
+    $r = Call "POST" "$base/siri-token" $jwt @{ action = "list"; kind = "siri" }
+    $leak = $false
+    if ($r.Json -and $r.Json.PSObject.Properties['tokens']) { $leak = (@($r.Json.tokens | Where-Object { $_.id -eq $mcpId }).Count -gt 0) }
+    Record (-not $leak) "the MCP token is not listed with the Siri tokens" ("HTTP {0}" -f $r.Code)
+    $r = Call "POST" "$base/siri-token" $jwt @{ action = "revoke"; id = $mcpId }
+    Record ($r.Code -eq 200 -and $r.Json.ok -eq $true) "siri-token revoke (mcp)" ("HTTP {0}" -f $r.Code)
+    $r = Call "POST" "$base/onyx-mcp" $mcp @{ jsonrpc = "2.0"; id = 22; method = "tools/list" }
+    Record ($r.Code -eq 401) "onyx-mcp refuses the revoked MCP token" ("HTTP {0}" -f $r.Code)
+} else {
+    Record $false "MCP token tests with a real token" "skipped: no MCP token was created"
+}
+
 Write-Host "`n== Summary ==" -ForegroundColor Cyan
 $fails = @($results | Where-Object { $_.StartsWith("FAIL") })
 Write-Host ("{0} checks, {1} failed" -f $results.Count, $fails.Count)

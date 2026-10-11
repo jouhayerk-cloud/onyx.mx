@@ -11,6 +11,7 @@ import {
   CallerContext,
 } from "../_shared/onyxDataHandlers.ts";
 import { escapeLikeValue } from "../_shared/likeEscape.ts";
+import { isMcpToken, lookupMcpToken, allowRequest } from "../_shared/mcpToken.ts";
 
 // ── Supabase Client Setup ────────────────────────────────────────────────────
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -55,6 +56,34 @@ async function authenticateCaller(req: Request): Promise<AuthResult> {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       ),
+    };
+  }
+
+  // Personal MCP token (mcp_...): resolved from the siri_tokens table instead of Supabase Auth.
+  if (isMcpToken(token)) {
+    const found = await lookupMcpToken(supabase, token);
+    if (!found.ok) {
+      return {
+        errorResponse: new Response(JSON.stringify({ error: found.error }), {
+          status: found.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }),
+      };
+    }
+    if (!allowRequest(`mcp:${found.tokenId}`, 120, 60_000)) {
+      return {
+        errorResponse: new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }),
+      };
+    }
+    const owner = found.appUser;
+    return {
+      caller: {
+        role: owner.role,
+        vendorPrefix: owner.role === "Vendor" ? ((owner.vendor_prefix as string | undefined) ?? undefined) : undefined,
+      },
     };
   }
 

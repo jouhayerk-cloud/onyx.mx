@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { generateSiriToken, hashSiriToken, bearerFrom } from "../_shared/siriToken.ts";
+import { generateMcpToken, tokenKindOfPrefix } from "../_shared/mcpToken.ts";
 import { escapeLikeValue } from "../_shared/likeEscape.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -111,25 +112,28 @@ export async function handleSiriTokenApi(req: Request): Promise<Response> {
     }
 
     const action = body?.action;
+    // Two kinds of personal token share this table: siri_ (default) and mcp_.
+    const kind: "siri" | "mcp" = body?.kind === "mcp" ? "mcp" : "siri";
 
     try {
         if (action === "create") {
-            const { count } = await supabase
+            const { data: activeRows } = await supabase
                 .from("siri_tokens")
-                .select("id", { count: "exact", head: true })
+                .select("token_prefix")
                 .eq("user_id", user.id)
                 .is("revoked_at", null)
                 .gt("expires_at", new Date().toISOString());
+            const count = (activeRows ?? []).filter((r: { token_prefix: unknown }) => tokenKindOfPrefix(r.token_prefix) === kind).length;
 
-            if (count !== null && count >= 5) {
+            if (count >= 5) {
                 return new Response(JSON.stringify({ error: "Conflict: Maximum of 5 active tokens allowed" }), {
                     status: 409,
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
                 });
             }
 
-            const tokenLabel = typeof body?.label === "string" && body.label.length >= 1 && body.label.length <= 40 ? body.label : "iPhone";
-            const { token: rawToken, prefix } = generateSiriToken();
+            const tokenLabel = typeof body?.label === "string" && body.label.length >= 1 && body.label.length <= 40 ? body.label : (kind === "mcp" ? "Claude Code" : "iPhone");
+            const { token: rawToken, prefix } = kind === "mcp" ? generateMcpToken() : generateSiriToken();
             const tokenHash = await hashSiriToken(rawToken);
 
             const { data, error } = await supabase
@@ -177,7 +181,7 @@ export async function handleSiriTokenApi(req: Request): Promise<Response> {
                 });
             }
 
-            return new Response(JSON.stringify({ ok: true, tokens: data }), {
+            return new Response(JSON.stringify({ ok: true, tokens: (data ?? []).filter((r: { token_prefix: unknown }) => tokenKindOfPrefix(r.token_prefix) === kind) }), {
                 status: 200,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
