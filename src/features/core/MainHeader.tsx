@@ -115,7 +115,7 @@ const OnyxBar: React.FC = () => null;
 
 import { vendors , DEFAULT_EXCHANGE_RATE} from '../../lib/consts';
 import { missingShopifyFields, SHOPIFY_REQUIRED_FIELDS, type ShopifyField } from '../../lib/aiContent';
-import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, toDriveDownloadUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, collectAllImages, collectExportImages, getProductCategoryAndType, hasWord, foldText, isAllowedProductType, formatProductTitle, normalizeBrandTerms, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass, getCleanImageUrl, toDriveDownloadUrl, syncAllCalculatedFieldsToDB } from '../../lib/utils';
 import { getStoneStyleColors, generateFallbackMarketingHtml, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor';
 import { lookupCanonicalColors } from '../../lib/colorVocabulary';
 import { inventoryStatusSetsAtom } from '../../lib/inventoryStatusAtom';
@@ -3761,22 +3761,22 @@ export function MainHeader() {
 
             // Helper for Product Category mapping
             const getProductCategory = (shape: string, shortDesc: string) => {
-                const combined = `${shape} ${shortDesc}`.toLowerCase();
-                if (combined.includes('wine rack')) return 'Furniture > Cabinets & Storage > Wine Racks';
-                if (combined.includes('pendant')) return 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures';
-                if (combined.includes('tower lamp') || combined.includes('floor lamp') || combined.includes('pillar')) return 'Home & Garden > Lighting > Lamps > Floor Lamps';
-                if (combined.includes('table lamp') || combined.includes('desk lamp') || combined.includes('lamp')) return 'Home & Garden > Lighting > Lamps > Desk Lamps';
-                if (combined.includes('wall panel') || combined.includes('luminarie') || combined.includes('panel pair') || combined.includes('onyx panel')) return 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures';
-                if (combined.includes('bowl')) return 'Home & Garden > Decor > Decorative Bowls';
-                if (combined.includes('canoe')) return 'Home & Garden > Decor > Decorative Trays';
-                if (combined.includes('fountain')) return 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains';
-                if (combined.includes('mirror')) return 'Home & Garden > Decor > Mirrors';
-                if (combined.includes('basin') || combined.includes('sink')) return 'Hardware > Plumbing > Plumbing Fixtures > Sinks';
-                if (combined.includes('bathtub')) return 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs';
-                if (combined.includes('plate')) return 'Home & Garden > Decor > Decorative Plates';
-                if (combined.includes('chess')) return 'Toys & Games > Games > Board Games';
-                if (combined.includes('coaster')) return 'Home & Garden > Kitchen & Dining > Barware > Coasters';
-                if (combined.includes('shot glass')) return 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses';
+                const combined = foldText(`${shape} ${shortDesc}`);
+                if (hasWord(combined, 'wine rack')) return 'Furniture > Cabinets & Storage > Wine Racks';
+                if (hasWord(combined, 'pendant')) return 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures';
+                if (hasWord(combined, 'tower lamp') || hasWord(combined, 'floor lamp') || hasWord(combined, 'pillar')) return 'Home & Garden > Lighting > Lamps > Floor Lamps';
+                if (hasWord(combined, 'table lamp') || hasWord(combined, 'desk lamp') || hasWord(combined, 'lamp')) return 'Home & Garden > Lighting > Lamps > Desk Lamps';
+                if (hasWord(combined, 'wall panel') || hasWord(combined, 'luminarie') || hasWord(combined, 'panel pair') || hasWord(combined, 'onyx panel')) return 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures';
+                if (hasWord(combined, 'bowl')) return 'Home & Garden > Decor > Decorative Bowls';
+                if (hasWord(combined, 'canoe')) return 'Home & Garden > Decor > Decorative Trays';
+                if (hasWord(combined, 'fountain')) return 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains';
+                if (hasWord(combined, 'mirror')) return 'Home & Garden > Decor > Mirrors';
+                if (hasWord(combined, 'basin') || hasWord(combined, 'sink')) return 'Hardware > Plumbing > Plumbing Fixtures > Sinks';
+                if (hasWord(combined, 'bathtub')) return 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs';
+                if (hasWord(combined, 'plate')) return 'Home & Garden > Decor > Decorative Plates';
+                if (hasWord(combined, 'chess')) return 'Toys & Games > Games > Board Games';
+                if (hasWord(combined, 'coaster')) return 'Home & Garden > Kitchen & Dining > Barware > Coasters';
+                if (hasWord(combined, 'shot glass')) return 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses';
                 
                 return 'Home & Garden > Decor > Artwork > Sculptures & Statues';
             };

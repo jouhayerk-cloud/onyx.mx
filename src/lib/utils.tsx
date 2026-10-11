@@ -2332,34 +2332,8 @@ const PRODUCT_TYPE_SET = new Set<string>(SHOPIFY_PRODUCT_TYPES as readonly strin
 export const isAllowedProductType = (t: unknown): boolean =>
     typeof t === 'string' && PRODUCT_TYPE_SET.has(t.trim());
 
-export function getProductCategoryAndType(item: any): { category: string, type: string } {
-    const title = `${item.shape || ''} ${item.shortDescription || ''} ${item.description || ''} ${item.type || ''}`.toLowerCase();
-    if (title.includes('wine rack')) return { category: 'Furniture > Cabinets & Storage > Wine Racks', type: 'Home Decor > Wine Racks' };
-    if (title.includes('bathtub') || title.includes('bath tub') || title.includes('tina')) return { category: 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs', type: 'Bathtubs' };
-    if (title.includes('sink') || title.includes('washbasin') || title.includes('lavabo')) return { category: 'Hardware > Plumbing > Plumbing Fixtures > Sinks', type: 'Home Decor > Sinks' };
-    if (title.includes('sculpture') || title.includes('statue') || title.includes('animal') || title.includes('figura')) return { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Sculptures' };
-    if (title.includes('bowl') || title.includes('tazon')) return { category: 'Home & Garden > Decor > Decorative Bowls', type: 'Home Decor > Decorative Bowls' };
-    if (title.includes('plate') || title.includes('plato')) return { category: 'Home & Garden > Decor > Decorative Plates', type: 'Home Decor > Decorative Plates' };
-    if (title.includes('tray') || title.includes('charola')) return { category: 'Home & Garden > Decor > Decorative Trays', type: 'Home Decor > Decorative Trays' };
-    if (title.includes('fountain') || title.includes('cascada') || title.includes('fuente')) return { category: 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains', type: 'Outdoor Decor > Fountains' };
-    if (title.includes('mirror') || title.includes('espejo')) return { category: 'Home & Garden > Decor > Mirrors', type: 'Home Decor > Mirrors' };
-    if (title.includes('coaster') || title.includes('portavaso')) return { category: 'Home & Garden > Kitchen & Dining > Barware > Coasters', type: 'Home Decor > Coasters' };
-    if (title.includes('shot glass') || title.includes('tequilero')) return { category: 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses', type: 'Home Decor > Sculptures' }; 
-    if (title.includes('desk lamp') || title.includes('table lamp')) return { category: 'Home & Garden > Lighting > Lamps > Desk Lamps', type: 'Home Decor > Table Lamps' };
-    if (title.includes('floor lamp')) return { category: 'Home & Garden > Lighting > Lamps > Floor Lamps', type: 'Home Decor > Floor Lamps' };
-    if (title.includes('pendant') || title.includes('hanging') || title.includes('colgante')) return { category: 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures', type: 'Home Decor > Pendant Lights' };
-    if (title.includes('wall light') || title.includes('sconce')) return { category: 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures', type: 'Home Decor > Pendant Lights' }; 
-    
-    if (title.includes('wall panel') || title.includes('panel')) return { category: 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures', type: 'Home Decor > Wall Panels' };
-    
-    if (title.includes('wine stopper')) return { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Barware > Wine Stoppers' };
-    if (title.includes('chess') || title.includes('board') || title.includes('ajedrez')) return { category: 'Toys & Games > Games > Board Games', type: 'Board Games > Chess Sets' };
-    if (title.includes('candle') || title.includes('vela')) return { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Candleholders' };
-    if (title.includes('vase') || title.includes('florero')) return { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Vases' };
-    if (title.includes('table') || title.includes('mesa') || title.includes('stand') || title.includes('pedestal')) return { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Tables' };
-    
-    return { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Sculptures' }; 
-}
+// Moved to ./productCategory (pure, tested): whole-word matching, Type before title. Same export names.
+export { getProductCategoryAndType, foldText, hasWord } from './productCategory';
 
 /**
  * Client vocabulary corrections, applied to generated text on its way out.

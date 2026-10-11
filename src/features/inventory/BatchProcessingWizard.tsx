@@ -48,6 +48,8 @@ import {
     calculateCodesAndPrices,
     normalizeInventoryData,
     getProductCategoryAndType,
+    hasWord,
+    foldText,
     formatProductTitle,
 } from '../../lib/utils';
 import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
@@ -300,24 +302,24 @@ function useNarrow(query = '(max-width: 1020px)'): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const getProductCategory = (shape: string, shortDesc: string) => {
-    const combined = `${shape} ${shortDesc}`.toLowerCase();
-    if (combined.includes('wine rack')) return 'Furniture > Cabinets & Storage > Wine Racks';
-    if (combined.includes('pendant')) return 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures';
-    if (combined.includes('tower lamp') || combined.includes('floor lamp') || combined.includes('pillar')) return 'Home & Garden > Lighting > Lamps > Floor Lamps';
-    if (combined.includes('table lamp') || combined.includes('desk lamp') || combined.includes('lamp')) return 'Home & Garden > Lighting > Lamps > Desk Lamps';
-    if (combined.includes('coaster')) return 'Home & Garden > Kitchen & Dining > Barware > Coasters';
-    if (combined.includes('bathtub') || combined.includes('tub')) return 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs';
-    if (combined.includes('sink') || combined.includes('vessel')) return 'Hardware > Plumbing > Plumbing Fixtures > Sinks';
-    if (combined.includes('sculpture') || combined.includes('statue') || combined.includes('carving') || combined.includes('figure')) return 'Home & Garden > Decor > Artwork > Sculptures & Statues';
-    if (combined.includes('bowl')) return 'Home & Garden > Decor > Decorative Bowls';
-    if (combined.includes('plate')) return 'Home & Garden > Decor > Decorative Plates';
-    if (combined.includes('tray')) return 'Home & Garden > Decor > Decorative Trays';
-    if (combined.includes('fountain') || combined.includes('waterfall')) return 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains';
-    if (combined.includes('garden sculpture') || combined.includes('lawn ornament')) return 'Home & Garden > Decor > Lawn Ornaments & Garden Sculptures > Garden Sculptures';
-    if (combined.includes('mirror')) return 'Home & Garden > Decor > Mirrors';
-    if (combined.includes('shot glass') || combined.includes('tequila glass')) return 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses';
-    if (combined.includes('wall light') || combined.includes('sconce')) return 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures';
-    if (combined.includes('board game') || combined.includes('chess') || combined.includes('checkers') || combined.includes('tic tac toe')) return 'Toys & Games > Games > Board Games';
+    const combined = foldText(`${shape} ${shortDesc}`);
+    if (hasWord(combined, 'wine rack')) return 'Furniture > Cabinets & Storage > Wine Racks';
+    if (hasWord(combined, 'pendant')) return 'Home & Garden > Lighting > Lighting Fixtures > Pendant Light Fixtures';
+    if (hasWord(combined, 'tower lamp') || hasWord(combined, 'floor lamp') || hasWord(combined, 'pillar')) return 'Home & Garden > Lighting > Lamps > Floor Lamps';
+    if (hasWord(combined, 'table lamp') || hasWord(combined, 'desk lamp') || hasWord(combined, 'lamp')) return 'Home & Garden > Lighting > Lamps > Desk Lamps';
+    if (hasWord(combined, 'coaster')) return 'Home & Garden > Kitchen & Dining > Barware > Coasters';
+    if (hasWord(combined, 'bathtub') || hasWord(combined, 'tub')) return 'Hardware > Plumbing > Plumbing Fixtures > Bathtubs';
+    if (hasWord(combined, 'sink') || hasWord(combined, 'vessel')) return 'Hardware > Plumbing > Plumbing Fixtures > Sinks';
+    if (hasWord(combined, 'sculpture') || hasWord(combined, 'statue') || hasWord(combined, 'carving') || hasWord(combined, 'figure')) return 'Home & Garden > Decor > Artwork > Sculptures & Statues';
+    if (hasWord(combined, 'bowl')) return 'Home & Garden > Decor > Decorative Bowls';
+    if (hasWord(combined, 'plate')) return 'Home & Garden > Decor > Decorative Plates';
+    if (hasWord(combined, 'tray')) return 'Home & Garden > Decor > Decorative Trays';
+    if (hasWord(combined, 'fountain') || hasWord(combined, 'waterfall')) return 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains';
+    if (hasWord(combined, 'garden sculpture') || hasWord(combined, 'lawn ornament')) return 'Home & Garden > Decor > Lawn Ornaments & Garden Sculptures > Garden Sculptures';
+    if (hasWord(combined, 'mirror')) return 'Home & Garden > Decor > Mirrors';
+    if (hasWord(combined, 'shot glass') || hasWord(combined, 'tequila glass')) return 'Home & Garden > Kitchen & Dining > Tableware > Drinkware > Shot Glasses';
+    if (hasWord(combined, 'wall light') || hasWord(combined, 'sconce')) return 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures';
+    if (hasWord(combined, 'board game') || hasWord(combined, 'chess') || hasWord(combined, 'checkers') || hasWord(combined, 'tic tac toe')) return 'Toys & Games > Games > Board Games';
     return 'Home & Garden > Decor';
 };
 
