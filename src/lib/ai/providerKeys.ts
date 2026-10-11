@@ -1,0 +1,54 @@
+import { getGeminiKey, setGeminiKey } from './keys';
+import type { ProviderConfig, ProviderId } from './providers/types';
+
+/**
+ * Keys, base URLs and models of every AI provider, kept in this browser's localStorage like the Gemini key always was
+ * (the server proxy that moves them off the device is a later change, and this file is the only one it touches).
+ * Gemini reads and writes through keys.ts so every screen that already takes a Gemini key keeps working.
+ */
+const PREFIX = 'ONYX_AI_';
+export const AI_CONFIG_EVENT = 'onyx-ai-config';
+
+const name = (id: ProviderId, field: 'KEY' | 'BASE' | 'MODEL') => PREFIX + id.toUpperCase() + '_' + field;
+const clean = (raw: unknown): string => {
+    const s = String(raw ?? '').trim().replace(/['"]/g, '');
+    return s === 'null' || s === 'undefined' ? '' : s;
+};
+const read = (key: string): string => {
+    try { return typeof window !== 'undefined' ? clean(window.localStorage.getItem(key)) : ''; } catch { return ''; }
+};
+const write = (key: string, value: string): void => {
+    try {
+        if (value) window.localStorage.setItem(key, value); else window.localStorage.removeItem(key);
+    } catch { /* storage blocked: nothing to fall back to */ }
+};
+const changed = () => { try { window.dispatchEvent(new Event(AI_CONFIG_EVENT)); } catch { /* no window */ } };
+
+export function getProviderConfig(id: ProviderId): ProviderConfig {
+    if (id === 'gemini') return { key: getGeminiKey(), model: read(name(id, 'MODEL')) || undefined };
+    return { key: read(name(id, 'KEY')), baseUrl: read(name(id, 'BASE')) || undefined, model: read(name(id, 'MODEL')) || undefined };
+}
+
+/** Saves the given fields; an empty string forgets that field; null forgets the whole provider. */
+export function setProviderConfig(id: ProviderId, patch: Partial<ProviderConfig> | null): void {
+    if (patch === null) {
+        if (id === 'gemini') setGeminiKey(''); else write(name(id, 'KEY'), '');
+        write(name(id, 'BASE'), ''); write(name(id, 'MODEL'), '');
+        changed();
+        return;
+    }
+    if (patch.key !== undefined) { if (id === 'gemini') setGeminiKey(patch.key); else write(name(id, 'KEY'), clean(patch.key)); }
+    if (patch.baseUrl !== undefined) write(name(id, 'BASE'), clean(patch.baseUrl).replace(/\/+$/, ''));
+    if (patch.model !== undefined) write(name(id, 'MODEL'), clean(patch.model));
+    changed();
+}
+
+/** compat can run without a key (a local Ollama or LM Studio), so it counts as set up once it has a base URL. */
+export function hasProviderKey(id: ProviderId): boolean {
+    const c = getProviderConfig(id);
+    return id === 'compat' ? !!c.baseUrl : c.key.length > 0;
+}
+
+export function listConfigured(): ProviderId[] {
+    return (['gemini', 'anthropic', 'openai', 'compat'] as const).filter(hasProviderKey);
+}
