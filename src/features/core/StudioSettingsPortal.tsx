@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import {
     isStudioSettingsOpenAtom,
     studioSettingsViewModeAtom,
@@ -26,6 +26,7 @@ import { THEME_ASSETS } from '../../lib/themes-assets';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import changelogText from '../../assets/CHANGELOG.md?raw';
 import { SiriAccessPanel } from './SiriAccessPanel';
+import { siriTokenPendingAtom } from './siriState';
 import { tr } from '../../lib/i18n';
 import { TactileSwitch } from '../../components/TactileSwitch';
 import './studioSettings.css';
@@ -96,6 +97,9 @@ export const StudioSettingsPortal: React.FC = () => {
     const [showAllLogs, setShowAllLogs]   = useState(false);
 
     const themeRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const sheetRef = useRef<HTMLDivElement | null>(null);
+    const siriTokenPending = useAtomValue(siriTokenPendingAtom);
+    const [closeWarn, setCloseWarn] = useState(false);
 
     const versions = useMemo(() => parseChangelog(changelogText), []);
 
@@ -125,19 +129,51 @@ export const StudioSettingsPortal: React.FC = () => {
         }
     }, [colorsOpen, theme, appStyle]);
 
+    // Focus moves into the dialog when it opens and goes back to the opener when it closes.
     useEffect(() => {
+        if (!isOpen) return;
+        const opener = document.activeElement as HTMLElement | null;
+        sheetRef.current?.focus();
+        return () => { opener?.focus?.(); };
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!siriTokenPending) setCloseWarn(false);
+    }, [siriTokenPending]);
+
+    // Escape closes the dialog (unless an inner control already used the key); Tab stays inside it.
+    useEffect(() => {
+        if (!isOpen) return;
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isOpen) {
+            if (e.key === 'Escape') {
+                if (e.defaultPrevented) return;
+                if (siriTokenPending) { setCloseWarn(true); return; }
                 setIsOpen(false);
+                return;
+            }
+            if (e.key === 'Tab' && sheetRef.current) {
+                const nodes = Array.from(sheetRef.current.querySelectorAll<HTMLElement>(
+                    'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                ));
+                if (nodes.length === 0) { e.preventDefault(); return; }
+                const first = nodes[0];
+                const last = nodes[nodes.length - 1];
+                const active = document.activeElement;
+                if (!sheetRef.current.contains(active)) { e.preventDefault(); first.focus(); }
+                else if (e.shiftKey && (active === first || active === sheetRef.current)) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
             }
         };
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, setIsOpen]);
+    }, [isOpen, setIsOpen, siriTokenPending]);
 
     if (!isOpen) return null;
 
-    const handleClose = () => setIsOpen(false);
+    const handleClose = () => {
+        if (siriTokenPending) { setCloseWarn(true); return; }
+        setIsOpen(false);
+    };
 
     const handleThemeKeyDown = (e: React.KeyboardEvent, index: number) => {
         let nextIndex = index;
@@ -164,6 +200,8 @@ export const StudioSettingsPortal: React.FC = () => {
                 role="dialog" 
                 aria-modal="true" 
                 aria-labelledby="ss-title" 
+                tabIndex={-1}
+                ref={sheetRef}
                 className={`ui-root ss-sheet ${viewMode === 'about' ? 'ss-sheet--logs' : ''}`}
             >
                 {/* Header */}
@@ -188,6 +226,12 @@ export const StudioSettingsPortal: React.FC = () => {
                         <X size={24} className="text-(--ss-fg)" />
                     </button>
                 </div>
+
+                {closeWarn && (
+                    <div role="alert" className="ss-closewarn">
+                        {tr("Copy your token before closing. It is shown only once.")}
+                    </div>
+                )}
 
                 {/* Settings View */}
                 {viewMode === 'settings' && (
@@ -219,8 +263,8 @@ export const StudioSettingsPortal: React.FC = () => {
                             <div className="flex flex-col">
                                 <span className="ss-section-caption">{tr("Appearance")}</span>
                                 <div className="ss-card">
-                                    <div className="ss-row" style={{ height: 'auto', padding: '20px 16px', flexDirection: 'column', alignItems: 'center' }}>
-                                        <div className="flex gap-8" role="radiogroup" aria-label={tr("Theme")}>
+                                    <div className="ss-row ss-row--theme">
+                                        <div className="flex flex-wrap justify-center gap-x-6 gap-y-4" role="radiogroup" aria-label={tr("Theme")}>
                                             {/* Dark */}
                                             <div className="flex flex-col items-center gap-2">
                                                 <button 
@@ -286,14 +330,14 @@ export const StudioSettingsPortal: React.FC = () => {
                                     <div className="ss-separator" />
                                     <div className="ss-row justify-between">
                                         <span className="text-[16px] text-(--ss-fg)">{tr("Interface style")}</span>
-                                        <div className="ss-segmented" role="radiogroup" aria-label={tr("Interface style")}>
+                                        <div className="ss-segmented" role="group" aria-label={tr("Interface style")}>
                                             {APP_STYLES.map(s => {
                                                 const meta = STYLE_META[s] ?? STYLE_META.rock;
                                                 const Icon = meta.icon;
                                                 return (
                                                     <button 
                                                         key={s}
-                                                        role="radio" 
+                                                        type="button"
                                                         aria-pressed={appStyle === s}
                                                         className="ss-segment"
                                                         onClick={() => setAppStyle(s)}
@@ -318,8 +362,8 @@ export const StudioSettingsPortal: React.FC = () => {
                                             <span className="text-[16px] text-(--ss-fg)">{tr("Language")}</span>
                                         </div>
                                         <div className="ss-segmented">
-                                            <button className="ss-segment" aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>EN</button>
-                                            <button className="ss-segment" aria-pressed={language === 'es'} onClick={() => setLanguage('es')}>ES</button>
+                                            <button type="button" className="ss-segment" aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>EN</button>
+                                            <button type="button" className="ss-segment" aria-pressed={language === 'es'} onClick={() => setLanguage('es')}>ES</button>
                                         </div>
                                     </div>
                                     <div className="ss-separator ss-separator--icon" />
@@ -350,13 +394,13 @@ export const StudioSettingsPortal: React.FC = () => {
                             {/* Color Tokens */}
                             <div className="flex flex-col">
                                 <div className="ss-card">
-                                    <div className="ss-row ss-row-clickable justify-between" onClick={() => setColorsOpen(!colorsOpen)} aria-expanded={colorsOpen}>
-                                        <div className="flex items-center gap-4">
-                                            <div className="ss-icon-tile bg-cyan-500/10 text-cyan-500"><Palette size={16}/></div>
+                                    <button type="button" className="ss-row ss-row-clickable justify-between w-full text-left" onClick={() => setColorsOpen(!colorsOpen)} aria-expanded={colorsOpen}>
+                                        <span className="flex items-center gap-4">
+                                            <span className="ss-icon-tile bg-cyan-500/10 text-cyan-500"><Palette size={16}/></span>
                                             <span className="text-[16px] text-(--ss-fg)">{tr("Color tokens")}</span>
-                                        </div>
+                                        </span>
                                         <ChevronRight size={20} className={`text-(--ss-fg3) transition-transform ${colorsOpen ? 'rotate-90' : ''}`} />
-                                    </div>
+                                    </button>
                                     {colorsOpen && (
                                         <>
                                             <div className="ss-separator ml-0" />
@@ -395,10 +439,10 @@ export const StudioSettingsPortal: React.FC = () => {
 
                             {/* Sign Out */}
                             <div className="ss-card mt-8">
-                                <div className="ss-row ss-row-clickable justify-center" onClick={logout}>
+                                <button type="button" className="ss-row ss-row-clickable justify-center w-full" onClick={() => logout()}>
                                     <LogOut size={20} className="text-(--ss-danger) mr-2" />
                                     <span className="text-[16px] text-(--ss-danger)">{tr("Sign out")}</span>
-                                </div>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -420,13 +464,13 @@ export const StudioSettingsPortal: React.FC = () => {
                                     return (
                                         <div key={v.version}>
                                             {i > 0 && <div className="ss-separator ml-0" />}
-                                            <div className="ss-row ss-row-clickable justify-between" style={{ minHeight: '44px' }} onClick={() => setLogsExpanded({...logsExpanded, [v.version]: !isOpen})}>
+                                            <button type="button" className="ss-row ss-row-clickable justify-between w-full text-left" style={{ minHeight: '44px' }} aria-expanded={!!isOpen} onClick={() => setLogsExpanded({...logsExpanded, [v.version]: !isOpen})}>
                                                 <span className="text-[16px] font-[600] text-(--ss-fg)">{v.version}</span>
-                                                <div className="flex items-center gap-2">
+                                                <span className="flex items-center gap-2">
                                                     <span className="text-[12px] text-(--ss-fg2)">{v.date}</span>
                                                     <ChevronRight size={16} className={`text-(--ss-fg3) transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-                                                </div>
-                                            </div>
+                                                </span>
+                                            </button>
                                             {isOpen && (
                                                 <div className="px-4 pb-4">
                                                     {v.sections.map((sec: any, si: number) => (
@@ -475,8 +519,8 @@ export const StudioSettingsPortal: React.FC = () => {
                         <div className="w-[1px] h-[12px] bg-(--ss-sep) hidden sm:block" />
                         <div className="flex items-center gap-2">
                             <span className="text-(--ss-fg3)">{tr("Sync")}</span>
-                            <div className="w-1.5 h-1.5 rounded-full bg-(--ss-ok)" />
-                            <span className="text-(--ss-fg)">{tr("ACTIVE")}</span>
+                            <div className={`w-1.5 h-1.5 rounded-full ${isOffline ? 'bg-(--ss-warn)' : 'bg-(--ss-ok)'}`} />
+                            <span className="text-(--ss-fg)">{isOffline ? tr("OFFLINE") : tr("ACTIVE")}</span>
                         </div>
                         <div className="w-[1px] h-[12px] bg-(--ss-sep) hidden sm:block" />
                         <div className="flex items-center gap-2">

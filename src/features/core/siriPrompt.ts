@@ -50,7 +50,7 @@ When done, list each shortcut name and any step you could not build exactly. I w
 
 const PROMPT_TEMPLATE_ES = `Eres un asistente que me ayuda a crear atajos de iOS (app Atajos) para la app de inventario Onyx.mx, en mi iPhone.
 Usa solo las acciones indicadas. Si una acción no existe en mi app Atajos, detente y dime su nombre exacto. No sustituyas acciones, no agregues otras URLs y no cambies mis otros atajos.
-Los nombres de acciones van en inglés, como aparecen en el editor. Si mi iPhone está en español, usa el nombre que aparezca en pantalla (UNVERIFIED para los nombres en español).
+Los nombres de acciones van en inglés, como aparecen en el editor. Si mi iPhone está en español, usa el nombre que aparezca en pantalla (los nombres en español pueden variar).
 
 Idioma: {{LANG}}
 Crea estos atajos con estos nombres exactos: {{SHORTCUT_NAMES}}

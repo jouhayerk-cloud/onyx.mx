@@ -2,7 +2,7 @@
 html.theme-aqua {
     --ss-fg: rgba(0, 0, 0, 0.88);
     --ss-fg2: rgba(0, 0, 0, 0.64);
-    --ss-fg3: rgba(0, 0, 0, 0.50);
+    --ss-fg3: rgba(0, 0, 0, 0.62);
     --ss-sep: rgba(0, 0, 0, 0.12);
     --ss-fill: rgba(255, 255, 255, 0.62);
     --ss-fill-hover: rgba(255, 255, 255, 0.80);
@@ -473,7 +473,7 @@ html:root:root:root .ss-sheet .sa-status-revoked {
 }
 
 .sa-revoked-dim {
-    opacity: 0.6;
+    opacity: 1;   /* a dimmed badge fell below 4.5:1 contrast; the Revoked word and icon already say it */
 }
 
 /* Revoke Text Button */
@@ -605,11 +605,15 @@ html:root:root:root .ss-sheet .sa-btn-danger {
 }
 
 .sa-btn-danger:hover:not(:disabled) {
-    background: rgba(255, 122, 122, 0.12);
+    background: color-mix(in srgb, var(--ss-danger, #ff7a7a) 14%, transparent);
 }
 
 html:root:root:root .ss-sheet .sa-btn-danger:hover:not(:disabled) {
-    background: rgba(255, 122, 122, 0.12) !important;
+    background: color-mix(in srgb, var(--ss-danger, #ff7a7a) 14%, transparent) !important;
+}
+
+html:root:root:root .ss-sheet .sa-btn-secondary:hover:not(:disabled) {
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.16)) !important;
 }
 
 .sa-btn-danger:disabled {

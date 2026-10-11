@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useAtom } from 'jotai';
-import { themeAtom, languageAtom } from '../../lib/atoms';
+import { useAtom, useSetAtom } from 'jotai';
+import { themeAtom, languageAtom, userAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { tr } from '../../lib/i18n';
 import { AlertCircle, X, Check, Copy, Loader2 } from 'lucide-react';
 import { buildSiriSetupPrompt, resolveSiriEndpoint } from './siriPrompt';
+import { siriTokenPendingAtom } from './siriState';
 import './siriAccess.css';
 
 interface SiriTokenItem {
@@ -24,6 +25,14 @@ export const SiriAccessPanel: React.FC = () => {
     const [tokens, setTokens] = useState<SiriTokenItem[]>([]);
     const [label, setLabel] = useState<string>('iPhone');
     const [createdToken, setCreatedToken] = useState<string | null>(null);
+    const setTokenPending = useSetAtom(siriTokenPendingAtom);
+    const [user] = useAtom(userAtom);
+    const canCopyLogin = user?.role === 'Developer' || user?.role === 'Admin';
+    // The login token is read ahead of the tap: iOS only allows a clipboard write inside the tap itself, not after an await.
+    const loginTokenRef = useRef<string | null>(null);
+    const [loginCopied, setLoginCopied] = useState<boolean>(false);
+    const [loginFallback, setLoginFallback] = useState<string | null>(null);
+    const [loginError, setLoginError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
     const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -74,12 +83,18 @@ export const SiriAccessPanel: React.FC = () => {
         if (!confirmRevokeId) return;
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
+                e.stopPropagation();
+                e.preventDefault();
                 setConfirmRevokeId(null);
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', handleKeyDown, true);
+        return () => document.removeEventListener('keydown', handleKeyDown, true);
     }, [confirmRevokeId]);
+
+    // Tell the Settings dialog while a one-time token is on screen, so it does not close and lose it.
+    useEffect(() => { setTokenPending(createdToken !== null); }, [createdToken, setTokenPending]);
+    useEffect(() => () => setTokenPending(false), [setTokenPending]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -195,6 +210,30 @@ export const SiriAccessPanel: React.FC = () => {
         }
     }, [showPromptFallback]);
 
+    useEffect(() => {
+        if (!canCopyLogin) return;
+        let active = true;
+        void supabase.auth.getSession().then(({ data }) => { if (active) loginTokenRef.current = data.session?.access_token ?? null; });
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => { loginTokenRef.current = session?.access_token ?? null; });
+        return () => { active = false; sub.subscription.unsubscribe(); };
+    }, [canCopyLogin]);
+
+    const handleCopyLogin = () => {
+        const t = loginTokenRef.current;
+        setLoginFallback(null);
+        if (!t) { setLoginError(tr("No active session. Sign in again.")); return; }
+        setLoginError(null);
+        const showByHand = () => { setLoginFallback(t); setLoginError(tr("Could not copy. Select the text below and copy it by hand.")); };
+        try {
+            navigator.clipboard.writeText(t).then(
+                () => { setLoginCopied(true); setTimeout(() => setLoginCopied(false), 2000); },
+                showByHand,
+            );
+        } catch {
+            showByHand();
+        }
+    };
+
     const handleCopyPrompt = async () => {
         try {
             await navigator.clipboard.writeText(promptText);
@@ -215,7 +254,7 @@ export const SiriAccessPanel: React.FC = () => {
         try {
             const d = new Date(isoString);
             if (isNaN(d.getTime())) return isoString;
-            return d.toLocaleDateString(undefined, {
+            return d.toLocaleDateString(language === 'es' ? 'es-MX' : 'en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
@@ -317,7 +356,7 @@ export const SiriAccessPanel: React.FC = () => {
                     </div>
                     <button
                         type="submit"
-                        disabled={isBusy || !label.trim()}
+                        disabled={isBusy || !label.trim() || createdToken !== null}
                         className="sa-btn-primary"
                     >
                         {isCreating ? (
@@ -379,6 +418,57 @@ export const SiriAccessPanel: React.FC = () => {
                     </p>
                 </div>
             </div>
+
+            {canCopyLogin && (
+                <div className="sa-section">
+                    <div className="sa-section-caption">
+                        {tr("For testing from a PC")}
+                    </div>
+                    <div className="sa-card sa-prompt-card">
+                        <p className="sa-prompt-hint">
+                            {tr("Copies your current login token, so you do not need the browser console.")}
+                        </p>
+                        <div className="sa-prompt-actions">
+                            <button
+                                type="button"
+                                onClick={handleCopyLogin}
+                                className="sa-btn-secondary"
+                                aria-live="polite"
+                            >
+                                {loginCopied ? (
+                                    <>
+                                        <Check size={16} aria-hidden="true" />
+                                        <span>{tr("Copied")}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy size={16} aria-hidden="true" />
+                                        <span>{tr("Copy login token")}</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                        {loginError && (
+                            <p className="sa-prompt-note" role="alert">{loginError}</p>
+                        )}
+                        {loginFallback && (
+                            <div className="sa-prompt-fallback">
+                                <textarea
+                                    readOnly
+                                    value={loginFallback}
+                                    className="sa-prompt-textarea"
+                                    rows={4}
+                                    aria-label={tr("Login token")}
+                                    onFocus={(e) => e.currentTarget.select()}
+                                />
+                            </div>
+                        )}
+                        <p className="sa-prompt-note">
+                            {tr("Valid for about an hour. Anyone who has it can act as you. Paste it only into your own PowerShell, never into chat.")}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Token List Section */}
             <div className="sa-section">

@@ -3401,4 +3401,12 @@ export const esCatalog: Record<string, string> = {
   'Copy Siri setup prompt': 'Copiar prompt de configuración de Siri',
   'The prompt never contains your token. Type the token into the shortcut yourself.': 'El prompt nunca contiene tu token. Escribe el token en el atajo tú mismo.',
   'Siri setup prompt': 'Prompt de configuración de Siri',
+  'Copy your token before closing. It is shown only once.': 'Copia tu token antes de cerrar. Solo se muestra una vez.',
+  'For testing from a PC': 'Para probar desde una PC',
+  'Copies your current login token, so you do not need the browser console.': 'Copia tu token de inicio de sesión actual, así no necesitas la consola del navegador.',
+  'Copy login token': 'Copiar token de inicio de sesión',
+  'Login token': 'Token de inicio de sesión',
+  'No active session. Sign in again.': 'No hay sesión activa. Inicia sesión de nuevo.',
+  'Could not copy. Select the text below and copy it by hand.': 'No se pudo copiar. Selecciona el texto de abajo y cópialo a mano.',
+  'Valid for about an hour. Anyone who has it can act as you. Paste it only into your own PowerShell, never into chat.': 'Vale cerca de una hora. Quien lo tenga puede actuar como tú. Pégalo solo en tu propio PowerShell, nunca en el chat.',
 };

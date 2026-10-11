@@ -41,7 +41,7 @@
 html.theme-aqua .ss-sheet {
   --ss-fg: rgba(0, 0, 0, 0.88);
   --ss-fg2: rgba(0, 0, 0, 0.64);
-  --ss-fg3: rgba(0, 0, 0, 0.50);
+  --ss-fg3: rgba(0, 0, 0, 0.62);
   --ss-sep: rgba(0, 0, 0, 0.12);
   --ss-fill: rgba(255, 255, 255, 0.62);
   --ss-fill-hover: rgba(255, 255, 255, 0.80);
@@ -336,4 +336,63 @@ html:root:root:root .ss-sheet .ss-icon-btn {
 }
 html:root:root:root .ss-sheet .ss-icon-btn:hover {
   background-color: var(--ss-fill) !important;
+}
+
+/* ── Review fixes ─────────────────────────────────────────────────── */
+html:root:root:root .ss-sheet .ss-closewarn {
+  margin: 0 16px 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--ss-fg) !important;
+  background-color: color-mix(in srgb, var(--ss-warn) 18%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--ss-warn) 55%, transparent) !important;
+}
+
+/* The theme picker row: the Tailwind inline padding lost to the .ss-row rule, so it has its own class. */
+html:root:root:root .ss-sheet .ss-row.ss-row--theme {
+  height: auto;
+  padding: 20px 16px !important;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Rows that are real buttons (Color tokens, Sign out, changelog versions): drop the button chrome. */
+html:root:root:root .ss-sheet button.ss-row {
+  width: 100%;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+html:root:root:root .ss-sheet button.ss-row.justify-center { text-align: center; }
+html:root:root:root .ss-sheet button.ss-row:focus-visible,
+html:root:root:root .ss-sheet .ss-segment:focus-visible,
+html:root:root:root .ss-sheet .ss-theme-btn:focus-visible {
+  outline: 2px solid var(--ss-accent) !important;
+  outline-offset: 2px;
+}
+
+/* Segmented controls: 44 px targets on touch screens; on Aqua the selected text is the primary ink (the accent fails 4.5:1 on white). */
+@media (pointer: coarse) {
+  html:root:root:root .ss-sheet .ss-segment {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+}
+html.theme-aqua:root:root:root .ss-sheet .ss-segment[aria-pressed="true"] {
+  color: var(--ss-fg) !important;
+  font-weight: 600;
+}
+
+/* Very narrow phones: let a label and its control wrap instead of squeezing. */
+@media (max-width: 360px) {
+  html:root:root:root .ss-sheet .ss-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
 }
