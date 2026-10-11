@@ -27,6 +27,7 @@ import { useTranslation, useLogout } from '../../lib/hooks';
 import changelogText from '../../assets/CHANGELOG.md?raw';
 import { SiriAccessPanel } from './SiriAccessPanel';
 import { McpAccessPanel } from './McpAccessPanel';
+import { AiProvidersPanel } from './AiProvidersPanel';
 import { siriTokenPendingAtom } from './siriState';
 import { tr } from '../../lib/i18n';
 import { TactileSwitch } from '../../components/TactileSwitch';
@@ -439,6 +440,9 @@ export const StudioSettingsPortal: React.FC = () => {
                                 </div>
                                 <div className="ss-siri">
                                     <McpAccessPanel />
+                                </div>
+                                <div className="ss-siri">
+                                    <AiProvidersPanel />
                                 </div>
                                 </>
                             )}

@@ -9,6 +9,7 @@
  */
 
 import { tr } from '../i18n';
+import { AiProviderError } from './providers/types';
 
 export type AiErrorCode = 'key_missing' | 'quota' | 'timeout' | 'cancelled' | 'response';
 
@@ -67,9 +68,36 @@ export class AiResponseError extends AiError {
 
 export const isAiError = (err: unknown): err is AiError => err instanceof AiError;
 
+export const isAiProviderError = (err: unknown): err is AiProviderError => err instanceof AiProviderError;
+
+/** User-facing text for AiProviderError kinds, through tr(). */
+export function providerErrorMessage(err: AiProviderError): string {
+    switch (err.kind) {
+        case 'auth':
+            return tr('API key is invalid or unauthorized');
+        case 'rate':
+            return tr('Rate limit exceeded; try again in a minute');
+        case 'cors':
+            return tr('The browser blocked the call (CORS or network error)');
+        case 'timeout':
+            return tr('AI provider did not answer within the timeout');
+        case 'bad_request':
+            return err.message ? `${tr('Bad request')}: ${err.message}` : tr('Bad request');
+        case 'config':
+            return tr(err.message || 'Pick a model in Settings');
+        case 'server':
+        default:
+            return err.status ? `${tr('AI provider server error')} (${err.status})` : tr('AI provider server error');
+    }
+}
+
 /** A one-line message for any failure, typed or not, fit for a toast or log. */
 export const aiErrorMessage = (err: unknown): string => {
+    if (err instanceof AiProviderError) return providerErrorMessage(err);
     if (err instanceof AiError) return tr(err.message);
     if (err instanceof Error) return err.message || err.name;
     return String(err ?? 'Unknown error');
 };
+
+export { AiProviderError };
+

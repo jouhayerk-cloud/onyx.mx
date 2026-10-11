@@ -31,7 +31,13 @@ import {
     AiQuotaError,
     AiResponseError,
     AiTimeoutError,
+    providerErrorMessage,
 } from './errors';
+import { getRoute, ROUTABLE_JOBS, type RouteJob } from './routing';
+import { getProviderConfig, hasProviderKey } from './providerKeys';
+import { getProvider } from './providers';
+import { AiProviderError, type ProviderConfig, type AiRequest } from './providers/types';
+
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -65,6 +71,12 @@ const toInlineData = (img: AiImage): { mimeType: string; data: string } => {
     if (m) return { mimeType: m[1], data: m[2] };
     return { mimeType: 'image/jpeg', data: img };
 };
+
+const toAiImagePart = (img: AiImage) => {
+    const inline = toInlineData(img);
+    return { mimeType: inline.mimeType, base64: inline.data };
+};
+
 
 /** Waits, unless the signal aborts first. Shared with bgReplace's retry. */
 export const aiSleep = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve, reject) => {
@@ -200,13 +212,98 @@ function extractText(data: any): string {
 
 export async function generateText(opts: GenerateOptions): Promise<string> {
     const spec = AI_MODELS[opts.job];
-    const data = await post(opts.job, opts.model || spec.model, buildBody(opts), opts.timeoutMs ?? spec.timeoutMs, opts.signal);
+    const isRoutable = ROUTABLE_JOBS.includes(opts.job as RouteJob);
+    if (isRoutable) {
+        const route = getRoute(opts.job as RouteJob);
+        if (route.provider !== 'gemini') {
+            const provider = getProvider(route.provider);
+            if (!provider) throw new AiProviderError(`Unknown AI provider: ${route.provider}`, undefined, 'config');
+            if (!hasProviderKey(route.provider)) {
+                throw new AiProviderError(`No API key configured for ${provider.info.label}`, undefined, 'config');
+            }
+            const savedCfg = getProviderConfig(route.provider);
+            const model = opts.model || route.model || savedCfg.model;
+            if (!model) {
+                throw new AiProviderError('Pick a model in Settings', undefined, 'config');
+            }
+            const cfg: ProviderConfig = {
+                ...savedCfg,
+                model,
+            };
+            const req: AiRequest = {
+                prompt: opts.prompt,
+                system: opts.system,
+                images: (opts.images || []).map(toAiImagePart),
+                temperature: opts.temperature,
+                timeoutMs: opts.timeoutMs ?? spec.timeoutMs,
+                signal: opts.signal,
+            };
+            console.log(`[ai] ${route.provider}: ${model}`);
+            return withAiSlot(spec.jobClass, async () => {
+                try {
+                    const result = await provider.generateText(cfg, req);
+                    return result.text;
+                } catch (err) {
+                    if (err instanceof AiProviderError) {
+                        err.message = providerErrorMessage(err);
+                        throw err;
+                    }
+                    throw err;
+                }
+            }, opts.signal);
+        }
+    }
+    const model = opts.model || (isRoutable ? getRoute(opts.job as RouteJob).model : undefined) || spec.model;
+    const data = await post(opts.job, model, buildBody(opts), opts.timeoutMs ?? spec.timeoutMs, opts.signal);
     return extractText(data);
 }
 
 export async function generateJson<T = unknown>(opts: GenerateJsonOptions): Promise<T> {
     const spec = AI_MODELS[opts.job];
-    const data = await post(opts.job, opts.model || spec.model, buildBody(opts, opts.schema), opts.timeoutMs ?? spec.timeoutMs, opts.signal);
+    const isRoutable = ROUTABLE_JOBS.includes(opts.job as RouteJob);
+    if (isRoutable) {
+        const route = getRoute(opts.job as RouteJob);
+        if (route.provider !== 'gemini') {
+            const provider = getProvider(route.provider);
+            if (!provider) throw new AiProviderError(`Unknown AI provider: ${route.provider}`, undefined, 'config');
+            if (!hasProviderKey(route.provider)) {
+                throw new AiProviderError(`No API key configured for ${provider.info.label}`, undefined, 'config');
+            }
+            const savedCfg = getProviderConfig(route.provider);
+            const model = opts.model || route.model || savedCfg.model;
+            if (!model) {
+                throw new AiProviderError('Pick a model in Settings', undefined, 'config');
+            }
+            const cfg: ProviderConfig = {
+                ...savedCfg,
+                model,
+            };
+            const req: AiRequest = {
+                prompt: opts.prompt,
+                system: opts.system,
+                images: (opts.images || []).map(toAiImagePart),
+                schema: opts.schema,
+                temperature: opts.temperature,
+                timeoutMs: opts.timeoutMs ?? spec.timeoutMs,
+                signal: opts.signal,
+            };
+            console.log(`[ai] ${route.provider}: ${model}`);
+            return withAiSlot(spec.jobClass, async () => {
+                try {
+                    const result = await provider.generateJson(cfg, req);
+                    return result.json as T;
+                } catch (err) {
+                    if (err instanceof AiProviderError) {
+                        err.message = providerErrorMessage(err);
+                        throw err;
+                    }
+                    throw err;
+                }
+            }, opts.signal);
+        }
+    }
+    const model = opts.model || (isRoutable ? getRoute(opts.job as RouteJob).model : undefined) || spec.model;
+    const data = await post(opts.job, model, buildBody(opts, opts.schema), opts.timeoutMs ?? spec.timeoutMs, opts.signal);
     let text = extractText(data);
     // JSON mode should make fences impossible; older models occasionally add
     // them anyway, and stripping costs nothing.
@@ -217,6 +314,7 @@ export async function generateJson<T = unknown>(opts: GenerateJsonOptions): Prom
         throw new AiResponseError('Gemini returned malformed JSON', { detail: text.slice(0, 500), cause });
     }
 }
+
 
 /**
  * The SDK instance, for the one job that still uses it: image generation in

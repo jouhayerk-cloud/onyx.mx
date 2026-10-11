@@ -1,0 +1,473 @@
+@import './siriAccess.css';
+
+/* AI Providers Panel Styling (ap- prefix) */
+
+.ap-panel {
+    /* Layout inherited from .sa-panel */
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Warning banner */
+.ap-warning-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--ss-radius, 14px);
+    background: color-mix(in srgb, var(--ss-warn, #ffc857) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ss-warn, #ffc857) 35%, transparent);
+    box-sizing: border-box;
+}
+
+html:root:root:root .ss-sheet .ap-warning-banner {
+    border-radius: var(--ss-radius, 14px) !important;
+    background: color-mix(in srgb, var(--ss-warn, #ffc857) 12%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--ss-warn, #ffc857) 35%, transparent) !important;
+}
+
+.ap-warning-icon {
+    color: var(--ss-warn, #ffc857);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+html:root:root:root .ss-sheet .ap-warning-icon {
+    color: var(--ss-warn, #ffc857) !important;
+}
+
+.ap-warning-text {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    margin: 0;
+}
+
+html:root:root:root .ss-sheet .ap-warning-text {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+/* Card containing providers */
+.ap-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--ss-radius, 14px);
+    background: var(--ss-fill, rgba(255, 255, 255, 0.07));
+    overflow: hidden;
+}
+
+html:root:root:root .ss-sheet .ap-card {
+    border-radius: var(--ss-radius, 14px) !important;
+    background: var(--ss-fill, rgba(255, 255, 255, 0.07)) !important;
+}
+
+/* Individual provider row block */
+.ap-provider-row {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.ap-provider-row + .ap-provider-row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background-color: var(--ss-sep, rgba(255, 255, 255, 0.12));
+}
+
+html:root:root:root .ss-sheet .ap-provider-row + .ap-provider-row::before {
+    background-color: var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+}
+
+/* Header inside each provider row */
+.ap-provider-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 28px;
+}
+
+.ap-provider-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.ap-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ap-status-dot--active {
+    background-color: var(--ss-ok, #5ee08a);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--ss-ok, #5ee08a) 50%, transparent);
+}
+
+html:root:root:root .ss-sheet .ap-status-dot--active {
+    background-color: var(--ss-ok, #5ee08a) !important;
+    box-shadow: 0 0 6px color-mix(in srgb, var(--ss-ok, #5ee08a) 50%, transparent) !important;
+}
+
+.ap-status-dot--inactive {
+    background-color: var(--ss-fg3, rgba(255, 255, 255, 0.35));
+}
+
+html:root:root:root .ss-sheet .ap-status-dot--inactive {
+    background-color: var(--ss-fg3, rgba(255, 255, 255, 0.35)) !important;
+}
+
+.ap-provider-name {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.33;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+}
+
+html:root:root:root .ss-sheet .ap-provider-name {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+.ap-docs-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ss-accent, var(--main-color, #00aeef));
+    padding: 6px;
+    border-radius: 6px;
+    text-decoration: none;
+    opacity: 0.85;
+    transition: opacity 150ms ease;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+html:root:root:root .ss-sheet .ap-docs-link {
+    color: var(--ss-accent, var(--main-color, #00aeef)) !important;
+}
+
+.ap-docs-link:hover {
+    opacity: 1;
+}
+
+.ap-provider-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ap-provider-badge {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+}
+
+html:root:root:root .ss-sheet .ap-provider-badge {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+/* Key Saved display */
+.ap-key-saved-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 38px;
+    padding: 2px 0;
+}
+
+.ap-key-saved {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ss-ok, #5ee08a);
+}
+
+html:root:root:root .ss-sheet .ap-key-saved {
+    color: var(--ss-ok, #5ee08a) !important;
+}
+
+.ap-check-icon {
+    flex-shrink: 0;
+}
+
+/* Key input row with optional cancel */
+.ap-key-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+/* Model row with datalist and Load models button */
+.ap-model-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.ap-model-row .ui-input {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Actions row (Save, Test, Remove) */
+.ap-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+/* Test results banner */
+.ap-test-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+    box-sizing: border-box;
+}
+
+.ap-test-banner--ok {
+    color: var(--ss-ok, #5ee08a);
+    background: color-mix(in srgb, var(--ss-ok, #5ee08a) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ss-ok, #5ee08a) 30%, transparent);
+}
+
+html:root:root:root .ss-sheet .ap-test-banner--ok {
+    color: var(--ss-ok, #5ee08a) !important;
+    background: color-mix(in srgb, var(--ss-ok, #5ee08a) 12%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--ss-ok, #5ee08a) 30%, transparent) !important;
+}
+
+.ap-test-banner--err {
+    color: var(--ss-danger, #ff7a7a);
+    background: color-mix(in srgb, var(--ss-danger, #ff7a7a) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ss-danger, #ff7a7a) 30%, transparent);
+}
+
+html:root:root:root .ss-sheet .ap-test-banner--err {
+    color: var(--ss-danger, #ff7a7a) !important;
+    background: color-mix(in srgb, var(--ss-danger, #ff7a7a) 12%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--ss-danger, #ff7a7a) 30%, transparent) !important;
+}
+
+/* Routing section */
+.ap-routing-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.ap-route-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ap-route-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ap-route-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+}
+
+html:root:root:root .ss-sheet .ap-route-title {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+.ap-route-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+}
+
+@media (max-width: 480px) {
+    .ap-route-controls {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ap-quiet-note {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.35;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+    margin: 4px 0 0 0;
+}
+
+html:root:root:root .ss-sheet .ap-quiet-note {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+/* Overrides for Field & Input when rendered inside .ss-sheet */
+html:root:root:root .ss-sheet .ap-panel .ui-field {
+    gap: 4px;
+    width: 100%;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-field__label label {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-field__hint {
+    font-size: 11px !important;
+    color: var(--ss-fg3, rgba(255, 255, 255, 0.50)) !important;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-input {
+    min-height: 38px;
+    height: 38px;
+    font-size: 13px !important;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+    background: var(--ss-field, rgba(0, 0, 0, 0.28)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+    border-radius: 8px !important;
+    padding: 0 10px !important;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 150ms ease;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-input:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-key {
+    min-height: 36px;
+    height: 36px;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    padding: 0 14px !important;
+    border-radius: 8px !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-key--go {
+    color: var(--ss-on-accent, #ffffff) !important;
+    background: var(--ss-accent, var(--main-color, #00aeef)) !important;
+    border: 1px solid transparent !important;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-key--danger {
+    color: var(--ss-danger, #ff7a7a) !important;
+    border: 1px solid color-mix(in srgb, var(--ss-danger, #ff7a7a) 40%, transparent) !important;
+    background: transparent !important;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-key--danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ss-danger, #ff7a7a) 14%, transparent) !important;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-key--quiet {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+    background: transparent !important;
+}
+
+html:root:root:root .ss-sheet .ap-panel .ui-key--quiet:hover:not(:disabled) {
+    background: var(--ss-fill-hover, rgba(255, 255, 255, 0.11)) !important;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+}
+
+/* Visible focus across all interactive controls */
+.ap-panel button:focus-visible,
+.ap-panel input:focus-visible,
+.ap-panel select:focus-visible,
+.ap-panel a:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+/* Touch screens (coarse pointer) minimum target size 44px */
+@media (pointer: coarse) {
+    .ap-panel .ui-key,
+    .ap-panel .ui-input,
+    .ap-panel .ap-docs-link {
+        min-height: 44px !important;
+    }
+
+    html:root:root:root .ss-sheet .ap-panel .ui-input {
+        min-height: 44px !important;
+        height: 44px !important;
+    }
+
+    html:root:root:root .ss-sheet .ap-panel .ui-key {
+        min-height: 44px !important;
+        height: 44px !important;
+    }
+}
+
+/* Prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .ap-panel *,
+    .ap-panel *::before,
+    .ap-panel *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0ms !important;
+    }
+}
+
+/* Prefers reduced transparency */
+@media (prefers-reduced-transparency: reduce) {
+    .ap-card,
+    .ap-warning-banner,
+    .ap-routing-card {
+        background: #1c1c1e;
+    }
+
+    html:root:root:root .ss-sheet .ap-card,
+    html:root:root:root .ss-sheet .ap-warning-banner,
+    html:root:root:root .ss-sheet .ap-routing-card {
+        background: #1c1c1e !important;
+    }
+
+    html.theme-aqua .ap-card,
+    html.theme-aqua .ap-warning-banner,
+    html.theme-aqua .ap-routing-card {
+        background: #f2f2f7;
+    }
+
+    html.theme-aqua html:root:root:root .ss-sheet .ap-card,
+    html.theme-aqua html:root:root:root .ss-sheet .ap-warning-banner,
+    html.theme-aqua html:root:root:root .ss-sheet .ap-routing-card {
+        background: #f2f2f7 !important;
+    }
+}
