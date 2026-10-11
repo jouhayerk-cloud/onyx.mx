@@ -20,6 +20,14 @@ import {
   shapeTelemetryRow,
   type OnyxChanTelemetryResult,
 } from "./onyxDataTools.ts";
+import { selectColumns, capPayload } from "./inventoryView.ts";
+import { ALL_ONYX_TOOLS } from "./allTools.ts";
+import {
+  validateAuditArgs,
+  validateDocJobArgs,
+  runAuditTrailRecentCalls,
+  runDocumentJobsStatus,
+} from "./auditDocTools.ts";
 
 export interface CallerContext {
   role: string;
@@ -123,7 +131,7 @@ export async function executeOnyxDataTool(
       : caller;
 
     // 2. Validate Tool Manifest & Role Authorization
-    const tool = ONYX_DATA_TOOLS.find((t) => t.name === toolName);
+    const tool = ALL_ONYX_TOOLS.find((t) => t.name === toolName);
     if (!tool) {
       return {
         isError: true,
@@ -166,9 +174,31 @@ export async function executeOnyxDataTool(
       return { content: [{ type: "text", text: JSON.stringify(telemetry, null, 2) }] };
     }
 
+    // ── audit_trail_recent_calls and document_jobs_check_status (read only, shaped columns only) ──
+    if (toolName === "audit_trail_recent_calls") {
+      const parsedAudit = validateAuditArgs(args);
+      if (!parsedAudit.ok) {
+        return { isError: true, content: [{ type: "text", text: `Invalid arguments: ${parsedAudit.error}` }] };
+      }
+      const auditResult = await runAuditTrailRecentCalls(supabase, parsedAudit.params);
+      return { content: [{ type: "text", text: JSON.stringify(auditResult) }], structuredContent: auditResult };
+    }
+    if (toolName === "document_jobs_check_status") {
+      const parsedJobs = validateDocJobArgs(args);
+      if (!parsedJobs.ok) {
+        return { isError: true, content: [{ type: "text", text: `Invalid arguments: ${parsedJobs.error}` }] };
+      }
+      const jobsResult = await runDocumentJobsStatus(supabase, parsedJobs.params);
+      return { content: [{ type: "text", text: JSON.stringify(jobsResult) }], structuredContent: jobsResult };
+    }
+
     if (toolName === "inventory_search") {
       const { limit, offset } = clampPagination(args, 20);
-      let q = supabase.from("inventory").select("*", { count: "exact" });
+      let q = supabase
+        .from("inventory")
+        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance), {
+          count: "exact",
+        });
 
       if (isVendor) {
         q = q.eq("vendor_id", scopedVendor || "");
@@ -217,9 +247,16 @@ export async function executeOnyxDataTool(
         has_more: totalCount > offset + items.length,
       };
 
+      const { items: cappedItems, truncated } = capPayload(resultPayload, 60000);
+      const payload = {
+        ...resultPayload,
+        items: cappedItems,
+        ...(truncated ? { truncated: true, has_more: true } : {}),
+      };
+
       return {
-        content: [{ type: "text", text: JSON.stringify(resultPayload, null, 2) }],
-        structuredContent: resultPayload,
+        content: [{ type: "text", text: JSON.stringify(payload) }],
+        structuredContent: payload,
       };
     }
 
@@ -305,7 +342,12 @@ export async function executeOnyxDataTool(
       }
 
       const { limit, offset } = clampPagination(args, 50);
-      let q = supabase.from("inventory").select("*", { count: "exact" }).eq("crate_id", crateId);
+      let q = supabase
+        .from("inventory")
+        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance), {
+          count: "exact",
+        })
+        .eq("crate_id", crateId);
       if (isVendor) {
         q = q.eq("vendor_id", scopedVendor || "");
       }
@@ -329,9 +371,16 @@ export async function executeOnyxDataTool(
         has_more: totalCount > offset + items.length,
       };
 
+      const { items: cappedItems, truncated } = capPayload(resultPayload, 60000);
+      const payload = {
+        ...resultPayload,
+        items: cappedItems,
+        ...(truncated ? { truncated: true, has_more: true } : {}),
+      };
+
       return {
-        content: [{ type: "text", text: JSON.stringify(resultPayload, null, 2) }],
-        structuredContent: resultPayload,
+        content: [{ type: "text", text: JSON.stringify(payload) }],
+        structuredContent: payload,
       };
     }
 
@@ -349,7 +398,12 @@ export async function executeOnyxDataTool(
       }
 
       const { limit, offset } = clampPagination(args, 50);
-      let q = supabase.from("inventory").select("*", { count: "exact" }).eq("vendor_id", vendorId);
+      let q = supabase
+        .from("inventory")
+        .select(selectColumns(args.view as string | undefined, args.fields as string[] | undefined, isFinance), {
+          count: "exact",
+        })
+        .eq("vendor_id", vendorId);
       if (args.status) {
         q = q.eq("status", String(args.status).trim());
       }
@@ -373,9 +427,16 @@ export async function executeOnyxDataTool(
         has_more: totalCount > offset + items.length,
       };
 
+      const { items: cappedItems, truncated } = capPayload(resultPayload, 60000);
+      const payload = {
+        ...resultPayload,
+        items: cappedItems,
+        ...(truncated ? { truncated: true, has_more: true } : {}),
+      };
+
       return {
-        content: [{ type: "text", text: JSON.stringify(resultPayload, null, 2) }],
-        structuredContent: resultPayload,
+        content: [{ type: "text", text: JSON.stringify(payload) }],
+        structuredContent: payload,
       };
     }
 

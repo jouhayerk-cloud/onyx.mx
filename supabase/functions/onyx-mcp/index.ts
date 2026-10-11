@@ -11,6 +11,7 @@ import {
   CallerContext,
 } from "../_shared/onyxDataHandlers.ts";
 import { escapeLikeValue } from "../_shared/likeEscape.ts";
+import { ALL_ONYX_TOOLS } from "../_shared/allTools.ts";
 import { isMcpToken, lookupMcpToken, allowRequest } from "../_shared/mcpToken.ts";
 
 // ── Supabase Client Setup ────────────────────────────────────────────────────
@@ -234,7 +235,7 @@ serve(async (req: Request): Promise<Response> => {
         status: "ok",
         server: "onyx-mcp",
         version: "1.0.0",
-        tools_count: ONYX_DATA_TOOLS.length,
+        tools_count: ALL_ONYX_TOOLS.length,
       }),
       {
         status: 200,
@@ -278,7 +279,7 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      const tool = ONYX_DATA_TOOLS.find((t) => t.name === toolName);
+      const tool = ALL_ONYX_TOOLS.find((t) => t.name === toolName);
       if (!tool) {
         return new Response(
           JSON.stringify({ error: `Tool not found: ${toolName}` }),
@@ -336,7 +337,7 @@ serve(async (req: Request): Promise<Response> => {
 
       // JSON-RPC method: tools/list
       if (method === "tools/list") {
-        const filteredTools = ONYX_DATA_TOOLS.filter((tool) =>
+        const filteredTools = ALL_ONYX_TOOLS.filter((tool) =>
           tool.requiredRoles.includes(caller.role)
         );
         return jsonRpcSuccess(id, { tools: filteredTools });
@@ -351,7 +352,7 @@ serve(async (req: Request): Promise<Response> => {
           return jsonRpcError(id, -32602, "Invalid params: 'name' is required");
         }
 
-        const tool = ONYX_DATA_TOOLS.find((t) => t.name === toolName);
+        const tool = ALL_ONYX_TOOLS.find((t) => t.name === toolName);
         if (!tool) {
           return jsonRpcError(id, -32601, `Tool not found: ${toolName}`);
         }

@@ -122,6 +122,20 @@ export const ONYX_DATA_TOOLS: OnyxDataTool[] = [
           default: 0,
           minimum: 0,
         },
+        view: {
+          type: "string",
+          enum: ["compact", "full"],
+          description: "Payload detail view: 'compact' (default, curated core fields) or 'full' (all columns).",
+          default: "compact",
+        },
+        fields: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          maxItems: 30,
+          description: "Optional explicit list of column names to return (at most 30). Overrides view preset.",
+        },
       },
     },
     requiredRoles: ALL_STAFF,
@@ -181,6 +195,20 @@ export const ONYX_DATA_TOOLS: OnyxDataTool[] = [
           minimum: 1,
           maximum: 200,
         },
+        view: {
+          type: "string",
+          enum: ["compact", "full"],
+          description: "Payload detail view: 'compact' (default, curated core fields) or 'full' (all columns).",
+          default: "compact",
+        },
+        fields: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          maxItems: 30,
+          description: "Optional explicit list of column names to return (at most 30). Overrides view preset.",
+        },
       },
       required: ["crate_id"],
     },
@@ -213,6 +241,20 @@ export const ONYX_DATA_TOOLS: OnyxDataTool[] = [
           description: "Pagination offset for slicing through records (default 0).",
           default: 0,
           minimum: 0,
+        },
+        view: {
+          type: "string",
+          enum: ["compact", "full"],
+          description: "Payload detail view: 'compact' (default, curated core fields) or 'full' (all columns).",
+          default: "compact",
+        },
+        fields: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          maxItems: 30,
+          description: "Optional explicit list of column names to return (at most 30). Overrides view preset.",
         },
       },
       required: ["vendor_id"],
