@@ -62,8 +62,23 @@ The Siri access panel in Settings is hidden until `VITE_SIRI_TOKENS` is `true`. 
 ## Phase 5: the Shortcut on your iPhone (about 15 minutes)
 Follow `docs\siri\SHORTCUT_BUILD_GUIDE.md` step by step: a Text action named "Siri token" with your token, Get Contents of URL (POST, JSON body, `Authorization: Bearer <Siri token>`), Get Dictionary Value `spoken_text`, Speak Text. Name the Shortcut with the phrases from the guide ("Inventory search", "Buscar inventario"). Test by voice, then in Settings revoke the token, run the Shortcut again (it must fail with 401), and create a new one. Anything on the iPhone I could not verify is marked `VERIFY ON IPHONE` in the guide: tell me what you see.
 
-## Phase 6: use the MCP server
-`onyx-mcp` answers JSON-RPC over HTTPS with a Supabase user token (`tools/list`, `tools/call`). The Onyx agent inside the app can use it; connecting it to an outside AI client needs an OAuth bridge that does not exist yet, so that is a later wave (see `docs\mcp\TOOL_BACKLOG.md` for the next tools).
+## Phase 6: use the MCP server from a PC (Claude Code)
+`onyx-mcp` answers JSON-RPC over HTTPS (`initialize`, `tools/list`, `tools/call`). It accepts two kinds of bearer token and checks them itself (`verify_jwt = false` in `supabase/config.toml`):
+- a Supabase login token (about 1 hour), or
+- a **personal MCP token** (`mcp_` plus 43 characters, 180 days, up to 5 active per person, 120 requests a minute per token). It is created in Settings, MCP access, shown once, carries your app role, and is revoked in the same panel. A Siri token does not work here and an MCP token does not work on the Siri function.
+
+Steps (PowerShell, any folder):
+1. Settings, scroll to MCP access, type a label (default Claude Code), Create MCP token, copy the ready command (the token is shown once).
+2. Run it. If `onyx` already exists, run `claude mcp remove onyx` first:
+   ```powershell
+   claude mcp add --transport http onyx https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/onyx-mcp --header "Authorization: Bearer <your MCP token>"
+   claude mcp list
+   ```
+   Expected: `onyx ... Connected`. A literal `<your MCP token>` placeholder gives HTTP 401.
+3. Start a new Claude Code session (a running session does not pick up new servers) and ask it to list the onyx tools. The tools visible depend on your role; money fields follow FINANCE_ROLES.
+4. Lost or leaked token: Settings, MCP access, Revoke. The next call gets 401.
+
+Claude Code stores the token as plain text in `.claude.json` in your user folder (it hides it in command output). Revoke the token when you retire the PC.
 
 ## Emergency stop
 Revoke every Siri token: `supabase db query --linked --project-ref yircifkayqpuydfdqzlm "update public.siri_tokens set revoked_at = now() where revoked_at is null"`.
