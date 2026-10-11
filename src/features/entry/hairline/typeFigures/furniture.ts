@@ -884,55 +884,72 @@ function buildWineRack(cam: Cam, dims: Dims, holes?: number, variant?: string | 
 
 // ── tables (diamond, round, free-form, rectangular) ─────────────────────────
 
+/**
+ * The diamond table is a cut gem standing on its point (the owner's photo, 11 Oct 2026): a wide flat ten-sided top, a short vertical
+ * girdle, then triangular facets that taper down to a small base ring turned half a step so the facets meet in a zig-zag.
+ */
 function buildTableDiamond(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
-    const slabH = Math.max(1.8, h * 0.14);
-    const legH = h - slabH;
     const cx = w / 2;
     const cy = d / 2;
+    const N = 10;
+    const girdleZ = h * 0.8;
+    // A little irregularity so the polygon reads as cut by hand, not as a template.
+    const wob = [1, 0.97, 1.02, 0.98, 1, 0.97, 1.03, 0.98, 1.01, 0.97];
+    const ringAt = (scale: number, offset: number): P2[] => Array.from({ length: N }, (_, k) => {
+        const ang = ((k + offset) / N) * Math.PI * 2 + Math.PI / N;
+        const r = scale * wob[k];
+        return [cx + (w / 2) * r * Math.cos(ang), cy + (d / 2) * r * Math.sin(ang)] as P2;
+    });
+    const angleOf = (k: number, offset: number) => ((k + offset) / N) * Math.PI * 2 + Math.PI / N;
+    // Facing the viewer: the camera looks from the +x +y corner.
+    const faces = (ang: number) => Math.cos(ang) + Math.sin(ang) > -0.15;
 
-    // Pedestal base (faceted loft)
-    const bw = w * 0.44;
-    const bd = d * 0.44;
-    const bRing: P2[] = [
-        [cx, cy - bd / 2],
-        [cx + bw / 2, cy],
-        [cx, cy + bd / 2],
-        [cx - bw / 2, cy],
-    ];
-    const tw = w * 0.28;
-    const td = d * 0.28;
-    const tRing: P2[] = [
-        [cx, cy - td / 2],
-        [cx + tw / 2, cy],
-        [cx, cy + td / 2],
-        [cx - tw / 2, cy],
-    ];
-    const pedestal = loft(cam, bRing, 0, tRing, legH);
-    const pCrease = pathOf([proj(cam, cx, cy + bd / 2, 0), proj(cam, cx, cy + td / 2, legH)], false);
+    const top = ringAt(1, 0);
+    const base = ringAt(0.4, 0.5);
+    const at = (pt: P2, z: number) => proj(cam, pt[0], pt[1], z);
+    const topPts = top.map(pt => at(pt, h));
+    const girdlePts = top.map(pt => at(pt, girdleZ));
+    const basePts = base.map(pt => at(pt, 0));
 
-    // Diamond top slab
-    const cr = Math.min(w, d) * 0.05;
-    const topRing: P2[] = [
-        [cx - cr, cr * 0.5],
-        [cx + cr, cr * 0.5],
-        [w - cr * 0.5, cy - cr],
-        [w - cr * 0.5, cy + cr],
-        [cx + cr, d - cr * 0.5],
-        [cx - cr, d - cr * 0.5],
-        [cr * 0.5, cy + cr],
-        [cr * 0.5, cy - cr],
-    ];
-    const topSlab = loft(cam, topRing, legH, topRing, h);
+    const body = pathOf(hull([...topPts, ...girdlePts, ...basePts]));
 
-    const sheen = pathOf([proj(cam, cr * 0.5, cy, h), proj(cam, w - cr * 0.5, cy, h)], false);
-    const bright = discY(cam, cx, cy + bd / 2, legH * 0.2, Math.min(w, d) * 0.025, 8);
+    const creases: string[] = [];
+    const visibleTop = top.map((_, k) => faces(angleOf(k, 0)));
+    const visibleBase = base.map((_, k) => faces(angleOf(k, 0.5)));
+    for (let k = 0; k < N; k++) {
+        const k1 = (k + 1) % N;
+        if (visibleTop[k]) creases.push(pathOf([topPts[k], girdlePts[k]], false));
+        if (visibleTop[k] && visibleTop[k1]) creases.push(pathOf([girdlePts[k], girdlePts[k1]], false));
+        if (visibleBase[k]) {
+            creases.push(pathOf([girdlePts[k], basePts[k]], false));
+            creases.push(pathOf([girdlePts[k1], basePts[k]], false));
+        }
+        if (visibleBase[k] && visibleBase[(k + 1) % N]) creases.push(pathOf([basePts[k], basePts[(k + 1) % N]], false));
+    }
+
+    // Banded grain across the top, like the onyx in the photo.
+    const grain = (dx: number, sway: number): string => pathOf([
+        proj(cam, cx + w * (dx - sway), cy - d * 0.42, h),
+        proj(cam, cx + w * (dx + sway * 0.4), cy - d * 0.14, h),
+        proj(cam, cx + w * (dx - sway * 0.6), cy + d * 0.16, h),
+        proj(cam, cx + w * (dx + sway), cy + d * 0.42, h),
+    ], false);
+    // The one bright mark: a small lit facet on the nearest triangle (screen space, so it never floats off the body).
+    let front = 0;
+    for (let k = 1; k < N; k++) if (Math.cos(angleOf(k, 0.5)) + Math.sin(angleOf(k, 0.5)) > Math.cos(angleOf(front, 0.5)) + Math.sin(angleOf(front, 0.5))) front = k;
+    const f1 = (front + 1) % N;
+    const mx = (girdlePts[front][0] + girdlePts[f1][0] + basePts[front][0]) / 3;
+    const my = (girdlePts[front][1] + girdlePts[f1][1] + basePts[front][1]) / 3;
+    const bright = pathOf([[mx, my - 4], [mx + 3.5, my], [mx, my + 4], [mx - 3.5, my]]);
 
     return [
-        ...solidParts(pedestal),
-        { d: pCrease, kind: 'crease' },
-        ...solidParts(topSlab),
-        { d: sheen, kind: 'crease' },
+        { d: body, kind: 'plate' },
+        ...creases.map((c): FigurePart => ({ d: c, kind: 'crease' })),
+        { d: pathOf(topPts), kind: 'face' },
+        { d: grain(-0.12, 0.03), kind: 'crease' },
+        { d: grain(0.02, 0.04), kind: 'crease' },
+        { d: grain(0.16, 0.03), kind: 'crease' },
         { d: bright, kind: 'bright' },
     ];
 }
