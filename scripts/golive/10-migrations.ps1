@@ -5,9 +5,9 @@
 .DESCRIPTION
     WHAT IT DOES:
     - Verifies current working directory is the repository root.
-    - Displays each pending migration in strict order with purpose, risk, and rollback plan.
-    - Explicitly excludes already applied migrations and deferred decision files.
-    - Prompts Ramses for confirmation (Y/N) before applying each single migration file.
+    - Displays pending draft migrations in strict order with purpose, risk, and rollback plan.
+    - Explicitly excludes already applied migrations (document_jobs, onyxchan_audit, siri_tokens) and deferred decision files.
+    - Prompts Ramses for confirmation (Y/N) before applying draft migration files (e.g. type_library).
     - Executes the single-file migration command against Supabase project yircifkayqpuydfdqzlm.
     - Supports -WhatIf to preview what would be executed without making any changes.
 
@@ -15,7 +15,7 @@
     - Never runs 'supabase db push' (which is unsafe due to timestamp differences).
     - Never auto-applies migrations without Ramses answering 'Y'.
     - Never applies the three migrations requiring Ramses' decision.
-    - Never re-applies migrations that are already live under alternate timestamps.
+    - Never re-applies migrations that are already applied.
     - Never logs, prints, or exposes database connection credentials or secrets.
 
 .PARAMETER WhatIf
@@ -30,13 +30,18 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# Refuse to run if not in repository root
+function Prop($o, $n) {
+    if ($null -ne $o -and $o.PSObject.Properties[$n]) { return $o.$n }
+    return $null
+}
+
+# Refuse to run if not in repository root (or valid repo containing supabase\config.toml)
 $expectedRoot = "C:\Jouhayerk\git\onyxchan-wt\GOLIVE-1"
 $currentDir = (Get-Item -LiteralPath (Get-Location).Path).FullName.TrimEnd('\/')
 $normExpected = $expectedRoot.TrimEnd('\/')
 
 if (-not [string]::Equals($currentDir, $normExpected, [System.StringComparison]::OrdinalIgnoreCase) -and -not (Test-Path -Path "supabase\config.toml")) {
-    Write-Error "Refusing to run: Current working directory '$currentDir' is not the repository root '$normExpected'."
+    Write-Error "Refusing to run: Current working directory '$currentDir' is not the repository root '$normExpected' or lacks supabase\config.toml."
     exit 1
 }
 
@@ -53,43 +58,31 @@ if ($WhatIf) {
     Write-Host ""
 }
 
-# The 4 approved migrations to apply in order
-$migrations = @(
-    @{
-        File     = "supabase\migrations\20261005120000_document_jobs.sql"
-        Name     = "20261005120000_document_jobs.sql"
-        Purpose  = "Document generation queue and export paperwork tracking"
-        Risk     = "Low (Additive tables and helper functions)"
-        Rollback = "DROP TABLE IF EXISTS document_jobs CASCADE;"
-    },
-    @{
-        File     = "supabase\migrations\20261010120000_onyxchan_audit.sql"
-        Name     = "20261010120000_onyxchan_audit.sql"
-        Purpose  = "Audit logging tables and triggers for OnyxChan operations"
-        Risk     = "Low (Additive audit tables and indices)"
-        Rollback = "DROP TABLE IF EXISTS onyxchan_audit_log CASCADE;"
-    },
-    @{
-        File     = "supabase\migrations\20261011130000_type_library.sql"
-        Name     = "20261011130000_type_library.sql"
-        Purpose  = "Type definitions and metadata catalog for season 826"
-        Risk     = "Low (Additive type library catalog)"
-        Rollback = "DROP TABLE IF EXISTS type_library CASCADE;"
-    },
-    @{
-        File     = "supabase\migrations\20261011140000_siri_tokens.sql"
-        Name     = "20261011140000_siri_tokens.sql"
-        Purpose  = "Siri shortcut auth tokens store and token verification RPC"
-        Risk     = "Low (Additive token table and auth helper)"
-        Rollback = "DROP TABLE IF EXISTS siri_tokens CASCADE;"
-    }
-)
+Write-Host "Already applied migrations (DO NOT RE-APPLY):" -ForegroundColor DarkGray
+Write-Host "  - 20261005120000_document_jobs.sql (Applied)" -ForegroundColor DarkGray
+Write-Host "  - 20261010120000_onyxchan_audit.sql (Applied: table onyxchan_audit)" -ForegroundColor DarkGray
+Write-Host "  - 20261011140000_siri_tokens.sql (Applied: table siri_tokens)" -ForegroundColor DarkGray
+Write-Host "  - 20261011150000_device_functions_null_role_guard.sql (Applied)" -ForegroundColor DarkGray
+Write-Host "  - 20261011160000_revoke_anon_new_tables.sql (Applied)" -ForegroundColor DarkGray
+Write-Host ""
 
 Write-Host "Reminder: The following 3 files require Ramses' decision and are SKIPPED:" -ForegroundColor Yellow
 Write-Host "  - 20260725_pico_bridge_schema.sql (Retire legacy pico-bridge or keep?)" -ForegroundColor Gray
 Write-Host "  - create_onyxchan_devices.sql (Conflicts with live onyxchan_devices?)" -ForegroundColor Gray
 Write-Host "  - PENDING_consolidate_inventory_and_server_side_cypher.sql (Hold for season 826 stability?)" -ForegroundColor Gray
 Write-Host ""
+
+# Only pending draft migration(s): type_library gated behind explicit prompt
+$migrations = @(
+    @{
+        File     = "supabase\migrations\20261011130000_type_library.sql"
+        Name     = "20261011130000_type_library.sql"
+        Purpose  = "Type definitions and metadata catalog for season 826 (DRAFT - requires explicit approval)"
+        Risk     = "Low (Additive type library catalog)"
+        Rollback = "DROP TABLE IF EXISTS type_library CASCADE;"
+        IsDraft  = $true
+    }
+)
 
 $index = 0
 foreach ($m in $migrations) {
@@ -101,6 +94,9 @@ foreach ($m in $migrations) {
     Write-Host "  Risk:     $($m.Risk)" -ForegroundColor Gray
     Write-Host "  Rollback: $($m.Rollback)" -ForegroundColor DarkYellow
     Write-Host "  File:     $fullPath" -ForegroundColor Gray
+    if (Prop $m "IsDraft") {
+        Write-Host "  [NOTICE] This migration is marked DRAFT. Gated behind explicit approval." -ForegroundColor Yellow
+    }
 
     if (-not (Test-Path -Path $fullPath)) {
         Write-Host "  [WARN] File does not exist on disk: $fullPath" -ForegroundColor Red

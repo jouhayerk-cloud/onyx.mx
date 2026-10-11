@@ -31,6 +31,14 @@ html:root:root:root .ss-sheet .ma-code-block {
     box-shadow: none !important;
 }
 
+/* Multi-line code block for PowerShell variant */
+.ma-code-multiline {
+    white-space: pre-wrap;
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 0;
+}
+
 /* Callout card adjustments */
 .ma-callout {
     display: flex;
@@ -48,6 +56,77 @@ html:root:root:root .ss-sheet .ma-code-block {
 
 html:root:root:root .ss-sheet .ma-callout-note {
     color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+/* Disclosure button and container for history variant */
+.ma-disclosure-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.ma-disclosure-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ss-accent, var(--main-color, #00aeef));
+    box-shadow: none;
+    text-shadow: none;
+    cursor: pointer;
+    text-align: left;
+    transition: opacity 150ms ease;
+    width: fit-content;
+}
+
+html:root:root:root .ss-sheet .ma-disclosure-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    color: var(--ss-accent, var(--main-color, #00aeef)) !important;
+}
+
+.ma-disclosure-btn:hover {
+    opacity: 0.8;
+}
+
+html:root:root:root .ss-sheet .ma-disclosure-btn:hover {
+    opacity: 0.8 !important;
+}
+
+.ma-disclosure-btn:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+html:root:root:root .ss-sheet .ma-disclosure-btn:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+.ma-disclosure-icon {
+    transition: transform 150ms ease;
+    flex-shrink: 0;
+}
+
+.ma-disclosure-icon-open {
+    transform: rotate(180deg);
+    transition: transform 150ms ease;
+    flex-shrink: 0;
+}
+
+.ma-disclosure-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 4px;
 }
 
 /* Small help card shown when no token is active */
@@ -75,6 +154,12 @@ html:root:root:root .ss-sheet .ma-callout-note {
 
 html:root:root:root .ss-sheet .ma-help-note {
     color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+/* Token list note */
+.ma-tokens-note {
+    padding: 0 4px;
+    margin: 4px 0 0 0;
 }
 
 /* Textarea fallback when clipboard copy fails */
@@ -114,6 +199,17 @@ html:root:root:root .ss-sheet .ma-fallback-textarea {
 html:root:root:root .ss-sheet .ma-fallback-textarea:focus-visible {
     outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
     outline-offset: 2px !important;
+}
+
+/* Touch target for disclosure button */
+@media (pointer: coarse) {
+    .ma-disclosure-btn {
+        min-height: 44px;
+    }
+
+    html:root:root:root .ss-sheet .ma-disclosure-btn {
+        min-height: 44px !important;
+    }
 }
 
 /* Prefers-reduced-motion */

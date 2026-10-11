@@ -6,7 +6,7 @@
     WHAT IT DOES:
     - Verifies current working directory is the repository root.
     - Displays each local edge function to deploy in strict order:
-        1. onyx-mcp (JWT only)
+        1. onyx-mcp (verify_jwt false, accepts Supabase JWT or personal mcp_ token)
         2. onyxchan-mcp (staff JWT and device tokens, verify_jwt false)
         3. onyx-ai (Gemini AI features)
         4. siri-token (verify_jwt true)
@@ -34,13 +34,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# Refuse to run if not in repository root
+# Refuse to run if not in repository root (or valid repo containing supabase\config.toml)
 $expectedRoot = "C:\Jouhayerk\git\onyxchan-wt\GOLIVE-1"
 $currentDir = (Get-Item -LiteralPath (Get-Location).Path).FullName.TrimEnd('\/')
 $normExpected = $expectedRoot.TrimEnd('\/')
 
 if (-not [string]::Equals($currentDir, $normExpected, [System.StringComparison]::OrdinalIgnoreCase) -and -not (Test-Path -Path "supabase\config.toml")) {
-    Write-Error "Refusing to run: Current working directory '$currentDir' is not the repository root '$normExpected'."
+    Write-Error "Refusing to run: Current working directory '$currentDir' is not the repository root '$normExpected' or lacks supabase\config.toml."
     exit 1
 }
 
@@ -67,24 +67,24 @@ Write-Host ""
 $functions = @(
     @{
         Name       = "onyx-mcp"
-        VerifyJwt  = $true
-        ExtraFlags = @()
+        VerifyJwt  = $false
+        ExtraFlags = @("--no-verify-jwt")
         Secrets    = "SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY"
-        Desc       = "Data MCP server for agents & web app (JWT-only auth)"
+        Desc       = "Data MCP server for agents & web app (accepts Supabase JWT or personal mcp_ token)"
     },
     @{
         Name       = "onyxchan-mcp"
         VerifyJwt  = $false
         ExtraFlags = @("--no-verify-jwt")
         Secrets    = "SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ONYXCHAN_ALLOWED_ORIGIN"
-        Desc       = "Staff JWT and hardware device tokens (ocd_ prefix; app-level auth)"
+        Desc       = "Staff JWT and hardware device tokens (ocd_ prefix; app-level auth - HOLD: deploy when gateway ready)"
     },
     @{
         Name       = "onyx-ai"
         VerifyJwt  = $true
         ExtraFlags = @()
         Secrets    = "SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY"
-        Desc       = "Gemini AI assistant bridge"
+        Desc       = "Gemini AI assistant bridge (HOLD: deploy after setting GEMINI_API_KEY)"
     },
     @{
         Name       = "siri-token"
@@ -111,8 +111,8 @@ foreach ($fn in $functions) {
     Write-Host "  Verify JWT:  $($fn.VerifyJwt)" -ForegroundColor Gray
     Write-Host "  Secrets:     $($fn.Secrets)" -ForegroundColor DarkYellow
 
-    # Construct deploy command
-    $cmdArgs = @("functions", "deploy", $fn.Name, "--project-ref", $projectRef)
+    # Construct deploy command with --use-api
+    $cmdArgs = @("functions", "deploy", $fn.Name, "--project-ref", $projectRef, "--use-api")
     if ($fn.ExtraFlags.Count -gt 0) {
         $cmdArgs += $fn.ExtraFlags
     }

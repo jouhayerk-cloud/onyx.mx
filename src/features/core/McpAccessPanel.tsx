@@ -3,8 +3,9 @@ import { useAtom, useSetAtom } from 'jotai';
 import { themeAtom, languageAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { tr } from '../../lib/i18n';
-import { AlertCircle, X, Check, Copy, Loader2 } from 'lucide-react';
+import { AlertCircle, X, Check, Copy, Loader2, ChevronDown } from 'lucide-react';
 import { siriTokenPendingAtom } from './siriState';
+import { resolveMcpEndpoint } from './mcpEndpoint';
 import './siriAccess.css';
 import './mcpAccess.css';
 
@@ -38,16 +39,24 @@ export const McpAccessPanel: React.FC = () => {
     const [copiedToken, setCopiedToken] = useState<boolean>(false);
     const [copiedCommand, setCopiedCommand] = useState<boolean>(false);
     const [copiedHelpCommand, setCopiedHelpCommand] = useState<boolean>(false);
+    const [copiedPsVariant, setCopiedPsVariant] = useState<boolean>(false);
 
     const [showTokenFallback, setShowTokenFallback] = useState<boolean>(false);
     const [showCommandFallback, setShowCommandFallback] = useState<boolean>(false);
+    const [showHelpFallback, setShowHelpFallback] = useState<boolean>(false);
+    const [showPsFallback, setShowPsFallback] = useState<boolean>(false);
+
+    const [isHistoryDisclosureOpen, setIsHistoryDisclosureOpen] = useState<boolean>(false);
 
     const tokenFallbackRef = useRef<HTMLTextAreaElement>(null);
     const commandFallbackRef = useRef<HTMLTextAreaElement>(null);
+    const helpFallbackRef = useRef<HTMLTextAreaElement>(null);
+    const psFallbackRef = useRef<HTMLTextAreaElement>(null);
 
     const copyTokenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const copyCommandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const copyHelpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const copyPsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const isBusy = isLoading || isCreating || revokingId !== null;
 
@@ -128,6 +137,7 @@ export const McpAccessPanel: React.FC = () => {
             if (copyTokenTimerRef.current) clearTimeout(copyTokenTimerRef.current);
             if (copyCommandTimerRef.current) clearTimeout(copyCommandTimerRef.current);
             if (copyHelpTimerRef.current) clearTimeout(copyHelpTimerRef.current);
+            if (copyPsTimerRef.current) clearTimeout(copyPsTimerRef.current);
         };
     }, [setTokenPending]);
 
@@ -144,6 +154,20 @@ export const McpAccessPanel: React.FC = () => {
             commandFallbackRef.current.select();
         }
     }, [showCommandFallback]);
+
+    useEffect(() => {
+        if (showHelpFallback && helpFallbackRef.current) {
+            helpFallbackRef.current.focus();
+            helpFallbackRef.current.select();
+        }
+    }, [showHelpFallback]);
+
+    useEffect(() => {
+        if (showPsFallback && psFallbackRef.current) {
+            psFallbackRef.current.focus();
+            psFallbackRef.current.select();
+        }
+    }, [showPsFallback]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -186,10 +210,10 @@ export const McpAccessPanel: React.FC = () => {
                 setCreatedToken(data.token);
                 setShowTokenFallback(false);
                 setShowCommandFallback(false);
+                setShowPsFallback(false);
+                setIsHistoryDisclosureOpen(false);
                 setLabel('Claude Code');
                 await fetchTokens();
-            } else if (data?.status === 409 || data?.error?.includes('409')) {
-                setErrorMessage(tr("You already have 5 active tokens. Revoke one first."));
             } else {
                 setErrorMessage(data?.error || tr("Failed to create token."));
             }
@@ -259,9 +283,17 @@ export const McpAccessPanel: React.FC = () => {
         }
     };
 
+    const mcpEndpoint = resolveMcpEndpoint(import.meta.env.VITE_SUPABASE_URL);
+
     const readyCommand = createdToken
-        ? `claude mcp add --transport http onyx https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/onyx-mcp --header "Authorization: Bearer ${createdToken}"`
+        ? `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header "Authorization: Bearer ${createdToken}"`
         : '';
+
+    const psVariantCommand = [
+        '$t = Read-Host "MCP token" -AsSecureString',
+        "[Environment]::SetEnvironmentVariable('ONYX_MCP_TOKEN', [System.Net.NetworkCredential]::new('', $t).Password, 'User')",
+        `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header 'Authorization: Bearer \${ONYX_MCP_TOKEN}'`
+    ].join('\n');
 
     const handleCopyCommand = async () => {
         if (!readyCommand) return;
@@ -284,21 +316,45 @@ export const McpAccessPanel: React.FC = () => {
         }
     };
 
+    const handleCopyPsVariant = async () => {
+        try {
+            await navigator.clipboard.writeText(psVariantCommand);
+            setCopiedPsVariant(true);
+            setShowPsFallback(false);
+            if (copyPsTimerRef.current) clearTimeout(copyPsTimerRef.current);
+            copyPsTimerRef.current = setTimeout(() => setCopiedPsVariant(false), 2000);
+        } catch {
+            const ok = copyFallback(psVariantCommand);
+            if (ok) {
+                setCopiedPsVariant(true);
+                setShowPsFallback(false);
+                if (copyPsTimerRef.current) clearTimeout(copyPsTimerRef.current);
+                copyPsTimerRef.current = setTimeout(() => setCopiedPsVariant(false), 2000);
+            } else {
+                setShowPsFallback(true);
+            }
+        }
+    };
+
     const helpCommand =
-        'claude mcp add --transport http onyx https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/onyx-mcp --header "Authorization: Bearer <your MCP token>"';
+        `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header "Authorization: Bearer <your MCP token>"`;
 
     const handleCopyHelpCommand = async () => {
         try {
             await navigator.clipboard.writeText(helpCommand);
             setCopiedHelpCommand(true);
+            setShowHelpFallback(false);
             if (copyHelpTimerRef.current) clearTimeout(copyHelpTimerRef.current);
             copyHelpTimerRef.current = setTimeout(() => setCopiedHelpCommand(false), 2000);
         } catch {
             const ok = copyFallback(helpCommand);
             if (ok) {
                 setCopiedHelpCommand(true);
+                setShowHelpFallback(false);
                 if (copyHelpTimerRef.current) clearTimeout(copyHelpTimerRef.current);
                 copyHelpTimerRef.current = setTimeout(() => setCopiedHelpCommand(false), 2000);
+            } else {
+                setShowHelpFallback(true);
             }
         }
     };
@@ -431,6 +487,8 @@ export const McpAccessPanel: React.FC = () => {
                                 setCreatedToken(null);
                                 setShowTokenFallback(false);
                                 setShowCommandFallback(false);
+                                setShowPsFallback(false);
+                                setIsHistoryDisclosureOpen(false);
                             }}
                             className="sa-btn-plain"
                         >
@@ -452,8 +510,76 @@ export const McpAccessPanel: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Disclosure: Keep token out of command history (P1) */}
+                    <div className="ma-disclosure-wrap">
+                        <button
+                            type="button"
+                            aria-expanded={isHistoryDisclosureOpen}
+                            aria-controls="mcp-history-disclosure-body"
+                            onClick={() => setIsHistoryDisclosureOpen((prev) => !prev)}
+                            className="ma-disclosure-btn"
+                        >
+                            <ChevronDown
+                                size={14}
+                                className={isHistoryDisclosureOpen ? 'ma-disclosure-icon-open' : 'ma-disclosure-icon'}
+                                aria-hidden="true"
+                            />
+                            <span>{tr("Keep the token out of your command history")}</span>
+                        </button>
+
+                        {isHistoryDisclosureOpen && (
+                            <div id="mcp-history-disclosure-body" className="ma-disclosure-body">
+                                <pre className="sa-callout-code ma-code-block ma-code-multiline">
+                                    {psVariantCommand}
+                                </pre>
+
+                                <div className="sa-callout-actions">
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyPsVariant}
+                                        className="sa-btn-secondary"
+                                        aria-live="polite"
+                                    >
+                                        {copiedPsVariant ? (
+                                            <>
+                                                <Check size={16} aria-hidden="true" />
+                                                <span>{tr("Copied")}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Copy size={16} aria-hidden="true" />
+                                                <span>{tr("Copy commands")}</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                {showPsFallback && (
+                                    <div className="ma-fallback-wrap">
+                                        <textarea
+                                            ref={psFallbackRef}
+                                            readOnly
+                                            value={psVariantCommand}
+                                            className="ma-fallback-textarea"
+                                            rows={4}
+                                            aria-label={tr("Copy commands")}
+                                            onFocus={(e) => e.currentTarget.select()}
+                                        />
+                                    </div>
+                                )}
+
+                                <p className="sa-prompt-note ma-callout-note">
+                                    {tr("Open a new terminal before starting Claude Code.")}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
                     <p className="sa-prompt-note ma-callout-note">
-                        {tr("If onyx is already added, run: claude mcp remove onyx first. Then start a new Claude Code session.")}
+                        {tr("If onyx is already added, run: claude mcp remove onyx --scope user first. Then start a new Claude Code session.")}
+                    </p>
+                    <p className="sa-prompt-note ma-callout-note">
+                        {tr("Check with: claude mcp get onyx")}
                     </p>
                 </div>
             )}
@@ -521,6 +647,19 @@ export const McpAccessPanel: React.FC = () => {
                                 )}
                             </button>
                         </div>
+                        {showHelpFallback && (
+                            <div className="ma-fallback-wrap">
+                                <textarea
+                                    ref={helpFallbackRef}
+                                    readOnly
+                                    value={helpCommand}
+                                    className="ma-fallback-textarea"
+                                    rows={4}
+                                    aria-label={tr("Copy command")}
+                                    onFocus={(e) => e.currentTarget.select()}
+                                />
+                            </div>
+                        )}
                         <p className="sa-prompt-note ma-help-note">
                             {tr("Check it with: claude mcp list")}
                         </p>
@@ -625,6 +764,9 @@ export const McpAccessPanel: React.FC = () => {
                         })
                     )}
                 </div>
+                <p className="sa-prompt-note ma-tokens-note">
+                    {tr("Revoking a token stops it working. Also run: claude mcp remove onyx --scope user")}
+                </p>
             </div>
         </div>
     );

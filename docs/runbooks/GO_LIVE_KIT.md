@@ -1,10 +1,10 @@
 # Onyx.mx Go-Live Runbook: MCP, Siri & Gateway
 
-**Date:** 2026-10-11  
+**Date:** 2026-10-10  
 **Project:** Onyx.mx (Season 826)  
 **Supabase Project Ref:** `yircifkayqpuydfdqzlm`  
 **Target Environment:** Production (Windows 11 Execution by Ramses)  
-**Status:** DRAFT / READY FOR REVIEW (Nothing is applied automatically)
+**Status:** Partly live; see DEPLOY_MCP_AND_SIRI.md phase status
 
 ---
 
@@ -36,15 +36,24 @@ Before starting, ensure required CLI tools are installed and authenticated in Wi
 
 ## (1) What is Live Today
 
-Verified baseline as of 2026-10-11:
+Verified baseline as of 2026-10-10:
 - **Supabase Project:** `yircifkayqpuydfdqzlm`
-- **Live Edge Functions (2 only):**
-  - `artifact` (Public QR-tag lookup, unauthenticated endpoint)
-  - `artifact-preview` (Preview endpoint)
+- **Live Edge Functions (5 live):**
+  - `artifact` (v27, Public QR-tag lookup, unauthenticated endpoint, verify_jwt false)
+  - `artifact-preview` (v2, Preview endpoint, verify_jwt true)
+  - `siri-token` (v3, verify_jwt true)
+  - `siri-inventory` (v4, verify_jwt false)
+  - `onyx-mcp` (v5, verify_jwt false)
+  *(onyxchan-mcp and onyx-ai are NOT deployed)*
 - **Live Migrations:** Applied up to version `20261004173808` (`archive_v825_tables`).
-- **Already live under alternate version timestamps (DO NOT RE-APPLY):**
+- **Already live / applied (DO NOT RE-APPLY):**
   - `20260920_item_segmentation.sql` is already applied as version `20260921014132`.
   - `20260830234500_device_auth_per_device_tokens.sql` is already applied as version `20260831002448`.
+  - `20261005120000_document_jobs.sql` is already applied.
+  - `20261010120000_onyxchan_audit.sql` is already applied.
+  - `20261011140000_siri_tokens.sql` is already applied.
+  - `20261011150000_device_functions_null_role_guard.sql` is already applied.
+  - `20261011160000_revoke_anon_new_tables.sql` is already applied.
 
 ---
 
@@ -62,27 +71,21 @@ Verified baseline as of 2026-10-11:
 > Get-Content -Raw "supabase\migrations\<filename>.sql" | Set-Clipboard
 > ```
 
-### Ordered Migration Plan (4 Files to Apply)
-1. `20261005120000_document_jobs.sql`
-   - **Purpose:** Document generation job tracking queue and metadata for export paperwork.
-   - **Type:** Additive.
-   - **Risk:** Low (creates isolated queue tables and helper functions).
-   - **Rollback:** Drop table `document_jobs` (and associated triggers/functions if any).
-2. `20261010120000_onyxchan_audit.sql`
-   - **Purpose:** Audit logging tables and trigger functions for OnyxChan operations and command lifecycles.
-   - **Type:** Additive.
-   - **Risk:** Low (creates audit logging tables and indices).
-   - **Rollback:** Drop table `onyxchan_audit_log` (and associated audit triggers/functions).
-3. `20261011130000_type_library.sql`
+### Ordered Migration Plan
+Plan = type_library only; list the applied migrations as record:
+1. `20261011130000_type_library.sql`
    - **Purpose:** Centralized type library and schema definitions for modular tools and season 826 records.
    - **Type:** Additive.
+   - **Status:** DRAFT (keep gated behind an explicit prompt).
    - **Risk:** Low (creates type definition catalogs).
    - **Rollback:** Drop type library tables and type registry entries.
-4. `20261011140000_siri_tokens.sql`
-   - **Purpose:** Siri shortcut authentication token store, personal `siri_` token hashing, and expiration validation.
-   - **Type:** Additive.
-   - **Risk:** Low (creates `siri_tokens` table and validation RPCs).
-   - **Rollback:** Drop table `siri_tokens` and RPC `verify_siri_token`.
+
+*(Applied migrations on record — DO NOT RE-APPLY)*:
+- `20261005120000_document_jobs.sql` (APPLIED)
+- `20261010120000_onyxchan_audit.sql` (APPLIED — creates table `onyxchan_audit`. Rollback: drop table `onyxchan_audit`)
+- `20261011140000_siri_tokens.sql` (APPLIED — creates table, index, RLS, grants, one select policy; no RPC. Rollback: drop table public.siri_tokens)
+- `20261011150000_device_functions_null_role_guard.sql` (APPLIED)
+- `20261011160000_revoke_anon_new_tables.sql` (APPLIED)
 
 ### Three Migrations Requiring Ramses' Decision (DO NOT APPLY YET)
 1. `20260725_pico_bridge_schema.sql`
@@ -90,7 +93,7 @@ Verified baseline as of 2026-10-11:
    - **Recommendation:** Do not apply if retiring legacy pico-bridge; verify if hardware still relies on pico channels.
 2. `create_onyxchan_devices.sql`
    - **Question for Ramses:** The live database already has table `onyxchan_devices` (created previously and updated). Does this standalone script conflict with or duplicate existing live columns and constraints?
-   - **Recommendation:** Do not apply; inspect live schema columns (`checkin_interval_s`, `token_hash`) before touching.
+   - **Recommendation:** Do not apply; check the migration files before touching.
 3. `PENDING_consolidate_inventory_and_server_side_cypher.sql`
    - **Question for Ramses:** Should server-side Cypher graph query consolidation be executed now, or kept pending until inventory schema stability for season 826 is verified?
    - **Recommendation:** Keep pending until Season 826 inventory data tools are validated.
@@ -106,8 +109,8 @@ Secrets must be configured in Supabase before deploying functions that depend on
 - **Platform-provided automatically:** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - **Application secrets to set:**
   ```powershell
-  # VERIFY ON FIRST RUN: Set required secrets (replace values, never commit)
-  supabase secrets set ONYXCHAN_ALLOWED_ORIGIN="https://onyx.mx" --project-ref yircifkayqpuydfdqzlm
+  # VERIFY ON FIRST RUN: Set required secrets (use origin that serves the app; confirm before using onyx.mx, e.g. https://jouhayerk-cloud.github.io)
+  supabase secrets set ONYXCHAN_ALLOWED_ORIGIN="https://jouhayerk-cloud.github.io" --project-ref yircifkayqpuydfdqzlm
   supabase secrets set GEMINI_API_KEY="YOUR_GEMINI_API_KEY" --project-ref yircifkayqpuydfdqzlm
   ```
 
@@ -115,15 +118,15 @@ Secrets must be configured in Supabase before deploying functions that depend on
 
 | Order | Function Name | verify_jwt | Secrets Read | Purpose & Notes |
 |:-----:|:--------------|:----------:|:-------------|:----------------|
-| 1 | `onyx-mcp` | `true` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Data MCP server for web app & AI agents. JWT-only auth. Enforces role checks in `app_users`. |
+| 1 | `onyx-mcp` | `false` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Data MCP server for web app & AI agents. Accepts JWT or mcp_ token. Enforces role checks in `app_users`. |
 | 2 | `onyxchan-mcp` | `false` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ONYXCHAN_ALLOWED_ORIGIN` | Staff JWT + device tokens (`ocd_`). Custom app-level auth. |
 | 3 | `onyx-ai` | `true` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY` | AI assistance features via Gemini API. |
 | 4 | `siri-token` | `true` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Generates & manages personal `siri_` tokens for authenticated staff. |
-| 5 | `siri-inventory` | `false` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Read-only voice query adapter. Must have `verify_jwt = false` because it verifies caller JWT OR `siri_` token internally! (`VERIFY ON FIRST RUN`: update `supabase/config.toml` from true to false or use flag). |
+| 5 | `siri-inventory` | `false` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Read-only voice query adapter. verify_jwt is false in config.toml (accepts JWT or siri_ token). No change needed. |
 
 Deploy commands (`VERIFY ON FIRST RUN`):
 ```powershell
-supabase functions deploy onyx-mcp --project-ref yircifkayqpuydfdqzlm
+supabase functions deploy onyx-mcp --no-verify-jwt --project-ref yircifkayqpuydfdqzlm
 supabase functions deploy onyxchan-mcp --no-verify-jwt --project-ref yircifkayqpuydfdqzlm
 supabase functions deploy onyx-ai --project-ref yircifkayqpuydfdqzlm
 supabase functions deploy siri-token --project-ref yircifkayqpuydfdqzlm
@@ -153,13 +156,13 @@ curl.exe -i -X GET "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifa
 # Expected status: 400 or 200
 ```
 
-#### 2. `onyx-mcp` (JWT Only)
+#### 2. `onyx-mcp` (accepts JWT or mcp_ token)
 ```powershell
 # Without JWT: expects 401
 curl.exe -i -X POST "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/onyx-mcp" `
   -H "Content-Type: application/json"
 
-# With GET method: expects 405 Method Not Allowed (or 401)
+# With GET method: expects 200 health JSON
 curl.exe -i -X GET "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/onyx-mcp"
 
 # With valid JWT: expects 200 OK (or JSON-RPC protocol error)
@@ -192,7 +195,7 @@ curl.exe -i -X POST "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/onyx-
 curl.exe -i -X POST "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/onyx-ai" `
   -H "Authorization: Bearer $env:ONYX_TEST_JWT" `
   -H "Content-Type: application/json" `
-  -d '{"prompt":"healthcheck"}'
+  -d '{"messages":[{"role":"user","parts":[{"text":"Say OK"}]}],"model":"gemini-2.5-flash"}'
 ```
 
 #### 5. `siri-token` (verify_jwt true)
@@ -201,10 +204,11 @@ curl.exe -i -X POST "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/onyx-
 curl.exe -i -X POST "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-token" `
   -H "Content-Type: application/json"
 
-# With valid JWT: expects 200 (returns or rotates siri token)
+# With valid JWT: expects 200 (returns list of active tokens)
 curl.exe -i -X POST "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-token" `
   -H "Authorization: Bearer $env:ONYX_TEST_JWT" `
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" `
+  -d '{"action":"list"}'
 ```
 
 #### 6. `siri-inventory` (verify_jwt false, checks JWT or siri_ token)
@@ -217,14 +221,14 @@ curl.exe -i -X POST "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-
 curl.exe -i -X POST "https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-inventory" `
   -H "Authorization: Bearer $env:ONYX_TEST_JWT" `
   -H "Content-Type: application/json" `
-  -d '{"query":"stock summary"}'
+  -d '{"intent":"count","query":"","lang":"en"}'
 ```
 
 ---
 
 ## (5) The Gateway on Cloud Run
 
-Summary of architecture from `docs/_inputs/gateway-go-live.md` and `docs/_inputs/supabase-draft-README.md`.
+Summary of architecture from `C:\Jouhayerk\git\onyxchan-wt\GOLIVE-1\docs\_inputs\gateway-go-live.md` and `C:\Jouhayerk\git\onyxchan-wt\GOLIVE-1\docs\_inputs\supabase-draft-README.md`.
 
 ### Step 1: Database Migrations (Firmware Repo)
 Apply firmware migrations in order via Supabase SQL Editor:
@@ -248,7 +252,7 @@ select vault.create_secret(encode(extensions.gen_random_bytes(32), 'hex'), 'onyx
 ```
 
 ### Step 3: Edge Function `onyxchan-gateway-api`
-- Deploy `supabase-draft/functions/onyxchan-gateway-api/index.ts` with **Verify JWT OFF**.
+- Deploy `C:\Jouhayerk\git\onyxchan-firmware\supabase-draft\functions\onyxchan-gateway-api\index.ts` with **Verify JWT OFF**.
 - Add secret `GATEWAY_EDGE_SECRET` to Supabase Edge Functions Secrets.
 
 ### Step 4: Deploy Cloud Run Gateway
@@ -287,7 +291,7 @@ curl.exe -i -X POST "https://YOUR-SERVICE-URL.run.app/v1/checkin"
 
 1. **Migrations Rollback:**
    - Run the manual rollback blocks defined in each SQL migration.
-   - For 826 migrations: drop created tables (`document_jobs`, `onyxchan_audit_log`, `type_library`, `siri_tokens`).
+   - For 826 migrations: drop created tables (`document_jobs`, `onyxchan_audit`, `type_library`, `siri_tokens`).
 2. **Edge Functions Rollback:**
    - To remove a newly deployed function:
      ```powershell
@@ -311,28 +315,28 @@ curl.exe -i -X POST "https://YOUR-SERVICE-URL.run.app/v1/checkin"
 ## (7) Go / No-Go Checklist
 
 ### Pre-Flight
-- [ ] Working directory confirmed as `C:\Jouhayerk\git\onyxchan-wt\GOLIVE-1`
+- [ ] Working directory confirmed as `C:\Jouhayerk\git\app` (or `C:\Jouhayerk\git\onyxchan-wt\GOLIVE-1`)
 - [ ] `supabase login` authenticated
 - [ ] `gcloud auth login` authenticated
 - [ ] Run `scripts/golive/00-check.ps1` with all green checks
-- [ ] Verified live baseline (only `artifact` and `artifact-preview` live)
+- [ ] Verified live baseline (5 functions live: `artifact`, `artifact-preview`, `siri-token`, `siri-inventory`, `onyx-mcp`)
 
 ### Migrations
 - [ ] Decision made for `20260725_pico_bridge_schema.sql` (Hold/Retire)
 - [ ] Decision made for `create_onyxchan_devices.sql` (Skip/Verify)
 - [ ] Decision made for `PENDING_consolidate_inventory_and_server_side_cypher.sql` (Hold)
-- [ ] Applied `20261005120000_document_jobs.sql`
-- [ ] Applied `20261010120000_onyxchan_audit.sql`
+- [x] Applied `20261005120000_document_jobs.sql`
+- [x] Applied `20261010120000_onyxchan_audit.sql`
 - [ ] Applied `20261011130000_type_library.sql`
-- [ ] Applied `20261011140000_siri_tokens.sql`
+- [x] Applied `20261011140000_siri_tokens.sql`
 
 ### Secrets & Functions
 - [ ] Secrets set in Supabase (`ONYXCHAN_ALLOWED_ORIGIN`, `GEMINI_API_KEY`)
-- [ ] Deployed `onyx-mcp` (JWT only)
+- [x] Deployed `onyx-mcp` (verify_jwt false; accepts JWT or mcp_)
 - [ ] Deployed `onyxchan-mcp` (verify_jwt false)
 - [ ] Deployed `onyx-ai`
-- [ ] Deployed `siri-token` (verify_jwt true)
-- [ ] Deployed `siri-inventory` (verify_jwt false)
+- [x] Deployed `siri-token` (verify_jwt true)
+- [x] Deployed `siri-inventory` (verify_jwt false)
 
 ### Gateway (Cloud Run)
 - [ ] Firmware migrations 0001, 0002, 0003 applied and verified (`1, 9, 1`)
@@ -342,7 +346,7 @@ curl.exe -i -X POST "https://YOUR-SERVICE-URL.run.app/v1/checkin"
 - [ ] Checkin endpoint returned HTTP 401
 
 ### Verification
-- [ ] Run `scripts/golive/30-smoke.ps1` with `$env:ONYX_TEST_JWT` set
+- [ ] Run smoke scripts: `40-siri-mcp-smoke.ps1` for Siri/MCP, 50 onyx-ai, 60 onyxchan-mcp (or updated `30-smoke.ps1`) with `$env:ONYX_TEST_JWT` set
 - [ ] All smoke tests passed
 
 ---

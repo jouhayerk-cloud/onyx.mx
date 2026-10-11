@@ -23,13 +23,18 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# Refuse to run if not in repository root
+function Prop($o, $n) {
+    if ($null -ne $o -and $o.PSObject.Properties[$n]) { return $o.$n }
+    return $null
+}
+
+# Refuse to run if not in repository root (or valid repo containing supabase\config.toml)
 $expectedRoot = "C:\Jouhayerk\git\onyxchan-wt\GOLIVE-1"
 $currentDir = (Get-Item -LiteralPath (Get-Location).Path).FullName.TrimEnd('\/')
 $normExpected = $expectedRoot.TrimEnd('\/')
 
 if (-not [string]::Equals($currentDir, $normExpected, [System.StringComparison]::OrdinalIgnoreCase) -and -not (Test-Path -Path "supabase\config.toml")) {
-    Write-Error "Refusing to run: Current working directory '$currentDir' is not the repository root '$normExpected'."
+    Write-Error "Refusing to run: Current working directory '$currentDir' is not the repository root '$normExpected' or lacks supabase\config.toml."
     exit 1
 }
 
@@ -108,11 +113,11 @@ Record-Result (Invoke-Probe -Name "artifact (public endpoint)" -Method "GET" -Ur
 Record-Result (Invoke-Probe -Name "artifact-preview (public endpoint)" -Method "GET" -Url "$baseUrl/artifact-preview" -ExpectedStatuses @(200, 400))
 
 Write-Host ""
-Write-Host "--- [2] onyx-mcp (JWT Only) ---" -ForegroundColor Yellow
+Write-Host "--- [2] onyx-mcp (accepts JWT or mcp_ token) ---" -ForegroundColor Yellow
 # Unauthenticated POST -> 401
 Record-Result (Invoke-Probe -Name "onyx-mcp (No Auth)" -Method "POST" -Url "$baseUrl/onyx-mcp" -Headers @{"Content-Type"="application/json"} -ExpectedStatuses @(401))
-# GET -> 405 or 401
-Record-Result (Invoke-Probe -Name "onyx-mcp (GET method)" -Method "GET" -Url "$baseUrl/onyx-mcp" -ExpectedStatuses @(401, 405))
+# GET root -> expects 200 health JSON
+Record-Result (Invoke-Probe -Name "onyx-mcp (GET root)" -Method "GET" -Url "$baseUrl/onyx-mcp" -ExpectedStatuses @(200))
 # Authenticated POST
 if (-not [string]::IsNullOrWhiteSpace($jwt)) {
     Record-Result (Invoke-Probe -Name "onyx-mcp (Auth JWT)" -Method "POST" -Url "$baseUrl/onyx-mcp" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"jsonrpc":"2.0","method":"tools/list","id":1}' -ExpectedStatuses @(200))
@@ -122,9 +127,9 @@ Write-Host ""
 Write-Host "--- [3] onyxchan-mcp (Staff JWT / Device Tokens) ---" -ForegroundColor Yellow
 # Unauthenticated POST -> 401
 Record-Result (Invoke-Probe -Name "onyxchan-mcp (No Auth)" -Method "POST" -Url "$baseUrl/onyxchan-mcp" -Headers @{"Content-Type"="application/json"} -ExpectedStatuses @(401))
-# Authenticated POST
+# Authenticated POST to /rpc
 if (-not [string]::IsNullOrWhiteSpace($jwt)) {
-    Record-Result (Invoke-Probe -Name "onyxchan-mcp (Auth JWT)" -Method "POST" -Url "$baseUrl/onyxchan-mcp" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"jsonrpc":"2.0","method":"tools/list","id":1}' -ExpectedStatuses @(200))
+    Record-Result (Invoke-Probe -Name "onyxchan-mcp (Auth JWT /rpc)" -Method "POST" -Url "$baseUrl/onyxchan-mcp/rpc" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"jsonrpc":"2.0","method":"tools/list","id":1}' -ExpectedStatuses @(200))
 }
 
 Write-Host ""
@@ -133,7 +138,7 @@ Write-Host "--- [4] onyx-ai (Gemini Assistant) ---" -ForegroundColor Yellow
 Record-Result (Invoke-Probe -Name "onyx-ai (No Auth)" -Method "POST" -Url "$baseUrl/onyx-ai" -Headers @{"Content-Type"="application/json"} -ExpectedStatuses @(401))
 # Authenticated POST
 if (-not [string]::IsNullOrWhiteSpace($jwt)) {
-    Record-Result (Invoke-Probe -Name "onyx-ai (Auth JWT)" -Method "POST" -Url "$baseUrl/onyx-ai" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"prompt":"ping"}' -ExpectedStatuses @(200))
+    Record-Result (Invoke-Probe -Name "onyx-ai (Auth JWT)" -Method "POST" -Url "$baseUrl/onyx-ai" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"messages":[{"role":"user","parts":[{"text":"Say OK"}]}],"model":"gemini-2.5-flash"}' -ExpectedStatuses @(200))
 }
 
 Write-Host ""
@@ -142,7 +147,7 @@ Write-Host "--- [5] siri-token (Personal Token Generator) ---" -ForegroundColor 
 Record-Result (Invoke-Probe -Name "siri-token (No Auth)" -Method "POST" -Url "$baseUrl/siri-token" -Headers @{"Content-Type"="application/json"} -ExpectedStatuses @(401))
 # Authenticated POST
 if (-not [string]::IsNullOrWhiteSpace($jwt)) {
-    Record-Result (Invoke-Probe -Name "siri-token (Auth JWT)" -Method "POST" -Url "$baseUrl/siri-token" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -ExpectedStatuses @(200))
+    Record-Result (Invoke-Probe -Name "siri-token (Auth JWT)" -Method "POST" -Url "$baseUrl/siri-token" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"action":"list"}' -ExpectedStatuses @(200))
 }
 
 Write-Host ""
@@ -151,7 +156,7 @@ Write-Host "--- [6] siri-inventory (Voice Adapter) ---" -ForegroundColor Yellow
 Record-Result (Invoke-Probe -Name "siri-inventory (No Auth)" -Method "POST" -Url "$baseUrl/siri-inventory" -Headers @{"Content-Type"="application/json"} -ExpectedStatuses @(401))
 # Authenticated POST
 if (-not [string]::IsNullOrWhiteSpace($jwt)) {
-    Record-Result (Invoke-Probe -Name "siri-inventory (Auth JWT)" -Method "POST" -Url "$baseUrl/siri-inventory" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"query":"stock"}' -ExpectedStatuses @(200))
+    Record-Result (Invoke-Probe -Name "siri-inventory (Auth JWT)" -Method "POST" -Url "$baseUrl/siri-inventory" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"intent":"count","query":"","lang":"en"}' -ExpectedStatuses @(200))
 }
 
 Write-Host ""

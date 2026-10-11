@@ -1,6 +1,6 @@
 # Onyx.mx MCP Tool Backlog
 
-This document outlines the proposed read-only data tools for the Onyx agent and Siri adapter, covering devices, logistics, type library, document jobs, audit trail, and the season 826 finance ledger.
+This document outlines read-only data tools for the Onyx agent and Siri adapter, covering devices, logistics, type library, document jobs, audit trail, and the season 826 finance ledger. Note that 3 of the 8 tools are already implemented (`devices_onyxchan_telemetry`, `audit_trail_recent_calls`, `document_jobs_check_status`).
 
 ## Priority 1 (P1)
 
@@ -8,7 +8,7 @@ This document outlines the proposed read-only data tools for the Onyx agent and 
 **Purpose:** Retrieve battery, RSSI, and online status of OnyxChan robots.
 **Input Fields:** `device_id` (string, optional, max 50 chars), `limit` (int, 1-100, default 20).
 **Tables and Columns:** `onyxchan_devices` (`create_onyxchan_devices.sql` L3-12 and `20260830234500_device_auth_per_device_tokens.sql` L23-26). Columns: `device_id` (`create_onyxchan_devices.sql` L4), `device_name` (`create_onyxchan_devices.sql` L7), `status` (`create_onyxchan_devices.sql` L9), `battery_level` (`20260830234500_device_auth_per_device_tokens.sql` L24), `rssi` (`20260830234500_device_auth_per_device_tokens.sql` L25).
-**Roles Allowed:** `INTERNAL_STAFF`
+**Roles Allowed:** `DEVICE_TELEMETRY_ROLES` (`Developer`, `Admin`, `ClientBoss`, `ClientAccounting`)
 **Redaction Rules:** None (no cost columns present).
 **Risk:** Read only.
 **Safe for Siri:** Yes (purely hardware telemetry, no financial data).
@@ -22,7 +22,7 @@ This document outlines the proposed read-only data tools for the Onyx agent and 
 ```
 **Test Cases:**
 - Role: Developer, Input: `{}`, Expected: Returns all registered OnyxChan devices with battery and RSSI.
-- Role: ClientViewer, Input: `{}`, Expected: Returns 403 Forbidden (requires INTERNAL_STAFF).
+- Role: ClientViewer, Input: `{}`, Expected: Returns 403 Forbidden (requires DEVICE_TELEMETRY_ROLES).
 - Role: Admin, Input: `{ "device_id": "onyxchan-01" }`, Expected: Returns telemetry for just onyxchan-01.
 
 ### 2. audit_trail_recent_calls
@@ -50,7 +50,7 @@ This document outlines the proposed read-only data tools for the Onyx agent and 
 **Purpose:** Check the rendering and printing status of document jobs.
 **Input Fields:** `season` (string, "826" or "legacy"), `kind` (string, "pdf" | "label" | "xlsx" | "csv"), `limit` (int, 1-100, default 20).
 **Tables and Columns:** `document_jobs_current` view (`20261005120000_document_jobs.sql` L64-70). Columns: `job_ref` (`20261005120000_document_jobs.sql` L7), `kind` (L8), `season` (L11), `current_status` (L65), `status_at` (L65).
-**Roles Allowed:** `ALL_STAFF`
+**Roles Allowed:** `DOC_JOB_ROLES` (`Developer`, `Admin`, `ClientBoss`, `ClientAccounting`)
 **Redaction Rules:** None (operational job metadata).
 **Risk:** Read only.
 **Safe for Siri:** Yes (no financial data).
@@ -64,7 +64,7 @@ This document outlines the proposed read-only data tools for the Onyx agent and 
 ```
 **Test Cases:**
 - Role: ClientBoss, Input: `{ "season": "826" }`, Expected: Returns recent document jobs for the 826 season.
-- Role: Vendor, Input: `{ "kind": "label" }`, Expected: Returns recent label printing jobs.
+- Role: Vendor, Input: `{ "kind": "label" }`, Expected: Returns 403 Forbidden (requires DOC_JOB_ROLES).
 - Role: Developer, Input: `{ "limit": 1 }`, Expected: Returns exactly 1 document job record.
 
 ### 4. finance_826_season_summary
@@ -183,16 +183,16 @@ This document outlines the proposed read-only data tools for the Onyx agent and 
 
 ## Tool Summary by Priority
 
-| Priority | Tool Name | Area |
-| :--- | :--- | :--- |
-| P1 | devices_onyxchan_telemetry | Devices |
-| P1 | audit_trail_recent_calls | Audit Trail |
-| P1 | document_jobs_check_status | Document Jobs |
-| P1 | finance_826_season_summary | Finance Summaries |
-| P2 | devices_list_pico_scanners | Devices |
-| P2 | type_library_list_types | Type Library |
-| P3 | type_library_hidden_values | Type Library |
-| P3 | logistics_get_shipment_status | Logistics |
+| Priority | Tool Name | Area | Status |
+| :--- | :--- | :--- | :--- |
+| P1 | devices_onyxchan_telemetry | Devices | Implemented (`onyxDataTools.ts:804`) |
+| P1 | audit_trail_recent_calls | Audit Trail | Implemented (`auditDocTools.ts:54`) |
+| P1 | document_jobs_check_status | Document Jobs | Implemented (`auditDocTools.ts:94`) |
+| P1 | finance_826_season_summary | Finance Summaries | Proposed |
+| P2 | devices_list_pico_scanners | Devices | Proposed |
+| P2 | type_library_list_types | Type Library | Proposed |
+| P3 | type_library_hidden_values | Type Library | Proposed |
+| P3 | logistics_get_shipment_status | Logistics | Proposed |
 
 ## Open Questions for Ramses
 1. Should `logistics_get_shipment_status` expose `sender_name` and `seal_number` to all roles, or restrict PII to `INTERNAL_STAFF`?

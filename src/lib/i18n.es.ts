@@ -3418,4 +3418,10 @@ export const esCatalog: Record<string, string> = {
   'Connect Claude Code': 'Conectar Claude Code',
   'Check it with: claude mcp list': 'Compruébalo con: claude mcp list',
   'No MCP tokens created yet.': 'Aún no se han creado tokens MCP.',
+  'Keep the token out of your command history': 'Mantén el token fuera de tu historial de comandos',
+  'Open a new terminal before starting Claude Code.': 'Abre una nueva terminal antes de iniciar Claude Code.',
+  'Copy commands': 'Copiar comandos',
+  'If onyx is already added, run: claude mcp remove onyx --scope user first. Then start a new Claude Code session.': 'Si onyx ya está agregado, ejecuta primero: claude mcp remove onyx --scope user. Luego inicia una nueva sesión de Claude Code.',
+  'Check with: claude mcp get onyx': 'Verifica con: claude mcp get onyx',
+  'Revoking a token stops it working. Also run: claude mcp remove onyx --scope user': 'Revocar un token hace que deje de funcionar. También ejecuta: claude mcp remove onyx --scope user',
 };

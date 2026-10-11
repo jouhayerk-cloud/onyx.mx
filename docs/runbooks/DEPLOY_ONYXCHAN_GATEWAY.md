@@ -164,7 +164,7 @@ supabase db query --linked --project-ref yircifkayqpuydfdqzlm "UPDATE public.ony
 | Task / Step | Responsible Role | Details |
 |---|---|---|
 | Review Architecture & Code | The Chief | Approves runbook, review findings, and migration application. |
-| Database Migration (`20260830234500_...sql`) | Lead DB / Chief | Applies per-device token columns, indexes, and RPC functions. |
+| Database Migration (`20260830234500_...sql`) | Lead DB / Chief | Already applied (as 20260831002448); do not re-apply. |
 | Edge Function Secrets Configuration | Deployer / Chief | Configures `ONYXCHAN_ALLOWED_ORIGIN` in Supabase Secrets. |
 | Edge Function Deployment | Deployer | Runs `supabase functions deploy onyxchan-mcp --use-api`. |
 | Device Provisioning & Token Generation | Admin / Developer | Creates device record and runs `issue_device_token`. |

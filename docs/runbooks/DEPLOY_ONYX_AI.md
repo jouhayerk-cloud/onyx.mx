@@ -4,7 +4,7 @@
 The `onyx-ai` Edge Function provides a secure server-side proxy for Google Gemini models, protecting the Gemini API key from exposure in client-side bundles. Calls are restricted to authorized internal roles (`Developer`, `Admin`, `ClientBoss`).
 
 Project ref: `yircifkayqpuydfdqzlm`.
-Run all commands from the repository root `C:\Jouhayerk\gitpp` in PowerShell.
+Run all commands from the repository root `C:\Jouhayerk\git\app` in PowerShell.
 
 ---
 
@@ -137,7 +137,7 @@ Run the smoke test script using an active user JWT from an authorized account:
 ## 8. Frontend Switch and Cleanup
 
 1. After deployment and smoke test pass, Chief updates frontend config:
-   Set `VITE_ONYX_AI_MODE=edge` in environment, then rebuild and redeploy the frontend, because `VITE_ONYX_AI_MODE` is read at build time (`src/features/onyx/OnyxChat.tsx:181` and `useOnyxAgent.ts:126`).
+   Set `VITE_ONYX_AI_MODE=edge` in environment, then rebuild and redeploy the frontend, because `VITE_ONYX_AI_MODE` is read at build time (`src/features/onyx/OnyxChat.tsx:181` and `src/features/onyxAgent/useOnyxAgent.ts:126`).
 2. Ensure production build does NOT include `VITE_GEMINI_API_KEY` in environment (prevents Vite from inlining secret key into static bundle).
 3. Revoke legacy client-side Gemini API key in Google AI Studio once traffic routes through `onyx-ai`.
 
@@ -146,7 +146,7 @@ Run the smoke test script using an active user JWT from an authorized account:
 ## 9. Rollback Plan
 
 If `onyx-ai` fails or needs immediate decommissioning:
-1. Revert frontend routing by unsetting or removing `VITE_ONYX_AI_MODE=edge`, then rebuild and redeploy the frontend, because VITE_ONYX_AI_MODE is read at build time (src/features/onyx/OnyxChat.tsx:181 and useOnyxAgent.ts:126).
+1. Revert frontend routing by unsetting or removing `VITE_ONYX_AI_MODE=edge`, then rebuild and redeploy the frontend, because VITE_ONYX_AI_MODE is read at build time (src/features/onyx/OnyxChat.tsx:181 and src/features/onyxAgent/useOnyxAgent.ts:126).
 2. Delete the Edge Function:
    ```powershell
    supabase functions delete onyx-ai --project-ref yircifkayqpuydfdqzlm
@@ -176,8 +176,9 @@ If `onyx-ai` fails or needs immediate decommissioning:
 
 Without modifying `index.ts`, the following potential defects and deviations were identified during code inspection:
 
-1. **Top-level generationConfig and systemInstruction discarded when messages is an array**
+1. **Top-level generationConfig and systemInstruction — Resolved by design (RK1)**
    - **Location:** `index.ts:90, 117, 122-125`
+   - **Status:** Resolved by design (RK1). The function intentionally whitelists and clamps generation parameters (`index.ts:115-130`) rather than accepting unvalidated root objects.
    - **Code:**
      ```typescript
      const { messages, model } = body;
@@ -188,7 +189,6 @@ Without modifying `index.ts`, the following potential defects and deviations wer
      }
      const gcIn = (src.generationConfig ?? src.generation_config ?? {}) as Record<string, any>;
      ```
-   - **Defect:** Line 90 only destructures `messages` and `model` from `body`. When `messages` is an array (standard chat payload), `src` is constructed as `{ contents: messages }`. Consequently, `src.generationConfig`, `src.systemInstruction`, and `src.tools` evaluate to `undefined`. Any caller providing `generationConfig` or `systemInstruction` at the root of `body` has those settings silently dropped.
 
 2. **Snake_case parameters passed verbatim to Gemini upstream [UNVERIFIED, low priority]**
    - **Location:** `index.ts:122-124`
