@@ -3430,4 +3430,11 @@ export const esCatalog: Record<string, string> = {
   'Keep the token out of your Claude config file: store it in an environment variable (PowerShell).': 'Mantén el token fuera del archivo de configuración de Claude: guárdalo en una variable de entorno (PowerShell).',
   'macOS or Linux (on Linux use xclip -o -selection clipboard instead of pbpaste):': 'macOS o Linux (en Linux usa xclip -o -selection clipboard en lugar de pbpaste):',
   'The command replaces an existing onyx entry. Then start a new Claude Code session.': 'El comando reemplaza una entrada onyx existente. Luego inicia una nueva sesión de Claude Code.',
+  'Generated description': 'Descripción generada',
+  'Generated colours': 'Colores generados',
+  'Generated type': 'Tipo generado',
+  'Generating…': 'Generando…',
+  '#hex, #hex...': '#hex, #hex...',
+  'Copy validation': 'Validación de texto',
+  'Generation encountered errors.': 'La generación tuvo errores.',
 };

@@ -448,7 +448,7 @@ function buildFountain(cam: Cam, dims: Dims): FigurePart[] {
 
     const w3 = w * 0.42;
     const d3 = d * 0.42;
-    const p3 = prism(cam, cx - w3 / 2, cy - cd3 / 2, c2Top, w3, d3, t3H, Math.min(w3, d3) * 0.35);
+    const p3 = prism(cam, cx - w3 / 2, cy - d3 / 2, c2Top, w3, d3, t3H, Math.min(w3, d3) * 0.35);
 
     const spoutPts = [
         proj(cam, cx, cy, h),

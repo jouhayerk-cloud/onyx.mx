@@ -1,0 +1,377 @@
+/* ==========================================================================
+   GENERATE PANEL — Compact interactive layout & progressive disclosure
+   --------------------------------------------------------------------------
+   Tokens follow --ui-* from tokens.css and ui.css.
+   Liquid Stone dark glass surfaces with visible focus rings and CSS-only
+   height animation (disabled under prefers-reduced-motion).
+   ========================================================================== */
+
+/* ══ Layout Integration with EntryScreen ══════════════════════════════════ */
+
+/* Below 1280px: stacked under the form, right column collapsed */
+@media (max-width: 1279px) {
+    .entry .entry-body {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    .entry .entry-main {
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--ui-edge);
+    }
+}
+
+/* Wide screens (1280px and above): compact card stays pinned at the top */
+@media (min-width: 1280px) {
+    .entry .entry-body {
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) !important;
+    }
+    .entry .entry-gen {
+        align-self: start;
+        position: sticky;
+        top: 12px;
+        max-height: calc(100vh - 48px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
+/* ══ Generate Panel Container ═════════════════════════════════════════════ */
+.entry .entry-gen {
+    border-radius: var(--ui-r-md);
+    border: 1px solid var(--ui-edge);
+    background-color: var(--ui-raise);
+    backdrop-filter: var(--ui-blur);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+    transition: border-color var(--ui-ease), box-shadow var(--ui-ease);
+}
+
+.entry .entry-gen:focus-within {
+    border-color: var(--ui-edge-hi);
+}
+
+/* ══ Compact Toggle Bar ═══════════════════════════════════════════════════ */
+.gen-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+.gen-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    min-width: 0;
+}
+
+.gen-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    font: 600 11px/1.2 var(--ui-font-display);
+    letter-spacing: 0.02em;
+    color: var(--ui-dim);
+    background-color: var(--ui-well);
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-sm);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--ui-ease), color var(--ui-ease), border-color var(--ui-ease), box-shadow var(--ui-ease);
+}
+
+.gen-chip:hover:not(:disabled) {
+    background-color: var(--ui-surface);
+    color: var(--ui-ink);
+    border-color: var(--ui-edge-hi);
+}
+
+.gen-chip:focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: 1px;
+}
+
+.gen-chip--active {
+    background-color: color-mix(in srgb, var(--ui-accent) 18%, var(--ui-well));
+    color: var(--ui-ink);
+    border-color: color-mix(in srgb, var(--ui-accent) 60%, var(--ui-edge));
+    font-weight: 700;
+    box-shadow: 0 0 10px -2px color-mix(in srgb, var(--ui-accent) 30%, transparent);
+}
+
+.gen-chip:disabled,
+.gen-chip--unavailable {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+
+.gen-bar__act {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* ══ Progressive Disclosure (CSS-only animation) ══════════════════════════ */
+.gen-expandable {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease;
+    overflow: hidden;
+    opacity: 0;
+}
+
+.gen-expandable--expanded {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+.gen-expandable__inner {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gen-expandable {
+        transition: none !important;
+    }
+}
+
+/* ══ Slim Progress Row ════════════════════════════════════════════════════ */
+.gen-progress-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-sm);
+    background-color: var(--ui-well);
+    font-size: 11.5px;
+}
+
+.gen-progress-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.gen-progress-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--ui-accent);
+    flex-shrink: 0;
+    animation: gen-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes gen-pulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gen-progress-dot {
+        animation: none !important;
+    }
+}
+
+.gen-progress-stage {
+    color: var(--ui-ink);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gen-progress-pct {
+    color: var(--ui-dim);
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.gen-progress-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+/* ══ Result Card & Field Presentation ═════════════════════════════════════ */
+.gen-result-card {
+    display: grid;
+    grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-md);
+    background-color: var(--ui-surface);
+}
+
+.gen-result-card--no-media {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.gen-result-card__media {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.gen-result-card__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+@media (max-width: 640px) {
+    .gen-result-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ══ Interactive Elements & Field Details ═════════════════════════════════ */
+.gen-counter {
+    font-size: 10.5px;
+    color: var(--ui-dim);
+}
+
+.gen-counter--over {
+    color: var(--ui-bad);
+    font-weight: 700;
+}
+
+.gen-textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 80px;
+    font: 400 12px/1.4 var(--ui-font-body);
+}
+
+.gen-textarea:focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: 1px;
+}
+
+.gen-colors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.gen-color-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-sm);
+    background-color: var(--ui-well);
+    font: 600 11px var(--ui-font-mono);
+    color: var(--ui-ink);
+}
+
+.gen-color-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid var(--ui-edge-hi);
+    flex-shrink: 0;
+}
+
+/* ══ Skeletons (Content Loading) ═══════════════════════════════════════════ */
+.gen-skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--ui-well);
+    border-radius: var(--ui-r-sm);
+    border: 1px solid var(--ui-edge);
+}
+
+.gen-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--ui-ink) 8%, transparent) 50%,
+        transparent 100%
+    );
+    animation: gen-shimmer 1.5s infinite ease-in-out;
+}
+
+@keyframes gen-shimmer {
+    100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gen-skeleton::after {
+        animation: none !important;
+    }
+}
+
+.gen-skeleton--line {
+    height: 30px;
+    width: 100%;
+}
+
+.gen-skeleton--multiline {
+    height: 76px;
+    width: 100%;
+}
+
+.gen-skeleton--media {
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+/* ══ Errors & Retries ═════════════════════════════════════════════════════ */
+.gen-error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--ui-bad);
+    border-radius: var(--ui-r-sm);
+    background-color: color-mix(in srgb, var(--ui-bad) 12%, var(--ui-well));
+    color: var(--ui-ink);
+    font-size: 11.5px;
+}
+
+.gen-error-msg {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gen-issues {
+    list-style: none;
+    margin: 4px 0 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gen-issue {
+    font-size: 11px;
+    color: var(--ui-bad);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

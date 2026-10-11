@@ -306,7 +306,7 @@ export function GeneratePanel({
                             </div>
                             <div className="gen-progress-actions">
                                 {running && (
-                                    <Key size="xs" variant="stop" icon={<Square size={11} />} onClick={run.stop}>
+                                    <Key size="sm" variant="stop" icon={<Square size={11} />} onClick={run.stop}>
                                         {tr('Stop')}
                                     </Key>
                                 )}
@@ -430,7 +430,7 @@ export function GeneratePanel({
                                                 <ul className="gen-issues" aria-label={tr('Copy validation')}>
                                                     {issues.map((iss, idx) => (
                                                         <li key={idx} className="gen-issue">
-                                                            <span aria-hidden="true">⚠️</span> {iss}
+                                                            <span aria-hidden="true">⚠️</span> {iss.message}
                                                         </li>
                                                     ))}
                                                 </ul>
