@@ -18,8 +18,8 @@ assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Bathtub' }).ty
 assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Tower Lamp' }).type, 'Home Decor > Floor Lamps');
 assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Pendant Lamp' }).type, 'Home Decor > Pendant Lights');
 assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Table Lamps' }).type, 'Home Decor > Table Lamps');
-assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Canoe' }).type, 'Home Decor > Sculptures', 'Canoe is an owner decision (E1-1): unchanged');
-assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Canoe', type: 'Home Decor > Decorative Bowls' }).type, 'Home Decor > Decorative Bowls', 'the model type decides when the staff Type has no rule');
+assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Canoe' }).type, 'Home Decor > Decorative Trays', 'owner rule: canoes are Decorative Trays');
+assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Canoe', type: 'Home Decor > Decorative Bowls' }).type, 'Home Decor > Decorative Trays', 'the staff Type Canoe beats a model type of bowls');
 assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Cofee Table' }).type, 'Home Decor > Tables');
 assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Wall Panel Pair' }).type, 'Home Decor > Wall Panels');
 assert.strictEqual(getProductCategoryAndType({ shortDescription: 'Fountain Set' }).type, 'Outdoor Decor > Fountains');

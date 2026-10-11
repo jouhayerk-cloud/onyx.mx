@@ -47,7 +47,7 @@ const CATEGORY_RULES: readonly CategoryRule[] = [
     { words: ['sculpture', 'statue', 'animal', 'figura'], result: { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Sculptures' } },
     { words: ['bowl', 'tazon'], result: { category: 'Home & Garden > Decor > Decorative Bowls', type: 'Home Decor > Decorative Bowls' } },
     { words: ['plate', 'plato'], result: { category: 'Home & Garden > Decor > Decorative Plates', type: 'Home Decor > Decorative Plates' } },
-    { words: ['tray', 'charola'], result: { category: 'Home & Garden > Decor > Decorative Trays', type: 'Home Decor > Decorative Trays' } },
+    { words: ['tray', 'charola', 'canoe'], result: { category: 'Home & Garden > Decor > Decorative Trays', type: 'Home Decor > Decorative Trays' } },
     { words: ['fountain', 'cascada', 'fuente'], result: { category: 'Home & Garden > Decor > Fountains & Ponds > Fountains & Waterfalls > Fountains', type: 'Outdoor Decor > Fountains' } },
     { words: ['mirror', 'espejo'], result: { category: 'Home & Garden > Decor > Mirrors', type: 'Home Decor > Mirrors' } },
     { words: ['coaster', 'portavaso'], result: { category: 'Home & Garden > Kitchen & Dining > Barware > Coasters', type: 'Home Decor > Coasters' } },
@@ -65,6 +65,7 @@ const CATEGORY_RULES: readonly CategoryRule[] = [
     { words: ['table', 'mesa', 'stand', 'pedestal'], result: { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Tables' } },
 ];
 
+// Owner rule (OnyxMX-InventoryAttributes, src/lib/ai/vocabulary.ts): canoes, canoe dishes and canoe bowls are always Decorative Trays.
 const DEFAULT_RESULT: CategoryAndType = { category: 'Home & Garden > Decor > Artwork > Sculptures & Statues', type: 'Home Decor > Sculptures' };
 
 function matchRules(folded: string): CategoryAndType | null {
