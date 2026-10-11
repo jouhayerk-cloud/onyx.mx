@@ -21,6 +21,7 @@ import {
     SHOPIFY_PRODUCT_TYPES,
     TITLE_RULE,
     BODY_RULE,
+    DONOR_BODY_RULE,
     SAY_IT_ONCE_RULE,
     COLOR_RULE,
     STUDIO_BLACK_RULE,
@@ -30,6 +31,8 @@ import {
 } from './vocabulary';
 import { sizeLabel, type PipelineItem } from './item';
 import type { DonorCandidate } from '../variationMatch';
+import { typeGuidanceFor, promptSpecFor, itemTypeId } from './typePrompts';
+import type { TypePromptSpec } from './typePromptSpec';
 
 export interface BuiltPrompt {
     system?: string;
@@ -54,7 +57,7 @@ const FIELD_KEY: Record<ContentField, string> = {
  */
 const CONTENT_PROPERTIES = {
     title: { type: 'string', description: 'Product title, 60 to 70 characters, Title Case, no articles, no final period.' },
-    body: { type: 'string', description: 'Marketing description, 1000 to 1200 characters of clean HTML using only <p>, <ul> and <li>.' },
+    body: { type: 'string', description: 'Marketing description in clean HTML using only <p>, <ul> and <li>, concise and within the specified word ceiling.' },
     dominantColors: {
         type: 'array',
         items: { type: 'string', enum: [...ALLOWED_SHOPIFY_COLORS] },
@@ -110,15 +113,12 @@ export interface ContentPromptOptions {
  * template" -- and validateCopy cannot catch invented veining, so the
  * retry-then-refuse gate let that copy through.
  */
-const DONOR_BODY_RULE =
-    `Marketing description in clean HTML (<p>, <ul>, <li>), matching the template's length and structure. ` +
-    `Keep it premium and engaging about artisanal Mexican stone craftsmanship, but describe only what the new item's recorded attributes support.`;
 const DONOR_COLOR_RULE =
     `An array of 1 to 3 color names selected strictly from this allowed list: [${ALLOWED_SHOPIFY_COLORS.join(', ')}], ` +
     `taken from the new item's recorded colour and material. Add a second colour only when the record names one.`;
 
 /** Numbered rules for the requested fields, in the order the old prompts used. */
-function fieldRules(fields: readonly ContentField[], boxSet: ContentPromptOptions['boxSet'], studioPhoto: boolean, donor = false): string[] {
+function fieldRules(fields: readonly ContentField[], boxSet: ContentPromptOptions['boxSet'], studioPhoto: boolean, donor = false, spec?: TypePromptSpec | null): string[] {
     const rules: string[] = [];
     if (fields.includes('title')) {
         rules.push(`"title": ${TITLE_RULE}${boxSet ? ' (e.g., "Mexican Onyx Cylinder Pendant Light Fixtures - Box Set").' : ''}`);
@@ -132,7 +132,11 @@ function fieldRules(fields: readonly ContentField[], boxSet: ContentPromptOption
             }
             sub.push(`   - Emphasize how each cylinder in the set showcases unique natural veining and warm translucent glow when illuminated.`);
         }
-        rules.push(`"body": ${donor ? DONOR_BODY_RULE : BODY_RULE}\n${sub.join('\n')}`);
+        if (spec) {
+            rules.push(`"body": Marketing description in clean HTML (<p>, <ul>, <li>) strictly following the Type description guidance below, within the specified word ceiling.\n${sub.join('\n')}`);
+        } else {
+            rules.push(`"body": ${donor ? DONOR_BODY_RULE : BODY_RULE}\n${sub.join('\n')}`);
+        }
     }
     if (fields.includes('colors')) {
         const sub: string[] = [];
@@ -150,7 +154,11 @@ function fieldRules(fields: readonly ContentField[], boxSet: ContentPromptOption
             : LAMP_RULE);
     }
     if (fields.includes('type')) {
-        rules.push(`"generatedType": ${TYPE_RULE}${boxSet ? ' For Cylinder Pendants, always choose "Home Decor > Pendant Lights".' : ''}`);
+        if (spec) {
+            rules.push(`"generatedType": Return exactly "${spec.shopifyType}".`);
+        } else {
+            rules.push(`"generatedType": ${TYPE_RULE}${boxSet ? ' For Cylinder Pendants, always choose "Home Decor > Pendant Lights".' : ''}`);
+        }
     }
     return rules.map((r, i) => `${i + 1}. ${r}`);
 }
@@ -165,6 +173,8 @@ function fieldRules(fields: readonly ContentField[], boxSet: ContentPromptOption
 export function buildContentPrompt(item: PipelineItem, opts: ContentPromptOptions): BuiltPrompt {
     const fields = opts.fields && opts.fields.length ? opts.fields : ALL_CONTENT_FIELDS;
     const schema = contentSchema(fields, opts.variant);
+    const spec = promptSpecFor(itemTypeId(item));
+    const guidance = typeGuidanceFor(item, fields);
 
     if (opts.variant === 'donor') {
         const d = opts.donor;
@@ -205,7 +215,10 @@ RULES
   clearly indicates otherwise.
 
 FIELD RULES
-${fieldRules(fields, undefined, false, true).join('\n')}`;
+${fieldRules(fields, undefined, false, true, spec).join('\n')}
+
+TYPE-SPECIFIC GUIDANCE
+${guidance}`;
         return { prompt, schema };
     }
 
@@ -225,7 +238,7 @@ Generate comprehensive catalog content for this item based on its features, shap
 CRITICAL RULES:`;
 
     return {
-        prompt: `${intro}\n${fieldRules(fields, opts.boxSet, true).join('\n')}`,
+        prompt: `${intro}\n${fieldRules(fields, opts.boxSet, true, false, spec).join('\n')}\n\nTYPE-SPECIFIC GUIDANCE\n${guidance}`,
         schema,
     };
 }

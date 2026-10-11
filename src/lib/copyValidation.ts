@@ -20,13 +20,16 @@
  * is not a contradiction and is not reported.
  */
 
+import { COPY_BANNED_CLAIMS } from './ai/typePromptSpec';
+
 export type CopyIssueCode =
     | 'colour'      // names a primary colour the record contradicts
     | 'stone'       // names a material that is not the recorded one
     | 'size'        // cites a dimension the record does not have
     | 'plural'      // plural framing on a single object
     | 'scaffold'    // the prompt's own template leaked into the output
-    | 'thin';       // too short to be a description
+    | 'thin'        // too short to be a description
+    | 'banned_claim'; // claims a banned or unsupported buzzword
 
 export interface CopyIssue {
     code: CopyIssueCode;
@@ -42,6 +45,9 @@ export interface CopyRecord {
     lengthCm?: number | null;
     /** Above 1, plural framing is correct rather than wrong. */
     quantity?: number | null;
+    vendorNote?: string | null;
+    vendorText?: string | null;
+    description?: string | null;
 }
 
 /** Colours specific enough that naming the wrong one is a factual error.
@@ -210,6 +216,18 @@ export function validateCopy(
             code: 'thin',
             message: `the description is ${b.length} characters; at least ${MIN_BODY_CHARS} are needed`,
         });
+    }
+
+    // --- banned claims ----------------------------------------------------
+    const recordText = [record.vendorNote, record.vendorText, record.description].filter(Boolean).join(' ').toLowerCase();
+    for (const phrase of COPY_BANNED_CLAIMS) {
+        const re = new RegExp('(^|[^a-z0-9])' + phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])', 'i');
+        if (re.test(all) && !re.test(recordText)) {
+            issues.push({
+                code: 'banned_claim',
+                message: `the copy claims "${phrase}", which is unsupported by the record`,
+            });
+        }
     }
 
     return issues;

@@ -28,8 +28,15 @@ export const TITLE_RULE =
     `Capitalize Every Word Like This. Do NOT use articles (a, an, the, and). Do NOT end with a period.`;
 
 export const BODY_RULE =
-    `A 1000 to 1200 character marketing description formatted in clean HTML (<p>, <ul>, <li>). ` +
-    `Make it premium and engaging, emphasizing artisanal Mexican stone craftsmanship, translucency and natural veining.`;
+    `A 400 to 700 character (at most 100 words) marketing description formatted in clean HTML (<p>, <ul>, <li>). ` +
+    `Describe only what the record and the photo show, without invented claims.`;
+
+export const DONOR_BODY_RULE =
+    `Marketing description in clean HTML (<p>, <ul>, <li>), matching the template's length and structure (at most 100 words). ` +
+    `Describe only what the new item's recorded attributes support, without invented claims.`;
+
+export const TYPE_CHOICE =
+    `When a Type specification exists, generatedType must match the spec shopifyType exactly.`;
 
 export const SAY_IT_ONCE_RULE =
     `Say each thing ONCE. Do not restate the title, the material or the colour after the opening sentence, ` +
