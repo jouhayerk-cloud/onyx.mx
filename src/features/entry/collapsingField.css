@@ -72,9 +72,9 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    height: 36px;
-    min-height: 36px;
-    max-height: 36px;
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
     padding: 0 12px;
     margin: 0;
     border: 1px solid var(--ui-edge-hi);
@@ -111,14 +111,14 @@
 }
 
 .entry .entry-field-tag__label {
-    font: 700 12px/1 var(--ui-font-display);
+    font: 700 15px/1 var(--ui-font-display);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--ui-faint);
 }
 
 .entry .entry-field-tag__value {
-    font: 600 12.5px/1 var(--ui-font-display);
+    font: 600 15.5px/1 var(--ui-font-display);
     letter-spacing: 0.02em;
     color: var(--ui-ink);
 }
@@ -145,10 +145,10 @@
         padding: 0 14px;
     }
     .entry .entry-field-tag__label {
-        font-size: 12px;
+        font-size: 15px;
     }
     .entry .entry-field-tag__value {
-        font-size: 13px;
+        font-size: 16px;
     }
     .entry .entry-dims-group {
         min-width: 100%;

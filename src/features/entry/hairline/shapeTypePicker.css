@@ -58,7 +58,7 @@
 }
 
 .stp .stp-title {
-    font: 800 12px/1.2 var(--ui-font-display);
+    font: 800 15px/1.2 var(--ui-font-display);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--stp-ink);
@@ -73,7 +73,7 @@
     border-radius: 8px;
     background: var(--stp-tile);
     color: var(--stp-ink);
-    font: 500 13px/1.2 var(--ui-font-body);
+    font: 500 16px/1.2 var(--ui-font-body);
 }
 
 .stp .stp-search::placeholder {
@@ -153,13 +153,13 @@
 }
 
 .stp .stp-shape {
-    font: 700 12px/1.25 var(--ui-font-body);
+    font: 700 15px/1.25 var(--ui-font-body);
     color: var(--stp-ink);
     overflow-wrap: anywhere;
 }
 
 .stp .stp-type {
-    font: 500 11px/1.3 var(--ui-font-body);
+    font: 500 14.5px/1.3 var(--ui-font-body);
     color: var(--stp-ink-2);
     overflow-wrap: anywhere;
 }
@@ -185,7 +185,7 @@
     border-radius: 8px;
     background: transparent;
     color: var(--stp-ink);
-    font: 700 12px/1 var(--ui-font-display);
+    font: 700 15px/1 var(--ui-font-display);
     cursor: pointer;
 }
 
@@ -195,7 +195,7 @@
 }
 
 .stp .stp-chip {
-    font: 500 12px/1.2 var(--ui-font-body);
+    font: 500 15px/1.2 var(--ui-font-body);
     color: var(--stp-ink-2);
 }
 
@@ -232,6 +232,6 @@
 
 .stp .stp-quiet {
     margin: 0;
-    font: 500 12px/1.4 var(--ui-font-body);
+    font: 500 15px/1.4 var(--ui-font-body);
     color: var(--stp-ink-2);
 }

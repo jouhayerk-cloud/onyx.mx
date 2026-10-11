@@ -70,7 +70,7 @@
 }
 
 .ssr-label {
-    font: 800 11px/1.2 var(--ui-font-display);
+    font: 800 14.5px/1.2 var(--ui-font-display);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--stp-ink-2);
@@ -120,7 +120,7 @@
     border-radius: 999px;
     background: var(--stp-tile);
     color: var(--stp-ink);
-    font: 700 12px/1 var(--ui-font-display);
+    font: 700 15px/1 var(--ui-font-display);
     letter-spacing: 0.04em;
     cursor: pointer;
 }

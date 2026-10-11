@@ -34,13 +34,13 @@
     border: 1px dashed var(--ui-edge-hi);
     border-radius: var(--ui-r-md);
     color: var(--ui-dim);
-    font-size: 13px;
+    font-size: 16px;
 }
 /* Bigger fields now that the form has the whole width. */
 .entry .entry-grid .ui-input,
 .entry .entry-grid .ui-select {
     min-height: 44px;
-    font-size: 15px;
+    font-size: 17px;
 }
 @media (max-width: 719px) {
     .entry .entry-main { padding: 12px 14px 20px; }
@@ -83,7 +83,7 @@
     display: inline-flex;
     align-items: center;
     padding: 4px 9px;
-    font: 600 11px/1.2 var(--ui-font-display);
+    font: 600 14.5px/1.2 var(--ui-font-display);
     letter-spacing: 0.02em;
     color: var(--ui-dim);
     background-color: var(--ui-well);
@@ -164,7 +164,7 @@
     border: 1px solid var(--ui-edge);
     border-radius: var(--ui-r-sm);
     background-color: var(--ui-well);
-    font-size: 11.5px;
+    font-size: 15px;
 }
 
 .gen-progress-info {
@@ -204,7 +204,7 @@
 
 .gen-progress-pct {
     color: var(--ui-dim);
-    font-size: 11px;
+    font-size: 14.5px;
     flex-shrink: 0;
 }
 
@@ -252,7 +252,7 @@
 
 /* ══ Interactive Elements & Field Details ═════════════════════════════════ */
 .gen-counter {
-    font-size: 10.5px;
+    font-size: 14px;
     color: var(--ui-dim);
 }
 
@@ -265,7 +265,7 @@
     width: 100%;
     resize: vertical;
     min-height: 80px;
-    font: 400 12px/1.4 var(--ui-font-body);
+    font: 400 15px/1.4 var(--ui-font-body);
 }
 
 .gen-textarea:focus-visible {
@@ -288,7 +288,7 @@
     border: 1px solid var(--ui-edge);
     border-radius: var(--ui-r-sm);
     background-color: var(--ui-well);
-    font: 600 11px var(--ui-font-mono);
+    font: 600 14.5px var(--ui-font-mono);
     color: var(--ui-ink);
 }
 
@@ -359,7 +359,7 @@
     border-radius: var(--ui-r-sm);
     background-color: color-mix(in srgb, var(--ui-bad) 12%, var(--ui-well));
     color: var(--ui-ink);
-    font-size: 11.5px;
+    font-size: 15px;
 }
 
 .gen-error-msg {
@@ -381,7 +381,7 @@
 }
 
 .gen-issue {
-    font-size: 11px;
+    font-size: 14.5px;
     color: var(--ui-bad);
     display: flex;
     align-items: center;

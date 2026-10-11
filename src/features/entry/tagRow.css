@@ -26,14 +26,14 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 28px;
+    min-height: 34px;
     padding: 0 10px;
     margin: 0;
     border: 1px solid var(--ui-edge-hi);
     border-radius: var(--ui-r-pill);
     background-color: var(--ui-well);
     color: var(--ui-dim);
-    font: 700 11px/1 var(--ui-font-display);
+    font: 700 14.5px/1 var(--ui-font-display);
     letter-spacing: 0.04em;
     white-space: nowrap;
     cursor: pointer;
@@ -53,7 +53,7 @@
 
 .entry .entry-tag__count {
     color: var(--ui-faint);
-    font: 400 11px/1 var(--ui-font-body);
+    font: 400 14.5px/1 var(--ui-font-body);
 }
 
 /* A chip with a lead (the mirror's Shape figures) is 34px high; the lead is a 28 x 22 box before the text. */
@@ -89,6 +89,6 @@
     .entry .entry-tag {
         min-height: 44px;
         padding: 0 14px;
-        font-size: 12px;
+        font-size: 15px;
     }
 }
