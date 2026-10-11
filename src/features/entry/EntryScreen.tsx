@@ -258,6 +258,8 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
     const pendingRun = useRef<Set<ProcessId> | null>(null);
     const [pendingTick, setPendingTick] = useState(0);
     const [keyMissing, setKeyMissing] = useState(false);
+    /** Generate shows under the form once a photo exists; "Generate without a photo" opens it earlier (the text is then written from the most similar item). */
+    const [genWithoutPhoto, setGenWithoutPhoto] = useState(false);
 
     const patch = useCallback((p: Partial<EntryState>) => {
         if ('itemNumber' in p) autoNumber.current = false;
@@ -669,6 +671,7 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
         (mode === 'edit' && !!(existing?.detailed_description || existing?.generated_description || existing?.generated_color || existing?.generated_type || existing?.generated_png_url || existing?.spatial_masks))
     );
     const hasGenContent = hasActiveRun || hasResult;
+    const showGenerate = photos.length > 0 || hasGenContent || genWithoutPhoto || isEdit;
 
     return (
         <div ref={rootRef} className={cx('ui-root entry', `entry--${variant}`)} role={variant === 'modal' ? 'dialog' : 'region'}
@@ -719,26 +722,33 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
                             </Key>
                         </div>
                     )}
+                    {showGenerate ? (
+                    <GeneratePanel
+                        run={run}
+                        item={runItem}
+                        processes={processes}
+                        onProcessesChange={setProcesses}
+                        photos={photos}
+                        onGenerate={() => void handleGenerate()}
+                        preparing={preparing}
+                        prepLabel={prepLabel}
+                        aiEnabled={aiEnabled}
+                        onEnableAi={() => setAiEnabled(true)}
+                        blockedReason={blockedReason}
+                        keyMissing={keyMissing || run.runError?.code === 'key_missing'}
+                        onKeySaved={() => { run.clearRunError(); setKeyMissing(false); void handleGenerate(); }}
+                        mode={mode}
+                        hasContent={hasGenContent}
+                    />
+                    ) : (
+                        <div className="entry-gen-hint">
+                            <span>{tr('Add a photo to generate the title, description and colours. With no photo, the text can be written from the most similar item.')}</span>
+                            <Key size="sm" onClick={() => setGenWithoutPhoto(true)}>{tr('Generate without a photo')}</Key>
+                        </div>
+                    )}
                     <LivePreviewCard row={runRow} />
                 </div>
 
-                <GeneratePanel
-                    run={run}
-                    item={runItem}
-                    processes={processes}
-                    onProcessesChange={setProcesses}
-                    photos={photos}
-                    onGenerate={() => void handleGenerate()}
-                    preparing={preparing}
-                    prepLabel={prepLabel}
-                    aiEnabled={aiEnabled}
-                    onEnableAi={() => setAiEnabled(true)}
-                    blockedReason={blockedReason}
-                    keyMissing={keyMissing || run.runError?.code === 'key_missing'}
-                    onKeySaved={() => { run.clearRunError(); setKeyMissing(false); void handleGenerate(); }}
-                    mode={mode}
-                    hasContent={hasGenContent}
-                />
             </div>
 
             {confirm && (
