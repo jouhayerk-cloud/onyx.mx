@@ -12,10 +12,6 @@ import {
     discY,
 } from '../../../welcome/hairline/engine';
 import { resolveVariant } from '../variantOptions';
-import {
-    buildSubjectSilhouette,
-    PAINTED_PANEL_DEFAULTS,
-} from './subjects';
 
 /** Sensible median inventory dimensions in cm per canonical Type. */
 export const DEFAULTS: Record<string, Dims> = {
@@ -793,20 +789,30 @@ function buildWallPanel(cam: Cam, dims: Dims, variant?: string | null): FigurePa
     }
 }
 
-// ── painted wall panel (horse, elk, deer, moose, bear, bobcat, climbers) ────
+// ── painted wall panel: ONE hairline for every painted panel (owner decision, 11 Oct 2026) ────
 
-function buildPaintedWallPanel(cam: Cam, dims: Dims, variant?: string | null): FigurePart[] {
+/** A slab with an inset face carrying abstract brush strokes. The painted subject (horse, elk ...) is not drawn: it is not a sub-shape. */
+function buildPaintedWallPanel(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
     const slab = prism(cam, 0, 0, 0, w, d, h, 0.6);
     const borderX = Math.max(1.8, w * 0.06);
     const borderZ = Math.max(1.5, h * 0.12);
     const face = rectY(cam, d, borderX, w - borderX, borderZ, h - borderZ);
-    const subjectParts = buildSubjectSilhouette(variant, cam, w, h, d);
+    const x0 = borderX;
+    const x1 = w - borderX;
+    const z0 = borderZ;
+    const z1 = h - borderZ;
+    const stroke = (pts: ReadonlyArray<readonly [number, number]>): FigurePart => ({
+        d: pathOf(pts.map(([a, b]) => proj(cam, x0 + (x1 - x0) * a, d, z0 + (z1 - z0) * b)), false),
+        kind: 'crease',
+    });
 
     return [
         ...solidParts(slab),
         { d: face, kind: 'face' },
-        ...subjectParts,
+        stroke([[0.08, 0.28], [0.2, 0.5], [0.34, 0.58], [0.46, 0.4], [0.58, 0.3], [0.7, 0.46], [0.82, 0.62], [0.92, 0.5]]),
+        stroke([[0.1, 0.62], [0.24, 0.78], [0.4, 0.72], [0.52, 0.58], [0.66, 0.7], [0.8, 0.82], [0.9, 0.74]]),
+        stroke([[0.2, 0.18], [0.36, 0.28], [0.5, 0.2], [0.64, 0.16], [0.78, 0.24]]),
     ];
 }
 
@@ -1144,8 +1150,8 @@ export function buildFurnitureFigure(
     let fallback = DEFAULTS[effectiveId];
     if (effectiveId === 'wall-panel' && v && v in WALL_PANEL_DEFAULTS) {
         fallback = WALL_PANEL_DEFAULTS[v];
-    } else if (effectiveId === 'painted-wall-panel' && v && v in PAINTED_PANEL_DEFAULTS) {
-        fallback = PAINTED_PANEL_DEFAULTS[v];
+    } else if (effectiveId === 'painted-wall-panel') {
+        fallback = DEFAULTS['painted-wall-panel'];
     } else if (effectiveId === 'table' && v && v in TABLE_DEFAULTS) {
         fallback = TABLE_DEFAULTS[v];
     } else if (effectiveId === 'wine-rack') {
@@ -1204,7 +1210,7 @@ export function buildFurnitureFigure(
         case 'wall-panel':
             return buildWallPanel(cam, dims, v);
         case 'painted-wall-panel':
-            return buildPaintedWallPanel(cam, dims, v);
+            return buildPaintedWallPanel(cam, dims);
         case 'mirror':
             return buildMirror(cam, dims);
         case 'wine-rack':

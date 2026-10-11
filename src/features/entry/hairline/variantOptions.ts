@@ -64,16 +64,6 @@ const FORM_IRREGULAR = opt('irregular', 'Irregular');
 
 const SIZES_ALL = [opt('large', 'Large', ['grande']), opt('medium', 'Medium', ['mediano', 'mediana']), opt('small', 'Small', ['chico', 'chica', 'pequeno', 'pequena']), opt('mini', 'Mini')];
 
-const ANIMALS = [
-    opt('horse', 'Horse', ['horses', 'caballo', 'caballos']),
-    opt('elk', 'Elk', ['elks', 'alce', 'alces']),
-    opt('deer', 'Deer', ['venado', 'venados']),
-    opt('moose', 'Moose'),
-    opt('bear', 'Bear', ['bears', 'oso', 'osos']),
-    opt('bobcat', 'Bobcat', ['bobcats', 'lince']),
-    opt('climbers', 'Climbers', ['climber', 'escaladores']),
-];
-
 /** Open top or Closed top: a lamp body with an open mouth (the light shows) or a capped top. */
 const TOP_AXIS: SubShapeAxis = {
     kind: 'top',
@@ -100,12 +90,14 @@ export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
     'basin': none('basin'),
     'rock': ids('rock', 'form', 'Form', [opt('boulder', 'Boulder'), FORM_FREE], 'boulder'),
     'fountain': ids('fountain', 'form', 'Form', [opt('boulder', 'Boulder'), opt('sphere', 'Sphere', ['ball']), opt('s-shaped', 'S-shaped', ['s shaped', 's'])], 'boulder'),
-    'sculpture': ids('sculpture', 'subject', 'Subject', [opt('flame', 'Flame'), opt('venus', 'Venus'), opt('cactus', 'Cactus')], null),
+    // One hairline for every sculpture (owner decision, 11 Oct 2026): flame, venus and cactus are not sub-shapes.
+    'sculpture': none('sculpture'),
     'pillar': ids('pillar', 'form', 'Form', [FORM_SQUARED, FORM_CYLINDER], 'squared'),
     'ball': ids('ball', 'size', 'Size', [opt('mini', 'Mini'), opt('small', 'Small')], 'mini'),
     'bag': none('bag'),
     'wall-panel': ids('wall-panel', 'form', 'Form', [FORM_RECT, FORM_IRREGULAR, FORM_FREE, opt('pair', 'Pair', ['panel pair', 'wall panel pair', 'par'])], 'rectangular'),
-    'painted-wall-panel': ids('painted-wall-panel', 'subject', 'Subject', ANIMALS, 'horse'),
+    // One hairline for every painted wall panel (owner decision, 11 Oct 2026): the animal on it is not a sub-shape.
+    'painted-wall-panel': none('painted-wall-panel'),
     'mirror': ids('mirror', 'form', 'Form', [FORM_RECT, FORM_ROUND, FORM_SQUARED], 'rectangular'),
     'wine-rack': ids('wine-rack', 'holes', 'Holes', [2, 3, 4, 5, 6, 8, 9, 10, 20, 21].map(n => opt(String(n), n + ' holes', [String(n)])), '6'),
     'table': ids('table', 'form', 'Form', [opt('diamond', 'Diamond'), FORM_ROUND, FORM_FREE, FORM_RECT], 'diamond'),
