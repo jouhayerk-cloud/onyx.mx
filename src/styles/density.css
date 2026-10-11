@@ -1123,9 +1123,10 @@
    rows, and a transformed element becomes the containing block for any
    `sticky` descendant — which would pin the header to its own box instead of
    to the scroll container. Wrapper outside, transform inside. */
+/* 2026-10-10: the title row is no longer pinned. It is the first row of the list, scrolls with it and passes behind the island
+   like every row (it used to stay stuck under the island). z-index 40 stays so the list's own layers cannot cover it. */
 .inv-head-wrap {
-    position: sticky;
-    top: var(--inv-head-offset, 0px);
+    position: relative;
     z-index: 40;
     background-color: rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(24px);
