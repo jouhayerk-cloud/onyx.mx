@@ -16,13 +16,6 @@
     min-width: 0;
 }
 
-.stp-layout__preview {
-    flex: 0 0 240px;
-    width: 240px;
-    display: flex;
-    justify-content: center;
-}
-
 .stp-layout__scrollers {
     flex: 1 1 auto;
     min-width: 0;
@@ -35,59 +28,12 @@
 @media (max-width: 719px), (pointer: coarse) {
     .stp-layout {
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
         gap: 12px;
-    }
-
-    .stp-layout__preview {
-        flex: none;
-        width: 240px;
-        margin: 0 auto;
     }
 
     .stp-layout__scrollers {
         width: 100%;
-    }
-}
-
-/* ── Live Preview Drawing (~150px) ───────────────────────────────────────── */
-.stp-preview-box {
-    width: 240px;
-    max-width: 100%;
-    aspect-ratio: 5 / 4;
-    overflow: visible;
-    border: 1px solid var(--stp-line);
-    border-radius: 12px;
-    background: var(--stp-tile);
-    padding: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-}
-
-.stp-live-figure {
-    width: 100%;
-    height: 100%;
-    display: block;
-    animation: stp-crossfade 160ms cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-@keyframes stp-crossfade {
-    from {
-        opacity: 0;
-        transform: scale(0.97);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .stp-live-figure {
-        animation: none;
-        transition: none;
     }
 }
 
@@ -142,9 +88,13 @@
 .ssr-root {
     display: contents;
 }
-.stp-layout__scrollers > .hl-scroller:not(.is-collapsed),
-.ssr-axis {
+.stp-layout__scrollers > .hl-scroller:not(.is-collapsed) {
     flex: 1 1 100%;
+    min-width: 0;
+}
+/* An open axis shares the line with the parent tile when there is room, and wraps under it when there is not. */
+.ssr-axis {
+    flex: 1 1 340px;
     min-width: 0;
 }
 .stp-layout__scrollers > .hl-scroller.is-collapsed,
@@ -156,3 +106,24 @@
 .hl-scroller.is-collapsed {
     width: var(--hl-collapsed-w, 92px);
 }
+
+/* ── Done: leaves the forms view with whatever is chosen (owner flow, 11 Oct 2026) ── */
+.stp-done {
+    display: flex;
+    justify-content: flex-end;
+    align-self: flex-end;
+}
+.stp-done__btn {
+    min-height: 36px;
+    padding: 0 16px;
+    border: 1px solid var(--stp-line);
+    border-radius: 999px;
+    background: var(--stp-tile);
+    color: var(--stp-ink);
+    font: 700 12px/1 var(--ui-font-display);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+}
+.stp-done__btn:hover { border-color: var(--stp-accent); }
+.stp-done__btn:focus-visible { outline: 2px solid var(--stp-focus); outline-offset: 2px; }
+@media (pointer: coarse) { .stp-done__btn { min-height: 44px; } }

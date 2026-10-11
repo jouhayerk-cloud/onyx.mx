@@ -19,17 +19,17 @@
 .hl-scroller--type {
     --hl-tile-w: 148px;
     --hl-fig-w: 148px;
-    --hl-collapsed-w: 172px;
+    --hl-collapsed-w: 108px;
 }
 
 .hl-scroller--sub {
     --hl-tile-w: 116px;
     --hl-fig-w: 116px;
-    --hl-collapsed-w: 136px;
+    --hl-collapsed-w: 128px;
 }
 
 @media (max-width: 719px) {
-    .hl-scroller--type { --hl-tile-w: 116px; --hl-fig-w: 116px; --hl-collapsed-w: 136px; }
+    .hl-scroller--type { --hl-tile-w: 116px; --hl-fig-w: 116px; --hl-collapsed-w: 96px; }
     .hl-scroller--sub { --hl-tile-w: 96px; --hl-fig-w: 96px; --hl-collapsed-w: 112px; }
 }
 
@@ -117,12 +117,16 @@
 }
 
 .hl-scroller__collapsed-label {
-    font: 700 11.5px/1.2 var(--ui-font-display);
+    font: 700 12px/1.2 var(--ui-font-display);
     color: var(--stp-ink);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     max-width: 100%;
+    text-align: center;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
 }
 
 .hl-scroller__collapsed-meta {

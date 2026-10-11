@@ -6,7 +6,7 @@ import type { Dims } from './types';
 import { ShapeFigure } from './ShapeFigure';
 import { SubShapeRow } from './SubShapeRow';
 import { HairlineScroller, type HairlineScrollerItem } from './HairlineScroller';
-import { subShapesFor, parseShapeText } from './variantOptions';
+import { subShapesFor, parseShapeText, extraAxesFor } from './variantOptions';
 import './shapeTypePicker.css';
 import './dynamicSelector.css';
 
@@ -32,11 +32,14 @@ const SAVED_MS = 2000;
 
 const countText = (n: number) => (n === 0 ? tr('saved') : n === 1 ? tr('1 piece') : trf('{n} pieces', { n }));
 
+type PickerView = 'types' | 'forms' | 'final';
+
 /**
- * Hairline selector for Add Entry.
- * Rebuilt as horizontally scrollable grids that collapse to the chosen element,
- * and re-deploy when clicked.
- * Live drawing sits to the left on desktop and above on mobile.
+ * Hairline selector for Add Entry: Type, then Form, then ONE final tile.
+ * - types: every Type as a horizontally scrolling grid.
+ * - forms: the chosen Type collapses to a parent tile (click it to see all Types again)
+ *   and the forms of that Type deploy beside it.
+ * - final: only the chosen Form is shown, as one tile; clicking it deploys the forms again.
  */
 export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     value,
@@ -50,7 +53,8 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
 }) => {
     const uid = useId();
     const [query, setQuery] = useState('');
-    const [typeExpanded, setTypeExpanded] = useState(false);
+    // The owner's explicit choice of view; null follows what is filled in.
+    const [viewOverride, setViewOverride] = useState<PickerView | null>(null);
     const [saveState, setSaveState] = useState<'idle' | 'pending' | 'saved'>('idle');
     const savedTimer = useRef<number | undefined>(undefined);
 
@@ -88,10 +92,11 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
         }
 
         setQuery('');
-        setTypeExpanded(false);
+        setViewOverride(null);
     };
 
     const handlePickSubShape = (shapeText: string, _source: 'primary' | 'extra') => {
+        setViewOverride(null);
         onChange({ shape: shapeText });
     };
 
@@ -114,7 +119,7 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
             e.preventDefault();
             e.stopPropagation();
             setQuery('');
-            setTypeExpanded(false);
+            setViewOverride(null);
         }
     };
 
@@ -122,6 +127,14 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     const chosenOption = parsedShape.primary;
     const activeVariant = chosenOption ?? subShapes.defaultValue ?? null;
     const activeTop = parsedShape.extra.top ?? null;
+
+    // Nothing more to ask once the form (when the Type has several) and every extra axis (the top of a lamp) are chosen.
+    const formDone = !hasSubShapes || (
+        (subShapes.options.length <= 1 || chosenOption !== null)
+        && extraAxesFor(chosenTypeId, activeVariant).every(axis => parsedShape.extra[axis.kind] !== undefined)
+    );
+    const derivedView: PickerView = !typedType ? 'types' : formDone ? 'final' : 'forms';
+    const view: PickerView = query ? 'types' : (viewOverride ?? derivedView);
     const holesCount = chosenTypeId === 'wine-rack'
         ? (Number(activeVariant) || chosen?.holes[0] || undefined)
         : undefined;
@@ -150,6 +163,30 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
         });
     }, [matches, currentKey, typedType]);
 
+    // The one tile of the final view: the chosen form (or the Type itself when it has no forms).
+    const finalItems: ReadonlyArray<HairlineScrollerItem> = useMemo(() => {
+        if (!typedType) return [];
+        const typeLabel = chosen?.label ?? typedType;
+        return [{
+            key: 'final',
+            label: hasSubShapes && typedShape ? typedShape : typeLabel,
+            meta: hasSubShapes && typedShape ? typeLabel : undefined,
+            node: (
+                <ShapeFigure
+                    family={chosen?.family ?? 'box'}
+                    isMirror={chosen?.isMirror ?? false}
+                    typeId={chosenTypeId}
+                    variant={hasSubShapes ? activeVariant : null}
+                    top={activeTop}
+                    dims={dims ?? chosen?.dims ?? null}
+                    holes={holesCount}
+                    active
+                    className="ssr-scroller-svg"
+                />
+            ),
+        }];
+    }, [typedType, typedShape, hasSubShapes, chosen, chosenTypeId, activeVariant, activeTop, dims, holesCount]);
+
     return (
         <div className="stp" onKeyDown={onKeyDown}>
             {/* Header: title and search */}
@@ -161,7 +198,6 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
                     value={query}
                     onChange={e => {
                         setQuery(e.target.value);
-                        if (e.target.value) setTypeExpanded(true);
                     }}
                     placeholder={tr('Find a type')}
                     aria-label={tr('Find a type')}
@@ -216,52 +252,57 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
                 </div>
             )}
 
-            {/* Live Drawing + Scrollers layout */}
+            {/* Type, then Form, then ONE final tile */}
             <div className="stp-layout">
-                {chosenTypeId && (
-                    <div className="stp-layout__preview">
-                        <div className="stp-preview-box">
-                            <ShapeFigure
-                                key={`${chosenTypeId}-${activeVariant ?? 'none'}-${activeTop ?? 'none'}`}
-                                family={chosen?.family ?? 'box'}
-                                isMirror={chosen?.isMirror ?? false}
-                                typeId={chosenTypeId}
-                                variant={activeVariant}
-                                top={activeTop}
-                                dims={dims ?? chosen?.dims ?? null}
-                                holes={holesCount}
-                                active
-                                className="stp-live-figure"
-                            />
-                        </div>
-                    </div>
-                )}
-
                 <div className="stp-layout__scrollers">
-                    {/* Reusable HairlineScroller for Types */}
-                    <HairlineScroller
-                        label={tr('Pick a type')}
-                        size="type"
-                        items={typeItems}
-                        value={chosen?.label ?? (typedType || null)}
-                        onChange={handlePickType}
-                        disabled={disabled}
-                        expanded={Boolean(query) || typeExpanded || !typedType}
-                        onExpandedChange={setTypeExpanded}
-                    />
-
-                    {/* Sub-Shape Row (Form / Size / Holes / Top) */}
-                    {chosenTypeId && hasSubShapes && (
-                        <SubShapeRow
-                            typeId={chosenTypeId}
-                            value={typedShape}
-                            onChange={handlePickSubShape}
-                            dims={dims ?? chosen?.dims ?? null}
-                            family={chosen?.family ?? 'box'}
+                    {view === 'final' ? (
+                        <HairlineScroller
+                            label={hasSubShapes ? tr('Form') : tr('Pick a type')}
+                            size="sub"
+                            items={finalItems}
+                            value="final"
+                            onChange={() => {}}
                             disabled={disabled}
+                            expanded={false}
+                            onExpandedChange={open => { if (open) setViewOverride(hasSubShapes ? 'forms' : 'types'); }}
                         />
+                    ) : (
+                        <>
+                            {/* The Type scroller: open in the types view, the parent tile in the forms view */}
+                            <HairlineScroller
+                                label={tr('Pick a type')}
+                                size="type"
+                                items={typeItems}
+                                value={chosen?.label ?? (typedType || null)}
+                                onChange={handlePickType}
+                                disabled={disabled}
+                                expanded={view === 'types'}
+                                onExpandedChange={open => setViewOverride(open ? 'types' : null)}
+                            />
+
+                            {/* Sub-Shape Row (Form / Size / Holes / Top) */}
+                            {view === 'forms' && chosenTypeId && hasSubShapes && (
+                                <SubShapeRow
+                                    key={`${chosenTypeId}-${viewOverride ?? 'auto'}`}
+                                    typeId={chosenTypeId}
+                                    value={typedShape}
+                                    onChange={handlePickSubShape}
+                                    dims={dims ?? chosen?.dims ?? null}
+                                    family={chosen?.family ?? 'box'}
+                                    disabled={disabled}
+                                    forceOpen={viewOverride === 'forms'}
+                                />
+                            )}
+                        </>
                     )}
                 </div>
+                {view === 'forms' && (
+                    <div className="stp-done">
+                        <button type="button" className="stp-done__btn" disabled={disabled} onClick={() => setViewOverride('final')}>
+                            {tr('Done')}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

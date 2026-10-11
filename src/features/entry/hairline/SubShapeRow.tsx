@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { tr } from '../../../lib/i18n';
 import type { Geometry, Dims } from './types';
 import { ShapeFigure } from './ShapeFigure';
@@ -21,7 +21,11 @@ export interface SubShapeRowProps {
     family?: Geometry;
     isCoarse?: boolean;
     disabled?: boolean;
+    /** Open the first axis (the forms) even though it has a choice: the owner came back to change it. */
+    forceOpen?: boolean;
 }
+
+const EXTRA_FIRST = '__first-extra__';
 
 /**
  * Sub-shape selector row for a chosen Type.
@@ -37,8 +41,11 @@ export const SubShapeRow: React.FC<SubShapeRowProps> = ({
     family = 'box',
     isCoarse: _isCoarse = false,
     disabled = false,
+    forceOpen = false,
 }) => {
     const subShapes = subShapesFor(typeId);
+    // Which axis the owner re-opened (or came back to change); an axis without a choice is always open.
+    const [openKey, setOpenKey] = useState<string | null>(forceOpen ? (subShapes.options.length > 1 ? 'primary' : EXTRA_FIRST) : null);
     if (subShapes.kind === 'none' || subShapes.options.length === 0) {
         return null;
     }
@@ -127,11 +134,13 @@ export const SubShapeRow: React.FC<SubShapeRowProps> = ({
                         freeLabel={tr('Not listed')}
                         onFree={handleFree}
                         disabled={disabled}
+                        expanded={openKey === 'primary'}
+                        onExpandedChange={open => setOpenKey(open ? 'primary' : null)}
                     />
                 </div>
             )}
 
-            {extraAxes.map(axis => (
+            {extraAxes.map((axis, axisIndex) => (
                 <div key={axis.kind} className="ssr-axis" role="group" aria-label={tr(axis.label)}>
                     <div className="ssr-head">
                         <span className="ssr-label">{tr(axis.label)}</span>
@@ -143,6 +152,8 @@ export const SubShapeRow: React.FC<SubShapeRowProps> = ({
                         value={parsed.extra[axis.kind] ?? null}
                         onChange={optVal => handleExtra(axis, optVal)}
                         disabled={disabled}
+                        expanded={openKey === axis.kind || (openKey === EXTRA_FIRST && axisIndex === 0)}
+                        onExpandedChange={open => setOpenKey(open ? axis.kind : null)}
                     />
                 </div>
             ))}
