@@ -3409,4 +3409,13 @@ export const esCatalog: Record<string, string> = {
   'No active session. Sign in again.': 'No hay sesión activa. Inicia sesión de nuevo.',
   'Could not copy. Select the text below and copy it by hand.': 'No se pudo copiar. Selecciona el texto de abajo y cópialo a mano.',
   'Valid for about an hour. Anyone who has it can act as you. Paste it only into your own PowerShell, never into chat.': 'Vale cerca de una hora. Quien lo tenga puede actuar como tú. Pégalo solo en tu propio PowerShell, nunca en el chat.',
+  'MCP access': 'Acceso MCP',
+  'Personal tokens let Claude Code or another MCP client read Onyx data with your role. They last 180 days and you can revoke them here.': 'Los tokens personales permiten que Claude Code u otro cliente MCP lea datos de Onyx con tu rol. Duran 180 días y puedes revocarlos aquí.',
+  'Create MCP token': 'Crear token MCP',
+  'Copy token': 'Copiar token',
+  'Copy command': 'Copiar comando',
+  'If onyx is already added, run: claude mcp remove onyx first. Then start a new Claude Code session.': 'Si ya agregaste onyx, ejecuta primero: claude mcp remove onyx. Luego inicia una nueva sesión de Claude Code.',
+  'Connect Claude Code': 'Conectar Claude Code',
+  'Check it with: claude mcp list': 'Compruébalo con: claude mcp list',
+  'No MCP tokens created yet.': 'Aún no se han creado tokens MCP.',
 };

@@ -26,6 +26,7 @@ import { THEME_ASSETS } from '../../lib/themes-assets';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import changelogText from '../../assets/CHANGELOG.md?raw';
 import { SiriAccessPanel } from './SiriAccessPanel';
+import { McpAccessPanel } from './McpAccessPanel';
 import { siriTokenPendingAtom } from './siriState';
 import { tr } from '../../lib/i18n';
 import { TactileSwitch } from '../../components/TactileSwitch';
@@ -432,9 +433,14 @@ export const StudioSettingsPortal: React.FC = () => {
 
                             {/* Siri Shortcuts */}
                             {import.meta.env.VITE_SIRI_TOKENS === 'true' && (
+                                <>
                                 <div className="ss-siri">
                                     <SiriAccessPanel />
                                 </div>
+                                <div className="ss-siri">
+                                    <McpAccessPanel />
+                                </div>
+                                </>
                             )}
 
                             {/* Sign Out */}

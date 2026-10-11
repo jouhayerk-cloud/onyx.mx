@@ -1,0 +1,151 @@
+@import './siriAccess.css';
+
+/* MCP Access Panel Styling (ma- prefix) */
+
+.ma-panel {
+    /* Layout inherited from .sa-panel */
+}
+
+/* Code blocks in callout and help cards */
+.ma-code-block {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    background: var(--ss-field, rgba(0, 0, 0, 0.28));
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    padding: 10px 12px;
+    user-select: all;
+    -webkit-user-select: all;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    box-shadow: none;
+    box-sizing: border-box;
+}
+
+html:root:root:root .ss-sheet .ma-code-block {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+    background: var(--ss-field, rgba(0, 0, 0, 0.28)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+    box-shadow: none !important;
+}
+
+/* Callout card adjustments */
+.ma-callout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ma-callout-note {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.35;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+}
+
+html:root:root:root .ss-sheet .ma-callout-note {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+/* Small help card shown when no token is active */
+.ma-help-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.ma-help-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ma-help-note {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.35;
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68));
+}
+
+html:root:root:root .ss-sheet .ma-help-note {
+    color: var(--ss-fg2, rgba(255, 255, 255, 0.68)) !important;
+}
+
+/* Textarea fallback when clipboard copy fails */
+.ma-fallback-wrap {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ma-fallback-textarea {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94));
+    background: var(--ss-field, rgba(0, 0, 0, 0.28));
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    resize: vertical;
+    outline: none;
+    user-select: all;
+    -webkit-user-select: all;
+}
+
+html:root:root:root .ss-sheet .ma-fallback-textarea {
+    color: var(--ss-fg, rgba(255, 255, 255, 0.94)) !important;
+    background: var(--ss-field, rgba(0, 0, 0, 0.28)) !important;
+    border: 1px solid var(--ss-sep, rgba(255, 255, 255, 0.12)) !important;
+}
+
+.ma-fallback-textarea:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+html:root:root:root .ss-sheet .ma-fallback-textarea:focus-visible {
+    outline: 2px solid var(--ss-accent, var(--main-color, #00aeef)) !important;
+    outline-offset: 2px !important;
+}
+
+/* Prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    .ma-panel *,
+    .ma-panel *::before,
+    .ma-panel *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0ms !important;
+    }
+}
+
+/* Prefers-reduced-transparency */
+@media (prefers-reduced-transparency: reduce) {
+    .ma-code-block,
+    .ma-fallback-textarea {
+        background: #1c1c1e;
+    }
+
+    html:root:root:root .ss-sheet .ma-code-block,
+    html:root:root:root .ss-sheet .ma-fallback-textarea {
+        background: #1c1c1e !important;
+    }
+
+    html.theme-aqua .ma-code-block,
+    html.theme-aqua .ma-fallback-textarea {
+        background: #ffffff;
+    }
+
+    html.theme-aqua html:root:root:root .ss-sheet .ma-code-block,
+    html.theme-aqua html:root:root:root .ss-sheet .ma-fallback-textarea {
+        background: #ffffff !important;
+    }
+}
