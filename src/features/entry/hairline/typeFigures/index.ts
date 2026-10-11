@@ -4,6 +4,7 @@ import { buildVesselFigure } from './vessels';
 import { buildStoneFigure } from './stone';
 import { buildFurnitureFigure } from './furniture';
 import { buildMirrorFigure, mirrorVariantOf } from './mirrors';
+import { resolveVariant } from '../variantOptions';
 
 /**
  * One hairline figure per canonical Type (src/lib/canonicalType.ts ids). Each group builder returns null for ids that
@@ -13,9 +14,11 @@ export function buildTypeFigure(id: string | null | undefined, dims: Dims | null
     if (!id) return null;
     // Mirrors have one drawing per shape (round, squared, rectangular); the variant is the Shape text.
     if (id === 'mirror') return buildMirrorFigure(mirrorVariantOf(variant), dims);
+    // The sub-shape: an option value or the legacy Shape text, resolved against the Type's options (variantOptions.ts); every builder gets the option VALUE.
+    const v = resolveVariant(id, variant);
     // Order matters: the first group that knows the id wins.
-    return buildLampFigure(id, dims, holes, variant)
-        ?? buildVesselFigure(id, dims, holes)
-        ?? buildStoneFigure(id, dims, holes)
-        ?? buildFurnitureFigure(id, dims, holes);
+    return buildLampFigure(id, dims, holes, v)
+        ?? buildVesselFigure(id, dims, holes, v)
+        ?? buildStoneFigure(id, dims, holes, v)
+        ?? buildFurnitureFigure(id, dims, holes, v);
 }

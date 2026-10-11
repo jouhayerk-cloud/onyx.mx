@@ -246,8 +246,10 @@ export function buildVesselFigure(
     id: string,
     rawDims: Dims | null,
     holes?: number,
+    variant?: string | null,
 ): FigurePart[] | null {
     void holes;
+    void variant;
     const fallback = DEFAULTS[id];
     if (!fallback) return null;
     const dims = normalizeDims(rawDims, fallback);

@@ -827,6 +827,7 @@ export function buildFurnitureFigure(
     id: string,
     rawDims: Dims | null,
     holes?: number,
+    _variant?: string | null,
 ): FigurePart[] | null {
     if (!id || !(id in DEFAULTS)) return null;
     const dims = normalizeDims(rawDims, DEFAULTS[id]);

@@ -444,7 +444,7 @@ function buildBag(cam: Cam, dims: Dims): FigurePart[] {
  * Draw the hairline figure parts for a known canonical stone Type.
  * Returns FigurePart[] back-to-front, or null for an unknown Type id.
  */
-export function buildStoneFigure(id: string, rawDims: Dims | null, _holes?: number): FigurePart[] | null {
+export function buildStoneFigure(id: string, rawDims: Dims | null, _holes?: number, _variant?: string | null): FigurePart[] | null {
     if (!id || !(id in DEFAULTS)) return null;
     const dims = normalizeDims(rawDims, DEFAULTS[id as StoneFigureId]);
     const cam = centeredCam(dims);
