@@ -247,11 +247,11 @@ export async function executeOnyxDataTool(
         has_more: totalCount > offset + items.length,
       };
 
-      const { items: cappedItems, truncated } = capPayload(resultPayload, 60000);
+      const { items: cappedItems, truncated } = capPayload(resultPayload, 30000);
       const payload = {
         ...resultPayload,
         items: cappedItems,
-        ...(truncated ? { truncated: true, has_more: true } : {}),
+        ...(truncated ? { truncated: true, has_more: true, next_offset: offset + cappedItems.length } : {}),
       };
 
       return {
@@ -371,11 +371,11 @@ export async function executeOnyxDataTool(
         has_more: totalCount > offset + items.length,
       };
 
-      const { items: cappedItems, truncated } = capPayload(resultPayload, 60000);
+      const { items: cappedItems, truncated } = capPayload(resultPayload, 30000);
       const payload = {
         ...resultPayload,
         items: cappedItems,
-        ...(truncated ? { truncated: true, has_more: true } : {}),
+        ...(truncated ? { truncated: true, has_more: true, next_offset: offset + cappedItems.length } : {}),
       };
 
       return {
@@ -427,11 +427,11 @@ export async function executeOnyxDataTool(
         has_more: totalCount > offset + items.length,
       };
 
-      const { items: cappedItems, truncated } = capPayload(resultPayload, 60000);
+      const { items: cappedItems, truncated } = capPayload(resultPayload, 30000);
       const payload = {
         ...resultPayload,
         items: cappedItems,
-        ...(truncated ? { truncated: true, has_more: true } : {}),
+        ...(truncated ? { truncated: true, has_more: true, next_offset: offset + cappedItems.length } : {}),
       };
 
       return {

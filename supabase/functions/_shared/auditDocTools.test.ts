@@ -1,6 +1,7 @@
 import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
-import { ALL_STAFF, isRoleAllowed } from "./onyxDataTools.ts";
+import { isRoleAllowed } from "./onyxDataTools.ts";
 import {
+  DOC_JOB_ROLES,
   AUDIT_DOC_TOOLS,
   AUDIT_ROLES,
   AUDIT_OUTCOMES,
@@ -104,7 +105,7 @@ Deno.test("document_jobs_check_status is registered in AUDIT_DOC_TOOLS with corr
   const tool = AUDIT_DOC_TOOLS.find((t) => t.name === "document_jobs_check_status");
   assert(tool !== undefined, "document_jobs_check_status must be registered");
   assertEquals(tool.name, "document_jobs_check_status");
-  assertEquals(tool.requiredRoles, ALL_STAFF);
+  assertEquals(tool.requiredRoles, DOC_JOB_ROLES);
 
   const schema = tool.inputSchema as {
     type: string;
@@ -159,16 +160,16 @@ Deno.test("audit tool permits Developer and Admin", () => {
   }
 });
 
-Deno.test("document jobs tool requiredRoles asserts against real ALL_STAFF constant", () => {
+Deno.test("document jobs tool requiredRoles asserts against real DOC_JOB_ROLES constant", () => {
   const tool = AUDIT_DOC_TOOLS.find((t) => t.name === "document_jobs_check_status");
   assert(tool !== undefined);
-  assertEquals(tool.requiredRoles, ALL_STAFF);
+  assertEquals(tool.requiredRoles, DOC_JOB_ROLES);
 
-  // Every role in ALL_STAFF is permitted
-  for (const role of ALL_STAFF) {
+  // Every role in DOC_JOB_ROLES is permitted
+  for (const role of DOC_JOB_ROLES) {
     const auth = authorizeDocJobRole(role);
     assertEquals(auth.allowed, true);
-    assertEquals(isRoleAllowed(role, ALL_STAFF), true);
+    assertEquals(isRoleAllowed(role, DOC_JOB_ROLES), true);
   }
 
   // Any non-staff role is rejected

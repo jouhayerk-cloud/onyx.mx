@@ -81,7 +81,7 @@ export const ONYX_DATA_TOOLS: OnyxDataTool[] = [
   // ── Inventory Tools (10) ───────────────────────────────────────────────────
   {
     name: "inventory_search",
-    description: "Search and filter warehouse inventory records by query keyword, vendor prefix, lifecycle status, material, shape, or workbook batch. Supports pagination up to MAX_LIMIT. Acquisition and landed cost columns are automatically redacted for non-finance callers. For Vendor callers, results are strictly scoped to their own vendor_id.",
+    description: "Search and filter warehouse inventory records by query keyword, vendor prefix, lifecycle status, material, shape, or workbook batch. Supports pagination up to MAX_LIMIT. Acquisition and landed cost columns are automatically redacted for non-finance callers. For Vendor callers, results are strictly scoped to their own vendor_id. Results are compact by default and capped at about 30,000 characters; when truncated is true, continue with offset = next_offset.",
     inputSchema: {
       type: "object",
       properties: {
@@ -180,7 +180,7 @@ export const ONYX_DATA_TOOLS: OnyxDataTool[] = [
   },
   {
     name: "inventory_list_by_crate",
-    description: "List all inventory items currently packed into a designated logistics crate or container. Returns item identifiers, dimensions, weights, and descriptions for crate manifest packing verification.",
+    description: "List all inventory items currently packed into a designated logistics crate or container. Returns item identifiers, dimensions, weights, and descriptions for crate manifest packing verification. Results are compact by default and capped at about 30,000 characters; when truncated is true, continue with offset = next_offset.",
     inputSchema: {
       type: "object",
       properties: {
@@ -217,7 +217,7 @@ export const ONYX_DATA_TOOLS: OnyxDataTool[] = [
   },
   {
     name: "inventory_list_by_vendor",
-    description: "List inventory items belonging to a specific vendor prefix with summary metadata. Supports status filtering and pagination. Scoped automatically for vendor callers, and cost fields are redacted for non-finance roles.",
+    description: "List inventory items belonging to a specific vendor prefix with summary metadata. Supports status filtering and pagination. Scoped automatically for vendor callers, and cost fields are redacted for non-finance roles. Results are compact by default and capped at about 30,000 characters; when truncated is true, continue with offset = next_offset.",
     inputSchema: {
       type: "object",
       properties: {

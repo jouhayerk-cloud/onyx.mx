@@ -9,12 +9,14 @@
 // =============================================================================
 
 import {
-  ALL_STAFF,
   isRoleAllowed,
   type OnyxDataTool,
 } from "./onyxDataTools.ts";
 
 // ── Role Sets ─────────────────────────────────────────────────────────────────
+/** Roles that may read document job metadata. The tool runs on the service role (RLS does not apply), so Vendor and ClientViewer are excluded. */
+export const DOC_JOB_ROLES: string[] = ["Developer", "Admin", "ClientBoss", "ClientAccounting"];
+
 export const AUDIT_ROLES: string[] = [
   "Developer",
   "Admin",
@@ -114,7 +116,7 @@ export const AUDIT_DOC_TOOLS: OnyxDataTool[] = [
         },
       },
     },
-    requiredRoles: ALL_STAFF,
+    requiredRoles: DOC_JOB_ROLES,
   },
 ];
 
@@ -200,7 +202,7 @@ export function authorizeDocJobRole(role: string): {
   status?: number;
   error?: string;
 } {
-  if (!isRoleAllowed(role, ALL_STAFF)) {
+  if (!isRoleAllowed(role, DOC_JOB_ROLES)) {
     return {
       allowed: false,
       status: 403,

@@ -415,7 +415,7 @@ export async function handleSiriInventory(req: Request): Promise<Response> {
       const searchResult = await executeOnyxDataTool(
         supabase,
         "inventory_search",
-        { query, limit: 5 },
+        { query, limit: 5, view: "full" },
         caller
       );
 
@@ -436,7 +436,7 @@ export async function handleSiriInventory(req: Request): Promise<Response> {
       const searchResult = await executeOnyxDataTool(
         supabase,
         "inventory_search",
-        { query, limit: 5 },
+        { query, limit: 5, view: "full" },
         caller
       );
 
