@@ -218,10 +218,10 @@ export const StudioSettingsPortal: React.FC = () => {
                         </button>
                     )}
                     <div className="flex flex-col items-center flex-1">
-                        <span id="ss-title" className="text-[20px] font-[600] text-(--ss-fg) leading-tight">
+                        {/* Settings keeps its name for screen readers only (the dialog label); the version lives on the Onyx panel. */}
+                        <span id="ss-title" className={viewMode === 'settings' ? 'sr-only' : 'text-[20px] font-[600] text-(--ss-fg) leading-tight'}>
                             {viewMode === 'settings' ? tr("Settings") : tr("System logs")}
                         </span>
-                        <span className="text-[11px] text-(--ss-fg2)">V{APP_VERSION_LABEL}</span>
                     </div>
                     <button aria-label={tr("Close")} onClick={handleClose} className="ss-icon-btn w-[44px] h-[44px]">
                         <X size={24} className="text-(--ss-fg)" />
