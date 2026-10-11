@@ -7,7 +7,7 @@
  *   holes   wine racks (the N in "N Holes")
  *   none    nothing to choose
  * and, for some Types, extra axes that apply on top of the primary one: table and floor lamps are Open top or Closed top in their
- * squared, rectangular and cube forms (kind "top").
+ * four-sided (squared) and cube forms (kind "top"). On every lamp squared and rectangular are one form.
  * Option values are kebab-case ids. A builder receives the primary option VALUE as its `variant` argument and must also accept the legacy
  * Shape text ("SQUARED", "Squares", "Large "): run it through resolveVariant first. Extra axes are read with parseShapeText.
  * The Shape field keeps ONE text per item ("Squared Open Top"): composeShapeText builds it and parseShapeText reads it back, so no schema change.
@@ -56,7 +56,7 @@ const FORM_CYLINDER = opt('cylinder', 'Cylinder', ['cylindrical', 'cilindro', 'c
 const FORM_SQUARED = opt('squared', 'Squared', ['square', 'squares', 'cuadrado', 'cuadrada']);
 const FORM_CUBE = opt('cube', 'Cube', ['cubo']);
 const FORM_RECT = opt('rectangular', 'Rectangular', ['rectangle', 'rectangulo']);
-/** A floor lamp is one four-sided column: squared and rectangular are the same form, the width and depth decide the section (owner decision, 11 Oct 2026). */
+/** On every lamp (pendant, table, floor) squared and rectangular are the same four-sided form: the width and depth decide the section (owner decision, 11 Oct 2026). */
 const FORM_SQUARED_COLUMN = opt('squared', 'Squared', ['square', 'squares', 'cuadrado', 'cuadrada', 'rectangular', 'rectangle', 'rectangulo']);
 const FORM_ROUND = opt('round', 'Round', ['circle', 'circular', 'oval', 'redondo', 'redonda']);
 const FORM_FREE = opt('free-form', 'Free Form', ['freeform', 'free form', 'organic', 'organico', 'wavy']);
@@ -70,7 +70,7 @@ const TOP_AXIS: SubShapeAxis = {
     label: 'Top',
     options: [opt('open', 'Open Top', ['open', 'open top', 'abierto', 'abierta']), opt('closed', 'Closed Top', ['closed', 'closed top', 'cerrado', 'cerrada'])],
     defaultValue: null,
-    whenPrimary: ['squared', 'rectangular', 'cube'],
+    whenPrimary: ['squared', 'cube'],
 };
 
 const ids = (typeId: string, kind: SubShapeKind, label: string, options: readonly SubShapeOption[], defaultValue: string | null, extra?: readonly SubShapeAxis[]): TypeSubShapes => ({ typeId, kind, label, options, defaultValue, extra });
@@ -81,8 +81,8 @@ export const UNIFIED_TYPE_IDS: Readonly<Record<string, string>> = { 'luminary': 
 
 /** Options are ordered by how often the live inventory uses them; the drawing never depends on the order. */
 export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
-    'pendant': ids('pendant', 'form', 'Form', [FORM_CYLINDER, FORM_SQUARED], 'cylinder'),
-    'table-lamp': ids('table-lamp', 'form', 'Form', [FORM_SQUARED, FORM_CYLINDER, FORM_CUBE, FORM_RECT], 'squared', [TOP_AXIS]),
+    'pendant': ids('pendant', 'form', 'Form', [FORM_CYLINDER, FORM_SQUARED_COLUMN], 'cylinder'),
+    'table-lamp': ids('table-lamp', 'form', 'Form', [FORM_SQUARED_COLUMN, FORM_CYLINDER, FORM_CUBE], 'squared', [TOP_AXIS]),
     'floor-lamp': ids('floor-lamp', 'form', 'Form', [FORM_SQUARED_COLUMN], 'squared', [TOP_AXIS]),
     'bowl': ids('bowl', 'size', 'Size', SIZES_ALL, 'medium'),
     'canoe': ids('canoe', 'size', 'Size', SIZES_ALL.slice(0, 3), 'medium'),

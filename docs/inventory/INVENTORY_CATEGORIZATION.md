@@ -395,7 +395,7 @@ The following 8 specific ambiguities require an authoritative decision from the 
 
 1. **Tower Lamp is a Floor Lamp.** One canonical Type, `floor-lamp` (Floor Lamp, 66 items); tower lamp, tower lamps and lampara torre are aliases.
 2. **Luminary is a Wall Panel.** Every wall panel is lit; the vendors split one product in two. One canonical Type, `wall-panel`; luminary, luminaries and wall luminary are aliases. Painted Wall Panel stays a separate Type for now.
-3. **A floor lamp is one four-sided column.** Squared and rectangular are one form (`squared`); the width and depth decide the section.
-4. **Open top or Closed top.** Table lamps and floor lamps in their squared, rectangular and cube forms have a second choice, written in the Shape text ("Squared Open Top"). No database column: `parseShapeText` and `composeShapeText` in `src/features/entry/hairline/variantOptions.ts` read and write it.
+3. **On every lamp, squared and rectangular are one form** (pendant, table lamp, floor lamp): `squared`, the width and depth decide the section. A cube stays separate (1 item). Mirrors keep Rectangular, Round and Squared. In the data cleanup the one table lamp with shape Rectangular becomes Squared.
+4. **Open top or Closed top.** Table lamps and floor lamps in their squared, rectangular and cube forms have a second choice, written in the Shape text ("Squared Open Top"; it applies to the squared and cube forms). No database column: `parseShapeText` and `composeShapeText` in `src/features/entry/hairline/variantOptions.ts` read and write it.
 5. **One hairline for every painted wall panel and one for every sculpture.** No animal or figure sub-shape.
 6. **Canoes are always Decorative Trays** (standing owner rule).
