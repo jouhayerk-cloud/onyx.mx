@@ -4,6 +4,7 @@
 
 .DESCRIPTION
   Run it AFTER the onyx-ai function is deployed and the GEMINI_API_KEY secret is set.
+  Run in Windows PowerShell 5.1 (GetResponseStream is not available in PowerShell 7).
   It needs one environment variable, ONYX_TEST_JWT: a current access token of YOUR Onyx login
   (get it in the app tab: DevTools console, then
      JSON.parse(localStorage.getItem('sb-yircifkayqpuydfdqzlm-auth-token')).access_token
@@ -13,6 +14,8 @@
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function Prop($o, $n) { if ($null -ne $o -and $o.PSObject.Properties[$n]) { return $o.$n } return $null }
 
 $ref  = "yircifkayqpuydfdqzlm"
 $base = "https://$ref.supabase.co/functions/v1"
@@ -62,32 +65,37 @@ Record ($r.Code -eq 405) "onyx-ai GET method is refused" ("HTTP {0}" -f $r.Code)
 
 # 3. Missing messages parameter (must be rejected with 400)
 $r = Call "POST" "$base/onyx-ai" $jwt @{ model = "gemini-2.5-flash" }
-Record ($r.Code -eq 400 -and $null -ne $r.Json -and $null -ne $r.Json.error -and $r.Json.error.message -like "*Missing messages*") "onyx-ai rejects missing messages" ("HTTP {0}, msg: {1}" -f $r.Code, $(if ($r.Json -and $r.Json.error) { $r.Json.error.message } else { "none" }))
+$err3 = Prop (Prop $r.Json "error") "message"
+Record ($r.Code -eq 400 -and $null -ne $err3 -and $err3 -like "*Missing messages*") "onyx-ai rejects missing messages" ("HTTP {0}, msg: {1}" -f $r.Code, $(if ($null -ne $err3) { $err3 } else { "none" }))
 
 # 4. Unapproved model parameter (must be rejected with 400)
 $r = Call "POST" "$base/onyx-ai" $jwt @{ messages = @( @{ role = "user"; parts = @( @{ text = "ping" } ) } ); model = "unapproved-model-test" }
-Record ($r.Code -eq 400 -and $null -ne $r.Json -and $null -ne $r.Json.error -and $r.Json.error.message -like "*Model not allowed*") "onyx-ai rejects unapproved model" ("HTTP {0}, msg: {1}" -f $r.Code, $(if ($r.Json -and $r.Json.error) { $r.Json.error.message } else { "none" }))
+$err4 = Prop (Prop $r.Json "error") "message"
+Record ($r.Code -eq 400 -and $null -ne $err4 -and $err4 -like "*Model not allowed*") "onyx-ai rejects unapproved model" ("HTTP {0}, msg: {1}" -f $r.Code, $(if ($null -ne $err4) { $err4 } else { "none" }))
 
 # 5. Oversized payload (> 200 KB) must return 413
 $bigText = "X" * (205 * 1024)
 $r = Call "POST" "$base/onyx-ai" $jwt @{ messages = @( @{ role = "user"; parts = @( @{ text = $bigText } ) } ) }
-Record ($r.Code -eq 413 -and $null -ne $r.Json -and $null -ne $r.Json.error -and $r.Json.error.message -like "*Payload too large*") "onyx-ai refuses oversized payload (>200KB)" ("HTTP {0}, msg: {1}" -f $r.Code, $(if ($r.Json -and $r.Json.error) { $r.Json.error.message } else { "none" }))
+$err5 = Prop (Prop $r.Json "error") "message"
+Record ($r.Code -eq 413 -and $null -ne $err5 -and $err5 -like "*Payload too large*") "onyx-ai refuses oversized payload (>200KB)" ("HTTP {0}, msg: {1}" -f $r.Code, $(if ($null -ne $err5) { $err5 } else { "none" }))
 
 # 6. Authorised cheap call with tiny prompt and valid model, verifying response shape
 $r = Call "POST" "$base/onyx-ai" $jwt @{ messages = @( @{ role = "user"; parts = @( @{ text = "Say OK" } ) } ); model = "gemini-2.5-flash" }
 if ($r.Code -eq 403) {
     Write-Host "      [Note] Caller was rejected with 403 Forbidden. Verify caller role in app_users is Developer, Admin, or ClientBoss." -ForegroundColor Yellow
 }
-if ($r.Code -eq 500 -and $r.Json -and $r.Json.error -and $r.Json.error.message -like "*Server configuration error*") {
+$cfgErr = Prop (Prop $r.Json "error") "message"
+if ($r.Code -eq 500 -and $null -ne $cfgErr -and $cfgErr -like "*Server configuration error*") {
     Write-Host "      [Note] Server configuration error: Check that GEMINI_API_KEY secret is set in Supabase." -ForegroundColor Yellow
 }
 
-$hasCandidates = ($null -ne $r.Json -and $null -ne $r.Json.candidates -and @($r.Json.candidates).Count -gt 0)
-$responseText = if ($hasCandidates -and $r.Json.candidates[0].content -and $r.Json.candidates[0].content.parts -and @($r.Json.candidates[0].content.parts).Count -gt 0) {
-    $r.Json.candidates[0].content.parts[0].text
-} else {
-    ""
-}
+$candidates = Prop $r.Json "candidates"
+$hasCandidates = ($null -ne $candidates -and @($candidates).Count -gt 0)
+$firstCandidate = if ($hasCandidates) { @($candidates)[0] } else { $null }
+$content = Prop $firstCandidate "content"
+$parts = Prop $content "parts"
+$firstPart = if ($null -ne $parts -and @($parts).Count -gt 0) { @($parts)[0] } else { $null }
+$responseText = if ($null -ne $firstPart) { [string](Prop $firstPart "text") } else { "" }
 Record ($r.Code -eq 200 -and $hasCandidates) "onyx-ai tiny prompt and response shape" ("HTTP {0}, reply: {1}" -f $r.Code, (Short $responseText))
 
 Write-Host "`n== Summary ==" -ForegroundColor Cyan

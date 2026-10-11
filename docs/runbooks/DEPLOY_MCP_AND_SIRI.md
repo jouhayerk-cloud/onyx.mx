@@ -57,7 +57,7 @@ Rollback: `supabase functions delete siri-inventory --project-ref yircifkayqpuyd
 4. If a line fails, send me the FAIL lines (never the token). Function logs: Supabase dashboard, Edge Functions, the function, Logs.
 
 ## Phase 4: show the Siri panel in the app (I do this on your word)
-The Siri access panel in Settings is hidden until `VITE_SIRI_TOKENS` is `true`. After phase 3 passes, tell me "enable the Siri panel": I add `VITE_SIRI_TOKENS: 'true'` to `.github/workflows/deploy.yml`, push, and GitHub Pages deploys. Then: Settings, Siri access, type a label (for example `iPhone`), Create, copy the token (it is shown once).
+The Siri access panel in Settings is hidden until `VITE_SIRI_TOKENS` is `true`. After phase 3 passes, tell me "enable the Siri panel": I add `VITE_SIRI_TOKENS: 'true'` to `.github/workflows/deploy.yml`, push, and GitHub Pages deploys. Then: Settings, Siri Shortcuts, type a label (for example `iPhone`), Create, copy the token (it is shown once).
 
 ## Phase 5: the Shortcut on your iPhone (about 15 minutes)
 Follow `docs\siri\SHORTCUT_BUILD_GUIDE.md` step by step: a Text action named "Siri token" with your token, Get Contents of URL (POST, JSON body, `Authorization: Bearer <Siri token>`), Get Dictionary Value `spoken_text`, Speak Text. Name the Shortcut with the phrases from the guide ("Inventory search", "Buscar inventario"). Test by voice, then in Settings revoke the token, run the Shortcut again (it must fail with 401), and create a new one. Anything on the iPhone I could not verify is marked `VERIFY ON IPHONE` in the guide: tell me what you see.

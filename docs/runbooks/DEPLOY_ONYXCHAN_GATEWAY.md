@@ -41,7 +41,7 @@ Set all configuration via the Supabase CLI. Never commit secret values or print 
 ## 3. Device Token Issuance and Revocation
 
 Device tokens are 32-byte cryptographically secure random tokens prefixed with `ocd_` (`ocd_` + 64 hex characters).
-Only users with the `Admin` or `Developer` application role can issue or revoke tokens.
+Only users with the `Admin` or `Developer` application role can issue or revoke tokens (for API callers; the SQL editor and the CLI run as postgres, which the guard allows explicitly; the guard was hardened on 2026-10-11 so a signed-in user with no app role is refused).
 The raw token is displayed **exactly once** upon generation and is never stored in plaintext (only its SHA-256 digest is saved).
 
 ### Prerequisites
@@ -110,11 +110,15 @@ In `supabase/config.toml`, `[functions.onyxchan-mcp]` must have:
 verify_jwt = false
 ```
 
-**Rationale:** Hardware devices authenticate using per-device bearer tokens (`ocd_...`) rather than Supabase user JWTs. Enabling platform-level `verify_jwt = true` causes Supabase's API gateway to reject all device requests with HTTP 401 before reaching the function code. Authentication is strictly enforced inside the function (`index.ts:41-64`).
+**Rationale:** Hardware devices authenticate using per-device bearer tokens (`ocd_...`) rather than Supabase user JWTs. Enabling platform-level `verify_jwt = true` causes Supabase's API gateway to reject all device requests with HTTP 401 before reaching the function code. Authentication is strictly enforced inside the function (`index.ts:42-65`).
 
 ---
 
 ## 6. Bench Handshake Checklist (Firmware Side)
+
+> [!WARNING]
+> **UNVERIFIED — MCP Server Not Connected:**
+> `onyxchan-mcp/index.ts` calls `server.request(...)` at lines 442, 455, and 469 on an MCP SDK `Server` instance that is never `.connect()`ed. The expectation is "Not connected" and a 400 `{"error":"Not connected"}` for every `/rpc` tool call, which would break Step 3b and the smoke checks that call tools. Test one `/rpc` call first and see the `OnyxMX-OnyxChanMCP` skill (the MCP layer has never executed); the fix direction is to call the tool handler directly.
 
 Use this checklist on the hardware bench to verify firmware authentication against `onyxchan-mcp`:
 
@@ -174,22 +178,22 @@ supabase db query --linked --project-ref yircifkayqpuydfdqzlm "UPDATE public.ony
 
 Code inspection of `supabase/functions/onyxchan-mcp/index.ts` and `supabase/functions/_shared/onyxchanTools.ts` revealed the following defects and risky behaviours:
 
-1. **Unauthenticated SSE Connection (`index.ts` lines 420-430):**
+1. **Unauthenticated SSE Connection (`index.ts` lines 421-431):**
    ```ts
    // 1. SSE Connection for MCP
    if (url.pathname.endsWith("/sse") && req.method === "GET") {
      const body = new TransformStream();
      return new Response(body.readable, {
    ```
-   *Risk:* Authentication gate `authenticate(req)` is only invoked for `POST` requests (line 404). Any unauthenticated client can open and hold an SSE connection without a token.
+   *Risk:* Authentication gate `authenticate(req)` is only invoked for `POST` requests (line 405). Any unauthenticated client can open and hold an SSE connection without a token.
 
-2. **Root POST Routing Omission (`index.ts` lines 433, 497, 524):**
+2. **Root POST Routing Omission (`index.ts` lines 434, 498, 525):**
    ```ts
    if ((url.pathname.endsWith("/rpc") || url.pathname.endsWith("/messages") || url.pathname.endsWith("/execute")) && req.method === "POST") {
    ```
-   *Risk:* Standard JSON-RPC callers POSTing directly to the function root `/onyxchan-mcp` pass authentication but miss all tool execution blocks and fall through to line 524, returning HTTP 200 with text `"OnyxChan MCP Edge Function v2.5 Active"`. Calls must explicitly append `/rpc`.
+   *Risk:* Standard JSON-RPC callers POSTing directly to the function root `/onyxchan-mcp` pass authentication but miss all tool execution blocks and fall through to line 525, returning HTTP 200 with text `"OnyxChan MCP Edge Function v2.5 Active"`. Calls must explicitly append `/rpc`.
 
-3. **Hardware Commands Broadcast to Realtime Instead of Database Queue (`index.ts` lines 89-97):**
+3. **Hardware Commands Broadcast to Realtime Instead of Database Queue (`index.ts` lines 90-98):**
    ```ts
    async function broadcastDeviceCommand(deviceId: string, command: Record<string, any>) {
      const channelName = `device_control:${deviceId}`;
@@ -203,23 +207,33 @@ Code inspection of `supabase/functions/onyxchan-mcp/index.ts` and `supabase/func
    ```
    *Risk:* ESP32 firmware has no Supabase Realtime client (`ONYXCHAN_MCP_SKILL.md` §3). Furthermore, `supabase.channel()` is sent without waiting for `.subscribe()`. Protocol requires queueing into table `onyxchan_commands`.
 
-4. **Legacy Command Action Names Dropped by Firmware (`index.ts` lines 187, 220):**
-   Line 187: `action: "tts",` (Protocol specifies `speak`; legacy `tts` is deprecated).
-   Line 220: `action: "inventory-display",` (Protocol specifies `item-card`; firmware silently drops `inventory-display` per `ONYXCHAN_MCP_SKILL.md` line 30).
+4. **Legacy Command Action Names Dropped by Firmware (`index.ts` lines 188, 221):**
+   Line 188: `action: "tts",` (Protocol specifies `speak`; legacy `tts` is deprecated).
+   Line 221: `action: "inventory-display",` (Protocol specifies `item-card`; firmware silently drops `inventory-display` per `ONYXCHAN_MCP_SKILL.md` line 30).
 
 5. **Tool Schema Discrepancies in Manifest (`onyxchanTools.ts` lines 54, 72):**
    Line 54: `vendor-display` is included as an avatar expression in `set_expression`:
    `enum: ["calm", "happy", "thinking", "sleepy", "shy", "smug", "pouty", "alert", "error", "speaking", "listening", "vendor-display"]` (`vendor-display` is a card command, not a face expression; `FW_PROTOCOL.md` line 284).
    Line 72: `ja` is included in `speak` language enum (`["es", "en", "ja"]`), but Japanese was dropped in protocol v1 (`FW_PROTOCOL.md` line 285).
 
-6. **Unredacted Inventory and Finance Queries on Service Role (`index.ts` lines 270, 300, 315):**
-   Line 270: `let query = supabase.from("inventory").select("*").limit(Number(args?.limit) || 20);`
-   Line 315: `.from("finance").select("*").eq("vendor_id", String(args?.vendor_id));`
+6. **Unredacted Inventory and Finance Queries on Service Role (`index.ts` lines 271, 301, 315-317):**
+   Line 271: `let query = supabase.from("inventory").select("*").limit(Number(args?.limit) || 20);`
+   Line 301: `.from("inventory").select("*").eq("id", String(args?.item_id)).single();`
+   Lines 315-317: `.from("finance").select("*").eq("vendor_id", String(args?.vendor_id));`
    *Risk:* The function runs on `SUPABASE_SERVICE_ROLE_KEY` and selects all columns (`*`), bypassing RLS. Any staff user calling `query_inventory` or `query_payment_status` receives confidential acquisition and landed cost fields without role redaction or `FINANCE_ROLES` checks.
 
-7. **Simulated Telemetry Fallbacks Mask Unreported State (`index.ts` lines 244-245):**
+7. **Simulated Telemetry Fallbacks Mask Unreported State (`index.ts` lines 245-246):**
    ```ts
    battery: dev?.battery_level ?? 92,
    rssi: dev?.rssi ?? -48,
    ```
    *Risk:* Missing hardware telemetry is masked by hardcoded mock values (92% battery, -48 dBm RSSI) rather than indicating null/missing data.
+
+8. **MCP SDK Server Not Connected on /rpc Invocations [UNVERIFIED] (`index.ts` lines 442, 455, 469):**
+   ```ts
+   const handlerRes = await server.request(
+     { method: "tools/call", params: { name: body.tool, arguments: body.args || {} } },
+     CallToolRequestSchema
+   );
+   ```
+   *Risk:* `onyxchan-mcp/index.ts` calls `server.request(...)` at lines 442, 455 and 469 on an MCP SDK `Server` instance that is initialized at line 140 but is never `.connect()`ed to a transport. In `@modelcontextprotocol/sdk`, invoking `server.request(...)` without an active connection throws `"Not connected"`, which is caught at line 484 and returned as HTTP 400 `{"error":"Not connected"}`. This breaks direct `/rpc` tool calls (`body.tool` at line 442), JSON-RPC `tools/list` (line 455), and `tools/call` (line 469). Step 3b and any smoke checks calling tools will fail. The MCP layer has never executed in production because client calls previously fell back silently to Realtime broadcast (`OnyxMX-OnyxChanMCP` skill §5). Fix direction: invoke the tool execution handler directly rather than dispatching through `server.request()`.

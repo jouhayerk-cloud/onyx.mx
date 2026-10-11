@@ -5,6 +5,7 @@
 .DESCRIPTION
   Run it AFTER the per-device tokens migration (20260830234500) is applied and
   onyxchan-mcp is deployed.
+  Run in Windows PowerShell 5.1 (GetResponseStream is not available in PowerShell 7).
 
   Environment variables:
     - ONYX_TEST_JWT: Current access token of your Onyx staff login (required).
@@ -17,10 +18,12 @@
 
   Safety:
     Never writes tokens to disk, never prints raw tokens to console, and makes
-    only read-only tool calls.
+    read-only tool calls, except the optional device heartbeat, which updates that device's telemetry row (battery, rssi, last_seen, status).
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function Prop($o, $n) { if ($null -ne $o -and $o.PSObject.Properties[$n]) { return $o.$n } return $null }
 
 $ref  = "yircifkayqpuydfdqzlm"
 $base = "https://$ref.supabase.co/functions/v1"
@@ -77,24 +80,29 @@ Record ($r.Code -eq 200 -and $r.Text.Contains("OnyxChan MCP Edge Function")) "on
 
 # 2. Refusal without token on /rpc
 $r = Call "POST" "$base/onyxchan-mcp/rpc" $null @{ tool = "resolve_tag"; args = @{ tag = "test" } }
-Record ($r.Code -eq 401 -and $r.Json.error -eq "Missing bearer token") "refuses POST /rpc without token" ("HTTP {0}, error: {1}" -f $r.Code, (Short $r.Json.error))
+$err2 = Prop $r.Json "error"
+Record ($r.Code -eq 401 -and $err2 -eq "Missing bearer token") "refuses POST /rpc without token" ("HTTP {0}, error: {1}" -f $r.Code, (Short $err2))
 
 # 3. Refusal without token on /heartbeat
 $r = Call "POST" "$base/onyxchan-mcp/heartbeat" $null @{ battery = 90; rssi = -50 }
-Record ($r.Code -eq 401 -and $r.Json.error -eq "Missing bearer token") "refuses POST /heartbeat without token" ("HTTP {0}, error: {1}" -f $r.Code, (Short $r.Json.error))
+$err3 = Prop $r.Json "error"
+Record ($r.Code -eq 401 -and $err3 -eq "Missing bearer token") "refuses POST /heartbeat without token" ("HTTP {0}, error: {1}" -f $r.Code, (Short $err3))
 
 # 4. Refusal with bogus device token
 $bogusDevToken = "ocd_" + ("0" * 64)
 $r = Call "POST" "$base/onyxchan-mcp/rpc" $bogusDevToken @{ tool = "resolve_tag"; args = @{ tag = "test" } }
-Record ($r.Code -eq 401 -and $r.Json.error -eq "Invalid or revoked device token") "refuses bogus device token on /rpc" ("HTTP {0}, error: {1}" -f $r.Code, (Short $r.Json.error))
+$err4a = Prop $r.Json "error"
+Record ($r.Code -eq 401 -and $err4a -eq "Invalid or revoked device token") "refuses bogus device token on /rpc" ("HTTP {0}, error: {1}" -f $r.Code, (Short $err4a))
 
 $r = Call "POST" "$base/onyxchan-mcp/heartbeat" $bogusDevToken @{ battery = 90; rssi = -50 }
-Record ($r.Code -eq 401 -and $r.Json.error -eq "Invalid or revoked device token") "refuses bogus device token on /heartbeat" ("HTTP {0}, error: {1}" -f $r.Code, (Short $r.Json.error))
+$err4b = Prop $r.Json "error"
+Record ($r.Code -eq 401 -and $err4b -eq "Invalid or revoked device token") "refuses bogus device token on /heartbeat" ("HTTP {0}, error: {1}" -f $r.Code, (Short $err4b))
 
 # 5. Refusal with bogus staff JWT
 $bogusJwt = "invalid.jwt.token"
 $r = Call "POST" "$base/onyxchan-mcp/rpc" $bogusJwt @{ tool = "resolve_tag"; args = @{ tag = "test" } }
-Record ($r.Code -eq 401 -and $r.Json.error -eq "Invalid or expired token") "refuses bogus staff JWT" ("HTTP {0}, error: {1}" -f $r.Code, (Short $r.Json.error))
+$err5 = Prop $r.Json "error"
+Record ($r.Code -eq 401 -and $err5 -eq "Invalid or expired token") "refuses bogus staff JWT" ("HTTP {0}, error: {1}" -f $r.Code, (Short $err5))
 
 # 6. Optional Device Token Paths
 if ($devToken) {
@@ -102,16 +110,20 @@ if ($devToken) {
 
     # Device token attempting forbidden staff tool (query_inventory)
     $r = Call "POST" "$base/onyxchan-mcp/rpc" $devToken @{ tool = "query_inventory"; args = @{} }
-    $blocked = ($r.Code -eq 403 -and $null -ne $r.Json -and [string]$r.Json.error -like "*Device tokens may not call*")
-    Record $blocked "device token forbidden tool refusal" ("HTTP {0}, error: {1}" -f $r.Code, (Short $r.Json.error))
+    $devErr = Prop $r.Json "error"
+    $blocked = ($r.Code -eq 403 -and $null -ne $devErr -and [string]$devErr -like "*Device tokens may not call*")
+    Record $blocked "device token forbidden tool refusal" ("HTTP {0}, error: {1}" -f $r.Code, (Short $devErr))
 
     # Device token executing allowed read-only tool (resolve_tag)
     $r = Call "POST" "$base/onyxchan-mcp/rpc" $devToken @{ tool = "resolve_tag"; args = @{ tag = "smoke-test-tag" } }
-    Record ($r.Code -eq 200 -and $null -ne $r.Json.content) "device token allowed tool resolve_tag" ("HTTP {0}, result: {1}" -f $r.Code, (Short $r.Text))
+    $hasContent = $null -ne (Prop $r.Json "content")
+    Record ($r.Code -eq 200 -and $hasContent) "device token allowed tool resolve_tag" ("HTTP {0}, result: {1}" -f $r.Code, (Short $r.Text))
 
     # Device token reporting heartbeat
     $r = Call "POST" "$base/onyxchan-mcp/heartbeat" $devToken @{ battery = 92; rssi = -48 }
-    Record ($r.Code -eq 200 -and $r.Json.status -eq "ok") "device token heartbeat" ("HTTP {0}, status: {1}, device_id: {2}" -f $r.Code, $r.Json.status, $r.Json.device_id)
+    $devStatus = Prop $r.Json "status"
+    $devId = Prop $r.Json "device_id"
+    Record ($r.Code -eq 200 -and $devStatus -eq "ok") "device token heartbeat" ("HTTP {0}, status: {1}, device_id: {2}" -f $r.Code, $devStatus, $devId)
 } else {
     Write-Host "`nNotice: ONYXCHAN_TEST_DEVICE_TOKEN not provided; skipping hardware device live checks." -ForegroundColor Yellow
 }
@@ -121,13 +133,14 @@ Write-Host "`n== onyxchan-mcp: Staff JWT Checks ==" -ForegroundColor Cyan
 
 # Staff listing tools via JSON-RPC
 $r = Call "POST" "$base/onyxchan-mcp/rpc" $jwt @{ jsonrpc = "2.0"; id = 1; method = "tools/list" }
-$toolCount = 0
-if ($r.Json -and $r.Json.result -and $r.Json.result.tools) { $toolCount = @($r.Json.result.tools).Count }
+$rpcResult = Prop $r.Json "result"
+$rpcTools = Prop $rpcResult "tools"
+$toolCount = if ($null -ne $rpcTools) { @($rpcTools).Count } else { 0 }
 Record ($r.Code -eq 200 -and $toolCount -gt 0) "staff tools/list" ("HTTP {0}, {1} tools available" -f $r.Code, $toolCount)
 
 # Staff executing read-only tool (count_vendor_items)
 $r = Call "POST" "$base/onyxchan-mcp/rpc" $jwt @{ tool = "count_vendor_items"; args = @{ vendor_id = "EM" } }
-Record ($r.Code -eq 200 -and $null -eq $r.Json.isError) "staff read-only tool count_vendor_items" ("HTTP {0}, result: {1}" -f $r.Code, (Short $r.Text))
+Record ($r.Code -eq 200 -and $null -eq (Prop $r.Json "isError")) "staff read-only tool count_vendor_items" ("HTTP {0}, result: {1}" -f $r.Code, (Short $r.Text))
 
 Write-Host "`n== Summary ==" -ForegroundColor Cyan
 $fails = @($results | Where-Object { $_.StartsWith("FAIL") })

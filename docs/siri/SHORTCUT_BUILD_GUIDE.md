@@ -3,7 +3,7 @@
 **Document Version:** 2.0.0  
 **Date:** 2026-10-10  
 **Author / Target:** Ramses (Manual build on iPhone without Mac)  
-**Endpoint Target:** `https://<project>.supabase.co/functions/v1/siri-inventory`  
+**Endpoint Target:** `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-inventory`  
 **Review Status:** Pending Review by Ramses
 
 ---
@@ -14,10 +14,10 @@ Before creating Shortcuts on your iPhone, verify you have the following prerequi
 
 1. **iPhone Running iOS 16 or Later:** With the native **Shortcuts** app installed (pre-installed by Apple).
 2. **Supabase Edge Function URL:**
-   - Production URL placeholder: `https://<project>.supabase.co/functions/v1/siri-inventory`
+   - Production URL placeholder: `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-inventory`
    - Supabase project reference (`<project>`).
 3. **Personal Siri Token:**
-   - Generated from Onyx web app under **Settings > Siri access**.
+   - Generated from Onyx web app under **Settings > Siri Shortcuts**.
    - Format: `siri_` followed by 43 characters (e.g., `siri_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`).
    - Valid for 180 days from creation date.
 4. **Siri Voice Enabled:**
@@ -30,7 +30,7 @@ Before creating Shortcuts on your iPhone, verify you have the following prerequi
 Voice queries authenticate using a personal Siri token issued directly by the Onyx backend. The token carries your personal role, lasts 180 days, and avoids all mobile OAuth refresh loops.
 
 ```
-[Onyx Web App: Settings > Siri access]
+[Onyx Web App: Settings > Siri Shortcuts]
        │
        ▼
 [Enter Label "iPhone" -> Create Token]
@@ -50,7 +50,7 @@ Voice queries authenticate using a personal Siri token issued directly by the On
 
 ### 2.1 Generating Your Siri Token
 1. Open the Onyx application in your browser and log in.
-2. Navigate to **Settings > Siri access**.
+2. Navigate to **Settings > Siri Shortcuts**.
 3. In the input box, type a descriptive label for your device (1 to 40 characters, e.g., `"iPhone"`, `"iPad Pro"`, or `"Ramses iPhone"`).
 4. Tap **Create**.
 5. Copy the displayed token immediately. The raw token (`siri_` + 43 characters) is shown **only once** in this response.
@@ -76,8 +76,8 @@ Every voice shortcut uses this token directly without needing to read files from
 ### 2.3 Lifetime, Role Scope & Revocation
 - **Role Inheritance:** The token automatically inherits your application role in `app_users`. Finance roles (`Developer`, `Admin`, `ClientBoss`, `ClientAccounting`) hear full pricing; all other roles hear physical specs and get a polite refusal for financial queries.
 - **Expiration:** Tokens are valid for **180 days**. When a token expires, generate a fresh one in Settings and update the `Text` action in your Shortcut.
-- **Revocation:** In **Settings > Siri access**, you can view all your active tokens and revoke any token at any time.
-- **Lost iPhone:** If your iPhone is lost or stolen, go immediately to **Settings > Siri access** on another device and click **Revoke** next to that device's token. The token is invalidated instantly with no other changes needed.
+- **Revocation:** In **Settings > Siri Shortcuts**, you can view all your active tokens and revoke any token at any time.
+- **Lost iPhone:** If your iPhone is lost or stolen, go immediately to **Settings > Siri Shortcuts** on another device and click **Revoke** next to that device's token. The token is invalidated instantly with no other changes needed.
 
 ---
 
@@ -113,7 +113,7 @@ Below are the exact action-by-action steps to build each intent shortcut directl
   - Value: `[Provided Input]`
 - [ ] **6. HTTP Request:**
   - Action name: **Get Contents of URL**
-  - URL: `https://<project>.supabase.co/functions/v1/siri-inventory`
+  - URL: `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-inventory`
   - Method: `POST`
   - **Headers:**
     - `Authorization`: `Bearer [Siri token]`
@@ -163,7 +163,7 @@ Below are the exact action-by-action steps to build each intent shortcut directl
   - Value: `[Provided Input]`
 - [ ] **6. HTTP Request:**
   - Action name: **Get Contents of URL**
-  - URL: `https://<project>.supabase.co/functions/v1/siri-inventory`
+  - URL: `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-inventory`
   - Method: `POST`
   - **Headers:**
     - `Authorization`: `Bearer [Siri token]`
@@ -211,7 +211,7 @@ Below are the exact action-by-action steps to build each intent shortcut directl
   - Value: `[Provided Input]`
 - [ ] **6. HTTP Request:**
   - Action name: **Get Contents of URL**
-  - URL: `https://<project>.supabase.co/functions/v1/siri-inventory`
+  - URL: `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/siri-inventory`
   - Method: `POST`
   - **Headers:**
     - `Authorization`: `Bearer [Siri token]`
@@ -264,14 +264,14 @@ Because your Siri token is stored directly in the Shortcut on your device, execu
 
 ### 5.1 Immediate Token Revocation (Onyx Settings)
 1. Open the Onyx app on any browser/device.
-2. Go to **Settings > Siri access**.
+2. Go to **Settings > Siri Shortcuts**.
 3. Locate the compromised device label (e.g. `"iPhone"`).
 4. Click **Revoke**.
 5. The token is invalidated in the database immediately. The next voice query from that device will be rejected with HTTP `401 Unauthorized`. No other change is needed.
 
 ### 5.2 Lost iPhone Protocol
 - [ ] Trigger **Lost Mode** or **Remote Wipe** via Apple iCloud **Find My** (`icloud.com/find`).
-- [ ] Revoke the device's Siri token in Onyx **Settings > Siri access**.
+- [ ] Revoke the device's Siri token in Onyx **Settings > Siri Shortcuts**.
 - [ ] (Optional / Admin) If the user account itself is compromised, toggle user status in `app_users` (`active = false`).
 
 ---
@@ -280,9 +280,9 @@ Because your Siri token is stored directly in the Shortcut on your device, execu
 
 | Symptom / Code | Root Cause | iPhone Fix / Verification Step |
 | :--- | :--- | :--- |
-| **`401 Unauthorized`** | Token is incorrect, has been revoked, or expired after 180 days. | Go to Onyx **Settings > Siri access**, generate a new token, and paste it into the `Text` action named `Siri token` at the top of the Shortcut. Ensure header has `Bearer ` with a space before the token. |
+| **`401 Unauthorized`** | Token is incorrect, has been revoked, or expired after 180 days. | Go to Onyx **Settings > Siri Shortcuts**, generate a new token, and paste it into the `Text` action named `Siri token` at the top of the Shortcut. Ensure header has `Bearer ` with a space before the token. |
 | **`403 Forbidden`** | Account inactive or disabled in `app_users`. | Confirm user email exists in `app_users` table and both `active` and `is_active` flags are `true`. |
-| **`409 Conflict`** | Maximum active token quota reached (5 active tokens per user). | Open Onyx **Settings > Siri access**, revoke an old or unused token, and then create a new token. |
+| **`409 Conflict`** | Maximum active token quota reached (5 active tokens per user). | Open Onyx **Settings > Siri Shortcuts**, revoke an old or unused token, and then create a new token. |
 | **`429 Too Many Requests`** | Exceeded the rate limit of 30 requests per minute. | Wait at least 60 seconds before triggering the Shortcut again. |
 | **Empty Answer / Silence** | The `spoken_text` key was not found or was empty in the JSON response. | Open the Shortcut editor, add a temporary **Quick Look** action right after **Get Contents of URL** to inspect the raw JSON (`VERIFY ON IPHONE`). |
 | **Wrong Spoken Language** | The Shortcut sent `lang: "en"` when Spanish was desired, or Siri's TTS voice is misconfigured. | In the Shortcut's JSON request body, verify `lang` is set to `"es"`. In **Speak Text**, verify the voice language is set to `Spanish (Mexico)` (`VERIFY ON IPHONE`). |
@@ -301,7 +301,7 @@ The following items depend on exact iOS version behaviors and must be verified d
 3. `VERIFY ON IPHONE`: **Shortcut Renaming for Siri Activation** — Confirm changing the shortcut display title in iOS Shortcuts immediately updates Siri's trigger phrase.
 4. `VERIFY ON IPHONE`: **Speak Text Language & Pitch Options** — Validate that the localized voice accent (`es-MX` / `en-US`) overrides the system default cleanly.
 5. `VERIFY ON IPHONE`: **Quick Look / Image Rendering in Show Result** — Confirm `Show Result` or `Quick Look` renders product cutout thumbnails from the `image_url` without erroring on remote HTTPS URLs.
-6. `VERIFY ON IPHONE`: **Always Allow Network Privacy Permission** — Confirm the one-time network permission prompt for `<project>.supabase.co` can be permanently granted via shortcut privacy settings.
+6. `VERIFY ON IPHONE`: **Always Allow Network Privacy Permission** — Confirm the one-time network permission prompt for `yircifkayqpuydfdqzlm.supabase.co` can be permanently granted via shortcut privacy settings.
 
 ---
 

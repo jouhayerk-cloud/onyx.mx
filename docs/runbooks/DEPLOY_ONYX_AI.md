@@ -4,14 +4,14 @@
 The `onyx-ai` Edge Function provides a secure server-side proxy for Google Gemini models, protecting the Gemini API key from exposure in client-side bundles. Calls are restricted to authorized internal roles (`Developer`, `Admin`, `ClientBoss`).
 
 Project ref: `yircifkayqpuydfdqzlm`.
-Run all commands from the repository root `C:\Jouhayerk\git\onyxchan-wt\W5-5` in PowerShell.
+Run all commands from the repository root `C:\Jouhayerk\gitpp` in PowerShell.
 
 ---
 
 ## 1. What the Function Does and Permitted Roles
 
 - **Purpose:** Receives chat/prompt requests from Onyx.mx, authenticates the caller via Supabase Auth JWT, authorizes the user role against `public.app_users`, validates models and token limits, and proxies the payload to Google Generative Language API (`https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`) using a private server-side key.
-- **Allowed Roles (`ALLOWED_ROLES` in `index.ts:14`):**
+- **Allowed Roles (`ALLOWED_ROLES` in `index.ts:15`):**
   - `Developer`
   - `Admin`
   - `ClientBoss`
@@ -48,7 +48,7 @@ supabase secrets list --project-ref yircifkayqpuydfdqzlm
 
 - **Status in `supabase/config.toml`:** UNVERIFIED in repository configuration. `[functions.onyx-ai]` is currently missing from `supabase/config.toml`.
 - **Gateway Default:** According to `supabase/config.toml` (lines 8–9), any function omitted defaults to `verify_jwt = true`.
-- **Code Enforcement:** The function also enforces application-level JWT verification in `index.ts:24-36` via `supabase.auth.getUser(token)`.
+- **Code Enforcement:** The function also enforces application-level JWT verification in `index.ts:25-62` via `supabase.auth.getUser(token)` at line 34.
 - **Recommended Configuration:** To preserve explicit configuration standards across functions, Ramses/Chief should add the following block to `supabase/config.toml`:
   ```toml
   [functions.onyx-ai]
@@ -76,11 +76,11 @@ Expected: `onyx-ai` status `ACTIVE`.
 ## 5. Rate Limits, Payload Bounds, and Cost Controls
 
 Found in `index.ts`:
-- **Payload Size Bound:** Max 200 KB (`buffer.byteLength > 200 * 1024`). Exceeding returns HTTP 413 `Payload too large`.
-- **Turn Bound:** Max 50 messages (`contents.length > 50`). Exceeding returns HTTP 400 `Too many messages`.
-- **Output Token Cap:** `maxOutputTokens` is clamped to a maximum of 8,192 (`MAX_OUTPUT_TOKENS = 8192`), preventing unbounded generation costs.
-- **Generation Controls:** Clamps `temperature` [0, 2], `topP` [0, 1], `topK` [1, 100], and `thinkingBudget` [-1, 8192].
-- **Model Whitelist (`ALLOWED_MODELS`):**
+- **Payload Size Bound:** Max 200 KB (`buffer.byteLength > 200 * 1024` at `index.ts:78`). Exceeding returns HTTP 413 `Payload too large`.
+- **Turn Bound:** Max 50 messages (`contents.length > 50` at `index.ts:106`). Exceeding returns HTTP 400 `Too many messages`.
+- **Output Token Cap:** `maxOutputTokens` is clamped to a maximum of 8,192 (`MAX_OUTPUT_TOKENS = 8192` at `index.ts:118`), preventing unbounded generation costs.
+- **Generation Controls:** Clamps `temperature` [0, 2], `topP` [0, 1], `topK` [1, 100], and `thinkingBudget` [-1, 8192] (`index.ts:119-142`).
+- **Model Whitelist (`ALLOWED_MODELS` at `index.ts:16-23`):**
   - `gemini-3.8-flash`
   - `gemini-3.7-flash`
   - `gemini-3.6-flash`
@@ -95,10 +95,13 @@ Found in `index.ts`:
 
 ## 6. Failure Modes and Fixes
 
+> [!NOTE]
+> The 401 texts "Unauthorized: Missing token" and "Unauthorized: Invalid token" only appear when the request passes the gateway; onyx-ai is not listed in `supabase/config.toml` so `verify_jwt` defaults to true and the gateway rejects a missing or bad JWT first with its own body (the gateway rejects first while verify_jwt is true, so the body differs; Invalid token appears only for a gateway-valid JWT such as the anon key that getUser rejects).
+
 | HTTP Status | Exact Error JSON Message | Root Cause | Remediation / Fix |
 |---|---|---|---|
-| `401` | `Unauthorized: Missing token` | No `Authorization: Bearer <token>` header supplied | Provide caller Supabase JWT in `Authorization` header |
-| `401` | `Unauthorized: Invalid token` | JWT expired, invalid signature, or rejected by Supabase Auth | Refresh caller session in client / obtain fresh JWT |
+| `401` | `Unauthorized: Missing token` | No `Authorization: Bearer <token>` header supplied (the gateway rejects first while verify_jwt is true, so the body differs; Invalid token appears only for a gateway-valid JWT such as the anon key that getUser rejects) | Provide caller Supabase JWT in `Authorization` header |
+| `401` | `Unauthorized: Invalid token` | JWT expired, invalid signature, or rejected by Supabase Auth (the gateway rejects first while verify_jwt is true, so the body differs; Invalid token appears only for a gateway-valid JWT such as the anon key that getUser rejects) | Refresh caller session in client / obtain fresh JWT |
 | `403` | `Forbidden: User not provisioned` | Caller user ID and email not found in `app_users` | Provision user record in `app_users` |
 | `403` | `Forbidden: Account inactive` | `app_users.active` or `app_users.is_active` is `false` | Set `active = true` and `is_active = true` in `app_users` |
 | `403` | `Forbidden: role '<role>' is not authorized` | User role is not Developer, Admin, or ClientBoss | Elevate user role in `app_users` or enforce intended denial |
@@ -134,7 +137,7 @@ Run the smoke test script using an active user JWT from an authorized account:
 ## 8. Frontend Switch and Cleanup
 
 1. After deployment and smoke test pass, Chief updates frontend config:
-   Set `VITE_ONYX_AI_MODE=edge` in environment.
+   Set `VITE_ONYX_AI_MODE=edge` in environment, then rebuild and redeploy the frontend, because `VITE_ONYX_AI_MODE` is read at build time (`src/features/onyx/OnyxChat.tsx:181` and `useOnyxAgent.ts:126`).
 2. Ensure production build does NOT include `VITE_GEMINI_API_KEY` in environment (prevents Vite from inlining secret key into static bundle).
 3. Revoke legacy client-side Gemini API key in Google AI Studio once traffic routes through `onyx-ai`.
 
@@ -143,7 +146,7 @@ Run the smoke test script using an active user JWT from an authorized account:
 ## 9. Rollback Plan
 
 If `onyx-ai` fails or needs immediate decommissioning:
-1. Revert frontend routing by unsetting or removing `VITE_ONYX_AI_MODE=edge`.
+1. Revert frontend routing by unsetting or removing `VITE_ONYX_AI_MODE=edge`, then rebuild and redeploy the frontend, because VITE_ONYX_AI_MODE is read at build time (src/features/onyx/OnyxChat.tsx:181 and useOnyxAgent.ts:126).
 2. Delete the Edge Function:
    ```powershell
    supabase functions delete onyx-ai --project-ref yircifkayqpuydfdqzlm
@@ -164,7 +167,7 @@ If `onyx-ai` fails or needs immediate decommissioning:
 | Add explicit `[functions.onyx-ai]` in `config.toml` | Ramses / Chief | Repo maintenance |
 | Deploy Edge Function (`supabase functions deploy`) | Ramses / Chief | Via Supabase CLI |
 | Run smoke test script (`50-onyx-ai-smoke.ps1`) | Ramses / Chief | Uses private session JWT |
-| Flip `VITE_ONYX_AI_MODE=edge` in frontend | Ramses / Chief | Deployment workflow |
+| Flip `VITE_ONYX_AI_MODE=edge` in frontend | Ramses / Chief | Deployment workflow (rebuild required) |
 | Revoke legacy client Gemini API key | Ramses / Chief | Google AI Studio |
 
 ---
@@ -174,7 +177,7 @@ If `onyx-ai` fails or needs immediate decommissioning:
 Without modifying `index.ts`, the following potential defects and deviations were identified during code inspection:
 
 1. **Top-level generationConfig and systemInstruction discarded when messages is an array**
-   - **Location:** `index.ts:89, 116, 121-124`
+   - **Location:** `index.ts:90, 117, 122-125`
    - **Code:**
      ```typescript
      const { messages, model } = body;
@@ -185,24 +188,24 @@ Without modifying `index.ts`, the following potential defects and deviations wer
      }
      const gcIn = (src.generationConfig ?? src.generation_config ?? {}) as Record<string, any>;
      ```
-   - **Defect:** Line 89 only destructures `messages` and `model` from `body`. When `messages` is an array (standard chat payload), `src` is constructed as `{ contents: messages }`. Consequently, `src.generationConfig`, `src.systemInstruction`, and `src.tools` evaluate to `undefined`. Any caller providing `generationConfig` or `systemInstruction` at the root of `body` has those settings silently dropped.
+   - **Defect:** Line 90 only destructures `messages` and `model` from `body`. When `messages` is an array (standard chat payload), `src` is constructed as `{ contents: messages }`. Consequently, `src.generationConfig`, `src.systemInstruction`, and `src.tools` evaluate to `undefined`. Any caller providing `generationConfig` or `systemInstruction` at the root of `body` has those settings silently dropped.
 
-2. **Snake_case parameters passed verbatim to Gemini upstream**
-   - **Location:** `index.ts:121-123`
+2. **Snake_case parameters passed verbatim to Gemini upstream [UNVERIFIED, low priority]**
+   - **Location:** `index.ts:122-124`
    - **Code:**
      ```typescript
      for (const k of ["systemInstruction", "system_instruction", "tools", "toolConfig", "tool_config"]) {
        if (src[k] !== undefined) payload[k] = src[k];
      }
      ```
-   - **Defect:** If a caller provides `system_instruction` or `tool_config`, the function copies the snake_case key directly into `payload`. Google Gemini's REST API (`v1beta`) rejects snake_case property names with HTTP 400 (`Invalid JSON payload: Unknown name "system_instruction"`). Keys should be normalized to camelCase before forwarding.
+   - **Defect:** UNVERIFIED, low priority. The Google Gemini REST parser accepts both camelCase and snake_case spellings (e.g. `system_instruction` as well as `systemInstruction`). Normalizing to camelCase is good practice for consistency, but passing snake_case is not rejected by the API.
 
 3. **Missing configuration entry in `supabase/config.toml`**
    - **Location:** `supabase/config.toml` (absent)
    - **Defect:** While Supabase defaults unlisted functions to `verify_jwt = true`, the project convention documented in `supabase/config.toml:8-9` specifies that all functions should declare explicit `verify_jwt` entries.
 
 4. **Message count check skipped for non-array `contents`**
-   - **Location:** `index.ts:104-106`
+   - **Location:** `index.ts:105-108`
    - **Code:**
      ```typescript
      let contents = messages.contents || messages;
