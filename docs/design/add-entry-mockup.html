@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onyx.mx — Add Entry v826 Interactive Mockup</title>
+  <style>
+    /* ==========================================================================
+       ONYX STUDIO DESIGN SYSTEM TOKENS (Liquid Stone Dark Glass)
+       ========================================================================== */
+    :root {
+      --ui-ground: #07090e;
+      --ui-surface: rgba(255, 255, 255, 0.04);
+      --ui-raise: rgba(255, 255, 255, 0.07);
+      --ui-well: #14171c;
+      --ui-edge: rgba(255, 255, 255, 0.12);
+      --ui-edge-hi: rgba(255, 255, 255, 0.22);
+      --ui-rim: rgba(255, 255, 255, 0.18);
+      
+      --slab-glass-hi: rgba(14, 18, 28, 0.75);
+      --slab-glass-blur: 24px;
+      --slab-glass-rim: rgba(255, 255, 255, 0.22);
+
+      --ui-accent: #00aeef;
+      --ui-accent-glow: rgba(0, 174, 239, 0.28);
+      --ui-focus: #4fb3ff;
+      --ui-good: #10b981;
+      --ui-warn: #f59e0b;
+      --ui-bad: #ef4444;
+
+      --ui-ink: #eef1f5;
+      --ui-dim: #c5cdd8;
+      --ui-faint: #8893a4;
+
+      --ui-r-sm: 6px;
+      --ui-r-md: 10px;
+      --ui-r-lg: 16px;
+      --ui-r-pill: 9999px;
+      --ui-ease: 180ms cubic-bezier(0.2, 0.9, 0.3, 1);
+
+      --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--ui-ground);
+      background-image: 
+        radial-gradient(ellipse at 50% 0%, rgba(0, 174, 239, 0.12) 0%, transparent 60%),
+        radial-gradient(circle at 10% 20%, rgba(107, 206, 187, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(167, 139, 250, 0.05) 0%, transparent 40%);
+      color: var(--ui-ink);
+      font-family: var(--font-stack);
+      font-size: 13px;
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px 64px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── REDUCED MOTION & ACCESSIBILITY ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--ui-focus) !important;
+      outline-offset: 2px !important;
+    }
+
+    /* ── TOP ONYX ISLAND MASCOT SIMULATION ── */
+    .island-portal-bar {
+      position: sticky;
+      top: 8px;
+      z-index: 100;
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      pointer-events: none;
+    }
+
+    .island-tabs {
+      display: flex;
+      background: rgba(20, 23, 28, 0.85);
+      backdrop-filter: blur(var(--slab-glass-blur));
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-pill);
+      padding: 3px;
+      pointer-events: auto;
+    }
+
+    .island-tab {
+      background: transparent;
+      border: none;
+      color: var(--ui-dim);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 6px 14px;
+      border-radius: var(--ui-r-pill);
+      cursor: pointer;
+      transition: all var(--ui-ease);
+    }
+
+    .island-tab.active {
+      background: var(--ui-surface);
+      color: var(--ui-ink);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      border: 1px solid var(--ui-edge);
+    }
+
+    /* The Onyx Face Widget (The Mascot that previously overlapped) */
+    .onyx-island-mascot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 14px 4px 8px;
+      background: var(--slab-glass-hi);
+      backdrop-filter: blur(var(--slab-glass-blur));
+      border: 1px solid var(--slab-glass-rim);
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+      pointer-events: auto;
+    }
+
+    .mascot-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00aeef, #6bcebb);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 10px rgba(0, 174, 239, 0.4);
+    }
+
+    .mascot-avatar svg {
+      width: 16px;
+      height: 16px;
+      fill: #fff;
+    }
+
+    .mascot-text {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--ui-ink);
+    }
+
+    .island-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .btn-save-main {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 16px;
+      border: 1px solid var(--ui-accent);
+      border-radius: var(--ui-r-md);
+      background: linear-gradient(180deg, #00a4e4, #0081b3);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      box-shadow: 0 2px 10px var(--ui-accent-glow);
+      transition: transform var(--ui-ease), box-shadow var(--ui-ease);
+    }
+
+    .btn-save-main:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0, 174, 239, 0.45);
+    }
+
+    /* ── MAIN WORKSPACE CONTAINER ── */
+    .app-workspace {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── COLLAPSIBLE SECTION COMPONENT ── */
+    .entry-section {
+      background: var(--slab-glass-hi);
+      backdrop-filter: blur(var(--slab-glass-blur));
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-lg);
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: border-color var(--ui-ease), box-shadow var(--ui-ease);
+    }
+
+    .entry-section.active {
+      border-color: var(--ui-edge-hi);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .entry-section.completed {
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+
+    /* Section Header */
+    .section-head {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--ui-ink);
+      text-align: left;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .section-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      background: var(--ui-raise);
+      color: var(--ui-dim);
+      border: 1px solid var(--ui-edge);
+      flex-shrink: 0;
+      transition: all var(--ui-ease);
+    }
+
+    .entry-section.completed .section-badge {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: var(--ui-good);
+      color: var(--ui-good);
+    }
+
+    .entry-section.active .section-badge {
+      background: var(--ui-accent);
+      border-color: var(--ui-accent);
+      color: #fff;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* Collapsed Chips Summary */
+    .section-summary-chips {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-left: 8px;
+    }
+
+    .sum-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--ui-well);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-pill);
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ui-dim);
+    }
+
+    .sum-chip.colored {
+      border-color: var(--chip-color, var(--ui-accent));
+      color: var(--ui-ink);
+    }
+
+    .sum-chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--chip-color, var(--ui-accent));
+    }
+
+    .section-toggle-icon {
+      color: var(--ui-faint);
+      transition: transform var(--ui-ease);
+      flex-shrink: 0;
+    }
+
+    .entry-section.active .section-toggle-icon {
+      transform: rotate(180deg);
+      color: var(--ui-ink);
+    }
+
+    /* Section Content Body */
+    .section-body {
+      padding: 0 18px 18px;
+      border-top: 1px solid var(--ui-edge);
+      display: none;
+      animation: fadeIn 200ms ease;
+    }
+
+    .entry-section.active .section-body {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── FORM GRID PRIMITIVES ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .col-12 { grid-column: span 12; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-3 { grid-column: span 3; }
+    .col-2 { grid-column: span 2; }
+
+    @media (max-width: 768px) {
+      .col-6, .col-4, .col-3, .col-2 { grid-column: span 12; }
+    }
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ui-dim);
+      margin-bottom: 6px;
+    }
+
+    .field-label .aside {
+      color: var(--ui-faint);
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 11px;
+    }
+
+    .text-input, .select-input {
+      width: 100%;
+      height: 38px;
+      background: var(--ui-well);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-md);
+      color: var(--ui-ink);
+      padding: 0 12px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      transition: border-color var(--ui-ease), box-shadow var(--ui-ease);
+    }
+
+    .text-input:focus, .select-input:focus {
+      border-color: var(--ui-accent);
+      box-shadow: 0 0 0 3px var(--ui-accent-glow);
+    }
+
+    .text-input.num {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── VENDOR PICKER CHIPS ── */
+    .vendor-chips-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .vendor-btn {
+      appearance: none;
+      border: 1px solid var(--ui-edge);
+      background: var(--ui-well);
+      color: var(--ui-dim);
+      padding: 6px 12px;
+      border-radius: var(--ui-r-md);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--ui-ease);
+    }
+
+    .vendor-btn:hover {
+      border-color: var(--v-color);
+      color: var(--ui-ink);
+      background: var(--ui-raise);
+    }
+
+    .vendor-btn.active {
+      border-color: var(--v-color);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .vendor-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--v-color);
+    }
+
+    /* ── BOOK SEGMENTED CONTROL ── */
+    .segmented-control {
+      display: flex;
+      background: var(--ui-well);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-md);
+      padding: 2px;
+      height: 38px;
+    }
+
+    .segment-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--ui-dim);
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: var(--ui-r-sm);
+      cursor: pointer;
+      transition: all var(--ui-ease);
+    }
+
+    .segment-btn.active {
+      background: var(--ui-raise);
+      color: var(--ui-ink);
+      border: 1px solid var(--ui-edge);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* ── SECTION 2: REDESIGNED TYPE SELECTOR ── */
+    .type-search-bar {
+      margin-top: 12px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .type-search-bar input {
+      width: 100%;
+      height: 40px;
+      background: var(--ui-well);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-md);
+      color: var(--ui-ink);
+      padding: 0 36px 0 14px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    .type-search-icon {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      color: var(--ui-faint);
+      pointer-events: none;
+    }
+
+    /* Desktop Compact Chips (>= 720px) */
+    .type-chips-desktop {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .type-chip-btn {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 38px;
+      padding: 0 12px 0 8px;
+      background: var(--ui-well);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-md);
+      color: var(--ui-dim);
+      cursor: pointer;
+      transition: all var(--ui-ease);
+    }
+
+    .type-chip-btn:hover {
+      border-color: var(--ui-accent);
+      background: var(--ui-raise);
+      color: var(--ui-ink);
+    }
+
+    .type-chip-btn.active {
+      border-color: var(--ui-accent);
+      background: rgba(0, 174, 239, 0.15);
+      color: #fff;
+      box-shadow: 0 0 10px var(--ui-accent-glow);
+    }
+
+    .type-chip-icon {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      color: var(--ui-accent);
+    }
+
+    .type-chip-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .type-chip-title {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .type-chip-count {
+      font-size: 11px;
+      color: var(--ui-faint);
+      font-family: var(--font-mono);
+    }
+
+    /* Mobile List (< 720px) */
+    .type-list-mobile {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .type-list-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 48px;
+      padding: 0 12px;
+      background: var(--ui-well);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-md);
+      cursor: pointer;
+      color: var(--ui-dim);
+    }
+
+    .type-list-row:hover, .type-list-row.active {
+      border-color: var(--ui-accent);
+      color: var(--ui-ink);
+      background: var(--ui-raise);
+    }
+
+    .type-list-leading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Responsive Switcher */
+    @media (max-width: 719px) {
+      .type-chips-desktop { display: none; }
+      .type-list-mobile { display: flex; }
+      .suggestion-chips-desktop { display: none !important; }
+      .suggestion-list-mobile { display: flex !important; }
+    }
+
+    @media (min-width: 720px) {
+      .type-chips-desktop { display: flex; }
+      .type-list-mobile { display: none; }
+      .suggestion-chips-desktop { display: flex !important; }
+      .suggestion-list-mobile { display: none !important; }
+    }
+
+    /* Selected Hero Summary Card */
+    .type-selected-card {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: linear-gradient(145deg, rgba(20, 23, 28, 0.9), rgba(12, 14, 20, 0.9));
+      border: 1px solid var(--ui-edge-hi);
+      border-radius: var(--ui-r-md);
+      margin-top: 12px;
+    }
+
+    .type-selected-card.visible {
+      display: flex;
+    }
+
+    .selected-card-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .selected-hero-fig {
+      width: 56px;
+      height: 44px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-sm);
+      display: grid;
+      place-items: center;
+      color: var(--ui-accent);
+    }
+
+    .selected-hero-fig svg {
+      width: 44px;
+      height: 36px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .selected-card-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--ui-ink);
+    }
+
+    .selected-card-sub {
+      font-size: 11px;
+      color: var(--ui-faint);
+    }
+
+    .btn-change {
+      background: transparent;
+      border: 1px solid var(--ui-edge);
+      color: var(--ui-dim);
+      padding: 6px 14px;
+      border-radius: var(--ui-r-md);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--ui-ease);
+    }
+
+    .btn-change:hover {
+      border-color: var(--ui-accent);
+      color: var(--ui-ink);
+      background: var(--ui-raise);
+    }
+
+    /* ── SUGGESTION CHIPS FOR SHAPE & MATERIAL ── */
+    .suggestion-chips-desktop {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .sug-chip {
+      appearance: none;
+      border: 1px solid var(--ui-edge);
+      background: var(--ui-well);
+      color: var(--ui-dim);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: var(--ui-r-pill);
+      cursor: pointer;
+      transition: all var(--ui-ease);
+    }
+
+    .sug-chip:hover {
+      border-color: var(--ui-accent);
+      color: var(--ui-ink);
+      background: var(--ui-raise);
+    }
+
+    .suggestion-list-mobile {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .sug-list-item {
+      padding: 10px 12px;
+      background: var(--ui-well);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-sm);
+      color: var(--ui-dim);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* ── LIVE PRICING CODES STRIP ── */
+    .pricing-codes-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--ui-edge);
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-md);
+      overflow: hidden;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 640px) {
+      .pricing-codes-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .pricing-cell {
+      background: var(--ui-well);
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .pricing-cell dt {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ui-dim);
+    }
+
+    .pricing-cell dd {
+      font-size: 13px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--ui-ink);
+    }
+
+    /* ── SECTION 4: PHOTOS ── */
+    .dropzone-box {
+      border: 2px dashed var(--ui-edge-hi);
+      border-radius: var(--ui-r-md);
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(20, 23, 28, 0.4);
+      transition: all var(--ui-ease);
+      margin-top: 12px;
+    }
+
+    .dropzone-box:hover {
+      border-color: var(--ui-accent);
+      background: rgba(0, 174, 239, 0.05);
+    }
+
+    .dropzone-text {
+      color: var(--ui-dim);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .photo-thumbs-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .photo-thumb-card {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      border-radius: var(--ui-r-md);
+      overflow: hidden;
+      border: 1px solid var(--ui-edge);
+      background: #000;
+    }
+
+    .photo-thumb-card.hero {
+      outline: 2px solid var(--ui-accent);
+      outline-offset: 1px;
+    }
+
+    .photo-thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .hero-badge {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      background: var(--ui-accent);
+      color: #000;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    /* ── SECTION 5: GENERATE (INTEGRATED) ── */
+    .generate-toggles-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+    }
+
+    .process-pill {
+      appearance: none;
+      border: 1px solid var(--ui-edge);
+      background: var(--ui-well);
+      color: var(--ui-dim);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: var(--ui-r-pill);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--ui-ease);
+    }
+
+    .process-pill:hover {
+      border-color: var(--ui-edge-hi);
+      color: var(--ui-ink);
+    }
+
+    .process-pill.active {
+      border-color: var(--ui-accent);
+      background: rgba(0, 174, 239, 0.16);
+      color: #fff;
+    }
+
+    .btn-generate-action {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 38px;
+      padding: 0 20px;
+      border: 1px solid var(--ui-accent);
+      border-radius: var(--ui-r-md);
+      background: linear-gradient(180deg, #00aeef, #0087ba);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 14px var(--ui-accent-glow);
+      margin-top: 14px;
+      transition: all var(--ui-ease);
+    }
+
+    .btn-generate-action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0, 174, 239, 0.45);
+    }
+
+    /* Skeleton Loader (during 1.5s simulated run) */
+    .generate-skeleton {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      border: 1px solid var(--ui-edge);
+      border-radius: var(--ui-r-md);
+      background: var(--ui-well);
+    }
+
+    .generate-skeleton.running {
+      display: block;
+    }
+
+    .skeleton-bar {
+      height: 14px;
+      border-radius: var(--ui-r-sm);
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      margin-bottom: 8px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* Generated Results Container (HIDDEN until ready) */
+    .generate-results {
+      display: none;
+      margin-top: 16px;
+      border: 1px solid rgba(0, 174, 239, 0.3);
+      border-radius: var(--ui-r-md);
+      background: rgba(14, 18, 28, 0.9);
+      padding: 16px;
+      animation: fadeIn 300ms ease;
+    }
+
+    .generate-results.ready {
+      display: block;
+    }
+
+    .results-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--ui-edge);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+
+    .results-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--ui-good);
+      color: var(--ui-good);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: var(--ui-r-pill);
+    }
+
+    .results-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn-accept {
+      background: var(--ui-good);
+      border: none;
+      color: #000;
+      padding: 8px 18px;
+      border-radius: var(--ui-r-md);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .btn-discard {
+      background: transparent;
+      border: 1px solid var(--ui-edge);
+      color: var(--ui-dim);
+      padding: 8px 16px;
+      border-radius: var(--ui-r-md);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ── TOAST MESSAGES ── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast-pill {
+      background: rgba(16, 20, 30, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--ui-edge-hi);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      color: var(--ui-ink);
+      padding: 10px 18px;
+      border-radius: var(--ui-r-pill);
+      font-size: 13px;
+      font-weight: 600;
+      animation: toastIn 200ms ease;
+    }
+
+    @keyframes toastIn {
+      from { transform: translateY(10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR & ISLAND PORTAL SIMULATION -->
+  <header class="island-portal-bar">
+    <div class="island-tabs" role="tablist" aria-label="Mode selection">
+      <button class="island-tab active" role="tab" aria-selected="true">SINGLE ITEM</button>
+      <button class="island-tab" role="tab" aria-selected="false">BATCH XLSX</button>
+    </div>
+
+    <!-- The Onyx Chan Mascot (Floating safely in reserved center space) -->
+    <div class="onyx-island-mascot" title="Onyx Chan — Warehouse AI">
+      <div class="mascot-avatar" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-9c.83 0 1.5-.67 1.5-1.5S7.83 8 7 8s-1.5.67-1.5 1.5S6.17 11 7 11zm10 0c.83 0 1.5-.67 1.5-1.5S17.83 8 17 8s-1.5.67-1.5 1.5.67 1.5 1.5 1.5zm-5 5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+      </div>
+      <span class="mascot-text">ONYX ISLAND v826</span>
+    </div>
+
+    <div class="island-status">
+      <button class="btn-save-main" id="btnSaveTop">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        GUARDAR ENTRADA
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN ACCORDION WORKSPACE -->
+  <main class="app-workspace">
+
+    <!-- 1. IDENTITY SECTION -->
+    <section class="entry-section active" id="secIdentity">
+      <button class="section-head" id="headIdentity" aria-expanded="true" aria-controls="bodyIdentity">
+        <div class="section-title-wrap">
+          <span class="section-badge" id="badgeIdentity">1</span>
+          <span class="section-title">Identidad del Artículo</span>
+          <div class="section-summary-chips" id="sumIdentity"></div>
+        </div>
+        <svg class="section-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="section-body" id="bodyIdentity">
+        <div class="form-grid">
+          <!-- Vendor Picker -->
+          <div class="col-12">
+            <div class="field-label">
+              <span>Artesano / Vendor</span>
+              <span class="aside" id="lblVendorName">JOSE MEZA (JM)</span>
+            </div>
+            <div class="vendor-chips-grid" id="vendorChipsGrid"></div>
+          </div>
+
+          <!-- Book -->
+          <div class="col-4">
+            <div class="field-label"><span>Libro / Book</span></div>
+            <div class="segmented-control" id="bookSegmented">
+              <button class="segment-btn active" data-wb="v826">826</button>
+              <button class="segment-btn" data-wb="v326">326</button>
+              <button class="segment-btn" data-wb="v825">825</button>
+            </div>
+          </div>
+
+          <!-- Number -->
+          <div class="col-4">
+            <div class="field-label">
+              <span>Número #</span>
+              <span class="aside" id="numAside">Siguiente libre #042</span>
+            </div>
+            <input type="number" class="text-input num" id="inItemNumber" value="42" min="1">
+          </div>
+
+          <!-- Quantity -->
+          <div class="col-4">
+            <div class="field-label"><span>Cantidad / Qty</span></div>
+            <input type="number" class="text-input num" id="inQuantity" value="1" min="1">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. TYPE SECTION -->
+    <section class="entry-section" id="secType">
+      <button class="section-head" id="headType" aria-expanded="false" aria-controls="bodyType">
+        <div class="section-title-wrap">
+          <span class="section-badge" id="badgeType">2</span>
+          <span class="section-title">Tipo Hairline</span>
+          <div class="section-summary-chips" id="sumType"></div>
+        </div>
+        <svg class="section-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="section-body" id="bodyType">
+        <!-- Selected Hero Summary Card (Shown when a type is chosen) -->
+        <div class="type-selected-card" id="typeSelectedCard">
+          <div class="selected-card-left">
+            <div class="selected-hero-fig" id="selectedHeroIcon"></div>
+            <div>
+              <div class="selected-card-name" id="selectedTypeName">Table Lamp</div>
+              <div class="selected-card-sub" id="selectedTypeSub">77 piezas en catálogo · Categoría activa</div>
+            </div>
+          </div>
+          <button type="button" class="btn-change" id="btnChangeType">Cambiar</button>
+        </div>
+
+        <!-- Full Selector Interface -->
+        <div id="typeSelectorWrapper">
+          <div class="type-search-bar">
+            <input type="search" id="typeSearchInput" placeholder="Buscar tipo en catálogo (e.g. Lamp, Bowl, Mirror)...">
+            <svg class="type-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+
+          <!-- Desktop Chips -->
+          <div class="type-chips-desktop" id="typeChipsDesktop"></div>
+
+          <!-- Mobile List -->
+          <div class="type-list-mobile" id="typeListMobile"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. DETAILS SECTION -->
+    <section class="entry-section" id="secDetails">
+      <button class="section-head" id="headDetails" aria-expanded="false" aria-controls="bodyDetails">
+        <div class="section-title-wrap">
+          <span class="section-badge" id="badgeDetails">3</span>
+          <span class="section-title">Detalles y Especificaciones</span>
+          <div class="section-summary-chips" id="sumDetails"></div>
+        </div>
+        <svg class="section-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="section-body" id="bodyDetails">
+        <div class="form-grid">
+          <!-- Shape -->
+          <div class="col-4">
+            <div class="field-label"><span>Forma / Shape</span></div>
+            <input type="text" class="text-input" id="inShape" value="Cylinder">
+            <div class="suggestion-chips-desktop" id="shapeChipsDesktop"></div>
+            <div class="suggestion-list-mobile" id="shapeListMobile"></div>
+          </div>
+
+          <!-- Material -->
+          <div class="col-4">
+            <div class="field-label"><span>Material</span></div>
+            <input type="text" class="text-input" id="inMaterial" value="Mexican Onyx">
+            <div class="suggestion-chips-desktop" id="matChipsDesktop"></div>
+            <div class="suggestion-list-mobile" id="matListMobile"></div>
+          </div>
+
+          <!-- Vendor Color -->
+          <div class="col-4">
+            <div class="field-label"><span>Color del Artesano</span></div>
+            <input type="text" class="text-input" id="inColor" value="Verde Oaxaca">
+          </div>
+
+          <!-- Status -->
+          <div class="col-4">
+            <div class="field-label"><span>Estado / Status</span></div>
+            <select class="select-input" id="inStatus">
+              <option value="Acquisition">Acquisition (Adquisición)</option>
+              <option value="Requested">Requested (Solicitado)</option>
+              <option value="In Production">In Production (Producción)</option>
+            </select>
+          </div>
+
+          <!-- Dimensions: W, D, H -->
+          <div class="col-8">
+            <div class="field-label">
+              <span>Dimensiones (W × D × H cm)</span>
+              <span class="aside">Tamaños sugeridos abajo</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <input type="number" class="text-input num" id="inWidth" placeholder="W cm" value="15">
+              <input type="number" class="text-input num" id="inDepth" placeholder="D cm" value="15">
+              <input type="number" class="text-input num" id="inHeight" placeholder="H cm" value="40">
+            </div>
+            <div class="suggestion-chips-desktop" style="margin-top:6px;">
+              <button type="button" class="sug-chip" onclick="setSize(12,12,30)">12×12×30 cm (12)</button>
+              <button type="button" class="sug-chip" onclick="setSize(15,15,40)">15×15×40 cm (10)</button>
+              <button type="button" class="sug-chip" onclick="setSize(8,8,35)">8×8×35 cm (8)</button>
+            </div>
+          </div>
+
+          <!-- Weight -->
+          <div class="col-4">
+            <div class="field-label"><span>Peso / Kg</span></div>
+            <input type="number" class="text-input num" id="inWeight" value="8.5" step="0.1">
+          </div>
+
+          <!-- Price MXN -->
+          <div class="col-4">
+            <div class="field-label"><span>Precio MXN</span></div>
+            <input type="number" class="text-input num" id="inPrice" value="1450" step="10">
+          </div>
+
+          <!-- Vendor Note -->
+          <div class="col-4">
+            <div class="field-label"><span>Nota del Artesano</span></div>
+            <input type="text" class="text-input" id="inNote" placeholder="Veta translúcida, acabado fino...">
+          </div>
+        </div>
+
+        <!-- Live Preview Pricing Strip -->
+        <dl class="pricing-codes-strip">
+          <div class="pricing-cell">
+            <dt>Costo Acq. USD</dt>
+            <dd id="dispAcqUsd">—</dd>
+          </div>
+          <div class="pricing-cell">
+            <dt>Landed USD</dt>
+            <dd id="dispLandedUsd">—</dd>
+          </div>
+          <div class="pricing-cell">
+            <dt>Retail USD (12×)</dt>
+            <dd id="dispRetailUsd">—</dd>
+          </div>
+          <div class="pricing-cell">
+            <dt>Código Clave / Barcode</dt>
+            <dd id="dispBarcode">JM826042</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- 4. PHOTOS SECTION -->
+    <section class="entry-section" id="secPhotos">
+      <button class="section-head" id="headPhotos" aria-expanded="false" aria-controls="bodyPhotos">
+        <div class="section-title-wrap">
+          <span class="section-badge" id="badgePhotos">4</span>
+          <span class="section-title">Fotografías y Medios</span>
+          <div class="section-summary-chips" id="sumPhotos"></div>
+        </div>
+        <svg class="section-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="section-body" id="bodyPhotos">
+        <div class="dropzone-box" id="dropzoneBox">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div class="dropzone-text">Arrastra fotos o videos aquí, o haz clic para seleccionar</div>
+        </div>
+
+        <div class="photo-thumbs-strip" id="photoThumbsStrip">
+          <div class="photo-thumb-card hero">
+            <span class="hero-badge">HERO</span>
+            <img class="photo-thumb-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231f242d'/%3E%3Ccircle cx='50' cy='50' r='30' fill='%2300aeef' opacity='0.3'/%3E%3Cpath d='M35 65 L50 35 L65 65 Z' fill='%2300aeef'/%3E%3C/svg%3E" alt="Foto 1">
+          </div>
+          <div class="photo-thumb-card">
+            <img class="photo-thumb-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23191c24'/%3E%3Crect x='30' y='30' width='40' height='40' fill='%236bcebb' opacity='0.4'/%3E%3C/svg%3E" alt="Foto 2">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. GENERATE SECTION (INTEGRATED) -->
+    <section class="entry-section" id="secGenerate">
+      <button class="section-head" id="headGenerate" aria-expanded="false" aria-controls="bodyGenerate">
+        <div class="section-title-wrap">
+          <span class="section-badge" id="badgeGenerate">5</span>
+          <span class="section-title">Generación de Contenido con IA</span>
+          <div class="section-summary-chips" id="sumGenerate"></div>
+        </div>
+        <svg class="section-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="section-body" id="bodyGenerate">
+        <!-- Compact Process Toggles Bar -->
+        <div class="field-label" style="margin-top:12px;"><span>Procesos a Ejecutar</span></div>
+        <div class="generate-toggles-bar">
+          <button class="process-pill active" data-proc="title">Título</button>
+          <button class="process-pill active" data-proc="desc">Descripción</button>
+          <button class="process-pill active" data-proc="colors">Colores</button>
+          <button class="process-pill active" data-proc="type">Tipo Shopify</button>
+          <button class="process-pill active" data-proc="clean">Clean PNG</button>
+          <button class="process-pill" data-proc="mask">Máscara 3D</button>
+        </div>
+
+        <button type="button" class="btn-generate-action" id="btnRunGenerate">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+          GENERAR CON GEMINI AI
+        </button>
+
+        <!-- Skeleton Loading Box (Running State) -->
+        <div class="generate-skeleton" id="generateSkeleton">
+          <div style="font-size:12px; font-weight:700; color:var(--ui-accent); margin-bottom:10px;">
+            ⟳ Analizando geometría y sintetizando catálogo...
+          </div>
+          <div class="skeleton-bar" style="width: 80%;"></div>
+          <div class="skeleton-bar" style="width: 60%;"></div>
+          <div class="skeleton-bar" style="width: 95%;"></div>
+        </div>
+
+        <!-- Generated Results (HIDDEN UNTIL READY) -->
+        <div class="generate-results" id="generateResults">
+          <div class="results-head">
+            <span class="results-badge">✓ CONTENIDO GENERADO LISTO</span>
+            <span style="font-size: 11px; color: var(--ui-faint);">Modelo: Gemini 2.5 Flash</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="col-12">
+              <div class="field-label">
+                <span>Título Generado</span>
+                <span class="aside" id="lblTitleChars">54 / 70 caracteres</span>
+              </div>
+              <input type="text" class="text-input" id="genTitle" value="Large Cylindrical Mexican Green Onyx Table Luminarie">
+            </div>
+
+            <div class="col-6">
+              <div class="field-label"><span>Colores Extraídos</span></div>
+              <div style="display:flex; gap:6px;">
+                <span class="sum-chip colored" style="--chip-color:#10b981;"><span class="sum-chip-dot"></span>Verde Oaxaca</span>
+                <span class="sum-chip colored" style="--chip-color:#f59e0b;"><span class="sum-chip-dot"></span>Ámbar</span>
+                <span class="sum-chip colored" style="--chip-color:#e2e8f0;"><span class="sum-chip-dot"></span>Blanco Hueso</span>
+              </div>
+            </div>
+
+            <div class="col-6">
+              <div class="field-label"><span>Taxonomía Shopify</span></div>
+              <div class="sum-chip">Home Decor > Lighting > Table Lamps</div>
+            </div>
+
+            <div class="col-12">
+              <div class="field-label"><span>Descripción Comercial</span></div>
+              <textarea class="text-input" style="height:80px; padding:8px 12px; resize:vertical;">Luminaria cilíndrica de ónix mexicano verde extraído en canteras oaxaqueñas. Vetas translúcidas naturales que difunden una iluminación cálida y artesanal. Pulido mate de alta precisión.</textarea>
+            </div>
+          </div>
+
+          <div class="results-actions">
+            <button type="button" class="btn-accept" id="btnAcceptGen">Aceptar Todo</button>
+            <button type="button" class="btn-discard" id="btnDiscardGen">Descartar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    /* ==========================================================================
+       DATA DICTIONARY & VECTOR FIGURES
+       ========================================================================== */
+    const VENDORS = [
+      { code: 'JM', name: 'Jose Meza', color: '#6bcebb' },
+      { code: 'EM', name: 'Eduardo Morales', color: '#e5a93c' },
+      { code: 'CA', name: 'Casa Arte', color: '#4fb3ff' },
+      { code: 'ON', name: 'Onyx Natural', color: '#a78bfa' },
+      { code: 'TE', name: 'Taller El Tule', color: '#f43f5e' },
+      { code: 'ML', name: 'Minerales Luna', color: '#f59e0b' },
+      { code: 'BT', name: 'Bautista', color: '#10b981' },
+      { code: 'CP', name: 'Cantera Premium', color: '#8b5cf6' }
+    ];
+
+    const TYPES = [
+      { id: 'pendant', name: 'Pendant Light', count: 94, svg: `<path d="M12 2v6m-6 8h12l-2-8H8l-2 8zM9 16v4h6v-4"/>` },
+      { id: 'bowl', name: 'Decorative Bowl', count: 78, svg: `<ellipse cx="12" cy="10" rx="9" ry="4"/><path d="M3 10c0 6 4 10 9 10s9-4 9-10"/>` },
+      { id: 'lamp', name: 'Table Lamp', count: 77, svg: `<rect x="7" y="14" width="10" height="7" rx="1"/><line x1="12" y1="14" x2="12" y2="9"/><path d="M6 9h12L15 3H9L6 9z"/>` },
+      { id: 'tray', name: 'Decorative Tray', count: 47, svg: `<path d="M2 13c3 5 17 5 20 0l-3-4H5l-3 4z"/><ellipse cx="12" cy="11" rx="7" ry="2"/>` },
+      { id: 'rock', name: 'Sculptural Rock', count: 42, svg: `<path d="M4 14l4-8 8-2 5 7-3 8-10 2z"/><line x1="8" y1="6" x2="11" y2="19"/>` },
+      { id: 'mirror', name: 'Wall Mirror', count: 38, svg: `<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="12" r="5"/><line x1="9" y1="7" x2="15" y2="17"/>` },
+      { id: 'tower', name: 'Tower Lamp', count: 37, svg: `<rect x="7" y="3" width="10" height="18" rx="1"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="18" x2="17" y2="18"/>` },
+      { id: 'winerack', name: 'Wine Rack', count: 31, svg: `<rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="8" cy="8" r="2"/><circle cx="16" cy="8" r="2"/><circle cx="12" cy="14" r="2"/>` },
+      { id: 'fountain', name: 'Water Fountain', count: 14, svg: `<path d="M12 3v6m-4 5c0 3 8 3 8 0M4 19c0 3 16 3 16 0"/><line x1="12" y1="9" x2="12" y2="19"/>` },
+      { id: 'sculpture', name: 'Stone Sculpture', count: 12, svg: `<path d="M12 2C8 7 6 12 7 18c1 3 8 3 9 0 1-6-1-11-4-16z"/>` },
+      { id: 'pillar', name: 'Stone Pillar', count: 8, svg: `<rect x="6" y="2" width="12" height="3"/><rect x="7" y="5" width="10" height="14"/><rect x="6" y="19" width="12" height="3"/>` },
+      { id: 'panel', name: 'Wall Panel', count: 6, svg: `<rect x="3" y="4" width="18" height="16" rx="1"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="4" x2="12" y2="20"/>` }
+    ];
+
+    const SHAPES = ['Cylinder', 'Squared', 'Round', 'Rectangular', 'Organic', 'Fountain'];
+    const MATERIALS = ['Mexican Onyx', 'Travertine', 'White Marble', 'Black Stone'];
+
+    /* ==========================================================================
+       STATE & INITIALIZATION
+       ========================================================================== */
+    const state = {
+      vendor: VENDORS[0],
+      workbook: 'v826',
+      number: '42',
+      quantity: '1',
+      type: TYPES[2], // Table Lamp default
+      shape: 'Cylinder',
+      material: 'Mexican Onyx',
+      color: 'Verde Oaxaca',
+      status: 'Acquisition',
+      w: 15,
+      d: 15,
+      h: 40,
+      weight: 8.5,
+      price: 1450,
+      note: 'Veta translúcida, acabado fino',
+      photos: 2,
+      activeSection: 'secIdentity'
+    };
+
+    function toast(msg) {
+      const c = document.getElementById('toastContainer');
+      const pill = document.createElement('div');
+      pill.className = 'toast-pill';
+      pill.textContent = msg;
+      c.appendChild(pill);
+      setTimeout(() => {
+        pill.style.opacity = '0';
+        pill.style.transition = 'opacity 200ms ease';
+        setTimeout(() => pill.remove(), 250);
+      }, 3000);
+    }
+
+    /* ==========================================================================
+       ACCORDION SECTION MANAGEMENT
+       ========================================================================== */
+    const sections = ['secIdentity', 'secType', 'secDetails', 'secPhotos', 'secGenerate'];
+
+    function toggleSection(secId) {
+      sections.forEach(id => {
+        const el = document.getElementById(id);
+        const head = el.querySelector('.section-head');
+        if (id === secId) {
+          const isAct = el.classList.contains('active');
+          if (isAct) {
+            el.classList.remove('active');
+            head.setAttribute('aria-expanded', 'false');
+          } else {
+            el.classList.add('active');
+            head.setAttribute('aria-expanded', 'true');
+          }
+        }
+      });
+      updateSummaries();
+    }
+
+    function advanceTo(nextId) {
+      sections.forEach(id => {
+        const el = document.getElementById(id);
+        const head = el.querySelector('.section-head');
+        if (id === nextId) {
+          el.classList.add('active');
+          head.setAttribute('aria-expanded', 'true');
+        } else {
+          el.classList.remove('active');
+          head.setAttribute('aria-expanded', 'false');
+        }
+      });
+      updateSummaries();
+    }
+
+    function updateSummaries() {
+      // 1. Identity Summary
+      const sumId = document.getElementById('sumIdentity');
+      sumId.innerHTML = `
+        <span class="sum-chip colored" style="--chip-color:${state.vendor.color};"><span class="sum-chip-dot"></span>${state.vendor.code}</span>
+        <span class="sum-chip">${state.workbook.replace('v','Libro ')}</span>
+        <span class="sum-chip">#${String(state.number).padStart(3,'0')}</span>
+        <span class="sum-chip">${state.quantity} pza</span>
+      `;
+      document.getElementById('secIdentity').classList.add('completed');
+
+      // 2. Type Summary
+      const sumType = document.getElementById('sumType');
+      if (state.type) {
+        sumType.innerHTML = `<span class="sum-chip">${state.type.name} · ${state.type.count} pcs</span>`;
+        document.getElementById('secType').classList.add('completed');
+      }
+
+      // 3. Details Summary
+      const sumDet = document.getElementById('sumDetails');
+      sumDet.innerHTML = `
+        <span class="sum-chip">${state.shape}</span>
+        <span class="sum-chip">${state.material}</span>
+        <span class="sum-chip">${state.w}×${state.d}×${state.h} cm</span>
+        <span class="sum-chip">$${Number(state.price).toLocaleString()} MXN</span>
+      `;
+      document.getElementById('secDetails').classList.add('completed');
+
+      // 4. Photos Summary
+      const sumPh = document.getElementById('sumPhotos');
+      sumPh.innerHTML = `<span class="sum-chip">${state.photos} fotos</span>`;
+      document.getElementById('secPhotos').classList.add('completed');
+
+      // Recompute Live Prices
+      computePrices();
+    }
+
+    /* ==========================================================================
+       PRICING GRID (placeholders only)
+       ========================================================================== */
+    // The mockup shows the read-only pricing grid as placeholders. The real formulas stay in the app (src/lib/utils.tsx), never in a design file.
+    function computePrices() {
+      const pMxn = parseFloat(state.price) || 0;
+      const shown = pMxn > 0 ? 'calculated on save' : '—';
+      document.getElementById('dispAcqUsd').textContent = shown;
+      document.getElementById('dispLandedUsd').textContent = shown;
+      document.getElementById('dispRetailUsd').textContent = shown;
+      document.getElementById('dispBarcode').textContent = `${state.vendor.code}${state.workbook.replace('v','')}${String(state.number).padStart(3,'0')}`;
+    }
+
+    /* ==========================================================================
+       RENDERERS
+       ========================================================================== */
+    // Render Vendor Chips
+    function renderVendors() {
+      const c = document.getElementById('vendorChipsGrid');
+      c.innerHTML = '';
+      VENDORS.forEach(v => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `vendor-btn ${v.code === state.vendor.code ? 'active' : ''}`;
+        btn.style.setProperty('--v-color', v.color);
+        btn.innerHTML = `<span class="vendor-swatch"></span>${v.code}`;
+        btn.onclick = () => {
+          state.vendor = v;
+          document.getElementById('lblVendorName').textContent = `${v.name} (${v.code})`;
+          renderVendors();
+          updateSummaries();
+        };
+        c.appendChild(btn);
+      });
+    }
+
+    // Render Type Chips (Desktop) & List (Mobile)
+    function renderTypes(filterText = '') {
+      const q = filterText.toLowerCase().trim();
+      const filtered = TYPES.filter(t => t.name.toLowerCase().includes(q));
+
+      // Desktop
+      const desk = document.getElementById('typeChipsDesktop');
+      desk.innerHTML = '';
+      filtered.forEach(t => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `type-chip-btn ${state.type && state.type.id === t.id ? 'active' : ''}`;
+        btn.innerHTML = `
+          <span class="type-chip-icon"><svg viewBox="0 0 24 24">${t.svg}</svg></span>
+          <span class="type-chip-title">${t.name}</span>
+          <span class="type-chip-count">${t.count}</span>
+        `;
+        btn.onclick = () => selectType(t);
+        desk.appendChild(btn);
+      });
+
+      // Mobile
+      const mob = document.getElementById('typeListMobile');
+      mob.innerHTML = '';
+      filtered.forEach(t => {
+        const row = document.createElement('div');
+        row.className = `type-list-row ${state.type && state.type.id === t.id ? 'active' : ''}`;
+        row.innerHTML = `
+          <div class="type-list-leading">
+            <span class="type-chip-icon"><svg viewBox="0 0 24 24">${t.svg}</svg></span>
+            <span style="font-weight:700;">${t.name}</span>
+          </div>
+          <span class="type-chip-count">${t.count} pcs</span>
+        `;
+        row.onclick = () => selectType(t);
+        mob.appendChild(row);
+      });
+    }
+
+    function selectType(t) {
+      state.type = t;
+      document.getElementById('selectedTypeName').textContent = t.name;
+      document.getElementById('selectedTypeSub').textContent = `${t.count} piezas en inventario · Categoría activa`;
+      document.getElementById('selectedHeroIcon').innerHTML = `<svg viewBox="0 0 24 24">${t.svg}</svg>`;
+      
+      // Collapse selector and show card
+      document.getElementById('typeSelectorWrapper').style.display = 'none';
+      document.getElementById('typeSelectedCard').classList.add('visible');
+
+      updateSummaries();
+      toast(`Tipo seleccionado: ${t.name}`);
+      // Advance to Details section
+      setTimeout(() => advanceTo('secDetails'), 200);
+    }
+
+    // Render Shape & Material Chips (Desktop) and List (Mobile)
+    function renderShapeAndMat() {
+      // Shape Desktop Chips
+      const sc = document.getElementById('shapeChipsDesktop');
+      sc.innerHTML = '';
+      SHAPES.forEach(s => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sug-chip';
+        b.textContent = s;
+        b.onclick = () => {
+          document.getElementById('inShape').value = s;
+          state.shape = s;
+          updateSummaries();
+        };
+        sc.appendChild(b);
+      });
+
+      // Shape Mobile List
+      const sm = document.getElementById('shapeListMobile');
+      sm.innerHTML = '';
+      SHAPES.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'sug-list-item';
+        item.textContent = s;
+        item.onclick = () => {
+          document.getElementById('inShape').value = s;
+          state.shape = s;
+          updateSummaries();
+        };
+        sm.appendChild(item);
+      });
+
+      // Material Desktop Chips
+      const mc = document.getElementById('matChipsDesktop');
+      mc.innerHTML = '';
+      MATERIALS.forEach(m => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sug-chip';
+        b.textContent = m;
+        b.onclick = () => {
+          document.getElementById('inMaterial').value = m;
+          state.material = m;
+          updateSummaries();
+        };
+        mc.appendChild(b);
+      });
+    }
+
+    function setSize(w, d, h) {
+      document.getElementById('inWidth').value = w;
+      document.getElementById('inDepth').value = d;
+      document.getElementById('inHeight').value = h;
+      state.w = w; state.d = d; state.h = h;
+      updateSummaries();
+    }
+
+    /* ==========================================================================
+       EVENT LISTENERS & BINDINGS
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      renderVendors();
+      renderTypes();
+      renderShapeAndMat();
+      updateSummaries();
+
+      // Section Head clicks
+      sections.forEach(secId => {
+        document.getElementById(secId).querySelector('.section-head').addEventListener('click', () => {
+          toggleSection(secId);
+        });
+      });
+
+      // Book buttons
+      document.querySelectorAll('#bookSegmented .segment-btn').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('#bookSegmented .segment-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.workbook = btn.dataset.wb;
+          updateSummaries();
+        };
+      });
+
+      // Inputs
+      document.getElementById('inItemNumber').oninput = (e) => {
+        state.number = e.target.value;
+        const aside = document.getElementById('numAside');
+        if (state.number === '1') {
+          aside.textContent = '⚠️ ¡El número #001 ya está ocupado en este libro!';
+          aside.style.color = 'var(--ui-bad)';
+        } else {
+          aside.textContent = `Número válido #${state.number.padStart(3,'0')}`;
+          aside.style.color = 'var(--ui-good)';
+        }
+        updateSummaries();
+      };
+
+      document.getElementById('inQuantity').oninput = (e) => {
+        state.quantity = e.target.value;
+        updateSummaries();
+      };
+
+      document.getElementById('inPrice').oninput = (e) => {
+        state.price = e.target.value;
+        updateSummaries();
+      };
+
+      document.getElementById('inShape').oninput = (e) => {
+        state.shape = e.target.value;
+        updateSummaries();
+      };
+
+      document.getElementById('inMaterial').oninput = (e) => {
+        state.material = e.target.value;
+        updateSummaries();
+      };
+
+      // Type Search
+      document.getElementById('typeSearchInput').oninput = (e) => {
+        renderTypes(e.target.value);
+      };
+
+      // Change Type button
+      document.getElementById('btnChangeType').onclick = () => {
+        document.getElementById('typeSelectedCard').classList.remove('visible');
+        document.getElementById('typeSelectorWrapper').style.display = 'block';
+        document.getElementById('typeSearchInput').focus();
+      };
+
+      // Process Toggles
+      document.querySelectorAll('.process-pill').forEach(pill => {
+        pill.onclick = () => pill.classList.toggle('active');
+      });
+
+      // Generate Run Simulation (1.5 seconds)
+      const btnGen = document.getElementById('btnRunGenerate');
+      const skel = document.getElementById('generateSkeleton');
+      const res = document.getElementById('generateResults');
+
+      btnGen.onclick = () => {
+        btnGen.disabled = true;
+        btnGen.textContent = 'GENERANDO...';
+        skel.classList.add('running');
+        res.classList.remove('ready');
+
+        setTimeout(() => {
+          skel.classList.remove('running');
+          res.classList.add('ready');
+          btnGen.disabled = false;
+          btnGen.innerHTML = `
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            RE-GENERAR CON GEMINI AI
+          `;
+          toast('Contenido generado exitosamente con Gemini AI');
+        }, 1500);
+      };
+
+      document.getElementById('btnAcceptGen').onclick = () => {
+        toast('Contenido generado aceptado e integrado al artículo');
+        document.getElementById('secGenerate').classList.add('completed');
+        document.getElementById('sumGenerate').innerHTML = `
+          <span class="sum-chip colored" style="--chip-color:var(--ui-good);"><span class="sum-chip-dot"></span>Título y Descripción Listos</span>
+          <span class="sum-chip">3 Colores</span>
+        `;
+      };
+
+      document.getElementById('btnDiscardGen').onclick = () => {
+        res.classList.remove('ready');
+        toast('Contenido generado descartado');
+      };
+
+      // Top Save Button
+      document.getElementById('btnSaveTop').onclick = () => {
+        toast('✓ Entrada guardada con éxito en la base de datos (Temporada 826)');
+      };
+
+      // Keyboard Shortcut: Ctrl+S / Cmd+S
+      window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+          e.preventDefault();
+          document.getElementById('btnSaveTop').click();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
