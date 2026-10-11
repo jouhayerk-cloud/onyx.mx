@@ -67,6 +67,8 @@ export interface ShapeFigureProps {
     typeId?: string | null;
     /** Shape text that picks a drawing inside a Type that has shape variants (the mirror: Round, Squared, Rectangular). */
     variant?: string | null;
+    /** Open or closed top of a lamp ("open", "closed"); null draws the closed top. Only table and floor lamps read it. */
+    top?: string | null;
     dims?: Dims | null;
     holes?: number;
     /** 0 at rest, 1 fully lifted by the pointer (the parent drives it from the grid's pointer position). */

@@ -56,6 +56,8 @@ const FORM_CYLINDER = opt('cylinder', 'Cylinder', ['cylindrical', 'cilindro', 'c
 const FORM_SQUARED = opt('squared', 'Squared', ['square', 'squares', 'cuadrado', 'cuadrada']);
 const FORM_CUBE = opt('cube', 'Cube', ['cubo']);
 const FORM_RECT = opt('rectangular', 'Rectangular', ['rectangle', 'rectangulo']);
+/** A floor lamp is one four-sided column: squared and rectangular are the same form, the width and depth decide the section (owner decision, 11 Oct 2026). */
+const FORM_SQUARED_COLUMN = opt('squared', 'Squared', ['square', 'squares', 'cuadrado', 'cuadrada', 'rectangular', 'rectangle', 'rectangulo']);
 const FORM_ROUND = opt('round', 'Round', ['circle', 'circular', 'oval', 'redondo', 'redonda']);
 const FORM_FREE = opt('free-form', 'Free Form', ['freeform', 'free form', 'organic', 'organico', 'wavy']);
 const FORM_IRREGULAR = opt('irregular', 'Irregular');
@@ -91,7 +93,7 @@ export const UNIFIED_TYPE_IDS: Readonly<Record<string, string>> = { 'luminary': 
 export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
     'pendant': ids('pendant', 'form', 'Form', [FORM_CYLINDER, FORM_SQUARED], 'cylinder'),
     'table-lamp': ids('table-lamp', 'form', 'Form', [FORM_SQUARED, FORM_CYLINDER, FORM_CUBE, FORM_RECT], 'squared', [TOP_AXIS]),
-    'floor-lamp': ids('floor-lamp', 'form', 'Form', [FORM_SQUARED, FORM_RECT], 'squared', [TOP_AXIS]),
+    'floor-lamp': ids('floor-lamp', 'form', 'Form', [FORM_SQUARED_COLUMN], 'squared', [TOP_AXIS]),
     'bowl': ids('bowl', 'size', 'Size', SIZES_ALL, 'medium'),
     'canoe': ids('canoe', 'size', 'Size', SIZES_ALL.slice(0, 3), 'medium'),
     'plate': ids('plate', 'size', 'Size', SIZES_ALL.slice(0, 3), 'large'),
