@@ -3424,4 +3424,5 @@ export const esCatalog: Record<string, string> = {
   'If onyx is already added, run: claude mcp remove onyx --scope user first. Then start a new Claude Code session.': 'Si onyx ya está agregado, ejecuta primero: claude mcp remove onyx --scope user. Luego inicia una nueva sesión de Claude Code.',
   'Check with: claude mcp get onyx': 'Verifica con: claude mcp get onyx',
   'Revoking a token stops it working. Also run: claude mcp remove onyx --scope user': 'Revocar un token hace que deje de funcionar. También ejecuta: claude mcp remove onyx --scope user',
+  'Nothing to export: no sheets were created. Check your filters and selection.': 'Nada que exportar: no se creó ninguna hoja. Revisa tus filtros y la selección.',
 };

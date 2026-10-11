@@ -2,7 +2,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { SeasonToggles } from './SeasonToggles';
 import type { InventoryItemData } from '../../lib/Types';
 // Navigation Modernization - Atomic Sync Force
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
     activeViewAtom,
@@ -1656,6 +1656,7 @@ export function MainHeader() {
             });
 
             { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
+            if (workbook.worksheets.length === 0) { toast.error(tr("Nothing to export: no sheets were created. Check your filters and selection.")); return; }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Onyx-mx_Selected_Items_${dateStr}.xlsx`);
@@ -2765,6 +2766,7 @@ export function MainHeader() {
             });
 
             { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
+            if (workbook.worksheets.length === 0) { toast.error(tr("Nothing to export: no sheets were created. Check your filters and selection.")); return; }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Onyx-mx_Book-326_${dateStr}.xlsx`);
@@ -2778,8 +2780,12 @@ export function MainHeader() {
     });
 
     // ─── WORKBOOK V2 EXPORT (Rare Earth Format) ──────────────────────────
+    // The listener is registered once, so it must call the LATEST export function through a ref. Calling the function directly captured
+    // the first render, when inventory, financeDocs and exchangeRate were still empty: an export started from the island (which fires this
+    // event) wrote a workbook with no sheets at all, and Excel reported it as corrupted (5 KB files since 2026-10-09).
+    const masterExportV2Ref = useRef<() => void>(() => {});
     useEffect(() => {
-        const handler = () => handleMasterExportXLSX_V2();
+        const handler = () => masterExportV2Ref.current();
         document.addEventListener('triggerMasterExport', handler);
         return () => document.removeEventListener('triggerMasterExport', handler);
     }, []);
@@ -3586,6 +3592,7 @@ export function MainHeader() {
             }
 
             { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
+            if (workbook.worksheets.length === 0) { toast.error(tr("Nothing to export: no sheets were created. Check your filters and selection.")); return; }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
@@ -3597,6 +3604,7 @@ export function MainHeader() {
             setIsExporting(false);
         }
     });
+    masterExportV2Ref.current = handleMasterExportXLSX_V2;   // refreshed on every render
 
     // 🛍️ SHOPIFY EXPORT 🛍️
     const handleShopifyExportXLSX = async () => trackDocumentJob({
@@ -4343,6 +4351,7 @@ export function MainHeader() {
             });
 
             { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
+            if (workbook.worksheets.length === 0) { toast.error(tr("Nothing to export: no sheets were created. Check your filters and selection.")); return; }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
             saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Shopify_Export_${dateStr}.xlsx`);
