@@ -1,0 +1,22 @@
+[
+  ["Change", "Cambiar"],
+  ["Previous", "Anterior"],
+  ["Next", "Siguiente"],
+  ["Scroll for more", "Desplaza para ver más"],
+  ["Not listed", "No aparece en la lista"],
+  ["Click to change", "Pulsa para cambiar"],
+  ["Pick a type", "Elige un tipo"],
+  ["Find a type", "Buscar un tipo"],
+  ["Loading types...", "Cargando tipos..."],
+  ["No types yet. Save an item and it appears here.", "Aún no hay tipos. Guarda un artículo y aparecerá aquí."],
+  ["No type matches.", "No hay coincidencias de tipo."],
+  ["Saved", "Guardado"],
+  ["Saving...", "Guardando..."],
+  ["Save to library", "Guardar en biblioteca"],
+  ["Only Developer and Admin can add types to the library.", "Solo Developer y Admin pueden agregar tipos a la biblioteca."],
+  ["Form", "Forma"],
+  ["Size", "Tamaño"],
+  ["Subject", "Tema"],
+  ["Holes", "Orificios"],
+  ["Top", "Parte superior"]
+]

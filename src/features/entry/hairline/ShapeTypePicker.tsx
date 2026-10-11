@@ -5,8 +5,8 @@ import { suggestTypes, type TypeEntry } from '../../../lib/typeLibrary';
 import type { Dims } from './types';
 import { ShapeFigure } from './ShapeFigure';
 import { SubShapeRow } from './SubShapeRow';
-import { useCoarseLayout } from './useCoarseLayout';
-import { subShapesFor, parseShapeText, extraAxesFor } from './variantOptions';
+import { HairlineScroller, type HairlineScrollerItem } from './HairlineScroller';
+import { subShapesFor, parseShapeText } from './variantOptions';
 import './shapeTypePicker.css';
 import './dynamicSelector.css';
 
@@ -27,17 +27,16 @@ export interface ShapeTypePickerProps {
     dims?: Dims | null;
 }
 
-const FIRST_DESKTOP = 12;
-const FIRST_MOBILE = 8;
 const SUGGESTIONS = 4;
 const SAVED_MS = 2000;
 
 const countText = (n: number) => (n === 0 ? tr('saved') : n === 1 ? tr('1 piece') : trf('{n} pieces', { n }));
 
 /**
- * Dynamic hairline style selector.
- * Adapts to desktop (chip buttons) or mobile (in-flow list), reveals sub-shape options
- * upon Type selection, regenerates hairline drawings live, and collapses to a summary row when filled.
+ * Hairline selector for Add Entry.
+ * Rebuilt as horizontally scrollable grids that collapse to the chosen element,
+ * and re-deploy when clicked.
+ * Live drawing sits to the left on desktop and above on mobile.
  */
 export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     value,
@@ -50,9 +49,8 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     dims = null,
 }) => {
     const uid = useId();
-    const isCoarse = useCoarseLayout();
     const [query, setQuery] = useState('');
-    const [expanded, setExpanded] = useState(false);
+    const [typeExpanded, setTypeExpanded] = useState(false);
     const [saveState, setSaveState] = useState<'idle' | 'pending' | 'saved'>('idle');
     const savedTimer = useRef<number | undefined>(undefined);
 
@@ -70,18 +68,10 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     const subShapes = subShapesFor(chosenTypeId);
     const hasSubShapes = Boolean(chosenTypeId && subShapes.kind !== 'none' && subShapes.options.length > 0);
 
-    // Initial collapse state: collapsed if Type is chosen and either has no sub-shapes or sub-shape is filled.
-    const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-        if (!typedType) return false;
-        const tid = canonicalType(typedType).id;
-        const sub = subShapesFor(tid);
-        if (sub.kind === 'none') return true;
-        return Boolean(typedShape);
-    });
-
-    const matches = useMemo(() => suggestTypes(library, query, library.length), [library, query]);
-    const limit = isCoarse ? FIRST_MOBILE : FIRST_DESKTOP;
-    const shown = expanded ? matches : matches.slice(0, limit);
+    const matches = useMemo(() => {
+        if (!query.trim()) return library;
+        return suggestTypes(library, query, library.length);
+    }, [library, query]);
 
     const suggestions = useMemo(() => (
         chosen || !typedType ? [] : suggestTypes(library, typedType, SUGGESTIONS)
@@ -89,7 +79,6 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
 
     const handlePickType = (entryLabel: string) => {
         const newId = canonicalType(entryLabel).id;
-        const sub = subShapesFor(newId);
         const isValidOption = Boolean(newId && typedShape && parseShapeText(newId, typedShape).primary !== null);
 
         if (isValidOption) {
@@ -98,18 +87,12 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
             onChange({ type: entryLabel, shape: '' });
         }
 
-        if (!newId || sub.kind === 'none') {
-            setIsCollapsed(true);
-        } else {
-            setIsCollapsed(false);
-        }
+        setQuery('');
+        setTypeExpanded(false);
     };
 
-    const handlePickSubShape = (shapeText: string, source: 'primary' | 'extra') => {
+    const handlePickSubShape = (shapeText: string, _source: 'primary' | 'extra') => {
         onChange({ shape: shapeText });
-        // Choosing the top finishes the selection. Choosing the form finishes it too, unless the form has an extra row (open or closed top) still to answer.
-        const picked = parseShapeText(chosenTypeId, shapeText).primary;
-        if (source === 'extra' || extraAxesFor(chosenTypeId, picked).length === 0) setIsCollapsed(true);
     };
 
     const save = async () => {
@@ -127,10 +110,11 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     };
 
     const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (e.key === 'Escape' && expanded) {
+        if (e.key === 'Escape' && query) {
             e.preventDefault();
             e.stopPropagation();
-            setExpanded(false);
+            setQuery('');
+            setTypeExpanded(false);
         }
     };
 
@@ -142,66 +126,43 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
         ? (Number(activeVariant) || chosen?.holes[0] || undefined)
         : undefined;
 
-    // ── COLLAPSED SUMMARY VIEW ─────────────────────────────────────────────
-    if (isCollapsed && (chosen || typedType)) {
-        const displayType = chosen?.label ?? typedType;
-        const displayShape = typedShape;
-        const summaryLabel = displayShape ? `${displayType} · ${displayShape}` : displayType;
+    const typeItems: ReadonlyArray<HairlineScrollerItem> = useMemo(() => {
+        return matches.map(entry => {
+            const isChosen = entry.key === currentKey || entry.label === typedType;
+            const count = countText(entry.count);
 
-        return (
-            <div className="stp">
-                <div className="stp-summary">
-                    <div className="stp-summary-left">
-                        <span className="stp-summary-fig">
-                            <ShapeFigure
-                                family={chosen?.family ?? 'box'}
-                                isMirror={chosen?.isMirror ?? false}
-                                typeId={chosenTypeId}
-                                variant={activeVariant}
-                                top={activeTop}
-                                dims={dims ?? chosen?.dims ?? null}
-                                holes={holesCount}
-                                className="stp-summary-svg"
-                            />
-                        </span>
-                        <div className="stp-summary-text">
-                            <span className="stp-summary-label">{summaryLabel}</span>
-                            {chosen && <span className="stp-summary-count">{countText(chosen.count)}</span>}
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        className="stp-summary-change"
-                        disabled={disabled}
-                        onClick={() => setIsCollapsed(false)}
-                    >
-                        {tr('Change')}
-                    </button>
-                </div>
-            </div>
-        );
-    }
+            return {
+                key: entry.label,
+                label: entry.label,
+                meta: count,
+                node: (
+                    <ShapeFigure
+                        family={entry.family}
+                        isMirror={entry.isMirror}
+                        typeId={entry.id}
+                        dims={entry.dims}
+                        holes={entry.holes[0]}
+                        active={isChosen}
+                        className="stp-type-scroller-svg"
+                    />
+                ),
+            };
+        });
+    }, [matches, currentKey, typedType]);
 
-    // ── UNCOLLAPSED INTERACTIVE SELECTOR ───────────────────────────────────
     return (
         <div className="stp" onKeyDown={onKeyDown}>
+            {/* Header: title and search */}
             <div className="stp-head">
                 <span id={`${uid}-title`} className="stp-title">{tr('Pick a type')}</span>
-                {typedType !== '' && (
-                    <button
-                        type="button"
-                        className="stp-done"
-                        disabled={disabled}
-                        onClick={() => setIsCollapsed(true)}
-                    >
-                        {tr('Done')}
-                    </button>
-                )}
                 <input
                     type="search"
                     className="stp-search"
                     value={query}
-                    onChange={e => setQuery(e.target.value)}
+                    onChange={e => {
+                        setQuery(e.target.value);
+                        if (e.target.value) setTypeExpanded(true);
+                    }}
                     placeholder={tr('Find a type')}
                     aria-label={tr('Find a type')}
                     disabled={disabled}
@@ -214,102 +175,6 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
             )}
             {library.length > 0 && matches.length === 0 && (
                 <p className="stp-quiet">{tr('No type matches.')}</p>
-            )}
-
-            {/* STEP 1: Type Selection (Desktop Chips or Mobile List) */}
-            {shown.length > 0 && !isCoarse && (
-                <div
-                    className="stp-type-chips"
-                    role="group"
-                    aria-labelledby={`${uid}-title`}
-                >
-                    {shown.map(entry => {
-                        const isChosen = entry.key === currentKey;
-                        const count = countText(entry.count);
-                        return (
-                            <button
-                                key={entry.key}
-                                type="button"
-                                className={`stp-type-chip ${isChosen ? 'is-active' : ''}`}
-                                aria-pressed={isChosen}
-                                aria-label={`${entry.label}, ${count}`}
-                                disabled={disabled}
-                                onClick={() => handlePickType(entry.label)}
-                            >
-                                <span className="stp-type-chip-fig">
-                                    <ShapeFigure
-                                        family={entry.family}
-                                        isMirror={entry.isMirror}
-                                        typeId={entry.id}
-                                        dims={entry.dims}
-                                        holes={entry.holes[0]}
-                                        active={isChosen}
-                                        className="stp-type-chip-svg"
-                                    />
-                                </span>
-                                <span className="stp-type-chip-cap">
-                                    <span className="stp-type-chip-label">{entry.label}</span>
-                                    <span className="stp-type-chip-count">{count}</span>
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-
-            {shown.length > 0 && isCoarse && (
-                <div
-                    className="stp-type-list"
-                    role="group"
-                    aria-labelledby={`${uid}-title`}
-                >
-                    {shown.map(entry => {
-                        const isChosen = entry.key === currentKey;
-                        const count = countText(entry.count);
-                        return (
-                            <button
-                                key={entry.key}
-                                type="button"
-                                className={`stp-type-row ${isChosen ? 'is-active' : ''}`}
-                                aria-pressed={isChosen}
-                                aria-label={`${entry.label}, ${count}`}
-                                disabled={disabled}
-                                onClick={() => handlePickType(entry.label)}
-                            >
-                                <span className="stp-type-row-left">
-                                    <span className="stp-type-row-fig">
-                                        <ShapeFigure
-                                            family={entry.family}
-                                            isMirror={entry.isMirror}
-                                            typeId={entry.id}
-                                            dims={entry.dims}
-                                            holes={entry.holes[0]}
-                                            active={isChosen}
-                                            className="stp-type-row-svg"
-                                        />
-                                    </span>
-                                    <span className="stp-type-row-label">{entry.label}</span>
-                                </span>
-                                <span className="stp-type-row-count">{count}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* More Types Button */}
-            {matches.length > limit && (
-                <div className="stp-more-row">
-                    <button
-                        type="button"
-                        className="stp-more"
-                        aria-expanded={expanded}
-                        disabled={disabled}
-                        onClick={() => setExpanded(x => !x)}
-                    >
-                        {expanded ? tr('Fewer types') : tr('More types')}
-                    </button>
-                </div>
             )}
 
             {/* Unknown Type / Save to Library */}
@@ -351,38 +216,53 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
                 </div>
             )}
 
-            {/* STEP 2: Sub-Shape Row */}
-            {chosenTypeId && hasSubShapes && (
-                <SubShapeRow
-                    typeId={chosenTypeId}
-                    value={typedShape}
-                    onChange={handlePickSubShape}
-                    dims={dims ?? chosen?.dims ?? null}
-                    family={chosen?.family ?? 'box'}
-                    isCoarse={isCoarse}
-                    disabled={disabled}
-                />
-            )}
-
-            {/* STEP 3: Live Preview Drawing (~180px) */}
-            {chosenTypeId && (
-                <div className="stp-live-preview">
-                    <div className="stp-preview-box">
-                        <ShapeFigure
-                            key={`${chosenTypeId}-${activeVariant ?? 'none'}-${activeTop ?? 'none'}`}
-                            family={chosen?.family ?? 'box'}
-                            isMirror={chosen?.isMirror ?? false}
-                            typeId={chosenTypeId}
-                            variant={activeVariant}
-                            top={activeTop}
-                            dims={dims ?? chosen?.dims ?? null}
-                            holes={holesCount}
-                            active
-                            className="stp-live-figure"
-                        />
+            {/* Live Drawing + Scrollers layout */}
+            <div className="stp-layout">
+                {chosenTypeId && (
+                    <div className="stp-layout__preview">
+                        <div className="stp-preview-box">
+                            <ShapeFigure
+                                key={`${chosenTypeId}-${activeVariant ?? 'none'}-${activeTop ?? 'none'}`}
+                                family={chosen?.family ?? 'box'}
+                                isMirror={chosen?.isMirror ?? false}
+                                typeId={chosenTypeId}
+                                variant={activeVariant}
+                                top={activeTop}
+                                dims={dims ?? chosen?.dims ?? null}
+                                holes={holesCount}
+                                active
+                                className="stp-live-figure"
+                            />
+                        </div>
                     </div>
+                )}
+
+                <div className="stp-layout__scrollers">
+                    {/* Reusable HairlineScroller for Types */}
+                    <HairlineScroller
+                        label={tr('Pick a type')}
+                        size="type"
+                        items={typeItems}
+                        value={chosen?.label ?? (typedType || null)}
+                        onChange={handlePickType}
+                        disabled={disabled}
+                        expanded={Boolean(query) || typeExpanded || !typedType}
+                        onExpandedChange={setTypeExpanded}
+                    />
+
+                    {/* Sub-Shape Row (Form / Size / Holes / Top) */}
+                    {chosenTypeId && hasSubShapes && (
+                        <SubShapeRow
+                            typeId={chosenTypeId}
+                            value={typedShape}
+                            onChange={handlePickSubShape}
+                            dims={dims ?? chosen?.dims ?? null}
+                            family={chosen?.family ?? 'box'}
+                            disabled={disabled}
+                        />
+                    )}
                 </div>
-            )}
+            </div>
         </div>
     );
 };

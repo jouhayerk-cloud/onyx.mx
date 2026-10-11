@@ -3494,4 +3494,6 @@ export const esCatalog: Record<string, string> = {
   'Closed Top': 'Tapa cerrada',
   'Add a photo to generate the title, description and colours. With no photo, the text can be written from the most similar item.': 'Agrega una foto para generar el título, la descripción y los colores. Sin foto, el texto se puede escribir a partir del artículo más parecido.',
   'Generate without a photo': 'Generar sin foto',
+  'Scroll for more': 'Desplaza para ver más',
+  'Click to change': 'Pulsa para cambiar',
 };
