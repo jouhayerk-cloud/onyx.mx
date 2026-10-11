@@ -3496,4 +3496,9 @@ export const esCatalog: Record<string, string> = {
   'Generate without a photo': 'Generar sin foto',
   'Scroll for more': 'Desplaza para ver más',
   'Click to change': 'Pulsa para cambiar',
+  'Edit {label}: {value}': 'Edita {label}: {value}',
+  'Single': 'Individual',
+  'Batch': 'Lote',
+  'Add one item': 'Agregar un artículo',
+  'Add many items from a vendor XLSX': 'Agregar varios artículos desde un XLSX del proveedor',
 };

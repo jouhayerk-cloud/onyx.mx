@@ -223,9 +223,11 @@ function rowIssues(item: BatchCreateItem, conflict: 'invalid' | 'taken' | 'repea
 
 interface BatchCreateWizardProps {
     vendorKey: string;
+    /** The vendor selector, drawn at the top of the file step (the page owns its state). */
+    vendorPicker?: React.ReactNode;
 }
 
-export function BatchCreateWizard({ vendorKey }: BatchCreateWizardProps) {
+export function BatchCreateWizard({ vendorKey, vendorPicker }: BatchCreateWizardProps) {
     const vendor = String(vendorKey || '').trim().toUpperCase();
     const [batchItems, setBatchItems] = useAtom(batchCreateItemsAtom);
     // A loaded batch is work a page reload would throw away.
@@ -311,6 +313,7 @@ export function BatchCreateWizard({ vendorKey }: BatchCreateWizardProps) {
         return (
             <FileStep
                 vendor={vendor}
+                vendorPicker={vendorPicker}
                 pending={batchItems.length}
                 onBack={batchItems.length ? () => setFileStep(false) : undefined}
                 onLoaded={async (items, meta) => {
@@ -380,8 +383,9 @@ async function loadTakenFresh(vendor: string): Promise<{ taken: Set<number> | nu
 // Step 1 · the sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FileStep({ vendor, pending, onBack, onLoaded }: {
+function FileStep({ vendor, vendorPicker, pending, onBack, onLoaded }: {
     vendor: string;
+    vendorPicker?: React.ReactNode;
     pending: number;
     onBack?: () => void;
     onLoaded: (items: BatchCreateItem[], meta: SheetMeta) => Promise<void>;
@@ -442,6 +446,7 @@ function FileStep({ vendor, pending, onBack, onLoaded }: {
         <div className="ui-root bc bc--file">
             <input ref={inputRef} type="file" hidden accept=".xlsx,.xls"
                 onChange={(e) => { void load(e.target.files?.[0]); e.target.value = ''; }} />
+            {vendorPicker && <div className="bc-file__vendor">{vendorPicker}</div>}
             <button type="button" className={cx('bc-drop', over && 'bc-drop--over')} disabled={disabled}
                 aria-describedby="bc-drop-hint"
                 onClick={() => inputRef.current?.click()}
