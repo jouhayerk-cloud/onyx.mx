@@ -1,5 +1,6 @@
 
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { usePinchZoomRegion } from '../../lib/usePinchZoomRegion';
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
@@ -1432,6 +1433,7 @@ const GalleryFullItem = ({ item, onClick, onOpenDetails, inBag, onToggleBag, isS
 /* ─── Fullscreen Image Viewer ─── */
 
 const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }: { src: string; isVideo: boolean; rating: number; onUpdateRating: (r: number) => void; onClose: () => void }) => {
+    usePinchZoomRegion();   // phones: pinch-zoom is allowed while this full-screen viewer is open (lib/lockZoom.ts)
     const mediaUrls = useAtomValue(ActiveGalleryMediaAtom);
     const [activeIndex, setActiveIndex] = useAtom(ActiveGalleryIndexAtom);
 

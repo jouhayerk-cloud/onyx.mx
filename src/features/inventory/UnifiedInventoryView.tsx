@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useDeferredValue, useRef, useId } from 'react';
+import { usePinchZoomRegion } from '../../lib/usePinchZoomRegion';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -205,6 +206,7 @@ const DriveImage = ({ src, className, ...props }: any) => {
 };
 
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
+    usePinchZoomRegion();   // phones: pinch-zoom is allowed while this full-screen viewer is open (lib/lockZoom.ts)
     const [currentIdx, setCurrentIdx] = useState(initialIdx);
     const activeSrc = mediaUrls.length > 0 ? mediaUrls[currentIdx] : src;
     const isVideo = isVideoFile(activeSrc);
@@ -238,6 +240,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
 
     const handleTouchStart = (e: React.TouchEvent) => {
         setTouchEnd(null);
+        if (e.touches.length > 1) { setTouchStart(null); return; }   // a pinch is not a swipe
         setTouchStart(e.targetTouches[0].clientX);
     };
 

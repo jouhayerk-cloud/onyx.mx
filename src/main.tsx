@@ -6,6 +6,7 @@ import App from './features/core/App';
 import toast from './features/onyxIsland/notify/toast';
 import { tr } from './lib/i18n';
 import { hasUnsavedWork } from './lib/workGuard';
+import { lockZoom } from './lib/lockZoom';
 
 if (import.meta.env.PROD) {
   console.log = () => { };
@@ -14,6 +15,8 @@ if (import.meta.env.PROD) {
 }
 
 console.log("Onyx.mx entry script executing...");
+
+lockZoom();   // touch devices: no pinch-zoom, fixed-size app (see lib/lockZoom.ts)
 
 // Service worker updates (registered by vite-plugin-pwa, autoUpdate). A new
 // deploy installs in the background and takes over open pages, but the page

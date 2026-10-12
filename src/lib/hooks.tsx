@@ -2,6 +2,7 @@
 
 import { useSetAtom, useAtomValue } from 'jotai/react';
 import { useCallback, useEffect, useState } from 'react';
+import { clearHistory, onyxAgentMessagesAtom } from '../features/onyxAgent/agentHistory';
 import {
   activeViewAtom,
   allAnnotationDataAtom,
@@ -160,12 +161,15 @@ export function useResetState() {
 export function useLogout() {
   const setUser = useSetAtom(userAtom);
   const resetState = useResetState();
+  const setChanMessages = useSetAtom(onyxAgentMessagesAtom);
   return useCallback(() => {
     setUser(null);
     resetState();
+    setChanMessages([]);
 
     localStorage.removeItem('userSession');
-  }, [setUser, resetState]);
+    clearHistory();   // the Chan conversation belongs to the person who had it
+  }, [setUser, resetState, setChanMessages]);
 }
 
 export const useItemImage = (itemData: InventoryItemData | null) => {

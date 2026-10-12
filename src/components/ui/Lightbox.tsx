@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { usePinchZoomRegion } from '../../lib/usePinchZoomRegion';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { tr } from '../../lib/i18n';
@@ -30,6 +31,7 @@ const GROUND: Partial<Record<ThumbKind, string>> = { png: 'ui-checker', cutout: 
  * Esc closes and focus returns to whatever opened it.
  */
 export function Lightbox({ src, kind = 'photo', alt, title, meta, onClose, onPrev, onNext }: LightboxProps) {
+    usePinchZoomRegion();   // phones: pinch-zoom is allowed while this full-screen viewer is open (lib/lockZoom.ts)
     const [zoom, setZoom] = useState<number | 'fit'>('fit');
     // Keyed by src, so a measurement never outlives its image. (Resetting it
     // in an effect raced the load event of a cached image and wiped it.)

@@ -23,6 +23,8 @@ export const nullableAtom = <T,>(): PrimitiveAtom<T | null> =>
 
 import { atomWithStorage, createJSONStorage } from 'jotai/utils';
 const sessionJSONStorage = createJSONStorage<any>(() => sessionStorage);
+/** Survives closing and reopening the app (sessionStorage is cleared with the tab or the Home Screen app). */
+const localJSONStorage = createJSONStorage<any>(() => localStorage);
 import { colors, DEFAULT_EXCHANGE_RATE } from './consts';
 export { inventoryStatusSetsAtom } from './inventoryStatusAtom';
 
@@ -308,8 +310,8 @@ const statusFilterStorage = {
   },
 };
 export const inventoryStatusFilterAtom = atomWithStorage<InventoryStatusFilter>('inventoryStatusFilter', 'All', statusFilterStorage);
-export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Number' | 'Shape+Type' | 'Color+Material' | 'Value' | 'Qty'>('inventorySortKey', 'Date', sessionJSONStorage);
-export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc', sessionJSONStorage);
+export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Number' | 'Shape+Type' | 'Color+Material' | 'Value' | 'Qty'>('inventorySortKey', 'Date', localJSONStorage);
+export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc', localJSONStorage);
 export const inventoryCategoryFilterAtom = atomWithStorage<string>('inventoryCategoryFilter', 'All', sessionJSONStorage);
 export const isInventoryCategoryFilterOpenAtom = atom<boolean>(false);
 /** Nested smart filters. Flat key lists: "Onyx" selects a whole material,
@@ -320,8 +322,8 @@ export const inventoryMaterialColorFilterAtom = atomWithStorage<string[]>('inven
 export const inventoryMaterialFilterAtom = atomWithStorage<string>('inventoryMaterialFilter', 'All', sessionJSONStorage);
 export const isInventoryMaterialFilterOpenAtom = atom<boolean>(false);
 export const isInventorySortMenuOpenAtom = atom<boolean>(false);
-export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list' | 'gallery'>('inventoryViewMode', 'list', sessionJSONStorage);
-export const inventoryViewSliderAtom = atomWithStorage<number>('inventoryViewSlider', 0, sessionJSONStorage);
+export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list' | 'gallery'>('inventoryViewMode', 'list', localJSONStorage);
+export const inventoryViewSliderAtom = atomWithStorage<number>('inventoryViewSlider', 0, localJSONStorage);
 export const isInventoryViewSliderOpenAtom = atom<boolean>(false);
 export const logisticsSubTabAtom = atomWithStorage<'empty' | 'packed' | 'boxes' | 'packing' | 'shipping' | 'deployed' | 'crates'>('logisticsSubTab', 'empty', sessionJSONStorage);
 export const isCrateCreationModalOpenAtom = atom<boolean>(false);

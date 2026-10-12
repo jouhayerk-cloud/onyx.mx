@@ -3747,3 +3747,33 @@ html.theme-malaquite .sidebar-list-item.active {
   .optimistic-revert { animation: none; }
 }
 
+
+/* Phones and tablets (finger as the primary pointer): a fixed-size app. touch-action keeps the compositor from starting a pinch or a
+   double-tap zoom (lib/lockZoom.ts covers the JS side and lifts the lock while a full-screen gallery is open, html[data-pinch-open]); the
+   text size cannot be inflated; html/body/#root/.app-container are pinned to the layout viewport so a resized page can no longer leave an
+   empty strip under the app. Desktop and touch-screen laptops are not matched by this query and keep the browser's zoom. */
+@media (hover: none) and (pointer: coarse) {
+  html:not([data-pinch-open]),
+  html:not([data-pinch-open]) body {
+    touch-action: pan-x pan-y;
+  }
+
+  html,
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  .app-container {
+    height: 100%;
+    max-height: none;
+  }
+}

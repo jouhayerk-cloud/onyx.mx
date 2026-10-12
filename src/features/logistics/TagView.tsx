@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { usePinchZoomRegion } from '../../lib/usePinchZoomRegion';
 import { formatWeightImperialOnly, formatDimensionsImperialOnly } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { COLOR_PALETTE } from '../../lib/colorExtractor';
@@ -19,6 +20,7 @@ const FullscreenViewer: React.FC<{
     initialIdx: number;
     onClose: () => void;
 }> = ({ images, initialIdx, onClose }) => {
+    usePinchZoomRegion();   // phones: pinch-zoom is allowed while this full-screen viewer is open (lib/lockZoom.ts)
     const [idx, setIdx] = useState(initialIdx);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -37,6 +39,7 @@ const FullscreenViewer: React.FC<{
 
     const handleTouchStart = (e: React.TouchEvent) => {
         setTouchEnd(null);
+        if (e.touches.length > 1) { setTouchStart(null); return; }   // a pinch is not a swipe
         setTouchStart(e.targetTouches[0].clientX);
     };
 

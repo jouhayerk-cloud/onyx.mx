@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { usePinchZoomRegion } from '../../lib/usePinchZoomRegion';
 import { createPortal } from 'react-dom';
 import { useAtomValue, useAtom } from 'jotai';
 import { 
@@ -97,6 +98,7 @@ export const InventoryArtifact = () => {
 
 // ── Fullscreen Image Viewer ─────────────────────────────────────────────
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
+    usePinchZoomRegion();   // phones: pinch-zoom is allowed while this full-screen viewer is open (lib/lockZoom.ts)
     const [currentIdx, setCurrentIdx] = useState(initialIdx);
     const activeSrc = mediaUrls.length > 0 ? mediaUrls[currentIdx] : src;
     const isVideo = isVideoFile(activeSrc);
