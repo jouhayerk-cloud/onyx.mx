@@ -11,6 +11,7 @@ export interface ControlHandlers {
   handleMasterExportXLSX: () => void;
   isExporting: boolean;
   handleMasterExportXLSX_V2: () => void;
+  handleMasterExportXLSX_V3: () => void;
 }
 
 /** Builds the command tool entries for the Control view, wired to the given handlers. */
@@ -52,6 +53,19 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
     order: 30,
     disabled: handlers.isExporting,
     run: handlers.handleMasterExportXLSX_V2
+  });
+
+  tools.push({
+    id: 'control-export-workbook-v3',
+    moduleId: 'control',
+    label: tr('Download Workbook V3'),
+    title: tr('Download Workbook V3 (workbook 826, ledger from September 2026)'),
+    icon: Download,
+    kind: 'action',
+    group: tr('Export'),
+    order: 40,
+    disabled: handlers.isExporting,
+    run: handlers.handleMasterExportXLSX_V3
   });
 
   return tools;

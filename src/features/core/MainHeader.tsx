@@ -169,6 +169,7 @@ import { ControlToolsRegistrar } from '../control/controlTools';
 import { MiscViewToolsRouter } from './miscViewTools';
 import { PrintToolsRegistrar } from '../print/printTools';
 import { trackDocumentJob, saveExportFile } from '../print/jobTracking';
+import { isWorkbookV3Item, isWorkbookV3LedgerEntry } from '../workbook/workbookV3';
 
 // logisticsReadout() is a hook (it reads the crate atoms): one small component per side keeps it unconditional
 const LogisticsReadoutSide: React.FC<{ side: 'left' | 'right' }> = ({ side }) => <>{logisticsReadout()[side]}</>;
@@ -2885,11 +2886,14 @@ export function MainHeader() {
         return () => document.removeEventListener('triggerMasterExport', handler);
     }, []);
 
-    const handleMasterExportXLSX_V2 = async () => trackDocumentJob({
-        templateId: 'fmt-workbook-v2-xlsx',
-        kind: 'xlsx',
-        season: '826'
-    }, async () => {
+    const masterExportV3Ref = useRef<() => void>(() => {});
+    useEffect(() => {
+        const handler = () => masterExportV3Ref.current();
+        document.addEventListener('triggerMasterExportV3', handler);
+        return () => document.removeEventListener('triggerMasterExportV3', handler);
+    }, []);
+
+    const runMasterWorkbookExport = async (variant: 'v2' | 'v3') => {
         setIsExporting(true);
         try {
             const workbook = new ExcelJS.Workbook();
@@ -2923,7 +2927,9 @@ export function MainHeader() {
 
             const exportItems = inventory.filter(item => {
                 const status = (item.data.status || '').toLowerCase().trim();
-                return !EXCLUDED_STATUSES.has(status);
+                if (EXCLUDED_STATUSES.has(status)) return false;
+                if (variant === 'v3' && !isWorkbookV3Item(item)) return false;
+                return true;
             });
 
             const paymentDateMap = new Map<string, string>();
@@ -3227,7 +3233,7 @@ export function MainHeader() {
 
 
                 // Fetch Vendor Payments
-                const vendorPayments = financeDocs.filter(pay => {
+                let vendorPayments = financeDocs.filter(pay => {
                     const pVid = String(pay.vendor_id || pay.vendor || '').trim();
                     const pVidPrefix = pVid.length >= 2 ? pVid.substring(0, 2).toUpperCase() : '';
                     if (pVidPrefix !== vid && pVid !== vid) return false;
@@ -3254,6 +3260,10 @@ export function MainHeader() {
                     
                     return true;
                 });
+
+                if (variant === 'v3') {
+                    vendorPayments = vendorPayments.filter(isWorkbookV3LedgerEntry);
+                }
                 
                 vendorPayments.sort((a, b) => {
                     const dateA = new Date(a.date || a.pay_date || a.created_at || 0).getTime();
@@ -3434,7 +3444,7 @@ export function MainHeader() {
                             let atomItem = rowMap.get(String(pItem.row));
                             if (!atomItem) atomItem = rowMap.get(String(pItem.itemId || '').toUpperCase());
                             
-                            if (atomItem) {
+                            if (atomItem && (variant !== 'v3' || isWorkbookV3Item(atomItem))) {
                                 truckItems.push({ ...atomItem, _pItem: pItem });
                             }
                         });
@@ -3612,7 +3622,8 @@ export function MainHeader() {
 
             // FINANCE LEDGER
             try {
-                if (financeDocs && financeDocs.length > 0) {
+                const ledgerDocs = variant === 'v3' ? financeDocs.filter(isWorkbookV3LedgerEntry) : financeDocs;
+                if (ledgerDocs && ledgerDocs.length > 0) {
                     const ledgerSheet = workbook.addWorksheet('Finance Ledger');
                     const ledgerCols = [
                         { header: 'DATE', key: 'date', width: 12 },
@@ -3638,7 +3649,7 @@ export function MainHeader() {
                             showRowStripes: true,
                         },
                         columns: ledgerCols.map(c => ({ name: c.header })),
-                        rows: financeDocs.map(r => [
+                        rows: ledgerDocs.map(r => [
                             r.date ? new Date(r.date).toLocaleDateString() : '',
                             r.description || '',
                             r.subcategory || r.category || '',
@@ -3658,23 +3669,38 @@ export function MainHeader() {
                     ledgerSheet.getColumn('total').numFmt = '#,##0';
                 }
             } catch (e) {
-                console.error('Error adding Finance Ledger to V2:', e);
+                console.error(`Error adding Finance Ledger to ${variant.toUpperCase()}:`, e);
             }
 
             { const repaired = sanitizeWorkbookForExcel(workbook); if (repaired.fixed) console.warn('Excel export: repaired', repaired.fixed, 'cells before writing', repaired.notes); }
             if (workbook.worksheets.length === 0) { toast.error(tr("Nothing to export: no sheets were created. Check your filters and selection.")); return; }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            saveExportFile(new Blob([buffer], { type: XLSX_MIME }), `Onyx-mx_Workbook_V2_${dateStr}.xlsx`);
-            toast.success(tr("Workbook V2 Ready"), { icon: '📊' });
+            const fileName = variant === 'v3' ? `Onyx-mx_Workbook_V3_${dateStr}.xlsx` : `Onyx-mx_Workbook_V2_${dateStr}.xlsx`;
+            saveExportFile(new Blob([buffer], { type: XLSX_MIME }), fileName);
+            toast.success(variant === 'v3' ? tr("Workbook V3 Ready") : tr("Workbook V2 Ready"), { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
-            toast.error(tr("V2 Export Failed"));
+            toast.error(variant === 'v3' ? tr("V3 Export Failed") : tr("V2 Export Failed"));
         } finally {
             setIsExporting(false);
         }
-    });
+    };
+
+    const handleMasterExportXLSX_V2 = async () => trackDocumentJob({
+        templateId: 'fmt-workbook-v2-xlsx',
+        kind: 'xlsx',
+        season: '826'
+    }, async () => runMasterWorkbookExport('v2'));
+
+    const handleMasterExportXLSX_V3 = async () => trackDocumentJob({
+        templateId: 'fmt-workbook-v3-xlsx',
+        kind: 'xlsx',
+        season: '826'
+    }, async () => runMasterWorkbookExport('v3'));
+
     masterExportV2Ref.current = handleMasterExportXLSX_V2;   // refreshed on every render
+    masterExportV3Ref.current = handleMasterExportXLSX_V3;   // refreshed on every render
 
     // 🛍️ SHOPIFY EXPORT 🛍️
     const handleShopifyExportXLSX = async () => trackDocumentJob({
@@ -4463,6 +4489,7 @@ export function MainHeader() {
             { id: 'onyx.reset', moduleId: 'onyx', label: tr('Reset credentials'), title: tr('Reset Neural Credentials'), icon: RefreshCw, kind: 'action' as const, group: tr('Onyx'), order: 20, run: () => { if (confirm(tr('Reset Neural Link credentials to system default?'))) { localStorage.removeItem('onyxApiKey'); setOnyxApiKey(''); } } },
         ] : []),        
         { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
+        { id: 'global.export.workbookV3', moduleId: 'global', label: tr('Workbook V3'), title: tr('Download Workbook V3 (workbook 826, ledger from September 2026)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 11, disabled: isExporting, run: handleMasterExportXLSX_V3 },
     ], islandOn);
 
     return (
@@ -4486,7 +4513,7 @@ export function MainHeader() {
             {activeView === 'process' && <ProcessToolsRegistrar />}
             {activeView === 'upload' && <UploadToolsRegistrar />}
             {activeView === 'control' && (
-                <ControlToolsRegistrar handlers={{ handleShopifyExportXLSX, isShopifyExporting, handleMasterExportXLSX, isExporting, handleMasterExportXLSX_V2 }} />
+                <ControlToolsRegistrar handlers={{ handleShopifyExportXLSX, isShopifyExporting, handleMasterExportXLSX, isExporting, handleMasterExportXLSX_V2, handleMasterExportXLSX_V3 }} />
             )}
             <MiscViewToolsRouter activeView={activeView} handlers={{ handleMasterExportXLSX, isExporting }} />
             <PrintToolsRegistrar />
@@ -4652,6 +4679,18 @@ export function MainHeader() {
                                         title={tr("Download Workbook V2 (Rare Earth Format)")}
                                     >
                                         <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
+                                    </button>
+                                    <button
+                                        onClick={handleMasterExportXLSX_V3}
+                                        disabled={isExporting}
+                                        className={`relative flex items-center justify-center w-12 h-12 rounded-xl transition-all active:scale-95 shadow-xl hover:shadow-[var(--main-color)]/20 group/xlsx ${
+                                            isExporting ? 'opacity-50 cursor-not-allowed' : ''
+                                        }`}
+                                        style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
+                                        title={tr("Download Workbook V3 (workbook 826, ledger from September 2026)")}
+                                    >
+                                        <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
+                                        <span aria-hidden="true" className="absolute -bottom-1 -right-1 rounded-md px-1 text-[10px] leading-4 font-black" style={{ backgroundColor: '#000', color: 'var(--main-color)' }}>V3</span>
                                     </button>
                                 </div>
                             )}

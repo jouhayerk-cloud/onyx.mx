@@ -20,6 +20,7 @@ import {
     userAtom
 } from '../../lib/atoms';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
+import { MasterExportPicker } from './MasterExportPicker';
 
 export interface InventoryWidgets {
     DeployableSearch: React.ComponentType<any>;
@@ -222,7 +223,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
             order: 40,
             pinned: true,
             dock: 'right',
-            run: () => { document.dispatchEvent(new CustomEvent('triggerMasterExport')); }
+            run: () => { document.dispatchEvent(new CustomEvent('openMasterExportPicker')); }
         });
 
         // Sheets sits next to Export (Admin and Developer only, as the upload itself is); MainHeader's SheetsUploadBridge runs it
@@ -253,7 +254,7 @@ export const InventoryToolsRegistrar: React.FC<{ widgets: InventoryWidgets }> = 
 
     useRegisterTools('inventory', tools, islandEnabled);
 
-    return null;
+    return <MasterExportPicker />;
 };
 
 

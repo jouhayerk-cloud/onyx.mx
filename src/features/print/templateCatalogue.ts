@@ -49,6 +49,15 @@ export const TEMPLATE_CATALOGUE: TemplateEntry[] = [
         status: "legacy"
     },
     {
+        id: "fmt-workbook-v3-xlsx",
+        kind: "xlsx",
+        label: tr("Master Workbook V3 (XLSX)"),
+        module: "inventory",
+        source: "MainHeader.tsx (handleMasterExportXLSX_V3)",
+        description: tr("Season 826 master workbook (ledger from September 2026)"),
+        status: "legacy"
+    },
+    {
         id: "fmt-shopify-matrixify-main-xlsx",
         kind: "xlsx",
         label: tr("Shopify Matrixify Main (XLSX)"),
