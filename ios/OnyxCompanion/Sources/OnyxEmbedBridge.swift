@@ -29,74 +29,84 @@ actor EmbeddingWorker {
     private var engine: EmbeddingEngine?
     private var activeModelURL: URL?
     private var dimensions: Int = 0
+    private var initTask: Task<EmbeddingEngine, Error>?
 
     init(modelStore: ModelStore) {
         self.modelStore = modelStore
     }
 
     /// Lazily resolves the model file from ModelStore and initializes ONE EmbeddingEngine.
+    /// Uses single-flight Task caching to prevent actor reentrancy loading models concurrently.
     private func getOrInitializeEngine() async throws -> EmbeddingEngine {
         if let existing = engine {
             return existing
         }
-
-        let state = await modelStore.state
-        let modelURL: URL
-        switch state {
-        case .ready(let url):
-            modelURL = url
-        case .downloading:
-            throw BridgeError.modelNotDownloaded("model not downloaded: download in progress")
-        case .missing:
-            if let found = await modelStore.currentModelURL() {
-                modelURL = found
-            } else {
-                throw BridgeError.modelMissing("model missing: copy .litertlm to Documents/Models over USB")
-            }
+        if let inFlight = initTask {
+            return try await inFlight.value
         }
 
-        // Configure engine with CPU backend. Attempt multimodal backends (vision & audio)
-        // and gracefully fallback to text-only if multimodal weights/backends are not present.
-        let multimodalConfig = EmbeddingEngineConfig(
-            modelPath: modelURL.path,
-            backend: .cpu(),
-            visionBackend: .cpu(),
-            audioBackend: .cpu()
-        )
+        let store = self.modelStore
+        let task = Task<EmbeddingEngine, Error> {
+            let state = await store.state
+            let modelURL: URL
+            switch state {
+            case .ready(let url):
+                modelURL = url
+            case .downloading:
+                throw BridgeError.modelNotDownloaded("model not downloaded: download in progress")
+            case .missing:
+                if let found = await store.currentModelURL() {
+                    modelURL = found
+                } else {
+                    throw BridgeError.modelMissing("model missing: copy .litertlm to Documents/Models over USB")
+                }
+            }
 
-        let initialEngine = EmbeddingEngine(config: multimodalConfig)
-        let resolvedEngine: EmbeddingEngine
-        do {
-            try await initialEngine.initialize()
-            resolvedEngine = initialEngine
-        } catch {
-            let textOnlyConfig = EmbeddingEngineConfig(
+            let multimodalConfig = EmbeddingEngineConfig(
                 modelPath: modelURL.path,
-                backend: .cpu()
+                backend: .cpu(),
+                visionBackend: .cpu(),
+                audioBackend: .cpu()
             )
-            let fallbackEngine = EmbeddingEngine(config: textOnlyConfig)
+
+            let initialEngine = EmbeddingEngine(config: multimodalConfig)
+            let resolvedEngine: EmbeddingEngine
             do {
-                try await fallbackEngine.initialize()
-                resolvedEngine = fallbackEngine
+                try await initialEngine.initialize()
+                resolvedEngine = initialEngine
             } catch {
-                throw BridgeError.engineFailed("engine failed: initialization failed - \(error.localizedDescription)")
+                let textOnlyConfig = EmbeddingEngineConfig(
+                    modelPath: modelURL.path,
+                    backend: .cpu()
+                )
+                let fallbackEngine = EmbeddingEngine(config: textOnlyConfig)
+                do {
+                    try await fallbackEngine.initialize()
+                    resolvedEngine = fallbackEngine
+                } catch {
+                    throw BridgeError.engineFailed("engine failed: initialization failed - \(error.localizedDescription)")
+                }
             }
+            return resolvedEngine
         }
 
-        // Probe model to discover and honour native dimensions
+        self.initTask = task
         do {
-            let probe = try await resolvedEngine.computeEmbedding(
-                contents: [.text("probe")],
-                options: EmbeddingOptions(normalize: true)
-            )
-            self.dimensions = probe.embedding.count
+            let resolved = try await task.value
+            if self.dimensions == 0 {
+                let probe = try await resolved.computeEmbedding(
+                    contents: [.text("probe")],
+                    options: EmbeddingOptions(normalize: true)
+                )
+                self.dimensions = probe.embedding.count
+            }
+            self.activeModelURL = await store.currentModelURL()
+            self.engine = resolved
+            return resolved
         } catch {
-            throw BridgeError.engineFailed("engine failed: dimension probe failed - \(error.localizedDescription)")
+            self.initTask = nil
+            throw error
         }
-
-        self.activeModelURL = modelURL
-        self.engine = resolvedEngine
-        return resolvedEngine
     }
 
     func info() async throws -> [String: Any] {

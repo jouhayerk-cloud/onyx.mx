@@ -138,9 +138,11 @@ begin
                           )
                           or (
                               public.get_my_app_role() = 'Vendor'
+                              and public.get_my_vendor_prefix() is not null
+                              and public.get_my_vendor_prefix() <> ''
                               and (
                                   i.vendor_id = public.get_my_vendor_prefix()
-                                  or i.item_id like (public.get_my_vendor_prefix() || '%')
+                                  or left(i.item_id, length(public.get_my_vendor_prefix()) + 1) = (public.get_my_vendor_prefix() || '-')
                               )
                           )
                       )
