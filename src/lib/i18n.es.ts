@@ -3545,4 +3545,5 @@ export const esCatalog: Record<string, string> = {
   'Pick a model for the agent chat in Settings': 'Elige un modelo para el chat del agente en Ajustes',
   'The model returned an empty answer': 'El modelo devolvió una respuesta vacía',
   'Pick a model in Settings': 'Elige un modelo en Configuración',
+  'You have unsaved work. Save it first, then pull down to refresh.': 'Tienes trabajo sin guardar. Guárdalo primero y luego jala hacia abajo para actualizar.',
 };

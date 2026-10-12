@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Loader2, ArrowDown } from 'lucide-react';
+import toast from '../../features/onyxIsland/notify/toast';
+import { tr } from '../../lib/i18n';
+import { hasUnsavedWork } from '../../lib/workGuard';
 
 export function PullToRefresh() {
     const [pullDistance, setPullDistance] = useState(0);
@@ -11,15 +14,31 @@ export function PullToRefresh() {
     
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const activeRef = useRef(false);
+    // true from the moment a second finger touches until every finger is lifted: a pinch (or the finger left after one) never refreshes
+    const multiTouchRef = useRef(false);
+
+    // pinch-zoomed pages: the visual viewport scale is not 1, and a one-finger pan of the zoomed page is not a pull
+    const isZoomed = () => {
+        const vv = window.visualViewport;
+        return !!vv && Math.abs(vv.scale - 1) > 0.02;
+    };
 
     useEffect(() => {
         // Disable native browser pull-to-refresh
         document.body.style.overscrollBehaviorY = 'contain';
 
+        const cancelPull = () => {
+            activeRef.current = false;
+            touchStartRef.current = null;
+            setPullDistance(0);
+        };
+
         const handleTouchStart = (e: TouchEvent) => {
-            // Ignore if already refreshing or multi-touch (zooming)
-            if (isRefreshing || e.touches.length > 1) {
-                activeRef.current = false;
+            // Ignore if already refreshing, multi-touch (zooming) or while the page is pinch-zoomed
+            if (e.touches.length > 1) multiTouchRef.current = true;
+            else multiTouchRef.current = false;   // a fresh single finger starts a new gesture
+            if (isRefreshing || e.touches.length > 1 || isZoomed()) {
+                cancelPull();
                 return;
             }
 
@@ -37,9 +56,9 @@ export function PullToRefresh() {
         };
 
         const handleTouchMove = (e: TouchEvent) => {
-            if (!activeRef.current || touchStartRef.current === null || e.touches.length > 1) {
-                activeRef.current = false;
-                setPullDistance(0);
+            if (e.touches.length > 1) multiTouchRef.current = true;
+            if (!activeRef.current || touchStartRef.current === null || multiTouchRef.current || isZoomed()) {
+                cancelPull();
                 return;
             }
 
@@ -72,10 +91,23 @@ export function PullToRefresh() {
             }
         };
 
-        const handleTouchEnd = () => {
+        const handleTouchEnd = (e: TouchEvent) => {
+            const wasMulti = multiTouchRef.current || e.touches.length > 0;
+            if (e.touches.length === 0) multiTouchRef.current = false;
             if (!activeRef.current) return;
             activeRef.current = false;
             touchStartRef.current = null;
+
+            // never refresh after a pinch, on a zoomed page, or with unsaved work (a reload would throw it away)
+            if (wasMulti || isZoomed()) {
+                setPullDistance(0);
+                return;
+            }
+            if (hasUnsavedWork()) {
+                setPullDistance(0);
+                toast(tr('You have unsaved work. Save it first, then pull down to refresh.'), { id: 'ptr-unsaved-work', duration: 4000 });
+                return;
+            }
 
             setPullDistance(current => {
                 if (current >= PULL_THRESHOLD) {
@@ -92,12 +124,20 @@ export function PullToRefresh() {
         document.addEventListener('touchstart', handleTouchStart, { passive: true });
         document.addEventListener('touchmove', handleTouchMove, { passive: true });
         document.addEventListener('touchend', handleTouchEnd, { passive: true });
+        const handleTouchCancel = () => { multiTouchRef.current = false; cancelPull(); };
+        document.addEventListener('touchcancel', handleTouchCancel, { passive: true });
+        // zooming mid-pull (the scale changes while a finger is down) cancels the pull
+        const vv = window.visualViewport;
+        const handleViewport = () => { if (isZoomed()) cancelPull(); };
+        vv?.addEventListener('resize', handleViewport);
 
         return () => {
             document.body.style.overscrollBehaviorY = 'auto';
             document.removeEventListener('touchstart', handleTouchStart);
             document.removeEventListener('touchmove', handleTouchMove);
             document.removeEventListener('touchend', handleTouchEnd);
+            document.removeEventListener('touchcancel', handleTouchCancel);
+            vv?.removeEventListener('resize', handleViewport);
         };
     }, [isRefreshing]);
 
