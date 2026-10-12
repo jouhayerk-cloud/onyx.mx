@@ -1,0 +1,62 @@
+name: iOS Companion App Build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ios/OnyxCompanion/**'
+
+jobs:
+  build-unsigned-ipa:
+    # Runner label macos-15 must be checked against GitHub Actions documentation
+    # (per docs/_inputs/ln/E5.md line 110: macos-14 is deprecated, macos-15 is Apple Silicon with Xcode 16.x)
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select latest Xcode available
+        run: |
+          # Point xcode-select to the latest stable Xcode installed on runner
+          if [ -d "/Applications/Xcode.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
+          fi
+          xcodebuild -version
+
+      - name: Install xcodegen
+        run: |
+          brew install xcodegen
+
+      - name: Generate Xcode project
+        run: |
+          cd ios/OnyxCompanion && xcodegen generate
+
+      - name: Build and archive unsigned app
+        run: |
+          cd ios/OnyxCompanion
+          xcodebuild archive \
+            -scheme OnyxCompanion \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/OnyxCompanion.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package unsigned IPA
+        run: |
+          cd ios/OnyxCompanion
+          mkdir -p Payload
+          cp -R build/OnyxCompanion.xcarchive/Products/Applications/*.app Payload/
+          zip -r OnyxCompanion.ipa Payload
+          echo "=== Unsigned IPA Created ==="
+          ls -lh OnyxCompanion.ipa
+
+      - name: Upload unsigned IPA artifact
+        # Pinned to major version actions/upload-artifact@v4 per docs/_inputs/ln/E5.md (line 144)
+        uses: actions/upload-artifact@v4
+        with:
+          name: OnyxCompanion-unsigned-ipa
+          path: ios/OnyxCompanion/OnyxCompanion.ipa
+          retention-days: 14
