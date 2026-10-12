@@ -24,7 +24,7 @@ create extension if not exists vector;
 -- rather than modifying this full-resolution column.
 -- ───────────────────────────────────────────────────────────────────────────
 create table if not exists public.item_embeddings (
-    item_id uuid not null references public.inventory(id) on delete cascade,
+    item_id text not null references public.inventory(id) on delete cascade,
     modality text not null check (modality in ('text', 'image', 'audio')),
     embedding vector(768) not null,
     model_version text not null,
@@ -188,7 +188,7 @@ create or replace function public.match_item_embeddings(
     filter_modality text default 'text'
 )
 returns table (
-    item_id uuid,
+    item_id text,
     similarity float
 )
 language sql
