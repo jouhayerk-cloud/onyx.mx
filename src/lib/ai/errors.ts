@@ -82,7 +82,7 @@ export function providerErrorMessage(err: AiProviderError): string {
         case 'timeout':
             return tr('AI provider did not answer within the timeout');
         case 'bad_request':
-            return err.message ? `${tr('Bad request')}: ${err.message}` : tr('Bad request');
+            return err.message && !/^bad request/i.test(err.message) ? `${tr('Bad request')}: ${err.message}` : (err.message || tr('Bad request'));
         case 'config':
             return tr(err.message || 'Pick a model in Settings');
         case 'server':

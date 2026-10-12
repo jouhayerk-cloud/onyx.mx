@@ -3,10 +3,10 @@ import { AI_CONFIG_EVENT } from './providerKeys';
 
 /**
  * Which provider and model serve each text or vision JSON job. Default is Gemini, exactly as before.
- * Image and video jobs (bgReplace, video) and the agent chat are not routable yet: they stay on Gemini.
+ * 'chat' is the Onyx agent (tool calling, see useOnyxAgent). Image and video jobs (bgReplace, video) are not routable: they stay on Gemini.
  */
-export type RouteJob = 'content' | 'segmentation' | 'translate';
-export const ROUTABLE_JOBS: readonly RouteJob[] = ['content', 'segmentation', 'translate'];
+export type RouteJob = 'content' | 'segmentation' | 'translate' | 'chat';
+export const ROUTABLE_JOBS: readonly RouteJob[] = ['content', 'segmentation', 'translate', 'chat'];
 
 export interface Route { provider: ProviderId; model?: string }
 

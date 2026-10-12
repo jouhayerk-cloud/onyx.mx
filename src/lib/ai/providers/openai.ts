@@ -4,6 +4,9 @@ import {
     type AiProviderImpl,
     type AiRequest,
     type AiTextResult,
+    type ChatRequest,
+    type ChatResult,
+    type ChatToolCall,
     type ProviderConfig,
     type ProviderInfo,
 } from './types';
@@ -48,8 +51,8 @@ async function parseOpenAiError(res: Response, secretKey?: string): Promise<neve
     if (status === 429) {
         throw new AiProviderError('Rate limit exceeded; try again in a minute', status, 'rate');
     }
-    if (status === 400) {
-        const message = detail ? `Bad request: ${detail}` : 'Bad request';
+    if (status === 400 || status === 404) {
+        const message = detail ? `${detail}` : (status === 404 ? 'Not found: check the model name and the base URL (it should end in /v1)' : 'Bad request');
         throw new AiProviderError(message, status, 'bad_request');
     }
     if (status >= 500) {
@@ -113,6 +116,103 @@ function parseJsonContent(rawContent: string): unknown {
     } catch (cause) {
         throw new AiProviderError('AI provider returned malformed JSON', undefined, 'server');
     }
+}
+
+/** Reasoning models (DeepSeek-R1, Qwen3 on Ollama) can inline their thoughts in content. */
+let callCounter = 0;
+const nextCallId = () => `call_${++callCounter}`;
+
+function stripThink(text: string): string {
+    let out = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    if (/<\/think>/i.test(out)) out = out.replace(/^[\s\S]*?<\/think>/i, '');
+    return out === text ? text : out.trim();
+}
+
+function stringifyToolResult(result: unknown): string {
+    if (typeof result === 'string') return result;
+    return JSON.stringify(result) ?? 'null';
+}
+
+function buildChatMessages(req: ChatRequest) {
+    const messages: Array<Record<string, unknown>> = [];
+    if (req.system) {
+        messages.push({ role: 'system', content: req.system });
+    }
+    for (const turn of req.turns) {
+        if (turn.role === 'user') {
+            messages.push({ role: 'user', content: turn.text });
+        } else if (turn.role === 'assistant') {
+            const calls = turn.toolCalls || [];
+            const message: Record<string, unknown> = {
+                role: 'assistant',
+                content: turn.text ? turn.text : (calls.length > 0 ? null : ''),
+            };
+            if (calls.length > 0) {
+                message.tool_calls = calls.map(call => ({
+                    id: call.id,
+                    type: 'function',
+                    function: { name: call.name, arguments: JSON.stringify(call.args ?? {}) },
+                }));
+            }
+            messages.push(message);
+        } else {
+            messages.push({
+                role: 'tool',
+                tool_call_id: turn.callId,
+                content: stringifyToolResult(turn.result),
+            });
+        }
+    }
+    return messages;
+}
+
+function buildChatTools(req: ChatRequest) {
+    return (req.tools || []).map(tool => ({
+        type: 'function',
+        function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters ?? { type: 'object', properties: {} },
+        },
+    }));
+}
+
+/** OpenAI sends arguments as a JSON string, Ollama often as an object; anything unreadable becomes {}. */
+function parseToolArguments(raw: unknown): Record<string, unknown> {
+    if (typeof raw === 'string') {
+        try {
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch {
+            return {};
+        }
+    }
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, unknown>;
+    return {};
+}
+
+function parseChatMessage(message: any): { text: string; toolCalls: ChatToolCall[] } {
+    const content = message?.content;
+    let text = '';
+    if (typeof content === 'string') {
+        text = content;
+    } else if (Array.isArray(content)) {
+        text = content.map((part: any) => (typeof part?.text === 'string' ? part.text : '')).join('');
+    }
+
+    const toolCalls: ChatToolCall[] = [];
+    const rawCalls: any[] = Array.isArray(message?.tool_calls) ? message.tool_calls : [];
+    rawCalls.forEach((call, index) => {
+        const name = call?.function?.name;
+        if (typeof name !== 'string' || !name) return;
+        toolCalls.push({
+            id: typeof call.id === 'string' && call.id ? call.id : nextCallId(),
+            name,
+            args: parseToolArguments(call.function.arguments),
+        });
+    });
+
+    return { text: stripThink(text), toolCalls };
 }
 
 export function createOpenAiProvider(info: ProviderInfo): AiProviderImpl {
@@ -264,6 +364,58 @@ export function createOpenAiProvider(info: ProviderInfo): AiProviderImpl {
                         outputTokens: data.usage?.completion_tokens,
                     },
                 };
+            } catch (err) {
+                handleFetchFailure(err, timedOut);
+            } finally {
+                clearTimeout(timer);
+                req.signal?.removeEventListener('abort', onExternalAbort);
+            }
+        },
+
+        async chat(cfg: ProviderConfig, req: ChatRequest): Promise<ChatResult> {
+            if (!cfg.model) {
+                throw new AiProviderError('Pick a model in Settings', undefined, 'config');
+            }
+            if (!info.needsBaseUrl && !cfg.key) {
+                throw new AiProviderError('API key is required for OpenAI', undefined, 'auth');
+            }
+
+            const baseUrl = resolveBaseUrl(info, cfg);
+            const body: Record<string, unknown> = {
+                model: cfg.model,
+                messages: buildChatMessages(req),
+            };
+            const tools = buildChatTools(req);
+            if (tools.length > 0) body.tools = tools;
+            if (req.temperature !== undefined) body.temperature = req.temperature;
+            if (req.maxTokens !== undefined) body.max_tokens = req.maxTokens;
+
+            const controller = new AbortController();
+            let timedOut = false;
+            const timer = setTimeout(() => {
+                timedOut = true;
+                controller.abort();
+            }, req.timeoutMs);
+
+            const onExternalAbort = () => controller.abort();
+            req.signal?.addEventListener('abort', onExternalAbort, { once: true });
+            if (req.signal?.aborted) controller.abort();
+
+            try {
+                const res = await fetch(`${baseUrl}/chat/completions`, {
+                    method: 'POST',
+                    headers: buildHeaders(cfg.key),
+                    body: JSON.stringify(body),
+                    signal: controller.signal,
+                });
+
+                if (!res.ok) {
+                    await parseOpenAiError(res, cfg.key);
+                }
+
+                const data = await res.json();
+                const { text, toolCalls } = parseChatMessage(data.choices?.[0]?.message);
+                return { text, toolCalls, model: cfg.model };
             } catch (err) {
                 handleFetchFailure(err, timedOut);
             } finally {

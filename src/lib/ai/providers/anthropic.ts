@@ -4,6 +4,9 @@ import {
     type AiProviderImpl,
     type AiRequest,
     type AiTextResult,
+    type ChatRequest,
+    type ChatResult,
+    type ChatToolCall,
     type ProviderConfig,
     type ProviderInfo,
 } from './types';
@@ -48,7 +51,7 @@ async function parseAnthropicError(res: Response, secretKey?: string): Promise<n
         throw new AiProviderError('Rate limit exceeded; try again in a minute', status, 'rate');
     }
     if (status === 400) {
-        const message = detail ? `Bad request: ${detail}` : 'Bad request';
+        const message = detail ? `${detail}` : 'Bad request';
         throw new AiProviderError(message, status, 'bad_request');
     }
     if (status >= 500) {
@@ -98,7 +101,65 @@ function buildMessages(req: AiRequest) {
     return [{ role: 'user', content: contentParts }];
 }
 
-async function executeAnthropicCall(cfg: ProviderConfig, req: AiRequest, extraBody: Record<string, unknown> = {}): Promise<any> {
+function stringifyToolResult(result: unknown): string {
+    if (typeof result === 'string') return result;
+    return JSON.stringify(result) ?? 'null';
+}
+
+/** Turns the provider-neutral history into Anthropic messages; consecutive tool turns become one user message of tool_result blocks. */
+function buildChatMessages(req: ChatRequest) {
+    const messages: Array<{ role: 'user' | 'assistant'; content: Array<Record<string, unknown>> }> = [];
+    let pendingResults: Array<Record<string, unknown>> = [];
+    const flushResults = () => {
+        if (pendingResults.length === 0) return;
+        messages.push({ role: 'user', content: pendingResults });
+        pendingResults = [];
+    };
+
+    for (const turn of req.turns) {
+        if (turn.role === 'tool') {
+            pendingResults.push({
+                type: 'tool_result',
+                tool_use_id: turn.callId,
+                content: stringifyToolResult(turn.result),
+            });
+            continue;
+        }
+        flushResults();
+        if (turn.role === 'user') {
+            messages.push({ role: 'user', content: [{ type: 'text', text: turn.text }] });
+        } else {
+            const content: Array<Record<string, unknown>> = [];
+            if (turn.text && turn.text.trim()) {
+                content.push({ type: 'text', text: turn.text });
+            }
+            for (const call of turn.toolCalls || []) {
+                content.push({ type: 'tool_use', id: call.id, name: call.name, input: call.args ?? {} });
+            }
+            // Anthropic rejects an empty content list; an assistant turn with nothing in it carries no information.
+            if (content.length > 0) {
+                messages.push({ role: 'assistant', content });
+            }
+        }
+    }
+    flushResults();
+    return messages;
+}
+
+function buildChatTools(req: ChatRequest) {
+    return (req.tools || []).map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        input_schema: tool.parameters ?? { type: 'object', properties: {} },
+    }));
+}
+
+async function postAnthropic(
+    cfg: ProviderConfig,
+    body: Record<string, unknown>,
+    timeoutMs: number,
+    signal?: AbortSignal,
+): Promise<any> {
     if (!cfg.model) {
         throw new AiProviderError('Pick a model in Settings', undefined, 'config');
     }
@@ -111,23 +172,11 @@ async function executeAnthropicCall(cfg: ProviderConfig, req: AiRequest, extraBo
     const timer = setTimeout(() => {
         timedOut = true;
         controller.abort();
-    }, req.timeoutMs);
+    }, timeoutMs);
 
     const onExternalAbort = () => controller.abort();
-    req.signal?.addEventListener('abort', onExternalAbort, { once: true });
-
-    const body: Record<string, unknown> = {
-        model: cfg.model,
-        max_tokens: req.maxTokens ?? 2048,
-        messages: buildMessages(req),
-        ...extraBody,
-    };
-    if (req.system) {
-        body.system = req.system;
-    }
-    if (req.temperature !== undefined) {
-        body.temperature = req.temperature;
-    }
+    signal?.addEventListener('abort', onExternalAbort, { once: true });
+    if (signal?.aborted) controller.abort();
 
     try {
         const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -146,8 +195,24 @@ async function executeAnthropicCall(cfg: ProviderConfig, req: AiRequest, extraBo
         handleFetchFailure(err, timedOut);
     } finally {
         clearTimeout(timer);
-        req.signal?.removeEventListener('abort', onExternalAbort);
+        signal?.removeEventListener('abort', onExternalAbort);
     }
+}
+
+async function executeAnthropicCall(cfg: ProviderConfig, req: AiRequest, extraBody: Record<string, unknown> = {}): Promise<any> {
+    const body: Record<string, unknown> = {
+        model: cfg.model,
+        max_tokens: req.maxTokens ?? 2048,
+        messages: buildMessages(req),
+        ...extraBody,
+    };
+    if (req.system) {
+        body.system = req.system;
+    }
+    if (req.temperature !== undefined) {
+        body.temperature = req.temperature;
+    }
+    return postAnthropic(cfg, body, req.timeoutMs, req.signal);
 }
 
 export const anthropicProvider: AiProviderImpl = {
@@ -196,6 +261,42 @@ export const anthropicProvider: AiProviderImpl = {
                 outputTokens: data.usage?.output_tokens,
             },
         };
+    },
+
+    async chat(cfg: ProviderConfig, req: ChatRequest): Promise<ChatResult> {
+        const body: Record<string, unknown> = {
+            model: cfg.model,
+            max_tokens: req.maxTokens ?? 2048,
+            messages: buildChatMessages(req),
+        };
+        if (req.system) {
+            body.system = req.system;
+        }
+        const tools = buildChatTools(req);
+        if (tools.length > 0) {
+            body.tools = tools;
+        }
+        if (req.temperature !== undefined) {
+            body.temperature = req.temperature;
+        }
+
+        const data = await postAnthropic(cfg, body, req.timeoutMs, req.signal);
+        const blocks: any[] = Array.isArray(data.content) ? data.content : [];
+        const text = blocks
+            .filter(b => b.type === 'text')
+            .map(b => b.text || '')
+            .join('');
+        const toolCalls: ChatToolCall[] = blocks
+            .filter(b => b.type === 'tool_use' && typeof b.name === 'string' && b.name)
+            .map((b, index) => ({
+                id: typeof b.id === 'string' && b.id ? b.id : `call_${Date.now().toString(36)}_${index}`,
+                name: b.name,
+                args: b.input && typeof b.input === 'object' && !Array.isArray(b.input) ? b.input : {},
+            }));
+        if (data.stop_reason === 'max_tokens' && toolCalls.length > 0) {
+            throw new AiProviderError('The answer was cut off before the tool call finished', undefined, 'server');
+        }
+        return { text, toolCalls, model: data.model || cfg.model || '' };
     },
 
     async test(cfg: ProviderConfig): Promise<{ ok: boolean; message: string }> {

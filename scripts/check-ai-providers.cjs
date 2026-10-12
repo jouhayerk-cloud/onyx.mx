@@ -401,6 +401,328 @@ async function runTests() {
     assert.strictEqual(compat401.kind, 'auth');
     assert.ok(!compat401.message.includes(compatKey));
 
+    // ── CHAT (tool-calling turns) ──
+    const chatTools = [
+        {
+            name: 'list_vendors',
+            description: 'List vendors',
+            parameters: { type: 'object', properties: { limit: { type: 'number' } } },
+        },
+        { name: 'ping' },
+    ];
+    const chatTurns = [
+        { role: 'user', text: 'List the vendors' },
+        { role: 'assistant', text: 'Checking', toolCalls: [{ id: 'call_a', name: 'list_vendors', args: { limit: 3 } }] },
+        { role: 'tool', callId: 'call_a', name: 'list_vendors', result: { vendors: ['A', 'B'] } },
+        { role: 'user', text: 'Thanks, now count them' },
+    ];
+
+    const expectChatError = async (provider, cfg, handler, expectedKind, secret, req) => {
+        responseHandler = handler;
+        let caught = null;
+        try {
+            await provider.chat(cfg, req || { turns: [{ role: 'user', text: 'fail' }], timeoutMs: 5000 });
+        } catch (err) {
+            caught = err;
+        }
+        assert.ok(caught instanceof AiProviderError, `chat must throw AiProviderError, got ${caught}`);
+        assert.strictEqual(caught.kind, expectedKind, `chat: expected kind ${expectedKind}, got ${caught.kind}`);
+        if (secret) assert.ok(!caught.message.includes(secret), `chat error message must never contain the key: "${caught.message}"`);
+        return caught;
+    };
+
+    // Every provider that can drive the agent exposes chat
+    assert.strictEqual(typeof anthropicProvider.chat, 'function', 'anthropic must implement chat');
+    assert.strictEqual(typeof openaiProvider.chat, 'function', 'openai must implement chat');
+    assert.strictEqual(typeof compatProvider.chat, 'function', 'compat must implement chat');
+
+    // ── OPENAI chat ──
+    // 1. Request shape for user -> assistant(toolCalls) -> tool -> user
+    responseHandler = () => makeCannedResponse(200, {
+        model: 'gpt-4o-2024-08-06',
+        choices: [{
+            message: {
+                role: 'assistant',
+                content: null,
+                tool_calls: [{ id: 'call_xyz', type: 'function', function: { name: 'list_vendors', arguments: '{"limit":5}' } }],
+            },
+        }],
+    });
+    recordedCalls = [];
+    const oaiChatTool = await openaiProvider.chat(
+        { key: oaiKey, model: oaiModel },
+        { system: 'You are the Onyx agent', turns: chatTurns, tools: chatTools, temperature: 0.2, maxTokens: 512, timeoutMs: 5000 }
+    );
+    assert.strictEqual(recordedCalls.length, 1);
+    const oaiChat = recordedCalls[0];
+    assert.strictEqual(oaiChat.url, 'https://api.openai.com/v1/chat/completions');
+    assert.strictEqual(oaiChat.method, 'POST');
+    assert.strictEqual(oaiChat.headers['Authorization'], `Bearer ${oaiKey}`);
+    assert.strictEqual(oaiChat.body.model, oaiModel);
+    assert.strictEqual(oaiChat.body.temperature, 0.2);
+    assert.strictEqual(oaiChat.body.max_tokens, 512);
+    assert.deepStrictEqual(oaiChat.body.messages, [
+        { role: 'system', content: 'You are the Onyx agent' },
+        { role: 'user', content: 'List the vendors' },
+        {
+            role: 'assistant',
+            content: 'Checking',
+            tool_calls: [{ id: 'call_a', type: 'function', function: { name: 'list_vendors', arguments: '{"limit":3}' } }],
+        },
+        { role: 'tool', tool_call_id: 'call_a', content: '{"vendors":["A","B"]}' },
+        { role: 'user', content: 'Thanks, now count them' },
+    ], 'OpenAI chat messages must map user, assistant(tool_calls) and tool turns');
+
+    // 2. Tool schema mapping, defaults for missing parameters
+    assert.deepStrictEqual(oaiChat.body.tools[0], {
+        type: 'function',
+        function: {
+            name: 'list_vendors',
+            description: 'List vendors',
+            parameters: { type: 'object', properties: { limit: { type: 'number' } } },
+        },
+    });
+    assert.strictEqual(oaiChat.body.tools[1].type, 'function');
+    assert.strictEqual(oaiChat.body.tools[1].function.name, 'ping');
+    assert.deepStrictEqual(oaiChat.body.tools[1].function.parameters, { type: 'object', properties: {} }, 'Missing parameters default to an empty object schema');
+
+    // 3. Canned tool call response parsing
+    assert.strictEqual(oaiChatTool.text, '');
+    assert.strictEqual(oaiChatTool.model, oaiModel);
+    assert.deepStrictEqual(oaiChatTool.toolCalls, [{ id: 'call_xyz', name: 'list_vendors', args: { limit: 5 } }]);
+
+    // 4. Plain-text answer, no tools key when the list is empty, assistant with calls but no text sends null content
+    responseHandler = () => makeCannedResponse(200, {
+        model: oaiModel,
+        choices: [{ message: { role: 'assistant', content: 'There are 2 vendors.' } }],
+    });
+    recordedCalls = [];
+    const oaiChatText = await openaiProvider.chat(
+        { key: oaiKey, model: oaiModel },
+        {
+            turns: [
+                { role: 'user', text: 'hi' },
+                { role: 'assistant', toolCalls: [{ id: 'call_b', name: 'ping', args: {} }] },
+                { role: 'tool', callId: 'call_b', name: 'ping', result: 'pong' },
+            ],
+            tools: [],
+            timeoutMs: 5000,
+        }
+    );
+    assert.strictEqual(oaiChatText.text, 'There are 2 vendors.');
+    assert.deepStrictEqual(oaiChatText.toolCalls, []);
+    assert.strictEqual('tools' in recordedCalls[0].body, false, 'tools must be omitted when the list is empty');
+    assert.strictEqual('temperature' in recordedCalls[0].body, false);
+    assert.strictEqual('max_tokens' in recordedCalls[0].body, false);
+    assert.strictEqual(recordedCalls[0].body.messages[0].role, 'user', 'No system message when system is absent');
+    assert.strictEqual(recordedCalls[0].body.messages[1].content, null, 'Assistant turn with only tool calls sends null content');
+    assert.strictEqual(recordedCalls[0].body.messages[2].content, 'pong', 'A string tool result stays as is');
+
+    // An assistant turn without tool calls has no tool_calls key
+    recordedCalls = [];
+    await openaiProvider.chat(
+        { key: oaiKey, model: oaiModel },
+        { turns: [{ role: 'user', text: 'a' }, { role: 'assistant', text: 'b' }, { role: 'user', text: 'c' }], timeoutMs: 5000 }
+    );
+    assert.strictEqual('tool_calls' in recordedCalls[0].body.messages[1], false, 'tool_calls must be omitted when there are none');
+
+    // 5. <think> stripping and null content
+    responseHandler = () => makeCannedResponse(200, {
+        choices: [{ message: { role: 'assistant', content: '<think>The user wants a count.\nTwo vendors.</think>\n\nThere are 2 vendors.' } }],
+    });
+    const oaiThink = await openaiProvider.chat({ key: oaiKey, model: oaiModel }, { turns: [{ role: 'user', text: 'count' }], timeoutMs: 5000 });
+    assert.strictEqual(oaiThink.text, 'There are 2 vendors.', '<think> block must be stripped');
+    responseHandler = () => makeCannedResponse(200, { choices: [{ message: { role: 'assistant', content: null } }] });
+    const oaiNull = await openaiProvider.chat({ key: oaiKey, model: oaiModel }, { turns: [{ role: 'user', text: 'x' }], timeoutMs: 5000 });
+    assert.strictEqual(oaiNull.text, '', 'null content becomes an empty string');
+    assert.deepStrictEqual(oaiNull.toolCalls, []);
+
+    // Unparseable arguments fall back to {}
+    responseHandler = () => makeCannedResponse(200, {
+        choices: [{ message: { role: 'assistant', content: '', tool_calls: [{ id: 'call_bad', type: 'function', function: { name: 'ping', arguments: '{not json' } }] } }],
+    });
+    const oaiBadArgs = await openaiProvider.chat({ key: oaiKey, model: oaiModel }, { turns: [{ role: 'user', text: 'x' }], timeoutMs: 5000 });
+    assert.deepStrictEqual(oaiBadArgs.toolCalls, [{ id: 'call_bad', name: 'ping', args: {} }]);
+
+    // 6. Errors: mapped like generateText, key never leaks
+    await expectChatError(openaiProvider, { key: oaiKey, model: oaiModel }, () => makeCannedResponse(401, { error: { message: `Unauthorized key ${oaiKey}` } }), 'auth', oaiKey);
+    await expectChatError(openaiProvider, { key: oaiKey, model: oaiModel }, () => makeCannedResponse(429, { error: { message: `Rate limit on key ${oaiKey}` } }), 'rate', oaiKey);
+    await expectChatError(openaiProvider, { key: oaiKey, model: oaiModel }, () => makeCannedResponse(500, { error: { message: `Server error on key ${oaiKey}` } }), 'server', oaiKey);
+    await expectChatError(openaiProvider, { key: oaiKey, model: oaiModel }, () => { throw new TypeError('Failed to fetch (CORS block)'); }, 'cors', oaiKey);
+    const oaiChat400 = await expectChatError(openaiProvider, { key: oaiKey, model: oaiModel }, () => makeCannedResponse(400, { error: { message: `Invalid tools for key ${oaiKey}` } }), 'bad_request', oaiKey);
+    assert.ok(oaiChat400.message.includes('Invalid tools'), 'chat bad_request must include the API message');
+    const oaiChatNoModel = await expectChatError(openaiProvider, { key: oaiKey, model: '' }, () => makeCannedResponse(200, {}), 'config', oaiKey);
+    assert.strictEqual(oaiChatNoModel.message, 'Pick a model in Settings');
+    await expectChatError(openaiProvider, { model: oaiModel }, () => makeCannedResponse(200, {}), 'auth', oaiKey);
+
+    // External abort is wired to the request signal
+    const oaiAbort = new AbortController();
+    await expectChatError(openaiProvider, { key: oaiKey, model: oaiModel }, (call) => new Promise((_, reject) => {
+        call.signal.addEventListener('abort', () => reject(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' })), { once: true });
+        setTimeout(() => oaiAbort.abort(), 10);
+    }), 'timeout', oaiKey, { turns: [{ role: 'user', text: 'slow' }], timeoutMs: 5000, signal: oaiAbort.signal });
+
+    // ── COMPAT chat (Ollama style) ──
+    responseHandler = () => makeCannedResponse(200, {
+        model: 'qwen2.5:7b',
+        choices: [{
+            message: {
+                role: 'assistant',
+                content: '',
+                tool_calls: [
+                    { type: 'function', function: { name: 'list_vendors', arguments: { limit: 5 } } },
+                    { type: 'function', function: { name: 'ping', arguments: {} } },
+                ],
+            },
+        }],
+    });
+    recordedCalls = [];
+    const ollamaTool = await compatProvider.chat(
+        { baseUrl: 'http://localhost:11434/v1/', model: 'qwen2.5:7b' },
+        { system: 'You are the Onyx agent', turns: chatTurns, tools: chatTools, timeoutMs: 5000 }
+    );
+    assert.strictEqual(recordedCalls.length, 1);
+    assert.strictEqual(recordedCalls[0].url, 'http://localhost:11434/v1/chat/completions');
+    assert.strictEqual(recordedCalls[0].headers['Authorization'], undefined, 'Ollama chat must not send Authorization without a key');
+    assert.strictEqual(recordedCalls[0].body.model, 'qwen2.5:7b');
+    assert.strictEqual(recordedCalls[0].body.messages[2].tool_calls[0].function.arguments, '{"limit":3}');
+    assert.strictEqual(recordedCalls[0].body.tools.length, 2);
+    assert.strictEqual(ollamaTool.text, '');
+    assert.strictEqual(ollamaTool.model, 'qwen2.5:7b');
+    assert.deepStrictEqual(ollamaTool.toolCalls.map(c => ({ name: c.name, args: c.args })), [
+        { name: 'list_vendors', args: { limit: 5 } },
+        { name: 'ping', args: {} },
+    ], 'Object arguments are kept');
+    assert.ok(ollamaTool.toolCalls.every(c => /^call_\d+$/.test(c.id)) && new Set(ollamaTool.toolCalls.map(c => c.id)).size === 2, 'Missing ids get unique call_<n> ids');
+
+    // Ollama reasoning model: <think> stripped from a plain answer
+    responseHandler = () => makeCannedResponse(200, {
+        choices: [{ message: { role: 'assistant', content: '<think>\nreasoning\n</think>Two vendors.' } }],
+    });
+    const ollamaText = await compatProvider.chat({ baseUrl: 'http://localhost:11434/v1', model: 'qwen3:8b' }, { turns: [{ role: 'user', text: 'count' }], timeoutMs: 5000 });
+    assert.strictEqual(ollamaText.text, 'Two vendors.');
+    assert.deepStrictEqual(ollamaText.toolCalls, []);
+
+    // Compat config and key handling
+    const compatChatNoBase = await expectChatError(compatProvider, { model: 'llama3' }, () => makeCannedResponse(200, {}), 'config', null);
+    assert.ok(compatChatNoBase.message.length > 0);
+    await expectChatError(compatProvider, { key: compatKey, baseUrl: 'https://api.together.xyz/v1', model: 'mistralai/Mixtral-8x7B' }, () => makeCannedResponse(401, { error: { message: `Unauthorized for key ${compatKey}` } }), 'auth', compatKey);
+    responseHandler = () => makeCannedResponse(200, { choices: [{ message: { role: 'assistant', content: 'ok' } }] });
+    recordedCalls = [];
+    await compatProvider.chat({ key: compatKey, baseUrl: 'https://api.together.xyz/v1', model: 'mistralai/Mixtral-8x7B' }, { turns: [{ role: 'user', text: 'hi' }], timeoutMs: 5000 });
+    assert.strictEqual(recordedCalls[0].headers['Authorization'], `Bearer ${compatKey}`);
+
+    // ── ANTHROPIC chat ──
+    responseHandler = () => makeCannedResponse(200, {
+        id: 'msg_03',
+        model: antModel,
+        content: [
+            { type: 'text', text: 'Looking those up. ' },
+            { type: 'tool_use', id: 'toolu_77', name: 'list_vendors', input: { limit: 2 } },
+            { type: 'tool_use', id: 'toolu_78', name: 'ping', input: {} },
+        ],
+    });
+    recordedCalls = [];
+    const antChatTool = await anthropicProvider.chat(
+        { key: antKey, model: antModel },
+        { system: 'You are the Onyx agent', turns: chatTurns, tools: chatTools, timeoutMs: 5000 }
+    );
+    assert.strictEqual(recordedCalls.length, 1);
+    const antChat = recordedCalls[0];
+    assert.strictEqual(antChat.url, 'https://api.anthropic.com/v1/messages');
+    assert.strictEqual(antChat.method, 'POST');
+    assert.strictEqual(antChat.headers['x-api-key'], antKey);
+    assert.strictEqual(antChat.headers['anthropic-version'], '2023-06-01');
+    assert.strictEqual(antChat.headers['anthropic-dangerous-direct-browser-access'], 'true');
+    assert.strictEqual(antChat.body.model, antModel);
+    assert.strictEqual(antChat.body.system, 'You are the Onyx agent');
+    assert.strictEqual(antChat.body.max_tokens, 2048, 'max_tokens defaults to 2048');
+    assert.strictEqual('tool_choice' in antChat.body, false, 'chat must leave tool_choice on auto');
+    assert.deepStrictEqual(antChat.body.messages, [
+        { role: 'user', content: [{ type: 'text', text: 'List the vendors' }] },
+        {
+            role: 'assistant',
+            content: [
+                { type: 'text', text: 'Checking' },
+                { type: 'tool_use', id: 'call_a', name: 'list_vendors', input: { limit: 3 } },
+            ],
+        },
+        { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'call_a', content: '{"vendors":["A","B"]}' }] },
+        { role: 'user', content: [{ type: 'text', text: 'Thanks, now count them' }] },
+    ], 'Anthropic chat messages must map user, assistant(tool_use) and tool_result turns');
+
+    // Tool schema mapping
+    assert.deepStrictEqual(antChat.body.tools[0], {
+        name: 'list_vendors',
+        description: 'List vendors',
+        input_schema: { type: 'object', properties: { limit: { type: 'number' } } },
+    });
+    assert.strictEqual(antChat.body.tools[1].name, 'ping');
+    assert.deepStrictEqual(antChat.body.tools[1].input_schema, { type: 'object', properties: {} }, 'Missing parameters default to an empty object schema');
+
+    // Canned tool call response parsing
+    assert.strictEqual(antChatTool.text, 'Looking those up. ');
+    assert.strictEqual(antChatTool.model, antModel);
+    assert.deepStrictEqual(antChatTool.toolCalls, [
+        { id: 'toolu_77', name: 'list_vendors', args: { limit: 2 } },
+        { id: 'toolu_78', name: 'ping', args: {} },
+    ]);
+
+    // Parallel tool calls: consecutive tool turns merge into ONE user message that follows the assistant turn
+    responseHandler = () => makeCannedResponse(200, {
+        model: antModel,
+        content: [{ type: 'text', text: 'Both done.' }],
+    });
+    recordedCalls = [];
+    const antChatText = await anthropicProvider.chat(
+        { key: antKey, model: antModel },
+        {
+            maxTokens: 300,
+            temperature: 0.1,
+            turns: [
+                { role: 'user', text: 'do both' },
+                { role: 'assistant', toolCalls: [{ id: 'c1', name: 'list_vendors', args: {} }, { id: 'c2', name: 'ping', args: {} }] },
+                { role: 'tool', callId: 'c1', name: 'list_vendors', result: ['A'] },
+                { role: 'tool', callId: 'c2', name: 'ping', result: 'pong' },
+            ],
+            timeoutMs: 5000,
+        }
+    );
+    const antMerged = recordedCalls[0].body;
+    assert.strictEqual(antMerged.max_tokens, 300);
+    assert.strictEqual(antMerged.temperature, 0.1);
+    assert.strictEqual('system' in antMerged, false, 'No system field when system is absent');
+    assert.strictEqual('tools' in antMerged, false, 'tools must be omitted when there are none');
+    assert.strictEqual(antMerged.messages.length, 3, 'Two consecutive tool turns must merge into one message');
+    assert.deepStrictEqual(antMerged.messages[1].content, [
+        { type: 'tool_use', id: 'c1', name: 'list_vendors', input: {} },
+        { type: 'tool_use', id: 'c2', name: 'ping', input: {} },
+    ], 'Assistant turn without text has no text block');
+    assert.strictEqual(antMerged.messages[2].role, 'user');
+    assert.deepStrictEqual(antMerged.messages[2].content, [
+        { type: 'tool_result', tool_use_id: 'c1', content: '["A"]' },
+        { type: 'tool_result', tool_use_id: 'c2', content: 'pong' },
+    ]);
+    assert.strictEqual(antChatText.text, 'Both done.');
+    assert.deepStrictEqual(antChatText.toolCalls, []);
+
+    // Anthropic chat errors: mapped like generateText, key never leaks
+    await expectChatError(anthropicProvider, { key: antKey, model: antModel }, () => makeCannedResponse(401, { error: { message: `Unauthorized with ${antKey}` } }), 'auth', antKey);
+    await expectChatError(anthropicProvider, { key: antKey, model: antModel }, () => makeCannedResponse(429, { error: { message: `Rate limit on ${antKey}` } }), 'rate', antKey);
+    await expectChatError(anthropicProvider, { key: antKey, model: antModel }, () => makeCannedResponse(500, { error: { message: `Server error for ${antKey}` } }), 'server', antKey);
+    await expectChatError(anthropicProvider, { key: antKey, model: antModel }, () => { throw new TypeError('Failed to fetch (CORS block)'); }, 'cors', antKey);
+    const antChat400 = await expectChatError(anthropicProvider, { key: antKey, model: antModel }, () => makeCannedResponse(400, { error: { message: `tools.0.input_schema invalid for key ${antKey}` } }), 'bad_request', antKey);
+    assert.ok(antChat400.message.includes('input_schema invalid'), 'chat bad_request must include the API message');
+    const antChatNoModel = await expectChatError(anthropicProvider, { key: antKey, model: '' }, () => makeCannedResponse(200, {}), 'config', antKey);
+    assert.strictEqual(antChatNoModel.message, 'Pick a model in Settings');
+    await expectChatError(anthropicProvider, { model: antModel }, () => makeCannedResponse(200, {}), 'auth', antKey);
+
+    const antAbort = new AbortController();
+    await expectChatError(anthropicProvider, { key: antKey, model: antModel }, (call) => new Promise((_, reject) => {
+        call.signal.addEventListener('abort', () => reject(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' })), { once: true });
+        setTimeout(() => antAbort.abort(), 10);
+    }), 'timeout', antKey, { turns: [{ role: 'user', text: 'slow' }], timeoutMs: 5000, signal: antAbort.signal });
+
     console.log('provider checks passed');
 }
 

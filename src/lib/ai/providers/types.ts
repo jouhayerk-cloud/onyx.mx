@@ -48,6 +48,24 @@ export interface AiJsonResult extends AiTextResult {
     json: unknown;
 }
 
+/** Tool-calling chat (the Onyx agent). The agent keeps its history in Gemini shape; useOnyxAgent converts to ChatTurn[] for providers. */
+export interface ChatToolDef { name: string; description?: string; parameters?: object }
+export interface ChatToolCall { id: string; name: string; args: Record<string, unknown> }
+export type ChatTurn =
+    | { role: 'user'; text: string }
+    | { role: 'assistant'; text?: string; toolCalls?: ChatToolCall[] }
+    | { role: 'tool'; callId: string; name: string; result: unknown };
+export interface ChatRequest {
+    system?: string;
+    turns: readonly ChatTurn[];
+    tools?: readonly ChatToolDef[];
+    temperature?: number;
+    maxTokens?: number;
+    timeoutMs: number;
+    signal?: AbortSignal;
+}
+export interface ChatResult { text: string; toolCalls: ChatToolCall[]; model: string }
+
 export interface AiProviderImpl {
     info: ProviderInfo;
     generateText(cfg: ProviderConfig, req: AiRequest): Promise<AiTextResult>;
@@ -56,6 +74,8 @@ export interface AiProviderImpl {
     test(cfg: ProviderConfig): Promise<{ ok: boolean; message: string }>;
     /** Model ids the key can use, when the provider has a list endpoint. */
     listModels?(cfg: ProviderConfig): Promise<string[]>;
+    /** One model turn of a tool-calling conversation: text and/or tool calls. Throws AiProviderError. */
+    chat?(cfg: ProviderConfig, req: ChatRequest): Promise<ChatResult>;
 }
 
 /** Thrown by providers; message is safe to show (never contains the key). */

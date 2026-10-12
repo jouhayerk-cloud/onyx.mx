@@ -101,6 +101,7 @@ export const AiProvidersPanel: React.FC = () => {
         content: getRoute('content'),
         segmentation: getRoute('segmentation'),
         translate: getRoute('translate'),
+        chat: getRoute('chat'),
     }));
 
     const refreshState = useCallback(() => {
@@ -115,6 +116,7 @@ export const AiProvidersPanel: React.FC = () => {
             content: getRoute('content'),
             segmentation: getRoute('segmentation'),
             translate: getRoute('translate'),
+            chat: getRoute('chat'),
         });
 
         // Sync stored baseUrl and model if not currently dirty in draft
@@ -300,6 +302,7 @@ export const AiProvidersPanel: React.FC = () => {
         content: tr("Content generation"),
         segmentation: tr("Image segmentation"),
         translate: tr("Translation"),
+        chat: tr("Agent chat (needs a model with tool calling)"),
     };
 
     return (
@@ -579,13 +582,10 @@ export const AiProvidersPanel: React.FC = () => {
                                         value={currentRoute.provider}
                                         onChange={(e) => {
                                             const newProvider = e.target.value as ProviderId;
-                                            if (newProvider === 'gemini' && !currentRoute.model) {
+                                            if (newProvider === 'gemini') {
                                                 setRoute(job, null);
                                             } else {
-                                                setRoute(job, {
-                                                    provider: newProvider,
-                                                    model: currentRoute.model,
-                                                });
+                                                setRoute(job, { provider: newProvider });
                                             }
                                         }}
                                         aria-label={`${jobLabels[job]} ${tr("Model")}`}
@@ -612,6 +612,7 @@ export const AiProvidersPanel: React.FC = () => {
                                         mono
                                         placeholder={tr("Default model")}
                                         value={currentRoute.model || ''}
+                                        disabled={job === 'chat' && currentRoute.provider === 'gemini'}
                                         onChange={(e) => {
                                             const nextModel = e.target.value.trim();
                                             if (currentRoute.provider === 'gemini' && !nextModel) {
@@ -631,7 +632,7 @@ export const AiProvidersPanel: React.FC = () => {
                     })}
 
                     <p className="ap-quiet-note">
-                        {tr("Image and video jobs and the agent chat use Gemini")}
+                        {tr("Image and video jobs always use Gemini. The agent chat uses Gemini unless you route it above.")}
                     </p>
                 </div>
             </div>

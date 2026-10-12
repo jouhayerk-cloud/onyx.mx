@@ -13,6 +13,11 @@ import {
     type AgentActivityKind
 } from './agentState';
 import { tr, trf } from '../../lib/i18n';
+import { getRoute, type Route } from '../../lib/ai/routing';
+import { getProviderConfig, hasProviderKey } from '../../lib/ai/providerKeys';
+import { getProvider } from '../../lib/ai/providers';
+import type { AiProviderImpl, ChatResult, ChatToolCall, ChatToolDef, ChatTurn, ProviderConfig } from '../../lib/ai/providers/types';
+import { aiErrorMessage } from '../../lib/ai/errors';
 
 export type Message = { id: string; role: 'user' | 'model' | 'tool'; text: string; t: number };
 export type PendingConfirm = { id: string; tool: string; args: Record<string, unknown>; summary: string; risk?: string; detail?: string };
@@ -29,6 +34,109 @@ export interface AgentToolPack {
 export interface OnyxAgentOptions {
     extraTools?: Array<Omit<AgentToolPack, 'source'> & { source?: AgentToolPack['source'] }>;
     systemPrompt?: string;
+}
+
+// ---- Non-Gemini chat route -------------------------------------------------------------------------
+// The loop below reads Gemini-shaped responses and keeps its history as Gemini `contents`. For another provider these helpers
+// convert the history to ChatTurn[] on the way out and the ChatResult back to a Gemini-shaped response on the way in.
+
+const CHAT_TIMEOUT_MS = 180000;   // a local model (Ollama) can need a minute just to load and read the prompt
+
+interface GeminiPart {
+    text?: string;
+    functionCall?: { name: string; args?: Record<string, unknown>; id?: string };
+    functionResponse?: { name?: string; id?: string; response?: { content?: unknown } };
+}
+interface GeminiContent { role?: string; parts?: GeminiPart[] }
+
+/** Gemini `contents` -> provider turns. Tool results pair with the preceding model turn's calls by order. */
+export function geminiContentsToChatTurns(contents: readonly GeminiContent[]): ChatTurn[] {
+    const turns: ChatTurn[] = [];
+    let ordinal = 0;                         // 1-based position of each function call, for calls that come without an id
+    let lastCalls: ChatToolCall[] = [];
+    const joinText = (parts: readonly GeminiPart[]) => parts.filter(p => typeof p.text === 'string' && p.text).map(p => p.text).join('\n');
+
+    for (const content of contents) {
+        const parts = content?.parts ?? [];
+        if (content?.role === 'model') {
+            const toolCalls: ChatToolCall[] = [];
+            for (const p of parts) {
+                if (!p.functionCall) continue;
+                ordinal++;
+                toolCalls.push({ id: p.functionCall.id || `call_${ordinal}`, name: p.functionCall.name, args: p.functionCall.args ?? {} });
+            }
+            lastCalls = toolCalls;
+            const text = joinText(parts);
+            if (!text && toolCalls.length === 0) continue;
+            const turn: ChatTurn = { role: 'assistant' };
+            if (text) turn.text = text;
+            if (toolCalls.length > 0) turn.toolCalls = toolCalls;
+            turns.push(turn);
+        } else if (content?.role === 'function') {
+            let i = 0;
+            for (const p of parts) {
+                const fr = p.functionResponse;
+                if (!fr) continue;
+                const call = lastCalls[i++];
+                turns.push({ role: 'tool', callId: call?.id ?? fr.id ?? `call_${++ordinal}`, name: fr.name || call?.name || '', result: fr.response?.content ?? null });
+            }
+        } else if (content?.role === 'user') {
+            const text = joinText(parts);
+            if (text) turns.push({ role: 'user', text });
+        }
+    }
+    // a conversation has to open with the user (the 10-message window can cut it mid-exchange)
+    while (turns.length > 0 && turns[0].role !== 'user') turns.shift();
+    return turns;
+}
+
+/** Gemini function_declarations use upper-case schema types (OBJECT, STRING) in some packs; providers want JSON Schema. */
+const lowerSchemaTypes = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(lowerSchemaTypes);
+    if (node && typeof node === 'object') {
+        return Object.fromEntries(Object.entries(node as Record<string, unknown>).map(
+            ([k, v]) => [k, k === 'type' && typeof v === 'string' ? v.toLowerCase() : lowerSchemaTypes(v)]
+        ));
+    }
+    return node;
+};
+
+export function geminiToolsToChatTools(defs: readonly unknown[]): ChatToolDef[] {
+    const out: ChatToolDef[] = [];
+    for (const d of defs) {
+        const def = d as { name?: unknown; description?: unknown; parameters?: unknown };
+        if (!def || typeof def.name !== 'string') continue;
+        const tool: ChatToolDef = { name: def.name };
+        if (typeof def.description === 'string') tool.description = def.description;
+        if (def.parameters && typeof def.parameters === 'object') tool.parameters = lowerSchemaTypes(def.parameters) as object;
+        out.push(tool);
+    }
+    return out;
+}
+
+/** ChatResult -> the response shape the agent loop already reads from Gemini. */
+export function chatResultToGeminiResponse(res: ChatResult) {
+    const parts: GeminiPart[] = [];
+    if (res.text) parts.push({ text: res.text });
+    for (const tc of res.toolCalls) {
+        parts.push({ functionCall: { name: tc.name, args: tc.args ?? {}, ...(tc.id ? { id: tc.id } : {}) } });
+    }
+    return { candidates: [{ content: { role: 'model', parts } }] };
+}
+
+type ChatRouteSetup =
+    | { ok: true; impl: AiProviderImpl; cfg: ProviderConfig }
+    | { ok: false; message: string };
+
+/** Provider, saved config and model for the agent chat, or the message to show when it cannot run. */
+function resolveChatRoute(route: Route): ChatRouteSetup {
+    const impl = getProvider(route.provider);
+    if (!impl?.chat) return { ok: false, message: tr('This provider cannot run the agent chat') };
+    if (!hasProviderKey(route.provider)) return { ok: false, message: tr('Set up the agent chat provider in Settings') };
+    const saved = getProviderConfig(route.provider);
+    const model = route.model || saved.model;
+    if (!model) return { ok: false, message: tr('Pick a model for the agent chat in Settings') };
+    return { ok: true, impl, cfg: { ...saved, model } };
 }
 
 export function useOnyxAgent(options: OnyxAgentOptions = {}) {
@@ -146,6 +254,20 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         }
     };
 
+    // Non-Gemini route: one model turn through the provider's chat(), returned in the Gemini shape the loop in send() reads.
+    const callModel = async (impl: AiProviderImpl, cfg: ProviderConfig, contents: any[], tools: any[], signal: AbortSignal) => {
+        const result = await impl.chat!(cfg, {
+            system: systemPrompt,
+            turns: geminiContentsToChatTurns(contents),
+            tools: geminiToolsToChatTools(tools),
+            timeoutMs: CHAT_TIMEOUT_MS,
+            maxTokens: 4096,
+            signal
+        });
+        if (signal.aborted) throw new Error('aborted');
+        return chatResultToGeminiResponse(result);
+    };
+
     const stop = useCallback(() => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -184,9 +306,19 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         // a second send before React re-renders (double click) would still see phase 'idle': the abort controller marks a run in flight
         if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) return;
 
+        // Gemini (the default) keeps its own caller and its own key; any other route goes through that provider's chat()
+        const route = getRoute('chat');
+        const viaGemini = route.provider === 'gemini';
+        const chatSetup = viaGemini ? null : resolveChatRoute(route);
         const apiKey = getGeminiKey();
-        if (!apiKey) {
+        if (viaGemini && !apiKey) {
             setError(tr("Neural link credentials missing."));
+            setPhase('error');
+            setTimeout(() => { setPhase('idle'); setError(null); }, 4000);
+            return;
+        }
+        if (chatSetup && chatSetup.ok === false) {
+            setError(chatSetup.message);
             setPhase('error');
             setTimeout(() => { setPhase('idle'); setError(null); }, 4000);
             return;
@@ -212,10 +344,15 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
         try {
             // 2.0 and 1.5 are shut down: 2.5 Flash stays the primary, 3.8 Flash is only a fallback (3.x functionResponse has no call id: test before making it primary)
-            const modelsToTry = ["gemini-2.5-flash", "gemini-3.8-flash"];
+            // the fallback list is Gemini only: another provider calls its one model once, with no fallback to Gemini when it fails
+            const modelsToTry = viaGemini ? ["gemini-2.5-flash", "gemini-3.8-flash"] : [];
             let resp = null;
             let usedModel = "";
             let lastAttemptError = "";
+
+            if (chatSetup?.ok) {
+                resp = await callModel(chatSetup.impl, chatSetup.cfg, contents, allDefinitions, signal);
+            }
 
             for (const m of modelsToTry) {
                 try {
@@ -269,6 +406,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 }
 
                 if (calls.length === 0) {
+                    if (!modelText && !viaGemini) throw new Error(tr('The model returned an empty answer'));
                     setPhase('idle');
                     break;
                 }
@@ -353,7 +491,9 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 
                 if (!signal.aborted) {
                     setPhase('thinking');
-                    resp = await callGemini(apiKey, contents, allDefinitions, usedModel, signal);
+                    resp = chatSetup?.ok
+                        ? await callModel(chatSetup.impl, chatSetup.cfg, contents, allDefinitions, signal)
+                        : await callGemini(apiKey, contents, allDefinitions, usedModel, signal);
                 }
                 iter++;
                 
@@ -365,8 +505,10 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             if (signal.aborted) return;
             const errMsg = e?.message?.toLowerCase() || '';
             const isKeyError = errMsg.includes('key') || errMsg.includes('api') || errMsg.includes('404') || errMsg.includes('unauthorized');
-            const safeError = isKeyError
-                ? tr('Neural Link Denied. Verify API credentials in settings.') 
+            const safeError = !viaGemini
+                ? aiErrorMessage(e)
+                : isKeyError
+                ? tr('Neural Link Denied. Verify API credentials in settings.')
                 : tr('Neural core unreachable.');
             setError(safeError);
             setPhase('error');

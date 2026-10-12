@@ -3538,4 +3538,11 @@ export const esCatalog: Record<string, string> = {
   'Models loaded.': 'Modelos cargados.',
   'No models found.': 'No se encontraron modelos.',
   'Failed to load models.': 'Error al cargar los modelos.',
+  'Agent chat (needs a model with tool calling)': 'Chat del agente (requiere un modelo con llamadas a herramientas)',
+  'Image and video jobs always use Gemini. The agent chat uses Gemini unless you route it above.': 'Las tareas de imagen y video siempre usan Gemini. El chat del agente usa Gemini, a menos que le asignes otro proveedor arriba.',
+  'This provider cannot run the agent chat': 'Este proveedor no puede ejecutar el chat del agente',
+  'Set up the agent chat provider in Settings': 'Configura el proveedor del chat del agente en Ajustes',
+  'Pick a model for the agent chat in Settings': 'Elige un modelo para el chat del agente en Ajustes',
+  'The model returned an empty answer': 'El modelo devolvió una respuesta vacía',
+  'Pick a model in Settings': 'Elige un modelo en Configuración',
 };
