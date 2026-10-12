@@ -68,7 +68,7 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
     }, [agent.pendingConfirm]);
 
     const visibleMessages = useMemo(() => {
-        return agent.messages.filter(m => m.role !== 'tool');
+        return agent.messages.filter(m => m.role !== 'tool' && m.text.trim() !== '');
     }, [agent.messages]);
 
     const handleScroll = () => {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { userAtom, languageAtom } from '../../lib/atoms';
 import { getGeminiKey } from '../../lib/ai/keys';
 import { supabase } from '../../lib/supabase';
@@ -13,6 +13,7 @@ import {
     type AgentActivityKind
 } from './agentState';
 import { tr, trf } from '../../lib/i18n';
+import { onyxAgentMessagesAtom, onyxAgentHistoryOwnerAtom, saveHistory, clearHistory } from './agentHistory';
 import { getRoute, type Route } from '../../lib/ai/routing';
 import { getProviderConfig, hasProviderKey } from '../../lib/ai/providerKeys';
 import { getProvider } from '../../lib/ai/providers';
@@ -148,7 +149,24 @@ export function useOnyxAgent(options: OnyxAgentOptions = {}) {
     const setActivity = useSetAtom(onyxAgentActivityAtom);
     const activity = useAtomValue(onyxAgentActivityAtom);
     
-    const [messages, setMessages] = useState<Message[]>([]);
+    // the conversation lives in an atom, so closing the drawer or compacting the island does not lose it
+    const [messages, setMessages] = useAtom(onyxAgentMessagesAtom);
+    const [historyOwner, setHistoryOwner] = useAtom(onyxAgentHistoryOwnerAtom);
+    const userId = user?.id != null ? String(user.id) : null;
+
+    useEffect(() => {
+        // another person logged in on this tab: start from an empty log
+        if (userId && historyOwner !== userId) {
+            if (historyOwner !== null || messages.length > 0) { setMessages([]); clearHistory(); }
+            setHistoryOwner(userId);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId]);
+
+    useEffect(() => {
+        const h = setTimeout(() => saveHistory(userId, messages), 500);   // streaming rewrites the last message every few ms
+        return () => clearTimeout(h);
+    }, [messages, userId]);
     const [phase, setLocalPhase] = useState<AgentPhase>('idle');
     const [error, setError] = useState<string | null>(null);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
@@ -284,6 +302,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
     const reset = useCallback(() => {
         stop();
         setMessages([]);
+        clearHistory();
     }, [stop]);
 
     const confirm = useCallback((id: string, approved: boolean) => {

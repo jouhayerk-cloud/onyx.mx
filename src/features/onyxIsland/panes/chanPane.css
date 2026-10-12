@@ -264,9 +264,12 @@
 }
 
 .chan-bubble--assistant {
-  background: var(--isl-fill-1);
-  border: 1px solid var(--isl-line);
+  /* Chan's answers are the text people read: a stronger tint than the flat rows, larger type, a firmer edge */
+  background: color-mix(in srgb, var(--isl-ink) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--isl-ink) 26%, transparent);
   color: var(--isl-ink);
+  font-size: 15px;
+  line-height: 1.5;
   border-bottom-left-radius: 4px;
 }
 
