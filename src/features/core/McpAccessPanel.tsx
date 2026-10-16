@@ -13,7 +13,9 @@ import {
     Globe,
     Key,
     Sparkles,
+    Code2,
 } from 'lucide-react';
+import { LazyMotion, domMax, m, AnimatePresence } from 'framer-motion';
 import { siriTokenPendingAtom } from './siriState';
 import { resolveMcpEndpoint } from './mcpEndpoint';
 import './siriAccess.css';
@@ -37,12 +39,13 @@ export const McpAccessPanel: React.FC = () => {
     const L = theme === 'aqua';
 
     const [tokens, setTokens] = useState<McpTokenItem[]>([]);
-    const [label, setLabel] = useState<string>('Claude Code');
+    const [label, setLabel] = useState<string>('Cursor / Antigravity');
     const [createdToken, setCreatedToken] = useState<string | null>(null);
     const setTokenPending = useSetAtom(siriTokenPendingAtom);
     const [language] = useAtom(languageAtom);
 
     const [clientTab, setClientTab] = useState<McpClientTab>('cursor');
+    const [showSnippetPreview, setShowSnippetPreview] = useState<boolean>(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -78,14 +81,13 @@ export const McpAccessPanel: React.FC = () => {
                 tokens?: McpTokenItem[];
                 error?: string;
             }>('siri-token', {
-                body: { action: 'list', kind: 'mcp' }
+                body: { action: 'list', kind: 'mcp' },
             });
 
             if (error) {
                 setErrorMessage(error.message || tr("Failed to load tokens."));
                 return;
             }
-
             if (data?.ok && Array.isArray(data.tokens)) {
                 setTokens(data.tokens);
             } else if (data?.error) {
@@ -121,17 +123,8 @@ export const McpAccessPanel: React.FC = () => {
     }, [createdToken, setTokenPending]);
 
     useEffect(() => {
-        return () => {
-            setTokenPending(false);
-        };
+        return () => setTokenPending(false);
     }, [setTokenPending]);
-
-    useEffect(() => {
-        if (showFallback && fallbackRef.current) {
-            fallbackRef.current.focus();
-            fallbackRef.current.select();
-        }
-    }, [showFallback]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -145,14 +138,10 @@ export const McpAccessPanel: React.FC = () => {
             const { data, error } = await supabase.functions.invoke<{
                 ok: boolean;
                 token?: string;
-                id?: string;
-                prefix?: string;
-                label?: string;
-                expires_at?: string;
                 error?: string;
                 status?: number;
             }>('siri-token', {
-                body: { action: 'create', kind: 'mcp', label: trimmedLabel }
+                body: { action: 'create', kind: 'mcp', label: trimmedLabel },
             });
 
             if (error) {
@@ -161,12 +150,11 @@ export const McpAccessPanel: React.FC = () => {
                     anyErr.status === 409 ||
                     anyErr.context?.status === 409 ||
                     Boolean(anyErr.message && anyErr.message.includes('409'));
-
-                if (is409) {
-                    setErrorMessage(tr("You already have 5 active tokens. Revoke one first."));
-                } else {
-                    setErrorMessage(error.message || tr("Failed to create token."));
-                }
+                setErrorMessage(
+                    is409
+                        ? tr("Max 5 active tokens reached. Revoke one first.")
+                        : error.message || tr("Failed to create token.")
+                );
                 return;
             }
 
@@ -177,13 +165,8 @@ export const McpAccessPanel: React.FC = () => {
                 setErrorMessage(data?.error || tr("Failed to create token."));
             }
         } catch (err: unknown) {
-            const anyErr = err as { status?: number; message?: string };
-            if (anyErr?.status === 409 || anyErr?.message?.includes('409')) {
-                setErrorMessage(tr("You already have 5 active tokens. Revoke one first."));
-            } else {
-                const msg = err instanceof Error ? err.message : tr("Failed to create token.");
-                setErrorMessage(msg);
-            }
+            const msg = err instanceof Error ? err.message : tr("Failed to create token.");
+            setErrorMessage(msg);
         } finally {
             setIsCreating(false);
         }
@@ -199,14 +182,13 @@ export const McpAccessPanel: React.FC = () => {
                 ok: boolean;
                 error?: string;
             }>('siri-token', {
-                body: { action: 'revoke', id }
+                body: { action: 'revoke', id },
             });
 
             if (error) {
                 setErrorMessage(error.message || tr("Failed to revoke token."));
                 return;
             }
-
             if (data?.ok) {
                 setConfirmRevokeId(null);
                 await fetchTokens();
@@ -227,16 +209,14 @@ export const McpAccessPanel: React.FC = () => {
             const d = new Date(isoString);
             if (isNaN(d.getTime())) return isoString;
             return d.toLocaleDateString(language === 'es' ? 'es-MX' : 'en-US', {
-                year: 'numeric',
                 month: 'short',
-                day: 'numeric'
+                day: 'numeric',
             });
         } catch {
             return isoString;
         }
     };
 
-    // Generate config snippet based on selected tab and active or placeholder token
     const tokenDisplay = createdToken || '<YOUR_MCP_TOKEN>';
 
     const getSnippetForTab = (tab: McpClientTab): string => {
@@ -247,11 +227,9 @@ export const McpAccessPanel: React.FC = () => {
                         mcpServers: {
                             onyx: {
                                 url: mcpEndpoint,
-                                headers: {
-                                    Authorization: `Bearer ${tokenDisplay}`
-                                }
-                            }
-                        }
+                                headers: { Authorization: `Bearer ${tokenDisplay}` },
+                            },
+                        },
                     },
                     null,
                     2
@@ -259,379 +237,317 @@ export const McpAccessPanel: React.FC = () => {
             case 'claude':
                 return `claude mcp add --transport http --scope user onyx ${mcpEndpoint} --header "Authorization: Bearer ${tokenDisplay}"`;
             case 'colibri':
-                return `colibri mcp connect --endpoint "${mcpEndpoint}" --token "${tokenDisplay}"`;
+                return `node scripts/colibri-mcp-server.cjs`;
         }
     };
 
     const activeSnippet = getSnippetForTab(clientTab);
-
     const activeTokens = tokens.filter(
         (t) => !t.revoked_at && (!t.expires_at || new Date(t.expires_at).getTime() > Date.now())
     );
 
     return (
-        <div className={`sa-panel ma-panel ${L ? 'sa-theme-aqua' : ''}`}>
-            {/* Header */}
-            <div className="sa-section-header">
-                <div className="flex items-center justify-between">
-                    <div className="sa-section-caption">
-                        {tr("Model Context Protocol (MCP) Access")}
-                    </div>
-                    <span className="text-[11px] font-mono text-cyan-400/80 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                        {tr("HTTP SSE Stream")}
-                    </span>
-                </div>
-                <p className="sa-section-desc">
-                    {tr("Connect Antigravity, Cursor, Claude Code, or Colibrì MoE to live Onyx ERP data.")}
-                </p>
-            </div>
-
-            {/* Error banner */}
-            {errorMessage && (
-                <div role="alert" className="sa-error-banner">
-                    <div className="sa-error-content">
-                        <AlertCircle size={15} className="sa-error-icon" aria-hidden="true" />
-                        <span className="sa-error-text">{errorMessage}</span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setErrorMessage(null)}
-                        aria-label={tr("Dismiss")}
-                        className="sa-dismiss-btn"
+        <LazyMotion features={domMax}>
+            <div className={`sa-panel ma-panel space-y-2 ${L ? 'sa-theme-aqua' : ''}`}>
+                {errorMessage && (
+                    <div
+                        role="alert"
+                        className="px-2.5 py-1.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] flex items-center justify-between gap-2"
                     >
-                        <X size={15} aria-hidden="true" />
-                    </button>
-                </div>
-            )}
-
-            {/* 1. Active Endpoint Bar */}
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-cyan-500/15 border border-cyan-400/25 flex items-center justify-center text-cyan-400 shrink-0">
-                        <Globe size={16} />
-                    </div>
-                    <div className="min-w-0">
-                        <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">
-                            {tr("MCP Live Gateway Endpoint")}
+                        <div className="flex items-center gap-1.5 truncate">
+                            <AlertCircle size={13} className="shrink-0" />
+                            <span className="truncate">{errorMessage}</span>
                         </div>
-                        <div className="text-[12px] font-mono text-white/90 truncate max-w-[280px] sm:max-w-md">
-                            {mcpEndpoint}
-                        </div>
+                        <button type="button" onClick={() => setErrorMessage(null)}>
+                            <X size={13} />
+                        </button>
                     </div>
-                </div>
+                )}
 
-                <button
-                    type="button"
-                    onClick={() =>
-                        copyText(mcpEndpoint, () => {
-                            setCopiedEndpoint(true);
-                            setTimeout(() => setCopiedEndpoint(false), 2000);
-                        })
-                    }
-                    className="h-8 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-[11px] font-medium flex items-center gap-1.5 transition-colors border border-white/10 shrink-0"
-                >
-                    {copiedEndpoint ? (
-                        <>
-                            <Check size={12} className="text-emerald-400" />
-                            <span>{tr("Copied")}</span>
-                        </>
-                    ) : (
-                        <>
-                            <Copy size={12} />
-                            <span>{tr("Copy Endpoint")}</span>
-                        </>
-                    )}
-                </button>
-            </div>
-
-            {/* 2. One-Time Token Callout (when token newly created) */}
-            {createdToken && (
-                <div role="status" className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-2.5 animate-fadeIn">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Sparkles size={16} className="text-emerald-400" />
-                            <span className="text-[13px] font-semibold text-emerald-300">
-                                {tr("One-Time MCP Token Created")}
+                {/* 1. Compact Endpoint + Client Config Copy Strip */}
+                <div className="ss-card p-2.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-6 h-6 rounded-lg bg-cyan-500/15 border border-cyan-400/25 flex items-center justify-center text-cyan-400 shrink-0">
+                                <Globe size={13} />
+                            </div>
+                            <span className="text-[11px] font-mono text-(--ss-fg) truncate">
+                                {mcpEndpoint}
                             </span>
                         </div>
-                        <span className="text-[10px] text-emerald-400/70 font-mono">
-                            {tr("Shown once only")}
-                        </span>
-                    </div>
-
-                    <div className="p-2.5 rounded-xl bg-black/60 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] break-all select-all">
-                        {createdToken}
-                    </div>
-
-                    <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={() =>
-                                copyText(createdToken, () => {
-                                    setCopiedToken(true);
-                                    setTimeout(() => setCopiedToken(false), 2000);
+                                copyText(mcpEndpoint, () => {
+                                    setCopiedEndpoint(true);
+                                    setTimeout(() => setCopiedEndpoint(false), 1800);
                                 })
                             }
-                            className="h-8 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-[11px] flex items-center gap-1.5 transition-colors"
+                            className="ss-glass-pill h-7 px-2.5 rounded-lg bg-(--ss-field) hover:bg-(--ss-fill-hover) border border-(--ss-sep) text-(--ss-fg) text-[10.5px] font-semibold flex items-center gap-1 shrink-0"
                         >
-                            {copiedToken ? (
-                                <>
-                                    <Check size={12} />
-                                    <span>{tr("Copied")}</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Copy size={12} />
-                                    <span>{tr("Copy Token")}</span>
-                                </>
-                            )}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setCreatedToken(null)}
-                            className="h-8 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-[11px] font-medium transition-colors border border-white/10"
-                        >
-                            {tr("Done")}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* 3. Client Config Snippets Card with 3-Pill Selector */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-[11px] font-semibold text-white/70 uppercase tracking-wider">
-                        {tr("Quick Client Integration")}
-                    </span>
-
-                    {/* 3-Pill Segmented Tab */}
-                    <div className="flex items-center p-0.5 rounded-xl bg-black/40 border border-white/15">
-                        <button
-                            type="button"
-                            onClick={() => setClientTab('cursor')}
-                            className={`h-7 px-3 rounded-lg text-[11px] font-medium transition-all ${
-                                clientTab === 'cursor'
-                                    ? 'bg-cyan-500 text-black font-semibold shadow-sm'
-                                    : 'text-white/70 hover:text-white'
-                            }`}
-                        >
-                            {tr("Antigravity / Cursor")}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setClientTab('claude')}
-                            className={`h-7 px-3 rounded-lg text-[11px] font-medium transition-all ${
-                                clientTab === 'claude'
-                                    ? 'bg-cyan-500 text-black font-semibold shadow-sm'
-                                    : 'text-white/70 hover:text-white'
-                            }`}
-                        >
-                            {tr("Claude Code")}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setClientTab('colibri')}
-                            className={`h-7 px-3 rounded-lg text-[11px] font-medium transition-all ${
-                                clientTab === 'colibri'
-                                    ? 'bg-cyan-500 text-black font-semibold shadow-sm'
-                                    : 'text-white/70 hover:text-white'
-                            }`}
-                        >
-                            {tr("Colibrì MoE")}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Code Block */}
-                <div className="relative group">
-                    <pre className="p-3 rounded-xl bg-black/60 border border-white/15 text-cyan-300 font-mono text-[11px] overflow-x-auto select-all max-h-40 custom-scrollbar">
-                        {activeSnippet}
-                    </pre>
-                    <button
-                        type="button"
-                        onClick={() =>
-                            copyText(activeSnippet, () => {
-                                setCopiedSnippet(true);
-                                setTimeout(() => setCopiedSnippet(false), 2000);
-                            })
-                        }
-                        className="absolute top-2 right-2 h-7 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium flex items-center gap-1 transition-colors border border-white/10"
-                        title={tr("Copy code")}
-                    >
-                        {copiedSnippet ? (
-                            <>
+                            {copiedEndpoint ? (
                                 <Check size={11} className="text-emerald-400" />
-                                <span>{tr("Copied")}</span>
-                            </>
-                        ) : (
-                            <>
+                            ) : (
                                 <Copy size={11} />
-                                <span>{tr("Copy")}</span>
-                            </>
-                        )}
-                    </button>
-                </div>
-
-                <div className="text-[10px] text-white/50">
-                    {clientTab === 'cursor' &&
-                        tr("Paste into ~/.cursor/mcp.json or Antigravity MCP settings.")}
-                    {clientTab === 'claude' &&
-                        tr("Run in terminal to register Onyx tools directly with Claude Code.")}
-                    {clientTab === 'colibri' &&
-                        tr("Allows local MoE models to invoke ERP inventory and production tools.")}
-                </div>
-            </div>
-
-            {/* 4. Token Creation Row */}
-            <form onSubmit={handleCreate} className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/10">
-                <input
-                    type="text"
-                    maxLength={40}
-                    placeholder={tr("Token label (e.g. Cursor Mac, Claude CLI)")}
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                    disabled={isBusy || createdToken !== null}
-                    className="flex-1 h-9 px-3 rounded-xl bg-black/30 border border-white/10 text-white text-[12px] focus:outline-none focus:border-cyan-400"
-                />
-                <button
-                    type="submit"
-                    disabled={isBusy || !label.trim() || createdToken !== null}
-                    className="h-9 px-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black font-semibold text-[11px] flex items-center gap-1.5 transition-all shrink-0"
-                >
-                    {isCreating ? (
-                        <>
-                            <Loader2 size={12} className="animate-spin" />
-                            <span>{tr("Creating...")}</span>
-                        </>
-                    ) : (
-                        <span>{tr("Create Token")}</span>
-                    )}
-                </button>
-            </form>
-
-            {/* 5. Collapsible Token History & Revocation */}
-            <div className="pt-1">
-                <button
-                    type="button"
-                    onClick={() => setIsHistoryOpen((prev) => !prev)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-colors"
-                >
-                    <div className="flex items-center gap-2">
-                        <Key size={13} className="text-cyan-400" />
-                        <span className="text-[12px] font-semibold text-white">
-                            {tr("Token History & Revocation")} ({activeTokens.length} {tr("active")})
-                        </span>
+                            )}
+                            <span>{copiedEndpoint ? tr("Copied") : tr("URL")}</span>
+                        </button>
                     </div>
-                    <ChevronDown
-                        size={14}
-                        className={`text-white/60 transition-transform ${
-                            isHistoryOpen ? 'rotate-180' : ''
-                        }`}
-                    />
-                </button>
 
-                {isHistoryOpen && (
-                    <div className="mt-2 p-2.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5 text-[11px] animate-fadeIn">
-                        {isLoading && tokens.length === 0 ? (
-                            <div className="p-3 text-center text-white/50">{tr("Loading tokens...")}</div>
-                        ) : tokens.length === 0 ? (
-                            <div className="p-3 text-center text-white/50">{tr("No tokens created yet.")}</div>
-                        ) : (
-                            tokens.map((token) => {
-                                const isRevoked = Boolean(token.revoked_at);
-                                const isExpired =
-                                    !isRevoked &&
-                                    Boolean(token.expires_at) &&
-                                    new Date(token.expires_at).getTime() <= Date.now();
-                                const isActive = !isRevoked && !isExpired;
-                                const prefix = token.token_prefix || token.prefix || '';
-
+                    {/* Client Preset Switcher + 1-Click Copy Config */}
+                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                        <div className="flex items-center p-0.5 rounded-xl bg-(--ss-field) border border-(--ss-sep)">
+                            {(
+                                [
+                                    { id: 'cursor', label: 'Cursor / AGY' },
+                                    { id: 'claude', label: 'Claude CLI' },
+                                    { id: 'colibri', label: 'Colibrì STDIO' },
+                                ] as { id: McpClientTab; label: string }[]
+                            ).map((t) => {
+                                const active = clientTab === t.id;
                                 return (
-                                    <div
-                                        key={token.id}
-                                        className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/5 gap-2"
+                                    <button
+                                        key={t.id}
+                                        type="button"
+                                        onClick={() => setClientTab(t.id)}
+                                        className={`relative h-6.5 px-2.5 rounded-lg text-[10.5px] font-semibold transition-colors z-10 ${
+                                            active
+                                                ? 'text-(--ss-on-accent)'
+                                                : 'text-(--ss-fg2) hover:text-(--ss-fg)'
+                                        }`}
                                     >
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="font-semibold text-white truncate max-w-[120px] sm:max-w-[200px]">
-                                                    {token.label}
-                                                </span>
-                                                {prefix && (
-                                                    <span className="font-mono text-[9px] text-white/40">
-                                                        ({prefix}...)
-                                                    </span>
-                                                )}
-                                                <span
-                                                    className={`px-1.5 py-0.2 rounded text-[9px] font-mono ${
-                                                        isActive
-                                                            ? 'bg-emerald-500/20 text-emerald-300'
-                                                            : isExpired
-                                                            ? 'bg-amber-500/20 text-amber-300'
-                                                            : 'bg-white/10 text-white/40'
-                                                    }`}
-                                                >
-                                                    {isActive ? tr("Active") : isExpired ? tr("Expired") : tr("Revoked")}
-                                                </span>
-                                            </div>
-                                            <div className="text-[10px] text-white/40 truncate">
-                                                {tr("Created")}: {formatDate(token.created_at)} · {tr("Expires")}: {formatDate(token.expires_at)}
-                                            </div>
-                                        </div>
-
-                                        <div className="shrink-0">
-                                            {confirmRevokeId === token.id ? (
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setConfirmRevokeId(null)}
-                                                        className="px-2 py-0.5 rounded text-[10px] text-white/60 hover:text-white"
-                                                    >
-                                                        {tr("Cancel")}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRevoke(token.id)}
-                                                        className="px-2 py-0.5 rounded bg-red-500 hover:bg-red-400 text-white text-[10px] font-medium"
-                                                    >
-                                                        {revokingId === token.id ? (
-                                                            <Loader2 size={10} className="animate-spin" />
-                                                        ) : (
-                                                            tr("Confirm")
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            ) : isActive ? (
-                                                <button
-                                                    type="button"
-                                                    disabled={isBusy}
-                                                    onClick={() => setConfirmRevokeId(token.id)}
-                                                    className="px-2 py-1 rounded-md text-[10px] text-red-400 hover:bg-red-500/10 transition-colors"
-                                                >
-                                                    {tr("Revoke")}
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                    </div>
+                                        {active && (
+                                            <m.span
+                                                layoutId="mcp-client-pill"
+                                                className="ss-top-tab-pill rounded-lg"
+                                                transition={{
+                                                    type: 'spring',
+                                                    stiffness: 420,
+                                                    damping: 32,
+                                                }}
+                                            />
+                                        )}
+                                        <span className="relative z-10">{t.label}</span>
+                                    </button>
                                 );
-                            })
-                        )}
-                    </div>
-                )}
-            </div>
+                            })}
+                        </div>
 
-            {/* Fallback textarea when clipboard write fails */}
-            {showFallback && (
-                <div className="p-2 rounded-xl bg-black/60 border border-white/10 space-y-1">
-                    <div className="text-[10px] text-white/60">{tr("Select and copy:")}</div>
+                        <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => setShowSnippetPreview((v) => !v)}
+                                className="h-7 px-2 rounded-lg bg-(--ss-field) hover:bg-(--ss-fill-hover) border border-(--ss-sep) text-(--ss-fg2) text-[10.5px] flex items-center gap-1"
+                                title={tr("Toggle snippet preview")}
+                            >
+                                <Code2 size={11} />
+                                <span>{showSnippetPreview ? tr("Hide") : tr("JSON")}</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    copyText(activeSnippet, () => {
+                                        setCopiedSnippet(true);
+                                        setTimeout(() => setCopiedSnippet(false), 1800);
+                                    })
+                                }
+                                className="ss-glass-pill h-7 px-2.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/35 text-cyan-300 text-[10.5px] font-semibold flex items-center gap-1"
+                            >
+                                {copiedSnippet ? <Check size={11} /> : <Copy size={11} />}
+                                <span>{copiedSnippet ? tr("Copied") : tr("Copy Config")}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                        {showSnippetPreview && (
+                            <m.pre
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="p-2 rounded-xl bg-black/55 border border-(--ss-sep) text-cyan-300 font-mono text-[10px] overflow-x-auto select-all max-h-28 custom-scrollbar"
+                            >
+                                {activeSnippet}
+                            </m.pre>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* 2. Newly Created One-Time Token Callout */}
+                <AnimatePresence initial={false}>
+                    {createdToken && (
+                        <m.div
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            role="status"
+                            className="p-2.5 rounded-xl bg-emerald-500/12 border border-emerald-500/35 space-y-2"
+                        >
+                            <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
+                                    <Sparkles size={13} /> {tr("One-Time MCP Token")}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            copyText(createdToken, () => {
+                                                setCopiedToken(true);
+                                                setTimeout(() => setCopiedToken(false), 1800);
+                                            })
+                                        }
+                                        className="h-6 px-2 rounded-md bg-emerald-500 text-black font-semibold text-[10.5px] flex items-center gap-1"
+                                    >
+                                        {copiedToken ? <Check size={10} /> : <Copy size={10} />}
+                                        <span>{copiedToken ? tr("Copied") : tr("Copy")}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCreatedToken(null)}
+                                        className="h-6 px-2 rounded-md bg-white/10 text-white text-[10.5px]"
+                                    >
+                                        {tr("Done")}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-black/60 border border-emerald-500/25 text-emerald-300 font-mono text-[10px] break-all select-all">
+                                {createdToken}
+                            </div>
+                        </m.div>
+                    )}
+                </AnimatePresence>
+
+                {/* 3. Inline Token Generator + Collapsible Active Tokens */}
+                <div className="ss-card p-2 space-y-1.5">
+                    <form onSubmit={handleCreate} className="flex items-center gap-1.5">
+                        <input
+                            type="text"
+                            maxLength={40}
+                            placeholder={tr("Token label (e.g. Cursor, Claude)")}
+                            value={label}
+                            onChange={(e) => setLabel(e.target.value)}
+                            disabled={isBusy || createdToken !== null}
+                            className="flex-1 h-7.5 px-2.5 rounded-lg bg-(--ss-field) border border-(--ss-sep) text-(--ss-fg) text-[11px] focus:outline-none focus:border-cyan-400"
+                        />
+                        <button
+                            type="submit"
+                            disabled={isBusy || !label.trim() || createdToken !== null}
+                            className="ss-glass-pill h-7.5 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black font-semibold text-[11px] flex items-center gap-1 shrink-0"
+                        >
+                            {isCreating ? <Loader2 size={11} className="animate-spin" /> : '+'}
+                            <span>{tr("New Token")}</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsHistoryOpen((prev) => !prev)}
+                            className="h-7.5 px-2 rounded-lg bg-(--ss-field) hover:bg-(--ss-fill-hover) border border-(--ss-sep) text-(--ss-fg2) text-[10.5px] font-mono flex items-center gap-1 shrink-0"
+                        >
+                            <Key size={11} className="text-cyan-400" />
+                            <span>{activeTokens.length}/5</span>
+                            <ChevronDown
+                                size={11}
+                                className={`transition-transform ${isHistoryOpen ? 'rotate-180' : ''}`}
+                            />
+                        </button>
+                    </form>
+
+                    <AnimatePresence initial={false}>
+                        {isHistoryOpen && (
+                            <m.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="pt-1 space-y-1 max-h-36 overflow-y-auto custom-scrollbar">
+                                    {tokens.length === 0 ? (
+                                        <div className="py-2 text-center text-[10.5px] text-(--ss-fg3)">
+                                            {isLoading ? tr("Loading...") : tr("No MCP tokens")}
+                                        </div>
+                                    ) : (
+                                        tokens.map((token) => {
+                                            const isRevoked = Boolean(token.revoked_at);
+                                            const isExpired =
+                                                !isRevoked &&
+                                                Boolean(token.expires_at) &&
+                                                new Date(token.expires_at).getTime() <= Date.now();
+                                            const isActive = !isRevoked && !isExpired;
+                                            const prefix = token.token_prefix || token.prefix || '';
+
+                                            return (
+                                                <div
+                                                    key={token.id}
+                                                    className="flex items-center justify-between px-2 py-1 rounded-lg bg-(--ss-field) border border-(--ss-sep) text-[10.5px]"
+                                                >
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span
+                                                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                                                isActive ? 'bg-emerald-400' : 'bg-white/25'
+                                                            }`}
+                                                        />
+                                                        <span className="font-semibold text-(--ss-fg) truncate">
+                                                            {token.label}
+                                                        </span>
+                                                        {prefix && (
+                                                            <span className="font-mono text-[9.5px] text-(--ss-fg3)">
+                                                                {prefix}…
+                                                            </span>
+                                                        )}
+                                                        <span className="text-[9.5px] text-(--ss-fg3)">
+                                                            {formatDate(token.created_at)}
+                                                        </span>
+                                                    </div>
+
+                                                    {confirmRevokeId === token.id ? (
+                                                        <div className="flex items-center gap-1 shrink-0">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setConfirmRevokeId(null)}
+                                                                className="px-1.5 py-0.5 text-[9.5px] text-(--ss-fg2)"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRevoke(token.id)}
+                                                                className="px-1.5 py-0.5 rounded bg-red-500 text-white text-[9.5px] font-semibold"
+                                                            >
+                                                                {revokingId === token.id ? '…' : tr("Revoke")}
+                                                            </button>
+                                                        </div>
+                                                    ) : isActive ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setConfirmRevokeId(token.id)}
+                                                            className="text-[10px] text-red-400 hover:underline shrink-0"
+                                                        >
+                                                            {tr("Revoke")}
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-[9.5px] text-(--ss-fg3)">
+                                                            {isExpired ? tr("Exp") : tr("Revoked")}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </m.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {showFallback && (
                     <textarea
                         ref={fallbackRef}
                         readOnly
                         value={showFallback}
-                        className="w-full h-16 p-2 rounded-lg bg-black text-cyan-300 font-mono text-[10px]"
+                        className="w-full h-12 p-1.5 rounded-lg bg-black text-cyan-300 font-mono text-[10px]"
                         onFocus={(e) => e.currentTarget.select()}
                     />
-                </div>
-            )}
-        </div>
+                )}
+            </div>
+        </LazyMotion>
     );
 };
