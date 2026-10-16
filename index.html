@@ -56,10 +56,71 @@
   <meta name="theme-color" content="#0d0b0a" media="(prefers-color-scheme: dark)" />
   <link rel="stylesheet" href="/index.css">
 
+  <script>
+    (function () {
+      var recovered = false;
+      function selfHeal(reason) {
+        if (recovered) return;
+        recovered = true;
+        console.warn('[Onyx] Recovering from error:', reason);
+        try {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              for (var i = 0; i < regs.length; i++) regs[i].unregister();
+            }).catch(function () {});
+          }
+          if ('caches' in window) {
+            caches.keys().then(function (names) {
+              for (var i = 0; i < names.length; i++) caches.delete(names[i]);
+            }).catch(function () {});
+          }
+        } catch (e) {}
+        setTimeout(function () {
+          var u = new URL(window.location.href);
+          u.searchParams.set('v', Date.now().toString());
+          window.location.replace(u.toString());
+        }, 300);
+      }
+
+      window.addEventListener('error', function (e) {
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+          var src = e.target.src || e.target.href || '';
+          console.error('[Onyx] Resource error:', src);
+          var root = document.getElementById('root');
+          if (!root || !root.firstElementChild) {
+            selfHeal('Failed to load: ' + src);
+          }
+        }
+      }, true);
+
+      window.addEventListener('unhandledrejection', function (e) {
+        var msg = e && e.reason ? (e.reason.message || String(e.reason)) : '';
+        if (msg.indexOf('Failed to fetch dynamically imported module') !== -1 || msg.indexOf('Loading chunk') !== -1) {
+          selfHeal('Chunk import error: ' + msg);
+        }
+      });
+
+      window.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+          var root = document.getElementById('root');
+          if (root && (!root.firstElementChild || root.innerHTML.trim() === '')) {
+            selfHeal('Root empty after timeout');
+          }
+        }, 6000);
+      });
+    })();
+  </script>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d0b0a;color:#fdfcf0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+      <div style="text-align:center;">
+        <div style="font-size:22px;font-weight:700;letter-spacing:0.04em;">ONYX</div>
+        <div style="font-size:12px;opacity:0.6;margin-top:6px;">Connecting...</div>
+      </div>
+    </div>
+  </div>
 
   <!-- SVG Filters -->
   <svg style="position: absolute; width: 0; height: 0; overflow: hidden;">

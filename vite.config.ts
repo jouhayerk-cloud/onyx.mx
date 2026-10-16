@@ -12,12 +12,12 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 // by URL, so an unchanged URL keeps showing the old cube. This one value is
 // appended as ?v= to every icon link in index.html (the __ICON_VERSION__
 // placeholder) and to every icon in the web app manifest below.
-const ICON_VERSION = '1.85';
+const ICON_VERSION = '1.86';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: process.env.CI || process.env.GITHUB_ACTIONS ? 'https://jouhayerk-cloud.github.io/onyx.mx/' : '/',
+    base: mode === 'development' ? '/' : (process.env.VITE_BASE_URL || '/onyx.mx/'),
     assetsInclude: ['**/*.usdz', '**/*.glb'],
     server: {
       port: 1001,
@@ -38,10 +38,12 @@ export default defineConfig(({ mode }) => {
             registerType: 'autoUpdate',
             injectRegister: 'auto',
             workbox: {
-                // Cache all compiled assets permanently
-                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-                // Large chunks (Three.js, PDF libs) — still cache
-                maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8MB
+                cleanupOutdatedCaches: true,
+                skipWaiting: true,
+                clientsClaim: true,
+                // Cache core compiled assets only (keep install lightweight < 3MB)
+                globPatterns: ['**/*.{js,css,html}', 'favicon.png', 'apple-touch-icon*.png', 'icon-*.png'],
+                maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
                 runtimeCaching: [
                     {
                         // Supabase API — network-first, fallback to cache
@@ -51,6 +53,15 @@ export default defineConfig(({ mode }) => {
                             cacheName: 'supabase-api',
                             networkTimeoutSeconds: 5,
                             expiration: { maxEntries: 500, maxAgeSeconds: 7 * 24 * 60 * 60 },
+                        },
+                    },
+                    {
+                        // App images and icons loaded at runtime
+                        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff2?)$/,
+                        handler: 'StaleWhileRevalidate',
+                        options: {
+                            cacheName: 'static-assets-cache',
+                            expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 60 * 60 },
                         },
                     },
                     {
@@ -92,6 +103,7 @@ export default defineConfig(({ mode }) => {
                 display: 'standalone',
                 orientation: 'any',
                 start_url: './',
+                scope: '/onyx.mx/',
                 icons: [
                     // 'any' and 'maskable' are deliberately separate entries.
                     // A maskable icon is cropped to the platform's shape with
