@@ -30,6 +30,13 @@ import {
   DEFAULT_MIN_THROTTLE_MS,
 } from '../src/lib/presence/presenceService';
 
+// The service pings Supabase and opens a realtime channel. A check must never
+// reach the real network (and its sockets kept this process alive until the
+// caller's timeout), so every fetch fails like an offline device would.
+globalThis.fetch = (async () => {
+  throw new TypeError('fetch failed (stubbed offline in check-presence-service)');
+}) as typeof fetch;
+
 function assert(condition: any, message: string): asserts condition {
   if (!condition) {
     console.error(`❌ Assertion Failed: ${message}`);
@@ -305,3 +312,8 @@ console.log('\n[7/7] Testing Service Lifecycle & Graceful Offline Behavior...');
 console.log('\n=============================================================================');
 console.log('  ALL PRESENCE SERVICE TESTS PASSED SUCCESSFULLY (0 ERRORS)');
 console.log('=============================================================================\n');
+
+// Exit explicitly: the realtime client can keep sockets or timers open after the
+// last test, which used to hang this script until the caller's timeout. Any
+// failed assertion throws above and exits non-zero before reaching this line.
+process.exit(0);

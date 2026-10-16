@@ -14,6 +14,12 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 // placeholder) and to every icon in the web app manifest below.
 const ICON_VERSION = '1.87';
 
+// Identifies one build. index.html's start-up safety net (the __BUILD_ID__
+// placeholder) allows its service-worker and cache reset at most once per build,
+// so a deploy that fixes a broken page re-arms it and a persistent failure
+// cannot loop.
+const BUILD_ID = `${pkg.version}-${Date.now().toString(36)}`;
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
@@ -31,7 +37,7 @@ export default defineConfig(({ mode }) => {
         {
             name: 'onyx-icon-version',
             // 'pre' so Vite still prefixes `base` onto the rewritten icon URLs.
-            transformIndexHtml: { order: 'pre', handler: (html: string) => html.replaceAll('__ICON_VERSION__', ICON_VERSION) },
+            transformIndexHtml: { order: 'pre', handler: (html: string) => html.replaceAll('__ICON_VERSION__', ICON_VERSION).replaceAll('__BUILD_ID__', BUILD_ID) },
         },
         mode === 'development' ? basicSsl() : null,
         VitePWA({
@@ -41,10 +47,58 @@ export default defineConfig(({ mode }) => {
                 cleanupOutdatedCaches: true,
                 skipWaiting: true,
                 clientsClaim: true,
-                // Cache core compiled assets only (keep install lightweight < 3MB)
-                globPatterns: ['**/*.{js,css,html}', 'favicon.png', 'favicon.svg', 'apple-touch-icon*.png', 'icon-*.png'],
+                // Precache = the app shell plus the views a warehouse phone needs
+                // with no signal. Measured on 2026-10-16: everything under
+                // dist/**/*.{js,css,html} was 135 entries / 14.0 MB, which every
+                // first install downloaded on mobile data. The heavy lazy chunks
+                // below are NOT precached; the runtime rules cache each one the
+                // first time it is used (CacheFirst, the file names are hashed),
+                // so offline use still works for everything the device has opened.
+                // Media (public/hero, public/img, mascots, tutorial) and the
+                // Affinity (.af) brand sources were never in the globs and must
+                // not be added.
+                globPatterns: ['**/*.{js,css,html}', 'favicon.png', 'favicon.svg', 'apple-touch-icon*.png', 'icon-192.png'],
+                globIgnores: [
+                    // Export and print libraries: only loaded when a user exports.
+                    'assets/vendor-excel-*.js',
+                    'assets/vendor-pdf-*.js',
+                    // 3D viewer, in-browser embeddings runtime and AI SDKs: optional features.
+                    'assets/vendor-3d-*.js',
+                    'assets/vendor-ai-*.js',
+                    'assets/ort*.js',
+                    // Brand/catalogue data chunk and the settings portal (0.7 MB, opened rarely).
+                    'assets/rareEarthLogo-*.js',
+                    'assets/StudioSettingsPortal-*.js',
+                    // Label-printer designer iframe: needs Bluetooth hardware, not offline work.
+                    'phomemo-designer/**',
+                    // The 512 px icons are fetched by the installer through the manifest.
+                    'icon-512.png',
+                    'icon-maskable-512.png',
+                    '**/*.af',
+                ],
                 maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
                 runtimeCaching: [
+                    {
+                        // Lazy chunks left out of the precache. Hashed names never change
+                        // content, so cache-first is safe; old hashes age out after 30 days.
+                        urlPattern: /\/assets\/[^/]+\.(?:js|mjs|css)$/,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'lazy-chunks',
+                            cacheableResponse: { statuses: [200] },
+                            expiration: { maxEntries: 80, maxAgeSeconds: 30 * 24 * 60 * 60 },
+                        },
+                    },
+                    {
+                        // Label designer iframe: files are not hashed, so revalidate.
+                        urlPattern: /\/phomemo-designer\//,
+                        handler: 'StaleWhileRevalidate',
+                        options: {
+                            cacheName: 'phomemo-designer',
+                            cacheableResponse: { statuses: [200] },
+                            expiration: { maxEntries: 20, maxAgeSeconds: 30 * 24 * 60 * 60 },
+                        },
+                    },
                     {
                         // Supabase API — network-first, fallback to cache
                         urlPattern: /supabase\.co\/rest\//,

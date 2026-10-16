@@ -58,52 +58,123 @@
   <link rel="stylesheet" href="/index.css">
 
   <script>
+    /* Start-up safety net. It exists for ONE case: this page was served from a
+       stale cache (an old index.html that points at JS or CSS chunks a newer
+       deploy deleted), so the app can never mount. Only a REAL load failure of
+       a same-origin script or stylesheet, or of a lazy chunk, may unregister the
+       service worker and wipe the caches, and only once per build (__BUILD_ID__).
+
+       What it must never do: act on a timer alone. On a slow phone or a weak
+       signal the 2.4 MB main chunk can take longer than any fixed timeout, and
+       wiping the precache there throws away the offline copy for nothing. The
+       timers below only change the splash text and offer a plain reload. It
+       also never wipes while the device is offline: nothing could be refetched. */
     (function () {
+      var BUILD = '__BUILD_ID__';
+      var HEAL_KEY = 'onyx_healed_build';
       var recovered = false;
+      var errorShown = false; // a failure message is on screen: the slow-start hints must not overwrite it
+
+      function store(kind) {
+        try { var s = window[kind]; s.setItem('onyx_probe', '1'); s.removeItem('onyx_probe'); return s; } catch (e) { return null; }
+      }
+      // localStorage survives the reload and the browser restart; sessionStorage is the fallback.
+      var ls = store('localStorage');
+      var ss = store('sessionStorage');
+      function readHealed() {
+        try { return (ls && ls.getItem(HEAL_KEY)) || (ss && ss.getItem(HEAL_KEY)) || ''; } catch (e) { return ''; }
+      }
+      function markHealed() {
+        try { if (ls) ls.setItem(HEAL_KEY, BUILD); } catch (e) {}
+        try { if (ss) ss.setItem(HEAL_KEY, BUILD); } catch (e) {}
+      }
+      function alreadyHealed() {
+        if (readHealed() === BUILD) return true;
+        // No usable storage at all: the ?v= added by our own reload is the only memory left.
+        if (!ls && !ss) { try { return new URL(location.href).searchParams.has('v'); } catch (e) {} }
+        return false;
+      }
+
+      var es = false;
+      try { var lang = ls && ls.getItem('appLanguage'); es = lang ? JSON.parse(lang) === 'es' : /^es/i.test(navigator.language || ''); } catch (e) {}
+      function t(en, esText) { return es ? esText : en; }
+
+      function setSplash(message, withReload, isError) {
+        var sub = document.getElementById('onyx-splash-subtitle');
+        if (!sub) return;
+        sub.textContent = '';
+        var span = document.createElement('span');
+        span.textContent = message;
+        if (isError) { span.style.color = '#ef4444'; errorShown = true; }
+        sub.appendChild(span);
+        if (withReload) {
+          var btn = document.createElement('button');
+          btn.id = 'onyx-splash-reload';
+          btn.textContent = t('Reload Onyx', 'Recargar Onyx');
+          btn.style.cssText = 'display:block;margin:14px auto 0;padding:8px 20px;border-radius:999px;border:none;background:#fdfcf0;color:#0d0b0a;font-weight:700;font-size:13px;cursor:pointer;';
+          btn.onclick = function () { location.reload(); };
+          sub.appendChild(btn);
+        }
+      }
+
       function selfHeal(reason) {
         if (recovered) return;
-        var splash = document.getElementById('onyx-initial-splash');
-        if (!splash) return; // React already mounted; do not force reload
+        if (!document.getElementById('onyx-initial-splash')) return; // React already mounted; do not force reload
 
-        var HEAL_KEY = 'onyx_healed_ts';
-        var lastHeal = sessionStorage.getItem(HEAL_KEY);
-        if (lastHeal && (Date.now() - parseInt(lastHeal, 10) < 30000)) {
-          console.warn('[Onyx] Self-heal already attempted recently. Showing manual retry.');
-          var sub = document.getElementById('onyx-splash-subtitle');
-          if (sub) {
-            sub.innerHTML = '<span style="color:#ef4444">Connection interrupted.</span><br/><button onclick="sessionStorage.removeItem(\'onyx_healed_ts\');location.reload();" style="margin-top:14px;padding:8px 20px;border-radius:999px;border:none;background:#fdfcf0;color:#0d0b0a;font-weight:700;font-size:13px;cursor:pointer;">Reload Onyx</button>';
-          }
+        if (navigator.onLine === false) {
+          // Offline with a failed chunk: the cache is all we have. Keep it.
+          console.warn('[Onyx] Load failure while offline, cache kept:', reason);
+          setSplash(t('You are offline and part of Onyx could not load. Reconnect, then reload.', 'Estás sin conexión y una parte de Onyx no cargó. Reconéctate y recarga.'), true, true);
+          return;
+        }
+        if (alreadyHealed()) {
+          console.warn('[Onyx] Self-heal already ran for this build. Showing manual retry.', reason);
+          setSplash(t('Connection interrupted.', 'Conexión interrumpida.'), true, true);
           return;
         }
 
         recovered = true;
-        sessionStorage.setItem(HEAL_KEY, Date.now().toString());
+        markHealed();
         console.warn('[Onyx] Self-healing reload triggered:', reason);
 
+        var jobs = [];
         try {
           if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function (regs) {
-              for (var i = 0; i < regs.length; i++) regs[i].unregister();
-            }).catch(function () {});
+            jobs.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (r) { return r.unregister(); }));
+            }));
           }
           if ('caches' in window) {
-            caches.keys().then(function (names) {
-              for (var i = 0; i < names.length; i++) caches.delete(names[i]);
-            }).catch(function () {});
+            jobs.push(caches.keys().then(function (names) {
+              return Promise.all(names.map(function (n) { return caches.delete(n); }));
+            }));
           }
         } catch (e) {}
 
-        setTimeout(function () {
+        var reloaded = false;
+        function reload() {
+          if (reloaded) return;
+          reloaded = true;
           var u = new URL(window.location.href);
           u.searchParams.set('v', Date.now().toString());
           window.location.replace(u.toString());
-        }, 300);
+        }
+        // Reload once the wipe has finished, but never wait more than 3 s for it.
+        Promise.all(jobs.map(function (j) { return j.catch(function () {}); })).then(reload, reload);
+        setTimeout(reload, 3000);
       }
 
-      // ONLY listen for critical SCRIPT or CSS LINK failures (never IMG/MEDIA)
+      function sameOrigin(url) {
+        return !!url && url.indexOf(location.origin) === 0;
+      }
+
+      // ONLY our own SCRIPT or stylesheet LINK failing counts (never IMG/MEDIA,
+      // never Google Fonts or other third parties, which fail on any weak link).
       window.addEventListener('error', function (e) {
-        if (e.target && (e.target.tagName === 'SCRIPT' || (e.target.tagName === 'LINK' && e.target.rel === 'stylesheet'))) {
-          var src = e.target.src || e.target.href || '';
+        var el = e.target;
+        if (el && (el.tagName === 'SCRIPT' || (el.tagName === 'LINK' && el.rel === 'stylesheet'))) {
+          var src = el.src || el.href || '';
+          if (!sameOrigin(src)) return;
           console.error('[Onyx] Critical asset load error:', src);
           selfHeal('Critical asset failed: ' + src);
         }
@@ -116,14 +187,19 @@
         }
       });
 
-      // Watchdog: If React hasn't unmounted the splash after 8s, attempt recovery
+      // Slow start: say so, change nothing. After 8 s a hint, after 30 s a plain
+      // reload button (no unregister, no cache wipe). React removes the splash on mount.
       window.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
-          var splash = document.getElementById('onyx-initial-splash');
-          if (splash) {
-            selfHeal('Initial mount watchdog timeout');
+          if (document.getElementById('onyx-initial-splash') && !recovered && !errorShown) {
+            setSplash(t('Still loading. The connection looks slow.', 'Sigue cargando. La conexión parece lenta.'), false, false);
           }
         }, 8000);
+        setTimeout(function () {
+          if (document.getElementById('onyx-initial-splash') && !recovered && !errorShown) {
+            setSplash(t('Still loading. You can wait or reload.', 'Sigue cargando. Puedes esperar o recargar.'), true, false);
+          }
+        }, 30000);
       });
     })();
   </script>
@@ -153,7 +229,7 @@
   <div id="root">
     <div id="onyx-initial-splash" style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d0b0a;color:#fdfcf0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
       <div style="text-align:center;">
-        <img class="onyx-splash-logo" src="./onyxlogo.webp" alt="Onyx-mx" />
+        <img class="onyx-splash-logo" src="/onyxlogo.webp" alt="Onyx-mx" />
         <div id="onyx-splash-subtitle" style="font-size:14px;letter-spacing:0.04em;opacity:0.85;font-weight:600;">Onyx-mx loading...</div>
       </div>
     </div>
