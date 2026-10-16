@@ -30,6 +30,9 @@ const allowedOrigins = new Set([
     'http://127.0.0.1:5173',
     'http://localhost:5173',
     'https://localhost:1001',
+    'http://localhost:1001',
+    'https://192.0.2.71:1001',
+    'http://192.0.2.71:1001',
     'https://jouhayerk-cloud.github.io',
 ]);
 
@@ -50,6 +53,7 @@ function corsHeaders(origin) {
             'Access-Control-Allow-Origin': origin,
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+            'Access-Control-Allow-Private-Network': 'true',
             'Vary': 'Origin',
         }
         : { 'Vary': 'Origin' };

@@ -42,7 +42,7 @@
 [CmdletBinding()]
 param(
     [int]$Port = 0,
-    [string[]]$CorsOrigin = @("https://jouhayerk-cloud.github.io"),
+    [string[]]$CorsOrigin = @("https://jouhayerk-cloud.github.io", "https://192.0.2.71:1001", "https://localhost:1001"),
     [switch]$DevMock,
     [switch]$Stop,
     [switch]$Status,

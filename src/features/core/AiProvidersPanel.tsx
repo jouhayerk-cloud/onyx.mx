@@ -13,6 +13,7 @@ import {
     X,
 } from 'lucide-react';
 import { PROVIDER_INFOS, getProvider } from '../../lib/ai/providers';
+import { COLIBRI_DEFAULT_BASE_URL } from '../../lib/ai/providers/colibri';
 import type { ProviderConfig, ProviderId } from '../../lib/ai/providers/types';
 import {
     getProviderConfig,
@@ -81,7 +82,7 @@ export const AiProvidersPanel: React.FC = () => {
         openai: '',
         compat: getProviderConfig('compat').baseUrl || '',
         companion: '',
-        colibri: getProviderConfig('colibri').baseUrl || 'http://127.0.0.1:8082',
+        colibri: getProviderConfig('colibri').baseUrl || COLIBRI_DEFAULT_BASE_URL,
     }));
 
     const [draftModels, setDraftModels] = useState<Record<ProviderId, string>>(() => ({
@@ -178,7 +179,7 @@ export const AiProvidersPanel: React.FC = () => {
         setDraftBaseUrls((prev) => ({
             ...prev,
             compat: prev.compat || compatCfg.baseUrl || '',
-            colibri: prev.colibri || colibriCfg.baseUrl || 'http://127.0.0.1:8082',
+            colibri: prev.colibri || colibriCfg.baseUrl || COLIBRI_DEFAULT_BASE_URL,
         }));
 
         const anthropicCfg = getProviderConfig('anthropic');
@@ -218,7 +219,7 @@ export const AiProvidersPanel: React.FC = () => {
         const patch: Partial<ProviderConfig> = {};
         if (keyVal) patch.key = keyVal;
         if (info?.needsBaseUrl || id === 'colibri') {
-            patch.baseUrl = baseVal || (id === 'colibri' ? 'http://127.0.0.1:8082' : '');
+            patch.baseUrl = baseVal || (id === 'colibri' ? COLIBRI_DEFAULT_BASE_URL : '');
         }
         if (id !== 'gemini') {
             patch.model = modelVal || (id === 'colibri' ? 'auto' : '');
@@ -271,7 +272,7 @@ export const AiProvidersPanel: React.FC = () => {
                 baseUrl:
                     (draftBaseUrls[id] ?? '').trim() ||
                     currentCfg.baseUrl ||
-                    (id === 'colibri' ? 'http://127.0.0.1:8082' : undefined),
+                    (id === 'colibri' ? COLIBRI_DEFAULT_BASE_URL : undefined),
                 model:
                     (draftModels[id] ?? '').trim() ||
                     currentCfg.model ||
@@ -305,7 +306,7 @@ export const AiProvidersPanel: React.FC = () => {
                 baseUrl:
                     (draftBaseUrls[id] ?? '').trim() ||
                     currentCfg.baseUrl ||
-                    (id === 'colibri' ? 'http://127.0.0.1:8082' : undefined),
+                    (id === 'colibri' ? COLIBRI_DEFAULT_BASE_URL : undefined),
                 model: (draftModels[id] ?? '').trim() || currentCfg.model,
             };
             const list = await impl.listModels(cfg);

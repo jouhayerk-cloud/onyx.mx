@@ -14,7 +14,7 @@ import {
     X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { colibriProvider, isColibriAvailable } from '../../lib/ai/providers/colibri';
+import { colibriProvider, isColibriAvailable, COLIBRI_DEFAULT_BASE_URL } from '../../lib/ai/providers/colibri';
 import { colibriRealtimeBridge } from '../../lib/ai/colibriRealtimeBridge';
 import {
     getProviderConfig,
@@ -46,12 +46,12 @@ interface TransportModeItem {
 
 const PRESET_URLS: Record<'cloud' | 'localhost' | 'mesh', string> = {
     cloud: SUPABASE_RELAY_URL,
-    localhost: 'http://127.0.0.1:8082',
-    mesh: `http://${ONYX_MESH_TOPOLOGY.g7.ip}:8082`,
+    localhost: COLIBRI_DEFAULT_BASE_URL,
+    mesh: `http://${ONYX_MESH_TOPOLOGY.g7.ip}:${ONYX_MESH_TOPOLOGY.g7.colibriPort || 8000}`,
 };
 
 function detectDefaultUrl(): string {
-    if (typeof window === 'undefined') return 'http://127.0.0.1:8082';
+    if (typeof window === 'undefined') return COLIBRI_DEFAULT_BASE_URL;
     const isLocalhost =
         window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isHttps = window.location.protocol === 'https:';
@@ -60,12 +60,18 @@ function detectDefaultUrl(): string {
     if (isIOS || (isHttps && !isLocalhost)) {
         return SUPABASE_RELAY_URL;
     }
-    return 'http://127.0.0.1:8082';
+    return COLIBRI_DEFAULT_BASE_URL;
 }
 
 function resolveMode(url: string): ConnectionMode {
     if (url === PRESET_URLS.cloud) return 'cloud';
-    if (url === PRESET_URLS.localhost || url === 'http://localhost:8082') return 'localhost';
+    if (
+        url === PRESET_URLS.localhost ||
+        url === 'http://localhost:8000' ||
+        url === 'http://127.0.0.1:8082' ||
+        url === 'http://localhost:8082'
+    )
+        return 'localhost';
     if (url === PRESET_URLS.mesh) return 'mesh';
     return 'custom';
 }
@@ -255,7 +261,7 @@ export const ColibriSettingsCard: React.FC = () => {
         {
             id: 'localhost',
             label: tr("Local"),
-            fullName: tr("Local G7 :8082"),
+            fullName: tr("Local Host :8000"),
             icon: Laptop,
         },
         {
@@ -417,7 +423,7 @@ export const ColibriSettingsCard: React.FC = () => {
                                     value={endpoint}
                                     onChange={(e) => setEndpoint(e.target.value)}
                                     onBlur={() => handleSave()}
-                                    placeholder="http://127.0.0.1:8082"
+                                    placeholder="http://127.0.0.1:8000"
                                     aria-label={tr("Endpoint URL")}
                                     className="sk-mono"
                                 />
