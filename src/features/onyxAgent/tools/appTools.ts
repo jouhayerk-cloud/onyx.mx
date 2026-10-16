@@ -1,10 +1,9 @@
 import {
     computeBoxesParams,
     formatBoxesCliCommand,
-    generateProceduralCrateSvg,
     CrateDimensions
 } from '../../../lib/logistics/boxesBridge';
-import { getBoxesCliRecipe } from '../../../lib/logistics/boxesCliBridge';
+import { sanitizeFileBase } from '../../../lib/logistics/boxesCliBridge';
 
 /**
  * REQUIRED JOTAI WIRING:
@@ -95,13 +94,13 @@ export const appToolDefinitions = [
     },
     {
         name: "generate_crate_cutfile",
-        description: "Generates laser cut box/crate stencils or divider cutfiles (Boxes.py standard) for a given crate and its packed items. Returns cut dimensions, SVG stencil data, and CLI recipe. When called, include the cutfile JSON block in your answer so Chan renders the interactive LaserCutfileCard.",
+        description: "Looks up a warehouse crate by id and prepares its laser stencil from the crate's real dimensions. Returns the dimensions, the material settings and a Boxes.py CLI recipe; the card draws the approximate SVG itself, no SVG is returned. When called, include the cutfile JSON block in your answer so Chan renders the interactive LaserCutfileCard.",
         parameters: {
             type: "OBJECT",
             properties: {
                 crate_id: {
                     type: "STRING",
-                    description: "The ID or display name of the crate to generate cutfiles for."
+                    description: "The id of the crate (letters, digits, '_' and '-', up to 64 characters)."
                 },
                 material_thickness_mm: {
                     type: "NUMBER",
@@ -197,27 +196,64 @@ export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args
         },
 
         generate_crate_cutfile: async (args) => {
-            const crateId = typeof args.crate_id === 'string' ? args.crate_id : '';
+            // Same gate as navigating to the logistics module: crate sizes are not for vendor / client roles.
+            if (!(VIEW_ACCESS[ctx.role] || []).includes('logistics')) {
+                return { ok: false, error: 'not allowed' };
+            }
+
+            const crateId = typeof args.crate_id === 'string' ? args.crate_id.trim() : '';
             if (!crateId) {
                 return { ok: false, error: 'Invalid or missing crate_id argument.' };
             }
+            if (crateId.length > 64 || !/^[a-zA-Z0-9_-]+$/.test(crateId)) {
+                return { ok: false, error: 'Invalid crate_id format or length.' };
+            }
 
-            const materialThickness = typeof args.material_thickness_mm === 'number' ? args.material_thickness_mm : 6;
-            const burn = typeof args.burn_mm === 'number' ? args.burn_mm : 0.1;
-            const outputFormat = typeof args.output_format === 'string' ? args.output_format : 'svg';
+            const clamp = (value: unknown, fallback: number, min: number, max: number) => {
+                const n = typeof value === 'number' ? value : Number.NaN;
+                return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+            };
+            const materialThickness = clamp(args.material_thickness_mm, 6, 0.5, 50);
+            const burn = clamp(args.burn_mm, 0.1, 0, 2);
+            const outputFormat = args.output_format === 'lbrn2' ? 'lbrn2' : 'svg';
+
+            // The stencil is for THIS crate: read its real size from the local database.
+            let row: { width_cm?: unknown; length_cm?: unknown; height_cm?: unknown } | null = null;
+            try {
+                const { getDatabase } = await import('../../../lib/database');
+                const db: any = await getDatabase();
+                const doc = await db.logistics.findOne({ selector: { id: crateId } }).exec();
+                row = doc ? (typeof doc.toJSON === 'function' ? doc.toJSON() : doc) : null;
+            } catch {
+                return { ok: false, error: 'The crate database is not available right now.' };
+            }
+            if (!row) {
+                return { ok: false, error: `No crate with id ${crateId} was found.` };
+            }
+            const widthCm = Number(row.width_cm);
+            const lengthCm = Number(row.length_cm);
+            const heightCm = Number(row.height_cm);
+            if (![widthCm, lengthCm, heightCm].every(n => Number.isFinite(n) && n > 0)) {
+                return { ok: false, error: `Crate ${crateId} has no complete dimensions, so no stencil can be drawn.` };
+            }
 
             const crateDims: CrateDimensions = {
-                widthCm: 60,
-                lengthCm: 60,
-                heightCm: 40,
+                widthCm,
+                lengthCm,
+                heightCm,
                 thicknessMm: materialThickness,
                 burnMm: burn
             };
 
             const params = computeBoxesParams(crateDims);
-            const cliCommand = formatBoxesCliCommand(params, `${crateId}_cutfile.${outputFormat === 'lbrn2' ? 'lbrn2' : 'svg'}`);
-            const svg = generateProceduralCrateSvg(crateDims);
+            const fileBase = sanitizeFileBase(crateId);
+            const cliCommand = formatBoxesCliCommand(
+                outputFormat === 'lbrn2' ? { ...params, extraArgs: { format: 'lbrn2' } } : params,
+                `${fileBase}_cutfile.${outputFormat}`
+            );
 
+            // No SVG in the result: it would only bloat the model context, and the card must never render
+            // markup that passed through the model. The card draws the approximate SVG from these numbers.
             const cutfileData = {
                 ok: true,
                 crateId,
@@ -225,9 +261,7 @@ export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args
                 dimensionsMm: { x: params.x, y: params.y, h: params.h },
                 materialThicknessMm: materialThickness,
                 burnMm: burn,
-                cliCommand,
-                sampleSvgSnippet: svg.slice(0, 300),
-                fullSvg: svg
+                cliCommand
             };
 
             if (typeof window !== 'undefined') {

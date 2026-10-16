@@ -28,13 +28,15 @@ import {
     PackedItemSpec, 
     computeBoxesParams, 
     computeCutTelemetry,
-    getToolpathSegments
+    getToolpathSegments,
+    svgToDataUri
 } from '../../lib/logistics/boxesBridge';
 import { 
     downloadLaserCutfileSvg, 
     downloadLightBurnProject, 
     generateLightBurnProjectXml,
     getBoxesCliRecipe,
+    sanitizeFileBase,
     BOXES_RUNTIME,
     BOXES_GENERATORS,
     BOXES_MATERIAL_PRESETS,
@@ -330,6 +332,10 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
         });
     }, [crateDimensions, packedItemSpecs, bedSize, highlightedItemId]);
 
+    // Item names inside the drawing come from inventory data: show it as an image (no script or handler can
+    // run inside an <img>), never as innerHTML. The names are XML-escaped in the generator as well.
+    const svgPreviewSrc = useMemo(() => svgToDataUri(svgString), [svgString]);
+
     // Telemetry computation (Perimeter, Area, Efficiency, Est Cut Time, Panel Count)
     const telemetry = useMemo(() => {
         return computeCutTelemetry(crateDimensions, packedItemSpecs, bedSize.width, bedSize.height);
@@ -489,7 +495,7 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
 
     // Export Handlers
     const safeBaseName = useMemo(() => {
-        return (effectiveCrateName || 'crate').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        return sanitizeFileBase(effectiveCrateName);
     }, [effectiveCrateName]);
 
     const handleDownloadSvg = () => {
@@ -499,26 +505,32 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
     };
 
     const handleDownloadLightBurn = () => {
-        const filename = `${safeBaseName}-lightburn-${activeGenerator}-${thickness}mm.lbrn2`;
-        const lbrnXml = generateLightBurnProjectXml(svgString, {
-            materialThickness: thickness,
-            cutSpeed: 20,
-            cutPower: 85
-        });
-        downloadLightBurnProject(filename, lbrnXml);
-        onExport?.('lbrn2', filename, lbrnXml, { thickness, burn, bedSize: bedSize.id });
+        try {
+            const filename = `${safeBaseName}-lightburn-${activeGenerator}-${thickness}mm.lbrn2`;
+            const lbrnXml = generateLightBurnProjectXml(svgString, {
+                materialThickness: thickness,
+                cutSpeed: 20,
+                cutPower: 85
+            });
+            downloadLightBurnProject(filename, lbrnXml);
+            onExport?.('lbrn2', filename, lbrnXml, { thickness, burn, bedSize: bedSize.id });
+        } catch (err) {
+            console.error('Failed to build LightBurn project:', err);
+        }
     };
 
     // PowerShell CLI recipe with $env:PYTHONUTF8=1
+    // getBoxesCliRecipe keeps only the arguments the chosen generator accepts (TypeTray: --sx --sy --h,
+    // FlexBox: --sx --y --h, the box generators: --x --y --h) and quotes every value.
     const cliRecipeCommand = useMemo(() => {
         const isTray = activeGenerator === 'TypeTray';
-        const args: Record<string, any> = {
+        const args: Record<string, string | number | boolean | undefined> = {
             x: Math.round(effectiveWidth * 10 * 100) / 100,
             y: Math.round(effectiveLength * 10 * 100) / 100,
             h: Math.round(effectiveHeight * 10 * 100) / 100,
             thickness,
             burn,
-            outside: 1
+            outside: true
         };
         if (isTray && (boxesParams.sx || boxesParams.sy)) {
             if (boxesParams.sx) args.sx = boxesParams.sx;
@@ -537,14 +549,14 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
         }
     };
 
-    const handleLaunchWebServer = async () => {
+    // The browser cannot start or probe a server on the laser PC: only copy the command.
+    const handleCopyWebServerCommand = async () => {
         try {
             await navigator.clipboard.writeText(BOXES_RUNTIME.serverCommand);
             setCopiedServer(true);
             setTimeout(() => setCopiedServer(false), 3000);
-            window.open(BOXES_RUNTIME.serverUrl, '_blank', 'noopener,noreferrer');
         } catch (err) {
-            window.open(BOXES_RUNTIME.serverUrl, '_blank', 'noopener,noreferrer');
+            console.error('Failed to copy server command:', err);
         }
     };
 
@@ -560,21 +572,18 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
         <div className="ui-root w-full h-full relative overflow-hidden flex flex-col bg-[#070b14] select-none text-white font-sans">
             {/* ─── Top Boxes.py Software & Generator Header Ribbon ─── */}
             <header className="z-30 w-full bg-black/85 backdrop-blur-2xl border-b border-white/10 px-4 py-2.5 flex flex-col gap-2 shadow-2xl">
-                {/* Upper Tier: Installed Engine Status, Container Selector & Web Server Launcher */}
+                {/* Upper Tier: recipe note, Container Selector & server command */}
                 <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
                     {/* Left: Engine Status & Container Classification */}
                     <div className="flex items-center gap-2.5 flex-wrap">
-                        {/* Boxes.py Installed Engine Badge */}
-                        <div 
-                            className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-400/30 rounded-xl text-emerald-300 font-mono text-[11px] shadow-sm"
-                            title={`Installed executable: ${BOXES_RUNTIME.cliPath}\nPython Environment: ${BOXES_RUNTIME.pythonVersion}\nUTF-8 Guard: Active`}
+                        {/* Honest preview badge: the drawing is Onyx's own, the web app cannot see Boxes.py */}
+                        <div
+                            className="flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-400/30 rounded-xl text-amber-300 font-mono text-[11px] shadow-sm"
+                            title={tr("The drawing is an approximate Onyx preview, not Boxes.py output. Use the copied CLI recipe on the laser PC for the real cutfile.")}
                         >
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
                             <span className="font-bold tracking-tight">
-                                {BOXES_RUNTIME.statusPillText}
+                                {tr("Approximate preview")}
                             </span>
                         </div>
 
@@ -645,11 +654,11 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                             </div>
                         )}
 
-                        {/* Launch Local Boxes.py Web Server Button */}
+                        {/* Copy the Boxes.py web server command (to run on the laser PC) */}
                         <button
                             type="button"
-                            onClick={handleLaunchWebServer}
-                            title={`${tr("Launch local interactive web server and copy PowerShell command to clipboard")}: ${BOXES_RUNTIME.serverCommand}`}
+                            onClick={handleCopyWebServerCommand}
+                            title={tr("Copy the PowerShell command that starts the Boxes.py web server on the laser PC")}
                             className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all border active:scale-95 shadow-sm ${
                                 copiedServer
                                     ? 'bg-emerald-500/25 text-emerald-300 border-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
@@ -657,7 +666,7 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                             }`}
                         >
                             <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-                            <span>{copiedServer ? tr("Server :8080 (Copied)") : tr("Boxes.py Web Server (:8080)")}</span>
+                            <span>{copiedServer ? tr("Server command copied") : tr("Copy Boxes.py server command")}</span>
                         </button>
                     </div>
                 </div>
@@ -667,7 +676,7 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                     {/* Generator Selector Pills */}
                     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                         <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider mr-1 hidden sm:inline">
-                            {tr("Generator")}:
+                            {tr("Recipe generator")}:
                         </span>
                         {(['TypeTray', 'UniversalBox', 'ABox', 'ClosedBox', 'FlexBox'] as BoxesGeneratorType[]).map(genKey => {
                             const meta = BOXES_GENERATORS[genKey];
@@ -677,7 +686,7 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                                     key={genKey}
                                     type="button"
                                     onClick={() => handleSelectGenerator(genKey)}
-                                    title={meta.description}
+                                    title={`${meta.description} ${tr("(changes the CLI recipe only; the drawing is the same)")}`}
                                     className={`px-3 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap border cursor-pointer ${
                                         isSelected
                                             ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.25)]'
@@ -816,7 +825,7 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                     <button
                         type="button"
                         onClick={handleDownloadSvg}
-                        title={tr("Download 2D Laser SVG Cutfile")}
+                        title={tr("Download the approximate 2D laser SVG (Onyx drawing, not Boxes.py output)")}
                         className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-white/5 hover:bg-white/10 text-white/90 border border-white/15 rounded-lg text-xs font-semibold transition-all shadow-sm active:scale-95 min-h-[28px]"
                     >
                         <Download className="w-3.5 h-3.5 text-rose-400" />
@@ -827,7 +836,7 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                     <button
                         type="button"
                         onClick={handleDownloadLightBurn}
-                        title={tr("Download LightBurn .lbrn2 Project with Cut & Engrave layers")}
+                        title={tr("Download a LightBurn project (.lbrn2) built from the same approximate drawing, cut layers only")}
                         className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-white/5 hover:bg-white/10 text-white/90 border border-white/15 rounded-lg text-xs font-semibold transition-all shadow-sm active:scale-95 min-h-[28px]"
                     >
                         <Layers className="w-3.5 h-3.5 text-amber-400" />
@@ -838,7 +847,7 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                     <button
                         type="button"
                         onClick={handleCopyCliCommand}
-                        title={`Copy Windows PowerShell command line:\n${cliRecipeCommand}`}
+                        title={`${tr("Copy the Boxes.py command for the laser PC")}:\n${cliRecipeCommand}`}
                         className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all shadow-sm border active:scale-95 min-h-[28px] ${
                             copiedCli
                                 ? 'bg-emerald-500/25 text-emerald-300 border-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
@@ -846,7 +855,7 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                         }`}
                     >
                         {copiedCli ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Terminal className="w-3.5 h-3.5 text-cyan-400" />}
-                        <span>{copiedCli ? tr("Copied C:\\boxes") : tr("Copy C:\\boxes CLI")}</span>
+                        <span>{copiedCli ? tr("Copied") : tr("Copy Boxes.py CLI")}</span>
                     </button>
                 </div>
             </div>
@@ -931,9 +940,11 @@ export const CrateCutfileStencilView: FC<CrateCutfileStencilViewProps> = ({
                     }}
                     className="pointer-events-none drop-shadow-2xl flex items-center justify-center relative w-[960px] h-auto rounded-xl shadow-2xl border border-white/10 bg-[#090d16] overflow-hidden"
                 >
-                    <div
-                        className="w-full h-full [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-w-none [&_svg]:block"
-                        dangerouslySetInnerHTML={{ __html: svgString }}
+                    <img
+                        src={svgPreviewSrc}
+                        alt={tr("Approximate laser stencil preview")}
+                        draggable={false}
+                        className="w-full h-auto max-w-none block"
                     />
 
                     {/* Animated Laser Head Beam Path Trace Simulation Overlay */}

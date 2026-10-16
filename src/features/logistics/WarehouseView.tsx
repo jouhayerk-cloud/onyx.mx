@@ -7,7 +7,8 @@ import {
     packingManagerTargetCrateIdAtom, 
     selectedInventoryIdsAtom,
     logisticsSubTabAtom,
-    isPackingCrateWizardOpenAtom
+    isPackingCrateWizardOpenAtom,
+    truckMaxWeightAtom
 } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { CratesInventoryView } from './CratesInventoryView';
@@ -21,7 +22,7 @@ import {
 } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
-import { tr } from '../../lib/i18n';
+import { tr, trf } from '../../lib/i18n';
 import toast from '../onyxIsland/notify/toast';
 import { 
     Box, 
@@ -119,6 +120,8 @@ export const WarehouseView: React.FC = () => {
     const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
     const cratesVersion = useAtomValue(cratesVersionAtom);
     const allInventory = useAtomValue(inventoryAtom);
+    // Truck weight limit: the one configured in the app (truckMaxWeightAtom), not a copy of the number.
+    const truckMaxKg = useAtomValue(truckMaxWeightAtom);
 
     const setIsPackingManagerOpen = useSetAtom(isCratePackingManagerOpenAtom);
     const setTargetCrateId = useSetAtom(packingManagerTargetCrateIdAtom);
@@ -188,6 +191,9 @@ export const WarehouseView: React.FC = () => {
                 packedCrates++;
             }
 
+            // Containers that already left (Deployed / In Transit) are no longer stock waiting for a truck.
+            if (c.status === 'Deployed' || c.status === 'In Transit') continue;
+
             if (c.brute_weight_kg && Number(c.brute_weight_kg) > 0) {
                 totalWeight += Number(c.brute_weight_kg);
             } else if (c.weight_kg && Number(c.weight_kg) > 0) {
@@ -195,7 +201,7 @@ export const WarehouseView: React.FC = () => {
             }
         }
 
-        const truckCap = 24000;
+        const truckCap = truckMaxKg > 0 ? truckMaxKg : 24000; // 24,000 kg only if the setting is missing
         const utilPct = Math.min(100, Math.round((totalWeight / truckCap) * 100));
 
         return {
@@ -207,7 +213,7 @@ export const WarehouseView: React.FC = () => {
             truckCapacityKg: truckCap,
             truckUtilizationPct: utilPct
         };
-    }, [crates]);
+    }, [crates, truckMaxKg]);
 
     // Inventory items available to pack
     const availableItems = useMemo(() => {
@@ -364,7 +370,7 @@ export const WarehouseView: React.FC = () => {
         setSelectedInventoryIds(Array.from(selectedItemIds));
         setIsPackingManagerOpen(true);
         toast.success(
-            tr(`Launching 3D & Boxes.py Studio with ${selectedItemIds.size} items...`), 
+            trf('Launching 3D & laser studio with {n} items...', { n: selectedItemIds.size }), 
             { icon: '📐' }
         );
     };
@@ -477,7 +483,7 @@ export const WarehouseView: React.FC = () => {
                         }`}
                     >
                         <span className="text-sm">📐</span>
-                        <span>{tr("Boxes.py Laser Studio")}</span>
+                        <span>{tr("Laser Studio")}</span>
                         <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] font-mono text-amber-300 font-bold border border-amber-400/30">
                             v2.0
                         </span>
@@ -599,14 +605,17 @@ export const WarehouseView: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* Right: Freight Truck Capacity & Boxes.py Live Status */}
+                    {/* Right: Freight Truck Capacity */}
                     <div className="flex items-center gap-3 shrink-0 py-1">
                         {/* Total Weight vs Truck Capacity */}
-                        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#141819]/90 border border-white/12 text-[11px] font-mono shadow-sm">
+                        <div
+                            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#141819]/90 border border-white/12 text-[11px] font-mono shadow-sm"
+                            title={tr("Weight of the packed containers still in the warehouse against the truck weight limit set in the app")}
+                        >
                             <Truck size={14} className="text-amber-400 shrink-0" />
                             <span className="text-white/60">{tr("Truck Load:")}</span>
                             <span className="font-bold text-white">
-                                {totalPackedWeightKg.toLocaleString()} / 24,000 kg
+                                {totalPackedWeightKg.toLocaleString()} / {truckCapacityKg.toLocaleString()} kg
                             </span>
                             <div className="w-14 h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/10">
                                 <div 
@@ -619,14 +628,6 @@ export const WarehouseView: React.FC = () => {
                             </span>
                         </div>
 
-                        {/* Boxes.py Status Badge */}
-                        <div 
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-950/70 border border-emerald-500/35 text-emerald-300 text-[10px] font-mono font-bold shadow-sm"
-                            title="Boxes.py CNC Laser CLI installed at C:\boxes with Python 3.13"
-                        >
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            <span>C:\boxes Ready (Py 3.13)</span>
-                        </div>
                     </div>
                 </div>
             </header>
@@ -855,7 +856,7 @@ export const WarehouseView: React.FC = () => {
                                                             } else {
                                                                 return (
                                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/30">
-                                                                        <span>📐</span> {tr("Boxes.py Tray/Box")}
+                                                                        <span>📐</span> {tr("Laser Tray/Box")}
                                                                     </span>
                                                                 );
                                                             }
@@ -970,7 +971,7 @@ export const WarehouseView: React.FC = () => {
                                             className="flex-1 lg:flex-none min-h-[46px] px-5 py-2.5 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 text-cyan-200 border border-cyan-400/40 font-bold text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
                                         >
                                             <Sparkles size={16} />
-                                            <span>{tr("Open 3D / Boxes.py Studio")}</span>
+                                            <span>{tr("Open 3D / Laser Studio")}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -990,7 +991,7 @@ export const WarehouseView: React.FC = () => {
                                 </div>
                                 <div className="flex flex-col">
                                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                        <span>{tr("Boxes.py CNC Laser Stencil Studio")}</span>
+                                        <span>{tr("Laser Stencil Studio (approximate preview)")}</span>
                                         <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold">
                                             v2.0
                                         </span>

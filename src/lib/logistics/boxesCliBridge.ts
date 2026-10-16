@@ -1,21 +1,33 @@
 // src/lib/logistics/boxesCliBridge.ts
-// Boxes.py Laser Cutfile, LightBurn Project Export Utilities & Windows CLI Bridge
+// Boxes.py laser cutfile downloads, LightBurn project export and Windows CLI recipe helpers.
+//
+// The web app never runs Boxes.py and cannot tell whether it is installed anywhere: the recipes below are text
+// for the operator to run on the laser PC, and the SVG / LightBurn files come from the Onyx procedural drawing
+// (boxesBridge.generateProceduralCrateSvg), which is an approximate preview, not Boxes.py output.
+
+import {
+    BOXES_EXE_PATH,
+    buildBoxesCliArgs,
+    escapeXml,
+    isBoxesGeneratorName,
+} from './boxesBridge';
 
 /**
- * Windows Boxes.py Installation Runtime Configuration (C:\boxes)
- * Python 3.13 Virtual Environment & Web Server definitions
+ * Where the operator's laser PC is expected to have Boxes.py (Windows venv install).
+ * These are assumptions used to write recipes; nothing here is probed or verified from the browser.
  */
 export const BOXES_RUNTIME = {
     installDir: 'C:\\boxes',
     venvDir: 'C:\\boxes\\.venv',
-    cliPath: 'C:\\boxes\\.venv\\Scripts\\boxes.exe',
+    cliPath: BOXES_EXE_PATH,
     serverPath: 'C:\\boxes\\.venv\\Scripts\\boxesserver.exe',
     serverPort: 8080,
     serverUrl: 'http://localhost:8080',
     serverCommand: '$env:PYTHONUTF8=1; C:\\boxes\\.venv\\Scripts\\boxesserver.exe --port 8080',
     pythonVersion: 'Python 3.13',
     utf8Prefix: '$env:PYTHONUTF8=1;',
-    statusPillText: '🟢 Boxes.py Engine Installed (C:\\boxes · Python 3.13 · UTF-8 Mode)'
+    // Neutral on purpose: the web app cannot know whether Boxes.py is installed on this device.
+    statusPillText: 'Boxes.py recipes (run on the laser PC)'
 } as const;
 
 /**
@@ -137,6 +149,12 @@ export const BOXES_MATERIAL_PRESETS: BoxesMaterialPreset[] = [
     }
 ];
 
+/** Strips everything but letters, digits, '_' and '-' so a name can be used in a file name or a recipe. */
+export function sanitizeFileBase(name: unknown, fallback = 'crate'): string {
+    const cleaned = String(name ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    return cleaned.slice(0, 64) || fallback;
+}
+
 /**
  * Downloads generated SVG vector cutfile to user machine.
  */
@@ -152,46 +170,145 @@ export function downloadLaserCutfileSvg(filename: string, svgContent: string): v
     URL.revokeObjectURL(url);
 }
 
+// ─── LightBurn project (.lbrn2) ──────────────────────────────────────────────
+
+interface LightBurnPolygon {
+    points: Array<[number, number]>;
+    cutIndex: number;
+}
+
+function readAttr(tag: string, name: string): string | null {
+    const m = new RegExp(`\\s${name}="([^"]*)"`).exec(tag);
+    return m ? m[1] : null;
+}
+
 /**
- * Embeds SVG cut paths into LightBurn project container (.lbrn2).
+ * Reads the cut geometry back out of an SVG made by generateProceduralCrateSvg / combineCrateSvgs:
+ * the `laser-cut` paths (panel outlines, only M / L / Z commands) become layer 0 and the `slot-cut`
+ * rectangles (divider slots) become layer 1. Group translations written by combineCrateSvgs are applied.
+ * Anything else in the SVG (cards, labels, bed outline, scripts, images) is ignored by construction.
+ */
+function extractLightBurnPolygons(svg: string): LightBurnPolygon[] {
+    const polygons: LightBurnPolygon[] = [];
+    let ox = 0;
+    let oy = 0;
+    const tagRe = /<(g|path|rect)\b[^>]*>/g;
+    let m: RegExpExecArray | null;
+    while ((m = tagRe.exec(svg)) !== null) {
+        const tag = m[0];
+        const kind = m[1];
+        if (kind === 'g') {
+            const tf = /^translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)$/.exec(readAttr(tag, 'transform') ?? '');
+            if (tf) {
+                ox = Number(tf[1]);
+                oy = Number(tf[2]);
+            }
+        } else if (kind === 'path') {
+            const cls = readAttr(tag, 'class') ?? '';
+            const d = readAttr(tag, 'd');
+            if (!d || !/(^|\s)laser-cut(\s|$)/.test(cls)) continue;
+            const cmdRe = /([MLZ])([^MLZ]*)/g;
+            let c: RegExpExecArray | null;
+            let current: Array<[number, number]> = [];
+            const flush = () => {
+                if (current.length > 1) {
+                    const first = current[0];
+                    const last = current[current.length - 1];
+                    if (Math.abs(first[0] - last[0]) < 1e-6 && Math.abs(first[1] - last[1]) < 1e-6) current.pop();
+                    if (current.length >= 3) polygons.push({ points: current, cutIndex: 0 });
+                }
+                current = [];
+            };
+            while ((c = cmdRe.exec(d)) !== null) {
+                if (c[1] === 'Z') {
+                    flush();
+                    continue;
+                }
+                const nums = (c[2].match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+                if (nums.length < 2 || !Number.isFinite(nums[0]) || !Number.isFinite(nums[1])) continue;
+                if (c[1] === 'M') flush();
+                const pt: [number, number] = [nums[0] + ox, nums[1] + oy];
+                const prev = current[current.length - 1];
+                if (!prev || Math.abs(prev[0] - pt[0]) > 1e-6 || Math.abs(prev[1] - pt[1]) > 1e-6) current.push(pt);
+            }
+            flush();
+        } else if (kind === 'rect') {
+            const cls = readAttr(tag, 'class') ?? '';
+            if (!/(^|\s)slot-cut(\s|$)/.test(cls)) continue;
+            const x = Number(readAttr(tag, 'x'));
+            const y = Number(readAttr(tag, 'y'));
+            const w = Number(readAttr(tag, 'width'));
+            const h = Number(readAttr(tag, 'height'));
+            if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) continue;
+            polygons.push({
+                points: [[x + ox, y + oy], [x + w + ox, y + oy], [x + w + ox, y + h + oy], [x + ox, y + h + oy]],
+                cutIndex: 1,
+            });
+        }
+    }
+    return polygons;
+}
+
+/**
+ * Builds a LightBurn project (.lbrn2) from the cut geometry of a procedural crate SVG.
+ *
+ * Structure follows the LightBurn writer in Boxes.py (boxes/drawing.py, LBRN2Surface): a LightBurnProject root,
+ * CutSetting layers, then a Group whose Children are `Shape Type="Path"` elements with a VertList and a closed
+ * PrimList. Coordinates are millimetres, y down. Layer 0 = panel outlines (Outer Cut), layer 1 = divider slots
+ * (Inner Cut). Text and the bed outline are not exported. It has not been opened in LightBurn from this app:
+ * for a guaranteed native file run the Boxes.py recipe with `--format lbrn2` on the laser PC.
+ * Throws when the SVG holds no cuttable geometry.
  */
 export function generateLightBurnProjectXml(
     svgContent: string,
     params?: { cutSpeed?: number; cutPower?: number; materialThickness?: number }
 ): string {
-    const speed = params?.cutSpeed || 20; // mm/s
-    const power = params?.cutPower || 85; // %
-    const thickness = params?.materialThickness || 6; // mm
+    const speed = Number.isFinite(params?.cutSpeed) && (params?.cutSpeed ?? 0) > 0 ? Number(params?.cutSpeed) : 20; // mm/s
+    const power = Number.isFinite(params?.cutPower) && (params?.cutPower ?? 0) > 0 ? Math.min(100, Number(params?.cutPower)) : 85; // %
+    const thickness = Number.isFinite(params?.materialThickness) && (params?.materialThickness ?? 0) > 0 ? Number(params?.materialThickness) : 6; // mm
+
+    const polygons = extractLightBurnPolygons(svgContent);
+    if (polygons.length === 0) {
+        throw new Error('No cuttable geometry found in the SVG, LightBurn project not generated.');
+    }
+
+    const fmt = (n: number) => n.toFixed(3);
+    const shapes = polygons.map(poly => {
+        const verts = poly.points.map(([x, y]) => `V${fmt(x)} ${fmt(y)}c0x1c1x1`).join('');
+        return `      <Shape Type="Path" CutIndex="${poly.cutIndex}">
+        <XForm>1 0 0 1 0 0</XForm>
+        <VertList>${verts}</VertList>
+        <PrimList>LineClosed</PrimList>
+      </Shape>`;
+    }).join('\n');
 
     return `<?xml version="1.0" encoding="UTF-8"?>
-<LightBurnProject FormatVersion="1">
-    <Thumbnail Resolution="256" />
-    <VariableText Format="" />
-    <UIPrefs />
-    <CutSetting type="Cut">
-        <index Value="0" />
-        <name Value="Outer Cut" />
-        <color Value="#ef4444" />
-        <speed Value="${speed}" />
-        <maxPower Value="${power}" />
-        <minPower Value="${power}" />
-        <airAssist Value="1" />
-        <thickness Value="${thickness}" />
-    </CutSetting>
-    <CutSetting type="Scan">
-        <index Value="1" />
-        <name Value="Engrave Labels" />
-        <color Value="#38bdf8" />
-        <speed Value="250" />
-        <maxPower Value="18" />
-        <minPower Value="18" />
-        <airAssist Value="0" />
-    </CutSetting>
-    <Shape Type="Group">
-        <!-- SVG Vector Layer Container from Boxes.py -->
-        <RawSvgData><![CDATA[${svgContent}]]></RawSvgData>
-    </Shape>
-</LightBurnProject>`;
+<LightBurnProject AppVersion="1.0.06" FormatVersion="1" MaterialHeight="${thickness}" MirrorX="False" MirrorY="False">
+  <CutSetting Type="Cut">
+    <index Value="0" />
+    <name Value="Outer Cut" />
+    <priority Value="1" />
+    <speed Value="${speed}" />
+    <maxPower Value="${power}" />
+    <minPower Value="${power}" />
+  </CutSetting>
+  <CutSetting Type="Cut">
+    <index Value="1" />
+    <name Value="Inner Cut" />
+    <priority Value="0" />
+    <speed Value="${speed}" />
+    <maxPower Value="${power}" />
+    <minPower Value="${power}" />
+  </CutSetting>
+  <Shape Type="Group">
+    <XForm>1 0 0 1 0 0</XForm>
+    <Children>
+${shapes}
+    </Children>
+  </Shape>
+  <Notes ShowOnLoad="0" Notes="${escapeXml('Generated by Onyx from an approximate procedural drawing (not Boxes.py output). Check fit and kerf before cutting.')}" />
+</LightBurnProject>
+`;
 }
 
 /**
@@ -209,9 +326,16 @@ export function downloadLightBurnProject(filename: string, lbrnContent: string):
     URL.revokeObjectURL(url);
 }
 
+// ─── CLI recipe ──────────────────────────────────────────────────────────────
+
 /**
- * Formats a Windows PowerShell CLI recipe for C:\boxes\.venv\Scripts\boxes.exe.
+ * Formats a Windows PowerShell CLI recipe for boxes.exe (default install path, see BOXES_RUNTIME).
  * Always prefixes with $env:PYTHONUTF8=1 to prevent Windows cp1252 charmap encoding errors.
+ *
+ * Only the arguments the chosen generator really accepts are written (buildBoxesCliArgs): TypeTray takes
+ * --sx/--sy/--h (not --x/--y), BinTray --sx/--y/--sh, FlexBox --sx/--y/--h, the box generators --x/--y/--h.
+ * Values are validated and single-quoted, so a crate name can never inject shell syntax. Pass `args.sx`/`sy`
+ * for compartment layouts; without them a tray gets one section per side.
  */
 export function getBoxesCliRecipe(
     generator: string,
@@ -219,49 +343,11 @@ export function getBoxesCliRecipe(
     outputFile?: string,
     format?: 'svg' | 'lbrn2' | 'ps'
 ): string {
-    const formattedArgs: string[] = [];
-
-    // Prioritize standard keys in clean order
-    const orderedKeys = ['x', 'y', 'h', 'thickness', 'burn', 'outside', 'sx', 'sy', 'Lid_style', 'lid', 'top_edge'];
-    const addedKeys = new Set<string>();
-
-    for (const key of orderedKeys) {
-        if (args[key] !== undefined && args[key] !== null) {
-            const val = args[key];
-            if (typeof val === 'boolean') {
-                if (val) formattedArgs.push(`--${key} 1`);
-            } else if (typeof val === 'string' && (val.includes(' ') || val.includes(':'))) {
-                formattedArgs.push(`--${key} "${val}"`);
-            } else {
-                formattedArgs.push(`--${key} ${val}`);
-            }
-            addedKeys.add(key);
-        }
-    }
-
-    // Append any extra args
-    for (const [key, val] of Object.entries(args)) {
-        if (!addedKeys.has(key) && val !== undefined && val !== null) {
-            if (typeof val === 'boolean') {
-                if (val) formattedArgs.push(`--${key} 1`);
-            } else if (typeof val === 'string' && (val.includes(' ') || val.includes(':'))) {
-                formattedArgs.push(`--${key} "${val}"`);
-            } else {
-                formattedArgs.push(`--${key} ${val}`);
-            }
-        }
-    }
-
-    if (format && format !== 'svg') {
-        formattedArgs.push(`--format ${format}`);
-    }
-
-    if (outputFile) {
-        formattedArgs.push(`--output "${outputFile}"`);
-    }
-
-    const argString = formattedArgs.length > 0 ? ` ${formattedArgs.join(' ')}` : '';
-    return `$env:PYTHONUTF8=1; C:\\boxes\\.venv\\Scripts\\boxes.exe ${generator}${argString}`;
+    const name = isBoxesGeneratorName(generator) ? generator : 'UniversalBox';
+    const values: Record<string, unknown> = { ...args };
+    if (format && format !== 'svg') values.format = format;
+    if (outputFile) values.output = outputFile;
+    return ['$env:PYTHONUTF8=1;', BOXES_EXE_PATH, name, ...buildBoxesCliArgs(name, values)].join(' ');
 }
 
 /**

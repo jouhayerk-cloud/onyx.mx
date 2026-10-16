@@ -2,17 +2,31 @@
  * check-boxes-bridge.ts
  * Locked test harness for boxesBridge logistics and math engine.
  * Run via: npx tsx scripts/check-boxes-bridge.ts
+ *
+ * Covers: parameter maths, SVG shape, XML escaping of data strings, the real Boxes.py argument names per
+ * generator (read from C:\boxes\boxes\generators when that clone exists), PowerShell quoting and the
+ * structure of the generated LightBurn project.
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
+  BOXES_GENERATOR_ARGS,
+  buildBoxesCliArgs,
+  combineCrateSvgs,
   computeBoxesParams,
+  computeCutTelemetry,
+  escapeXml,
   formatBoxesCliCommand,
   generateProceduralCrateSvg,
-  computeCutTelemetry,
+  getBoxesAcceptedArgs,
   getToolpathSegments,
+  psQuote,
+  svgToDataUri,
   CrateDimensions,
   PackedItemSpec,
 } from '../src/lib/logistics/boxesBridge';
+import { generateLightBurnProjectXml, getBoxesCliRecipe } from '../src/lib/logistics/boxesCliBridge';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -110,9 +124,77 @@ const cliWithItemsAndOutput = formatBoxesCliCommand(
 );
 assert(cliWithItemsAndOutput.startsWith('$env:PYTHONUTF8=1;'), `CLI command must start with $env:PYTHONUTF8=1;`);
 assert(cliWithItemsAndOutput.includes('TypeTray'), `CLI command must specify TypeTray`);
-assert(cliWithItemsAndOutput.includes('--sx "200:400"'), `CLI command missing --sx "200:400"`);
-assert(cliWithItemsAndOutput.includes('--sy "300:300"'), `CLI command missing --sy "300:300"`);
-assert(cliWithItemsAndOutput.includes('--output "C:\\boxes\\output_crate.svg"'), `CLI command missing --output`);
+assert(cliWithItemsAndOutput.includes("--sx '200:400'"), `CLI command missing --sx '200:400'`);
+assert(cliWithItemsAndOutput.includes("--sy '300:300'"), `CLI command missing --sy '300:300'`);
+assert(cliWithItemsAndOutput.includes("--output 'C:\\boxes\\output_crate.svg'"), `CLI command missing --output`);
+// TypeTray sizes itself from sections: the real generator rejects --x / --y ("unrecognized arguments").
+assert(!/ --x /.test(cliWithItemsAndOutput) && !/ --y /.test(cliWithItemsAndOutput), `TypeTray recipe must not carry --x/--y`);
+assert(cliWithItemsAndOutput.includes('--h 600'), `TypeTray recipe missing --h`);
+
+// 4b. Per-generator arguments: every emitted key must exist on that generator.
+console.log('  Testing per-generator CLI arguments...');
+const argNames = (cmd: string) => Array.from(cmd.matchAll(/ --([A-Za-z_]+) /g)).map(m => m[1]);
+const generators = Object.keys(BOXES_GENERATOR_ARGS) as Array<keyof typeof BOXES_GENERATOR_ARGS>;
+for (const gen of generators) {
+  const cmd = formatBoxesCliCommand({ ...paramsStandard, generator: gen }, 'out.svg');
+  const accepted = new Set(getBoxesAcceptedArgs(gen));
+  for (const name of argNames(cmd + ' ')) {
+    assert(accepted.has(name), `${gen}: recipe emits --${name}, which the generator does not accept`);
+  }
+}
+const trayDefault = formatBoxesCliCommand({ ...paramsStandard, generator: 'TypeTray' });
+assert(trayDefault.includes("--sx '600'") && trayDefault.includes("--sy '600'") && trayDefault.includes('--h 600'), `TypeTray without sections must default to one section per side: ${trayDefault}`);
+const flex = formatBoxesCliCommand({ ...paramsStandard, generator: 'FlexBox' });
+assert(flex.includes("--sx '600'") && flex.includes('--y 600') && flex.includes('--h 600') && !/ --x /.test(flex), `FlexBox takes --sx --y --h: ${flex}`);
+const bin = formatBoxesCliCommand({ ...paramsStandard, generator: 'BinTray' });
+assert(bin.includes("--sx '600'") && bin.includes('--y 600') && bin.includes("--sh '600'") && !/ --h /.test(bin), `BinTray takes --sx --y --sh: ${bin}`);
+const abox = formatBoxesCliCommand({ ...paramsStandard, generator: 'ABox' });
+assert(abox.includes('--x 600') && abox.includes('--y 600') && abox.includes('--h 600'), `ABox takes --x --y --h: ${abox}`);
+const recipe = getBoxesCliRecipe('TypeTray', { x: 600, y: 400, h: 300, thickness: 6, burn: 0.1, outside: 1, sx: '200:400' }, 'crate_cutfile.svg', 'lbrn2');
+assert(!/ --x /.test(recipe) && recipe.includes("--sx '200:400'") && recipe.includes("--sy '400'") && recipe.includes("--format 'lbrn2'"), `getBoxesCliRecipe(TypeTray) wrong: ${recipe}`);
+
+// 4c. Names checked against the real generator sources (only when the clone is present).
+const generatorsDir = 'C:\\boxes\\boxes\\generators';
+const sourceFiles: Record<string, string> = {
+  UniversalBox: 'universalbox.py',
+  ABox: 'abox.py',
+  ClosedBox: 'closedbox.py',
+  TypeTray: 'typetray.py',
+  BinTray: 'bintray.py',
+  FlexBox: 'flexbox.py',
+};
+if (fs.existsSync(generatorsDir)) {
+  console.log('  Verifying argument names against C:\\boxes generators...');
+  const common = new Set(getBoxesAcceptedArgs('NoSuchGenerator'));
+  for (const gen of generators) {
+    const src = fs.readFileSync(path.join(generatorsDir, sourceFiles[gen]), 'utf8');
+    const real = new Set<string>();
+    const build = /buildArgParser\(([\s\S]*?)\)\s*\n/.exec(src);
+    if (build) {
+      for (const m of build[1].matchAll(/"([A-Za-z_]+)"(?!\s*=)/g)) real.add(m[1]);
+      for (const m of build[1].matchAll(/\b([A-Za-z_]+)\s*=/g)) real.add(m[1]);
+    }
+    for (const m of src.matchAll(/add_argument\(\s*"--([A-Za-z_]+)"/g)) real.add(m[1]);
+    for (const key of BOXES_GENERATOR_ARGS[gen]) {
+      assert(real.has(key), `${gen}: --${key} is not an argument of ${sourceFiles[gen]} (found: ${Array.from(real).join(', ')})`);
+    }
+    for (const key of common) assert(key.length > 0, 'common arg');
+  }
+} else {
+  console.log('  (C:\\boxes clone not found, skipping the generator source cross-check)');
+}
+
+// 4d. Shell safety: nothing from data may become shell syntax.
+console.log('  Testing PowerShell quoting...');
+assert(psQuote("a'b") === "'a''b'", `psQuote must double single quotes, got ${psQuote("a'b")}`);
+assert(psQuote('$(calc)`x') === "'$(calc)`x'", `psQuote must keep $() and backticks inert inside single quotes`);
+assert(psQuote('\u2019; calc') === "'\u2019\u2019; calc'", `psQuote must double typographic quotes too`);
+assert(buildBoxesCliArgs('UniversalBox', { x: 1, output: '$(calc).svg' }).every(a => !a.includes('$(')), `output with $() must be rejected`);
+assert(buildBoxesCliArgs('UniversalBox', { x: 'abc' }).length === 0, `non numeric x must be dropped`);
+assert(buildBoxesCliArgs('TypeTray', { sx: "1'; calc; '" }).length === 0, `bad sections must be dropped`);
+assert(buildBoxesCliArgs('TypeTray', { x: 100 }).some(a => a === "--sx '100'"), `TypeTray must derive sx from x`);
+const hostileRecipe = getBoxesCliRecipe('UniversalBox', { x: 100, y: 100, h: 100, 'evil; calc': 1 } as Record<string, string | number>, "x'; calc; '.svg");
+assert(!hostileRecipe.includes('calc'), `hostile output name / argument must not reach the recipe: ${hostileRecipe}`);
 
 // 5. Test generateProceduralCrateSvg
 console.log('  Testing generateProceduralCrateSvg...');
@@ -135,6 +217,7 @@ assert(svgWithItems.includes('Left Panel'), `SVG markup missing Left Panel`);
 assert(svgWithItems.includes('Right Panel'), `SVG markup missing Right Panel`);
 assert(svgWithItems.includes('Divider X#1'), `SVG markup missing Divider X#1 slat`);
 assert(svgWithItems.includes('Divider Z#1'), `SVG markup missing Divider Z#1 slat`);
+assert(/approximate/i.test(svgWithItems) && !/Boxes\.py (engine|standard)/i.test(svgWithItems), `SVG must be labelled as an approximate preview`);
 
 // C: With highlightedItemId
 const svgHighlighted = generateProceduralCrateSvg(standardCrate, packedItems, {
@@ -144,6 +227,46 @@ const svgHighlighted = generateProceduralCrateSvg(standardCrate, packedItems, {
 });
 assert(svgHighlighted.includes('slot-highlight'), `SVG markup missing slot-highlight class for highlighted item`);
 assert(svgHighlighted.includes('highlight-compartment'), `SVG markup missing highlight-compartment for highlighted item pocket`);
+
+// D: item names are data: they must be XML-escaped, never markup
+console.log('  Testing XML escaping of item names...');
+const evilName = `<img src=x onerror=alert(1)>]]></text><script>alert(2)</script>"'&`;
+const evilItems: PackedItemSpec[] = [{ ...packedItems[0], id: 'evil', name: evilName }, packedItems[1]];
+const svgEvil = generateProceduralCrateSvg(standardCrate, evilItems, { highlightedItemId: 'evil' });
+assert(!svgEvil.includes('<img') && !svgEvil.includes('<script') && !svgEvil.includes('onerror=alert(1)>'), `item name leaked as markup into the SVG`);
+assert(svgEvil.includes('&lt;img src=x onerror=alert(1)&gt;'), `item name must appear escaped`);
+assert(escapeXml(`<>&"'`) === '&lt;&gt;&amp;&quot;&apos;', `escapeXml wrong: ${escapeXml(`<>&"'`)}`);
+const svgBadNumbers = generateProceduralCrateSvg({ widthCm: NaN, lengthCm: Infinity, heightCm: -5 } as CrateDimensions, undefined, { bedWidthMm: NaN });
+assert(!/NaN|Infinity|undefined/.test(svgBadNumbers), `non finite dimensions must not reach the SVG`);
+assert(svgToDataUri(svgEvil).startsWith('data:image/svg+xml;charset=utf-8,') && !svgToDataUri(svgEvil).includes('<'), `svgToDataUri must percent-encode markup`);
+
+// E: several crates in one document
+const combined = combineCrateSvgs([
+  { label: 'Crate <A>', svg: generateProceduralCrateSvg(standardCrate) },
+  { label: 'Crate B', svg: generateProceduralCrateSvg(customCrate) },
+]);
+assert(combined.includes('id="crate-1"') && combined.includes('id="crate-2"'), `combined SVG must hold both crates`);
+assert(combined.includes('Crate &lt;A&gt;') && !combined.includes('Crate <A>'), `combined labels must be escaped`);
+assert((combined.match(/<\?xml/g) ?? []).length === 1 && (combined.match(/<svg /g) ?? []).length === 1, `combined SVG must have one xml header and one root svg`);
+
+// F: LightBurn project structure
+console.log('  Testing LightBurn project structure...');
+const lbrn = generateLightBurnProjectXml(svgWithItems, { materialThickness: 6, cutSpeed: 20, cutPower: 85 });
+assert(lbrn.startsWith('<?xml') && lbrn.includes('<LightBurnProject ') && lbrn.trimEnd().endsWith('</LightBurnProject>'), `LightBurn root element wrong`);
+assert(!lbrn.includes('RawSvgData') && !lbrn.includes('CDATA'), `LightBurn project must not embed raw SVG`);
+const pathShapes = (lbrn.match(/<Shape Type="Path" CutIndex="0">/g) ?? []).length;
+const slotShapes = (lbrn.match(/<Shape Type="Path" CutIndex="1">/g) ?? []).length;
+assert(pathShapes === 7, `Expected 7 outline paths (5 panels + 2 dividers), got ${pathShapes}`);
+assert(slotShapes === 2, `Expected 2 slot paths (1 x 1 divider crossings), got ${slotShapes}`);
+assert((lbrn.match(/<VertList>V/g) ?? []).length === pathShapes + slotShapes, `Every shape needs a VertList`);
+assert((lbrn.match(/<PrimList>LineClosed<\/PrimList>/g) ?? []).length === pathShapes + slotShapes, `Every shape needs a closed PrimList`);
+assert(!/<script|onerror|<img/i.test(lbrn), `LightBurn project leaked markup`);
+let threw = false;
+try { generateLightBurnProjectXml('<svg xmlns="http://www.w3.org/2000/svg"></svg>'); } catch { threw = true; }
+assert(threw, `LightBurn export must refuse an SVG without cut geometry`);
+const lbrnCombined = generateLightBurnProjectXml(combined);
+const ys = Array.from(lbrnCombined.matchAll(/V-?[\d.]+ (-?[\d.]+)c0x1c1x1/g)).map(m => Number(m[1]));
+assert(Math.max(...ys) > 1200, `Second crate must be offset below the first one in the combined project (max y ${Math.max(...ys)})`);
 
 // 6. Test computeCutTelemetry
 console.log('  Testing computeCutTelemetry...');

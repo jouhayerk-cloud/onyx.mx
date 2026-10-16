@@ -1,6 +1,15 @@
 import type React from 'react';
 
+/** Kinds the print registry renders and document_jobs persists (check constraint on document_jobs.kind). */
 export type DocumentKind = 'xlsx' | 'pdf' | 'label' | 'csv';
+/**
+ * Laser cutfile formats of the template catalogue. They are not labels, so they have their own kinds instead
+ * of passing as 'label'. They are catalogue-level only until document_jobs.kind (database check constraint,
+ * src/lib/documentJobs.ts DocumentKind) is widened to accept them: see swarm/tasks/FX/FX3_proposed.sql.
+ */
+export type LaserFileKind = 'svg' | 'lbrn2';
+/** Everything a template catalogue entry can declare. The registry itself stays on DocumentKind. */
+export type TemplateKind = DocumentKind | LaserFileKind;
 export type DocumentChannel = 'browser-download' | `phomemo:${string}` | 'print-dialog';
 export type SeasonScope = '826' | 'legacy';
 export type DocumentStatus = 'requested' | 'rendered' | 'printed' | 'downloaded' | 'reprinted' | 'void';

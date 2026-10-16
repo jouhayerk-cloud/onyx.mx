@@ -2,6 +2,12 @@
  * boxesBridge.ts
  * Pure TypeScript bridge between Onyx-mx 3D crate coordinates and Boxes.py laser cutting parameters.
  * Zero external npm dependencies — runs seamlessly in browser and Node.js runtimes.
+ *
+ * Two different things live here and must not be confused:
+ *  - the Boxes.py CLI recipes (computeBoxesParams / formatBoxesCliCommand / buildBoxesCliArgs): text the
+ *    operator pastes on the laser PC, restricted to the arguments each generator really accepts;
+ *  - generateProceduralCrateSvg: an Onyx-drawn approximate preview. It is NOT Boxes.py output (no joint
+ *    fit check, no kerf in the paths): verify the real cutfile from boxes.exe before cutting.
  */
 
 export interface CrateDimensions {
@@ -23,8 +29,11 @@ export interface PackedItemSpec {
   heightCm: number;
 }
 
+/** Boxes.py generators the recipes can name. Each one has its own argument list (BOXES_GENERATOR_ARGS). */
+export type BoxesGeneratorName = 'UniversalBox' | 'ABox' | 'TypeTray' | 'BinTray' | 'FlexBox' | 'ClosedBox';
+
 export interface BoxesGeneratorParams {
-  generator: 'UniversalBox' | 'ABox' | 'TypeTray';
+  generator: BoxesGeneratorName;
   x: number;
   y: number;
   h: number;
@@ -32,7 +41,168 @@ export interface BoxesGeneratorParams {
   burn: number;
   sx?: string;
   sy?: string;
+  sh?: string;
   extraArgs?: Record<string, string | number>;
+}
+
+// ─── Safety helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Escapes a value for XML text and attribute content (&, <, >, ", '), and drops characters XML 1.0 forbids.
+ * Every string that comes from data (item names, ids, labels) must go through this before it is written
+ * into generated SVG / LightBurn XML.
+ */
+export function escapeXml(value: unknown): string {
+  return String(value ?? '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/** Coerces untrusted input to a finite number inside [min, max]; returns the fallback otherwise. */
+function safeNum(value: unknown, fallback: number, min = -Infinity, max = Infinity): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+/** Crate side in cm, clamped to a sane workshop range so a bad row cannot produce a huge or NaN drawing. */
+function safeCm(value: unknown, fallback: number): number {
+  return safeNum(value, fallback, 1, 1000);
+}
+
+/**
+ * Quotes a value as a PowerShell single-quoted literal: nothing inside it expands ($(), backticks, variables).
+ * PowerShell also treats the typographic single quotes as quote characters, so those are doubled too.
+ */
+export function psQuote(value: unknown): string {
+  // eslint-disable-next-line no-control-regex
+  const clean = String(value ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ');
+  return `'${clean.replace(/['\u2018\u2019\u201A\u201B]/g, m => m + m)}'`;
+}
+
+// ─── Real Boxes.py CLI arguments per generator ───────────────────────────────
+
+/**
+ * Arguments every generator inherits from Boxes.__init__ ("Default Settings" group).
+ * Source: C:\boxes\boxes\__init__.py, the add_argument calls of Boxes.__init__.
+ */
+const BOXES_COMMON_ARGS = ['thickness', 'burn', 'format', 'labels', 'reference', 'tabs', 'qr_code', 'inner_corners', 'spacing', 'debug', 'output'] as const;
+
+/**
+ * Generator-specific arguments (buildArgParser + add_argument in generators/<name>.py). The recipe builder
+ * emits only keys from this table: Boxes.py exits with "unrecognized arguments" for anything else
+ * (for instance --x/--y on TypeTray, whose size comes from --sx/--sy).
+ */
+export const BOXES_GENERATOR_ARGS: Record<BoxesGeneratorName, readonly string[]> = {
+  UniversalBox: ['x', 'y', 'h', 'outside', 'top_edge', 'bottom_edge', 'vertical_edges'],
+  ABox: ['x', 'y', 'h', 'outside', 'bottom_edge'],
+  ClosedBox: ['x', 'y', 'h', 'outside'],
+  TypeTray: ['sx', 'sy', 'h', 'hi', 'outside', 'bottom_edge', 'top_edge', 'back_height', 'radius', 'gripheight', 'gripwidth', 'handle', 'fingerholes'],
+  BinTray: ['sx', 'y', 'sh', 'outside', 'hole_dD', 'front'],
+  FlexBox: ['sx', 'y', 'h', 'outside', 'radius', 'latchsize'],
+};
+
+/** Arguments a generator accepts, generator-specific first, then the shared ones. */
+export function getBoxesAcceptedArgs(generator: string): string[] {
+  const own = (BOXES_GENERATOR_ARGS as Record<string, readonly string[]>)[generator] ?? [];
+  return [...own, ...BOXES_COMMON_ARGS];
+}
+
+export function isBoxesGeneratorName(value: unknown): value is BoxesGeneratorName {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(BOXES_GENERATOR_ARGS, value);
+}
+
+type ArgKind = 'number' | 'sections' | 'bool' | 'enum' | 'output';
+
+const ARG_KINDS: Record<string, { kind: ArgKind; min?: number; choices?: readonly string[] }> = {
+  x: { kind: 'number', min: 0.1 },
+  y: { kind: 'number', min: 0.1 },
+  h: { kind: 'number', min: 0.1 },
+  hi: { kind: 'number', min: 0 },
+  thickness: { kind: 'number', min: 0.1 },
+  burn: { kind: 'number', min: 0 },
+  reference: { kind: 'number', min: 0 },
+  tabs: { kind: 'number', min: 0 },
+  back_height: { kind: 'number', min: 0 },
+  radius: { kind: 'number', min: 0 },
+  gripheight: { kind: 'number', min: 0 },
+  gripwidth: { kind: 'number', min: 0 },
+  front: { kind: 'number', min: 0 },
+  latchsize: { kind: 'number', min: 0 },
+  sx: { kind: 'sections' },
+  sy: { kind: 'sections' },
+  sh: { kind: 'sections' },
+  hole_dD: { kind: 'sections' },
+  spacing: { kind: 'sections' },
+  outside: { kind: 'bool' },
+  labels: { kind: 'bool' },
+  qr_code: { kind: 'bool' },
+  debug: { kind: 'bool' },
+  handle: { kind: 'bool' },
+  top_edge: { kind: 'enum', choices: Array.from('efFhcESŠikvLtGyY') },
+  bottom_edge: { kind: 'enum', choices: Array.from('Fhse') },
+  vertical_edges: { kind: 'enum', choices: ['finger joints', 'finger holes'] },
+  fingerholes: { kind: 'enum', choices: ['none', 'inside-only', 'front', 'back', 'front-and-back'] },
+  format: { kind: 'enum', choices: ['svg', 'svg_Ponoko', 'ps', 'lbrn2'] },
+  inner_corners: { kind: 'enum', choices: ['loop', 'corner', 'backarc'] },
+  output: { kind: 'output' },
+};
+
+/** True when `s` is a Boxes.py "sections" string (argparseSections): numbers, N*count, N/count, split by ':' or space. */
+export function isValidBoxesSections(s: unknown): s is string {
+  if (typeof s !== 'string' || s.length === 0 || s.length > 300) return false;
+  const parts = s.split(/[\s:]+/).filter(Boolean);
+  return parts.length > 0 && parts.every(part => /^\d+(\.\d+)?([*/]\d+)?$/.test(part));
+}
+
+function formatArgValue(key: string, raw: unknown): string | null {
+  const spec = ARG_KINDS[key];
+  if (!spec || raw === undefined || raw === null) return null;
+  switch (spec.kind) {
+    case 'number': {
+      const n = typeof raw === 'number' ? raw : Number(raw);
+      if (!Number.isFinite(n) || n < (spec.min ?? -Infinity) || n > 100000) return null;
+      return String(Math.round(n * 1000) / 1000);
+    }
+    case 'sections':
+      return isValidBoxesSections(raw) ? psQuote(raw) : null;
+    case 'bool':
+      return raw === true || raw === 1 || raw === '1' ? '1' : raw === false || raw === 0 || raw === '0' ? '0' : null;
+    case 'enum':
+      return typeof raw === 'string' && spec.choices?.includes(raw) ? psQuote(raw) : null;
+    case 'output':
+      // File name or path for the laser PC: no control characters, bounded, never an option-looking value.
+      return typeof raw === 'string' && /^[\w .\\:/()-]{1,200}$/.test(raw) && !raw.startsWith('-') ? psQuote(raw) : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Builds the `--key value` list for one generator. Only arguments that generator accepts are emitted, every
+ * value is validated (numbers, sections strings, fixed choices, file names) and quoted for PowerShell, so
+ * item names or ids can never turn into extra shell syntax.
+ * TypeTray / BinTray / FlexBox size themselves from sections: when sx / sy / sh are missing they default to
+ * a single section equal to the box side (sections are outside measurements while `outside` stays at its default).
+ */
+export function buildBoxesCliArgs(generator: string, values: Record<string, unknown>): string[] {
+  const accepted = getBoxesAcceptedArgs(generator);
+  const v: Record<string, unknown> = { ...values };
+  if (accepted.includes('sx') && v.sx === undefined && v.x !== undefined) v.sx = String(v.x);
+  if (accepted.includes('sy') && v.sy === undefined && v.y !== undefined) v.sy = String(v.y);
+  if (accepted.includes('sh') && v.sh === undefined && v.h !== undefined) v.sh = String(v.h);
+
+  const out: string[] = [];
+  for (const key of accepted) {
+    const formatted = formatArgValue(key, v[key]);
+    if (formatted !== null) out.push(`--${key} ${formatted}`);
+  }
+  return out;
 }
 
 /**
@@ -75,11 +245,14 @@ export function computeBoxesParams(
   crate: CrateDimensions,
   items?: PackedItemSpec[]
 ): BoxesGeneratorParams {
-  const x = Math.round(crate.widthCm * 10 * 100) / 100;
-  const y = Math.round(crate.lengthCm * 10 * 100) / 100;
-  const h = Math.round(crate.heightCm * 10 * 100) / 100;
-  const thickness = crate.thicknessMm ?? 6;
-  const burn = crate.burnMm ?? 0.1;
+  const widthCm = safeCm(crate.widthCm, 60);
+  const lengthCm = safeCm(crate.lengthCm, 60);
+  const heightCm = safeCm(crate.heightCm, 40);
+  const x = Math.round(widthCm * 10 * 100) / 100;
+  const y = Math.round(lengthCm * 10 * 100) / 100;
+  const h = Math.round(heightCm * 10 * 100) / 100;
+  const thickness = safeNum(crate.thicknessMm, 6, 0.5, 50);
+  const burn = safeNum(crate.burnMm, 0.1, 0, 2);
 
   if (!items || items.length === 0) {
     return {
@@ -95,24 +268,23 @@ export function computeBoxesParams(
   // Extract unique X boundaries from items
   const xCuts = new Set<number>();
   for (const item of items) {
-    const startX = item.xCm;
-    const endX = item.xCm + item.widthCm;
-    if (startX > 0 && startX < crate.widthCm) xCuts.add(startX);
-    if (endX > 0 && endX < crate.widthCm) xCuts.add(endX);
+    const startX = safeNum(item.xCm, 0);
+    const endX = startX + safeNum(item.widthCm, 0);
+    if (startX > 0 && startX < widthCm) xCuts.add(startX);
+    if (endX > 0 && endX < widthCm) xCuts.add(endX);
   }
 
   // Extract unique Z (length/depth) boundaries from items
   const zCuts = new Set<number>();
   for (const item of items) {
-    const startZ = item.zCm;
-    const itemLen = item.lengthCm ?? 0;
-    const endZ = startZ + itemLen;
-    if (startZ > 0 && startZ < crate.lengthCm) zCuts.add(startZ);
-    if (endZ > 0 && endZ < crate.lengthCm) zCuts.add(endZ);
+    const startZ = safeNum(item.zCm, 0);
+    const endZ = startZ + safeNum(item.lengthCm, 0);
+    if (startZ > 0 && startZ < lengthCm) zCuts.add(startZ);
+    if (endZ > 0 && endZ < lengthCm) zCuts.add(endZ);
   }
 
-  const sx = deriveIntervalsFromCuts(crate.widthCm, xCuts);
-  const sy = deriveIntervalsFromCuts(crate.lengthCm, zCuts);
+  const sx = deriveIntervalsFromCuts(widthCm, xCuts);
+  const sy = deriveIntervalsFromCuts(lengthCm, zCuts);
 
   return {
     generator: 'TypeTray',
@@ -126,46 +298,38 @@ export function computeBoxesParams(
   };
 }
 
+/** Default boxes.exe location of the laser PC (Windows venv install). An assumption, not something the web app can verify. */
+export const BOXES_EXE_PATH = 'C:\\boxes\\.venv\\Scripts\\boxes.exe';
+
 /**
  * Formats a ready-to-run Windows PowerShell CLI command for boxes.exe with $env:PYTHONUTF8=1.
+ * Only arguments the chosen generator accepts are written (TypeTray: --sx --sy --h; FlexBox: --sx --y --h; ...),
+ * and every value is validated and single-quoted, so the line is safe to paste whatever the data contained.
  */
 export function formatBoxesCliCommand(
   params: BoxesGeneratorParams,
   outputFile?: string
 ): string {
-  const parts: string[] = [
-    '$env:PYTHONUTF8=1;',
-    'boxes.exe',
-    params.generator,
-    `--x ${params.x}`,
-    `--y ${params.y}`,
-    `--h ${params.h}`,
-    `--thickness ${params.thickness}`,
-    `--burn ${params.burn}`,
-  ];
-
-  if (params.sx) {
-    parts.push(`--sx "${params.sx}"`);
-  }
-  if (params.sy) {
-    parts.push(`--sy "${params.sy}"`);
-  }
-
+  const generator = isBoxesGeneratorName(params.generator) ? params.generator : 'UniversalBox';
+  const accepted = new Set(getBoxesAcceptedArgs(generator));
+  const values: Record<string, unknown> = {
+    x: params.x,
+    y: params.y,
+    h: params.h,
+    sx: params.sx,
+    sy: params.sy,
+    sh: params.sh,
+    thickness: params.thickness,
+    burn: params.burn,
+    output: outputFile,
+  };
   if (params.extraArgs) {
     for (const [key, value] of Object.entries(params.extraArgs)) {
-      if (typeof value === 'string' && value.includes(' ')) {
-        parts.push(`--${key} "${value}"`);
-      } else {
-        parts.push(`--${key} ${value}`);
-      }
+      // Extra arguments cannot override the computed geometry and must exist on this generator.
+      if (accepted.has(key) && !(key in values && values[key] !== undefined)) values[key] = value;
     }
   }
-
-  if (outputFile) {
-    parts.push(`--output "${outputFile}"`);
-  }
-
-  return parts.join(' ');
+  return ['$env:PYTHONUTF8=1;', BOXES_EXE_PATH, generator, ...buildBoxesCliArgs(generator, values)].join(' ');
 }
 
 /**
@@ -261,6 +425,54 @@ export interface ToolpathSegment {
   panelId?: string;
 }
 
+/** Crate geometry in mm, sanitised: every drawing / telemetry function starts from this. */
+interface CrateGeometry {
+  W: number;
+  L: number;
+  H: number;
+  T: number;
+  burn: number;
+  widthCm: number;
+  lengthCm: number;
+}
+
+function resolveCrateGeometry(crate: CrateDimensions): CrateGeometry {
+  const widthCm = safeCm(crate.widthCm, 60);
+  const lengthCm = safeCm(crate.lengthCm, 60);
+  const heightCm = safeCm(crate.heightCm, 40);
+  return {
+    W: Math.round(widthCm * 10 * 100) / 100,
+    L: Math.round(lengthCm * 10 * 100) / 100,
+    H: Math.round(heightCm * 10 * 100) / 100,
+    T: safeNum(crate.thicknessMm, 6, 0.5, 50),
+    burn: safeNum(crate.burnMm, 0.1, 0, 2),
+    widthCm,
+    lengthCm,
+  };
+}
+
+/** Unique internal divider positions in mm along the width (x) and length (z), from the item edges. */
+function computeInternalCutsMm(geo: CrateGeometry, items?: PackedItemSpec[]): { x: number[]; z: number[] } {
+  if (!items || items.length === 0) return { x: [], z: [] };
+  const xSet = new Set<number>();
+  const zSet = new Set<number>();
+  for (const item of items) {
+    const xCm = safeNum(item.xCm, 0);
+    const zCm = safeNum(item.zCm, 0);
+    if (xCm > 0 && xCm < geo.widthCm) xSet.add(xCm * 10);
+    const endX = (xCm + safeNum(item.widthCm, 0)) * 10;
+    if (endX > 0 && endX < geo.W) xSet.add(endX);
+
+    if (zCm > 0 && zCm < geo.lengthCm) zSet.add(zCm * 10);
+    const endZ = (zCm + safeNum(item.lengthCm, 0)) * 10;
+    if (endZ > 0 && endZ < geo.L) zSet.add(endZ);
+  }
+  return {
+    x: Array.from(xSet).sort((a, b) => a - b),
+    z: Array.from(zSet).sort((a, b) => a - b),
+  };
+}
+
 /**
  * Generates complete, valid SVG markup representing 2D unfolded crate panels
  * (Bottom, Left, Right, Front, Back, and divider slats).
@@ -272,38 +484,27 @@ export function generateProceduralCrateSvg(
   items?: PackedItemSpec[],
   options?: { bedWidthMm?: number; bedHeightMm?: number; highlightedItemId?: string }
 ): string {
-  const W = Math.round(crate.widthCm * 10 * 100) / 100;
-  const L = Math.round(crate.lengthCm * 10 * 100) / 100;
-  const H = Math.round(crate.heightCm * 10 * 100) / 100;
-  const T = crate.thicknessMm ?? 6;
-  const burn = crate.burnMm ?? 0.1;
+  const geo = resolveCrateGeometry(crate);
+  const { W, L, H, T, burn } = geo;
 
   // Extract internal divider positions (in mm)
   const internalXCutsMm: number[] = [];
   const internalZCutsMm: number[] = [];
 
-  if (items && items.length > 0) {
-    const xSet = new Set<number>();
-    const zSet = new Set<number>();
-    for (const item of items) {
-      if (item.xCm > 0 && item.xCm < crate.widthCm) xSet.add(item.xCm * 10);
-      const endX = (item.xCm + item.widthCm) * 10;
-      if (endX > 0 && endX < W) xSet.add(endX);
-
-      if (item.zCm > 0 && item.zCm < crate.lengthCm) zSet.add(item.zCm * 10);
-      const endZ = (item.zCm + (item.lengthCm ?? 0)) * 10;
-      if (endZ > 0 && endZ < L) zSet.add(endZ);
-    }
-    internalXCutsMm.push(...Array.from(xSet).sort((a, b) => a - b));
-    internalZCutsMm.push(...Array.from(zSet).sort((a, b) => a - b));
+  {
+    const cuts = computeInternalCutsMm(geo, items);
+    internalXCutsMm.push(...cuts.x);
+    internalZCutsMm.push(...cuts.z);
   }
 
   // Highlighted item calculation
   const highlightedItem = items?.find(it => String(it.id) === String(options?.highlightedItemId));
-  const highXMin = highlightedItem ? Math.round(highlightedItem.xCm * 10 * 100) / 100 : null;
-  const highXMax = highlightedItem ? Math.round((highlightedItem.xCm + highlightedItem.widthCm) * 10 * 100) / 100 : null;
-  const highZMin = highlightedItem ? Math.round(highlightedItem.zCm * 10 * 100) / 100 : null;
-  const highZMax = highlightedItem ? Math.round((highlightedItem.zCm + (highlightedItem.lengthCm ?? 0)) * 10 * 100) / 100 : null;
+  const hxCm = highlightedItem ? safeNum(highlightedItem.xCm, 0) : 0;
+  const hzCm = highlightedItem ? safeNum(highlightedItem.zCm, 0) : 0;
+  const highXMin = highlightedItem ? Math.round(hxCm * 10 * 100) / 100 : null;
+  const highXMax = highlightedItem ? Math.round((hxCm + safeNum(highlightedItem.widthCm, 0)) * 10 * 100) / 100 : null;
+  const highZMin = highlightedItem ? Math.round(hzCm * 10 * 100) / 100 : null;
+  const highZMax = highlightedItem ? Math.round((hzCm + safeNum(highlightedItem.lengthCm, 0)) * 10 * 100) / 100 : null;
 
   // Panel layout positioning
   const gap = 30;
@@ -340,13 +541,15 @@ export function generateProceduralCrateSvg(
   const contentWidth = totalDividers > 0 ? col3X + maxDividerWidth + margin : col2X + W + margin;
   const contentHeight = Math.max(col1Height, col2Height, col3Height);
 
-  const bedWidth = options?.bedWidthMm ?? Math.max(1200, Math.ceil(contentWidth));
-  const bedHeight = options?.bedHeightMm ?? Math.max(900, Math.ceil(contentHeight));
+  const bedWidth = Math.round(safeNum(options?.bedWidthMm, Math.max(1200, Math.ceil(contentWidth)), 100, 20000));
+  const bedHeight = Math.round(safeNum(options?.bedHeightMm, Math.max(900, Math.ceil(contentHeight)), 100, 20000));
 
   // Build panels
   const svgParts: string[] = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${bedWidth} ${bedHeight}" width="${bedWidth}mm" height="${bedHeight}mm">`,
+    `  <title>Onyx crate cutfile preview</title>`,
+    `  <desc>Approximate drawing generated by Onyx from the crate size. Not Boxes.py output: no joint fit check and no kerf compensation in the paths. Verify with a real Boxes.py cutfile before cutting.</desc>`,
     `  <defs>`,
     `    <style>`,
     `      .laser-cut { stroke: #ef4444; fill: none; stroke-width: 1.0; stroke-linecap: round; stroke-linejoin: round; }`,
@@ -363,9 +566,14 @@ export function generateProceduralCrateSvg(
     ``,
     `  <!-- Laser Bed Boundary -->`,
     `  <rect class="laser-bed" id="laser-bed" x="10" y="10" width="${bedWidth - 20}" height="${bedHeight - 20}" rx="6" />`,
-    `  <text x="25" y="35" class="dim-text" font-weight="600">LASER BED BOUNDARY (${bedWidth} mm × ${bedHeight} mm) | Kerf: ${burn}mm | Thickness: ${T}mm</text>`,
-    ``,
+    `  <text x="25" y="35" class="dim-text" font-weight="600">ONYX PREVIEW, approximate (not Boxes.py output) | Bed ${bedWidth} mm × ${bedHeight} mm | Kerf label: ${burn}mm | Thickness: ${T}mm</text>`,
   ];
+  if (contentWidth > bedWidth || contentHeight > bedHeight) {
+    svgParts.push(
+      `  <text x="25" y="55" class="dim-text" font-weight="700" fill="#dc2626">WARNING: layout ${Math.ceil(contentWidth)} mm × ${Math.ceil(contentHeight)} mm is larger than the bed. Split the parts or use a bigger bed.</text>`
+    );
+  }
+  svgParts.push(``);
 
   // Helper to render panel with card, laser path, and dimension text
   const renderPanel = (
@@ -396,7 +604,7 @@ export function generateProceduralCrateSvg(
       const pocketH = Math.max(10, highZMax - highZMin);
       svgParts.push(`    <!-- Highlighted Item Pocket -->`);
       svgParts.push(`    <rect class="highlight-compartment" x="${pocketX.toFixed(2)}" y="${pocketY.toFixed(2)}" width="${pocketW.toFixed(2)}" height="${pocketH.toFixed(2)}" rx="2" />`);
-      svgParts.push(`    <text x="${(pocketX + pocketW / 2).toFixed(1)}" y="${(pocketY + pocketH / 2 + 4).toFixed(1)}" fill="#06b6d4" font-size="11" font-weight="700" text-anchor="middle">${highlightedItem.name || 'Slot'}</text>`);
+      svgParts.push(`    <text x="${(pocketX + pocketW / 2).toFixed(1)}" y="${(pocketY + pocketH / 2 + 4).toFixed(1)}" fill="#06b6d4" font-size="11" font-weight="700" text-anchor="middle">${escapeXml(String(highlightedItem.name || 'Slot').slice(0, 60))}</text>`);
     }
     svgParts.push(`  </g>`);
     svgParts.push(``);
@@ -544,29 +752,17 @@ export function computeCutTelemetry(
   bedWidthMm?: number,
   bedHeightMm?: number
 ): CutTelemetry {
-  const W = Math.round(crate.widthCm * 10 * 100) / 100;
-  const L = Math.round(crate.lengthCm * 10 * 100) / 100;
-  const H = Math.round(crate.heightCm * 10 * 100) / 100;
-  const T = crate.thicknessMm ?? 6;
+  const geo = resolveCrateGeometry(crate);
+  const { W, L, H, T } = geo;
 
   // Extract internal divider cuts
   const internalXCutsMm: number[] = [];
   const internalZCutsMm: number[] = [];
 
-  if (items && items.length > 0) {
-    const xSet = new Set<number>();
-    const zSet = new Set<number>();
-    for (const item of items) {
-      if (item.xCm > 0 && item.xCm < crate.widthCm) xSet.add(item.xCm * 10);
-      const endX = (item.xCm + item.widthCm) * 10;
-      if (endX > 0 && endX < W) xSet.add(endX);
-
-      if (item.zCm > 0 && item.zCm < crate.lengthCm) zSet.add(item.zCm * 10);
-      const endZ = (item.zCm + (item.lengthCm ?? 0)) * 10;
-      if (endZ > 0 && endZ < L) zSet.add(endZ);
-    }
-    internalXCutsMm.push(...Array.from(xSet).sort((a, b) => a - b));
-    internalZCutsMm.push(...Array.from(zSet).sort((a, b) => a - b));
+  {
+    const cuts = computeInternalCutsMm(geo, items);
+    internalXCutsMm.push(...cuts.x);
+    internalZCutsMm.push(...cuts.z);
   }
 
   const numXDividers = internalXCutsMm.length;
@@ -663,26 +859,15 @@ export function getToolpathSegments(
   crate: CrateDimensions,
   items?: PackedItemSpec[]
 ): ToolpathSegment[] {
-  const W = Math.round(crate.widthCm * 10 * 100) / 100;
-  const L = Math.round(crate.lengthCm * 10 * 100) / 100;
-  const H = Math.round(crate.heightCm * 10 * 100) / 100;
+  const geo = resolveCrateGeometry(crate);
+  const { W, L, H } = geo;
 
   const internalXCutsMm: number[] = [];
   const internalZCutsMm: number[] = [];
-  if (items && items.length > 0) {
-    const xSet = new Set<number>();
-    const zSet = new Set<number>();
-    for (const item of items) {
-      if (item.xCm > 0 && item.xCm < crate.widthCm) xSet.add(item.xCm * 10);
-      const endX = (item.xCm + item.widthCm) * 10;
-      if (endX > 0 && endX < W) xSet.add(endX);
-
-      if (item.zCm > 0 && item.zCm < crate.lengthCm) zSet.add(item.zCm * 10);
-      const endZ = (item.zCm + (item.lengthCm ?? 0)) * 10;
-      if (endZ > 0 && endZ < L) zSet.add(endZ);
-    }
-    internalXCutsMm.push(...Array.from(xSet).sort((a, b) => a - b));
-    internalZCutsMm.push(...Array.from(zSet).sort((a, b) => a - b));
+  {
+    const cuts = computeInternalCutsMm(geo, items);
+    internalXCutsMm.push(...cuts.x);
+    internalZCutsMm.push(...cuts.z);
   }
 
   const gap = 30;
@@ -762,4 +947,67 @@ export function getToolpathSegments(
   }
 
   return segments;
+}
+
+// ─── Preview + multi-crate helpers ───────────────────────────────────────────
+
+/**
+ * Wraps SVG markup in a data URI for `<img src>`. An image never runs scripts or event handlers, so this is
+ * the way to show generated SVG in the UI: never put SVG strings in dangerouslySetInnerHTML.
+ */
+export function svgToDataUri(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Stacks several crate drawings (each from generateProceduralCrateSvg) in one SVG, one under the other,
+ * each in its own translated group with a label. Labels are XML-escaped; ids are prefixed per crate so they
+ * stay unique. Returns an empty-bed SVG for an empty list.
+ */
+export function combineCrateSvgs(entries: Array<{ label: string; svg: string }>): string {
+  const gap = 40;
+  const parts: string[] = [];
+  let maxWidth = 100;
+  let totalHeight = 0;
+  let sharedDefs = '';
+
+  entries.forEach((entry, index) => {
+    const body = entry.svg.replace(/^\s*<\?xml[^>]*\?>/, '').trim();
+    const open = /^<svg\b[^>]*>/.exec(body);
+    const vb = open ? /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(open[0]) : null;
+    if (!open || !vb) return;
+    const width = Number(vb[1]);
+    const height = Number(vb[2]);
+    let inner = body.slice(open[0].length);
+    const closeAt = inner.lastIndexOf('</svg>');
+    if (closeAt >= 0) inner = inner.slice(0, closeAt);
+
+    const defs = /<defs>[\s\S]*?<\/defs>/.exec(inner);
+    if (defs && !sharedDefs) sharedDefs = defs[0];
+    inner = inner
+      .replace(/<defs>[\s\S]*?<\/defs>/g, '')
+      .replace(/<title>[\s\S]*?<\/title>/g, '')
+      .replace(/<desc>[\s\S]*?<\/desc>/g, '')
+      .replace(/\bid="/g, `id="c${index + 1}-`);
+
+    parts.push(
+      `  <g id="crate-${index + 1}" transform="translate(0 ${totalHeight})">`,
+      `    <text class="title-text" x="25" y="24">${escapeXml(entry.label)}</text>`,
+      inner,
+      `  </g>`
+    );
+    maxWidth = Math.max(maxWidth, width);
+    totalHeight += height + gap;
+  });
+
+  totalHeight = Math.max(100, totalHeight - gap);
+  return [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${maxWidth} ${totalHeight}" width="${maxWidth}mm" height="${totalHeight}mm">`,
+    `  <title>Onyx crate cutfiles preview</title>`,
+    `  <desc>Approximate drawings generated by Onyx from the crate sizes. Not Boxes.py output: verify with a real Boxes.py cutfile before cutting.</desc>`,
+    sharedDefs,
+    ...parts,
+    `</svg>`,
+  ].join('\n');
 }
