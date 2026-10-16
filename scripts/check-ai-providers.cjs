@@ -1,4 +1,4 @@
-// Checks for BYOK AI providers (Anthropic, OpenAI, Compat).
+// Checks for the AI provider registry (Gemini, Anthropic, OpenAI, Compat, Companion, Colibri).
 // Run: node scripts/check-ai-providers.cjs
 const { execFileSync } = require('child_process');
 const path = require('path');
@@ -18,6 +18,7 @@ export * from '${path.join(root, 'src/lib/ai/providers/types.ts').replace(/\\/g,
 export * from '${path.join(root, 'src/lib/ai/providers/anthropic.ts').replace(/\\/g, '/')}';
 export * from '${path.join(root, 'src/lib/ai/providers/openai.ts').replace(/\\/g, '/')}';
 export * from '${path.join(root, 'src/lib/ai/providers/compat.ts').replace(/\\/g, '/')}';
+export { providerAllowedForJob, TEXT_ONLY_PROVIDERS, IMAGE_JOBS } from '${path.join(root, 'src/lib/ai/routing.ts').replace(/\\/g, '/')}';
 `);
 
 execFileSync(process.execPath, [
@@ -74,6 +75,7 @@ const {
     anthropicProvider,
     openaiProvider,
     compatProvider,
+    providerAllowedForJob,
 } = require(outPath);
 
 function makeCannedResponse(status, bodyObj, headers = {}) {
@@ -96,7 +98,11 @@ async function runTests() {
     assert.strictEqual(getProvider('openai'), openaiProvider, 'getProvider("openai") matches openaiProvider');
     assert.strictEqual(getProvider('compat'), compatProvider, 'getProvider("compat") matches compatProvider');
 
-    assert.strictEqual(PROVIDER_INFOS.length, 4, 'PROVIDER_INFOS must list all four providers');
+    assert.deepStrictEqual(
+        PROVIDER_INFOS.map(p => p.id),
+        ['gemini', 'anthropic', 'openai', 'compat', 'companion', 'colibri'],
+        'PROVIDER_INFOS must list all six providers, in this order',
+    );
     const geminiInfo = PROVIDER_INFOS.find(p => p.id === 'gemini');
     assert.ok(geminiInfo, 'Gemini info must be in PROVIDER_INFOS');
     assert.strictEqual(geminiInfo.label, 'Google Gemini');
@@ -119,6 +125,21 @@ async function runTests() {
     assert.strictEqual(compatInfo.label, 'OpenAI-compatible (custom URL)');
     assert.strictEqual(compatInfo.needsBaseUrl, true);
     assert.strictEqual(compatInfo.keyHint, 'key, or empty for a local server');
+
+    // Companion (on-device iOS) and Colibri (local Windows server) are registry entries too
+    assert.strictEqual(getProvider('companion'), PROVIDERS.companion, 'getProvider("companion") matches the registry');
+    assert.strictEqual(getProvider('colibri'), PROVIDERS.colibri, 'getProvider("colibri") matches the registry');
+    const colibriInfo = PROVIDER_INFOS.find(p => p.id === 'colibri');
+    assert.strictEqual(colibriInfo.defaultBaseUrl, 'http://127.0.0.1:8000', 'Colibri defaults to the real server port');
+    assert.strictEqual(colibriInfo.needsBaseUrl, false);
+    assert.strictEqual(colibriInfo.capabilities.vision, false, 'Colibri is text only');
+    assert.strictEqual(typeof PROVIDERS.colibri.chat, 'function', 'Colibri can run the agent chat');
+
+    // A text-only provider is never usable for the picture job (segmentation), but is for text jobs
+    assert.strictEqual(providerAllowedForJob('colibri', 'segmentation'), false);
+    assert.strictEqual(providerAllowedForJob('colibri', 'chat'), true);
+    assert.strictEqual(providerAllowedForJob('colibri', 'translate'), true);
+    assert.strictEqual(providerAllowedForJob('anthropic', 'segmentation'), true);
 
     // ── ANTHROPIC ──
     const antKey = 'sk-ant-testkey123456';

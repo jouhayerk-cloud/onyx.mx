@@ -55,12 +55,22 @@ export const modelChain = (job: AiJob): string[] => {
     return [spec.model, ...(spec.fallbacks || [])];
 };
 
-/** Colibrì Local MoE models streamed over NVMe */
+/**
+ * Colibrì (local engine, C:\colibri, OpenAI API at http://127.0.0.1:8000/v1).
+ *
+ * The real server loads ONE model at a time and rejects any other model id with 404 model_not_found, so the list of
+ * models is never fixed here: providers/colibri.ts reads GET /v1/models at runtime. These constants only name the
+ * ids measured on the owner's PC (hints for the picker while the server is down) and the 'auto' alias, which means
+ * "use whatever model the server has loaded". Colibrì is text only (input_modalities ["text"]).
+ */
+export const COLIBRI_AUTO_MODEL = 'auto';
+/** Default local model (owner decision, 16 Oct 2026): Qwen3.6-35B-A3B. */
+export const COLIBRI_DEFAULT_MODEL_ID = 'qwen3.6-colibri';
+
 export const COLIBRI_MODELS = [
     'auto',
-    'colibri-glm-5.2-moe',
-    'colibri-kimi-k3-moe',
-    'colibri-qwen-2.5-3b',
+    'qwen3.6-colibri',
+    'qwen3-coder-30b-a3b-colibri',
 ] as const;
 
 export type ColibriModel = (typeof COLIBRI_MODELS)[number];
@@ -69,33 +79,24 @@ export interface ColibriModelSpec {
     id: ColibriModel;
     name: string;
     description: string;
-    contextLength: number;
+    /** Unknown until the server reports one; never invented. */
+    contextLength?: number;
 }
 
 export const COLIBRI_MODEL_SPECS: Record<ColibriModel, ColibriModelSpec> = {
     auto: {
         id: 'auto',
-        name: 'Auto (Smart MoE Routing)',
-        description: 'Dynamically routes tasks: Chat ➔ GLM-5.2, Translate ➔ Qwen-2.5, Content/JSON ➔ Kimi-K3',
-        contextLength: 131072,
+        name: 'Loaded model',
+        description: 'Uses the one model the Colibrì server has loaded right now',
     },
-    'colibri-glm-5.2-moe': {
-        id: 'colibri-glm-5.2-moe',
-        name: 'Colibrì GLM-5.2 MoE',
-        description: 'High-throughput local Mixture-of-Experts with NVMe weight streaming',
-        contextLength: 32768,
+    'qwen3.6-colibri': {
+        id: 'qwen3.6-colibri',
+        name: 'Qwen3.6-35B-A3B',
+        description: 'Default local model. Text only, slow on this PC (about 0.5 tokens per second)',
     },
-    'colibri-kimi-k3-moe': {
-        id: 'colibri-kimi-k3-moe',
-        name: 'Colibrì Kimi-K3 MoE',
-        description: 'Long-context reasoning MoE optimized for low memory footprint',
-        contextLength: 131072,
-    },
-    'colibri-qwen-2.5-3b': {
-        id: 'colibri-qwen-2.5-3b',
-        name: 'Colibrì Qwen 2.5 3B',
-        description: 'Dense low-latency edge model for fast tool-calling and chat',
-        contextLength: 32768,
+    'qwen3-coder-30b-a3b-colibri': {
+        id: 'qwen3-coder-30b-a3b-colibri',
+        name: 'Qwen3-Coder-30B-A3B',
+        description: 'Code-tuned local model. Text only, slow on this PC',
     },
 };
-

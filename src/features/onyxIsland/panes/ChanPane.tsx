@@ -10,19 +10,17 @@ import {
     X, 
     ChevronRight, 
     RotateCcw,
-    Radio,
-    Wifi,
-    Clock,
-    Shield
+    Square,
+    Cpu
 } from 'lucide-react';
 import { useAtom } from 'jotai';
 import { islandChanDraftAtom } from '../islandState';
 import { useOnyxAgentWiring } from '../../onyxAgent/useOnyxAgentWiring';
 import { isCompanionAvailable, isColibriAvailable } from '../../../lib/ai/providers';
+import { fetchColibriModels } from '../../../lib/ai/providers/colibri';
 import { getRoute, setRoute } from '../../../lib/ai/routing';
-import { AI_CONFIG_EVENT } from '../../../lib/ai/providerKeys';
-import { tr } from '../../../lib/i18n';
-import { ONYX_MESH_TOPOLOGY } from '../../../lib/network/localMeshMap';
+import { AI_CONFIG_EVENT, getProviderConfig } from '../../../lib/ai/providerKeys';
+import { tr, trf } from '../../../lib/i18n';
 import { LaserCutfileCard, LaserCutfileCardProps } from '../../onyxAgent/components/LaserCutfileCard';
 import './chanPane.css';
 
@@ -34,6 +32,34 @@ export interface ChanPaneProps {
 interface ParsedMessageContent {
     cleanText: string;
     cutfile?: LaserCutfileCardProps;
+}
+
+const clampNum = (raw: unknown, fallback: number, min: number, max: number): number => {
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? Math.min(max, Math.max(min, n)) : fallback;
+};
+
+/**
+ * Builds the card props from JSON found in a model reply. The reply is untrusted (prompt injection can shape it), so
+ * only plain numbers and two short identifiers are kept. Model-supplied SVG markup and CLI text are never copied: the
+ * card regenerates the SVG and the command locally from these numbers.
+ */
+function cutfileFromParsed(parsed: any): LaserCutfileCardProps {
+    const dims = parsed.dimensionsMm && typeof parsed.dimensionsMm === 'object' ? parsed.dimensionsMm : parsed;
+    const generator = String(parsed.generator || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40);
+    const crateId = String(parsed.crateId || parsed.crate_id || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 40);
+    return {
+        crateId: crateId || 'Crate',
+        dimensionsMm: {
+            x: clampNum(dims.x, 600, 10, 5000),
+            y: clampNum(dims.y, 600, 10, 5000),
+            h: clampNum(dims.h, 400, 10, 5000),
+        },
+        materialThicknessMm: clampNum(parsed.materialThicknessMm ?? parsed.material_thickness_mm ?? parsed.thickness, 6, 0.5, 30),
+        burnMm: clampNum(parsed.burnMm ?? parsed.burn_mm ?? parsed.burn, 0.1, 0.01, 2),
+        generator: generator || 'UniversalBox',
+        cliCommand: '',   // the card builds the command from the numbers above
+    };
 }
 
 function extractCutfileFromText(text: string): ParsedMessageContent {
@@ -52,29 +78,8 @@ function extractCutfileFromText(text: string): ParsedMessageContent {
                 typeof parsed === 'object' &&
                 (parsed.generator || parsed.dimensionsMm || (parsed.crateId && (parsed.x || parsed.dimensionsMm)))
             ) {
-                const cutfile: LaserCutfileCardProps = {
-                    crateId: String(parsed.crateId || parsed.crate_id || 'Crate'),
-                    dimensionsMm: parsed.dimensionsMm && typeof parsed.dimensionsMm === 'object'
-                        ? {
-                            x: Number(parsed.dimensionsMm.x) || 600,
-                            y: Number(parsed.dimensionsMm.y) || 600,
-                            h: Number(parsed.dimensionsMm.h) || 400
-                        }
-                        : {
-                            x: Number(parsed.x) || 600,
-                            y: Number(parsed.y) || 600,
-                            h: Number(parsed.h) || 400
-                        },
-                    materialThicknessMm: Number(parsed.materialThicknessMm ?? parsed.material_thickness_mm ?? parsed.thickness) || 6,
-                    burnMm: Number(parsed.burnMm ?? parsed.burn_mm ?? parsed.burn) || 0.1,
-                    generator: String(parsed.generator || 'UniversalBox'),
-                    cliCommand: String(parsed.cliCommand || parsed.cli_command || ''),
-                    svgSnippet: parsed.sampleSvgSnippet || parsed.svgSnippet || parsed.svg || undefined,
-                    fullSvg: parsed.fullSvg || undefined
-                };
-
                 const cleanText = text.replace(match[0], '').trim();
-                return { cleanText, cutfile };
+                return { cleanText, cutfile: cutfileFromParsed(parsed) };
             }
         } catch {
             // Not valid JSON in this block
@@ -90,29 +95,8 @@ function extractCutfileFromText(text: string): ParsedMessageContent {
             try {
                 const parsed = JSON.parse(candidate);
                 if (parsed && typeof parsed === 'object' && (parsed.dimensionsMm || parsed.generator)) {
-                    const cutfile: LaserCutfileCardProps = {
-                        crateId: String(parsed.crateId || parsed.crate_id || 'Crate'),
-                        dimensionsMm: parsed.dimensionsMm && typeof parsed.dimensionsMm === 'object'
-                            ? {
-                                x: Number(parsed.dimensionsMm.x) || 600,
-                                y: Number(parsed.dimensionsMm.y) || 600,
-                                h: Number(parsed.dimensionsMm.h) || 400
-                            }
-                            : {
-                                x: Number(parsed.x) || 600,
-                                y: Number(parsed.y) || 600,
-                                h: Number(parsed.h) || 400
-                            },
-                        materialThicknessMm: Number(parsed.materialThicknessMm ?? parsed.material_thickness_mm ?? parsed.thickness) || 6,
-                        burnMm: Number(parsed.burnMm ?? parsed.burn_mm ?? parsed.burn) || 0.1,
-                        generator: String(parsed.generator || 'UniversalBox'),
-                        cliCommand: String(parsed.cliCommand || parsed.cli_command || ''),
-                        svgSnippet: parsed.sampleSvgSnippet || parsed.svgSnippet || parsed.svg || undefined,
-                        fullSvg: parsed.fullSvg || undefined
-                    };
-
                     const cleanText = text.replace(candidate, '').trim();
-                    return { cleanText, cutfile };
+                    return { cleanText, cutfile: cutfileFromParsed(parsed) };
                 }
             } catch {
                 // Not valid cutfile JSON
@@ -142,20 +126,32 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
     }, []);
     const [hasColibri, setHasColibri] = useState(false);
     const [colibriActive, setColibriActive] = useState(() => getRoute('chat').provider === 'colibri');
+    const [colibriModel, setColibriModel] = useState<string | null>(null);
+    const [colibriNote, setColibriNote] = useState<string | null>(null);
+
+    // Fast health check (two seconds at most): is the local server up, and which model does it have loaded?
+    const refreshColibri = React.useCallback(async () => {
+        try {
+            const cfg = getProviderConfig('colibri');
+            const avail = await isColibriAvailable(cfg.baseUrl || undefined);
+            setHasColibri(avail);
+            setColibriModel(avail ? ((await fetchColibriModels(cfg))?.[0] ?? null) : null);
+        } catch {
+            setHasColibri(false);
+            setColibriModel(null);
+        }
+    }, []);
 
     useEffect(() => {
-        let mounted = true;
-        isColibriAvailable()
-            .then((avail) => {
-                if (mounted) setHasColibri(avail);
-            })
-            .catch(() => {
-                if (mounted) setHasColibri(false);
-            });
-        return () => {
-            mounted = false;
-        };
-    }, []);
+        void refreshColibri();
+    }, [refreshColibri]);
+
+    // while Colibri is the chat model, keep the status honest: the daemon can start or stop at any time
+    useEffect(() => {
+        if (!colibriActive) return;
+        const t = setInterval(() => { void refreshColibri(); }, 20000);
+        return () => clearInterval(t);
+    }, [colibriActive, refreshColibri]);
 
     const [recentCutfiles, setRecentCutfiles] = useState<Record<string, LaserCutfileCardProps>>({});
 
@@ -187,13 +183,21 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
         const updateRouteState = () => {
             setCompanionActive(isCompanionAvailable() && getRoute('chat').provider === 'companion');
             setColibriActive(getRoute('chat').provider === 'colibri');
-            isColibriAvailable()
-                .then((avail) => setHasColibri(avail))
-                .catch(() => {});
+            void refreshColibri();
         };
         window.addEventListener(AI_CONFIG_EVENT, updateRouteState);
         return () => window.removeEventListener(AI_CONFIG_EVENT, updateRouteState);
-    }, []);
+    }, [refreshColibri]);
+
+    // seconds since the question was sent, so a slow local model does not look frozen
+    const [waitedSec, setWaitedSec] = useState(0);
+    const waiting = colibriActive && agent.phase === 'thinking';
+    useEffect(() => {
+        if (!waiting) { setWaitedSec(0); return; }
+        const started = Date.now();
+        const t = setInterval(() => setWaitedSec(Math.floor((Date.now() - started) / 1000)), 1000);
+        return () => clearInterval(t);
+    }, [waiting]);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const isNearBottomRef = useRef(true);
@@ -325,61 +329,9 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
         ? robot.devices.find(d => d.id === robot.selectedId)
         : (robot.devices.find(d => d.online) ?? null);
     const isRobotOnline = Boolean(selectedRobot?.online);
-    const [infoHudOpen, setInfoHudOpen] = useState(true);
 
     return (
         <div className="chan-pane isl-pane">
-            {/* ONYX ISLAND CHAN INFO PANEL (System, Mesh & Host Telemetry HUD) */}
-            <div className="mx-3 mt-2 mb-2 p-2.5 rounded-xl bg-white/5 dark:bg-black/20 border border-white/10 dark:border-white/5 backdrop-blur-xl shadow-inner text-(--text-color)">
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span className="acc-dot acc-dot-cyan acc-pulse-cyan shrink-0" />
-                        <span className="text-[11px] font-mono font-bold truncate">
-                            Node: {ONYX_MESH_TOPOLOGY.g7.ip}
-                        </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hidden sm:inline-flex items-center gap-1">
-                            <Wifi size={8} /> G7 Wi-Fi Mesh
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] font-mono text-(--text-color-secondary) flex items-center gap-1">
-                            <Clock size={10} />
-                            {new Date().toLocaleTimeString('en-US', { hour12: false })}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setInfoHudOpen(!infoHudOpen)}
-                            className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded hover:bg-white/10 text-(--text-color-secondary) cursor-pointer"
-                        >
-                            {infoHudOpen ? 'Collapse' : 'Expand Info'}
-                        </button>
-                    </div>
-                </div>
-
-                {infoHudOpen && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-2 pt-2 border-t border-white/10 dark:border-white/5 text-[10px] font-mono">
-                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-black/20 dark:bg-white/5 border border-white/5">
-                            <span className="text-(--text-color-secondary)">MoE Host:</span>
-                            <span className="text-emerald-400 font-bold flex items-center gap-1">
-                                <Radio size={9} className="animate-pulse" /> Live
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-black/20 dark:bg-white/5 border border-white/5">
-                            <span className="text-(--text-color-secondary)">LiteRT SLM:</span>
-                            <span className="text-cyan-400 font-bold">Qwen 1.5B</span>
-                        </div>
-                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-black/20 dark:bg-white/5 border border-white/5">
-                            <span className="text-(--text-color-secondary)">Fleet Mesh:</span>
-                            <span className="text-purple-400 font-bold">Active</span>
-                        </div>
-                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-black/20 dark:bg-white/5 border border-white/5">
-                            <span className="text-(--text-color-secondary)">NVMe MoE:</span>
-                            <span className="text-amber-400 font-bold">:8082</span>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             {/* (1) STATUS LINE */}
             <div className="chan-status-bar">
                 <div className="chan-status-left">
@@ -403,24 +355,29 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
                         <button
                             type="button"
                             className={`chan-local-pill ${colibriActive ? 'chan-local-pill--active' : ''}`}
-                            title={tr('Colibrì Local MoE Streaming Engine (Windows Desktop)')}
-                            onClick={() => {
+                            title={tr('Colibrì: a local model on this PC (slow, text only)')}
+                            onClick={async () => {
                                 const current = getRoute('chat');
-                                setRoute('chat', current.provider === 'colibri' ? null : { provider: 'colibri', model: 'colibri-glm-5.2-moe' });
+                                if (current.provider === 'colibri') {
+                                    setColibriNote(null);
+                                    setRoute('chat', null);
+                                    return;
+                                }
+                                // never switch Chan to a server that is not there: say so and stay on the current model
+                                const up = await isColibriAvailable(getProviderConfig('colibri').baseUrl || undefined);
+                                setHasColibri(up);
+                                if (!up) {
+                                    setColibriNote(tr('Colibrì is not running on this PC. Start it, then try again.'));
+                                    return;
+                                }
+                                setColibriNote(null);
+                                // 'auto' = the model the server has loaded; the server rejects any other id
+                                setRoute('chat', { provider: 'colibri', model: 'auto' });
                             }}
                         >
                             <span className="chan-local-dot" />
-                            <span>{colibriActive ? '🪶 Colibrì MoE (NVMe)' : '🪶 Enable Colibrì'}</span>
+                            <span>{colibriActive ? tr('Colibrì (local)') : tr('Use Colibrì')}</span>
                         </button>
-                    )}
-                    {colibriActive && (
-                        <span
-                            className="chan-colibri-telemetry"
-                            title={tr('Colibrì Local MoE Active • Direct NVMe Weight Streaming')}
-                        >
-                            <span className="chan-telemetry-chip">NVMe MoE</span>
-                            <span className="chan-telemetry-stat">8082</span>
-                        </span>
                     )}
                 </div>
                 {hasRobots && (
@@ -456,6 +413,20 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
                     </div>
                 )}
             </div>
+
+            {/* Local model notice: Colibrì is slow (about half a token per second on this PC) and text only */}
+            {(colibriActive || colibriNote) && (
+                <div className="chan-local-notice" role="status">
+                    <Cpu size={12} aria-hidden="true" />
+                    <span>
+                        {colibriNote
+                            ? colibriNote
+                            : !hasColibri
+                                ? tr('Colibrì is not running on this PC. Start it, or pick another model.')
+                                : `${tr('Local model: replies can take a minute')}${colibriModel ? ` (${colibriModel})` : ''}`}
+                    </span>
+                </div>
+            )}
 
             {/* (2) CONVERSATION & (3) HELPER CENTRE & (4) PENDING CONFIRM & (5) ERROR */}
             <div
@@ -569,6 +540,21 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
                             <span className="chan-thinking-dot" />
                             <span className="chan-thinking-dot" />
                             <span className="onyx-sr-only">{tr('Chan is thinking')}</span>
+                            {colibriActive && (
+                                <>
+                                    <span className="chan-wait-time isl-num">{trf('{s} s', { s: waitedSec })}</span>
+                                    <button
+                                        type="button"
+                                        onClick={agent.stop}
+                                        className="isl-btn chan-stop-btn"
+                                        aria-label={tr('Stop')}
+                                        title={tr('Stop')}
+                                    >
+                                        <Square size={12} aria-hidden="true" />
+                                        <span>{tr('Stop')}</span>
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}

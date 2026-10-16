@@ -1,75 +1,61 @@
 <#
 .SYNOPSIS
-    Starts and health-checks the local Colibri inference server on Windows.
+    Starts and health-checks the local Colibri server on Windows (OpenAI API on http://127.0.0.1:8000).
 
 .DESCRIPTION
-    Manages the background daemon for Colibri (JustVugg/colibri) sparse expert streaming on Windows.
-    Verifies loopback port availability, launches coli.exe or the development mock daemon, and
-    performs health and model verification.
+    Colibri's own installer (START-HERE.bat / "coli setup") writes %LOCALAPPDATA%\colibri\setup.json with the model
+    folder, the port and the exact arguments. This script reads that file, starts `coli web` with those arguments on
+    127.0.0.1, and adds the browser origins the Onyx app is served from to Colibri's CORS list
+    (--cors-origin +ORIGIN keeps the built-in list and adds yours). It then shows what the server really reports.
+
+    The server serves ONE model at a time, is text only, and is slow (about 0.5 tokens per second measured on this PC).
+    The Supabase Realtime relay is disabled until it is secured, so nothing here starts it.
 
 .PARAMETER Port
-    TCP port for the Colibri HTTP server (default: 8082).
+    TCP port (default: the port in setup.json, else 8000).
 
-.PARAMETER ModelDir
-    Path to NVMe model weights (default: "C:\colibri\models").
+.PARAMETER CorsOrigin
+    Browser origins allowed to call the server. Default: the deployed app. http://localhost:5173 is already in
+    Colibri's built-in list. Add the dev server origin if you serve the app from another port.
 
 .PARAMETER DevMock
-    Launches a lightweight local Node.js/Python mock server on port 8082 for dev testing if coli.exe is not installed.
+    Starts scripts\colibri-mock-server.cjs instead of the real engine (canned answers, same API shape). For
+    developing the app only; never for real answers.
 
 .PARAMETER Stop
-    Stops any running Colibri daemon on the specified port.
+    Stops whatever listens on the port.
 
 .PARAMETER Status
-    Checks and displays the status of the Colibri server without starting it.
+    Shows the status without starting anything.
 
 .PARAMETER Foreground
-    Runs the process in the foreground rather than as a background daemon.
+    Runs in this window (Ctrl+C stops it).
 
 .EXAMPLE
     .\scripts\start-colibri-daemon.ps1
-    Starts the Colibri daemon using default port 8082 and models at C:\colibri\models.
-
 .EXAMPLE
-    .\scripts\start-colibri-daemon.ps1 -DevMock
-    Starts the dev mock daemon for local frontend and bridge testing without requiring the full engine.
-
+    .\scripts\start-colibri-daemon.ps1 -CorsOrigin https://jouhayerk-cloud.github.io,https://localhost:1001
 .EXAMPLE
     .\scripts\start-colibri-daemon.ps1 -Stop
-    Terminates the local Colibri server running on port 8082.
 #>
 
 [CmdletBinding()]
 param(
-    [Parameter(Position = 0)]
-    [int]$Port = 8082,
-
-    [Parameter(Position = 1)]
-    [string]$ModelDir = "C:\colibri\models",
-
-    [Parameter()]
+    [int]$Port = 0,
+    [string[]]$CorsOrigin = @("https://jouhayerk-cloud.github.io"),
     [switch]$DevMock,
-
-    [Parameter()]
     [switch]$Stop,
-
-    [Parameter()]
     [switch]$Status,
-
-    [Parameter()]
     [switch]$Foreground
 )
 
 $ErrorActionPreference = "Continue"
-
-function Write-ColibriBanner {
-    Write-Host ""
-    Write-Host " ======================================================================" -ForegroundColor DarkCyan
-    Write-Host "   COLIBRI LOCAL MoE ENGINE - WINDOWS DAEMON ORCHESTRATOR               " -ForegroundColor Cyan -NoNewline
-    Write-Host " [v1.2] " -ForegroundColor Yellow
-    Write-Host "       NVMe Sparse Expert Streaming for Onyx-mx and Chan Chat           " -ForegroundColor DarkGray
-    Write-Host " ======================================================================" -ForegroundColor DarkCyan
-    Write-Host ""
+$SetupFile = Join-Path $env:LOCALAPPDATA "colibri\setup.json"
+$setup = $null
+if (Test-Path $SetupFile) {
+    try { $setup = Get-Content $SetupFile -Raw | ConvertFrom-Json } catch { $setup = $null }
 }
+if ($Port -le 0) { $Port = if ($setup -and $setup.port) { [int]$setup.port } else { 8000 } }
 
 function Test-PortActive {
     param([int]$CheckPort)
@@ -77,319 +63,108 @@ function Test-PortActive {
     try {
         $tcp = New-Object System.Net.Sockets.TcpClient
         $iar = $tcp.BeginConnect("127.0.0.1", $CheckPort, $null, $null)
-        $wait = $iar.AsyncWaitHandle.WaitOne(250, $false)
-        if ($wait -and $tcp.Connected) {
-            $tcp.EndConnect($iar)
-            return $true
-        }
+        if ($iar.AsyncWaitHandle.WaitOne(250, $false) -and $tcp.Connected) { $tcp.EndConnect($iar); return $true }
         return $false
-    } catch {
-        return $false
-    } finally {
-        if ($tcp) { $tcp.Close() }
-    }
+    } catch { return $false } finally { if ($tcp) { $tcp.Close() } }
 }
 
 function Stop-ColibriDaemon {
     param([int]$TargetPort)
-    Write-Host " [INFO] Searching for processes listening on port $TargetPort..." -ForegroundColor Yellow
-    
     $connections = Get-NetTCPConnection -LocalPort $TargetPort -State Listen -ErrorAction SilentlyContinue
-    if (-not $connections) {
-        Write-Host " [INFO] No process found listening on port $TargetPort." -ForegroundColor Green
-        return
-    }
-
+    if (-not $connections) { Write-Host " [INFO] Nothing is listening on port $TargetPort." -ForegroundColor Green; return }
     foreach ($conn in $connections) {
         $procId = $conn.OwningProcess
         if ($procId -gt 0) {
-            try {
-                $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
-                if ($proc) {
-                    Write-Host " [STOP] Terminating process $($proc.ProcessName) (PID: ${procId})..." -ForegroundColor Yellow
-                    Stop-Process -Id $procId -Force
-                    Write-Host " [OK] Process $procId terminated successfully." -ForegroundColor Green
-                }
-            } catch {
-                Write-Warning "Failed to stop process PID ${procId}: $_"
+            $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
+            if ($proc) {
+                Write-Host " [STOP] Stopping $($proc.ProcessName) (PID $procId)" -ForegroundColor Yellow
+                Stop-Process -Id $procId -Force
             }
         }
     }
-
-    # Also stop any running Colibri Supabase Relay daemons
-    try {
-        $relayProcs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*colibri-supabase-relay.cjs*" }
-        foreach ($rp in $relayProcs) {
-            Write-Host " [STOP] Terminating Colibri Supabase Relay Daemon (PID: $($rp.ProcessId))..." -ForegroundColor Yellow
-            Stop-Process -Id $rp.ProcessId -Force -ErrorAction SilentlyContinue
-            Write-Host " [OK] Relay process $($rp.ProcessId) stopped." -ForegroundColor Green
-        }
-    } catch {
-        # ignore
-    }
 }
 
-function Start-DetachedProcess {
-    param(
-        [string]$CommandLine,
-        [string]$FilePath,
-        [string[]]$ArgumentList
-    )
-    try {
-        $cimResult = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $CommandLine } -ErrorAction Stop
-        if ($cimResult.ReturnValue -eq 0 -and $cimResult.ProcessId) {
-            return $cimResult.ProcessId
-        }
-    } catch {
-        # Fallback to Start-Process
-    }
-    $p = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -WindowStyle Hidden -PassThru
-    return $p.Id
-}
-
-function Show-HealthAndModels {
+function Show-Health {
     param([int]$ActivePort)
     $baseUrl = "http://127.0.0.1:$ActivePort"
-    
     Write-Host " ----------------------------------------------------------------------" -ForegroundColor DarkGray
-    Write-Host " [HEALTH CHECK] Querying $baseUrl/health ..." -ForegroundColor Cyan
     try {
-        $health = Invoke-RestMethod -Uri "$baseUrl/health" -Method Get -TimeoutSec 3 -ErrorAction Stop
-        Write-Host "   Status:          " -NoNewline
-        Write-Host "$($health.status)" -ForegroundColor Green
-        Write-Host "   Engine:          " -NoNewline
-        Write-Host "$($health.engine)" -ForegroundColor Cyan
-        if ($health.version) {
-            Write-Host "   Version:         $($health.version)" -ForegroundColor Gray
-        }
-        if ($health.nvmePath) {
-            Write-Host "   NVMe Path:       $($health.nvmePath)" -ForegroundColor Gray
-        }
-        if ($health.telemetry) {
-            Write-Host "   NVMe Throughput: $($health.telemetry.nvmeReadMBps) MB/s" -ForegroundColor Magenta
-            Write-Host "   Cache Hit Rate:  $([math]::Round($health.telemetry.cacheHitRate * 100, 1))%" -ForegroundColor Magenta
-            Write-Host "   Token Velocity:  $($health.telemetry.tokensPerSecond) tps" -ForegroundColor Magenta
-        }
+        $h = Invoke-RestMethod -Uri "$baseUrl/health" -TimeoutSec 3 -ErrorAction Stop
+        Write-Host "   Status:   $($h.status)" -ForegroundColor Green
+        if ($h.arch) { Write-Host "   Arch:     $($h.arch)" -ForegroundColor Gray }
+        if ($h.scheduler) { Write-Host "   Queue:    active $($h.scheduler.active), queued $($h.scheduler.queued), completed $($h.scheduler.completed)" -ForegroundColor Gray }
+        if ($h.input_modalities) { Write-Host "   Input:    $($h.input_modalities -join ', ')" -ForegroundColor Gray }
     } catch {
-        Write-Host "   Status:          Responding on port, but /health endpoint returned error: $_" -ForegroundColor Yellow
+        Write-Host "   /health did not answer: $_" -ForegroundColor Yellow
     }
-
-    Write-Host ""
-    Write-Host " [MODELS] Querying $baseUrl/v1/models ..." -ForegroundColor Cyan
     try {
-        $modelsResponse = Invoke-RestMethod -Uri "$baseUrl/v1/models" -Method Get -TimeoutSec 3 -ErrorAction Stop
-        $modelList = $modelsResponse.data
-        if ($modelList -and $modelList.Count -gt 0) {
-            foreach ($m in $modelList) {
-                $owner = if ($m.owned_by) { $m.owned_by } else { "local" }
-                Write-Host "   * $($m.id)" -ForegroundColor White -NoNewline
-                Write-Host " ($owner)" -ForegroundColor DarkGray
-            }
-        } else {
-            Write-Host "   No models reported." -ForegroundColor DarkYellow
-        }
+        $m = Invoke-RestMethod -Uri "$baseUrl/v1/models" -TimeoutSec 3 -ErrorAction Stop
+        foreach ($model in $m.data) { Write-Host "   Model:    $($model.id)" -ForegroundColor White }
     } catch {
-        Write-Host "   Could not retrieve /v1/models: $_" -ForegroundColor Yellow
+        Write-Host "   /v1/models did not answer: $_" -ForegroundColor Yellow
     }
-
     Write-Host " ----------------------------------------------------------------------" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host " Helpful Commands:" -ForegroundColor Yellow
-    Write-Host "   * Check Health:    Invoke-RestMethod http://127.0.0.1:$ActivePort/health" -ForegroundColor Gray
-    Write-Host "   * List Models:     Invoke-RestMethod http://127.0.0.1:$ActivePort/v1/models" -ForegroundColor Gray
-    Write-Host "   * Test Chat:       curl.exe -X POST http://127.0.0.1:$ActivePort/v1/chat/completions -H `"Content-Type: application/json`" -d `"{`\`"messages`\`":[{`\`"role`\`":`\`"user`\`",`\`"content`\`":`\`"hello`\`"}]}`"" -ForegroundColor Gray
-    Write-Host "   * Stop Daemon:     .\scripts\start-colibri-daemon.ps1 -Stop -Port $ActivePort" -ForegroundColor Gray
-    Write-Host ""
+    Write-Host "   Stop it with: .\scripts\start-colibri-daemon.ps1 -Stop -Port $ActivePort" -ForegroundColor Gray
 }
 
-function Start-SupabaseRelayDaemon {
-    param([int]$ActivePort)
-    
-    # Check if relay daemon is already running
-    $runningRelay = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*colibri-supabase-relay.cjs*" }
-    if ($runningRelay) {
-        $firstPid = ($runningRelay | Select-Object -First 1).ProcessId
-        Write-Host " [RELAY] Supabase Realtime Relay is already running (PID: $firstPid)" -ForegroundColor DarkCyan
-        return
-    }
+# --- Entrypoint ---
+if ($Stop) { Stop-ColibriDaemon -TargetPort $Port; exit 0 }
 
-    $relayScript = Join-Path $PSScriptRoot "colibri-supabase-relay.cjs"
-    if (-not (Test-Path $relayScript)) {
-        $relayScript = "C:\Jouhayerk\git\app\scripts\colibri-supabase-relay.cjs"
-    }
-
-    if (Test-Path $relayScript) {
-        $nodeCmd = Get-Command "node" -ErrorAction SilentlyContinue
-        if ($nodeCmd) {
-            $nodeExe = $nodeCmd.Source
-            $cmdLine = "`"$nodeExe`" `"$relayScript`" --port $ActivePort"
-            $arguments = @("`"$relayScript`"", "--port", "$ActivePort")
-            $relayPid = Start-DetachedProcess -CommandLine $cmdLine -FilePath $nodeExe -ArgumentList $arguments
-            Write-Host " [RELAY] Launched Colibri Supabase Realtime Relay Daemon (PID: $relayPid) -> colibri_relay_global" -ForegroundColor Magenta
-        } else {
-            Write-Host " [RELAY] Node.js not detected; skipping background relay daemon." -ForegroundColor DarkYellow
-        }
-    }
-}
-
-# --- Execution Entrypoint ---
-Write-ColibriBanner
-
-if ($Stop) {
-    Stop-ColibriDaemon -TargetPort $Port
-    exit 0
-}
-
-Write-Host " [PORT CHECK] Testing loopback connection on 127.0.0.1:$Port ..." -ForegroundColor Gray
-$isPortActive = Test-PortActive -CheckPort $Port
-
-if ($isPortActive) {
-    Write-Host " [OK] Colibri local server is ALREADY ACTIVE on port $Port (http://127.0.0.1:$Port)" -ForegroundColor Green
-    Start-SupabaseRelayDaemon -ActivePort $Port
-    Show-HealthAndModels -ActivePort $Port
+if (Test-PortActive -CheckPort $Port) {
+    Write-Host " [OK] A server is already listening on http://127.0.0.1:$Port" -ForegroundColor Green
+    Write-Host " [NOTE] CORS origins are fixed when the server starts. If the app is blocked, stop it and start it again here." -ForegroundColor DarkYellow
+    Show-Health -ActivePort $Port
     exit 0
 }
 
 if ($Status) {
-    Write-Host " [INACTIVE] No server is listening on port $Port." -ForegroundColor Yellow
-    Write-Host " Launch it with: .\scripts\start-colibri-daemon.ps1 -Port $Port" -ForegroundColor DarkGray
+    Write-Host " [INACTIVE] Nothing is listening on port $Port." -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host " [INFO] Port $Port is available." -ForegroundColor Gray
-
-# Look for native coli.exe executable
-$coliSearchPaths = @(
-    (Join-Path (Split-Path $ModelDir -Parent) "coli.exe"),
-    "C:\colibri\coli.exe",
-    "C:\colibri\c\coli.exe"
-)
-
-$foundColiExe = $null
-foreach ($path in $coliSearchPaths) {
-    if (Test-Path $path) {
-        $foundColiExe = (Resolve-Path $path).Path
-        break
-    }
-}
-
-if (-not $foundColiExe) {
-    $cmdColi = Get-Command "coli.exe" -ErrorAction SilentlyContinue
-    if ($cmdColi) {
-        $foundColiExe = $cmdColi.Source
-    }
-}
-
-# Locate Dev Mock server script if needed
-$mockScriptCandidates = @(
-    (Join-Path $PSScriptRoot "colibri-mock-server.cjs"),
-    (Join-Path (Join-Path $PSScriptRoot "scripts") "colibri-mock-server.cjs"),
-    "C:\Jouhayerk\scripts\colibri-mock-server.cjs",
-    "C:\Jouhayerk\git\app\scripts\colibri-mock-server.cjs"
-)
-
-$foundMockScript = $null
-foreach ($mPath in $mockScriptCandidates) {
-    if (Test-Path $mPath) {
-        $foundMockScript = (Resolve-Path $mPath).Path
-        break
-    }
-}
-
-if ($foundColiExe) {
-    Write-Host " [BINARY] Found Colibri executable: $foundColiExe" -ForegroundColor Green
-    Write-Host " [STORAGE] Model directory: $ModelDir" -ForegroundColor Cyan
-    
-    if (-not (Test-Path $ModelDir)) {
-        Write-Host " [WARNING] Model directory '$ModelDir' does not exist yet. Creating directory..." -ForegroundColor Yellow
-        New-Item -ItemType Directory -Path $ModelDir -Force | Out-Null
-    }
-
-    $arguments = @("--server", "--port", "$Port", "--nvme-path", "$ModelDir")
-    Write-Host " [LAUNCH] Starting coli.exe with arguments: $($arguments -join ' ')" -ForegroundColor Cyan
-
-    if ($Foreground) {
-        Write-Host " [RUN] Running in foreground. Press Ctrl+C to stop." -ForegroundColor Yellow
-        & $foundColiExe $arguments
-        exit 0
-    } else {
-        $fullCmd = "`"$foundColiExe`" $($arguments -join ' ')"
-        $procId = Start-DetachedProcess -CommandLine $fullCmd -FilePath $foundColiExe -ArgumentList $arguments
-        Write-Host " [DAEMON] Started background process PID: $procId" -ForegroundColor Green
-    }
-} elseif ($DevMock) {
-    Write-Host " [DEV-MOCK] coli.exe not detected. Starting lightweight Colibri Dev Mock server..." -ForegroundColor Magenta
-    
-    if (-not $foundMockScript) {
-        Write-Error "DevMock script colibri-mock-server.cjs not found in scripts directory."
-        exit 1
-    }
-
-    # Verify Node.js runtime
-    $nodeCmd = Get-Command "node" -ErrorAction SilentlyContinue
-    if (-not $nodeCmd) {
-        Write-Error "Node.js is required to run the DevMock server. Please install Node.js (v18+) or install coli.exe."
-        exit 1
-    }
-
-    $nodeExe = $nodeCmd.Source
-    $arguments = @("`"$foundMockScript`"", "--port", "$Port", "--nvme-path", "`"$ModelDir`"")
-
-    Write-Host " [LAUNCH] Starting: $nodeExe $($arguments -join ' ')" -ForegroundColor DarkCyan
-
-    if ($Foreground) {
-        Write-Host " [RUN] Running DevMock in foreground. Press Ctrl+C to stop." -ForegroundColor Yellow
-        & $nodeExe $foundMockScript --port $Port --nvme-path $ModelDir
-        exit 0
-    } else {
-        $fullCmd = "`"$nodeExe`" `"$foundMockScript`" --port $Port --nvme-path `"$ModelDir`""
-        $procId = Start-DetachedProcess -CommandLine $fullCmd -FilePath $nodeExe -ArgumentList $arguments
-        Write-Host " [DAEMON] Started DevMock background process PID: $procId" -ForegroundColor Green
-    }
+if ($DevMock) {
+    $mock = Join-Path $PSScriptRoot "colibri-mock-server.cjs"
+    $node = (Get-Command "node" -ErrorAction SilentlyContinue)
+    if (-not $node -or -not (Test-Path $mock)) { Write-Error "DevMock needs Node.js and scripts\colibri-mock-server.cjs."; exit 1 }
+    Write-Host " [DEV-MOCK] Starting the MOCK server (canned answers, not Colibri) on port $Port" -ForegroundColor Magenta
+    if ($Foreground) { & $node.Source $mock --port $Port; exit 0 }
+    Start-Process -FilePath $node.Source -ArgumentList @("`"$mock`"", "--port", "$Port") -WindowStyle Hidden | Out-Null
 } else {
-    Write-Host ""
-    Write-Host " ======================================================================" -ForegroundColor Yellow
-    Write-Host "   [!] COLIBRI EXECUTABLE NOT FOUND (coli.exe)                          " -ForegroundColor Yellow
-    Write-Host " ======================================================================" -ForegroundColor Yellow
-    Write-Host "  Could not find 'coli.exe' in 'C:\colibri\' or in system PATH." -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "  Options to proceed:" -ForegroundColor White
-    Write-Host "   1. Run with -DevMock to start the lightweight local testing server:" -ForegroundColor Cyan
-    Write-Host "      .\scripts\start-colibri-daemon.ps1 -DevMock" -ForegroundColor White
-    Write-Host ""
-    Write-Host "   2. Install coli.exe and download models following the setup guide:" -ForegroundColor Cyan
-    Write-Host "      See: docs/ai/COLIBRI_WINDOWS_SETUP.md" -ForegroundColor White
-    Write-Host ""
-    Write-Host "   3. If your binary is located elsewhere, specify via PATH or copy to C:\colibri\coli.exe" -ForegroundColor Gray
-    Write-Host " ======================================================================" -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
+    if (-not $setup -or -not $setup.args) {
+        Write-Host " [!] Colibri is not set up on this PC (no $SetupFile)." -ForegroundColor Yellow
+        Write-Host "     Run START-HERE.bat in the Colibri folder once; see docs/ai/COLIBRI_WINDOWS_SETUP.md." -ForegroundColor Gray
+        exit 1
+    }
+    $runtimeDir = Split-Path -Parent $setup.launcher
+    $coliCmd = Join-Path $runtimeDir "coli.cmd"
+    if (-not (Test-Path $coliCmd)) { Write-Error "coli.cmd not found next to $($setup.launcher). Re-run Colibri's setup."; exit 1 }
+
+    $argList = @($setup.args | ForEach-Object { "$_" })
+    # keep the server on this machine and replace the port if one was given
+    $argList = @($argList | Where-Object { $_ -ne "--no-browser" })
+    foreach ($origin in $CorsOrigin) {
+        if ($origin) { $argList += @("--cors-origin", "+$origin") }
+    }
+    $argList += "--no-browser"
+    $pIdx = [array]::IndexOf($argList, "--port")
+    if ($pIdx -ge 0 -and $pIdx + 1 -lt $argList.Count) { $argList[$pIdx + 1] = "$Port" } else { $argList += @("--port", "$Port") }
+
+    foreach ($k in $setup.env.PSObject.Properties) { Set-Item -Path "Env:$($k.Name)" -Value "$($k.Value)" }
+    Write-Host " [LAUNCH] coli.cmd $($argList -join ' ')" -ForegroundColor Cyan
+    if ($Foreground) { & $coliCmd @argList; exit 0 }
+    Start-Process -FilePath $coliCmd -ArgumentList $argList -WindowStyle Hidden | Out-Null
 }
 
-# Wait for daemon to become responsive
-Write-Host " [WAIT] Waiting for Colibri server to initialize on port $Port..." -ForegroundColor Gray
-$maxAttempts = 15
-$attempt = 0
-$serverReady = $false
-
-while ($attempt -lt $maxAttempts) {
+Write-Host " [WAIT] Waiting for the server (loading a large model can take a minute)..." -ForegroundColor Gray
+$ready = $false
+for ($i = 0; $i -lt 100; $i++) {
     Start-Sleep -Milliseconds 600
-    $attempt++
-    if (Test-PortActive -CheckPort $Port) {
-        $serverReady = $true
-        break
-    }
-    Write-Host "." -NoNewline -ForegroundColor DarkGray
+    if (Test-PortActive -CheckPort $Port) { $ready = $true; break }
 }
-Write-Host ""
-
-if ($serverReady) {
-    Write-Host " [SUCCESS] Colibri daemon is online and healthy!" -ForegroundColor Green
-    Start-SupabaseRelayDaemon -ActivePort $Port
-    Show-HealthAndModels -ActivePort $Port
+if ($ready) {
+    Write-Host " [SUCCESS] Colibri is listening on http://127.0.0.1:$Port" -ForegroundColor Green
+    Show-Health -ActivePort $Port
     exit 0
-} else {
-    Write-Host " [ERROR] Server failed to respond on port $Port within $($maxAttempts * 0.6) seconds." -ForegroundColor Red
-    Write-Host " Check system event logs or launch with -Foreground to inspect console errors." -ForegroundColor Yellow
-    exit 1
 }
+Write-Host " [ERROR] No answer on port $Port. Run with -Foreground to see the engine output." -ForegroundColor Red
+exit 1

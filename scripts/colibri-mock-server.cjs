@@ -1,468 +1,180 @@
 #!/usr/bin/env node
 /**
- * Colibri Local MoE Inference Engine Dev Mock Server
- * Simulates JustVugg/colibri on Windows for development and automated testing.
- * 
- * Endpoints:
- * - GET  /health & /status       Health check & telemetry
- * - GET  /v1/models              Available local MoE and embedding models
- * - POST /v1/chat/completions    OpenAI format completions + SSE token streaming
- * - POST /v1/embeddings          768-dimensional float32 vector embeddings
+ * Colibrì DEV MOCK server. Not Colibrì: canned answers for developing and testing the app without the real engine.
+ *
+ * It follows the contract of the real server (colibri v2, `coli web` / `coli serve`), measured on the owner's PC:
+ *   - OpenAI API on http://127.0.0.1:8000, text only
+ *   - GET /health            -> { status, arch, scheduler{...}, input_modalities: ["text"], ... }
+ *   - GET /v1/models         -> ONE model, input_modalities ["text"]
+ *   - POST /v1/chat/completions (JSON or SSE). A model id other than the served one fails 404 model_not_found
+ *     (so 'auto' is rejected here exactly as the real server rejects it)
+ *   - NO /v1/embeddings (the real server has none): 404
+ *   - NO invented telemetry: /health reports counters the mock really keeps, nothing else
+ *
+ * Safe by default: binds 127.0.0.1, answers CORS only for an explicit origin list (never "*").
+ *
+ * Usage:  node scripts/colibri-mock-server.cjs [--port 8000] [--model-id qwen3.6-colibri] [--delay-ms 20]
+ *                                              [--allow-origin https://example.org]
  */
+'use strict';
 
 const http = require('http');
-const url = require('url');
 
-// Parse CLI arguments: --port <num>, --model-dir <path>
 const args = process.argv.slice(2);
-let port = 8082;
-let modelDir = 'C:\\colibri\\models';
+let port = 8000;
+let modelId = 'qwen3.6-colibri';
+let delayMs = 20;
+const allowedOrigins = new Set([
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
+    'https://localhost:1001',
+    'https://jouhayerk-cloud.github.io',
+]);
 
 for (let i = 0; i < args.length; i++) {
-    if ((args[i] === '--port' || args[i] === '-p') && args[i + 1]) {
-        port = parseInt(args[i + 1], 10) || 8082;
-        i++;
-    } else if ((args[i] === '--model-dir' || args[i] === '-m' || args[i] === '--nvme-path') && args[i + 1]) {
-        modelDir = args[i + 1];
-        i++;
-    }
+    const next = args[i + 1];
+    if ((args[i] === '--port' || args[i] === '-p') && next) { port = parseInt(next, 10) || port; i++; }
+    else if (args[i] === '--model-id' && next) { modelId = next; i++; }
+    else if (args[i] === '--delay-ms' && next) { delayMs = Math.max(0, parseInt(next, 10) || 0); i++; }
+    else if (args[i] === '--allow-origin' && next) { allowedOrigins.add(next.replace(/\/+$/, '')); i++; }
+}
+if (process.env.COLIBRI_PORT) port = parseInt(process.env.COLIBRI_PORT, 10) || port;
+
+const counters = { admitted: 0, completed: 0, failed: 0, active: 0 };
+
+function corsHeaders(origin) {
+    return origin && allowedOrigins.has(origin)
+        ? {
+            'Access-Control-Allow-Origin': origin,
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+            'Vary': 'Origin',
+        }
+        : { 'Vary': 'Origin' };
 }
 
-// Allow environment variable overrides
-if (process.env.COLIBRI_PORT) {
-    port = parseInt(process.env.COLIBRI_PORT, 10) || port;
+function sendJson(res, status, body, cors) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', ...cors });
+    res.end(JSON.stringify(body));
 }
 
-const MODELS = [
-    {
-        id: 'auto',
-        object: 'model',
-        created: 1729000000,
-        owned_by: 'colibri-local',
-        permission: [],
-        root: 'auto',
-        parent: null
-    },
-    {
-        id: 'colibri-glm-5.2-moe',
-        object: 'model',
-        created: 1729000000,
-        owned_by: 'colibri-local',
-        permission: [],
-        root: 'colibri-glm-5.2-moe',
-        parent: null
-    },
-    {
-        id: 'colibri-kimi-k3-moe',
-        object: 'model',
-        created: 1729000000,
-        owned_by: 'colibri-local',
-        permission: [],
-        root: 'colibri-kimi-k3-moe',
-        parent: null
-    },
-    {
-        id: 'colibri-qwen-2.5-3b',
-        object: 'model',
-        created: 1729000000,
-        owned_by: 'colibri-local',
-        permission: [],
-        root: 'colibri-qwen-2.5-3b',
-        parent: null
-    },
-    {
-        id: 'colibri-embed-v1',
-        object: 'model',
-        created: 1729000000,
-        owned_by: 'colibri-local',
-        permission: [],
-        root: 'colibri-embed-v1',
-        parent: null
-    }
-];
+const apiError = (message, code, type) => ({ error: { message, type: type || 'invalid_request_error', code } });
 
-/**
- * Generates a deterministic 768-dimensional normalized float vector for a given string
- */
-function generate768DimVector(text) {
-    const dim = 768;
-    const vec = new Float32Array(dim);
-    let hash = 0x811c9dc5;
-    for (let i = 0; i < text.length; i++) {
-        hash ^= text.charCodeAt(i);
-        hash = Math.imul(hash, 0x01000193);
-    }
-
-    let normSq = 0;
-    for (let i = 0; i < dim; i++) {
-        const val = Math.sin((hash + i * 37) * 0.001) * Math.cos((i + 17) * 0.013);
-        vec[i] = val;
-        normSq += val * val;
-    }
-
-    const norm = Math.sqrt(normSq) || 1.0;
-    const result = new Array(dim);
-    for (let i = 0; i < dim; i++) {
-        result[i] = Number((vec[i] / norm).toFixed(6));
-    }
-    return result;
-}
-
-function setCorsHeaders(res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Range');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range');
+function readBody(req, limit, cb) {
+    let body = '';
+    let tooLarge = false;
+    req.on('data', (chunk) => {
+        body += chunk;
+        if (body.length > limit) { tooLarge = true; req.destroy(); }
+    });
+    req.on('end', () => cb(tooLarge ? null : body));
 }
 
 const server = http.createServer((req, res) => {
-    setCorsHeaders(res);
-
+    const cors = corsHeaders(req.headers.origin);
+    if (req.headers.origin && !allowedOrigins.has(req.headers.origin)) {
+        return sendJson(res, 403, apiError('Origin not allowed', 'forbidden_origin'), cors);
+    }
     if (req.method === 'OPTIONS') {
-        res.writeHead(204);
+        res.writeHead(204, cors);
         res.end();
         return;
     }
 
-    const parsedUrl = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
-    const pathname = parsedUrl.pathname.replace(/\/+$/, '') || '/';
+    const pathname = new URL(req.url, 'http://mock.invalid').pathname.replace(/\/+$/, '') || '/';
 
-    // 1. Health & Status
-    if ((pathname === '/health' || pathname === '/status' || pathname === '/') && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
+    if (req.method === 'GET' && pathname === '/health') {
+        return sendJson(res, 200, {
             status: 'ok',
-            engine: 'colibri-mock',
-            version: '1.2.0-win32-moe',
-            port: port,
-            nvmePath: modelDir,
-            telemetry: {
-                nvmeReadMBps: 2740.8,
-                cacheHitRate: 0.894,
-                tokensPerSecond: 26.5,
-                activeExperts: 4,
-                pinnedExperts: 128
-            },
-            modelsAvailable: MODELS.map(m => m.id),
-            timestamp: new Date().toISOString()
-        }, null, 2));
-        return;
+            mock: true,
+            arch: 'mock',
+            scheduler: { active: counters.active, queued: 0, capacity: 1, admitted: counters.admitted, completed: counters.completed, failed: counters.failed },
+            input_modalities: ['text'],
+            capabilities: ['chat'],
+        }, cors);
     }
 
-    // 2. Models list
-    if (pathname === '/v1/models' && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
+    if (req.method === 'GET' && pathname === '/v1/models') {
+        return sendJson(res, 200, {
             object: 'list',
-            data: MODELS
-        }, null, 2));
-        return;
+            data: [{ id: modelId, object: 'model', created: Math.floor(Date.now() / 1000), owned_by: 'colibri-mock', input_modalities: ['text'], capabilities: ['chat'] }],
+        }, cors);
     }
 
-    // 3. Chat Completions
-    if (pathname === '/v1/chat/completions' && req.method === 'POST') {
-        let body = '';
-        req.on('data', chunk => { body += chunk; });
-        req.on('end', () => {
-            let parsed = {};
-            try {
-                parsed = JSON.parse(body || '{}');
-            } catch (err) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: { message: 'Invalid JSON body: ' + err.message } }));
-                return;
+    if (req.method === 'POST' && pathname === '/v1/chat/completions') {
+        readBody(req, 4 * 1024 * 1024, (body) => {
+            if (body === null) return sendJson(res, 413, apiError('Request too large', 'request_too_large'), cors);
+            let parsed;
+            try { parsed = JSON.parse(body || '{}'); }
+            catch (err) { return sendJson(res, 400, apiError('Invalid JSON body: ' + err.message, 'invalid_json'), cors); }
+
+            // the real server serves one model and rejects every other id (404 model_not_found)
+            if (parsed.model !== modelId) {
+                counters.failed++;
+                return sendJson(res, 404, apiError(`The model \`${parsed.model}\` does not exist`, 'model_not_found'), cors);
             }
 
-            let model = parsed.model || 'auto';
-            const messages = parsed.messages || [];
-            const lastMsg = messages[messages.length - 1] || { content: '' };
-            // 1. Gather all conversation text across all messages for full context
-            let fullConversation = '';
-            for (const msg of messages) {
-                const c = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content || '');
-                fullConversation += c + '\n';
+            const messages = Array.isArray(parsed.messages) ? parsed.messages : [];
+            const last = messages[messages.length - 1] || { content: '' };
+            const lastPrompt = typeof last.content === 'string' ? last.content : JSON.stringify(last.content || '');
+            const tools = Array.isArray(parsed.tools) ? parsed.tools : [];
+            const hasTool = (name) => tools.some(t => (t.function && t.function.name) === name || t.name === name);
+
+            let toolCall = null;
+            const open = /open\s+(?:item\s+)?([A-Z0-9_-]+)/i.exec(lastPrompt);
+            if (open && hasTool('open_item')) {
+                toolCall = { id: 'call_' + Math.random().toString(36).slice(2, 9), type: 'function', function: { name: 'open_item', arguments: JSON.stringify({ item_id: open[1] }) } };
             }
-            if (model === 'auto' || model === 'colibri-auto') {
-                if (/translate|traducir|traducción|spanish|english/i.test(fullConversation)) {
-                    model = 'colibri-qwen-2.5-3b';
-                } else if (/json|schema|manifest|inventory|crate|volumetric/i.test(fullConversation)) {
-                    model = 'colibri-kimi-k3-moe';
-                } else {
-                    model = 'colibri-glm-5.2-moe';
-                }
-            }
-            const lastPrompt = typeof lastMsg.content === 'string' ? lastMsg.content : JSON.stringify(lastMsg.content || '');
-            const isStream = Boolean(parsed.stream);
-            const reqId = 'chatcmpl-colibri-' + Math.random().toString(36).substring(2, 10);
+            const responseText = toolCall
+                ? '[mock] Opening the item.'
+                : `[mock] No real model is running. You said: "${lastPrompt.slice(0, 80).replace(/\n/g, ' ')}"`;
+
+            counters.admitted++;
+            counters.active++;
+            const done = () => { counters.active--; counters.completed++; };
+            const id = 'chatcmpl-mock-' + Math.random().toString(36).slice(2, 10);
             const created = Math.floor(Date.now() / 1000);
 
-            // 2. Extract any inventory context items from the conversation
-            // Matches format: • [ID] Description Qty: N $Price
-            const itemRegex = /•\s*\[([A-Z0-9_\-]+)\]\s+([^$\n]+?)(?:\s*Qty:\s*(\d+))?\s*\$([0-9,.]+)/gi;
-            const parsedItems = [];
-            let match;
-            while ((match = itemRegex.exec(fullConversation)) !== null) {
-                const id = match[1];
-                const desc = match[2].trim();
-                const qty = parseInt(match[3] || '1', 10);
-                const price = parseFloat(match[4].replace(/,/g, ''));
-                if (!parsedItems.some(i => i.id === id)) {
-                    parsedItems.push({ id, desc, qty, price });
-                }
-            }
-
-            // 3. Determine tool calls if requested
-            const tools = parsed.tools || [];
-            let toolCallToEmit = null;
-
-            const wantsCutfile = /cutfile|crate|laser|box|stencil|pack/i.test(lastPrompt) && 
-                tools.some(t => (t.function?.name === 'generate_crate_cutfile' || t.name === 'generate_crate_cutfile'));
-            
-            const wantsOpenItem = /open\s+(?:item\s+)?([A-Z0-9_\-]+)/i.test(lastPrompt) &&
-                tools.some(t => (t.function?.name === 'open_item' || t.name === 'open_item'));
-            
-            const wantsSearch = /(?:search|find|lookup)\s+(?:in\s+app\s+)?(?:for\s+)?([a-zA-Z0-9_\- ]+)/i.test(lastPrompt) &&
-                tools.some(t => (t.function?.name === 'search_in_app' || t.name === 'search_in_app'));
-
-            if (wantsCutfile) {
-                toolCallToEmit = {
-                    id: 'call_' + Math.random().toString(36).substring(2, 9),
-                    type: 'function',
-                    function: {
-                        name: 'generate_crate_cutfile',
-                        arguments: JSON.stringify({
-                            crate_id: 'CRATE-BLUE-BOWLS-01',
-                            material_thickness_mm: 6,
-                            burn_mm: 0.1,
-                            output_format: 'svg'
-                        })
-                    }
-                };
-            } else if (wantsOpenItem) {
-                const itemMatch = lastPrompt.match(/open\s+(?:item\s+)?([A-Z0-9_\-]+)/i);
-                const targetId = itemMatch ? itemMatch[1] : (parsedItems[0]?.id || 'EM-003');
-                toolCallToEmit = {
-                    id: 'call_' + Math.random().toString(36).substring(2, 9),
-                    type: 'function',
-                    function: {
-                        name: 'open_item',
-                        arguments: JSON.stringify({ item_id: targetId })
-                    }
-                };
-            } else if (wantsSearch) {
-                const searchMatch = lastPrompt.match(/(?:search|find|lookup)\s+(?:in\s+app\s+)?(?:for\s+)?([a-zA-Z0-9_\- ]+)/i);
-                const queryText = searchMatch ? searchMatch[1].trim() : 'blue onyx';
-                toolCallToEmit = {
-                    id: 'call_' + Math.random().toString(36).substring(2, 9),
-                    type: 'function',
-                    function: {
-                        name: 'search_in_app',
-                        arguments: JSON.stringify({ text: queryText })
-                    }
-                };
-            }
-
-            // 4. Generate intelligent contextual response
-            let responseText = '';
-            if (toolCallToEmit) {
-                if (toolCallToEmit.function.name === 'generate_crate_cutfile') {
-                    responseText = `I'll generate the parametric laser-cut crate stencil and divider cutfile for these blue bowls using Boxes.py.`;
-                } else if (toolCallToEmit.function.name === 'open_item') {
-                    responseText = `Opening item details in the Onyx workspace.`;
-                } else {
-                    responseText = `Executing ${toolCallToEmit.function.name} locally via Colibri MoE on Windows.`;
-                }
-            } else if (parsedItems.length > 0 && /how much|price|cost|worth|total|value|expensive|cheap|bowl|blue/i.test(lastPrompt)) {
-                // Calculate pricing analytics from parsed items
-                const totalVal = parsedItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-                const totalQty = parsedItems.reduce((acc, i) => acc + i.qty, 0);
-                const avgPrice = totalVal / (totalQty || 1);
-                const sortedByPrice = [...parsedItems].sort((a, b) => a.price - b.price);
-                const minItem = sortedByPrice[0];
-                const maxItem = sortedByPrice[sortedByPrice.length - 1];
-
-                const itemsListStr = parsedItems.map(i => 
-                    `• **[${i.id}]** ${i.desc.replace(/\[|\]/g, '')} (Qty: ${i.qty}) — **$${i.price.toLocaleString('en-US')}**`
-                ).join('\n');
-
-                responseText = `Based on the ${parsedItems.length} matching blue onyx items in your active inventory, here is the price breakdown:\n\n${itemsListStr}\n\n📊 **Price & Valuation Summary**:\n- **Total Value**: **$${totalVal.toLocaleString('en-US')}** (${totalQty} piece${totalQty > 1 ? 's' : ''})\n- **Average Price**: **$${avgPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}** per bowl\n- **Lowest Price**: **[${minItem.id}]** at **$${minItem.price.toLocaleString('en-US')}**\n- **Highest Price**: **[${maxItem.id}]** at **$${maxItem.price.toLocaleString('en-US')}**\n\nWould you like me to generate a laser-cut crate stencil to pack these bowls, or open one of the items?`;
-            } else if (/cutfile|laser|crate|box|stencil|pack/i.test(lastPrompt)) {
-                responseText = `I can generate parametric laser-cut crate stencils and finger-joint dividers for your inventory items directly on your Windows desktop. Just ask me to "generate crate cutfile" or specify crate dimensions (e.g. 60x40x35 cm).`;
-            } else if (/who are you|colibri|moe|model/i.test(lastPrompt)) {
-                responseText = `I am **Colibrì Local MoE** (${model}), running locally on your Windows machine via direct NVMe sparse expert streaming. I operate completely private, offline, with zero cloud latency.`;
-            } else {
-                responseText = `[Colibrì MoE (${model})]: I've analyzed your prompt ("${lastPrompt.slice(0, 80).replace(/\n/g, ' ')}..."). How would you like to proceed with your inventory or logistics?`;
-            }
-
-            if (isStream) {
-                res.writeHead(200, {
-                    'Content-Type': 'text/event-stream; charset=utf-8',
-                    'Cache-Control': 'no-cache, no-transform',
-                    'Connection': 'keep-alive'
-                });
-
-                // First chunk: role
-                res.write(`data: ${JSON.stringify({
-                    id: reqId,
-                    object: 'chat.completion.chunk',
-                    created: created,
-                    model: model,
-                    choices: [{
-                        index: 0,
-                        delta: { role: 'assistant' },
-                        finish_reason: null
-                    }]
-                })}\n\n`);
-
-                // If tool call, emit it in chunk
-                if (toolCallToEmit) {
-                    res.write(`data: ${JSON.stringify({
-                        id: reqId,
-                        object: 'chat.completion.chunk',
-                        created: created,
-                        model: model,
-                        choices: [{
-                            index: 0,
-                            delta: {
-                                tool_calls: [
-                                    {
-                                        index: 0,
-                                        id: toolCallToEmit.id,
-                                        type: 'function',
-                                        function: {
-                                            name: toolCallToEmit.function.name,
-                                            arguments: toolCallToEmit.function.arguments
-                                        }
-                                    }
-                                ]
-                            },
-                            finish_reason: null
-                        }]
-                    })}\n\n`);
-                }
-
-                // Split response text into token words
+            if (parsed.stream) {
+                res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', ...cors });
+                const chunk = (delta, finish) => res.write(`data: ${JSON.stringify({ id, object: 'chat.completion.chunk', created, model: modelId, choices: [{ index: 0, delta, finish_reason: finish || null }] })}\n\n`);
+                chunk({ role: 'assistant' });
+                if (toolCall) chunk({ tool_calls: [{ index: 0, id: toolCall.id, type: 'function', function: toolCall.function }] });
                 const words = responseText.split(' ');
-                let wordIdx = 0;
-
+                let i = 0;
                 const timer = setInterval(() => {
-                    if (wordIdx < words.length) {
-                        const word = (wordIdx === 0 ? '' : ' ') + words[wordIdx];
-                        res.write(`data: ${JSON.stringify({
-                            id: reqId,
-                            object: 'chat.completion.chunk',
-                            created: created,
-                            model: model,
-                            choices: [{
-                                index: 0,
-                                delta: { content: word },
-                                finish_reason: null
-                            }]
-                        })}\n\n`);
-                        wordIdx++;
+                    if (i < words.length) {
+                        chunk({ content: (i === 0 ? '' : ' ') + words[i++] });
                     } else {
                         clearInterval(timer);
-                        // Final stop chunk
-                        res.write(`data: ${JSON.stringify({
-                            id: reqId,
-                            object: 'chat.completion.chunk',
-                            created: created,
-                            model: model,
-                            choices: [{
-                                index: 0,
-                                delta: {},
-                                finish_reason: toolCallToEmit ? 'tool_calls' : 'stop'
-                            }]
-                        })}\n\n`);
+                        chunk({}, toolCall ? 'tool_calls' : 'stop');
                         res.write('data: [DONE]\n\n');
                         res.end();
+                        done();
                     }
-                }, 20); // 20ms token cadence (~50 tokens/sec simulated)
-            } else {
-                // Non-streaming response
-                const messageObj = {
-                    role: 'assistant',
-                    content: responseText
-                };
-                if (toolCallToEmit) {
-                    messageObj.tool_calls = [toolCallToEmit];
-                }
-
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end(JSON.stringify({
-                    id: reqId,
-                    object: 'chat.completion',
-                    created: created,
-                    model: model,
-                    choices: [
-                        {
-                            index: 0,
-                            message: messageObj,
-                            finish_reason: toolCallToEmit ? 'tool_calls' : 'stop'
-                        }
-                    ],
-                    usage: {
-                        prompt_tokens: Math.max(1, Math.round(lastPrompt.length / 4)),
-                        completion_tokens: Math.max(1, Math.round(responseText.length / 4)),
-                        total_tokens: Math.max(2, Math.round((lastPrompt.length + responseText.length) / 4))
-                    }
-                }, null, 2));
-            }
-        });
-        return;
-    }
-
-    // 4. Embeddings (768 dimensions)
-    if (pathname === '/v1/embeddings' && req.method === 'POST') {
-        let body = '';
-        req.on('data', chunk => { body += chunk; });
-        req.on('end', () => {
-            let parsed = {};
-            try {
-                parsed = JSON.parse(body || '{}');
-            } catch (err) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: { message: 'Invalid JSON body: ' + err.message } }));
+                }, delayMs);
+                // a client that goes away (Stop pressed) ends the generation
+                res.on('close', () => { if (!res.writableEnded) { clearInterval(timer); counters.active--; counters.failed++; } });
                 return;
             }
 
-            const inputRaw = parsed.input;
-            const inputs = Array.isArray(inputRaw) ? inputRaw : [String(inputRaw || '')];
-            const model = parsed.model || 'colibri-embed-v1';
-
-            const data = inputs.map((item, idx) => ({
-                object: 'embedding',
-                index: idx,
-                embedding: generate768DimVector(typeof item === 'string' ? item : JSON.stringify(item))
-            }));
-
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({
-                object: 'list',
-                data: data,
-                model: model,
-                usage: {
-                    prompt_tokens: inputs.reduce((acc, str) => acc + Math.round(String(str).length / 4), 0),
-                    total_tokens: inputs.reduce((acc, str) => acc + Math.round(String(str).length / 4), 0)
-                }
-            }, null, 2));
+            done();
+            sendJson(res, 200, {
+                id, object: 'chat.completion', created, model: modelId,
+                choices: [{ index: 0, message: { role: 'assistant', content: responseText, ...(toolCall ? { tool_calls: [toolCall] } : {}) }, finish_reason: toolCall ? 'tool_calls' : 'stop' }],
+                usage: { prompt_tokens: Math.max(1, Math.round(lastPrompt.length / 4)), completion_tokens: Math.max(1, Math.round(responseText.length / 4)), total_tokens: Math.max(2, Math.round((lastPrompt.length + responseText.length) / 4)) },
+            }, cors);
         });
         return;
     }
 
-    // 404 Fallback
-    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
-        error: {
-            message: `Endpoint ${req.method} ${pathname} not found on Colibri mock server.`,
-            type: 'invalid_request_error',
-            code: 404
-        }
-    }));
+    // everything else, /v1/embeddings included: the real server has no such route
+    sendJson(res, 404, apiError(`Endpoint ${req.method} ${pathname} not found on the Colibrì mock server`, 'not_found'), cors);
 });
 
-server.listen(port, '0.0.0.0', () => {
-    console.log(`[colibri-mock] Listening on http://127.0.0.1:${port} (and 0.0.0.0:${port})`);
-    console.log(`[colibri-mock] NVMe model directory: ${modelDir}`);
-    console.log(`[colibri-mock] Ready for /health, /v1/models, /v1/chat/completions, and /v1/embeddings (768-dim)`);
+server.listen(port, '127.0.0.1', () => {
+    console.log(`[colibri-mock] MOCK server (not Colibrì) on http://127.0.0.1:${port}, model id "${modelId}", text only`);
+    console.log('[colibri-mock] Routes: GET /health, GET /v1/models, POST /v1/chat/completions. No embeddings. Loopback only.');
 });

@@ -1,34 +1,35 @@
 <#
 .SYNOPSIS
-    Launches the Colibrì Local Network Relay Server for secondary laptops (e.g. second laptop)
-    connecting to Ramses's laptop Colibrì MoE server over the G7 local network.
+    Starts the Colibri LAN relay: a small forwarding proxy on THIS machine in front of a Colibri server elsewhere.
 
 .DESCRIPTION
-    Runs a lightweight HTTP proxy that forwards requests from local client applications
-    (or browser web apps) to the primary Colibrì NVMe server running on Ramses's laptop.
-    Eliminates browser Private Network Access (PNA) and Mixed Content restrictions.
+    A page served over HTTPS cannot call a plain-HTTP LAN address, but it can call http://127.0.0.1. Run the relay on
+    the machine that has the browser, point it at the machine that runs Colibri, and set the app's Colibri address to
+    the relay (http://127.0.0.1:<Port>).
+
+    Safe by default: the relay listens on 127.0.0.1 only, answers CORS for an explicit origin list (never "*"), and
+    forwards only /health, /v1/models and /v1/chat/completions. No address is built in: -Upstream is required.
 
 .PARAMETER Upstream
-    The address of Ramses's laptop Colibrì server (default: http://192.0.2.71:8082).
+    Address of the Colibri server, for example http://<host-or-ip>:8000 . Required.
 
 .PARAMETER Port
-    The local port on second laptop to listen on (default: 8082).
+    Local port the relay listens on (default: 8001).
 
 .PARAMETER Foreground
-    If set, runs the relay in the current PowerShell terminal window.
+    Run in this window.
 
 .PARAMETER Stop
-    If set, stops any running Colibrì relay processes.
+    Stop running relay processes.
 
 .EXAMPLE
-    .\scripts\start-colibri-relay.ps1 -Upstream "http://192.0.2.71:8082"
-    .\scripts\start-colibri-relay.ps1 -Upstream "http://192.0.2.71:8082" -Foreground
+    .\scripts\start-colibri-relay.ps1 -Upstream "http://<host-or-ip>:8000"
     .\scripts\start-colibri-relay.ps1 -Stop
 #>
 
 param(
-    [string]$Upstream = "http://192.0.2.71:8082",
-    [int]$Port = 8082,
+    [string]$Upstream = "",
+    [int]$Port = 8001,
     [switch]$Foreground,
     [switch]$Stop
 )
@@ -38,66 +39,45 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RelayScript = Join-Path $ScriptDir "colibri-lan-relay.cjs"
 
 if ($Stop) {
-    Write-Host "[Colibrì Relay] Stopping running relay processes..." -ForegroundColor Yellow
+    Write-Host "[Colibri Relay] Stopping running relay processes..." -ForegroundColor Yellow
     $procs = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match "colibri-lan-relay" }
     foreach ($p in $procs) {
         Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
         Write-Host "  Stopped PID $($p.ProcessId)" -ForegroundColor Green
     }
-    Write-Host "[Colibrì Relay] Done." -ForegroundColor Green
     return
 }
 
-# Verify Node.js availability
-$nodePath = (Get-Command node -ErrorAction SilentlyContinue)?.Source
-if (-not $nodePath) {
-    Write-Error "[Colibrì Relay] Node.js is required but not found in PATH. Please install Node.js >= 16."
+if (-not $Upstream) {
+    Write-Error "[Colibri Relay] -Upstream is required, for example -Upstream http://<host-or-ip>:8000"
     return
 }
 
-# Clean upstream URL
+$node = Get-Command node -ErrorAction SilentlyContinue
+if (-not $node) {
+    Write-Error "[Colibri Relay] Node.js is required but was not found in PATH."
+    return
+}
+
 $Upstream = $Upstream.TrimEnd('/')
-Write-Host "==================================================================" -ForegroundColor Cyan
-Write-Host "  🪶 Colibrì Mesh LAN Relay Launcher (Secondary Laptop Surface)" -ForegroundColor Cyan
-Write-Host "==================================================================" -ForegroundColor Cyan
-Write-Host "  Upstream Target : $Upstream (Ramses Laptop)" -ForegroundColor White
-Write-Host "  Local Listener  : http://127.0.0.1:$Port" -ForegroundColor White
-Write-Host "==================================================================" -ForegroundColor Cyan
+Write-Host "[Colibri Relay] Upstream: $Upstream" -ForegroundColor White
+Write-Host "[Colibri Relay] Listening on http://127.0.0.1:$Port (this machine only)" -ForegroundColor White
 
-# Test connectivity to upstream
-Write-Host "[Colibrì Relay] Pinging upstream server ($Upstream/health)..." -NoNewline
 try {
-    $testResult = Invoke-RestMethod -Uri "$Upstream/health" -Method Get -TimeoutSec 3 -ErrorAction Stop
-    Write-Host " [ONLINE]" -ForegroundColor Green
-    if ($testResult.telemetry) {
-        Write-Host "  Upstream Engine : $($testResult.engine) v$($testResult.version)" -ForegroundColor DarkGray
-        Write-Host "  NVMe Read Speed : $($testResult.telemetry.nvmeReadMBps) MB/s" -ForegroundColor DarkGray
-    }
+    $h = Invoke-RestMethod -Uri "$Upstream/health" -Method Get -TimeoutSec 3 -ErrorAction Stop
+    Write-Host "[Colibri Relay] Upstream answers (status: $($h.status))" -ForegroundColor Green
 } catch {
-    Write-Host " [UNREACHABLE]" -ForegroundColor Yellow
-    Write-Host "  Warning: Upstream host ($Upstream) is not responding yet." -ForegroundColor DarkYellow
-    Write-Host "  The relay will start anyway and keep retrying whenever requests arrive." -ForegroundColor DarkGray
+    Write-Host "[Colibri Relay] Upstream does not answer yet; the relay starts anyway." -ForegroundColor DarkYellow
 }
 
 if ($Foreground) {
-    Write-Host "[Colibrì Relay] Starting relay in foreground (Press Ctrl+C to stop)..." -ForegroundColor Green
-    & node $RelayScript --upstream $Upstream --port $Port
+    & $node.Source $RelayScript --upstream $Upstream --port $Port
 } else {
-    Write-Host "[Colibrì Relay] Launching relay in background..." -ForegroundColor Green
-    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $startInfo.FileName = "node"
-    $startInfo.Arguments = "`"$RelayScript`" --upstream `"$Upstream`" --port $Port"
-    $startInfo.UseShellExecute = $false
-    $startInfo.CreateNoWindow = $true
-
-    $proc = [System.Diagnostics.Process]::Start($startInfo)
+    $proc = Start-Process -FilePath $node.Source -ArgumentList @("`"$RelayScript`"", "--upstream", "`"$Upstream`"", "--port", "$Port") -WindowStyle Hidden -PassThru
     Start-Sleep -Milliseconds 800
-
     if ($proc -and -not $proc.HasExited) {
-        Write-Host "  Relay running in background (PID $($proc.Id))" -ForegroundColor Green
-        Write-Host "  Local client endpoint : http://127.0.0.1:$Port" -ForegroundColor Cyan
-        Write-Host "  To stop: powershell -ExecutionPolicy Bypass -File .\scripts\start-colibri-relay.ps1 -Stop" -ForegroundColor DarkGray
+        Write-Host "[Colibri Relay] Running in the background (PID $($proc.Id)). Stop with -Stop." -ForegroundColor Green
     } else {
-        Write-Error "Failed to launch relay background process."
+        Write-Error "[Colibri Relay] The relay did not start. Run with -Foreground to see why."
     }
 }

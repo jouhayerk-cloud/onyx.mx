@@ -4,14 +4,15 @@
  *
  * Model Context Protocol (MCP) Standard stdio Server for Colibrì MoE Engine
  *
- * Allows AI Coding Assistants (Google Antigravity, Claude Desktop, Onyx Agents)
- * to interact directly with the local Colibrì MoE engine and Supabase Realtime Relay.
+ * Lets AI assistants talk to the local Colibrì server (OpenAI API on http://127.0.0.1:8000, text only).
  *
  * Tools:
- * - colibri_health: Checks engine status, version, NVMe streaming telemetry and tps.
- * - colibri_models: Lists loaded MoE and embedding models.
- * - colibri_chat: Runs local chat inference on Colibrì with optional system prompt.
- * - colibri_relay_status: Checks Supabase Realtime Relay connectivity and fleet presence.
+ * - colibri_health: what the server's GET /health really reports.
+ * - colibri_models: the model GET /v1/models reports (the server serves one model at a time).
+ * - colibri_chat: one chat completion. Slow on a PC without a big GPU (about 0.5 tokens per second measured).
+ * - colibri_relay_status: the Supabase Realtime relay is DISABLED until it is secured; this only says so.
+ *
+ * Environment: COLIBRI_BASE_URL (default http://127.0.0.1:8000) or COLIBRI_PORT, COLI_API_KEY (optional bearer).
  *
  * Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
  * Co-Authored-By: Antigravity <noreply@google.com>
@@ -30,28 +31,35 @@ try {
     // ignore
 }
 
-const COLIBRI_PORT = parseInt(process.env.COLIBRI_PORT || '8082', 10);
-const COLIBRI_BASE_URL = `http://127.0.0.1:${COLIBRI_PORT}`;
+const COLIBRI_PORT = parseInt(process.env.COLIBRI_PORT || '8000', 10);
+const COLIBRI_BASE_URL = (process.env.COLIBRI_BASE_URL || `http://127.0.0.1:${COLIBRI_PORT}`).replace(/\/+$/, '');
+const COLIBRI_URL = new URL(COLIBRI_BASE_URL);
+const COLIBRI_API_KEY = process.env.COLI_API_KEY || '';
+// the local model answers at about half a token per second: a chat call needs minutes, a probe needs seconds
+const PROBE_TIMEOUT_MS = 5000;
+const CHAT_TIMEOUT_MS = 15 * 60 * 1000;
 
-function makeHttpRequest(endpoint, method = 'GET', body = null) {
+function makeHttpRequest(endpoint, method = 'GET', body = null, timeout = PROBE_TIMEOUT_MS) {
     return new Promise((resolve, reject) => {
         const postData = body ? JSON.stringify(body) : null;
+        const client = COLIBRI_URL.protocol === 'https:' ? require('https') : http;
         const options = {
-            hostname: '127.0.0.1',
-            port: COLIBRI_PORT,
+            hostname: COLIBRI_URL.hostname,
+            port: COLIBRI_URL.port || (COLIBRI_URL.protocol === 'https:' ? 443 : 80),
             path: endpoint,
             method: method,
             headers: {
                 'Accept': 'application/json',
+                ...(COLIBRI_API_KEY ? { 'Authorization': `Bearer ${COLIBRI_API_KEY}` } : {}),
                 ...(postData ? {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(postData),
                 } : {}),
             },
-            timeout: 30000,
+            timeout,
         };
 
-        const req = http.request(options, (res) => {
+        const req = client.request(options, (res) => {
             let data = '';
             res.on('data', chunk => { data += chunk; });
             res.on('end', () => {
@@ -83,7 +91,7 @@ function makeHttpRequest(endpoint, method = 'GET', body = null) {
 const TOOLS_MANIFEST = [
     {
         name: 'colibri_health',
-        description: 'Check the health status, NVMe streaming throughput, and token velocity of the local Colibrì MoE engine on Windows.',
+        description: 'Check the local Colibrì server: status, architecture, request queue counters (exactly what GET /health reports).',
         inputSchema: {
             type: 'object',
             properties: {},
@@ -91,7 +99,7 @@ const TOOLS_MANIFEST = [
     },
     {
         name: 'colibri_models',
-        description: 'List all loaded local MoE and embedding models available in the Colibrì engine.',
+        description: 'List the model the local Colibrì server has loaded (it serves one at a time).',
         inputSchema: {
             type: 'object',
             properties: {},
@@ -99,7 +107,7 @@ const TOOLS_MANIFEST = [
     },
     {
         name: 'colibri_chat',
-        description: 'Send a chat prompt to the local Colibrì MoE engine and receive a generated response with token speed metrics.',
+        description: 'Send a chat prompt to the local Colibrì model. Slow (about 0.5 tokens per second on this PC): keep max_tokens small.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -109,7 +117,7 @@ const TOOLS_MANIFEST = [
                 },
                 model: {
                     type: 'string',
-                    description: 'Optional model ID (e.g. colibri-glm-5.2-moe, colibri-kimi-k3-moe, colibri-qwen-2.5-3b)',
+                    description: 'Optional model id. Omit it to use the loaded model; any id the server did not load fails with 404.',
                 },
                 system: {
                     type: 'string',
@@ -121,7 +129,7 @@ const TOOLS_MANIFEST = [
                 },
                 max_tokens: {
                     type: 'number',
-                    description: 'Maximum tokens to generate (default 1024)',
+                    description: 'Maximum tokens to generate (default 256)',
                 },
             },
             required: ['prompt'],
@@ -129,7 +137,7 @@ const TOOLS_MANIFEST = [
     },
     {
         name: 'colibri_relay_status',
-        description: 'Inspect the status of the Supabase Realtime Relay bridge connecting remote devices (iPhone / Second Laptop) to Colibrì.',
+        description: 'The Supabase Realtime relay to Colibrì is disabled until it is secured; returns that status plus whether the local server answers.',
         inputSchema: {
             type: 'object',
             properties: {},
@@ -150,7 +158,7 @@ async function executeTool(name, args) {
                                 ok: res.ok,
                                 status: res.status,
                                 endpoint: `${COLIBRI_BASE_URL}/health`,
-                                telemetry: res.data,
+                                health: res.data,
                             }, null, 2),
                         },
                     ],
@@ -163,7 +171,7 @@ async function executeTool(name, args) {
                             text: JSON.stringify({
                                 ok: false,
                                 error: err.message,
-                                hint: `Ensure Colibrì daemon is running: powershell -ExecutionPolicy Bypass -File .\\scripts\\start-colibri-daemon.ps1 -DevMock`,
+                                hint: `Start the Colibrì server on this PC (START-HERE.bat or coli web); expected at ${COLIBRI_BASE_URL}.`,
                             }, null, 2),
                         },
                     ],
@@ -207,16 +215,22 @@ async function executeTool(name, args) {
             }
             messages.push({ role: 'user', content: args.prompt });
 
-            const payload = {
-                model: args.model || 'colibri-glm-5.2-moe',
-                messages,
-                temperature: args.temperature !== undefined ? args.temperature : 0.7,
-                max_tokens: args.max_tokens || 1024,
-                stream: false,
-            };
-
             try {
-                const res = await makeHttpRequest('/v1/chat/completions', 'POST', payload);
+                // the server rejects any model id but the loaded one, so ask it which one that is
+                let modelId = args.model;
+                if (!modelId) {
+                    const m = await makeHttpRequest('/v1/models', 'GET');
+                    modelId = m.data?.data?.[0]?.id;
+                    if (!modelId) throw new Error('Colibrì has no model loaded');
+                }
+                const payload = {
+                    model: modelId,
+                    messages,
+                    temperature: args.temperature !== undefined ? args.temperature : 0.7,
+                    max_tokens: args.max_tokens || 256,
+                    stream: false,
+                };
+                const res = await makeHttpRequest('/v1/chat/completions', 'POST', payload, CHAT_TIMEOUT_MS);
                 const latencyMs = Date.now() - start;
                 const text = res.data?.choices?.[0]?.message?.content ?? '';
                 const usage = res.data?.usage;
@@ -229,7 +243,7 @@ async function executeTool(name, args) {
                             text: JSON.stringify({
                                 ok: res.ok,
                                 response: text,
-                                model: res.data?.model || payload.model,
+                                model: res.data?.model || modelId,
                                 latencyMs,
                                 tokensPerSecond: tps,
                                 usage,
@@ -251,7 +265,6 @@ async function executeTool(name, args) {
         }
 
         case 'colibri_relay_status': {
-            const hasSupabase = Boolean(process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY);
             let localAlive = false;
             try {
                 const res = await makeHttpRequest('/health', 'GET');
@@ -265,13 +278,10 @@ async function executeTool(name, args) {
                     {
                         type: 'text',
                         text: JSON.stringify({
-                            relayChannel: 'colibri_relay_global',
-                            supabaseConfigured: hasSupabase,
-                            supabaseUrl: process.env.VITE_SUPABASE_URL || 'Not configured',
+                            relay: 'disabled',
+                            reason: 'The Supabase Realtime relay stays off until it is secured (private channel, RLS, allowlisted host, endpoint allowlist).',
                             localEngineAlive: localAlive,
                             localEngineUrl: COLIBRI_BASE_URL,
-                            remoteClientsSupported: ['iPhone (iOS Safari / PWA)', "Second Laptop (LAN / Web)", 'Android / Tablet'],
-                            relayProtocol: 'wss:// broadcast + presence tracking',
                         }, null, 2),
                     },
                 ],

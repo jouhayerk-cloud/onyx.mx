@@ -11,7 +11,9 @@ const AVAILABILITY_TTL_MS = 10000;
 const QUERY_CACHE_MAX = 50;
 
 let availabilityCache: { value: boolean; at: number } | null = null;
-let activeEmbedderKind: 'onDevice' | 'colibri' | null = null;
+let activeEmbedderKind: 'onDevice' | null = null;
+/** info().model of the embedder that answered the last availability check; part of every cache key. */
+let activeEmbedderModel: string | null = null;
 const queryCache = new Map<string, Float32Array>();
 
 /** Returns the on-device (companion app) embedder, or null when the native bridge is absent. */
@@ -23,13 +25,15 @@ export function getOnDeviceEmbedder(): Embedder | null {
 export function resetEmbeddingsCache(): void {
     availabilityCache = null;
     activeEmbedderKind = null;
+    activeEmbedderModel = null;
     queryCache.clear();
     resetColibriEmbedder();
 }
 
 /**
- * True when an on-device embedder (iOS companion) or Windows Desktop Colibri local embedder
- * is available and responds. Result is cached for 10 seconds.
+ * True when the on-device embedder (iOS companion) is available and responds. Result is cached for 10 seconds.
+ * Colibrì is not a tier: it has no embeddings endpoint (see colibriBridge.ts), so vectors from different models
+ * can never mix in item_embeddings.
  */
 export async function isCompanionAvailable(): Promise<boolean> {
     const now = Date.now();
@@ -38,27 +42,15 @@ export async function isCompanionAvailable(): Promise<boolean> {
     }
     let value = false;
     activeEmbedderKind = null;
+    activeEmbedderModel = null;
 
-    // Priority 1: Check iOS on-device companion embedder
     const onDevice = getOnDeviceEmbedder();
     if (onDevice !== null) {
         try {
-            await onDevice.info();
+            const info = await onDevice.info();
             value = true;
             activeEmbedderKind = 'onDevice';
-        } catch {
-            value = false;
-        }
-    }
-
-    // Priority 2: Fallback to Windows Desktop Colibri local embedder
-    if (!value) {
-        try {
-            const colibriOk = await isColibriEmbedderAvailable();
-            if (colibriOk) {
-                value = true;
-                activeEmbedderKind = 'colibri';
-            }
+            activeEmbedderModel = info?.model ? String(info.model) : null;
         } catch {
             value = false;
         }
@@ -68,33 +60,9 @@ export async function isCompanionAvailable(): Promise<boolean> {
     return value;
 }
 
-/**
- * Resolves the active embedder following cascade priority:
- * 1) iOS companion embedder (getOnDeviceEmbedder())
- * 2) Windows Colibri embedder (getColibriEmbedder())
- * 3) null (for cloud fallback)
- */
+/** Resolves the active embedder: the iOS companion embedder, or null (cloud fallback). */
 export async function getActiveEmbedder(): Promise<Embedder | null> {
-    if (activeEmbedderKind === 'onDevice') {
-        const embedder = getOnDeviceEmbedder();
-        if (embedder !== null) return embedder;
-    } else if (activeEmbedderKind === 'colibri') {
-        const embedder = getColibriEmbedder();
-        if (embedder !== null) return embedder;
-    }
-
-    // If cache not populated or kind unknown, evaluate cascade directly:
-    const onDevice = getOnDeviceEmbedder();
-    if (onDevice !== null) {
-        return onDevice;
-    }
-
-    const colibriAvailable = await isColibriEmbedderAvailable();
-    if (colibriAvailable) {
-        return getColibriEmbedder();
-    }
-
-    return null;
+    return getOnDeviceEmbedder();
 }
 
 /** Embeds a search query (Matryoshka-truncated to dims). Returns null when empty or unavailable. */
@@ -102,11 +70,13 @@ export async function embedSearchQuery(query: string, dims: number = 256): Promi
     const trimmed = query.trim();
     if (!trimmed) return null;
 
-    const key = dims + ':' + trimmed;
+    if (!(await isCompanionAvailable())) return null;
+
+    // keyed by the model that produces the vector, so a cached vector is never reused after the embedder changes
+    const key = (activeEmbedderModel ?? '?') + ':' + dims + ':' + trimmed;
     const cached = queryCache.get(key);
     if (cached) return cached;
 
-    if (!(await isCompanionAvailable())) return null;
     const embedder = await getActiveEmbedder();
     if (embedder === null) return null;
 
@@ -119,14 +89,28 @@ export async function embedSearchQuery(query: string, dims: number = 256): Promi
     return vector;
 }
 
-/** Embeds a batch of documents. Returns null when companion and Colibri are unavailable. */
+/** Embeds a batch of documents. Returns null when no embedder is available. */
 export async function embedDocumentBatch(
     items: Array<{ title: string; text: string }>,
     dims: number = 768,
 ): Promise<Float32Array[] | null> {
-    if (items.length === 0) return [];
+    const tagged = await embedDocumentBatchTagged(items, dims);
+    return tagged === null ? null : tagged.vectors;
+}
+
+/**
+ * Like embedDocumentBatch, but also names the model that produced the vectors (the embedder's own info().model),
+ * so a writer can tag rows with the real model instead of the caller's guess. Null when no embedder is available.
+ */
+export async function embedDocumentBatchTagged(
+    items: Array<{ title: string; text: string }>,
+    dims: number = 768,
+): Promise<{ vectors: Float32Array[]; model: string } | null> {
+    if (items.length === 0) return { vectors: [], model: activeEmbedderModel ?? '' };
     if (!(await isCompanionAvailable())) return null;
     const embedder = await getActiveEmbedder();
     if (embedder === null) return null;
-    return embedder.embedDocuments(items, dims);
+    const info = await embedder.info();
+    const vectors = await embedder.embedDocuments(items, dims);
+    return { vectors, model: String(info.model) };
 }

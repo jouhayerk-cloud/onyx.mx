@@ -104,29 +104,35 @@
   box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 
-/* Colibrì telemetry pill in header */
-.chan-colibri-telemetry {
+/* Local model notice (Colibrì): one quiet line under the status bar */
+.chan-local-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 6px;
+  padding: 5px 10px;
+  border-radius: var(--isl-radius-row);
+  border: 1px solid var(--isl-line);
+  background: var(--isl-fill-1);
+  color: var(--isl-ink-2);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.chan-wait-time {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--isl-ink-3);
+}
+
+.chan-stop-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--isl-ink-3);
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  border-radius: var(--isl-radius-chip);
-  padding: 1px 6px;
-  letter-spacing: 0.02em;
-}
-
-.chan-telemetry-chip {
-  color: #10b981;
-  font-weight: 700;
-}
-
-.chan-telemetry-stat {
-  font-family: monospace;
-  opacity: 0.75;
+  margin-left: 6px;
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 11px;
 }
 
 .chan-status-right {

@@ -1,5 +1,6 @@
 import { getGeminiKey, setGeminiKey } from './keys';
 import type { ProviderConfig, ProviderId } from './providers/types';
+import { colibriSeenRecently } from './providers/colibri';
 
 /**
  * Keys, base URLs and models of every AI provider, kept in this browser's localStorage like the Gemini key always was
@@ -24,9 +25,21 @@ const write = (key: string, value: string): void => {
 };
 const changed = () => { try { window.dispatchEvent(new Event(AI_CONFIG_EVENT)); } catch { /* no window */ } };
 
+/**
+ * The Colibrì address the app used to default to (the mock server's port) and the settings panel still writes when
+ * it saves an untouched field. The real server listens on 8000, so this exact value counts as "not set" and the
+ * provider's default applies. Anyone who really runs a server on 8082 can use http://localhost:8082.
+ */
+const LEGACY_COLIBRI_BASE = 'http://127.0.0.1:8082';
+
 export function getProviderConfig(id: ProviderId): ProviderConfig {
     if (id === 'gemini') return { key: getGeminiKey(), model: read(name(id, 'MODEL')) || undefined };
-    return { key: read(name(id, 'KEY')), baseUrl: read(name(id, 'BASE')) || undefined, model: read(name(id, 'MODEL')) || undefined };
+    const baseUrl = read(name(id, 'BASE')) || undefined;
+    return {
+        key: read(name(id, 'KEY')),
+        baseUrl: id === 'colibri' && baseUrl === LEGACY_COLIBRI_BASE ? undefined : baseUrl,
+        model: read(name(id, 'MODEL')) || undefined,
+    };
 }
 
 /** Saves the given fields; an empty string forgets that field; null forgets the whole provider. */
@@ -43,14 +56,16 @@ export function setProviderConfig(id: ProviderId, patch: Partial<ProviderConfig>
     changed();
 }
 
-/** compat can run without a key (a local Ollama or LM Studio), companion runs on-device in the iOS shell, and colibri runs locally on Windows. */
+/** compat can run without a key (a local Ollama or LM Studio), companion runs on-device in the iOS shell, and colibri counts as set once an address is saved or its local server answered a recent probe. */
 export function hasProviderKey(id: ProviderId): boolean {
     if (id === 'companion') {
         return typeof window !== 'undefined' && Boolean((window as any).webkit?.messageHandlers?.onyxChat);
     }
     if (id === 'colibri') {
+        // Not "always on": it counts once the user saved an address or a probe reached the server lately.
+        // The call itself still fails fast (two seconds) with a clear message when the server is down.
         const c = getProviderConfig('colibri');
-        return Boolean(c.baseUrl || true);
+        return Boolean(c.baseUrl && !c.baseUrl.startsWith('supabase://')) || colibriSeenRecently();
     }
     const c = getProviderConfig(id);
     return id === 'compat' ? !!c.baseUrl : c.key.length > 0;

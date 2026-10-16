@@ -17,7 +17,13 @@ export interface EmbeddingRecord {
     source_hash: string;
 }
 
-export type EmbedBatchFn = (docs: Array<{ title: string; text: string }>) => Promise<Float32Array[] | null>;
+/**
+ * What an embedder returns for a batch. The tagged form names the model that actually produced the vectors; the
+ * runner then refuses to write them under a different model_version (vectors of two models must never mix).
+ * A bare array (a test double) is trusted to match options.modelVersion.
+ */
+export type EmbedBatchOutput = Float32Array[] | { vectors: Float32Array[]; model: string } | null;
+export type EmbedBatchFn = (docs: Array<{ title: string; text: string }>) => Promise<EmbedBatchOutput>;
 
 export interface SyncOptions {
     items: SyncItem[];
@@ -32,15 +38,17 @@ export interface SyncResult {
     recordsToUpsert: EmbeddingRecord[];
     idsToDelete: string[];
     completed: boolean;
+    /** Set when the active embedder is not the model the index is built with; nothing from it was kept. */
+    modelMismatch?: { expected: string; actual: string };
 }
 
 const DEFAULT_BATCH_SIZE = 10;
 const DEFAULT_DIMS = 768;
 
-/** Default embedder: on-device companion, loaded lazily so tests with a mock never touch the bridge. */
-async function defaultEmbedBatch(docs: Array<{ title: string; text: string }>): Promise<Float32Array[] | null> {
-    const { embedDocumentBatch } = await import('../ai/embeddings');
-    return embedDocumentBatch(docs, DEFAULT_DIMS);
+/** Default embedder: on-device companion, loaded lazily so tests with a mock never touch the bridge. Reports its model. */
+async function defaultEmbedBatch(docs: Array<{ title: string; text: string }>): Promise<EmbedBatchOutput> {
+    const { embedDocumentBatchTagged } = await import('../ai/embeddings');
+    return embedDocumentBatchTagged(docs, DEFAULT_DIMS);
 }
 
 /**
@@ -48,6 +56,9 @@ async function defaultEmbedBatch(docs: Array<{ title: string; text: string }>): 
  * the records to upsert and ids to delete. Stops at the first failed batch
  * (null, thrown error, or length mismatch) and reports completed=false, keeping
  * records from batches that already succeeded.
+ *
+ * model_version of each record is the model the embedder reports for those very vectors. If it is not the
+ * index's modelVersion, the run stops with modelMismatch and keeps nothing from that batch.
  */
 export async function runItemEmbeddingSync(options: SyncOptions): Promise<SyncResult> {
     const { items, stored, modelVersion } = options;
@@ -68,6 +79,7 @@ export async function runItemEmbeddingSync(options: SyncOptions): Promise<SyncRe
 
     const recordsToUpsert: EmbeddingRecord[] = [];
     let completed = true;
+    let modelMismatch: SyncResult['modelMismatch'];
 
     for (let start = 0; start < planned.toEmbed.length; start += batchSize) {
         const batchItems: SyncItem[] = [];
@@ -78,8 +90,15 @@ export async function runItemEmbeddingSync(options: SyncOptions): Promise<SyncRe
         if (batchItems.length === 0) continue;
 
         let vectors: Float32Array[] | null = null;
+        let reportedModel: string | undefined;
         try {
-            vectors = await embedBatch(batchItems.map((item) => ({ title: item.title, text: item.text })));
+            const out = await embedBatch(batchItems.map((item) => ({ title: item.title, text: item.text })));
+            if (Array.isArray(out)) {
+                vectors = out;
+            } else if (out) {
+                vectors = out.vectors;
+                reportedModel = out.model;
+            }
         } catch {
             vectors = null;
         }
@@ -88,13 +107,18 @@ export async function runItemEmbeddingSync(options: SyncOptions): Promise<SyncRe
             completed = false;
             break;
         }
+        if (reportedModel !== undefined && reportedModel !== modelVersion) {
+            completed = false;
+            modelMismatch = { expected: modelVersion, actual: reportedModel };
+            break;
+        }
 
         batchItems.forEach((item, index) => {
             recordsToUpsert.push({
                 item_id: item.id,
                 modality: 'text',
                 embedding: Array.from(vectors![index]),
-                model_version: modelVersion,
+                model_version: reportedModel ?? modelVersion,
                 source_hash: sourceHashOf(item.title, item.text),
             });
         });
@@ -105,5 +129,6 @@ export async function runItemEmbeddingSync(options: SyncOptions): Promise<SyncRe
         recordsToUpsert,
         idsToDelete: [...planned.toDelete],
         completed,
+        ...(modelMismatch ? { modelMismatch } : {}),
     };
 }
