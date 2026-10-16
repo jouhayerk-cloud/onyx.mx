@@ -20,6 +20,7 @@ import {
     logisticsDataAtom,
     financeTotalsAtom,
     adminViewModeAtom,
+    userAtom,
     AdminViewMode,
 } from '../../lib/atoms';
 import { vendors, DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
@@ -46,7 +47,12 @@ export { type AdminViewMode } from '../../lib/atoms';
 
 export const AdminControlCenter: React.FC = () => {
     // Current Active Mode Switcher (Synced with Onyx Island Dock)
-    const [viewMode, setViewMode] = useAtom(adminViewModeAtom);
+    const [selectedViewMode, setViewMode] = useAtom(adminViewModeAtom);
+
+    // Operators and Edge Fleet are Developer/Admin only; any other role that reaches this screen sees financials only.
+    const user = useAtomValue(userAtom);
+    const isStaff = user?.role === 'Developer' || user?.role === 'Admin';
+    const viewMode: AdminViewMode = isStaff ? selectedViewMode : 'financials';
 
     // Live clock for live time badge
     const [currentTimeStr, setCurrentTimeStr] = useState<string>(() => {

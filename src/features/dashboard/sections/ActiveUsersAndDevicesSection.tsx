@@ -26,6 +26,8 @@ import {
     X,
     AlertCircle,
 } from 'lucide-react';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '../../../lib/atoms';
 import { useUserPresence, UserActiveSession } from '../../../lib/presence/useUserPresence';
 import { ONYX_MESH_TOPOLOGY } from '../../../lib/network/localMeshMap';
 import { colibriRealtimeBridge } from '../../../lib/ai/colibriRealtimeBridge';
@@ -151,12 +153,27 @@ function resolveRoleBadge(roleStr?: string | null, email?: string | null, userNa
     return { label: (roleStr || 'OPERATOR').toUpperCase(), badgeClass: 'acc-badge-operator' };
 }
 
+/**
+ * The roles an operator can be given. The values are the exact strings that NAV_BY_ROLE (navAccess.ts) and the RLS
+ * policies (get_my_app_role()) compare against: any other spelling leaves the user without navigation and data.
+ */
+const ASSIGNABLE_ROLES: ReadonlyArray<{ value: string; label: string }> = [
+    { value: 'Developer', label: 'DEVELOPER (Root Clearance)' },
+    { value: 'Admin', label: 'ADMIN (Executive Clearance)' },
+    { value: 'ClientBoss', label: 'CLIENT BOSS (Corporate Oversight)' },
+    { value: 'ClientAccounting', label: 'ACCOUNTING (Commercial Core)' },
+    { value: 'ClientViewer', label: 'VIEWER (Read-Only Observer)' },
+    { value: 'Vendor', label: 'VENDOR (Acquisitions)' },
+];
+
 interface UserFleetGroup {
     key: string;
     id?: string;
     email: string;
     name: string;
     role: string;
+    /** app_users.role exactly as stored ('' when the user has no app_users row). */
+    rawRole: string;
     roleBadgeClass: string;
     initials: string;
     totalSubmits: number;
@@ -172,6 +189,10 @@ interface UserFleetGroup {
 const TWO_MONTHS_MS = 60 * 24 * 60 * 60 * 1000;
 
 export const ActiveUsersAndDevicesSection: React.FC = () => {
+    const currentUser = useAtomValue(userAtom);
+    const currentEmail = (currentUser?.email || '').toLowerCase();
+    // Only Developer and Admin may change roles or suspend accounts (the DB enforces the same rule).
+    const canManageUsers = currentUser?.role === 'Developer' || currentUser?.role === 'Admin';
     const {
         sessions,
         loading: presenceLoading,
@@ -188,7 +209,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
     // Inline edit modal state
     const [editingUser, setEditingUser] = useState<UserFleetGroup | null>(null);
     const [editName, setEditName] = useState<string>('');
-    const [editRole, setEditRole] = useState<string>('operator');
+    const [editRole, setEditRole] = useState<string>('');
     const [editIsActive, setEditIsActive] = useState<boolean>(true);
     const [isSavingUser, setIsSavingUser] = useState<boolean>(false);
 
@@ -230,20 +251,40 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
     const handleOpenEdit = (u: UserFleetGroup) => {
         setEditingUser(u);
         setEditName(u.name || '');
-        setEditRole(u.role.toLowerCase().includes('dev') ? 'developer' : u.role.toLowerCase());
+        setEditRole(u.rawRole);
         setEditIsActive(u.isActiveAccount);
     };
 
-    // Save edited operative identity
+    const isSelf = (u: { email: string }) => !!currentEmail && u.email.toLowerCase() === currentEmail;
+
+    // Role and account status are only editable by Developer/Admin, never on one's own row, and an Admin cannot touch a Developer.
+    const canEditRoleOf = (u: UserFleetGroup) =>
+        canManageUsers && u.isRegistered && !isSelf(u) && !(currentUser?.role === 'Admin' && u.rawRole === 'Developer');
+
+    // Save edited operative identity. Only the fields that changed are sent: a name edit never rewrites the role.
     const handleSaveUser = async () => {
-        if (!editingUser) return;
+        if (!editingUser || !canManageUsers) return;
+        const allowRoleEdit = canEditRoleOf(editingUser);
+        const nextName = editName.trim() || null;
+        const updatePayload: { display_name?: string | null; role?: string; is_active?: boolean } = {};
+        const stored = registeredUsers.find(
+            (r) => (editingUser.id && r.id === editingUser.id) || r.email.toLowerCase() === editingUser.email.toLowerCase()
+        );
+        if (nextName !== ((stored?.display_name || '').trim() || null)) {
+            updatePayload.display_name = nextName;
+        }
+        if (allowRoleEdit && editRole && editRole !== editingUser.rawRole) {
+            updatePayload.role = editRole;
+        }
+        if (allowRoleEdit && editIsActive !== editingUser.isActiveAccount) {
+            updatePayload.is_active = editIsActive;
+        }
+        if (Object.keys(updatePayload).length === 0) {
+            setEditingUser(null);
+            return;
+        }
         try {
             setIsSavingUser(true);
-            const updatePayload: any = {
-                display_name: editName.trim() || null,
-                role: editRole,
-                is_active: editIsActive,
-            };
             const { error } = await supabase
                 .from('app_users')
                 .update(updatePayload)
@@ -259,12 +300,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                             (editingUser.id && u.id === editingUser.id) ||
                             u.email.toLowerCase() === editingUser.email.toLowerCase()
                         ) {
-                            return {
-                                ...u,
-                                display_name: editName.trim() || null,
-                                role: editRole,
-                                is_active: editIsActive,
-                            };
+                            return { ...u, ...updatePayload };
                         }
                         return u;
                     })
@@ -291,6 +327,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
 
     // Quick toggle account active / suspended
     const handleToggleActive = async (u: UserFleetGroup) => {
+        if (!canEditRoleOf(u)) return;
         const nextActive = !u.isActiveAccount;
         const { error } = await supabase
             .from('app_users')
@@ -348,13 +385,22 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
             },
         ];
 
-        const raw = sessions.length > 0 ? sessions : fallbackSessions;
+        // The public Realtime channel carries no identity, so this device's own live session is labelled from the login.
+        const live = sessions.map((s) =>
+            s.session_id === mySessionId && !s.user_email && currentUser
+                ? { ...s, user_id: s.user_id || currentUser.id, user_email: currentUser.email, user_name: s.user_name || currentUser.name }
+                : s
+        );
+        const raw = live.length > 0 ? live : fallbackSessions;
 
         // Deduplicate multiple browser tabs on the same hardware
         const deviceMap = new Map<string, { session: UserActiveSession; hasMySession: boolean }>();
 
         for (const s of raw) {
-            const key = `${(s.user_email || s.user_id || 'anon').toLowerCase()}::${s.device_name.toLowerCase()}::${s.client_platform.toLowerCase()}`;
+            const who = s.user_email || s.user_id;
+            const key = who
+                ? `${who.toLowerCase()}::${s.device_name.toLowerCase()}::${s.client_platform.toLowerCase()}`
+                : `session::${s.session_id}`;
             const existing = deviceMap.get(key);
             const isMine = s.session_id === mySessionId;
 
@@ -379,7 +425,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                 session_id: hasMySession ? mySessionId : session.session_id,
             }))
             .sort((a, b) => (Date.parse(b.last_seen_at) || 0) - (Date.parse(a.last_seen_at) || 0));
-    }, [sessions, mySessionId]);
+    }, [sessions, mySessionId, currentUser]);
 
     // Unified Master Fleet Map (Ingesting all active sessions + registered database users)
     const allUserGroups = useMemo<UserFleetGroup[]>(() => {
@@ -387,7 +433,8 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
 
         // 1. Ingest all active hardware sessions
         for (const s of displaySessions) {
-            const emailKey = (s.user_email || s.user_id || s.user_name || 'anon').toLowerCase().trim();
+            // Sessions that arrive without identity (Realtime-only) stay separate instead of piling into one 'anon' card
+            const emailKey = (s.user_email || s.user_id || s.user_name || `session:${s.session_id}`).toLowerCase().trim();
             const existing = map.get(emailKey);
             const roleInfo = resolveRoleBadge(undefined, s.user_email, s.user_name);
 
@@ -395,8 +442,9 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                 map.set(emailKey, {
                     key: emailKey,
                     email: s.user_email || '',
-                    name: s.user_name || s.user_email?.split('@')[0] || tr('Operator'),
+                    name: s.user_name || s.user_email?.split('@')[0] || tr('Unidentified session'),
                     role: roleInfo.label,
+                    rawRole: '',
                     roleBadgeClass: roleInfo.badgeClass,
                     initials: getInitials(s.user_name, s.user_email),
                     totalSubmits: 0,
@@ -430,6 +478,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                 existing.lastSubmitAt = reg.last_submit_at;
                 if (reg.display_name) existing.name = reg.display_name;
                 existing.role = roleInfo.label;
+                existing.rawRole = (reg.role || '').trim();
                 existing.roleBadgeClass = roleInfo.badgeClass;
             } else {
                 // Registered user, currently offline
@@ -439,6 +488,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                     email: reg.email,
                     name: reg.display_name || reg.email.split('@')[0],
                     role: roleInfo.label,
+                    rawRole: (reg.role || '').trim(),
                     roleBadgeClass: roleInfo.badgeClass,
                     initials: getInitials(reg.display_name, reg.email),
                     totalSubmits: reg.total_submits || 0,
@@ -726,14 +776,16 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                                         {tr("Verified Account")}
                                                     </span>
                                                 )}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleOpenEdit(u)}
-                                                    className="p-1 rounded hover:bg-(--slab-glass-hi) text-(--text-color-secondary) hover:text-(--text-color) transition-all cursor-pointer"
-                                                    title={tr("Edit Operative Designation & Role")}
-                                                >
-                                                    <SquarePen size={12} />
-                                                </button>
+                                                {canManageUsers && u.isRegistered && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleOpenEdit(u)}
+                                                        className="p-1 rounded hover:bg-(--slab-glass-hi) text-(--text-color-secondary) hover:text-(--text-color) transition-all cursor-pointer"
+                                                        title={tr("Edit Operative Designation & Role")}
+                                                    >
+                                                        <SquarePen size={12} />
+                                                    </button>
+                                                )}
                                             </div>
                                             <p className="text-[11px] font-mono text-(--text-color-secondary) truncate">
                                                 {u.email}
@@ -951,29 +1003,33 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
 
                                 {/* Right: Quick Action Buttons */}
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleOpenEdit(u)}
-                                        className="acc-action-btn text-[10px] py-1 px-2 min-h-[26px]"
-                                        title={tr("Edit Designation & Role")}
-                                    >
-                                        <SquarePen size={11} />
-                                        <span>{tr("Edit")}</span>
-                                    </button>
+                                    {canManageUsers && u.isRegistered && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleOpenEdit(u)}
+                                            className="acc-action-btn text-[10px] py-1 px-2 min-h-[26px]"
+                                            title={tr("Edit Designation & Role")}
+                                        >
+                                            <SquarePen size={11} />
+                                            <span>{tr("Edit")}</span>
+                                        </button>
+                                    )}
 
-                                    <button
-                                        type="button"
-                                        onClick={() => handleToggleActive(u)}
-                                        className={`acc-action-btn text-[10px] py-1 px-2 min-h-[26px] ${
-                                            u.isActiveAccount
-                                                ? 'hover:border-rose-500/40'
-                                                : 'text-emerald-400 border-emerald-500/30'
-                                        }`}
-                                        title={u.isActiveAccount ? tr("Suspend Operative Account") : tr("Activate Operative Account")}
-                                    >
-                                        <Shield size={11} />
-                                        <span>{u.isActiveAccount ? tr("Active") : tr("Inactive")}</span>
-                                    </button>
+                                    {canEditRoleOf(u) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleToggleActive(u)}
+                                            className={`acc-action-btn text-[10px] py-1 px-2 min-h-[26px] ${
+                                                u.isActiveAccount
+                                                    ? 'hover:border-rose-500/40'
+                                                    : 'text-emerald-400 border-emerald-500/30'
+                                            }`}
+                                            title={u.isActiveAccount ? tr("Suspend Operative Account") : tr("Activate Operative Account")}
+                                        >
+                                            <Shield size={11} />
+                                            <span>{u.isActiveAccount ? tr("Active") : tr("Inactive")}</span>
+                                        </button>
+                                    )}
 
                                     <button
                                         type="button"
@@ -1027,14 +1083,16 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                 </div>
 
                                 <div className="flex items-center gap-1 ml-1 border-l border-(--border-color) pl-1.5">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleOpenEdit(u)}
-                                        className="p-1 rounded hover:bg-white/10 text-(--text-color-secondary) hover:text-(--text-color) transition-all cursor-pointer"
-                                        title={tr("Edit Operative Designation & Role")}
-                                    >
-                                        <SquarePen size={11} />
-                                    </button>
+                                    {canManageUsers && u.isRegistered && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleOpenEdit(u)}
+                                            className="p-1 rounded hover:bg-white/10 text-(--text-color-secondary) hover:text-(--text-color) transition-all cursor-pointer"
+                                            title={tr("Edit Operative Designation & Role")}
+                                        >
+                                            <SquarePen size={11} />
+                                        </button>
+                                    )}
 
                                     <button
                                         type="button"
@@ -1106,16 +1164,20 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                 <select
                                     value={editRole}
                                     onChange={(e) => setEditRole(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl bg-(--slab-glass) border border-(--border-color) text-xs font-mono text-(--text-color) focus:border-(--main-color) focus:outline-none transition-all"
+                                    disabled={!canEditRoleOf(editingUser)}
+                                    className="w-full px-3 py-2 rounded-xl bg-(--slab-glass) border border-(--border-color) text-xs font-mono text-(--text-color) focus:border-(--main-color) focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
-                                    <option value="developer">DEVELOPER (Root Clearance)</option>
-                                    <option value="admin">ADMIN (Executive Clearance)</option>
-                                    <option value="clientboss">CLIENT BOSS (Corporate Oversight)</option>
-                                    <option value="clientaccounting">ACCOUNTING (Commercial Core)</option>
-                                    <option value="operator">OPERATOR (Logistics & Production)</option>
-                                    <option value="vendor">VENDOR (Acquisitions)</option>
-                                    <option value="clientviewer">VIEWER (Read-Only Observer)</option>
+                                    {/* A stored value that is not canonical (old lowercase save, typo) stays visible so it can be repaired */}
+                                    {editingUser.rawRole && !ASSIGNABLE_ROLES.some((r) => r.value === editingUser.rawRole) && (
+                                        <option value={editingUser.rawRole}>{`${editingUser.rawRole} (${tr("not a valid role")})`}</option>
+                                    )}
+                                    {ASSIGNABLE_ROLES.filter((r) => r.value !== 'Developer' || currentUser?.role === 'Developer' || editingUser.rawRole === 'Developer').map((r) => (
+                                        <option key={r.value} value={r.value}>{r.label}</option>
+                                    ))}
                                 </select>
+                                {isSelf(editingUser) && (
+                                    <p className="mt-1.5 text-[10px] text-(--text-color-secondary)">{tr("You cannot change your own role or status.")}</p>
+                                )}
                             </div>
 
                             <div className="flex items-center justify-between p-3 rounded-xl bg-(--slab-glass-lo) border border-(--border-color)">
@@ -1130,7 +1192,8 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setEditIsActive(!editIsActive)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    disabled={!canEditRoleOf(editingUser)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                                         editIsActive
                                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                                             : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'

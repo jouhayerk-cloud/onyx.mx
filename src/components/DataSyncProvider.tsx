@@ -233,23 +233,35 @@ export const DataSyncProvider: React.FC = () => {
     const user = useAtomValue(userAtom);
     const activeView = useAtomValue(activeViewAtom);
 
-    useEffect(() => {
-        const userInfo = user ? {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-        } : null;
+    const userId = user?.id;
+    const userEmail = user?.email;
+    const userName = user?.name;
+    const userRole = user?.role;
+    const signedIn = !!userId;
 
+    // Heartbeat lifecycle follows the login only (not every view change): no heartbeat for the logged-out screen,
+    // so anonymous visitors never write presence rows. The public Realtime channel carries no identity (see
+    // presenceService.ts); the identity reaches user_active_sessions through the ping RPC, from the caller's JWT.
+    useEffect(() => {
+        if (!signedIn) return;
         presenceService.startPresenceHeartbeat({
-            user: userInfo,
+            user: { id: userId, email: userEmail, name: userName, role: userRole },
             currentView: activeView,
         });
-
         return () => {
             presenceService.stopPresenceHeartbeat();
         };
-    }, [user, activeView]);
+        // activeView is pushed by the effect below, so it is deliberately not a dependency here
+    }, [signedIn, userId]);
+
+    // View and profile changes update the running heartbeat in place
+    useEffect(() => {
+        if (!signedIn) return;
+        presenceService.setContext({
+            user: { id: userId, email: userEmail, name: userName, role: userRole },
+            currentView: activeView,
+        });
+    }, [signedIn, userId, userEmail, userName, userRole, activeView]);
 
     // This component renders nothing, it just manages side-effects
     return null;
