@@ -12,7 +12,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 // by URL, so an unchanged URL keeps showing the old cube. This one value is
 // appended as ?v= to every icon link in index.html (the __ICON_VERSION__
 // placeholder) and to every icon in the web app manifest below.
-const ICON_VERSION = '1.86';
+const ICON_VERSION = '1.87';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
                 skipWaiting: true,
                 clientsClaim: true,
                 // Cache core compiled assets only (keep install lightweight < 3MB)
-                globPatterns: ['**/*.{js,css,html}', 'favicon.png', 'apple-touch-icon*.png', 'icon-*.png'],
+                globPatterns: ['**/*.{js,css,html}', 'favicon.png', 'favicon.svg', 'apple-touch-icon*.png', 'icon-*.png'],
                 maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
                 runtimeCaching: [
                     {
@@ -117,7 +117,9 @@ export default defineConfig(({ mode }) => {
                     // safe to crop as maskable.
                     { src: `icon-maskable-512.png?v=${ICON_VERSION}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
                     { src: `apple-touch-icon-dark.png?v=${ICON_VERSION}`, sizes: '180x180', type: 'image/png', purpose: 'any' },
+                    { src: `apple-touch-icon.png?v=${ICON_VERSION}`, sizes: '180x180', type: 'image/png', purpose: 'any' },
                     { src: `favicon.png?v=${ICON_VERSION}`, sizes: '64x64', type: 'image/png', purpose: 'any' },
+                    { src: `favicon.svg?v=${ICON_VERSION}`, sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
                 ],
                 categories: ['business', 'productivity', 'utilities'],
             },
