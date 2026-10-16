@@ -63,7 +63,7 @@ export function Login() {
     <div className="relative w-full h-screen flex items-center justify-center overflow-hidden">
       <div className="w-full max-w-md p-8 glass-panel z-10">
         <div className="text-center mb-8">
-          <img src={"$\{import.meta.env.BASE_URL\}chan-directions.webp"} alt="Onyx Chan" className="w-32 h-32 mx-auto mb-4 object-contain drop-shadow-2xl" />
+          <img src={`${import.meta.env.BASE_URL}chan-directions.webp`} alt="Onyx Chan" className="w-32 h-32 mx-auto mb-4 object-contain drop-shadow-2xl" />
           <h1 className="text-2xl font-bold">{t.welcome}</h1>
           <p className="text-[var(--text-color-secondary)] text-sm mt-2">
             {tr("Secure Enterprise Access")}

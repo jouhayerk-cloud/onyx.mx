@@ -24,7 +24,7 @@ export const OnyxMiniLogo = ({ className, mono, style, ...props }: OnyxLogoProps
 
 export const OnyxFallbackLogo = ({ className, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
     <img
-        src={`${import.meta.env.BASE_URL}favicon.png?v=1.85`}
+        src={`${import.meta.env.BASE_URL}favicon.png?v=1.86`}
         alt="Onyx-mx"
         className={`onyx-logo-fallback object-contain ${className || ''}`}
         {...props}

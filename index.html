@@ -61,8 +61,24 @@
       var recovered = false;
       function selfHeal(reason) {
         if (recovered) return;
+        var splash = document.getElementById('onyx-initial-splash');
+        if (!splash) return; // React already mounted; do not force reload
+
+        var HEAL_KEY = 'onyx_healed_ts';
+        var lastHeal = sessionStorage.getItem(HEAL_KEY);
+        if (lastHeal && (Date.now() - parseInt(lastHeal, 10) < 30000)) {
+          console.warn('[Onyx] Self-heal already attempted recently. Showing manual retry.');
+          var sub = document.getElementById('onyx-splash-subtitle');
+          if (sub) {
+            sub.innerHTML = '<span style="color:#ef4444">Connection interrupted.</span><br/><button onclick="sessionStorage.removeItem(\'onyx_healed_ts\');location.reload();" style="margin-top:14px;padding:8px 20px;border-radius:999px;border:none;background:#fdfcf0;color:#0d0b0a;font-weight:700;font-size:13px;cursor:pointer;">Reload Onyx</button>';
+          }
+          return;
+        }
+
         recovered = true;
-        console.warn('[Onyx] Recovering from error:', reason);
+        sessionStorage.setItem(HEAL_KEY, Date.now().toString());
+        console.warn('[Onyx] Self-healing reload triggered:', reason);
+
         try {
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function (regs) {
@@ -75,6 +91,7 @@
             }).catch(function () {});
           }
         } catch (e) {}
+
         setTimeout(function () {
           var u = new URL(window.location.href);
           u.searchParams.set('v', Date.now().toString());
@@ -82,31 +99,30 @@
         }, 300);
       }
 
+      // ONLY listen for critical SCRIPT or CSS LINK failures (never IMG/MEDIA)
       window.addEventListener('error', function (e) {
-        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+        if (e.target && (e.target.tagName === 'SCRIPT' || (e.target.tagName === 'LINK' && e.target.rel === 'stylesheet'))) {
           var src = e.target.src || e.target.href || '';
-          console.error('[Onyx] Resource error:', src);
-          var root = document.getElementById('root');
-          if (!root || !root.firstElementChild) {
-            selfHeal('Failed to load: ' + src);
-          }
+          console.error('[Onyx] Critical asset load error:', src);
+          selfHeal('Critical asset failed: ' + src);
         }
       }, true);
 
       window.addEventListener('unhandledrejection', function (e) {
         var msg = e && e.reason ? (e.reason.message || String(e.reason)) : '';
         if (msg.indexOf('Failed to fetch dynamically imported module') !== -1 || msg.indexOf('Loading chunk') !== -1) {
-          selfHeal('Chunk import error: ' + msg);
+          selfHeal('Chunk import failure: ' + msg);
         }
       });
 
+      // Watchdog: If React hasn't unmounted the splash after 8s, attempt recovery
       window.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
-          var root = document.getElementById('root');
-          if (root && (!root.firstElementChild || root.innerHTML.trim() === '')) {
-            selfHeal('Root empty after timeout');
+          var splash = document.getElementById('onyx-initial-splash');
+          if (splash) {
+            selfHeal('Initial mount watchdog timeout');
           }
-        }, 6000);
+        }, 8000);
       });
     })();
   </script>
@@ -114,10 +130,10 @@
 
 <body>
   <div id="root">
-    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d0b0a;color:#fdfcf0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <div id="onyx-initial-splash" style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d0b0a;color:#fdfcf0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:700;letter-spacing:0.04em;">ONYX</div>
-        <div style="font-size:12px;opacity:0.6;margin-top:6px;">Connecting...</div>
+        <div id="onyx-splash-subtitle" style="font-size:12px;opacity:0.6;margin-top:6px;">Connecting...</div>
       </div>
     </div>
   </div>

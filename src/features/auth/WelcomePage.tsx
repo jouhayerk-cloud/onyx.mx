@@ -76,7 +76,7 @@ export function WelcomePage({ onComplete }: { onComplete: () => void }) {
                 </button>
 
                 <div className="mt-12 pt-8 border-t border-white/5 welcome-animate">
-                    <img src={"$\{import.meta.env.BASE_URL\}chan-reactions.webp"} alt="Onyx Chan" className="w-12 h-12 mx-auto object-contain opacity-80 drop-shadow-md" />
+                    <img src={`${import.meta.env.BASE_URL}chan-reactions.webp`} alt="Onyx Chan" className="w-12 h-12 mx-auto object-contain opacity-80 drop-shadow-md" />
                 </div>
             </div>
         </div>
