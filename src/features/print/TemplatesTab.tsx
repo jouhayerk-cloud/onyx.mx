@@ -9,6 +9,9 @@ import { getRecentTracked } from './jobTracking';
 import { listDocumentJobs } from '../../lib/documentJobs';
 import { LaserStencilModal } from './LaserStencilModal';
 
+const LASER_TEMPLATE_IDS = ['fmt-crate-lasercut-svg', 'fmt-crate-stencil-lbrn2'];
+const isLaserTemplateId = (id?: string) => !!id && LASER_TEMPLATE_IDS.includes(id);
+
 const viewMapping: Record<string, string> = {
     inventory: 'inventory',
     logistics: 'logistics',
@@ -82,7 +85,7 @@ export const TemplatesTabContent: React.FC = () => {
     const tracked = useMemo(() => getRecentTracked(), [refreshKey]);
 
     const getKindIcon = (kind: string, templateId?: string) => {
-        if (templateId === 'fmt-crate-lasercut-svg' || templateId === 'fmt-crate-stencil-lbrn2' || templateId === 'fmt-crate-dividers-svg') {
+        if (isLaserTemplateId(templateId)) {
             return <Scissors className="w-4 h-4 text-cyan-400" />;
         }
         switch (kind) {
@@ -90,6 +93,8 @@ export const TemplatesTabContent: React.FC = () => {
             case 'csv': return <FileText className="w-4 h-4 text-green-300" />;
             case 'pdf': return <FileText className="w-4 h-4 text-red-400" />;
             case 'label': return <Tag className="w-4 h-4 text-blue-400" />;
+            case 'svg':
+            case 'lbrn2': return <Scissors className="w-4 h-4 text-cyan-400" />;
             default: return <FileText className="w-4 h-4" />;
         }
     };
@@ -108,7 +113,7 @@ export const TemplatesTabContent: React.FC = () => {
                     />
                 </div>
                 <div className="flex gap-2">
-                    {['xlsx', 'pdf', 'label', 'csv'].map(k => (
+                    {['xlsx', 'pdf', 'label', 'csv', 'svg', 'lbrn2'].map(k => (
                         <button 
                             key={k}
                             onClick={() => setSelectedKind(selectedKind === k ? null : k)}
@@ -135,7 +140,7 @@ export const TemplatesTabContent: React.FC = () => {
                                     const onlineJob = recentJobs.find(j => j.template_id === t.id);
                                     
                                     const lastJobAt = trackedJob?.at || onlineJob?.client_created_at || onlineJob?.created_at;
-                                    const isLaserTemplate = t.id === 'fmt-crate-lasercut-svg' || t.id === 'fmt-crate-stencil-lbrn2' || t.id === 'fmt-crate-dividers-svg';
+                                    const isLaserTemplate = isLaserTemplateId(t.id);
                                     
                                     return (
                                         <div key={t.id} className="pc-glass-card ui-root flex flex-col p-4 gap-3 relative">

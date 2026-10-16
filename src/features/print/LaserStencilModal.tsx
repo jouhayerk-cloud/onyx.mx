@@ -13,8 +13,9 @@ import {
     Maximize2,
     RefreshCw
 } from 'lucide-react';
-import { tr } from '../../lib/i18n';
+import { tr, trf } from '../../lib/i18n';
 import { recordExport } from './jobTracking';
+import { laserJobKind } from './templateCatalogue';
 import { 
     CrateCutfileStencilView, 
     BED_OPTIONS, 
@@ -30,14 +31,15 @@ import {
 import { 
     downloadLaserCutfileSvg, 
     downloadLightBurnProject, 
-    generateLightBurnProjectXml 
+    generateLightBurnProjectXml,
+    sanitizeFileBase
 } from '../../lib/logistics/boxesCliBridge';
 import { normalizeInventoryData } from '../../lib/utils';
 
 export interface LaserStencilModalProps {
     isOpen: boolean;
     onClose: () => void;
-    initialTemplateId?: string; // 'fmt-crate-lasercut-svg' | 'fmt-crate-stencil-lbrn2' | 'fmt-crate-dividers-svg'
+    initialTemplateId?: string; // 'fmt-crate-lasercut-svg' | 'fmt-crate-stencil-lbrn2'
     initialWidth?: number;  // default 60 cm
     initialLength?: number; // default 60 cm
     initialHeight?: number; // default 40 cm
@@ -157,7 +159,7 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
     }, [crateDimensions, packedItemSpecs, bedSize]);
 
     const safeBaseName = useMemo(() => {
-        return (crateName || 'crate').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        return sanitizeFileBase(crateName);
     }, [crateName]);
 
     const volumeLiters = useMemo(() => {
@@ -177,19 +179,16 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
         const filename = `${safeBaseName}-laser-cutfile-${thickness}mm.svg`;
         downloadLaserCutfileSvg(filename, currentSvgString);
         
-        const templateId = initialTemplateId === 'fmt-crate-dividers-svg' 
-            ? 'fmt-crate-dividers-svg' 
-            : 'fmt-crate-lasercut-svg';
-
         recordExport({
-            templateId,
-            kind: 'label',
+            templateId: 'fmt-crate-lasercut-svg',
+            kind: laserJobKind('svg'),
             fileName: filename,
             season: '826',
             channel: 'browser-download',
             crateLogisticsId: safeBaseName,
             params: {
                 studio: 'laser-studio',
+                fileFormat: 'svg',
                 widthCm: width,
                 lengthCm: length,
                 heightCm: height,
@@ -200,29 +199,38 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
             }
         }, currentSvgString);
 
-        setToastMessage(tr(`Downloaded SVG & recorded to queue: ${filename}`));
+        setToastMessage(trf('Downloaded SVG and recorded to queue: {file}', { file: filename }));
         setTimeout(() => setToastMessage(null), 3500);
         onJobRecorded?.();
-    }, [safeBaseName, thickness, currentSvgString, initialTemplateId, width, length, height, burn, bedSize, crateName, onJobRecorded]);
+    }, [safeBaseName, thickness, currentSvgString, width, length, height, burn, bedSize, crateName, onJobRecorded]);
 
     const handleDownloadLightBurn = useCallback(() => {
         const filename = `${safeBaseName}-lightburn-${thickness}mm.lbrn2`;
-        const lbrnXml = generateLightBurnProjectXml(currentSvgString, {
-            materialThickness: thickness,
-            cutSpeed: 20,
-            cutPower: 85
-        });
+        let lbrnXml: string;
+        try {
+            lbrnXml = generateLightBurnProjectXml(currentSvgString, {
+                materialThickness: thickness,
+                cutSpeed: 20,
+                cutPower: 85
+            });
+        } catch (err) {
+            console.error('Failed to build LightBurn project:', err);
+            setToastMessage(tr('Could not build the LightBurn project. Download the SVG instead.'));
+            setTimeout(() => setToastMessage(null), 3500);
+            return;
+        }
         downloadLightBurnProject(filename, lbrnXml);
 
         recordExport({
             templateId: 'fmt-crate-stencil-lbrn2',
-            kind: 'label',
+            kind: laserJobKind('lbrn2'),
             fileName: filename,
             season: '826',
             channel: 'browser-download',
             crateLogisticsId: safeBaseName,
             params: {
                 studio: 'laser-studio',
+                fileFormat: 'lbrn2',
                 widthCm: width,
                 lengthCm: length,
                 heightCm: height,
@@ -233,7 +241,7 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
             }
         }, lbrnXml);
 
-        setToastMessage(tr(`Downloaded LightBurn project & queued: ${filename}`));
+        setToastMessage(trf('Downloaded LightBurn project and queued: {file}', { file: filename }));
         setTimeout(() => setToastMessage(null), 3500);
         onJobRecorded?.();
     }, [safeBaseName, thickness, currentSvgString, width, length, height, burn, bedSize, crateName, onJobRecorded]);
@@ -245,17 +253,18 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
         const finalFileName = meta?.filename ?? `${safeBaseName}-laser-cutfile-${finalThickness}mm.svg`;
         const finalSvg = meta?.svgContent ?? currentSvgString;
 
-        const templateId = initialTemplateId || 'fmt-crate-lasercut-svg';
+        const templateId = initialTemplateId === 'fmt-crate-stencil-lbrn2' ? 'fmt-crate-stencil-lbrn2' : 'fmt-crate-lasercut-svg';
 
         recordExport({
             templateId,
-            kind: 'label',
+            kind: laserJobKind(finalFileName.endsWith('.lbrn2') ? 'lbrn2' : 'svg'),
             fileName: finalFileName,
             season: '826',
             channel: 'print-dialog',
             crateLogisticsId: safeBaseName,
             params: {
                 studio: 'laser-studio',
+                fileFormat: finalFileName.endsWith('.lbrn2') ? 'lbrn2' : 'svg',
                 widthCm: width,
                 lengthCm: length,
                 heightCm: height,
@@ -266,25 +275,24 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
             }
         }, finalSvg);
 
-        setToastMessage(tr(`Job recorded to Print Center Queue: ${finalFileName}`));
+        setToastMessage(trf('Job recorded to Print Center queue: {file}', { file: finalFileName }));
         setTimeout(() => setToastMessage(null), 3500);
         onJobRecorded?.();
     }, [thickness, burn, bedSize, safeBaseName, currentSvgString, initialTemplateId, width, length, height, crateName, onJobRecorded]);
 
     const handleExportFromChild = useCallback((type: 'svg' | 'lbrn2', filename: string, content: string, meta: { thickness: number; burn: number; bedSize: string }) => {
-        const templateId = type === 'lbrn2' 
-            ? 'fmt-crate-stencil-lbrn2' 
-            : (initialTemplateId === 'fmt-crate-dividers-svg' ? 'fmt-crate-dividers-svg' : 'fmt-crate-lasercut-svg');
+        const templateId = type === 'lbrn2' ? 'fmt-crate-stencil-lbrn2' : 'fmt-crate-lasercut-svg';
 
         recordExport({
             templateId,
-            kind: 'label',
+            kind: laserJobKind(type),
             fileName: filename,
             season: '826',
             channel: 'browser-download',
             crateLogisticsId: safeBaseName,
             params: {
                 studio: 'laser-studio',
+                fileFormat: type,
                 widthCm: width,
                 lengthCm: length,
                 heightCm: height,
@@ -295,10 +303,10 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
             }
         }, content);
 
-        setToastMessage(tr(`Exported ${type.toUpperCase()} and registered in queue: ${filename}`));
+        setToastMessage(trf('Exported {format} and registered in queue: {file}', { format: type.toUpperCase(), file: filename }));
         setTimeout(() => setToastMessage(null), 3500);
         onJobRecorded?.();
-    }, [initialTemplateId, safeBaseName, width, length, height, crateName, onJobRecorded]);
+    }, [safeBaseName, width, length, height, crateName, onJobRecorded]);
 
     if (!isOpen) return null;
 
@@ -336,11 +344,9 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
                                     {tr("Laser Stencil Studio")}
                                 </h2>
                                 <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
-                                    {initialTemplateId === 'fmt-crate-stencil-lbrn2' 
-                                        ? 'LightBurn' 
-                                        : initialTemplateId === 'fmt-crate-dividers-svg' 
-                                            ? 'Dividers' 
-                                            : 'Boxes.py SVG'}
+                                    {initialTemplateId === 'fmt-crate-stencil-lbrn2'
+                                        ? 'LightBurn'
+                                        : tr('Approximate SVG')}
                                 </span>
                             </div>
                             <span className="text-[11px] text-white/50 font-medium">
@@ -384,7 +390,7 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
                         <button
                             type="button"
                             onClick={handleDownloadSvg}
-                            title={tr("Download 2D Laser SVG and register in queue")}
+                            title={tr("Download the approximate 2D laser SVG (not Boxes.py output) and register in queue")}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all shadow-sm active:scale-95"
                         >
                             <Download className="w-3.5 h-3.5 text-rose-400" />
@@ -395,7 +401,7 @@ export const LaserStencilModal: React.FC<LaserStencilModalProps> = ({
                         <button
                             type="button"
                             onClick={handleDownloadLightBurn}
-                            title={tr("Download LightBurn (.lbrn2) project and register in queue")}
+                            title={tr("Download a LightBurn (.lbrn2) project from the approximate drawing and register in queue")}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition-all shadow-sm active:scale-95"
                         >
                             <Layers className="w-3.5 h-3.5 text-amber-400" />

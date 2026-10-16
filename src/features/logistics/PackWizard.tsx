@@ -39,6 +39,13 @@ import {
 } from '../../lib/logistics/boxesBridge';
 
 type WizardStep = 'SELECT_CRATE' | 'REVIEW_PACK';
+
+/**
+ * Id of the virtual "auto-fit laser box" card. It is only a suggestion until the user packs into it; it is
+ * never stored. Packing into it creates one real logistics row (type 'cardboard', id assigned by the database
+ * like every other container), and from then on that row is an ordinary container that is updated, not copied.
+ */
+const AUTOFIT_CRATE_ID = 'BOX-PY-AUTOFIT';
 type ContainerTaxonomy = 'all' | 'crates' | 'pallets' | 'boxes' | 'empty' | 'best_fit';
 
 interface CrateRecord {
@@ -120,7 +127,7 @@ function getContainerCategory(c: CrateRecord): {
             icon: '🪵',
         };
     }
-    if (typeStr === 'box' || idStr.startsWith('BOX') || idStr.startsWith('LBL') || (h <= 30 && w <= 50 && l <= 50)) {
+    if (typeStr === 'box' || typeStr === 'cardboard' || idStr.startsWith('BOX') || idStr.startsWith('LBL') || (h <= 30 && w <= 50 && l <= 50)) {
         return {
             category: 'box',
             label: 'CARDBOARD / LASER BOX',
@@ -191,7 +198,7 @@ export const PackWizard: React.FC = () => {
         return { volCm3, volLiters, weightKg, maxW, maxL, maxH, totalUnits };
     }, [selectedItems, packQuantities]);
 
-    // Custom Boxes.py Parametric auto-fit container generator
+    // Auto-fit laser box suggestion (sizes and estimates come from the Onyx approximate drawing, not Boxes.py)
     const customBoxesCrate = useMemo(() => {
         if (selectedItems.length === 0) return null;
         const { maxW, maxL, maxH, volCm3, totalUnits } = stagedMetrics;
@@ -234,15 +241,15 @@ export const PackWizard: React.FC = () => {
         const tareWeight = Number((cutTelemetry.totalAreaMm2 * 0.000001 * 6 * 0.7).toFixed(1));
 
         const record: CrateRecord = {
-            id: `BOX-PY-AUTOFIT`,
-            type: 'box',
+            id: AUTOFIT_CRATE_ID,
+            type: 'cardboard',
             status: 'Empty',
             width_cm: w,
             length_cm: l,
             height_cm: h,
             weight_kg: Math.max(0.8, tareWeight),
             inventory_ids: '',
-            description: `Auto-Fit Boxes.py Parametric ${generator} (6mm Baltic Birch · Kerf 0.09mm)`,
+            description: `Auto-fit laser box, ${generator} layout (6mm Baltic Birch · kerf 0.09mm, approximate)`,
             location: 'Laser Fab Bed',
         };
 
@@ -408,26 +415,29 @@ export const PackWizard: React.FC = () => {
             
             let targetCrateId = selectedCrate.id;
 
-            // If user selected the virtual Auto-Fit Boxes.py container, persist it to logistics table
-            if (selectedCrate.id === 'BOX-PY-AUTOFIT' || selectedCrate.id.startsWith('BOX-PY-')) {
-                const newId = `BOX-PY-${Date.now().toString().slice(-5)}`;
-                targetCrateId = newId;
-
-                const { error: insError } = await supabase.from('logistics').insert({
-                    id: newId,
-                    type: 'box',
+            // Only the virtual auto-fit card is created. Real rows (including a laser box created earlier)
+            // are updated below. The database assigns the id, as for every other container, so two packs
+            // can never collide, and the stored type is 'cardboard' (the type every logistics filter knows).
+            if (selectedCrate.id === AUTOFIT_CRATE_ID) {
+                const nowIso = new Date().toISOString();
+                const { data: created, error: insError } = await supabase.from('logistics').insert({
+                    type: 'cardboard',
                     status: 'Packed',
                     width_cm: selectedCrate.width_cm,
                     length_cm: selectedCrate.length_cm,
                     height_cm: selectedCrate.height_cm,
                     weight_kg: selectedCrate.weight_kg,
                     inventory_ids: updatedIds,
-                    description: selectedCrate.description || 'Auto-Fit Boxes.py Parametric Laser Container',
+                    description: selectedCrate.description || 'Auto-fit laser box',
+                    contents_summary: '',
+                    quantity: 1,
+                    date: nowIso,
                     location: crateLocation || 'Laser Fab Bed',
-                    updated_at: new Date().toISOString(),
-                    created_at: new Date().toISOString(),
-                });
+                    updated_at: nowIso,
+                }).select('id').single();
                 if (insError) throw insError;
+                if (!created?.id) throw new Error('The new container was not returned by the database');
+                targetCrateId = String(created.id);
             } else {
                 // Update existing container in logistics table
                 const { error: crateError } = await supabase.from('logistics').update({
@@ -871,7 +881,7 @@ export const PackWizard: React.FC = () => {
                     const crateVendors = getCrateVendors(selectedCrate, inventory);
                     const primaryColor = crateVendors[0]?.color || 'var(--main-color)';
                     const tax = getContainerCategory(selectedCrate);
-                    const isCustomBox = selectedCrate.id === 'BOX-PY-AUTOFIT' || selectedCrate.id.startsWith('BOX-PY-');
+                    const isCustomBox = selectedCrate.id === AUTOFIT_CRATE_ID;
 
                     return (
                         <div className="flex-1 flex flex-col lg:flex-row min-h-0 px-6 sm:px-10 pt-6 pb-36 gap-8 overflow-hidden">
@@ -956,7 +966,7 @@ export const PackWizard: React.FC = () => {
                                             <div className="flex items-center gap-2">
                                                 <Scissors size={16} className="text-cyan-400" />
                                                 <h4 className="text-xs font-black text-cyan-300 uppercase tracking-widest">
-                                                    Boxes.py Cutfile Telemetry
+                                                    {tr("Laser cut estimate (approximate)")}
                                                 </h4>
                                             </div>
                                             <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">

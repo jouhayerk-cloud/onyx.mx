@@ -12,10 +12,11 @@ import { exportCombinedTruckManifesto } from '../../lib/crateManifesto';
 import { generateCratesListHtml } from './generateCratesListHtml';
 import { generateMasterPackingListXlsx } from '../../lib/xlsxRenderer';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
-import { tr } from '../../lib/i18n';
+import { tr, trf } from '../../lib/i18n';
 import { trackDocumentJob, recordExport } from '../print/jobTracking';
-import { generateProceduralCrateSvg, CrateDimensions, PackedItemSpec } from '../../lib/logistics/boxesBridge';
-import { downloadLaserCutfileSvg, downloadLightBurnProject, generateLightBurnProjectXml } from '../../lib/logistics/boxesCliBridge';
+import { laserJobKind } from '../print/templateCatalogue';
+import { generateProceduralCrateSvg, combineCrateSvgs, CrateDimensions } from '../../lib/logistics/boxesBridge';
+import { downloadLaserCutfileSvg } from '../../lib/logistics/boxesCliBridge';
 
 export const ExportCard: React.FC<{
     id: string;
@@ -75,7 +76,6 @@ export const ExportCratesWizard: React.FC<{
     const [progress, setProgress] = useState({ allCrates: -1, xlsx: -1, html: -1, laserCut: -1 });
     const [urls, setUrls] = useState({ allCrates: '', xlsx: '', html: '', laserCut: '' });
     const [laserSvgContent, setLaserSvgContent] = useState('');
-    const [laserLbrnContent, setLaserLbrnContent] = useState('');
     const exportTimestamp = useRef(new Date().getTime());
 
     const initSenders = Array.from(new Set(selectedCrates.map(c => {
@@ -271,47 +271,53 @@ export const ExportCratesWizard: React.FC<{
             }
 
             setProgress(p => ({ ...p, laserCut: 40 }));
-            let combinedSvg = '';
+            // One drawing per selected crate, stacked in a single SVG. A crate without real dimensions is
+            // skipped (never drawn with a made-up size). Item positions are not stored on the crate rows, so no
+            // divider layout is drawn: it would not match the real packing.
+            const entries: { label: string; svg: string }[] = [];
+            const skipped: string[] = [];
             for (const crate of selectedCrates) {
+                const label = String(getCrateDisplayName(crate, allCrates, allInventory).label || crate.id || 'Crate');
                 const crateDims: CrateDimensions = {
-                    widthCm: parseFloat(crate.width_cm) || 60,
-                    lengthCm: parseFloat(crate.length_cm) || 60,
-                    heightCm: parseFloat(crate.height_cm) || 40,
+                    widthCm: parseFloat(crate.width_cm),
+                    lengthCm: parseFloat(crate.length_cm),
+                    heightCm: parseFloat(crate.height_cm),
                     thicknessMm: 6,
                     burnMm: 0.1
                 };
-                const rawItems = getItemsFromCrate(crate);
-                const packedItems: PackedItemSpec[] = rawItems.map((item, idx) => {
-                    const data = item.inv?.data || {};
-                    return {
-                        id: String(item.id || idx),
-                        name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
-                        xCm: 0,
-                        yCm: 0,
-                        zCm: 0,
-                        widthCm: parseFloat(data.widthCm || data.width_cm) || 10,
-                        lengthCm: parseFloat(data.lengthCm || data.length_cm) || 10,
-                        heightCm: parseFloat(data.heightCm || data.height_cm) || 10
-                    };
-                });
-                const svg = generateProceduralCrateSvg(crateDims, packedItems);
-                if (!combinedSvg) {
-                    combinedSvg = svg;
+                if (![crateDims.widthCm, crateDims.lengthCm, crateDims.heightCm].every(n => Number.isFinite(n) && n > 0)) {
+                    skipped.push(label);
+                    continue;
                 }
+                entries.push({ label, svg: generateProceduralCrateSvg(crateDims) });
+            }
+
+            if (entries.length === 0) {
+                toast.error(tr("None of the selected crates has dimensions to draw"));
+                setProgress(p => ({ ...p, laserCut: -1 }));
+                return;
+            }
+            if (skipped.length > 0) {
+                toast.error(trf("Skipped {n} crate(s) without dimensions: {names}", { n: skipped.length, names: skipped.slice(0, 5).join(', ') }));
             }
 
             setProgress(p => ({ ...p, laserCut: 80 }));
+            const combinedSvg = entries.length === 1 ? entries[0].svg : combineCrateSvgs(entries);
             setLaserSvgContent(combinedSvg);
-            const lbrnXml = generateLightBurnProjectXml(combinedSvg);
-            setLaserLbrnContent(lbrnXml);
 
             const blob = new Blob([combinedSvg], { type: 'image/svg+xml;charset=utf-8' });
-            if (blob) {
-                setUrls(u => ({ ...u, laserCut: URL.createObjectURL(blob) }));
-                setProgress(p => ({ ...p, laserCut: 100 }));
-                recordExport("laserCut", "Laser Cutfile (SVG/LBRN2)");
-                toast.success(tr("Laser Cutfile Ready"));
-            }
+            setUrls(u => ({ ...u, laserCut: URL.createObjectURL(blob) }));
+            setProgress(p => ({ ...p, laserCut: 100 }));
+            recordExport({
+                templateId: 'fmt-crate-lasercut-svg',
+                kind: laserJobKind('svg'),
+                fileName: `Laser_Cutfile_${exportTimestamp.current}.svg`,
+                season: '826',
+                channel: 'browser-download',
+                itemCount: entries.length,
+                params: { studio: 'export-wizard', fileFormat: 'svg', crateCount: entries.length, skippedCount: skipped.length }
+            }, combinedSvg);
+            toast.success(tr("Laser Cutfile Ready"));
         } catch (err: any) {
             setProgress(p => ({ ...p, laserCut: -1 }));
             toast.error(tr("Laser cutfile generation failed"));
@@ -384,18 +390,16 @@ export const ExportCratesWizard: React.FC<{
                         <ExportCard id="allCrates" title={tr("All Crates Manifesto")} type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} onDownload={triggerDownload} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
                         <ExportCard 
                             id="laserCut" 
-                            title={tr("Laser Cut Stencils & Project")} 
-                            type="SVG / LBRN2" 
-                            desc={tr("Parametric finger-joint crate panels and divider cutfiles for laser cutters (Boxes.py standard)")} 
+                            title={tr("Laser Cut Stencils")}
+                            type="SVG"
+                            desc={tr("Approximate finger-joint crate panels, one per selected crate (Onyx preview, not Boxes.py output; no divider layout)")}  
                             color="#f59e0b" 
                             icon={Scissors} 
                             prog={progress.laserCut} 
                             url={urls.laserCut} 
                             onGenerate={handleGenerateLaserCut} 
                             onDownload={(url, filename) => {
-                                if (filename.endsWith('.lbrn2') && laserLbrnContent) {
-                                    downloadLightBurnProject(filename, laserLbrnContent);
-                                } else if (laserSvgContent) {
+                                if (laserSvgContent) {
                                     downloadLaserCutfileSvg(filename, laserSvgContent);
                                 } else {
                                     triggerDownload(url, filename);

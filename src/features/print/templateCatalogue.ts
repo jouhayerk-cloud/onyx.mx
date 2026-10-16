@@ -1,9 +1,19 @@
 import { tr } from '../../lib/i18n';
-import type { DocumentKind } from './types';
+import type { DocumentKind, LaserFileKind, TemplateKind } from './types';
+
+/**
+ * Kind stored with a laser export in document_jobs. That column only accepts xlsx | pdf | label | csv today
+ * (check constraint), so a laser job still has to be filed as 'label' until swarm/tasks/FX/FX3_proposed.sql is
+ * applied and DocumentKind in src/lib/documentJobs.ts is widened. Callers also store the real format in
+ * params.fileFormat so history can be told apart; flip this one function to return the format afterwards.
+ */
+export function laserJobKind(_format: LaserFileKind): DocumentKind {
+    return 'label';
+}
 
 export interface TemplateEntry {
     id: string;
-    kind: DocumentKind;
+    kind: TemplateKind;
     label: string;
     module: "inventory" | "logistics" | "packing" | "trucking" | "archive" | "store" | "catalog" | "finance" | "viewer";
     source: string;
@@ -230,29 +240,20 @@ export const TEMPLATE_CATALOGUE: TemplateEntry[] = [
     },
     {
         id: "fmt-crate-lasercut-svg",
-        kind: "label",
+        kind: "svg",
         label: tr("Crate Laser Cutfile (SVG)"),
         module: "logistics",
         source: "boxesBridge.ts",
-        description: tr("Parametric laser cut crate stencils with finger joints (Boxes.py standard)"),
+        description: tr("Approximate laser cut crate drawing with finger joints, including divider slats when items are packed (Onyx preview, not Boxes.py output)"),
         status: "tracked"
     },
     {
         id: "fmt-crate-stencil-lbrn2",
-        kind: "label",
+        kind: "lbrn2",
         label: tr("Crate LightBurn Project (.lbrn2)"),
         module: "logistics",
         source: "boxesCliBridge.ts",
-        description: tr("Native LightBurn project with cut and engrave laser layers"),
-        status: "tracked"
-    },
-    {
-        id: "fmt-crate-dividers-svg",
-        kind: "label",
-        label: tr("Crate Dividers & Tray (SVG)"),
-        module: "packing",
-        source: "boxesBridge.ts",
-        description: tr("Interlocking internal slot dividers and compartment trays"),
+        description: tr("LightBurn project with the cut paths of the approximate crate drawing (outer cut and slot layers)"),
         status: "tracked"
     }
 ];
