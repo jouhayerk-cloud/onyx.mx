@@ -86,7 +86,7 @@ export function useUserPresence(options?: UseUserPresenceOptions): UseUserPresen
     });
   }, [activeView, user]);
 
-  // Lifecycle: start heartbeat, initial fetch, and periodic fleet polling
+  // Lifecycle: start heartbeat, initial fetch, and live fleet subscription
   useEffect(() => {
     isMountedRef.current = true;
 
@@ -106,6 +106,13 @@ export function useUserPresence(options?: UseUserPresenceOptions): UseUserPresen
       });
     }
 
+    // Subscribe to live Realtime fleet changes (WebSockets <100ms)
+    const unsubscribeFleet = presenceService.subscribeToFleet((fleet) => {
+      if (isMountedRef.current && fleet.length > 0) {
+        setSessions(fleet);
+      }
+    });
+
     void refetch();
 
     const pollTimer = setInterval(() => {
@@ -115,6 +122,7 @@ export function useUserPresence(options?: UseUserPresenceOptions): UseUserPresen
     return () => {
       isMountedRef.current = false;
       clearInterval(pollTimer);
+      unsubscribeFleet();
       if (autoStart) {
         presenceService.stopPresenceHeartbeat();
       }

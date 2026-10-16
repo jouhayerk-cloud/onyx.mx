@@ -7,11 +7,15 @@ import {
     financeDataAtom, 
     logisticsDataAtom,
     isSyncingAtom,
-    InventoryVersionAtom
+    InventoryVersionAtom,
+    userAtom,
+    activeViewAtom,
 } from '../lib/atoms';
 import { useDatabase } from '../lib/hooks';
 import { normalizeInventoryData } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+import { presenceService } from '../lib/presence/presenceService';
+import { colibriRealtimeBridge } from '../lib/ai/colibriRealtimeBridge';
 
 /**
  * DataSyncProvider
@@ -214,6 +218,38 @@ export const DataSyncProvider: React.FC = () => {
 
         return () => clearTimeout(timer);
     }, [db, inventoryVersion]);
+
+    // 6. Colibrì Realtime Bridge Initialization
+    // Engages G7 host mode if loopback is reachable or client wss:// relay listener
+    useEffect(() => {
+        void colibriRealtimeBridge.init();
+        return () => {
+            colibriRealtimeBridge.destroy();
+        };
+    }, []);
+
+    // 7. Global User & Device Fleet Telemetry Heartbeat
+    // Emits continuous presence across all views (Home, Inventory, Warehouse, Finance, Dashboard)
+    const user = useAtomValue(userAtom);
+    const activeView = useAtomValue(activeViewAtom);
+
+    useEffect(() => {
+        const userInfo = user ? {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+        } : null;
+
+        presenceService.startPresenceHeartbeat({
+            user: userInfo,
+            currentView: activeView,
+        });
+
+        return () => {
+            presenceService.stopPresenceHeartbeat();
+        };
+    }, [user, activeView]);
 
     // This component renders nothing, it just manages side-effects
     return null;

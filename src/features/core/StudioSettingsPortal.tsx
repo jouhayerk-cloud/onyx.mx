@@ -79,9 +79,12 @@ const parseChangelog = (text: string) => {
     return versions;
 };
 
+export type SettingsTab = 'general' | 'appearance' | 'ai' | 'connectors';
+
 export const StudioSettingsPortal: React.FC = () => {
     const [isOpen, setIsOpen]             = useAtom(isStudioSettingsOpenAtom);
     const [viewMode, setViewMode]         = useAtom(studioSettingsViewModeAtom);
+    const [activeTab, setActiveTab]       = useState<SettingsTab>('general');
     const [theme, setTheme]               = useAtom(themeAtom);
     const [appStyle, setAppStyle]         = useAtom(appStyleAtom);
     const [performanceMode, setPerf]      = useAtom(performanceModeAtom);
@@ -239,6 +242,53 @@ export const StudioSettingsPortal: React.FC = () => {
 
                 {/* Settings View */}
                 {viewMode === 'settings' && (
+                    <>
+                    {/* Apple HIG Top Segmented Bar */}
+                    <div className="ss-top-segmented-wrap px-4 pb-2 shrink-0">
+                        <div className="ss-top-segmented" role="tablist" aria-label={tr("Settings category")}>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'general'}
+                                className={`ss-top-tab ${activeTab === 'general' ? 'is-active' : ''}`}
+                                onClick={() => setActiveTab('general')}
+                            >
+                                <Shield size={14} className="opacity-80" />
+                                <span>{tr("General")}</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'appearance'}
+                                className={`ss-top-tab ${activeTab === 'appearance' ? 'is-active' : ''}`}
+                                onClick={() => setActiveTab('appearance')}
+                            >
+                                <Palette size={14} className="opacity-80" />
+                                <span>{tr("Appearance")}</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'ai'}
+                                className={`ss-top-tab ${activeTab === 'ai' ? 'is-active' : ''}`}
+                                onClick={() => setActiveTab('ai')}
+                            >
+                                <Cpu size={14} className="opacity-80" />
+                                <span>{tr("AI & Models")}</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'connectors'}
+                                className={`ss-top-tab ${activeTab === 'connectors' ? 'is-active' : ''}`}
+                                onClick={() => setActiveTab('connectors')}
+                            >
+                                <Zap size={14} className="opacity-80" />
+                                <span>{tr("Connectors & MCP")}</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div className="ss-body">
                     <aside className="ss-brand" aria-hidden="true">
                         <div className="ss-brand-mark">
@@ -247,245 +297,238 @@ export const StudioSettingsPortal: React.FC = () => {
                         <span className="ss-brand-name">Onyx-mx</span>
                         <span className="ss-brand-version">V{APP_VERSION_LABEL}</span>
                     </aside>
-                    <div className="ss-scroll overflow-y-auto px-4 py-6 custom-scrollbar">
-                        <div className="max-w-[500px] mx-auto space-y-8 pb-12">
+                    <div className="ss-scroll overflow-y-auto px-4 py-4 custom-scrollbar">
+                        <div className="max-w-[540px] mx-auto space-y-6 pb-12">
                             
-                            {/* Account */}
-                            <div className="ss-card">
-                                <div className="ss-row py-2">
-                                    <div className="w-[44px] h-[44px] rounded-full bg-(--ss-field) flex items-center justify-center mr-4 shrink-0">
-                                        {initials ? <span className="text-[17px] font-[600] text-(--ss-fg)">{initials}</span> : <Shield size={24} className="text-(--ss-fg3)" />}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[17px] font-[600] text-(--ss-fg) leading-tight">{user?.name || tr("ROOT")}</span>
-                                        <span className="text-[13px] text-(--ss-fg2) leading-tight mt-0.5">{user?.email?.toLowerCase()}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Appearance */}
-                            <div className="flex flex-col">
-                                <span className="ss-section-caption">{tr("Appearance")}</span>
-                                <div className="ss-card">
-                                    <div className="ss-row ss-row--theme">
-                                        <div className="flex flex-wrap justify-center gap-x-6 gap-y-4" role="radiogroup" aria-label={tr("Theme")}>
-                                            {/* Dark */}
-                                            <div className="flex flex-col items-center gap-2">
-                                                <button 
-                                                    className="ss-theme-btn group" 
-                                                    role="radio" 
-                                                    aria-checked={theme === 'talan'} 
-                                                    onClick={() => setTheme('talan')}
-                                                    tabIndex={theme === 'talan' ? 0 : -1}
-                                                    ref={el => themeRefs.current[0] = el}
-                                                    onKeyDown={(e) => handleThemeKeyDown(e, 0)}
-                                                >
-                                                    <div className="ss-theme-miniature" style={{backgroundImage: `url(${THEME_ASSETS.talan.swatch})`}}>
-                                                        <div className="w-[24px] h-full bg-[rgba(0,0,0,0.4)] backdrop-blur-[10px] border-r border-[rgba(255,255,255,0.1)]" />
-                                                        <div className="flex-1 flex flex-col items-center pt-2 gap-2">
-                                                            <div className="w-[32px] h-[6px] rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-[10px]" />
-                                                            <div className="w-[48px] h-[16px] rounded-md bg-[rgba(255,255,255,0.1)] backdrop-blur-[10px]" />
-                                                            <div className="w-[48px] h-[16px] rounded-md bg-[rgba(255,255,255,0.1)] backdrop-blur-[10px]" />
-                                                        </div>
-                                                        {theme === 'talan' && (
-                                                            <div className="ss-theme-badge">
-                                                                <Check size={12} strokeWidth={3} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </button>
-                                                <div className="flex flex-col items-center">
-                                                    <span className="text-[13px] text-(--ss-fg)">{tr("Dark")}</span>
-                                                    <span className="text-[11px] text-(--ss-fg2)">TALAN</span>
-                                                </div>
-                                            </div>
-                                            {/* Light */}
-                                            <div className="flex flex-col items-center gap-2">
-                                                <button 
-                                                    className="ss-theme-btn group" 
-                                                    role="radio" 
-                                                    aria-checked={theme === 'aqua'} 
-                                                    onClick={() => setTheme('aqua')}
-                                                    tabIndex={theme === 'aqua' ? 0 : -1}
-                                                    ref={el => themeRefs.current[1] = el}
-                                                    onKeyDown={(e) => handleThemeKeyDown(e, 1)}
-                                                >
-                                                    <div className="ss-theme-miniature" style={{backgroundImage: `url(${THEME_ASSETS.aqua.swatch})`}}>
-                                                        <div className="w-[24px] h-full bg-[rgba(255,255,255,0.7)] backdrop-blur-[10px] border-r border-[rgba(0,0,0,0.1)]" />
-                                                        <div className="flex-1 flex flex-col items-center pt-2 gap-2">
-                                                            <div className="w-[32px] h-[6px] rounded-full bg-[rgba(255,255,255,0.7)] backdrop-blur-[10px]" />
-                                                            <div className="w-[48px] h-[16px] rounded-md bg-[rgba(255,255,255,0.5)] backdrop-blur-[10px]" />
-                                                            <div className="w-[48px] h-[16px] rounded-md bg-[rgba(255,255,255,0.5)] backdrop-blur-[10px]" />
-                                                        </div>
-                                                        {theme === 'aqua' && (
-                                                            <div className="ss-theme-badge">
-                                                                <Check size={12} strokeWidth={3} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </button>
-                                                <div className="flex flex-col items-center">
-                                                    <span className="text-[13px] text-(--ss-fg)">{tr("Light")}</span>
-                                                    <span className="text-[11px] text-(--ss-fg2)">AQUA</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="ss-separator" />
-                                    <div className="ss-row justify-between">
-                                        <span className="text-[16px] text-(--ss-fg)">{tr("Interface style")}</span>
-                                        <div className="ss-segmented" role="group" aria-label={tr("Interface style")}>
-                                            {APP_STYLES.map(s => {
-                                                const meta = STYLE_META[s] ?? STYLE_META.rock;
-                                                const Icon = meta.icon;
-                                                return (
-                                                    <button 
-                                                        key={s}
-                                                        type="button"
-                                                        aria-pressed={appStyle === s}
-                                                        className="ss-segment"
-                                                        onClick={() => setAppStyle(s)}
-                                                    >
-                                                        <Icon size={14} className="mr-1.5 opacity-70" />
-                                                        {meta.label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* General */}
-                            <div className="flex flex-col">
-                                <span className="ss-section-caption">{tr("General")}</span>
-                                <div className="ss-card">
-                                    <div className="ss-row justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="ss-icon-tile bg-blue-500/10 text-blue-500"><Languages size={16}/></div>
-                                            <span className="text-[16px] text-(--ss-fg)">{tr("Language")}</span>
-                                        </div>
-                                        <div className="ss-segmented">
-                                            <button type="button" className="ss-segment" aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>EN</button>
-                                            <button type="button" className="ss-segment" aria-pressed={language === 'es'} onClick={() => setLanguage('es')}>ES</button>
-                                        </div>
-                                    </div>
-                                    <div className="ss-separator ss-separator--icon" />
-                                    <div className="ss-row justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="ss-icon-tile bg-yellow-500/10 text-yellow-500"><Zap size={16}/></div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[16px] text-(--ss-fg) leading-tight">{tr("Performance")}</span>
-                                                <span className="text-[13px] text-(--ss-fg2) leading-tight mt-0.5">{performanceMode ? tr("Maximum") : tr("Standard")}</span>
-                                            </div>
-                                        </div>
-                                        <TactileSwitch active={performanceMode} onChange={setPerf} width={51} height={31} aria-label={tr("Performance")} />
-                                    </div>
-                                    <div className="ss-separator ss-separator--icon" />
-                                    <div className="ss-row justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="ss-icon-tile bg-amber-500/10 text-amber-500">{isOffline ? <WifiOff size={16}/> : <Wifi size={16}/>}</div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[16px] text-(--ss-fg) leading-tight">{tr("Offline mode")}</span>
-                                                <span className="text-[13px] text-(--ss-fg2) leading-tight mt-0.5">{isOffline ? tr("Offline") : tr("Online")}</span>
-                                            </div>
-                                        </div>
-                                        <TactileSwitch active={isOffline} onChange={v => v ? goOffline() : goOnline()} width={51} height={31} aria-label={tr("Offline mode")} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Color Tokens */}
-                            <div className="flex flex-col">
-                                <div className="ss-card">
-                                    <button type="button" className="ss-row ss-row-clickable justify-between w-full text-left" onClick={() => setColorsOpen(!colorsOpen)} aria-expanded={colorsOpen}>
-                                        <span className="flex items-center gap-4">
-                                            <span className="ss-icon-tile bg-cyan-500/10 text-cyan-500"><Palette size={16}/></span>
-                                            <span className="text-[16px] text-(--ss-fg)">{tr("Color tokens")}</span>
-                                        </span>
-                                        <ChevronRight size={20} className={`text-(--ss-fg3) transition-transform ${colorsOpen ? 'rotate-90' : ''}`} />
-                                    </button>
-                                    {colorsOpen && (
-                                        <>
-                                            <div className="ss-separator ml-0" />
-                                            <div className="p-4 grid grid-cols-4 sm:grid-cols-6 gap-4">
-                                                {[
-                                                    { label: tr("Surface"),  key: '--app-bg-solid' },
-                                                    { label: tr("Neural"),   key: '--main-color' },
-                                                    { label: tr("Static"),   key: '--secondary-color' },
-                                                    { label: tr("Text P"),   key: '--text-color-primary' },
-                                                    { label: tr("Text S"),   key: '--text-color-secondary' },
-                                                    { label: tr("Boundary"), key: '--border-color' },
-                                                    { label: tr("Input"),    key: '--input-color' },
-                                                    { label: tr("Sidebar"),  key: '--sidebar-bg' },
-                                                    { label: tr("Portal"),   key: '--app-bg' },
-                                                    { label: tr("Glass"),    key: '--glass-bg' },
-                                                    { label: tr("Base"),     key: '--bg-color' },
-                                                    { label: tr("Accent"),   key: '--accent-color' },
-                                                ].map((t) => (
-                                                    <div key={t.key} className="flex flex-col items-center gap-1.5">
-                                                        <div className="w-[28px] h-[28px] rounded-full border border-(--ss-sep)" style={{backgroundColor: colorValues[t.key] || `var(${t.key})`}} />
-                                                        <span className="text-[11px] text-(--ss-fg2) truncate w-full text-center">{t.label}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* AI & Local Intelligence */}
-                            <div className="flex flex-col">
-                                <span className="ss-section-caption">{tr("AI & Local Intelligence")}</span>
-                                <ColibriSettingsCard />
-
-                                {/* All AI Providers & Job Routing Drawer */}
-                                <div className="ss-card mt-3">
-                                    <button
-                                        type="button"
-                                        className="ss-row ss-row-clickable justify-between w-full text-left"
-                                        onClick={() => setShowAllProviders(!showAllProviders)}
-                                        aria-expanded={showAllProviders}
-                                    >
-                                        <span className="flex items-center gap-4">
-                                            <span className="ss-icon-tile bg-purple-500/10 text-purple-400"><Bot size={16}/></span>
-                                            <div className="flex flex-col">
-                                                <span className="text-[16px] text-(--ss-fg)">{tr("All AI Providers & Routing")}</span>
-                                                <span className="text-[12px] text-(--ss-fg2)">{tr("Gemini, Anthropic, OpenAI, Compatible & Job Routing")}</span>
-                                            </div>
-                                        </span>
-                                        <ChevronRight size={20} className={`text-(--ss-fg3) transition-transform ${showAllProviders ? 'rotate-90' : ''}`} />
-                                    </button>
-                                    {showAllProviders && (
-                                        <div className="p-4 border-t border-(--ss-sep)">
-                                            <AiProvidersPanel />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Siri Shortcuts / MCP */}
-                            {import.meta.env.VITE_SIRI_TOKENS === 'true' && (
+                            {/* ── TAB 1: GENERAL ── */}
+                            {activeTab === 'general' && (
                                 <>
-                                <div className="ss-siri">
-                                    <SiriAccessPanel />
-                                </div>
-                                <div className="ss-siri">
-                                    <McpAccessPanel />
-                                </div>
+                                    {/* Account */}
+                                    <div className="ss-card">
+                                        <div className="ss-row py-2 justify-between">
+                                            <div className="flex items-center">
+                                                <div className="w-[44px] h-[44px] rounded-full bg-(--ss-field) flex items-center justify-center mr-4 shrink-0 border border-(--ss-sep)">
+                                                    {initials ? <span className="text-[17px] font-[600] text-(--ss-fg)">{initials}</span> : <Shield size={24} className="text-(--ss-fg3)" />}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[17px] font-[600] text-(--ss-fg) leading-tight">{user?.name || tr("ROOT")}</span>
+                                                    <span className="text-[13px] text-(--ss-fg2) leading-tight mt-0.5">{user?.email?.toLowerCase()}</span>
+                                                </div>
+                                            </div>
+                                            {user?.role && (
+                                                <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-(--ss-field) text-(--ss-accent) border border-(--ss-sep)">
+                                                    {user.role}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* System Preferences */}
+                                    <div className="flex flex-col">
+                                        <span className="ss-section-caption">{tr("Preferences & Network")}</span>
+                                        <div className="ss-card">
+                                            <div className="ss-row justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="ss-icon-tile bg-blue-500/10 text-blue-500"><Languages size={16}/></div>
+                                                    <span className="text-[16px] text-(--ss-fg)">{tr("Language")}</span>
+                                                </div>
+                                                <div className="ss-segmented">
+                                                    <button type="button" className="ss-segment" aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>EN</button>
+                                                    <button type="button" className="ss-segment" aria-pressed={language === 'es'} onClick={() => setLanguage('es')}>ES</button>
+                                                </div>
+                                            </div>
+                                            <div className="ss-separator ss-separator--icon" />
+                                            <div className="ss-row justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="ss-icon-tile bg-yellow-500/10 text-yellow-500"><Zap size={16}/></div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[16px] text-(--ss-fg) leading-tight">{tr("Performance")}</span>
+                                                        <span className="text-[13px] text-(--ss-fg2) leading-tight mt-0.5">{performanceMode ? tr("Maximum") : tr("Standard")}</span>
+                                                    </div>
+                                                </div>
+                                                <TactileSwitch active={performanceMode} onChange={setPerf} width={51} height={31} aria-label={tr("Performance")} />
+                                            </div>
+                                            <div className="ss-separator ss-separator--icon" />
+                                            <div className="ss-row justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="ss-icon-tile bg-amber-500/10 text-amber-500">{isOffline ? <WifiOff size={16}/> : <Wifi size={16}/>}</div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[16px] text-(--ss-fg) leading-tight">{tr("Offline mode")}</span>
+                                                        <span className="text-[13px] text-(--ss-fg2) leading-tight mt-0.5">{isOffline ? tr("Offline") : tr("Online")}</span>
+                                                    </div>
+                                                </div>
+                                                <TactileSwitch active={isOffline} onChange={v => v ? goOffline() : goOnline()} width={51} height={31} aria-label={tr("Offline mode")} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Sign Out */}
+                                    <div className="ss-card">
+                                        <button type="button" className="ss-row ss-row-clickable justify-center w-full" onClick={() => logout()}>
+                                            <LogOut size={18} className="text-(--ss-danger) mr-2" />
+                                            <span className="text-[15px] font-[600] text-(--ss-danger)">{tr("Sign out")}</span>
+                                        </button>
+                                    </div>
                                 </>
                             )}
 
-                            {/* Sign Out */}
-                            <div className="ss-card mt-8">
-                                <button type="button" className="ss-row ss-row-clickable justify-center w-full" onClick={() => logout()}>
-                                    <LogOut size={20} className="text-(--ss-danger) mr-2" />
-                                    <span className="text-[16px] text-(--ss-danger)">{tr("Sign out")}</span>
-                                </button>
-                            </div>
+                            {/* ── TAB 2: APPEARANCE ── */}
+                            {activeTab === 'appearance' && (
+                                <>
+                                    <div className="flex flex-col">
+                                        <span className="ss-section-caption">{tr("Theme & Surfaces")}</span>
+                                        <div className="ss-card">
+                                            <div className="ss-row ss-row--theme">
+                                                <div className="flex flex-wrap justify-center gap-x-6 gap-y-4" role="radiogroup" aria-label={tr("Theme")}>
+                                                    {/* Dark */}
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <button 
+                                                            className="ss-theme-btn group" 
+                                                            role="radio" 
+                                                            aria-checked={theme === 'talan'} 
+                                                            onClick={() => setTheme('talan')}
+                                                            tabIndex={theme === 'talan' ? 0 : -1}
+                                                            ref={el => themeRefs.current[0] = el}
+                                                            onKeyDown={(e) => handleThemeKeyDown(e, 0)}
+                                                        >
+                                                            <div className="ss-theme-miniature" style={{backgroundImage: `url(${THEME_ASSETS.talan.swatch})`}}>
+                                                                <div className="w-[24px] h-full bg-[rgba(0,0,0,0.4)] backdrop-blur-[10px] border-r border-[rgba(255,255,255,0.1)]" />
+                                                                <div className="flex-1 flex flex-col items-center pt-2 gap-2">
+                                                                    <div className="w-[32px] h-[6px] rounded-full bg-[rgba(0,0,0,0.4)] backdrop-blur-[10px]" />
+                                                                    <div className="w-[48px] h-[16px] rounded-md bg-[rgba(255,255,255,0.1)] backdrop-blur-[10px]" />
+                                                                    <div className="w-[48px] h-[16px] rounded-md bg-[rgba(255,255,255,0.1)] backdrop-blur-[10px]" />
+                                                                </div>
+                                                                {theme === 'talan' && (
+                                                                    <div className="ss-theme-badge">
+                                                                        <Check size={12} strokeWidth={3} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-[13px] text-(--ss-fg)">{tr("Dark")}</span>
+                                                            <span className="text-[11px] text-(--ss-fg2)">TALAN</span>
+                                                        </div>
+                                                    </div>
+                                                    {/* Light */}
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <button 
+                                                            className="ss-theme-btn group" 
+                                                            role="radio" 
+                                                            aria-checked={theme === 'aqua'} 
+                                                            onClick={() => setTheme('aqua')}
+                                                            tabIndex={theme === 'aqua' ? 0 : -1}
+                                                            ref={el => themeRefs.current[1] = el}
+                                                            onKeyDown={(e) => handleThemeKeyDown(e, 1)}
+                                                        >
+                                                            <div className="ss-theme-miniature" style={{backgroundImage: `url(${THEME_ASSETS.aqua.swatch})`}}>
+                                                                <div className="w-[24px] h-full bg-[rgba(255,255,255,0.7)] backdrop-blur-[10px] border-r border-[rgba(0,0,0,0.1)]" />
+                                                                <div className="flex-1 flex flex-col items-center pt-2 gap-2">
+                                                                    <div className="w-[32px] h-[6px] rounded-full bg-[rgba(255,255,255,0.7)] backdrop-blur-[10px]" />
+                                                                    <div className="w-[48px] h-[16px] rounded-md bg-[rgba(255,255,255,0.5)] backdrop-blur-[10px]" />
+                                                                    <div className="w-[48px] h-[16px] rounded-md bg-[rgba(255,255,255,0.5)] backdrop-blur-[10px]" />
+                                                                </div>
+                                                                {theme === 'aqua' && (
+                                                                    <div className="ss-theme-badge">
+                                                                        <Check size={12} strokeWidth={3} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-[13px] text-(--ss-fg)">{tr("Light")}</span>
+                                                            <span className="text-[11px] text-(--ss-fg2)">AQUA</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="ss-separator" />
+                                            <div className="ss-row justify-between">
+                                                <span className="text-[16px] text-(--ss-fg)">{tr("Interface style")}</span>
+                                                <div className="ss-segmented" role="group" aria-label={tr("Interface style")}>
+                                                    {APP_STYLES.map(s => {
+                                                        const meta = STYLE_META[s] ?? STYLE_META.rock;
+                                                        const Icon = meta.icon;
+                                                        return (
+                                                            <button 
+                                                                key={s}
+                                                                type="button"
+                                                                aria-pressed={appStyle === s}
+                                                                className="ss-segment"
+                                                                onClick={() => setAppStyle(s)}
+                                                            >
+                                                                <Icon size={14} className="mr-1.5 opacity-70" />
+                                                                {meta.label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Color Tokens */}
+                                    <div className="flex flex-col">
+                                        <span className="ss-section-caption">{tr("Palette Inspection")}</span>
+                                        <div className="ss-card">
+                                            <button type="button" className="ss-row ss-row-clickable justify-between w-full text-left" onClick={() => setColorsOpen(!colorsOpen)} aria-expanded={colorsOpen}>
+                                                <span className="flex items-center gap-4">
+                                                    <span className="ss-icon-tile bg-cyan-500/10 text-cyan-500"><Palette size={16}/></span>
+                                                    <span className="text-[16px] text-(--ss-fg)">{tr("Color tokens")}</span>
+                                                </span>
+                                                <ChevronRight size={20} className={`text-(--ss-fg3) transition-transform ${colorsOpen ? 'rotate-90' : ''}`} />
+                                            </button>
+                                            {colorsOpen && (
+                                                <>
+                                                    <div className="ss-separator ml-0" />
+                                                    <div className="p-4 grid grid-cols-4 sm:grid-cols-6 gap-4">
+                                                        {[
+                                                            { label: tr("Surface"),  key: '--app-bg-solid' },
+                                                            { label: tr("Neural"),   key: '--main-color' },
+                                                            { label: tr("Static"),   key: '--secondary-color' },
+                                                            { label: tr("Text P"),   key: '--text-color-primary' },
+                                                            { label: tr("Text S"),   key: '--text-color-secondary' },
+                                                            { label: tr("Boundary"), key: '--border-color' },
+                                                            { label: tr("Input"),    key: '--input-color' },
+                                                            { label: tr("Sidebar"),  key: '--sidebar-bg' },
+                                                            { label: tr("Portal"),   key: '--app-bg' },
+                                                            { label: tr("Glass"),    key: '--glass-bg' },
+                                                            { label: tr("Base"),     key: '--bg-color' },
+                                                            { label: tr("Accent"),   key: '--accent-color' },
+                                                        ].map((t) => (
+                                                            <div key={t.key} className="flex flex-col items-center gap-1.5">
+                                                                <div className="w-[28px] h-[28px] rounded-full border border-(--ss-sep)" style={{backgroundColor: colorValues[t.key] || `var(${t.key})`}} />
+                                                                <span className="text-[11px] text-(--ss-fg2) truncate w-full text-center">{t.label}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ── TAB 3: AI & MODELS ── */}
+                            {activeTab === 'ai' && (
+                                <div className="space-y-6">
+                                    <ColibriSettingsCard />
+                                    <AiProvidersPanel />
+                                </div>
+                            )}
+
+                            {/* ── TAB 4: CONNECTORS & MCP ── */}
+                            {activeTab === 'connectors' && (
+                                <div className="space-y-6">
+                                    <McpAccessPanel />
+                                    <SiriAccessPanel />
+                                </div>
+                            )}
+
                         </div>
                     </div>
                     </div>
+                    </>
                 )}
 
                 {/* System Logs View */}

@@ -10,6 +10,8 @@ import {
     type ProviderConfig,
     type ProviderInfo,
 } from './types';
+import { colibriRealtimeBridge } from '../colibriRealtimeBridge';
+import { SUPABASE_RELAY_URL } from '../../network/localMeshMap';
 
 export const COLIBRI_INFO: ProviderInfo = {
     id: 'colibri',
@@ -23,7 +25,27 @@ export const COLIBRI_INFO: ProviderInfo = {
 
 export const DEFAULT_COLIBRI_MODEL = 'colibri-glm-5.2-moe';
 
+export function shouldUseBridge(baseUrl: string): boolean {
+    if (baseUrl === SUPABASE_RELAY_URL || baseUrl.startsWith('supabase://')) {
+        return true;
+    }
+    if (typeof window !== 'undefined') {
+        const isHttps = window.location.protocol === 'https:';
+        const isLocalClient = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        // On HTTPS devices (like iPhone, second laptop visiting GitHub Pages or remote LAN),
+        // direct HTTP to private IP fails due to iOS Safari Mixed Content & Private Network Access.
+        if (isHttps && (!isLocalClient || baseUrl.includes('192.168.'))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 export async function isColibriAvailable(baseUrl: string = COLIBRI_INFO.defaultBaseUrl || 'http://127.0.0.1:8082'): Promise<boolean> {
+    if (shouldUseBridge(baseUrl)) {
+        return colibriRealtimeBridge.isHostOnline();
+    }
+
     const base = (baseUrl || 'http://127.0.0.1:8082').replace(/\/+$/, '');
     const checkEndpoint = async (path: string): Promise<boolean> => {
         const controller = new AbortController();
@@ -44,7 +66,12 @@ export async function isColibriAvailable(baseUrl: string = COLIBRI_INFO.defaultB
     if (await checkEndpoint('/health')) {
         return true;
     }
-    return checkEndpoint('/v1/models');
+    if (await checkEndpoint('/v1/models')) {
+        return true;
+    }
+
+    // Fallback: check if host is online on the Supabase Realtime Bridge
+    return colibriRealtimeBridge.isHostOnline();
 }
 
 function resolveBaseUrl(cfg: ProviderConfig): string {
@@ -78,6 +105,31 @@ export async function generateText(cfg: ProviderConfig, req: AiRequest): Promise
     if (req.temperature !== undefined) body.temperature = req.temperature;
     if (req.maxTokens !== undefined) body.max_tokens = req.maxTokens;
 
+    if (shouldUseBridge(baseUrl)) {
+        try {
+            const data = await colibriRealtimeBridge.request<any>('/v1/chat/completions', {
+                method: 'POST',
+                body,
+                timeoutMs: req.timeoutMs,
+                signal: req.signal,
+            });
+            const text = data.choices?.[0]?.message?.content ?? '';
+            return {
+                text,
+                model: data.model || model,
+                usage: {
+                    inputTokens: data.usage?.prompt_tokens,
+                    outputTokens: data.usage?.completion_tokens,
+                },
+            };
+        } catch (err: any) {
+            throw new AiProviderError(`Colibrì Realtime Bridge error: ${err?.message || err}`, undefined, 'server');
+        } finally {
+            if (timer) clearTimeout(timer);
+            req.signal?.removeEventListener('abort', onAbort);
+        }
+    }
+
     try {
         const res = await fetch(`${baseUrl}/v1/chat/completions`, {
             method: 'POST',
@@ -102,6 +154,27 @@ export async function generateText(cfg: ProviderConfig, req: AiRequest): Promise
             },
         };
     } catch (err: any) {
+        if (colibriRealtimeBridge.isHostOnline()) {
+            try {
+                const data = await colibriRealtimeBridge.request<any>('/v1/chat/completions', {
+                    method: 'POST',
+                    body,
+                    timeoutMs: req.timeoutMs,
+                    signal: req.signal,
+                });
+                const text = data.choices?.[0]?.message?.content ?? '';
+                return {
+                    text,
+                    model: data.model || model,
+                    usage: {
+                        inputTokens: data.usage?.prompt_tokens,
+                        outputTokens: data.usage?.completion_tokens,
+                    },
+                };
+            } catch {
+                // Ignore bridge fallback error and proceed to handle original error
+            }
+        }
         if (err instanceof AiProviderError) throw err;
         if (timedOut || err?.name === 'AbortError' || String(err).includes('aborted')) {
             throw new AiProviderError('Colibrì request timed out', undefined, 'timeout');
@@ -144,6 +217,44 @@ export async function generateJson(cfg: ProviderConfig, req: AiRequest): Promise
     if (req.temperature !== undefined) body.temperature = req.temperature;
     if (req.maxTokens !== undefined) body.max_tokens = req.maxTokens;
 
+    if (shouldUseBridge(baseUrl)) {
+        try {
+            const data = await colibriRealtimeBridge.request<any>('/v1/chat/completions', {
+                method: 'POST',
+                body,
+                timeoutMs: req.timeoutMs,
+                signal: req.signal,
+            });
+            const text = data.choices?.[0]?.message?.content ?? '';
+            let raw = text.trim();
+            if (raw.startsWith('```')) {
+                raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+            }
+
+            let json: unknown;
+            try {
+                json = JSON.parse(raw);
+            } catch {
+                throw new AiProviderError('Colibrì MoE did not return valid JSON', undefined, 'server');
+            }
+
+            return {
+                text,
+                json,
+                model: data.model || model,
+                usage: {
+                    inputTokens: data.usage?.prompt_tokens,
+                    outputTokens: data.usage?.completion_tokens,
+                },
+            };
+        } catch (err: any) {
+            throw new AiProviderError(`Colibrì Realtime Bridge JSON error: ${err?.message || err}`, undefined, 'server');
+        } finally {
+            if (timer) clearTimeout(timer);
+            req.signal?.removeEventListener('abort', onAbort);
+        }
+    }
+
     try {
         const res = await fetch(`${baseUrl}/v1/chat/completions`, {
             method: 'POST',
@@ -181,6 +292,40 @@ export async function generateJson(cfg: ProviderConfig, req: AiRequest): Promise
             },
         };
     } catch (err: any) {
+        if (colibriRealtimeBridge.isHostOnline()) {
+            try {
+                const data = await colibriRealtimeBridge.request<any>('/v1/chat/completions', {
+                    method: 'POST',
+                    body,
+                    timeoutMs: req.timeoutMs,
+                    signal: req.signal,
+                });
+                const text = data.choices?.[0]?.message?.content ?? '';
+                let raw = text.trim();
+                if (raw.startsWith('```')) {
+                    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+                }
+
+                let json: unknown;
+                try {
+                    json = JSON.parse(raw);
+                } catch {
+                    throw new AiProviderError('Colibrì MoE did not return valid JSON', undefined, 'server');
+                }
+
+                return {
+                    text,
+                    json,
+                    model: data.model || model,
+                    usage: {
+                        inputTokens: data.usage?.prompt_tokens,
+                        outputTokens: data.usage?.completion_tokens,
+                    },
+                };
+            } catch {
+                // Ignore bridge fallback error and proceed to handle original error
+            }
+        }
         if (err instanceof AiProviderError) throw err;
         if (timedOut || err?.name === 'AbortError' || String(err).includes('aborted')) {
             throw new AiProviderError('Colibrì request timed out', undefined, 'timeout');
@@ -247,6 +392,23 @@ export async function streamChat(
     }
     if (req.temperature !== undefined) body.temperature = req.temperature;
     if (req.maxTokens !== undefined) body.max_tokens = req.maxTokens;
+
+    if (shouldUseBridge(baseUrl)) {
+        try {
+            const result = await colibriRealtimeBridge.streamChat(body, {
+                onToken,
+                timeoutMs: req.timeoutMs,
+                signal: req.signal,
+            });
+            return {
+                text: result.text || '',
+                toolCalls: [],
+                model: result.model || model,
+            };
+        } catch (err: any) {
+            throw new AiProviderError(`Colibrì Realtime stream error: ${err?.message || err}`, undefined, 'server');
+        }
+    }
 
     const controller = new AbortController();
     let timedOut = false;
@@ -368,6 +530,22 @@ export async function streamChat(
             model: resolvedModel,
         };
     } catch (err: any) {
+        if (colibriRealtimeBridge.isHostOnline()) {
+            try {
+                const result = await colibriRealtimeBridge.streamChat(body, {
+                    onToken,
+                    timeoutMs: req.timeoutMs,
+                    signal: req.signal,
+                });
+                return {
+                    text: result.text || '',
+                    toolCalls: [],
+                    model: result.model || model,
+                };
+            } catch {
+                // Ignore bridge fallback error and proceed to handle original error
+            }
+        }
         if (err instanceof AiProviderError) throw err;
         if (timedOut || err?.name === 'AbortError' || String(err).includes('aborted')) {
             throw new AiProviderError('Colibrì stream timed out', undefined, 'timeout');
@@ -401,6 +579,16 @@ export const colibriProvider: ColibriProviderImpl = {
 
     async test(cfg: ProviderConfig): Promise<{ ok: boolean; message: string }> {
         const baseUrl = resolveBaseUrl(cfg);
+
+        // If explicitly configured for Supabase Relay or remote HTTPS device, run bridge test directly
+        if (shouldUseBridge(baseUrl)) {
+            const bridgeRes = await colibriRealtimeBridge.test();
+            return {
+                ok: bridgeRes.ok,
+                message: bridgeRes.message,
+            };
+        }
+
         const start = performance.now();
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 3000);
@@ -448,11 +636,31 @@ export const colibriProvider: ColibriProviderImpl = {
                 };
             }
 
+            // If direct endpoint failed, check if Host is online via Supabase Realtime Relay
+            if (colibriRealtimeBridge.isHostOnline()) {
+                const bridgeRes = await colibriRealtimeBridge.test();
+                if (bridgeRes.ok) {
+                    return {
+                        ok: true,
+                        message: `${bridgeRes.message} (Direct LAN ${baseUrl} unreachable; auto-routed via Supabase Relay)`,
+                    };
+                }
+            }
+
             return {
                 ok: false,
-                message: `Colibrì daemon unreachable or not responding on ${baseUrl}. Start it via: powershell -ExecutionPolicy Bypass -File .\\scripts\\start-colibri-daemon.ps1 -DevMock`,
+                message: `Colibrì daemon unreachable on ${baseUrl}. Start it via: powershell -ExecutionPolicy Bypass -File .\\scripts\\start-colibri-daemon.ps1 -DevMock (or select Supabase Realtime Relay preset on iPhone/Safari).`,
             };
         } catch (err: any) {
+            if (colibriRealtimeBridge.isHostOnline()) {
+                const bridgeRes = await colibriRealtimeBridge.test();
+                if (bridgeRes.ok) {
+                    return {
+                        ok: true,
+                        message: `${bridgeRes.message} (Direct LAN failed; auto-routed via Supabase Relay)`,
+                    };
+                }
+            }
             return {
                 ok: false,
                 message: `Connection error: ${err?.message || 'Unreachable on ' + baseUrl}`,
@@ -464,6 +672,19 @@ export const colibriProvider: ColibriProviderImpl = {
 
     async listModels(cfg: ProviderConfig): Promise<string[]> {
         const baseUrl = resolveBaseUrl(cfg);
+
+        if (shouldUseBridge(baseUrl)) {
+            try {
+                const data = await colibriRealtimeBridge.request<any>('/v1/models', { timeoutMs: 3000 });
+                if (Array.isArray(data?.data) && data.data.length > 0) {
+                    return data.data.map((m: any) => m.id || m.name).filter(Boolean);
+                }
+            } catch {
+                /* ignore fallback */
+            }
+            return ['colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'];
+        }
+
         try {
             const res = await fetch(`${baseUrl}/v1/models`);
             if (res.ok) {
@@ -473,7 +694,17 @@ export const colibriProvider: ColibriProviderImpl = {
                 }
             }
         } catch {
-            /* ignore fallback */
+            // Check bridge if direct fetch failed
+            if (colibriRealtimeBridge.isHostOnline()) {
+                try {
+                    const data = await colibriRealtimeBridge.request<any>('/v1/models', { timeoutMs: 3000 });
+                    if (Array.isArray(data?.data) && data.data.length > 0) {
+                        return data.data.map((m: any) => m.id || m.name).filter(Boolean);
+                    }
+                } catch {
+                    /* ignore */
+                }
+            }
         }
         return ['colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'];
     },

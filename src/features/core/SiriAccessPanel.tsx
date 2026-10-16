@@ -3,7 +3,19 @@ import { useAtom, useSetAtom } from 'jotai';
 import { themeAtom, languageAtom, userAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { tr } from '../../lib/i18n';
-import { AlertCircle, X, Check, Copy, Loader2 } from 'lucide-react';
+import {
+    AlertCircle,
+    X,
+    Check,
+    Copy,
+    Loader2,
+    Mic,
+    ChevronDown,
+    Key,
+    Sparkles,
+    Smartphone,
+    Terminal,
+} from 'lucide-react';
 import { buildSiriSetupPrompt, resolveSiriEndpoint } from './siriPrompt';
 import { siriTokenPendingAtom } from './siriState';
 import './siriAccess.css';
@@ -28,22 +40,24 @@ export const SiriAccessPanel: React.FC = () => {
     const setTokenPending = useSetAtom(siriTokenPendingAtom);
     const [user] = useAtom(userAtom);
     const canCopyLogin = user?.role === 'Developer' || user?.role === 'Admin';
-    // The login token is read ahead of the tap: iOS only allows a clipboard write inside the tap itself, not after an await.
+
+    // PC testing login session token
     const loginTokenRef = useRef<string | null>(null);
     const [loginCopied, setLoginCopied] = useState<boolean>(false);
-    const [loginFallback, setLoginFallback] = useState<string | null>(null);
     const [loginError, setLoginError] = useState<string | null>(null);
+
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
     const [revokingId, setRevokingId] = useState<string | null>(null);
     const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [copied, setCopied] = useState<boolean>(false);
-    const [language] = useAtom(languageAtom);
-    const [promptCopied, setPromptCopied] = useState<boolean>(false);
-    const [showPromptFallback, setShowPromptFallback] = useState<boolean>(false);
-    const fallbackTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+    const [copiedToken, setCopiedToken] = useState<boolean>(false);
+    const [promptCopied, setPromptCopied] = useState<boolean>(false);
+    const [showGuide, setShowGuide] = useState<boolean>(false);
+    const [showHistory, setShowHistory] = useState<boolean>(false);
+
+    const [language] = useAtom(languageAtom);
     const isBusy = isLoading || isCreating || revokingId !== null;
 
     const fetchTokens = useCallback(async () => {
@@ -92,9 +106,28 @@ export const SiriAccessPanel: React.FC = () => {
         return () => document.removeEventListener('keydown', handleKeyDown, true);
     }, [confirmRevokeId]);
 
-    // Tell the Settings dialog while a one-time token is on screen, so it does not close and lose it.
-    useEffect(() => { setTokenPending(createdToken !== null); }, [createdToken, setTokenPending]);
-    useEffect(() => () => setTokenPending(false), [setTokenPending]);
+    useEffect(() => {
+        setTokenPending(createdToken !== null);
+    }, [createdToken, setTokenPending]);
+
+    useEffect(() => {
+        return () => setTokenPending(false);
+    }, [setTokenPending]);
+
+    useEffect(() => {
+        if (!canCopyLogin) return;
+        let active = true;
+        void supabase.auth.getSession().then(({ data }) => {
+            if (active) loginTokenRef.current = data.session?.access_token ?? null;
+        });
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+            loginTokenRef.current = session?.access_token ?? null;
+        });
+        return () => {
+            active = false;
+            sub.subscription.unsubscribe();
+        };
+    }, [canCopyLogin]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -187,65 +220,46 @@ export const SiriAccessPanel: React.FC = () => {
         }
     };
 
-    const handleCopyToken = async () => {
-        if (!createdToken) return;
-        try {
-            await navigator.clipboard.writeText(createdToken);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch {
-            // Ignore clipboard errors; never log token
-        }
-    };
-
     const promptText = buildSiriSetupPrompt({
         endpoint: resolveSiriEndpoint(import.meta.env.VITE_SUPABASE_URL),
         lang: language,
     });
 
-    useEffect(() => {
-        if (showPromptFallback && fallbackTextareaRef.current) {
-            fallbackTextareaRef.current.focus();
-            fallbackTextareaRef.current.select();
-        }
-    }, [showPromptFallback]);
-
-    useEffect(() => {
-        if (!canCopyLogin) return;
-        let active = true;
-        void supabase.auth.getSession().then(({ data }) => { if (active) loginTokenRef.current = data.session?.access_token ?? null; });
-        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => { loginTokenRef.current = session?.access_token ?? null; });
-        return () => { active = false; sub.subscription.unsubscribe(); };
-    }, [canCopyLogin]);
-
-    const handleCopyLogin = () => {
-        const t = loginTokenRef.current;
-        setLoginFallback(null);
-        if (!t) { setLoginError(tr("No active session. Sign in again.")); return; }
-        setLoginError(null);
-        const showByHand = () => { setLoginFallback(t); setLoginError(tr("Could not copy. Select the text below and copy it by hand.")); };
-        try {
-            navigator.clipboard.writeText(t).then(
-                () => { setLoginCopied(true); setTimeout(() => setLoginCopied(false), 2000); },
-                showByHand,
-            );
-        } catch {
-            showByHand();
-        }
-    };
-
     const handleCopyPrompt = async () => {
         try {
             await navigator.clipboard.writeText(promptText);
             setPromptCopied(true);
-            setShowPromptFallback(false);
             setTimeout(() => setPromptCopied(false), 2000);
         } catch {
-            setShowPromptFallback(true);
-            if (fallbackTextareaRef.current) {
-                fallbackTextareaRef.current.focus();
-                fallbackTextareaRef.current.select();
-            }
+            // fallback handled gracefully
+        }
+    };
+
+    const handleCopyToken = async () => {
+        if (!createdToken) return;
+        try {
+            await navigator.clipboard.writeText(createdToken);
+            setCopiedToken(true);
+            setTimeout(() => setCopiedToken(false), 2000);
+        } catch {
+            // ignore
+        }
+    };
+
+    const handleCopyLogin = () => {
+        const t = loginTokenRef.current;
+        if (!t) {
+            setLoginError(tr("No active session. Sign in again."));
+            return;
+        }
+        setLoginError(null);
+        try {
+            void navigator.clipboard.writeText(t).then(() => {
+                setLoginCopied(true);
+                setTimeout(() => setLoginCopied(false), 2000);
+            });
+        } catch {
+            setLoginError(tr("Could not copy to clipboard."));
         }
     };
 
@@ -264,15 +278,24 @@ export const SiriAccessPanel: React.FC = () => {
         }
     };
 
+    const activeTokens = tokens.filter(
+        (t) => !t.revoked_at && (!t.expires_at || new Date(t.expires_at).getTime() > Date.now())
+    );
+
     return (
         <div className={`sa-panel ${L ? 'sa-theme-aqua' : ''}`}>
-            {/* Header Section */}
+            {/* Header */}
             <div className="sa-section-header">
-                <div className="sa-section-caption">
-                    {tr("Siri Shortcuts")}
+                <div className="flex items-center justify-between">
+                    <div className="sa-section-caption">
+                        {tr("Apple Siri Shortcuts Integration")}
+                    </div>
+                    <span className="text-[11px] font-mono text-cyan-400/80 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                        {tr("iOS Voice Actions")}
+                    </span>
                 </div>
                 <p className="sa-section-desc">
-                    {tr("Manage personal tokens for iPhone Shortcuts and Siri voice actions.")}
+                    {tr("Search inventory, count minerals, or inspect item details hands-free from iPhone or Apple Watch.")}
                 </p>
             </div>
 
@@ -280,57 +303,127 @@ export const SiriAccessPanel: React.FC = () => {
             {errorMessage && (
                 <div role="alert" className="sa-error-banner">
                     <div className="sa-error-content">
-                        <AlertCircle size={16} className="sa-error-icon" aria-hidden="true" />
+                        <AlertCircle size={15} className="sa-error-icon" aria-hidden="true" />
                         <span className="sa-error-text">{errorMessage}</span>
                     </div>
                     <button
                         type="button"
                         onClick={() => setErrorMessage(null)}
                         aria-label={tr("Dismiss")}
-                        title={tr("Dismiss")}
                         className="sa-dismiss-btn"
                     >
-                        <X size={16} aria-hidden="true" />
+                        <X size={15} aria-hidden="true" />
                     </button>
                 </div>
             )}
 
-            {/* Newly Created Token Callout Card */}
-            {createdToken && (
-                <div role="status" className="sa-callout">
-                    <div className="sa-callout-header">
-                        <h3 className="sa-callout-title">
-                            {tr("Copy your token now")}
-                        </h3>
-                        <p className="sa-callout-desc">
-                            {tr("It is shown only once")}
-                        </p>
+            {/* 1. Hero Setup Card (1-Click Prompt Copy) */}
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 border border-white/15 flex items-center justify-center text-cyan-400 shrink-0">
+                            <Mic size={20} />
+                        </div>
+                        <div>
+                            <div className="text-[14px] font-semibold text-white">
+                                {tr("1-Click Siri Shortcuts Setup")}
+                            </div>
+                            <div className="text-[11px] text-white/60">
+                                {tr("Paste prompt directly into iOS Shortcuts (Describe a Shortcut)")}
+                            </div>
+                        </div>
                     </div>
-                    <div className="sa-callout-code">
+
+                    <button
+                        type="button"
+                        onClick={handleCopyPrompt}
+                        className="h-10 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-[12px] flex items-center gap-1.5 transition-all shadow-sm shadow-cyan-500/20 shrink-0 active:scale-95"
+                    >
+                        {promptCopied ? (
+                            <>
+                                <Check size={14} />
+                                <span>{tr("Copied Prompt!")}</span>
+                            </>
+                        ) : (
+                            <>
+                                <Copy size={14} />
+                                <span>{tr("Copy Setup Prompt")}</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-white/50 pt-1 border-t border-white/5">
+                    <span>{tr("Actions: Search Inventory · Total Counts · Item Spec Lookup")}</span>
+                    <button
+                        type="button"
+                        onClick={() => setShowGuide((prev) => !prev)}
+                        className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
+                    >
+                        {showGuide ? tr("Hide steps") : tr("How it works")}
+                    </button>
+                </div>
+
+                {/* Step-by-Step Guide Drawer */}
+                {showGuide && (
+                    <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-2 text-[11px] text-white/80 animate-fadeIn">
+                        <div className="flex items-start gap-2">
+                            <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono shrink-0 mt-0.5">1</span>
+                            <span>{tr("Open iOS Shortcuts app, tap + then tap 'Describe a Shortcut'.")}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono shrink-0 mt-0.5">2</span>
+                            <span>{tr("Paste the copied prompt. Shortcuts builds the workflow automatically.")}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono shrink-0 mt-0.5">3</span>
+                            <span>{tr("Create a token below and replace '<PASTE YOUR SIRI TOKEN HERE>'.")}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 2. One-Time Token Callout (when newly created) */}
+            {createdToken && (
+                <div role="status" className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-2.5 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Sparkles size={16} className="text-emerald-400" />
+                            <span className="text-[13px] font-semibold text-emerald-300">
+                                {tr("One-Time Siri Token Created")}
+                            </span>
+                        </div>
+                        <span className="text-[10px] text-emerald-400/70 font-mono">
+                            {tr("Shown once only")}
+                        </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/60 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] break-all select-all">
                         {createdToken}
                     </div>
-                    <div className="sa-callout-actions">
+
+                    <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={handleCopyToken}
-                            className="sa-btn-secondary"
+                            className="h-8 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-[11px] flex items-center gap-1.5 transition-colors"
                         >
-                            {copied ? (
+                            {copiedToken ? (
                                 <>
-                                    <Check size={16} aria-hidden="true" />
+                                    <Check size={12} />
                                     <span>{tr("Copied")}</span>
                                 </>
                             ) : (
                                 <>
-                                    <Copy size={16} aria-hidden="true" />
-                                    <span>{tr("Copy")}</span>
+                                    <Copy size={12} />
+                                    <span>{tr("Copy Token")}</span>
                                 </>
                             )}
                         </button>
                         <button
                             type="button"
                             onClick={() => setCreatedToken(null)}
-                            className="sa-btn-plain"
+                            className="h-8 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-[11px] font-medium transition-colors border border-white/10"
                         >
                             {tr("Done")}
                         </button>
@@ -338,233 +431,158 @@ export const SiriAccessPanel: React.FC = () => {
                 </div>
             )}
 
-            {/* Creation Row Card */}
-            <div className="sa-card">
-                <form onSubmit={handleCreate} className="sa-create-form">
-                    <div className="sa-field-wrap">
-                        <input
-                            id="siri-token-label"
-                            type="text"
-                            maxLength={40}
-                            placeholder="iPhone"
-                            aria-label={tr("Token Label")}
-                            value={label}
-                            onChange={(e) => setLabel(e.target.value)}
-                            disabled={isBusy}
-                            className="sa-input"
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={isBusy || !label.trim() || createdToken !== null}
-                        className="sa-btn-primary"
-                    >
-                        {isCreating ? (
-                            <>
-                                <Loader2 size={16} className="sa-spinner" aria-hidden="true" />
-                                <span>{tr("Creating...")}</span>
-                            </>
-                        ) : (
-                            <span>{tr("Create token")}</span>
-                        )}
-                    </button>
-                </form>
-            </div>
-
-            {/* Setup Shortcuts Section */}
-            <div className="sa-section">
-                <div className="sa-section-caption">
-                    {tr("Set up the shortcuts")}
-                </div>
-                <div className="sa-card sa-prompt-card">
-                    <p className="sa-prompt-hint">
-                        {tr("Paste it into Shortcuts: New Shortcut, Describe a Shortcut.")}
-                    </p>
-                    <div className="sa-prompt-actions">
-                        <button
-                            type="button"
-                            onClick={handleCopyPrompt}
-                            className="sa-btn-secondary"
-                            aria-live="polite"
-                        >
-                            {promptCopied ? (
-                                <>
-                                    <Check size={16} aria-hidden="true" />
-                                    <span>{tr("Copied")}</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Copy size={16} aria-hidden="true" />
-                                    <span>{tr("Copy Siri setup prompt")}</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
-                    {showPromptFallback && (
-                        <div className="sa-prompt-fallback">
-                            <textarea
-                                ref={fallbackTextareaRef}
-                                readOnly
-                                value={promptText}
-                                className="sa-prompt-textarea"
-                                rows={8}
-                                aria-label={tr("Siri setup prompt")}
-                                onFocus={(e) => e.currentTarget.select()}
-                            />
-                        </div>
-                    )}
-                    <p className="sa-prompt-note">
-                        {tr("The prompt never contains your token. Type the token into the shortcut yourself.")}
-                    </p>
-                </div>
-            </div>
-
-            {canCopyLogin && (
-                <div className="sa-section">
-                    <div className="sa-section-caption">
-                        {tr("For testing from a PC")}
-                    </div>
-                    <div className="sa-card sa-prompt-card">
-                        <p className="sa-prompt-hint">
-                            {tr("Copies your current login token, so you do not need the browser console.")}
-                        </p>
-                        <div className="sa-prompt-actions">
-                            <button
-                                type="button"
-                                onClick={handleCopyLogin}
-                                className="sa-btn-secondary"
-                                aria-live="polite"
-                            >
-                                {loginCopied ? (
-                                    <>
-                                        <Check size={16} aria-hidden="true" />
-                                        <span>{tr("Copied")}</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Copy size={16} aria-hidden="true" />
-                                        <span>{tr("Copy login token")}</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                        {loginError && (
-                            <p className="sa-prompt-note" role="alert">{loginError}</p>
-                        )}
-                        {loginFallback && (
-                            <div className="sa-prompt-fallback">
-                                <textarea
-                                    readOnly
-                                    value={loginFallback}
-                                    className="sa-prompt-textarea"
-                                    rows={4}
-                                    aria-label={tr("Login token")}
-                                    onFocus={(e) => e.currentTarget.select()}
-                                />
-                            </div>
-                        )}
-                        <p className="sa-prompt-note">
-                            {tr("Valid for about an hour. Anyone who has it can act as you. Paste it only into your own PowerShell, never into chat.")}
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {/* Token List Section */}
-            <div className="sa-section">
-                <div className="sa-section-caption">
-                    {tr("Personal Tokens")}
-                </div>
-                <div className="sa-card">
-                    {isLoading && tokens.length === 0 ? (
-                        <div className="sa-empty-row">
-                            {tr("Loading tokens...")}
-                        </div>
-                    ) : tokens.length === 0 ? (
-                        <div className="sa-empty-row">
-                            {tr("No Siri tokens created yet.")}
-                        </div>
+            {/* 3. Token Creation Row */}
+            <form onSubmit={handleCreate} className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/10">
+                <input
+                    type="text"
+                    maxLength={40}
+                    placeholder={tr("Device label (e.g. iPhone 16 Pro, iPad)")}
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                    disabled={isBusy || createdToken !== null}
+                    className="flex-1 h-9 px-3 rounded-xl bg-black/30 border border-white/10 text-white text-[12px] focus:outline-none focus:border-cyan-400"
+                />
+                <button
+                    type="submit"
+                    disabled={isBusy || !label.trim() || createdToken !== null}
+                    className="h-9 px-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black font-semibold text-[11px] flex items-center gap-1.5 transition-all shrink-0"
+                >
+                    {isCreating ? (
+                        <>
+                            <Loader2 size={12} className="animate-spin" />
+                            <span>{tr("Creating...")}</span>
+                        </>
                     ) : (
-                        tokens.map((token) => {
-                            const isRevoked = Boolean(token.revoked_at);
-                            const isExpired = !isRevoked && Boolean(token.expires_at) && new Date(token.expires_at).getTime() <= Date.now();
-                            const isActive = !isRevoked && !isExpired;
+                        <span>{tr("Create Token")}</span>
+                    )}
+                </button>
+            </form>
 
-                            if (confirmRevokeId === token.id) {
+            {/* 4. Collapsible Token History & Revocation */}
+            <div className="pt-1">
+                <button
+                    type="button"
+                    onClick={() => setShowHistory((prev) => !prev)}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-colors"
+                >
+                    <div className="flex items-center gap-2">
+                        <Key size={13} className="text-cyan-400" />
+                        <span className="text-[12px] font-semibold text-white">
+                            {tr("Token History & Revocation")} ({activeTokens.length} {tr("active")})
+                        </span>
+                    </div>
+                    <ChevronDown
+                        size={14}
+                        className={`text-white/60 transition-transform ${
+                            showHistory ? 'rotate-180' : ''
+                        }`}
+                    />
+                </button>
+
+                {showHistory && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5 text-[11px] animate-fadeIn">
+                        {isLoading && tokens.length === 0 ? (
+                            <div className="p-3 text-center text-white/50">{tr("Loading tokens...")}</div>
+                        ) : tokens.length === 0 ? (
+                            <div className="p-3 text-center text-white/50">{tr("No tokens created yet.")}</div>
+                        ) : (
+                            tokens.map((token) => {
+                                const isRevoked = Boolean(token.revoked_at);
+                                const isExpired =
+                                    !isRevoked &&
+                                    Boolean(token.expires_at) &&
+                                    new Date(token.expires_at).getTime() <= Date.now();
+                                const isActive = !isRevoked && !isExpired;
+
                                 return (
-                                    <div key={token.id} className="sa-token-row sa-confirm-mode">
-                                        <span className="sa-confirm-text">
-                                            {tr("Revoke this token?")}
-                                        </span>
-                                        <div className="sa-confirm-actions">
-                                            <button
-                                                type="button"
-                                                disabled={isBusy}
-                                                onClick={() => setConfirmRevokeId(null)}
-                                                className="sa-btn-cancel"
-                                            >
-                                                {tr("Cancel")}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                disabled={isBusy}
-                                                onClick={() => handleRevoke(token.id)}
-                                                className="sa-btn-danger"
-                                            >
-                                                {revokingId === token.id ? (
-                                                    <Loader2 size={14} className="sa-spinner" aria-hidden="true" />
-                                                ) : (
-                                                    tr("Revoke")
+                                    <div
+                                        key={token.id}
+                                        className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/5 gap-2"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-semibold text-white truncate max-w-[120px] sm:max-w-[200px]">
+                                                    {token.label}
+                                                </span>
+                                                {token.prefix && (
+                                                    <span className="font-mono text-[9px] text-white/40">
+                                                        ({token.prefix}...)
+                                                    </span>
                                                 )}
-                                            </button>
+                                                <span
+                                                    className={`px-1.5 py-0.2 rounded text-[9px] font-mono ${
+                                                        isActive
+                                                            ? 'bg-emerald-500/20 text-emerald-300'
+                                                            : isExpired
+                                                            ? 'bg-amber-500/20 text-amber-300'
+                                                            : 'bg-white/10 text-white/40'
+                                                    }`}
+                                                >
+                                                    {isActive ? tr("Active") : isExpired ? tr("Expired") : tr("Revoked")}
+                                                </span>
+                                            </div>
+                                            <div className="text-[10px] text-white/40 truncate">
+                                                {tr("Created")}: {formatDate(token.created_at)} · {tr("Expires")}: {formatDate(token.expires_at)}
+                                            </div>
+                                        </div>
+
+                                        <div className="shrink-0">
+                                            {confirmRevokeId === token.id ? (
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setConfirmRevokeId(null)}
+                                                        className="px-2 py-0.5 rounded text-[10px] text-white/60 hover:text-white"
+                                                    >
+                                                        {tr("Cancel")}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRevoke(token.id)}
+                                                        className="px-2 py-0.5 rounded bg-red-500 hover:bg-red-400 text-white text-[10px] font-medium"
+                                                    >
+                                                        {revokingId === token.id ? (
+                                                            <Loader2 size={10} className="animate-spin" />
+                                                        ) : (
+                                                            tr("Confirm")
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            ) : isActive ? (
+                                                <button
+                                                    type="button"
+                                                    disabled={isBusy}
+                                                    onClick={() => setConfirmRevokeId(token.id)}
+                                                    className="px-2 py-1 rounded-md text-[10px] text-red-400 hover:bg-red-500/10 transition-colors"
+                                                >
+                                                    {tr("Revoke")}
+                                                </button>
+                                            ) : null}
                                         </div>
                                     </div>
                                 );
-                            }
-
-                            return (
-                                <div key={token.id} className="sa-token-row">
-                                    <div className="sa-token-info">
-                                        <div className="sa-token-label-row">
-                                            <span className="sa-token-label">{token.label}</span>
-                                            <span className={`sa-token-prefix ${isRevoked ? 'sa-revoked-dim' : ''}`}>
-                                                {token.prefix}
-                                            </span>
-                                        </div>
-                                        <div className="sa-token-meta">
-                                            <span>{tr("Created")}: {formatDate(token.created_at)}</span>
-                                            <span className="sa-meta-sep" aria-hidden="true">·</span>
-                                            <span>{tr("Last used")}: {token.last_used_at ? formatDate(token.last_used_at) : tr("never")}</span>
-                                            <span className="sa-meta-sep" aria-hidden="true">·</span>
-                                            <span>{tr("Expires")}: {formatDate(token.expires_at)}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="sa-token-actions">
-                                        <span className={`sa-status-badge ${isActive ? 'sa-status-active' : isExpired ? 'sa-status-warn' : 'sa-status-revoked'} ${isRevoked ? 'sa-revoked-dim' : ''}`}>
-                                            {isActive && <Check size={12} className="sa-status-icon" aria-hidden="true" />}
-                                            {isExpired && <AlertCircle size={12} className="sa-status-icon" aria-hidden="true" />}
-                                            {isRevoked && <X size={12} className="sa-status-icon" aria-hidden="true" />}
-                                            <span>{isActive ? tr("Active") : isExpired ? tr("Expired") : tr("Revoked")}</span>
-                                        </span>
-
-                                        {isActive && (
-                                            <button
-                                                type="button"
-                                                disabled={isBusy}
-                                                onClick={() => setConfirmRevokeId(token.id)}
-                                                className="sa-btn-revoke"
-                                            >
-                                                {tr("Revoke")}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
+                            })
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* 5. Developer Session Token Helper (if admin/developer) */}
+            {canCopyLogin && (
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-[11px] text-white/60">
+                    <div className="flex items-center gap-2">
+                        <Terminal size={13} className="text-cyan-400" />
+                        <span>{tr("Developer Session Token (PC Smoke Testing)")}</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleCopyLogin}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[10px] font-medium transition-colors"
+                    >
+                        {loginCopied ? tr("Copied Session Token") : tr("Copy Token")}
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

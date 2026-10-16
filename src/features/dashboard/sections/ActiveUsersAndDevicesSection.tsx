@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useUserPresence, UserActiveSession } from '../../../lib/presence/useUserPresence';
 import { ONYX_MESH_TOPOLOGY, MESH_NODES } from '../../../lib/network/localMeshMap';
+import { colibriRealtimeBridge } from '../../../lib/ai/colibriRealtimeBridge';
 import { tr } from '../../../lib/i18n';
 
 function formatTimeAgo(timestampStr: string): string {
@@ -109,7 +110,16 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
         edgeCount,
         totalCount,
         mySessionId,
-    } = useUserPresence({ pollIntervalMs: 20_000 });
+    } = useUserPresence({ pollIntervalMs: 15_000 });
+
+    const [colibriHostOnline, setColibriHostOnline] = React.useState<boolean>(() => colibriRealtimeBridge.isHostOnline());
+
+    React.useEffect(() => {
+        const unsub = colibriRealtimeBridge.onHostStatusChange((online) => {
+            setColibriHostOnline(online);
+        });
+        return unsub;
+    }, []);
 
     // Fallback display sessions if DB returns empty (e.g. offline dev mode)
     const displaySessions = useMemo<UserActiveSession[]>(() => {
@@ -190,6 +200,10 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                     <Wifi size={10} />
                                     G7 Wi-Fi Mesh
                                 </span>
+                                <span className={`acc-badge ${colibriHostOnline ? 'acc-badge-root text-emerald-400 border-emerald-500/30' : 'text-cyan-400 border-cyan-500/30'}`}>
+                                    <Radio size={10} className={colibriHostOnline ? 'animate-pulse' : ''} />
+                                    {colibriHostOnline ? 'Colibrì MoE Host Online' : 'Supabase Relay Active'}
+                                </span>
                             </div>
                             <p className="text-xs text-(--text-color-secondary) mt-0.5">
                                 {tr("Real-time telemetry across desktops, mobile devices, and LAN mesh relays")}
@@ -231,7 +245,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                             )}
                         </div>
                         <span className="text-[10px] text-white/50">
-                            {tr("Throttled 45s low-load ping")}
+                            {tr("Throttled 15s ping • wss:// Realtime")}
                         </span>
                     </div>
 

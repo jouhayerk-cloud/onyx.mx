@@ -71,6 +71,7 @@ export const MESH_NODES: MeshDeviceNode[] = [
 
 export const PRIMARY_COLIBRI_HOST = `http://${ONYX_MESH_TOPOLOGY.g7.ip}:${ONYX_MESH_TOPOLOGY.g7.colibriPort}`;
 export const PRIMARY_APP_URL = `https://${ONYX_MESH_TOPOLOGY.g7.ip}:${ONYX_MESH_TOPOLOGY.g7.appPort}/onyx.mx/`;
+export const SUPABASE_RELAY_URL = 'supabase://colibri-relay';
 
 export interface NetworkPreset {
     id: string;
@@ -78,9 +79,18 @@ export interface NetworkPreset {
     url: string;
     badge: string;
     description: string;
+    recommendedFor?: string;
 }
 
 export const COLIBRI_NETWORK_PRESETS: NetworkPreset[] = [
+    {
+        id: 'supabase_relay',
+        label: '☁️ Supabase Realtime Relay',
+        url: SUPABASE_RELAY_URL,
+        badge: 'Cloud & LAN Relay',
+        description: 'Cloud & LAN Realtime Relay (iPhone / iOS / Second Laptop)',
+        recommendedFor: 'iPhone / iOS Safari / Remote HTTPS',
+    },
     {
         id: 'local_loopback',
         label: '🏠 Localhost',
@@ -93,7 +103,7 @@ export const COLIBRI_NETWORK_PRESETS: NetworkPreset[] = [
         label: '🌐 G7 Host (192.0.2.71)',
         url: `http://${ONYX_MESH_TOPOLOGY.g7.ip}:8082`,
         badge: 'Ramses Laptop',
-        description: 'Primary Colibrì NVMe MoE server across G7 Wi-Fi',
+        description: 'Primary Colibrì NVMe MoE server across G7 Wi-Fi (Falls back to Supabase Relay on HTTPS)',
     },
     {
         id: 'martha_relay',

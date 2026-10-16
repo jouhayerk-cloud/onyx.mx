@@ -12,6 +12,7 @@
  * - Non-crashing offline & fallback handling
  */
 
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 
 export type DeviceType = 'desktop' | 'mobile' | 'tablet' | 'edge_relay';
@@ -51,10 +52,10 @@ export interface PresenceServiceConfig {
 }
 
 export const SESSION_STORAGE_KEY = 'onyx_presence_session_id';
-export const DEFAULT_PING_INTERVAL_MS = 45_000;       // 45 seconds while active
-export const DEFAULT_INTERACTION_DEBOUNCE_MS = 30_000; // 30 seconds debounce for interaction actions
+export const DEFAULT_PING_INTERVAL_MS = 15_000;       // 15 seconds while active for responsive fleet telemetry
+export const DEFAULT_INTERACTION_DEBOUNCE_MS = 15_000; // 15 seconds debounce for interaction actions
 export const DEFAULT_IDLE_TIMEOUT_MS = 180_000;       // 3 minutes (180s) of inactivity -> Idle
-export const DEFAULT_MIN_THROTTLE_MS = 5_000;         // Minimum 5 seconds between state change pings
+export const DEFAULT_MIN_THROTTLE_MS = 2_000;         // Minimum 2 seconds between state change pings
 
 /**
  * Generates or retrieves a persistent session ID from sessionStorage.
@@ -299,6 +300,13 @@ export class PresenceService {
   private cachedSessions: UserActiveSession[] = [];
   private isOffline: boolean = false;
 
+  // Supabase Realtime wss:// Channel & Presence state (<100ms instant updates)
+  private realtimeChannel: RealtimeChannel | null = null;
+  private fleetListeners = new Set<(sessions: UserActiveSession[]) => void>();
+  private activeRealtimePresences = new Map<string, any>();
+  private activeDbSessions = new Map<string, UserActiveSession>();
+  private heartbeatRefCount: number = 0;
+
   constructor(config?: PresenceServiceConfig) {
     this.sessionId = config?.sessionId ?? getOrCreateSessionId(config?.storage);
     this.clientPlatform = detectClientPlatform();
@@ -363,6 +371,162 @@ export class PresenceService {
   }
 
   /**
+   * Initializes the Supabase Realtime channel for instant presence tracking and DB changes.
+   */
+  public initRealtimeChannel(): void {
+    if (this.realtimeChannel) return;
+
+    try {
+      this.realtimeChannel = supabase.channel('onyx_live_presence', {
+        config: {
+          presence: { key: this.sessionId },
+        },
+      });
+
+      this.realtimeChannel
+        .on('presence', { event: 'sync' }, () => {
+          this.syncRealtimePresenceState();
+        })
+        .on('presence', { event: 'join' }, () => {
+          this.syncRealtimePresenceState();
+        })
+        .on('presence', { event: 'leave' }, () => {
+          this.syncRealtimePresenceState();
+        })
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'user_active_sessions' },
+          (payload: any) => {
+            this.handleDbSessionChange(payload);
+          }
+        )
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await this.trackRealtimePresence();
+          }
+        });
+    } catch (err) {
+      console.warn('[PresenceService] Realtime channel setup failed:', err);
+    }
+  }
+
+  /**
+   * Emits instantaneous presence state over WebSockets (<100ms) to all connected devices.
+   */
+  public async trackRealtimePresence(): Promise<void> {
+    if (!this.realtimeChannel) return;
+    try {
+      await this.realtimeChannel.track({
+        session_id: this.sessionId,
+        user_id: this.user?.id || null,
+        user_email: this.user?.email || null,
+        user_name: this.user?.name || null,
+        device_name: this.deviceName,
+        device_type: this.deviceType,
+        client_platform: this.clientPlatform,
+        browser: this.browser,
+        current_view: this.currentView,
+        last_action: this.lastAction,
+        is_idle: this.isIdleState,
+        last_seen_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('[PresenceService] Realtime presence track error:', err);
+    }
+  }
+
+  private syncRealtimePresenceState(): void {
+    if (!this.realtimeChannel) return;
+    const state = this.realtimeChannel.presenceState();
+    this.activeRealtimePresences.clear();
+
+    for (const [key, presences] of Object.entries(state)) {
+      if (Array.isArray(presences) && presences.length > 0) {
+        const latest = presences[presences.length - 1] as any;
+        this.activeRealtimePresences.set(key, latest);
+      }
+    }
+
+    this.recomputeMergedFleet();
+  }
+
+  private handleDbSessionChange(payload: any): void {
+    const { eventType, new: newRec, old: oldRec } = payload;
+    if (eventType === 'INSERT' || eventType === 'UPDATE') {
+      if (newRec && newRec.session_id) {
+        this.activeDbSessions.set(newRec.session_id, newRec as UserActiveSession);
+      }
+    } else if (eventType === 'DELETE') {
+      if (oldRec && oldRec.session_id) {
+        this.activeDbSessions.delete(oldRec.session_id);
+      }
+    }
+    this.recomputeMergedFleet();
+  }
+
+  private recomputeMergedFleet(): void {
+    const map = new Map<string, UserActiveSession>();
+
+    // 1. Fill from known DB sessions
+    for (const [id, sess] of this.activeDbSessions.entries()) {
+      map.set(id, { ...sess });
+    }
+
+    // 2. Overlay instantaneous Realtime Presence states (<100ms websocket)
+    for (const [key, p] of this.activeRealtimePresences.entries()) {
+      const sessId = p.session_id || key;
+      const existing = map.get(sessId);
+      if (existing) {
+        existing.current_view = p.current_view || existing.current_view;
+        existing.last_action = p.last_action || existing.last_action;
+        existing.is_idle = p.is_idle !== undefined ? Boolean(p.is_idle) : existing.is_idle;
+        existing.last_seen_at = p.last_seen_at || existing.last_seen_at;
+        if (p.user_name) existing.user_name = p.user_name;
+        if (p.user_email) existing.user_email = p.user_email;
+      } else {
+        // Realtime session joined before DB write was committed
+        map.set(sessId, {
+          session_id: sessId,
+          user_id: p.user_id || null,
+          user_email: p.user_email || null,
+          user_name: p.user_name || null,
+          device_name: p.device_name || 'Onyx Node',
+          device_type: p.device_type || 'desktop',
+          client_platform: p.client_platform || 'Windows',
+          browser: p.browser || 'App',
+          ip_address: null,
+          current_view: p.current_view || 'home',
+          last_action: p.last_action || 'Connected via Realtime',
+          is_idle: Boolean(p.is_idle),
+          last_seen_at: p.last_seen_at || new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Filter out stale sessions older than 10 minutes unless currently in realtime presence
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    const list = Array.from(map.values()).filter(s => {
+      if (this.activeRealtimePresences.has(s.session_id)) return true;
+      const seenTime = Date.parse(s.last_seen_at);
+      return !Number.isNaN(seenTime) && seenTime >= tenMinAgo;
+    });
+
+    list.sort((a, b) => Date.parse(b.last_seen_at) - Date.parse(a.last_seen_at));
+    this.cachedSessions = list;
+    this.fleetListeners.forEach(cb => cb(this.cachedSessions));
+  }
+
+  /**
+   * Subscribes to live fleet presence changes from both DB and WebSockets.
+   */
+  public subscribeToFleet(cb: (sessions: UserActiveSession[]) => void): () => void {
+    this.fleetListeners.add(cb);
+    cb(this.cachedSessions);
+    return () => this.fleetListeners.delete(cb);
+  }
+
+  /**
    * Updates context (current active view and/or user).
    */
   public setContext(context: { user?: PresenceUserInfo | null; currentView?: string }): void {
@@ -385,9 +549,12 @@ export class PresenceService {
       }
     }
 
-    if (changed && this.heartbeatTimer) {
-      // Trigger a throttled ping to announce view/user change
-      void this.sendPresencePing(false);
+    if (changed) {
+      void this.trackRealtimePresence();
+      if (this.heartbeatTimer) {
+        // Trigger an immediate presence ping to announce view/user change instantly
+        void this.sendPresencePing(true);
+      }
     }
   }
 
@@ -403,6 +570,7 @@ export class PresenceService {
       this.isIdleState = false;
     }
 
+    void this.trackRealtimePresence();
     if (this.heartbeatTimer) {
       void this.sendPresencePing(false);
     }
@@ -419,13 +587,14 @@ export class PresenceService {
       this.isIdleState = false;
       this.lastAction = 'User active';
       this.lastDebouncedInteractionTime = now;
+      void this.trackRealtimePresence();
       if (this.heartbeatTimer) {
         void this.sendPresencePing(false);
       }
       return;
     }
 
-    // Debounce non-state changing interaction recordings to 30s
+    // Debounce non-state changing interaction recordings to 15s
     if (now - this.lastDebouncedInteractionTime >= this.interactionDebounceMs) {
       this.lastDebouncedInteractionTime = now;
     }
@@ -442,6 +611,7 @@ export class PresenceService {
       } else {
         this.lastAction = 'Active';
       }
+      void this.trackRealtimePresence();
       return true; // Idle state changed
     }
 
@@ -540,7 +710,7 @@ export class PresenceService {
   // ── Heartbeat Lifecycle ────────────────────────────────────────────────────
 
   /**
-   * Starts background presence heartbeat and attaches DOM listeners.
+   * Starts background presence heartbeat, attaches DOM listeners, and engages Realtime presence.
    */
   public startPresenceHeartbeat(options?: {
     user?: PresenceUserInfo | null;
@@ -551,34 +721,44 @@ export class PresenceService {
     if (options?.currentView !== undefined) this.currentView = options.currentView;
     if (options?.pingIntervalMs !== undefined) this.pingIntervalMs = options.pingIntervalMs;
 
+    this.initRealtimeChannel();
     this.attachInteractionListeners();
+    this.heartbeatRefCount++;
 
     if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
+      void this.trackRealtimePresence();
+      void this.sendPresencePing(true);
+      return;
     }
 
     // Send immediate initial presence ping
+    void this.trackRealtimePresence();
     void this.sendPresencePing(true);
 
-    // Ticker runs every 5 seconds to inspect idle status and fire pings on schedule
+    // Ticker runs every 3 seconds to inspect idle status and fire pings on schedule
     this.heartbeatTimer = setInterval(() => {
       const idleChanged = this.checkIdleState();
       if (idleChanged || this.shouldSendPing()) {
         void this.sendPresencePing(false);
       }
-    }, 5_000);
+    }, 3_000);
   }
 
   /**
-   * Stops background heartbeat and tears down listeners.
+   * Stops background heartbeat and tears down listeners when all consumers have unmounted.
    */
-  public stopPresenceHeartbeat(): void {
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
+  public stopPresenceHeartbeat(force = false): void {
+    this.heartbeatRefCount = Math.max(0, this.heartbeatRefCount - 1);
+    if (force || this.heartbeatRefCount === 0) {
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = null;
+      }
+      this.detachInteractionListeners();
+      if (this.realtimeChannel) {
+        void this.realtimeChannel.untrack();
+      }
     }
-    this.detachInteractionListeners();
   }
 
   private attachInteractionListeners(): void {
@@ -612,9 +792,10 @@ export class PresenceService {
   // ── Fleet Queries ──────────────────────────────────────────────────────────
 
   /**
-   * Queries active sessions seen within the last 10 minutes.
+   * Queries active sessions seen within the last 10 minutes and merges with instant Realtime Presence state.
    */
   public async getActiveSessions(): Promise<UserActiveSession[]> {
+    this.initRealtimeChannel();
     try {
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       const { data, error } = await (supabase as any)
@@ -624,11 +805,17 @@ export class PresenceService {
         .order('last_seen_at', { ascending: false });
 
       if (error) {
-        console.warn('[PresenceService] Error fetching active sessions:', error.message);
+        console.warn('[PresenceService] Error fetching active sessions from DB:', error.message);
         return this.cachedSessions;
       }
 
-      this.cachedSessions = (data as UserActiveSession[]) || [];
+      const dbRows = (data as UserActiveSession[]) || [];
+      this.activeDbSessions.clear();
+      for (const row of dbRows) {
+        this.activeDbSessions.set(row.session_id, row);
+      }
+
+      this.recomputeMergedFleet();
       return this.cachedSessions;
     } catch (err: any) {
       console.warn('[PresenceService] Exception querying active sessions:', err?.message || err);

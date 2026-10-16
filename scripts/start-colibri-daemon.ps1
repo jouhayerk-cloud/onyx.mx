@@ -115,6 +115,18 @@ function Stop-ColibriDaemon {
             }
         }
     }
+
+    # Also stop any running Colibri Supabase Relay daemons
+    try {
+        $relayProcs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*colibri-supabase-relay.cjs*" }
+        foreach ($rp in $relayProcs) {
+            Write-Host " [STOP] Terminating Colibri Supabase Relay Daemon (PID: $($rp.ProcessId))..." -ForegroundColor Yellow
+            Stop-Process -Id $rp.ProcessId -Force -ErrorAction SilentlyContinue
+            Write-Host " [OK] Relay process $($rp.ProcessId) stopped." -ForegroundColor Green
+        }
+    } catch {
+        # ignore
+    }
 }
 
 function Start-DetachedProcess {
@@ -190,6 +202,36 @@ function Show-HealthAndModels {
     Write-Host ""
 }
 
+function Start-SupabaseRelayDaemon {
+    param([int]$ActivePort)
+    
+    # Check if relay daemon is already running
+    $runningRelay = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*colibri-supabase-relay.cjs*" }
+    if ($runningRelay) {
+        $firstPid = ($runningRelay | Select-Object -First 1).ProcessId
+        Write-Host " [RELAY] Supabase Realtime Relay is already running (PID: $firstPid)" -ForegroundColor DarkCyan
+        return
+    }
+
+    $relayScript = Join-Path $PSScriptRoot "colibri-supabase-relay.cjs"
+    if (-not (Test-Path $relayScript)) {
+        $relayScript = "C:\Jouhayerk\git\app\scripts\colibri-supabase-relay.cjs"
+    }
+
+    if (Test-Path $relayScript) {
+        $nodeCmd = Get-Command "node" -ErrorAction SilentlyContinue
+        if ($nodeCmd) {
+            $nodeExe = $nodeCmd.Source
+            $cmdLine = "`"$nodeExe`" `"$relayScript`" --port $ActivePort"
+            $arguments = @("`"$relayScript`"", "--port", "$ActivePort")
+            $relayPid = Start-DetachedProcess -CommandLine $cmdLine -FilePath $nodeExe -ArgumentList $arguments
+            Write-Host " [RELAY] Launched Colibri Supabase Realtime Relay Daemon (PID: $relayPid) -> colibri_relay_global" -ForegroundColor Magenta
+        } else {
+            Write-Host " [RELAY] Node.js not detected; skipping background relay daemon." -ForegroundColor DarkYellow
+        }
+    }
+}
+
 # --- Execution Entrypoint ---
 Write-ColibriBanner
 
@@ -203,6 +245,7 @@ $isPortActive = Test-PortActive -CheckPort $Port
 
 if ($isPortActive) {
     Write-Host " [OK] Colibri local server is ALREADY ACTIVE on port $Port (http://127.0.0.1:$Port)" -ForegroundColor Green
+    Start-SupabaseRelayDaemon -ActivePort $Port
     Show-HealthAndModels -ActivePort $Port
     exit 0
 }
@@ -342,6 +385,7 @@ Write-Host ""
 
 if ($serverReady) {
     Write-Host " [SUCCESS] Colibri daemon is online and healthy!" -ForegroundColor Green
+    Start-SupabaseRelayDaemon -ActivePort $Port
     Show-HealthAndModels -ActivePort $Port
     exit 0
 } else {
