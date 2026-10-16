@@ -1,185 +1,210 @@
 #!/usr/bin/env node
 /**
- * Colibrì Local Network Relay Server (Mesh Gateway)
- * 
- * Allows secondary machines (e.g., second laptop) on the local G7 Wi-Fi network
- * to access the primary Colibrì MoE server running on Ramses's laptop (192.0.2.71:8082).
- * 
- * Why run this relay on a client machine?
- * 1. Bypasses browser Mixed Content & Private Network Access (PNA) security blocks:
- *    Modern browsers restrict web apps from querying raw LAN IPs directly from HTTPS,
- *    but treat http://127.0.0.1 (localhost) as a secure context!
- * 2. High-performance byte-level SSE streaming for token-by-token generation in Chan Chat.
- * 3. Transparent health pass-through with upstream latency measurement.
- * 4. Zero external npm dependencies; runs anywhere with Node.js >= 16.
- * 
- * Usage:
- *   node scripts/colibri-lan-relay.cjs --upstream http://192.0.2.71:8082 --port 8082
- * 
- * Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
- * Co-Authored-By: Antigravity <noreply@google.com>
+ * Colibrì LAN relay: a small forwarding proxy in front of a Colibrì server on another machine.
+ *
+ * Secure by default:
+ *  - listens on 127.0.0.1 only. Listening on any other address needs BOTH --allow-lan and --token (a shared secret
+ *    every client must send as "Authorization: Bearer <token>"), so there is no open proxy on the network;
+ *  - CORS answers only for an explicit list of origins (never "*"); a browser page from any other origin gets 403;
+ *  - only the calls the app needs are forwarded: GET /health, GET /v1/models, POST /v1/chat/completions (and the
+ *    relay's own GET /relay-health). Everything else is 404;
+ *  - the Host header must match the address the relay listens on (blocks DNS rebinding), bodies are capped at 4 MB.
+ *
+ * Why use it at all: a page served over HTTPS cannot call a plain-HTTP LAN address (mixed content / private network
+ * access), but it can call http://127.0.0.1. Run the relay on the client machine, point it at the Colibrì server, and
+ * set the app's Colibrì address to http://127.0.0.1:<port>.
+ *
+ * Usage (no address is built in; --upstream is required):
+ *   node scripts/colibri-lan-relay.cjs --upstream http://<colibri-host>:8000 --port 8001
+ *   node scripts/colibri-lan-relay.cjs --upstream http://<colibri-host>:8000 --host 0.0.0.0 --allow-lan --token <secret>
+ *
+ * Options:
+ *   --upstream <url>        Colibrì server to forward to (or env COLIBRI_UPSTREAM). Required.
+ *   --upstream-key <key>    Bearer key the Colibrì server expects (or env COLI_API_KEY). Optional.
+ *   --port <n>              Listen port (default 8001).
+ *   --host <addr>           Listen address (default 127.0.0.1).
+ *   --allow-lan             Permit a non-loopback --host (needs --token).
+ *   --token <secret>        Shared secret clients must send (or env COLIBRI_RELAY_TOKEN).
+ *   --allow-origin <origin> Extra allowed browser origin (repeatable).
+ *
+ * Zero npm dependencies; Node.js >= 16.
  */
+'use strict';
 
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
 
-// Parse CLI flags
+const DEFAULT_ORIGINS = [
+    'https://jouhayerk-cloud.github.io',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://localhost:1001',
+];
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+// the local model answers at about half a token per second, so a long upstream timeout is correct
+const UPSTREAM_TIMEOUT_MS = 15 * 60 * 1000;
+
 const args = process.argv.slice(2);
-let listenPort = 8082;
-let upstreamUrl = process.env.COLIBRI_UPSTREAM || 'http://192.0.2.71:8082';
-let bindHost = '0.0.0.0';
+let listenPort = 8001;
+let upstreamUrl = process.env.COLIBRI_UPSTREAM || '';
+let upstreamKey = process.env.COLI_API_KEY || '';
+let bindHost = '127.0.0.1';
+let allowLan = false;
+let token = process.env.COLIBRI_RELAY_TOKEN || '';
+const allowedOrigins = new Set(DEFAULT_ORIGINS);
 
 for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if ((arg === '--port' || arg === '-p') && args[i + 1]) {
-        listenPort = parseInt(args[i + 1], 10) || 8082;
-        i++;
-    } else if ((arg === '--upstream' || arg === '-u') && args[i + 1]) {
-        upstreamUrl = args[i + 1];
-        i++;
-    } else if ((arg === '--host' || arg === '-h') && args[i + 1]) {
-        bindHost = args[i + 1];
-        i++;
-    }
+    const next = args[i + 1];
+    if ((arg === '--port' || arg === '-p') && next) { listenPort = parseInt(next, 10) || listenPort; i++; }
+    else if ((arg === '--upstream' || arg === '-u') && next) { upstreamUrl = next; i++; }
+    else if (arg === '--upstream-key' && next) { upstreamKey = next; i++; }
+    else if (arg === '--host' && next) { bindHost = next; i++; }
+    else if (arg === '--allow-lan') { allowLan = true; }
+    else if (arg === '--token' && next) { token = next; i++; }
+    else if (arg === '--allow-origin' && next) { allowedOrigins.add(next.replace(/\/+$/, '')); i++; }
 }
 
-// Clean up upstream URL
-upstreamUrl = upstreamUrl.replace(/\/+$/, '');
-const parsedUpstream = new URL(upstreamUrl);
+const isLoopback = (h) => h === '127.0.0.1' || h === 'localhost' || h === '::1';
 
-function setCorsHeaders(res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Range, X-Client-Version');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, X-Relay-Latency-Ms');
+if (!upstreamUrl) {
+    console.error('Missing --upstream. Example: node scripts/colibri-lan-relay.cjs --upstream http://<colibri-host>:8000');
+    process.exit(1);
+}
+if (!isLoopback(bindHost) && !(allowLan && token)) {
+    console.error(`Refusing to listen on ${bindHost}: a non-loopback address needs both --allow-lan and --token <secret>.`);
+    process.exit(1);
+}
+
+upstreamUrl = upstreamUrl.replace(/\/+$/, '');
+let parsedUpstream;
+try {
+    parsedUpstream = new URL(upstreamUrl);
+    if (!/^https?:$/.test(parsedUpstream.protocol)) throw new Error('not http(s)');
+} catch {
+    console.error(`Invalid --upstream: ${upstreamUrl}`);
+    process.exit(1);
+}
+
+const ALLOWED = [
+    { method: 'GET', path: '/health' },
+    { method: 'GET', path: '/v1/models' },
+    { method: 'POST', path: '/v1/chat/completions' },
+];
+
+function corsHeaders(origin) {
+    return origin && allowedOrigins.has(origin)
+        ? {
+            'Access-Control-Allow-Origin': origin,
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Expose-Headers': 'x-relay-latency-ms',
+            'Vary': 'Origin',
+        }
+        : { 'Vary': 'Origin' };
+}
+
+function sendJson(res, status, body, extra) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', ...(extra || {}) });
+    res.end(JSON.stringify(body));
 }
 
 const server = http.createServer((req, res) => {
-    setCorsHeaders(res);
+    const origin = req.headers.origin;
+    const cors = corsHeaders(origin);
+
+    // a browser page from an origin that is not on the list gets nothing, not even a preflight answer
+    if (origin && !allowedOrigins.has(origin)) {
+        return sendJson(res, 403, { error: { message: 'Origin not allowed', type: 'forbidden_origin' } }, cors);
+    }
+
+    // DNS-rebinding guard: the Host header must be the address we listen on
+    const hostName = String(req.headers.host || '').replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+    const hostOk = isLoopback(bindHost) ? isLoopback(hostName) : (hostName === bindHost || isLoopback(hostName));
+    if (!hostOk) {
+        return sendJson(res, 403, { error: { message: 'Host not allowed', type: 'forbidden_host' } }, cors);
+    }
 
     if (req.method === 'OPTIONS') {
-        res.writeHead(204);
+        res.writeHead(204, cors);
         res.end();
         return;
     }
 
-    const startTime = Date.now();
-    const reqUrl = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
-    const targetUrl = new URL(reqUrl.pathname + reqUrl.search, upstreamUrl);
-
-    // Health interception: if user pings /relay-health, report relay status directly
-    if (reqUrl.pathname === '/relay-health') {
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
-            status: 'ok',
-            relay: true,
-            version: '1.0.0-mesh',
-            listenPort,
-            upstream: upstreamUrl,
-            timestamp: new Date().toISOString()
-        }, null, 2));
-        return;
+    if (token) {
+        const auth = String(req.headers.authorization || '');
+        if (auth !== `Bearer ${token}`) {
+            return sendJson(res, 401, { error: { message: 'Missing or wrong relay token', type: 'unauthorized' } }, cors);
+        }
     }
 
-    // Proxy request to upstream Colibrì host
+    const startTime = Date.now();
+    const reqUrl = new URL(req.url, 'http://relay.invalid');
+    const pathname = reqUrl.pathname;
+
+    if (req.method === 'GET' && pathname === '/relay-health') {
+        return sendJson(res, 200, { status: 'ok', relay: true, listenPort, upstream: parsedUpstream.host }, cors);
+    }
+
+    if (!ALLOWED.some(a => a.method === req.method && a.path === pathname)) {
+        return sendJson(res, 404, { error: { message: 'Not found', type: 'not_found' } }, cors);
+    }
+
     const clientModule = parsedUpstream.protocol === 'https:' ? https : http;
-    const forwardHeaders = { ...req.headers };
-    forwardHeaders.host = parsedUpstream.host;
-    delete forwardHeaders['content-length']; // let client module recompute if needed
+    const forwardHeaders = {
+        host: parsedUpstream.host,
+        accept: req.headers.accept || 'application/json',
+    };
+    if (req.headers['content-type']) forwardHeaders['content-type'] = req.headers['content-type'];
+    if (upstreamKey) forwardHeaders.authorization = `Bearer ${upstreamKey}`;
 
     const proxyReq = clientModule.request({
         protocol: parsedUpstream.protocol,
         hostname: parsedUpstream.hostname,
         port: parsedUpstream.port || (parsedUpstream.protocol === 'https:' ? 443 : 80),
-        path: targetUrl.pathname + targetUrl.search,
+        path: pathname,   // no query string and no caller-chosen host: only the fixed upstream
         method: req.method,
         headers: forwardHeaders,
-        timeout: 60000,
+        timeout: UPSTREAM_TIMEOUT_MS,
     }, (proxyRes) => {
-        const latencyMs = Date.now() - startTime;
-        
-        // Pass through headers
-        const responseHeaders = { ...proxyRes.headers };
-        responseHeaders['x-relay-latency-ms'] = String(latencyMs);
-        responseHeaders['x-colibri-relay'] = 'mesh-gateway-v1';
-        setCorsHeaders(res);
-
-        // If this is a /health or /status request, enrich the JSON with relay metadata
-        if ((reqUrl.pathname === '/health' || reqUrl.pathname === '/status') && proxyRes.statusCode === 200) {
-            let bodyData = '';
-            proxyRes.setEncoding('utf8');
-            proxyRes.on('data', chunk => { bodyData += chunk; });
-            proxyRes.on('end', () => {
-                try {
-                    const parsed = JSON.parse(bodyData);
-                    parsed.relayGateway = {
-                        active: true,
-                        relayHost: `127.0.0.1:${listenPort}`,
-                        upstreamHost: upstreamUrl,
-                        latencyMs: latencyMs,
-                    };
-                    const enrichedBody = JSON.stringify(parsed, null, 2);
-                    res.writeHead(200, {
-                        ...responseHeaders,
-                        'content-type': 'application/json; charset=utf-8',
-                        'content-length': Buffer.byteLength(enrichedBody)
-                    });
-                    res.end(enrichedBody);
-                } catch {
-                    res.writeHead(proxyRes.statusCode || 200, responseHeaders);
-                    res.end(bodyData);
-                }
-            });
-            return;
+        const responseHeaders = {};
+        for (const [k, v] of Object.entries(proxyRes.headers)) {
+            if (!k.toLowerCase().startsWith('access-control-')) responseHeaders[k] = v;   // CORS is decided here, not upstream
         }
-
-        // Direct stream pipe for SSE token streaming and chat completions
-        res.writeHead(proxyRes.statusCode || 200, responseHeaders);
-        proxyRes.pipe(res);
+        Object.assign(responseHeaders, cors, { 'x-relay-latency-ms': String(Date.now() - startTime) });
+        res.writeHead(proxyRes.statusCode || 502, responseHeaders);
+        proxyRes.pipe(res);   // byte-level pipe keeps token-by-token SSE streaming
     });
 
     proxyReq.on('timeout', () => {
         proxyReq.destroy();
-        if (!res.headersSent) {
-            res.writeHead(504, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({
-                error: {
-                    message: `Colibrì upstream server timed out: ${upstreamUrl}`,
-                    type: 'upstream_timeout',
-                    upstream: upstreamUrl
-                }
-            }));
-        }
+        if (!res.headersSent) sendJson(res, 504, { error: { message: 'Colibrì upstream timed out', type: 'upstream_timeout' } }, cors);
     });
-
     proxyReq.on('error', (err) => {
         if (!res.headersSent) {
-            res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({
-                error: {
-                    message: `Colibrì relay failed to reach upstream host (${upstreamUrl}): ${err.message}`,
-                    type: 'upstream_unreachable',
-                    upstream: upstreamUrl,
-                    hint: 'Verify Ramses laptop is awake and connected to G7 network, and Colibri server is active on port 8082.'
-                }
-            }, null, 2));
+            sendJson(res, 502, { error: { message: `Relay could not reach the Colibrì server: ${err.message}`, type: 'upstream_unreachable' } }, cors);
         }
     });
+    // a client that goes away (Stop pressed) must not leave the upstream generating for nobody
+    res.on('close', () => { if (!res.writableEnded) proxyReq.destroy(); });
 
+    let received = 0;
+    req.on('data', (chunk) => {
+        received += chunk.length;
+        if (received > MAX_BODY_BYTES) {
+            proxyReq.destroy();
+            if (!res.headersSent) sendJson(res, 413, { error: { message: 'Request too large', type: 'payload_too_large' } }, cors);
+            req.destroy();
+        }
+    });
     req.pipe(proxyReq);
 });
 
 server.listen(listenPort, bindHost, () => {
-    console.log(`================================================================`);
-    console.log(` 🪶  Colibrì Mesh LAN Relay Server Active`);
-    console.log(`================================================================`);
-    console.log(` Local Listening Endpoint : http://127.0.0.1:${listenPort}`);
-    console.log(` LAN Listening Endpoint   : http://${bindHost}:${listenPort}`);
-    console.log(` Upstream Colibrì Host    : ${upstreamUrl}`);
-    console.log(` Client Access Mode       : Secure Localhost proxy (bypasses browser PNA/Mixed Content)`);
-    console.log(` Health Check             : http://127.0.0.1:${listenPort}/health`);
-    console.log(` Relay Diagnostic         : http://127.0.0.1:${listenPort}/relay-health`);
-    console.log(`================================================================`);
-    console.log(`Ready to forward local network inference requests.`);
+    console.log('Colibrì relay listening');
+    console.log(`  Listen   : http://${bindHost}:${listenPort}${isLoopback(bindHost) ? ' (this machine only)' : ' (token required)'}`);
+    console.log(`  Upstream : ${parsedUpstream.protocol}//${parsedUpstream.host}`);
+    console.log(`  Origins  : ${[...allowedOrigins].join(', ')}`);
+    console.log('  Allowed  : GET /health, GET /v1/models, POST /v1/chat/completions');
 });

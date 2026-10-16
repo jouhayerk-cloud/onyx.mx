@@ -36,7 +36,7 @@ import {
 import { getRoute, ROUTABLE_JOBS, type RouteJob } from './routing';
 import { getProviderConfig, hasProviderKey } from './providerKeys';
 import { getProvider } from './providers';
-import { AiProviderError, type ProviderConfig, type AiRequest } from './providers/types';
+import { AiProviderError, type ProviderConfig, type AiRequest, type ProviderInfo } from './providers/types';
 
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -71,6 +71,14 @@ const toInlineData = (img: AiImage): { mimeType: string; data: string } => {
     if (m) return { mimeType: m[1], data: m[2] };
     return { mimeType: 'image/jpeg', data: img };
 };
+
+/** A provider without vision (Colibrì is text only) must not get a photo it would silently ignore. */
+function assertCanSendImages(info: ProviderInfo, images: readonly AiImage[] | undefined): void {
+    if (info.capabilities.vision) return;
+    if ((images || []).some(Boolean)) {
+        throw new AiProviderError(`${info.label} cannot read images; route this job to a provider with vision`, undefined, 'config');
+    }
+}
 
 const toAiImagePart = (img: AiImage) => {
     const inline = toInlineData(img);
@@ -221,8 +229,10 @@ export async function generateText(opts: GenerateOptions): Promise<string> {
             if (!hasProviderKey(route.provider)) {
                 throw new AiProviderError(`No API key configured for ${provider.info.label}`, undefined, 'config');
             }
+            assertCanSendImages(provider.info, opts.images);
             const savedCfg = getProviderConfig(route.provider);
-            const model = opts.model || route.model || savedCfg.model;
+            // Colibrì serves one model and 'auto' means "the loaded one"; every other provider needs a chosen model
+            const model = opts.model || route.model || savedCfg.model || (route.provider === 'colibri' ? 'auto' : undefined);
             if (!model) {
                 throw new AiProviderError('Pick a model in Settings', undefined, 'config');
             }
@@ -270,8 +280,10 @@ export async function generateJson<T = unknown>(opts: GenerateJsonOptions): Prom
             if (!hasProviderKey(route.provider)) {
                 throw new AiProviderError(`No API key configured for ${provider.info.label}`, undefined, 'config');
             }
+            assertCanSendImages(provider.info, opts.images);
             const savedCfg = getProviderConfig(route.provider);
-            const model = opts.model || route.model || savedCfg.model;
+            // Colibrì serves one model and 'auto' means "the loaded one"; every other provider needs a chosen model
+            const model = opts.model || route.model || savedCfg.model || (route.provider === 'colibri' ? 'auto' : undefined);
             if (!model) {
                 throw new AiProviderError('Pick a model in Settings', undefined, 'config');
             }

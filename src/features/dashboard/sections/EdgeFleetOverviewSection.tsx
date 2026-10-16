@@ -2,22 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Cpu,
     Wifi,
-    WifiOff,
-    Clock,
-    Activity,
-    HardDrive,
     Radio,
-    Terminal,
     Download,
     RefreshCw,
-    Play,
     CheckCircle2,
     AlertTriangle,
-    Server,
     Zap,
     Battery,
     Thermometer,
-    Layers,
     Share2,
     Laptop,
     Smartphone,
@@ -27,16 +19,20 @@ import { connectivity, DeviceState } from '../../pico/surfaces/types';
 import {
     ONYX_MESH_TOPOLOGY,
     MESH_NODES,
+    MESH_NODES_EVENT,
+    getMeshNodeConfigs,
+    isMeshNodeConfigured,
     pingMeshNode,
-    MeshDeviceNode,
+    saveMeshNodeConfigs,
+    type MeshDeviceNode,
+    type MeshNodeConfig,
+    type MeshNodeRole,
 } from '../../../lib/network/localMeshMap';
-import { isColibriAvailable } from '../../../lib/ai/providers/colibri';
-import { tr } from '../../../lib/i18n';
+import { getColibriStatus, type ColibriStatus } from '../../../lib/ai/providers/colibri';
+import { getProviderConfig, AI_CONFIG_EVENT } from '../../../lib/ai/providerKeys';
+import { tr, trf } from '../../../lib/i18n';
 import {
     HairlineDeviceGallery,
-    HairlineLaptop,
-    HairlinePhone,
-    HairlineTablet,
     HairlineStackChan,
     HairlineM5StickS3,
     HairlineM5StickCPlus2,
@@ -48,6 +44,118 @@ interface NodePingResult {
     status: string;
 }
 
+const ROLE_ROWS: Array<{ role: MeshNodeRole; label: string }> = [
+    { role: 'primary_host', label: 'Colibrì host' },
+    { role: 'relay_node', label: 'Relay node' },
+    { role: 'mobile_client', label: 'Mobile client' },
+];
+
+/** Small form for the mesh list. The list lives in this browser only (localStorage); nothing is sent anywhere. */
+const MeshNodeEditor: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
+    const [rows, setRows] = useState<Record<MeshNodeRole, { name: string; ip: string; port: string }>>(() => {
+        const saved = getMeshNodeConfigs();
+        const pick = (role: MeshNodeRole) => {
+            const c = saved.find(x => x.role === role);
+            return { name: c?.name || '', ip: c?.ip || '', port: c?.colibriPort ? String(c.colibriPort) : '' };
+        };
+        return { primary_host: pick('primary_host'), relay_node: pick('relay_node'), mobile_client: pick('mobile_client') };
+    });
+
+    const save = () => {
+        const list: MeshNodeConfig[] = [];
+        for (const { role } of ROLE_ROWS) {
+            const r = rows[role];
+            if (!r.ip.trim()) continue;
+            const port = Number(r.port);
+            list.push({ role, name: r.name, ip: r.ip.trim(), colibriPort: Number.isFinite(port) && port > 0 ? port : undefined });
+        }
+        saveMeshNodeConfigs(list);
+        onSaved();
+    };
+
+    return (
+        <details className="mt-4 text-xs">
+            <summary className="cursor-pointer text-(--text-color-secondary) font-mono">{tr("Configure mesh nodes")}</summary>
+            <div className="mt-3 space-y-2">
+                <p className="text-[11px] text-(--text-color-secondary)">
+                    {tr("Optional. Addresses stay in this browser only. Leave the address empty to skip a node.")}
+                </p>
+                {ROLE_ROWS.map(({ role, label }) => (
+                    <div key={role} className="grid grid-cols-[110px_1fr_1fr_80px] gap-2 items-center">
+                        <span className="text-(--text-color-secondary)">{tr(label)}</span>
+                        <input
+                            className="px-2 py-1 rounded-md bg-black/20 border border-white/10 font-mono"
+                            placeholder={tr("Name")}
+                            aria-label={`${tr(label)}: ${tr("Name")}`}
+                            value={rows[role].name}
+                            onChange={(e) => setRows(prev => ({ ...prev, [role]: { ...prev[role], name: e.target.value } }))}
+                        />
+                        <input
+                            className="px-2 py-1 rounded-md bg-black/20 border border-white/10 font-mono"
+                            placeholder={tr("IP or hostname")}
+                            aria-label={`${tr(label)}: ${tr("IP or hostname")}`}
+                            value={rows[role].ip}
+                            onChange={(e) => setRows(prev => ({ ...prev, [role]: { ...prev[role], ip: e.target.value } }))}
+                        />
+                        <input
+                            className="px-2 py-1 rounded-md bg-black/20 border border-white/10 font-mono"
+                            placeholder="8000"
+                            inputMode="numeric"
+                            aria-label={`${tr(label)}: ${tr("Port")}`}
+                            value={rows[role].port}
+                            onChange={(e) => setRows(prev => ({ ...prev, [role]: { ...prev[role], port: e.target.value } }))}
+                        />
+                    </div>
+                ))}
+                <button type="button" onClick={save} className="acc-action-btn">
+                    <span>{tr("Save nodes")}</span>
+                </button>
+            </div>
+        </details>
+    );
+};
+
+/** One mesh slot: the configured node with its real ping, or a quiet "not configured" card. */
+const MeshNodeCard: React.FC<{
+    node: MeshDeviceNode;
+    badge: string;
+    icon: React.ReactNode;
+    accent: string;
+    ping?: NodePingResult;
+}> = ({ node, badge, icon, accent, ping }) => {
+    const configured = isMeshNodeConfigured(node);
+    return (
+        <div className={`acc-device-card ${accent}`}>
+            <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-(--text-color)">
+                        {icon}
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-(--text-color)">{configured ? node.name : tr(node.name)}</h4>
+                            <span className="acc-badge acc-badge-mesh">{tr(badge)}</span>
+                        </div>
+                        <p className="text-[11px] font-mono text-(--text-color-secondary)">
+                            {configured ? `${node.ip}:${node.colibriPort}` : tr("Not configured")}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center justify-between text-[11px] pt-3">
+                <span className="text-white/50">{tr("Ping Latency")}:</span>
+                <span className="font-mono font-bold">
+                    {!configured
+                        ? '—'
+                        : ping
+                            ? `${ping.ok ? `${ping.latencyMs}ms ` : ''}(${tr(ping.status)})`
+                            : tr("Not checked yet")}
+                </span>
+            </div>
+        </div>
+    );
+};
+
 export const EdgeFleetOverviewSection: React.FC = () => {
     // Pico Fleet Telemetry
     const { devices, source, error: picoError } = useDeviceFleet();
@@ -56,23 +164,20 @@ export const EdgeFleetOverviewSection: React.FC = () => {
     const [pingResults, setPingResults] = useState<Record<string, NodePingResult>>({});
     const [isPingingAll, setIsPingingAll] = useState<boolean>(false);
     const [relayTestStatus, setRelayTestStatus] = useState<{ testing: boolean; message?: string; ok?: boolean } | null>(null);
+    const [, setMeshTick] = useState(0);
 
-    // Colibrì Host Telemetry
-    const [g7Telemetry, setG7Telemetry] = useState<{
-        online: boolean;
-        nvmeSpeedMBps: number;
-        tokensPerSec: number;
-        model: string;
-        vramAllocated: string;
-    }>({
-        online: true,
-        nvmeSpeedMBps: 2850,
-        tokensPerSec: 28.4,
-        model: 'colibri-glm-5.2-moe (35B-A2.7B)',
-        vramAllocated: '4.8 GB / 6.0 GB (Vulkan)',
-    });
+    // Colibrì server status: only what the server really reports (GET /health and GET /v1/models)
+    const [colibri, setColibri] = useState<ColibriStatus | null>(null);
 
-    // Execute Ping to all known mesh nodes
+    const refreshColibri = useCallback(async () => {
+        try {
+            setColibri(await getColibriStatus(getProviderConfig('colibri')));
+        } catch {
+            setColibri(null);
+        }
+    }, []);
+
+    // Execute Ping to all configured mesh nodes (none by default)
     const handlePingAllMeshNodes = useCallback(async () => {
         setIsPingingAll(true);
         const results: Record<string, NodePingResult> = {};
@@ -80,36 +185,28 @@ export const EdgeFleetOverviewSection: React.FC = () => {
             results[node.id] = await pingMeshNode(node);
         }
         setPingResults(results);
+        await refreshColibri();
         setIsPingingAll(false);
-    }, []);
+    }, [refreshColibri]);
 
-    // Test Martha's Relay
+    // Test the configured relay node
     const handleTestRelay = useCallback(async () => {
+        const relayNode = ONYX_MESH_TOPOLOGY.second_laptop;
+        if (!isMeshNodeConfigured(relayNode)) {
+            setRelayTestStatus({ testing: false, ok: false, message: tr("No relay node is configured") });
+            return;
+        }
         setRelayTestStatus({ testing: true });
         try {
-            const start = performance.now();
-            const marthaNode = ONYX_MESH_TOPOLOGY.second_laptop;
-            const res = await pingMeshNode(marthaNode);
-            const latency = Math.round(performance.now() - start);
-
-            if (res.ok) {
-                setRelayTestStatus({
-                    testing: false,
-                    ok: true,
-                    message: `Relay Online • ${res.latencyMs || latency}ms • Gateway forwarding OK`,
-                });
-            } else {
-                setRelayTestStatus({
-                    testing: false,
-                    ok: false,
-                    message: `Relay unreachable (${res.status}) • Start relay on ${marthaNode.ip}`,
-                });
-            }
+            const res = await pingMeshNode(relayNode);
+            setRelayTestStatus(res.ok
+                ? { testing: false, ok: true, message: trf('Relay online • {ms}ms', { ms: res.latencyMs }) }
+                : { testing: false, ok: false, message: trf('Relay unreachable ({status}) • start it on {ip}', { status: res.status, ip: relayNode.ip }) });
         } catch (err: any) {
             setRelayTestStatus({
                 testing: false,
                 ok: false,
-                message: `Relay test error: ${err?.message || 'Connection refused'}`,
+                message: `${tr("Relay test error")}: ${err?.message || tr("Connection refused")}`,
             });
         }
     }, []);
@@ -120,7 +217,7 @@ export const EdgeFleetOverviewSection: React.FC = () => {
             exportTimestamp: new Date().toISOString(),
             topology: ONYX_MESH_TOPOLOGY,
             meshPingResults: pingResults,
-            colibriTelemetry: g7Telemetry,
+            colibriStatus: colibri,
             picoFleet: {
                 source,
                 devicesCount: devices.length,
@@ -137,61 +234,42 @@ export const EdgeFleetOverviewSection: React.FC = () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    }, [pingResults, g7Telemetry, source, devices]);
+    }, [pingResults, colibri, source, devices]);
 
     // Initial check on mount
     useEffect(() => {
         void handlePingAllMeshNodes();
     }, [handlePingAllMeshNodes]);
 
-    // Derived Pico Devices count & fallback
+    // ...and again when the mesh list or the Colibrì address changes
+    useEffect(() => {
+        const onChange = () => { setMeshTick(t => t + 1); void handlePingAllMeshNodes(); };
+        window.addEventListener(MESH_NODES_EVENT, onChange);
+        window.addEventListener(AI_CONFIG_EVENT, onChange);
+        return () => {
+            window.removeEventListener(MESH_NODES_EVENT, onChange);
+            window.removeEventListener(AI_CONFIG_EVENT, onChange);
+        };
+    }, [handlePingAllMeshNodes]);
+
+    // Pico devices exactly as the fleet reports them: when there are none, say so (no invented controllers)
     const now = Date.now();
-    const effectivePicoDevices = useMemo<DeviceState[]>(() => {
-        if (devices.length > 0) return devices;
-        // Default hardware Pico controller state
-        return [
-            {
-                device_id: 'pico-onyxchan-w1',
-                last_checkin_at: new Date(now - 14000).toISOString(),
-                checkin_interval_s: 30,
-                battery_pct: 92,
-                charging: true,
-                rssi: -58,
-                fw_version: 'OnyxChan-Pico-v1.4.2',
-                heap_free: 184320,
-                temp_c: 34.8,
-                state: 'running',
-                session_open_until: null,
-                active_workflow: 'warehouse_mesh_beacon',
-                last_error: null,
-            },
-            {
-                device_id: 'pico-logistics-scale-02',
-                last_checkin_at: new Date(now - 42000).toISOString(),
-                checkin_interval_s: 60,
-                battery_pct: 78,
-                charging: false,
-                rssi: -69,
-                fw_version: 'OnyxScale-RP2040-v2.1',
-                heap_free: 142100,
-                temp_c: 31.2,
-                state: 'idle',
-                session_open_until: null,
-                active_workflow: 'crate_weight_telemetry',
-                last_error: null,
-            },
-        ];
-    }, [devices, now]);
+    const effectivePicoDevices = useMemo<DeviceState[]>(() => devices, [devices]);
+
+    const host = ONYX_MESH_TOPOLOGY.g7;
+    const relay = ONYX_MESH_TOPOLOGY.second_laptop;
+    const client = ONYX_MESH_TOPOLOGY.phone;
+    const colibriOnline = Boolean(colibri?.ok);
 
     return (
-        <section aria-label="Edge Fleet & Colibrì MoE Overview" className="space-y-8 animate-in fade-in duration-300">
+        <section aria-label="Edge Fleet & Colibrì Overview" className="space-y-8 animate-in fade-in duration-300">
             {/* Header: Edge Fleet HUD with Quick Action Buttons */}
             <div className="acc-glass-panel p-6">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/5">
                     <div className="flex items-center gap-4">
                         <div className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
                             <Cpu size={24} />
-                            <span className="absolute -top-1 -right-1 acc-dot acc-dot-cyan acc-pulse-cyan" />
+                            {colibriOnline && <span className="absolute -top-1 -right-1 acc-dot acc-dot-cyan acc-pulse-cyan" />}
                         </div>
                         <div>
                             <div className="flex items-center gap-3">
@@ -200,11 +278,11 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                 </h2>
                                 <span className="acc-badge acc-badge-mesh">
                                     <Zap size={10} />
-                                    MoE NVMe Engine
+                                    {tr("Local model")}
                                 </span>
                             </div>
                             <p className="text-xs text-(--text-color-secondary) mt-0.5">
-                                {tr("Distributed edge intelligence: Colibrì MoE nodes, LAN mesh relays, and RP2040 Pico controllers")}
+                                {tr("Local Colibrì model server, optional LAN nodes, and RP2040 Pico controllers")}
                             </p>
                         </div>
                     </div>
@@ -216,7 +294,7 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                             onClick={() => void handlePingAllMeshNodes()}
                             disabled={isPingingAll}
                             className="acc-action-btn acc-action-btn-primary"
-                            title="Ping all G7 LAN mesh nodes"
+                            title={tr("Check Colibrì and ping the configured nodes")}
                         >
                             <RefreshCw size={14} className={isPingingAll ? 'animate-spin' : ''} />
                             <span>{isPingingAll ? tr("Pinging...") : tr("Ping Mesh Nodes")}</span>
@@ -227,7 +305,7 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                             onClick={() => void handleTestRelay()}
                             disabled={relayTestStatus?.testing}
                             className="acc-action-btn hover:border-purple-500/40"
-                            title="Test second laptop LAN relay connection"
+                            title={tr("Test the configured relay node")}
                         >
                             <Share2 size={14} className="text-purple-400" />
                             <span>{relayTestStatus?.testing ? tr("Testing...") : tr("Test Colibrì Relay")}</span>
@@ -237,7 +315,7 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                             type="button"
                             onClick={handleExportTelemetry}
                             className="acc-action-btn"
-                            title="Download complete telemetry JSON file"
+                            title={tr("Download complete telemetry JSON file")}
                         >
                             <Download size={14} className="text-emerald-400" />
                             <span>{tr("Export Telemetry JSON")}</span>
@@ -248,16 +326,16 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                 {/* Relay Test Alert Banner if executed */}
                 {relayTestStatus && !relayTestStatus.testing && (
                     <div className={`mt-4 p-3 rounded-xl border flex items-center justify-between text-xs font-mono ${
-                        relayTestStatus.ok 
-                            ? 'bg-purple-950/20 border-purple-500/30 text-purple-300' 
+                        relayTestStatus.ok
+                            ? 'bg-purple-950/20 border-purple-500/30 text-purple-300'
                             : 'bg-amber-950/20 border-amber-500/30 text-amber-300'
                     }`}>
                         <div className="flex items-center gap-2">
                             {relayTestStatus.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
                             <span>{relayTestStatus.message}</span>
                         </div>
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={() => setRelayTestStatus(null)}
                             className="text-white/40 hover:text-white px-2 py-0.5"
                         >
@@ -266,48 +344,47 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                     </div>
                 )}
 
-                {/* Fast Overview Metric Cards */}
+                {/* Fast Overview Metric Cards: every number comes from the server or from the list, never a constant */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
                     <div className="acc-hud-card">
                         <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">
-                            {tr("Colibrì MoE Host")}
+                            {tr("Colibrì server")}
                         </span>
                         <div className="flex items-baseline gap-2 mt-1">
-                            <span className="text-2xl font-black font-mono text-cyan-400">
-                                192.0.2.71
+                            <span className={`text-2xl font-black font-mono ${colibriOnline ? 'text-cyan-400' : 'text-(--text-color-secondary)'}`}>
+                                {colibri === null ? '…' : colibriOnline ? tr("Online") : tr("Offline")}
                             </span>
                         </div>
-                        <span className="text-[10px] text-white/50 flex items-center gap-1">
-                            <span className="acc-dot acc-dot-cyan acc-pulse-cyan" />
-                            Port 8082 • Host G7
+                        <span className="text-[10px] text-white/50 truncate" title={colibri?.baseUrl}>
+                            {colibri?.baseUrl || '—'}
                         </span>
                     </div>
 
                     <div className="acc-hud-card">
                         <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">
-                            {tr("NVMe Read Bandwidth")}
+                            {tr("Loaded model")}
+                        </span>
+                        <div className="mt-1">
+                            <span className="text-base font-black font-mono text-(--text-color) break-all">
+                                {colibri?.modelId || '—'}
+                            </span>
+                        </div>
+                        <span className="text-[10px] text-white/50 font-mono">
+                            {colibri?.inputModalities ? `${tr("Input")}: ${colibri.inputModalities.join(', ')}` : tr("Text only")}
+                        </span>
+                    </div>
+
+                    <div className="acc-hud-card">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">
+                            {tr("Queue")}
                         </span>
                         <div className="mt-1">
                             <span className="text-2xl font-black font-mono text-(--text-color)">
-                                {g7Telemetry.nvmeSpeedMBps.toLocaleString()} <span className="text-sm font-normal text-white/50">MB/s</span>
+                                {colibri?.active !== undefined ? `${colibri.active} / ${colibri.queued ?? 0}` : '—'}
                             </span>
                         </div>
-                        <span className="text-[10px] text-emerald-400 font-mono">
-                            Zero-RAM SSD Streaming
-                        </span>
-                    </div>
-
-                    <div className="acc-hud-card">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">
-                            {tr("LAN Mesh Relay")}
-                        </span>
-                        <div className="mt-1">
-                            <span className="text-2xl font-black font-mono text-purple-400">
-                                192.0.2.67
-                            </span>
-                        </div>
-                        <span className="text-[10px] text-white/50">
-                            Second Laptop Proxy
+                        <span className="text-[10px] text-white/50 font-mono">
+                            {colibri?.completed !== undefined ? trf('{n} answered', { n: colibri.completed }) : tr("Active / queued")}
                         </span>
                     </div>
 
@@ -317,211 +394,34 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                         </span>
                         <div className="mt-1">
                             <span className="text-2xl font-black font-mono text-(--text-color)">
-                                {effectivePicoDevices.length} <span className="text-sm font-normal text-white/50">Units</span>
+                                {effectivePicoDevices.length} <span className="text-sm font-normal text-white/50">{tr("Units")}</span>
                             </span>
                         </div>
-                        <span className="text-[10px] text-emerald-400 font-mono">
-                            RP2040 FreeRTOS Fleet
+                        <span className="text-[10px] text-white/50 font-mono">
+                            {picoError ? tr("Fleet unavailable") : tr("As reported by the fleet")}
                         </span>
                     </div>
                 </div>
+                {colibri && !colibri.ok && (
+                    <p className="mt-4 text-[11px] font-mono text-amber-300">{colibri.message}</p>
+                )}
+                <MeshNodeEditor onSaved={() => { setMeshTick(t => t + 1); void handlePingAllMeshNodes(); }} />
             </div>
 
             {/* Interactive Hairline 3D Edge Hardware Studio */}
             <HairlineDeviceGallery />
 
-            {/* Neural MoE Network Nodes Grid */}
+            {/* Mesh nodes: only the ones the person configured have an address */}
             <div>
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-4 px-1 flex items-center gap-2">
                     <Zap size={14} className="text-cyan-400" />
-                    {tr("Neural MoE & LAN Mesh Nodes")}
+                    {tr("LAN Mesh Nodes")}
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {/* Node 1: Colibrì MoE Host Node (G7) */}
-                    <div className="acc-device-card border-cyan-500/20 bg-cyan-950/10">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                                    <Laptop size={20} />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="text-sm font-bold text-(--text-color)">
-                                             G7 Laptop (Ramses)
-                                        </h4>
-                                        <span className="acc-badge acc-badge-mesh">Host</span>
-                                    </div>
-                                    <p className="text-[11px] font-mono text-(--text-color-secondary)">
-                                        192.0.2.71:8082
-                                    </p>
-                                </div>
-                            </div>
-                            <span className="acc-dot acc-dot-cyan acc-pulse-cyan" title="Colibrì Primary Host Active" />
-                        </div>
-
-                        {/* Interactive Hairline Laptop Figure */}
-                        <div className="py-1">
-                            <HairlineLaptop
-                                title="G7 Host"
-                                hostName="G7-Laptop-Ramses"
-                                ipAddress="192.0.2.71"
-                                nvmeSpeed={g7Telemetry.nvmeSpeedMBps}
-                                initialAngle={106}
-                                className="max-h-[160px]"
-                            />
-                        </div>
-
-                        {/* Telemetry Metrics */}
-                        <div className="space-y-2.5 p-3 rounded-xl bg-black/30 border border-white/5 text-xs font-mono">
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Architecture")}:</span>
-                                <span className="text-cyan-300 font-bold">Colibrì MoE (Vulkan)</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Active Model")}:</span>
-                                <span className="text-white truncate max-w-[150px]">{g7Telemetry.model}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("NVMe Speed")}:</span>
-                                <span className="text-emerald-400 font-bold">{g7Telemetry.nvmeSpeedMBps} MB/s</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("VRAM / GPU")}:</span>
-                                <span className="text-white/90">{g7Telemetry.vramAllocated}</span>
-                            </div>
-                        </div>
-
-                        {/* Node Ping Status Footer */}
-                        <div className="flex items-center justify-between text-[11px] pt-1">
-                            <span className="text-white/50">{tr("Ping Latency")}:</span>
-                            <span className="font-mono text-emerald-400 font-bold">
-                                {pingResults['g7'] ? `${pingResults['g7'].latencyMs}ms (${pingResults['g7'].status})` : '2ms (Direct LAN)'}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Node 2: Martha LAN Relay Node */}
-                    <div className="acc-device-card border-purple-500/20 bg-purple-950/10">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
-                                    <Radio size={20} />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="text-sm font-bold text-(--text-color)">
-                                            Second Laptop
-                                        </h4>
-                                        <span className="acc-badge acc-badge-relay">Relay</span>
-                                    </div>
-                                    <p className="text-[11px] font-mono text-(--text-color-secondary)">
-                                        192.0.2.67:8082
-                                    </p>
-                                </div>
-                            </div>
-                            <span className="acc-dot acc-dot-purple" title="LAN Relay Gateway" />
-                        </div>
-
-                        {/* Interactive Hairline Tablet / Relay Terminal Figure */}
-                        <div className="py-1">
-                            <HairlineTablet
-                                title="Second Relay"
-                                deviceName="Second Laptop"
-                                ipAddress="192.0.2.67"
-                                className="max-h-[160px]"
-                            />
-                        </div>
-
-                        {/* Telemetry Metrics */}
-                        <div className="space-y-2.5 p-3 rounded-xl bg-black/30 border border-white/5 text-xs font-mono">
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Mesh Role")}:</span>
-                                <span className="text-purple-300 font-bold">CORS / PNA Gateway</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Upstream Host")}:</span>
-                                <span className="text-white/90">http://192.0.2.71:8082</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Gateway State")}:</span>
-                                <span className="text-emerald-400">Forwarding Enabled</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Security")}:</span>
-                                <span className="text-white/80">Loopback Access</span>
-                            </div>
-                        </div>
-
-                        {/* Node Ping Status Footer */}
-                        <div className="flex items-center justify-between text-[11px] pt-1">
-                            <span className="text-white/50">{tr("Ping Latency")}:</span>
-                            <span className="font-mono text-purple-400 font-bold">
-                                {pingResults['second_laptop'] ? `${pingResults['second_laptop'].latencyMs}ms (${pingResults['second_laptop'].status})` : '8ms (Wi-Fi Relay)'}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Node 3: Mobile Client (Ramses iPhone) */}
-                    <div className="acc-device-card border-blue-500/20 bg-blue-950/10">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                                    <Smartphone size={20} />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="text-sm font-bold text-(--text-color)">
-                                            Ramses iPhone 15 Pro
-                                        </h4>
-                                        <span className="acc-badge acc-badge-mesh">Mobile</span>
-                                    </div>
-                                    <p className="text-[11px] font-mono text-(--text-color-secondary)">
-                                        192.0.2.100:1001
-                                    </p>
-                                </div>
-                            </div>
-                            <span className="acc-dot acc-dot-emerald" title="iOS Native Companion" />
-                        </div>
-
-                        {/* Interactive Hairline Phone Figure */}
-                        <div className="py-1">
-                            <HairlinePhone
-                                title="iOS Companion"
-                                deviceName="Ramses iPhone 15 Pro"
-                                ipAddress="192.0.2.100"
-                                className="max-h-[160px]"
-                            />
-                        </div>
-
-                        {/* Telemetry Metrics */}
-                        <div className="space-y-2.5 p-3 rounded-xl bg-black/30 border border-white/5 text-xs font-mono">
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Local Engine")}:</span>
-                                <span className="text-blue-300 font-bold">LiteRT-LM Native</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Local Model")}:</span>
-                                <span className="text-white/90">Gemma-2-740M (Embeddings)</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("Vector Dim")}:</span>
-                                <span className="text-emerald-400">768 Matryoshka</span>
-                            </div>
-                            <div className="flex justify-between items-center text-white/70">
-                                <span className="text-white/40">{tr("iOS App Status")}:</span>
-                                <span className="text-white/90">Sideloaded / Live</span>
-                            </div>
-                        </div>
-
-                        {/* Node Ping Status Footer */}
-                        <div className="flex items-center justify-between text-[11px] pt-1">
-                            <span className="text-white/50">{tr("Ping Latency")}:</span>
-                            <span className="font-mono text-blue-400 font-bold">
-                                {pingResults['phone'] ? `${pingResults['phone'].latencyMs}ms (${pingResults['phone'].status})` : '15ms (G7 Wi-Fi)'}
-                            </span>
-                        </div>
-                    </div>
+                    <MeshNodeCard node={host} badge="Host" icon={<Laptop size={20} />} accent="border-cyan-500/20 bg-cyan-950/10" ping={pingResults['g7']} />
+                    <MeshNodeCard node={relay} badge="Relay" icon={<Radio size={20} />} accent="border-purple-500/20 bg-purple-950/10" ping={pingResults['second_laptop']} />
+                    <MeshNodeCard node={client} badge="Mobile" icon={<Smartphone size={20} />} accent="border-blue-500/20 bg-blue-950/10" ping={pingResults['phone']} />
                 </div>
             </div>
 
@@ -538,10 +438,15 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                         className="text-[10px] font-mono text-cyan-400 hover:underline flex items-center gap-1"
                     >
                         <RefreshCw size={10} className={isPingingAll ? 'animate-spin' : ''} />
-                        {tr("Poll Pico State")}
+                        {tr("Refresh")}
                     </button>
                 </div>
 
+                {effectivePicoDevices.length === 0 && (
+                    <p className="px-1 text-xs text-(--text-color-secondary)">
+                        {picoError ? tr("The Pico fleet could not be read") : tr("No Pico controllers have reported yet")}
+                    </p>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {effectivePicoDevices.map((pico) => {
                         const conn = connectivity(pico, now);
@@ -603,15 +508,15 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                         <HairlineStackChan
                                             title="StackChan Companion"
                                             botName={pico.device_id}
-                                            batteryPct={pico.battery_pct ?? 92}
+                                            batteryPct={pico.battery_pct ?? 0}
                                             className="max-h-[160px]"
                                         />
                                     ) : pico.device_id.includes('scale') ? (
                                         <HairlineM5StickCPlus2
                                             title="M5StickC Plus 2"
                                             nodeId={pico.device_id}
-                                            batteryPct={pico.battery_pct ?? 78}
-                                            tempC={pico.temp_c ?? 31.2}
+                                            batteryPct={pico.battery_pct ?? 0}
+                                            tempC={pico.temp_c ?? 0}
                                             className="max-h-[160px]"
                                         />
                                     ) : (
@@ -619,7 +524,7 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                             title="M5StickS3 Controller"
                                             nodeId={pico.device_id}
                                             heapFree={pico.heap_free}
-                                            rssi={pico.rssi ?? -58}
+                                            rssi={pico.rssi ?? -100}
                                             className="max-h-[160px]"
                                         />
                                     )}
@@ -643,7 +548,7 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                             RSSI
                                         </span>
                                         <span className="text-sm font-bold text-(--text-color) mt-0.5">
-                                            {pico.rssi !== null ? `${pico.rssi} dBm` : '-60 dBm'}
+                                            {pico.rssi !== null ? `${pico.rssi} dBm` : '—'}
                                         </span>
                                     </div>
 
@@ -653,7 +558,7 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                             {tr("Core Temp")}
                                         </span>
                                         <span className="text-sm font-bold text-(--text-color) mt-0.5">
-                                            {pico.temp_c !== null ? `${pico.temp_c}°C` : '32°C'}
+                                            {pico.temp_c !== null ? `${pico.temp_c}°C` : '—'}
                                         </span>
                                     </div>
                                 </div>
